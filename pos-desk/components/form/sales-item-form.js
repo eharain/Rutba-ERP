@@ -2,12 +2,13 @@
 import React, { useState } from 'react';
 import { searchProduct } from '../../lib/pos';
 import { Table, TableHead, TableBody, TableRow, TableCell } from '../Table';
+import { useUtil } from '../../context/UtilContext';
 
 const SalesItemForm = ({ items, onAddItem, onUpdateItem, onRemoveItem }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [searchResults, setSearchResults] = useState([]);
     const [showResults, setShowResults] = useState(false);
-
+    const { currency } = useUtil();
     const handleSearch = async (term) => {
         if (term.length > 2) {
             const results = await searchProduct(term);
@@ -77,7 +78,7 @@ const SalesItemForm = ({ items, onAddItem, onUpdateItem, onRemoveItem }) => {
                                     borderBottom: '1px solid #eee'
                                 }}
                             >
-                                {product.name} - ${product.selling_price}
+                                {product.name} - {currency}{product.selling_price}
                                 {product.barcode && (
                                     <span style={{ color: '#666', marginLeft: '10px' }}>
                                         (Barcode: {product.barcode})
@@ -130,7 +131,7 @@ const SalesItemForm = ({ items, onAddItem, onUpdateItem, onRemoveItem }) => {
                                     style={{ width: '100px', padding: '5px' }}
                                 />
                             </TableCell>
-                            <TableCell>${item.total.toFixed(2)}</TableCell>
+                            <TableCell>{currency} {item.total.toFixed(2)}</TableCell>
                             <TableCell>
                                 <button
                                     onClick={() => onRemoveItem(index)}

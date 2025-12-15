@@ -2,7 +2,7 @@ import { Table, TableHead, TableBody, TableRow, TableCell } from '../Table';
 import StrapiImage from '../StrapiImage';
 import StatusBadge from './StatusBadge';
 import ProgressBar from './ProgressBar';
-
+import { useUtil } from '../../context/UtilContext';
 export default function PurchaseItemsList({ items }) {
     if (!items || items.length === 0) {
         return (
@@ -47,6 +47,7 @@ export default function PurchaseItemsList({ items }) {
 }
 
 function PurchaseItemRow({ item }) {
+    const {currency} = useUtil();
     const itemTotal = (item.quantity || 0) * (item.unit_price || item.price || 0);
     const receivedPercentage = item.quantity > 0
         ? Math.round(((item.received_quantity || 0) / item.quantity) * 100)
@@ -90,13 +91,13 @@ function PurchaseItemRow({ item }) {
                 </div>
             </TableCell>
             <TableCell align="center">
-                ${(item.unit_price || item.price || 0).toFixed(2)}
+                {currency}{(item.unit_price || item.price || 0).toFixed(2)}
             </TableCell>
             <TableCell align="center">
                 {item.bundle_units > 1 ? item.bundle_units : '1'}
             </TableCell>
             <TableCell align="center">
-                <strong>${itemTotal.toFixed(2)}</strong>
+                <strong>{currency}{itemTotal.toFixed(2)}</strong>
             </TableCell>
             <TableCell align="center">
                 <StatusBadge

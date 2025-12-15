@@ -144,14 +144,14 @@ const PurchaseForm = ({ purchase, onSubmit, onCancel }) => {
                     <button
                         type="submit"
                         disabled={loading}
-                        style={{ padding: '10px 20px', background: '#007bff', color: 'grey', border: 'none' }}
+                        style={{ padding: '10px 20px', background: '#007bff', color: 'white', border: 'none' }}
                     >
                         {loading ? 'Saving...' : (purchase ? 'Update' : 'Create')}
                     </button>
                     <button
                         type="button"
                         onClick={onCancel}
-                        style={{ padding: '10px 20px', background: '#6c757d', color: 'grey', border: 'none' }}
+                        style={{ padding: '10px 20px', background: '#6c757d', color: 'white', border: 'none' }}
                     >
                         Cancel
                     </button>

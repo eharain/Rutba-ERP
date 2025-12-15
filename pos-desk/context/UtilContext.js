@@ -8,12 +8,14 @@ export function UtilProvider({ children }) {
     const [branch, setBranchState] = useState(null);
     const [desk, setDeskState] = useState(null);
     const [user, setUserState] = useState(null);
+    const [currency, setCurrencyState] = useState(null);
 
     // Load values from storage once on mount
     useEffect(() => {
         setBranchState(storage.getJSON("branch"));
         setDeskState(storage.getJSON("branch-desk"));
         setUserState(storage.getJSON("user") ?? null);
+        setCurrencyState(storage.getJSON("currency") ?? null);
     }, []);
 
     function getBranch() {
@@ -24,6 +26,13 @@ export function UtilProvider({ children }) {
     }
     function getUser() {
         return user;
+    }
+    function getCurrency() {
+        return currency;
+    }
+    function setCurrency(newCurrency) {
+        setCurrencyState(newCurrency);
+        storage.setJSON("currency", newCurrency);
     }
     function setBranch(newBranch) {
         setBranchState(newBranch);
@@ -92,6 +101,9 @@ export function UtilProvider({ children }) {
         getUser,
         setBranch,
         setBranchDesk,
+        setCurrency,
+        getCurrency,
+        currency,
         getLocation,
         locationString,
         generateNextPONumber,
@@ -101,7 +113,7 @@ export function UtilProvider({ children }) {
         branch,
         desk,
         user
-    }), [branch, desk, user]);
+    }), [branch, desk, user, currency]);
 
     return (
         <UtilContext.Provider value={value}>

@@ -44,7 +44,7 @@ const PurchaseItemForm = ({ purchaseItem, onSubmit, onCancel }) => {
     // Search products with debounce
     useEffect(() => {
         const delayDebounceFn = setTimeout(() => {
-            if (productSearch.length > 2) {
+            if (productSearch.length > 2 && !formData.product) {
                 handleProductSearch(productSearch);
             } else {
                 setSearchResults([]);
@@ -53,7 +53,7 @@ const PurchaseItemForm = ({ purchaseItem, onSubmit, onCancel }) => {
         }, 300);
 
         return () => clearTimeout(delayDebounceFn);
-    }, [productSearch]);
+    }, [productSearch, formData.product]);
 
     const handleProductSearch = async (searchText) => {
         setLoading(true);
@@ -99,11 +99,20 @@ const PurchaseItemForm = ({ purchaseItem, onSubmit, onCancel }) => {
 
     const handleSubmit = (e) => {
         e.preventDefault();
+        if (formData.quantity === 0 || formData.price === 0 || !formData.product) {
+            return;
+        }
         onSubmit(formData);
     };
 
     const handleCancel = () => {
         onCancel();
+    };
+    
+    const handleRemoveProduct = () => {
+        setFormData({quantity: 0, price: 0, total: 0, product: null});
+        setProductSearch('');
+        setShowResults(false);
     };
 
     return (
@@ -122,6 +131,7 @@ const PurchaseItemForm = ({ purchaseItem, onSubmit, onCancel }) => {
                             border: '1px solid #ccc',
                             borderRadius: '4px'
                         }}
+                        disabled={formData.product ? true : false}
                     />
 
                     {loading && (
@@ -158,10 +168,11 @@ const PurchaseItemForm = ({ purchaseItem, onSubmit, onCancel }) => {
                                     style={{
                                         padding: '8px',
                                         cursor: 'pointer',
-                                        borderBottom: '1px solid #eee'
+                                        borderBottom: '1px solid #eee',
+                                        background: 'black'
                                     }}
                                     onMouseEnter={(e) => e.target.style.background = '#f5f5f5'}
-                                    onMouseLeave={(e) => e.target.style.background = 'grey'}
+                                    onMouseLeave={(e) => e.target.style.background = 'black'}
                                 >
                                     {product.name}
                                     {product.barcode && (
@@ -176,7 +187,22 @@ const PurchaseItemForm = ({ purchaseItem, onSubmit, onCancel }) => {
 
                     {formData.product && (
                         <div style={{ fontSize: '12px', color: 'green', marginTop: '4px' }}>
-                            Selected: <strong>{formData.product.name}({formData.product.cost_price})</strong>
+                            Selected: <strong>{formData.product.name} </strong>
+                             <button onClick={handleRemoveProduct} style={{backgroundColor: '#ff4d4d', border: 'none', padding: '1px', borderRadius: '6px', cursor: 'pointer',}}>
+                                <svg
+                                    width="16"
+                                    height="16"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="white"
+                                    strokeWidth="3"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                >
+                                    <line x1="18" y1="6" x2="6" y2="18" />
+                                    <line x1="6" y1="6" x2="18" y2="18" />
+                                </svg>
+                            </button>
                         </div>
                     )}
                 </div>
@@ -235,7 +261,6 @@ const PurchaseItemForm = ({ purchaseItem, onSubmit, onCancel }) => {
                         padding: '4px 8px',
                         border: '1px solid #ccc',
                         borderRadius: '4px',
-                        background: '#f5f5f5',
                         textAlign: 'center'
                     }}
                 />
@@ -249,7 +274,7 @@ const PurchaseItemForm = ({ purchaseItem, onSubmit, onCancel }) => {
                         style={{
                             padding: '4px 12px',
                             background: '#007bff',
-                            color: 'grey',
+                            color: 'white',
                             border: 'none',
                             borderRadius: '4px',
                             cursor: 'pointer'
@@ -263,7 +288,7 @@ const PurchaseItemForm = ({ purchaseItem, onSubmit, onCancel }) => {
                         style={{
                             padding: '4px 12px',
                             background: '#6c757d',
-                            color: 'grey',
+                            color: 'white',
                             border: 'none',
                             borderRadius: '4px',
                             cursor: 'pointer'
@@ -281,22 +306,3 @@ const PurchaseItemForm = ({ purchaseItem, onSubmit, onCancel }) => {
 
 
 export default PurchaseItemForm;
-
-export function PurchaseItemFormTable({ children }) {
-
-    return (<Table>
-        <TableHead>
-            <TableRow>
-                <TableCell>Product</TableCell>
-                <TableCell align="center">Quantity</TableCell>
-                <TableCell align="center">Price</TableCell>
-                <TableCell align="center">Total</TableCell>
-                <TableCell align="center">Actions</TableCell>
-            </TableRow>
-        </TableHead>
-        <TableBody>
-            {children}
-        </TableBody>
-    </Table>
-    )
-}

@@ -1,7 +1,9 @@
+import { useUtil } from '../../context/UtilContext';
 export default function PurchaseSummary({ purchase, totals }) {
+    const { currency } = useUtil();
     return (
         <div style={{
-            background: '#f8f9fa',
+            background: 'grey',
             padding: '20px',
             borderRadius: '8px',
             border: '1px solid #dee2e6'
@@ -12,7 +14,7 @@ export default function PurchaseSummary({ purchase, totals }) {
                     <strong>Total Items:</strong> {totals.itemCount}
                 </div>
                 <div>
-                    <strong>Total Value:</strong> ${totals.total.toFixed(2)}
+                    <strong>Total Value:</strong> {currency}{totals.total.toFixed(2)}
                 </div>
                 <div>
                     <strong>Created:</strong> {purchase.createdAt ? new Date(purchase.createdAt).toLocaleString() : 'N/A'}

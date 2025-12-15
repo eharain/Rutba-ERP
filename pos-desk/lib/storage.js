@@ -1,23 +1,5 @@
 'use client';
 function buildWrapper() {
-    function getStore() {
-        return localStorage;
-        console.debug('[storage] getStore called');
-        return {
-            getItem: (key) => {
-                console.debug(`[storage] getStore.getItem called with key: ${key}`);
-                return localStorage.getItem(key);
-            },
-            setItem: (key, value) => {
-                console.debug(`[storage] getStore.setItem called with key: ${key}, value: ${value}`);
-                return localStorage.setItem(key, value);
-            },
-            removeItem: (key) => {
-                console.debug(`[storage] getStore.removeItem called with key: ${key}`);
-                return localStorage.removeItem(key);
-            }
-        };
-    };
 
     const wrapper = {
         setItem: function (key, value) {

@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { searchProduct } from '../../lib/pos';
-
+import { useUtil } from '../../context/UtilContext';
 export default function SalesItemsForm({ onAddItem }) {
     const [productSearch, setProductSearch] = useState('');
     const [searchResults, setSearchResults] = useState([]);
     const [showResults, setShowResults] = useState(false);
     const [loading, setLoading] = useState(false);
-
+    const { currency } = useUtil();
     // Product search with debounce
     useEffect(() => {
         const delayDebounceFn = setTimeout(() => {
@@ -121,7 +121,7 @@ export default function SalesItemsForm({ onAddItem }) {
                                 )}
                             </div>
                             <div style={{ fontWeight: 'bold', color: '#28a745' }}>
-                                ${product.selling_price || 0}
+                                {currency}{product.selling_price || 0}
                             </div>
                         </div>
                     ))}

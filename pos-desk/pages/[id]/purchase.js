@@ -4,9 +4,9 @@ import { authApi } from "../../lib/api";
 import { fetchPurchaseByIdDocumentIdOrPO, fetchEnumsValues, savePurchaseItem } from "../../lib/pos";
 import ProtectedRoute from "../../components/ProtectedRoute";
 import Layout from "../../components/Layout";
-import { Table, TableHead, TableBody, TableRow, TableCell } from "../../components/Table";
 import PurchaseItemsList from "../../components/lists/purchase-items-list";
 import { generateNextDocumentId } from "../../lib/utils";
+import { useUtil } from "../../context/UtilContext";
 
 export default function PurchasePage() {
     const router = useRouter();
@@ -17,6 +17,8 @@ export default function PurchasePage() {
     const [editItems, setEditItems] = useState([]);
     const [editingDocumentId, setEditingDocumentId] = useState(null);
     const [purchaseStatuses, setPurchaseStatuses] = useState([]);
+    const [currentStatus, setCurrentStatus] = useState(null);
+    const {currency} = useUtil();
 
     useEffect(() => {
         if (!id) return;
@@ -31,6 +33,7 @@ export default function PurchasePage() {
 
                 setPurchase(purchaseData);
                 setPurchaseStatuses(statuses || []);
+                setCurrentStatus(purchaseData?.status || 'Draft');
                 setEditItems(purchaseData.items?.map(item => ({
                     ...item,
                     product: item.product || null,
@@ -54,7 +57,9 @@ export default function PurchasePage() {
     };
 
     const handleCancel = () => {
+        setEditItems(editItems.filter(item => item.documentId !== editingDocumentId));
         setEditingDocumentId(null);
+        
     };
 
     const handleSave = async (updatedData) => {
@@ -62,24 +67,13 @@ export default function PurchasePage() {
 
             const savedItem = await saveItemdData(updatedData);
             appendItemToItems(savedItem);
-                  
+            console.log(editItems);
+            // setEditItems(editItems.filter(item => item !== null));
 
             setEditingDocumentId(null);
         } catch (err) {
             console.error(err,up);
             alert('handleSave',err.message);
-        }
-    };
-    const handleSaveNewItem = async (newItemData) => {
-        try {
-
-            const savedItem = await saveItemdData(newItemData);
-            appendItemToItems(savedItem);
-
-
-            setEditingDocumentId(null);
-        } catch (err) {
-            alert('handleSaveNewItem',err.message);
         }
     };
 
@@ -120,14 +114,22 @@ export default function PurchasePage() {
 
     const handleStatusChange = async (newStatus) => {
         try {
+            setCurrentStatus(newStatus);
             const res = await authApi.put(`/purchases/${purchase.documentId}`, {
                 data: { status: newStatus }
             });
 
-            //if (!res.ok) throw new Error("Failed to update status");
+            if(['Submitted','Partially Received'].includes(newStatus)){
+                router.push(`/${purchase.documentId}/receive`);
+            }
+            
+            if(['Draft','Pending'].includes(newStatus)){
+                
+             }
+             if(['Received'].includes(newStatus)){
+                router.push(`/${purchase.documentId}/purchase-view`);
+             }
 
-            //const updatedPurchase = await res.json();
-            //setPurchase(updatedPurchase);
         } catch (err) {
             alert(err.message);
         }
@@ -142,7 +144,7 @@ export default function PurchasePage() {
             product: null,
             purchase
         };
-       appendItemToItems(newItem);
+        appendItemToItems(newItem);
         setEditingDocumentId(newItem.documentId);
     };
 
@@ -222,7 +224,7 @@ export default function PurchasePage() {
                     <div style={{
                         marginBottom: '20px',
                         padding: '15px',
-                        background: '#f8f9fa',
+                        background: 'grey',
                         borderRadius: '4px',
                         display: 'grid',
                         gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
@@ -234,7 +236,7 @@ export default function PurchasePage() {
                         <div>
                             <strong>Status:</strong>
                             <select
-                                value={purchase.status}
+                                value={currentStatus}
                                 onChange={(e) => handleStatusChange(e.target.value)}
                                 style={{
                                     marginLeft: '8px',
@@ -250,7 +252,7 @@ export default function PurchasePage() {
                                 ))}
                             </select>
                         </div>
-                        <div><strong>Total:</strong> ${parseFloat(purchase.total || 0).toFixed(2)}</div>
+                        <div><strong>Total:</strong> {currency}{parseFloat(purchase.total || 0).toFixed(2)}</div>
                     </div>
 
                     <h2>Items</h2>

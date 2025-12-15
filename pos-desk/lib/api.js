@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import qs from 'qs';
 
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:1338/api";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:1337/api";
 
 export const IMAGE_URL = API_URL.substring(0, API_URL.length-4)
 

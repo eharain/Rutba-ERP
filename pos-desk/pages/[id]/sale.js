@@ -7,11 +7,12 @@ import Layout from '../../components/Layout';
 import PermissionCheck from '../../components/PermissionCheck';
 import SalesItemsForm from '../../components/form/sales-items-form';
 import SalesItemsList from '../../components/lists/sales-items-list';
+import { useUtil } from '../../context/UtilContext';
 
 export default function SalePage() {
     const router = useRouter();
     const { id } = router.query;
-
+    const { currency } = useUtil();
     const [sale, setSale] = useState(null);
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -176,7 +177,7 @@ export default function SalePage() {
 
                             <div style={{ textAlign: 'right' }}>
                                 <div style={{ fontSize: '18px', fontWeight: 'bold' }}>
-                                    Total: ${totals.total.toFixed(2)}
+                                    Total: {currency}{totals.total.toFixed(2)}
                                 </div>
                                 <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
                                     <button
@@ -235,23 +236,23 @@ export default function SalePage() {
                             }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                                     <span>Subtotal:</span>
-                                    <span>${totals.subtotal.toFixed(2)}</span>
+                                    <span>{currency}{totals.subtotal.toFixed(2)}</span>
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', color: '#dc3545' }}>
                                     <span>Discount:</span>
-                                    <span>-${totals.discount.toFixed(2)}</span>
+                                    <span>-{currency}{totals.discount.toFixed(2)}</span>
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                                     <span>Taxable Amount:</span>
-                                    <span>${(totals.subtotal - totals.discount).toFixed(2)}</span>
+                                    <span>{currency}{(totals.subtotal - totals.discount).toFixed(2)}</span>
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                                     <span>Tax (10%):</span>
-                                    <span>${totals.tax.toFixed(2)}</span>
+                                    <span>{currency}{totals.tax.toFixed(2)}</span>
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '18px', borderTop: '1px solid #ccc', paddingTop: '8px' }}>
                                     <span>Total:</span>
-                                    <span>${totals.total.toFixed(2)}</span>
+                                    <span>{currency}{totals.total.toFixed(2)}</span>
                                 </div>
                             </div>
                         )}

@@ -1,13 +1,18 @@
 @echo off
 SETLOCAL ENABLEDELAYEDEXPANSION
 
+REM Use local Node and add it to PATH
+set "LOCAL_NODE=..\node"
+set "PATH=%CD%\%LOCAL_NODE%;%PATH%"
+
 REM Check Node.js installation
-where node >nul 2>nul
-IF ERRORLEVEL 1 (
-    echo Node.js is not installed. Please install Node.js and rerun this script.
+if not exist "%LOCAL_NODE%\node.exe" (
+    echo Local Node.js executable not found in %LOCAL_NODE%.
+    echo Please download Node.js ZIP and place it in %LOCAL_NODE%.
     exit /b 1
 ) ELSE (
-    echo Node.js is installed.
+    echo Using local Node.js from %LOCAL_NODE%
+    "%LOCAL_NODE%\node.exe" -v
 )
 
 REM Prompt for pos-strapi .env variables
@@ -95,7 +100,8 @@ REM Install dependencies and start Strapi
 echo Setting up pos-strapi...
 cd ..\pos-strapi
 call npm install
-call forever start -c "npm run start" .
+call npm run build
+start cmd /k "npm run develop"
 cd ..\scripts
 
 REM Install dependencies and start Next.js

@@ -19,7 +19,7 @@ import {
     fetchPurchaseByIdDocumentIdOrPO,
     savePurchase,
 } from "../lib/pos";
-
+import { useUtil } from "../context/UtilContext";
 export default function PurchasesPage() {
     const [purchases, setPurchases] = useState([]);
     const [page, setPage] = useState(0);
@@ -27,7 +27,7 @@ export default function PurchasesPage() {
     const [total, setTotal] = useState(0);
     const [loading, setLoading] = useState(false);
     const [purchaseStatuses, setPurchaseStatuses] = useState([]);
-   
+    const {currency} = useUtil();
     const router = useRouter();
 
     
@@ -114,8 +114,8 @@ export default function PurchasesPage() {
                             <button
                                 style={{
                                     padding: "8px 16px",
-                                    background: "#007bff",
-                                    color: "grey",
+                                    background: "#0d1b75",
+                                    color: "white",
                                     border: "none",
                                     borderRadius: "4px",
                                     cursor: "pointer"
@@ -162,7 +162,7 @@ export default function PurchasesPage() {
                                             <TableCell>{purchase?.suppliers?.map(s => s.name)}</TableCell>
                                             <TableCell>{purchase.purchase_no}</TableCell>
                                             <TableCell align="right">
-                                                ${parseFloat(purchase.total || 0).toFixed(2)}
+                                                {currency}{parseFloat(purchase.total || 0).toFixed(2)}
                                             </TableCell>
                                             <TableCell>
                                                 <span
@@ -170,7 +170,7 @@ export default function PurchasesPage() {
                                                         padding: "4px 8px",
                                                         borderRadius: "4px",
                                                         backgroundColor: getStatusColor(purchase.status),
-                                                        color: "grey",
+                                                        color: "white",
                                                         fontSize: "12px",
                                                         fontWeight: "bold"
                                                     }}

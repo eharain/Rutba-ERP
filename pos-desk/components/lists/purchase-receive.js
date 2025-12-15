@@ -3,12 +3,13 @@ import React, { useEffect, useState } from 'react';
 import { authApi } from '../../lib/api';
 import { Table, TableHead, TableBody, TableRow, TableCell } from '../Table';
 import {generateStockItems} from '../../lib/pos/create';
+import { useUtil } from '../../context/UtilContext';
 
 const PurchaseReceive = ({ purchase, onComplete }) => {
     const [receivedItems, setReceivedItems] = useState([]);
     const [receivingDate, setReceivingDate] = useState(new Date().toISOString().split('T')[0]);
     const [loading, setLoading] = useState(false);
-
+    const { currency } = useUtil();
     // Initialize received items from purchase items
     const initializeReceivedItems = () => {
         if (purchase?.items) {
@@ -136,7 +137,7 @@ const PurchaseReceive = ({ purchase, onComplete }) => {
                                     style={{ width: '80px', padding: '5px' }}
                                 />
                             </TableCell>
-                            <TableCell>${item.unit_price?.toFixed(2)}</TableCell>
+                            <TableCell>{currency}{item.unit_price?.toFixed(2)}</TableCell>
                             <TableCell>
                                 <span style={{
                                     padding: '4px 8px',
@@ -156,7 +157,7 @@ const PurchaseReceive = ({ purchase, onComplete }) => {
                                         style={{
                                             padding: '5px 10px',
                                             background: '#007bff',
-                                            color: 'grey',
+                                            color: 'white',
                                             border: 'none',
                                             borderRadius: '4px'
                                         }}
@@ -181,7 +182,7 @@ const PurchaseReceive = ({ purchase, onComplete }) => {
                         style={{
                             padding: '10px 20px',
                             background: '#28a745',
-                            color: 'grey',
+                            color: 'white',
                             border: 'none',
                             borderRadius: '4px',
                             fontSize: '16px'

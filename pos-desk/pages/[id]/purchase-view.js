@@ -8,6 +8,7 @@ import PurchaseHeader from '../../components/purchase-view/PurchaseHeader';
 import PurchaseItemsList from '../../components/purchase-view/PurchaseItemsList';
 import PurchaseDocuments from '../../components/purchase-view/PurchaseDocuments';
 import PurchaseSummary from '../../components/purchase-view/PurchaseSummary';
+import { useUtil } from '../../context/UtilContext';
 
 export default function PurchaseViewPage() {
     const router = useRouter();
@@ -16,7 +17,7 @@ export default function PurchaseViewPage() {
     const [purchase, setPurchase] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-
+    const {currency} = useUtil();
     useEffect(() => {
         if (id) loadPurchaseData();
     }, [id]);
@@ -132,7 +133,7 @@ export default function PurchaseViewPage() {
                                 style={{
                                     padding: '8px 16px',
                                     background: '#007bff',
-                                    color: 'grey',
+                                    color: 'white',
                                     border: 'none',
                                     borderRadius: '4px',
                                     cursor: 'pointer',

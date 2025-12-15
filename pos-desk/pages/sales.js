@@ -6,6 +6,7 @@ import { fetchSales } from "../lib/pos";
 import { useAuth } from "../context/AuthContext";
 import Link from "next/link";
 import { Table, TableHead, TableRow, TableCell, TableBody, CircularProgress, TablePagination } from "../components/Table";
+import { useUtil } from "../context/UtilContext";
 export default function Sales() {
     const [sales, setSales] = useState([]);
     const { jwt } = useAuth();
@@ -13,7 +14,7 @@ export default function Sales() {
     const [rowsPerPage, setRowsPerPage] = useState(10);
     const [total, setTotal] = useState(0);
     const [loading, setLoading] = useState(false);
-
+    const { currency } = useUtil();
     useEffect(() => {
         (async () => {
             //const res = await authApi.fetch("/sales", { sort: ["id:desc"], pagination: { pageSize: 100 } });
@@ -60,7 +61,7 @@ export default function Sales() {
                                             <TableCell>{s.invoice_no}</TableCell>
                                             <TableCell>{new Date(s.sale_date).toLocaleString()}</TableCell>
                                             <TableCell>{s?.customer?.name}</TableCell>
-                                            <TableCell align="right">${s.total}</TableCell>
+                                            <TableCell align="right">{currency}{s.total}</TableCell>
                                             <TableCell>{s.payment_status}</TableCell>
                                             <TableCell>
                                                 <Link href={`/${s.payment_status!=='Paid'?s.id:s.invoice_no}/sale`}>

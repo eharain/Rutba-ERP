@@ -7,7 +7,7 @@ export default function SettingsPage() {
     const [branches, setBranches] = useState([]);
     const [selectedBranch, setSelectedBranch] = useState(null);
     const [selectedDesk, setSelectedDesk] = useState(null);
-    const { branch, desk, setBranchDesk, setBranch } = useUtil();
+    const { branch, desk, setBranchDesk, setBranch, setCurrency, currency } = useUtil();
     useEffect(() => {
         const fetchData = async () => {
             try {
@@ -15,6 +15,7 @@ export default function SettingsPage() {
                 setBranches(response.data || []);
                 setSelectedBranch(branch);
                 setSelectedDesk(desk)
+                setCurrency(currency);
                 //const savedBranch = utils.branch//.getItem("branch");
                 //const savedDesk = utils.getItem("branch-desk");
                 //if (savedBranch) setSelectedBranch(JSON.parse(savedBranch));
@@ -31,6 +32,7 @@ export default function SettingsPage() {
         setSelectedDesk(desk);
         setBranch(branch);
         setBranchDesk(desk);
+        setCurrency(desk.currency?.symbol ?? 'Rs');
     };
 
     return (

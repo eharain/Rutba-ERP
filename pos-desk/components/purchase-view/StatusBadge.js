@@ -41,7 +41,7 @@ export default function StatusBadge({ type, status, receivedQuantity }) {
             padding: '6px 12px',
             borderRadius: '20px',
             backgroundColor: getStatusColor(),
-            color: 'grey',
+            color: 'white',
             fontSize: '14px',
             fontWeight: 'bold',
             display: 'inline-block'

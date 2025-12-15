@@ -1,9 +1,10 @@
 import StatusBadge from './StatusBadge';
-
+import { useUtil } from '../../context/UtilContext';
 export default function PurchaseHeader({ purchase, totals }) {
+    const { currency } = useUtil();
     return (
         <div style={{
-            background: '#f8f9fa',
+            background: 'grey',
             padding: '20px',
             borderRadius: '8px',
             marginBottom: '20px',
@@ -50,8 +51,8 @@ export default function PurchaseHeader({ purchase, totals }) {
                             status={purchase.approval_status || 'Draft'}
                         />
                     </div>
-                    <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#28a745' }}>
-                        ${totals.total.toFixed(2)}
+                    <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'white' }}>
+                        {currency}{totals.total.toFixed(2)}
                     </div>
                 </div>
             </div>
