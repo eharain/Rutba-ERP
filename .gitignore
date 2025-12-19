@@ -7,3 +7,5 @@
 /generators/data
 /pos-strapi/src/admin/vite.config.js
 node
+/pos-strapi/src/api/utils/routes/validator.js
+/pos-strapi/src/api/utils/controllers/validator.js
