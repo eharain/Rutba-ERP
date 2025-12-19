@@ -1,5 +1,5 @@
 ﻿"use strict";
-
+;
 module.exports = {
     async find(ctx) {
         try {
@@ -14,9 +14,9 @@ module.exports = {
 
             const attr = schema.attributes[field];
             if (!attr) return ctx.notFound(`Field '${field}' not found in schema '${name}'`);
-            if (attr.type !== "enumeration")
+            if (attr.type !== "enumeration") {
                 return ctx.badRequest(`'${field}' is not an enum (found type '${attr.type}')`);
-
+            }
             return { schema: name, field, values: attr.enum };
         } catch (err) {
             strapi.log.error("Error fetching enum values:", err);
