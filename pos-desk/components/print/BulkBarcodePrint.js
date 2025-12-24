@@ -33,7 +33,7 @@ const BulkBarcodePrint = ({ storageKey, title = "Bulk Barcode Labels" }) => {
                 console.log(`Loading ${documentIds.length} items for printing...`);
 
                 // Load items in batches to avoid overwhelming the API
-                const batchSize = 20;
+                const batchSize = documentIds.length > 20 ? 20 : documentIds.length;
                 const itemsData = [];
 
                 for (let i = 0; i < documentIds.length; i += batchSize) {
@@ -79,7 +79,7 @@ const BulkBarcodePrint = ({ storageKey, title = "Bulk Barcode Labels" }) => {
     const generateLabelSheets = () => {
         if (loading || items.length === 0) return [];
 
-        const labelsPerSheet = 30;
+        const labelsPerSheet = 1;
         const sheets = [];
 
         for (let i = 0; i < items.length; i += labelsPerSheet) {

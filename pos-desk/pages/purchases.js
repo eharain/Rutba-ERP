@@ -38,7 +38,7 @@ export default function PurchasesPage() {
             setLoading(true);
 
             const [data, statuses] = await Promise.all([
-                fetchPurchases(page, rowsPerPage),
+                fetchPurchases(page + 1, rowsPerPage),
                 fetchEnumsValues("purchase", "status"),
             ]);
 
@@ -158,7 +158,7 @@ export default function PurchasesPage() {
                                             <TableCell>
                                                 <strong>{purchase.purchase_no}</strong>
                                             </TableCell>
-                                            <TableCell>{purchase.order_date}</TableCell>
+                                            <TableCell>{purchase.order_date ? new Date(purchase.order_date).toLocaleDateString() : 'N/A'}</TableCell>
                                             <TableCell>{purchase?.suppliers?.map(s => s.name)}</TableCell>
                                             <TableCell>{purchase.purchase_no}</TableCell>
                                             <TableCell align="right">

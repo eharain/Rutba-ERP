@@ -1,9 +1,10 @@
 // file: /pos-desk/components/print/ProductInfo.js
 import React from 'react';
+import { useUtil } from '../../context/UtilContext';
 
 const ProductInfo = ({ product, status, costPrice }) => {
     const productName = product?.name || 'N/A';
-
+    const { currency } = useUtil();
     // Truncate very long product names
     const displayName = productName.length > 50
         ? productName.substring(0, 47) + '...'
@@ -34,18 +35,18 @@ const ProductInfo = ({ product, status, costPrice }) => {
                 
                 .status {
                     font-size: 6px;
-                    color: #888;
+                    color: black;
                     text-transform: uppercase;
                     margin-top: 3px;
                     padding: 1px 4px;
-                    background: #f5f5f5;
+                    background: grey;
                     border-radius: 2px;
                     display: inline-block;
                 }
                 
                 .cost-price {
-                    font-size: 5px;
-                    color: #999;
+                    font-size: 10px;
+                    color: black;
                     margin-top: 2px;
                 }
                 
@@ -60,15 +61,9 @@ const ProductInfo = ({ product, status, costPrice }) => {
                 {displayName}
             </div>
 
-            {status && (
-                <div className="status">
-                    {status}
-                </div>
-            )}
-
             {costPrice && (
                 <div className="cost-price">
-                    Cost: ${parseFloat(costPrice).toFixed(2)}
+                    Price: {currency} {Math.round(parseFloat(costPrice))}
                 </div>
             )}
         </div>

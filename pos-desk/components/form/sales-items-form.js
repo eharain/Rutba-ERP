@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { searchProduct } from '../../lib/pos';
+import { searchStockItems } from '../../lib/pos';
 import { useUtil } from '../../context/UtilContext';
 export default function SalesItemsForm({ onAddItem }) {
     const [productSearch, setProductSearch] = useState('');
@@ -24,8 +24,9 @@ export default function SalesItemsForm({ onAddItem }) {
     const handleProductSearch = async (searchText) => {
         setLoading(true);
         try {
-            const productResult = await searchProduct(searchText);
-            setSearchResults(productResult);
+            const productResult = await searchStockItems(searchText, 0, 100, 'InStock');
+            console.log(productResult);
+            setSearchResults(productResult.data);
             setShowResults(true);
         } catch (error) {
             console.error('Error searching products:', error);
@@ -90,7 +91,7 @@ export default function SalesItemsForm({ onAddItem }) {
                     top: '100%',
                     left: 0,
                     right: 0,
-                    background: 'grey',
+                    background: 'black',
                     border: '1px solid #ccc',
                     maxHeight: '200px',
                     overflowY: 'auto',
@@ -113,14 +114,14 @@ export default function SalesItemsForm({ onAddItem }) {
                             onMouseLeave={(e) => e.target.style.background = 'grey'}
                         >
                             <div>
-                                <strong>{product.name}</strong>
+                                <strong>{product.product.name}</strong>
                                 {product.barcode && (
                                     <span style={{ color: '#666', marginLeft: '10px' }}>
                                         ({product.barcode})
                                     </span>
                                 )}
                             </div>
-                            <div style={{ fontWeight: 'bold', color: '#28a745' }}>
+                            <div style={{ fontWeight: 'bold', color: 'black' }}>
                                 {currency}{product.selling_price || 0}
                             </div>
                         </div>

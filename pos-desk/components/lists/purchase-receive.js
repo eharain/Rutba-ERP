@@ -17,7 +17,7 @@ const PurchaseReceive = ({ purchase, onComplete }) => {
                 ...item,
                 received_quantity: item.quantity,
                 stock_items: [],
-                status: 'Pending'
+                status: item.status
             })));
         }
     };

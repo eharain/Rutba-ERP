@@ -1,6 +1,8 @@
 import { Table, TableHead, TableBody, TableRow, TableCell } from '../Table';
+import { useUtil } from '../../context/UtilContext';
 
 export default function SalesItemsList({ items, onUpdateItem, onRemoveItem }) {
+    const { currency } = useUtil();
     const calculateItemDetails = (item) => {
         const subtotal = item.price * item.quantity;
         const discountAmount = subtotal * ((item.discount || 0) / 100);
@@ -74,10 +76,10 @@ export default function SalesItemsList({ items, onUpdateItem, onRemoveItem }) {
                         return (
                             <TableRow key={index}>
                                 <TableCell>
-                                    <strong>{item.product?.name}</strong>
-                                    {item.product?.barcode && (
+                                    <strong>{item.product?.product?.name}</strong>
+                                    {item.product.product?.barcode && (
                                         <div style={{ fontSize: '12px', color: '#666' }}>
-                                            SKU: {item.product.sku}
+                                            SKU: {item.product.product.sku}
                                         </div>
                                     )}
                                     {item.product?.bundle_units > 1 && (
@@ -204,7 +206,7 @@ export default function SalesItemsList({ items, onUpdateItem, onRemoveItem }) {
                                     </div>
                                     {item.discount > 0 && (
                                         <div style={{ fontSize: '11px', color: '#dc3545', marginTop: '4px' }}>
-                                            Save: ${details.discountAmount.toFixed(2)}
+                                            Save: {currency} {details.discountAmount.toFixed(2)}
                                         </div>
                                     )}
                                 </TableCell>
@@ -212,10 +214,10 @@ export default function SalesItemsList({ items, onUpdateItem, onRemoveItem }) {
                                 {/* Total Column */}
                                 <TableCell align="center">
                                     <div>
-                                        <strong>${details.total.toFixed(2)}</strong>
+                                        <strong>{currency} {details.total.toFixed(2)}</strong>
                                         {item.discount > 0 && (
                                             <div style={{ fontSize: '11px', color: '#666', textDecoration: 'line-through' }}>
-                                                ${details.subtotal.toFixed(2)}
+                                                {currency} {details.subtotal.toFixed(2)}
                                             </div>
                                         )}
                                     </div>

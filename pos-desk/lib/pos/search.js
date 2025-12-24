@@ -112,3 +112,11 @@ export async function searchProduct(searchTerm, page = 0, rowsPerPage = 100) {
 export function dataNode(res) {
     return res.data?.data ?? res.data ?? res;
 }
+
+
+export async function searchStockItems(searchTerm, page = 0, rowsPerPage = 100, statusFilter = null) {
+    const query = buildQueries(searchTerm, page, rowsPerPage, statusFilter)['stock-items']
+    console.log('Stock items search query:', query);    
+    const res = await authApi.fetchWithPagination(query.url);
+    return { data: res.data, meta: res.meta };
+}

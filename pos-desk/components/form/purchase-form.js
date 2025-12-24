@@ -63,6 +63,7 @@ const PurchaseForm = ({ purchase, onSubmit, onCancel }) => {
                 ...formData,
                 suppliers: { connect: formData.suppliers.map(s => s.documentId || s.id) },
                 users: { connect: [user.documentId] },
+                
               //  branch: { connect: [branch.documentId || branch.id ]}
             };
 
@@ -135,8 +136,7 @@ const PurchaseForm = ({ purchase, onSubmit, onCancel }) => {
                         style={{ width: '100%', padding: '8px' }}
                     >
                         <option value="Draft">Draft</option>
-                        <option value="Submitted">Submitted</option>
-                        <option value="Pending">Pending</option>
+                        
                     </select>
                 </div>
 

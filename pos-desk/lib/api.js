@@ -21,6 +21,14 @@ async function get(path, data = {}, jwt) {
     return res.data; // Strapi returns { data, meta }
 }
 
+async function getWithPagination(path, data = {}, jwt) {
+    const res = await axios.get(querify(`${API_URL}${path}`, data), {
+        data,
+        headers: { ...authHeaders(jwt) },
+    });
+    return { data: res.data.data, meta: res.data.meta };
+}
+
 async function post(path, data, jwt) {
     const res = await axios.post(`${API_URL}${path}`, data, {
         headers: { "Content-Type": "application/json", ...authHeaders(jwt) },
@@ -74,6 +82,7 @@ export const api = {
 // ------------------ Auth API (uses localStorage JWT) ------------------
 export const authApi = {
     fetch: async (path, data) => await get(path, data, storage.getItem("jwt")),
+    fetchWithPagination: async (path, data) => await getWithPagination(path, data, storage.getItem("jwt")),
     get: async (path, data) => await get(path, data, storage.getItem("jwt")),
     post: async (path, data) => await post(path, data, storage.getItem("jwt")),
     put: async (path, data) => await put(path, data, storage.getItem("jwt")),
