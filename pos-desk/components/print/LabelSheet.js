@@ -3,7 +3,7 @@ import React from 'react';
 import BarcodeLabel from './BarcodeLabel';
 
 const LabelSheet = ({ items, sheetIndex, totalSheets, title, totalItems }) => {
-    const labelsPerSheet = 30;
+    const labelsPerSheet = 1;
     const emptySlots = Math.max(0, labelsPerSheet - items.length);
 
     return (
@@ -12,9 +12,11 @@ const LabelSheet = ({ items, sheetIndex, totalSheets, title, totalItems }) => {
                 .label-sheet {
                     page-break-after: always;
                     padding: 0.5in;
-                    height: 11in;
+                    height: 100%;
                     display: flex;
                     flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
                 }
                 
                 .sheet-header {
@@ -26,8 +28,8 @@ const LabelSheet = ({ items, sheetIndex, totalSheets, title, totalItems }) => {
                 
                 .labels-grid {
                     display: grid;
-                    grid-template-columns: repeat(3, 1fr);
-                    grid-template-rows: repeat(10, 1fr);
+                    grid-template-columns: repeat(1, 1fr);
+                    grid-template-rows: repeat(1, 1fr);
                     gap: 0.2in;
                     flex: 1;
                 }
@@ -35,20 +37,26 @@ const LabelSheet = ({ items, sheetIndex, totalSheets, title, totalItems }) => {
                 @media print {
                     @page {
                         margin: 0.5in;
-                        size: letter portrait;
+                        size: 30mm 60mm portrait;
                     }
                     
                     .label-sheet {
                         margin: 0;
                         padding: 0.5in;
-                        height: auto;
-                        min-height: 10.5in;
+                        height: 30mm;
+                        min-height: 30mm;
+                        border: none !important;
+                        page-break-after: always;
                     }
                     
                     .labels-grid {
-                        grid-template-columns: repeat(3, 1fr);
-                        grid-template-rows: repeat(10, 1fr);
+                        grid-template-columns: repeat(1, 1fr);
+                        grid-template-rows: repeat(1, 1fr);
                         gap: 0.15in;
+                        page-break-after: always;
+                    }
+                    .sheet-header {
+                        display: none !important;
                     }
                 }
                 

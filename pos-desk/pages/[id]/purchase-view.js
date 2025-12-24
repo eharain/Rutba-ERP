@@ -128,21 +128,6 @@ export default function PurchaseViewPage() {
                                 ← Back to Purchases
                             </button>
 
-                            <button
-                                onClick={handleEdit}
-                                style={{
-                                    padding: '8px 16px',
-                                    background: '#007bff',
-                                    color: 'white',
-                                    border: 'none',
-                                    borderRadius: '4px',
-                                    cursor: 'pointer',
-                                    marginRight: '10px'
-                                }}
-                            >
-                                Edit Purchase
-                            </button>
-
                             {purchase.status !== 'Received' && purchase.status !== 'Cancelled' && (
                                 <button
                                     onClick={handleReceive}

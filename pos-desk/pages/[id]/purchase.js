@@ -16,7 +16,6 @@ export default function PurchasePage() {
     const [error, setError] = useState(null);
     const [editItems, setEditItems] = useState([]);
     const [editingDocumentId, setEditingDocumentId] = useState(null);
-    const [purchaseStatuses, setPurchaseStatuses] = useState([]);
     const [currentStatus, setCurrentStatus] = useState(null);
     const {currency} = useUtil();
 
@@ -26,13 +25,11 @@ export default function PurchasePage() {
         const loadData = async () => {
             setLoading(true);
             try {
-                const [purchaseData, statuses] = await Promise.all([
+                const [purchaseData] = await Promise.all([
                     fetchPurchaseByIdDocumentIdOrPO(id),
-                    fetchEnumsValues("purchase", "status")
                 ]);
 
                 setPurchase(purchaseData);
-                setPurchaseStatuses(statuses || []);
                 setCurrentStatus(purchaseData?.status || 'Draft');
                 setEditItems(purchaseData.items?.map(item => ({
                     ...item,
@@ -67,8 +64,6 @@ export default function PurchasePage() {
 
             const savedItem = await saveItemdData(updatedData);
             appendItemToItems(savedItem);
-            console.log(editItems);
-            // setEditItems(editItems.filter(item => item !== null));
 
             setEditingDocumentId(null);
         } catch (err) {
@@ -97,8 +92,7 @@ export default function PurchasePage() {
     async function appendItemToItems(updatedItem) {
         // const savedItem = await saveItemdData(newItemData);
         const items = [...editItems];
-
-        let itemIndex = items.findIndex(item => item.documentId === updatedItem.documentId);
+        let itemIndex = items.findIndex(item => item.documentId === editingDocumentId);
         if (itemIndex > -1) {
             items[itemIndex] = updatedItem;
         } else {
@@ -114,21 +108,25 @@ export default function PurchasePage() {
 
     const handleStatusChange = async (newStatus) => {
         try {
-            setCurrentStatus(newStatus);
-            const res = await authApi.put(`/purchases/${purchase.documentId}`, {
-                data: { status: newStatus }
-            });
-
+            setCurrentStatus(newStatus);  
             if(['Submitted','Partially Received'].includes(newStatus)){
-                router.push(`/${purchase.documentId}/receive`);
+                if (editItems.length > 0){
+                    if(confirm(`You won't be able to edit this purchase after submitting. Do you want to proceed?`)) {
+                        const res = await authApi.put(`/purchases/${purchase.documentId}`, {
+                            data: { status: newStatus }
+                        });
+                        router.push(`/${purchase.documentId}/receive`);
+                        return;
+                    }
+                    else {
+                        setCurrentStatus('Draft');
+                        return;
+                    }
+                } else {
+                    alert('Please add at least one item to the purchase');
+                    setCurrentStatus('Draft');
+                }
             }
-            
-            if(['Draft','Pending'].includes(newStatus)){
-                
-             }
-             if(['Received'].includes(newStatus)){
-                router.push(`/${purchase.documentId}/purchase-view`);
-             }
 
         } catch (err) {
             alert(err.message);
@@ -160,16 +158,6 @@ export default function PurchasePage() {
         } catch (err) {
             alert(err.message);
              throw new Error("Failed to delete item");
-        }
-    };
-
-    const getStatusColor = (status) => {
-        switch (status) {
-            case "Pending": return "#f5c542";
-            case "Submitted": return "#42a5f5";
-            case "Received": return "#66bb6a";
-            case "Cancelled": return "#ef5350";
-            default: return "#9e9e9e";
         }
     };
 
@@ -231,7 +219,7 @@ export default function PurchasePage() {
                         gap: '10px'
                     }}>
                         <div><strong>Supplier:</strong> {purchase.supplier?.name || "N/A"}</div>
-                        <div><strong>Date:</strong> {purchase.order_date || purchase.date || "N/A"}</div>
+                        <div><strong>Date:</strong> {purchase.order_date ? new Date(purchase.order_date).toLocaleDateString() : 'N/A'}</div>
                         <div><strong>Invoice:</strong> {purchase.purchase_no || "N/A"}</div>
                         <div>
                             <strong>Status:</strong>
@@ -245,11 +233,10 @@ export default function PurchasePage() {
                                     border: '1px solid #ccc'
                                 }}
                             >
-                                {purchaseStatuses.map((status) => (
-                                    <option key={status} value={status}>
-                                        {status}
-                                    </option>
-                                ))}
+                                <option value="Draft">Draft</option>
+                                <option value="Submitted">Submitted</option>
+                                <option value="Partially Received">Partially Received</option>
+                                <option value="Cancelled">Cancelled</option>
                             </select>
                         </div>
                         <div><strong>Total:</strong> {currency}{parseFloat(purchase.total || 0).toFixed(2)}</div>

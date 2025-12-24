@@ -34,6 +34,7 @@ const SkuDisplay = ({ sku, label = "SKU" }) => {
                         color: #999;
                         font-style: italic;
                     }
+
                 `}</style>
 
                 <div className="sku-label">{label}</div>
@@ -48,15 +49,16 @@ const SkuDisplay = ({ sku, label = "SKU" }) => {
                 .sku-display {
                     margin: 4px 0;
                     padding: 3px;
-                    background: #f8f9fa;
+                    background: grey;
                     border-radius: 3px;
                     text-align: center;
-                    border: 1px solid #e9ecef;
+                    border: none;
+                    margin-left: 25px;
                 }
                 
                 .sku-label {
                     font-size: 6px;
-                    color: #666;
+                    color: black;
                     margin-bottom: 1px;
                     font-weight: bold;
                     text-transform: uppercase;
@@ -67,7 +69,7 @@ const SkuDisplay = ({ sku, label = "SKU" }) => {
                     font-family: 'Courier New', monospace;
                     font-size: 8px;
                     font-weight: bold;
-                    color: #333;
+                    color: black;
                     letter-spacing: 0.5px;
                     word-break: break-all;
                     line-height: 1.1;
@@ -75,8 +77,8 @@ const SkuDisplay = ({ sku, label = "SKU" }) => {
                 
                 @media print {
                     .sku-display {
-                        background: #f5f5f5;
-                        border: 1px solid #ddd;
+                        background: grey;
+                        border: none !important;
                     }
                 }
             `}</style>

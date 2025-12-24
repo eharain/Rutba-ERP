@@ -12,15 +12,11 @@ const BarcodeLabel = ({ item, isEmpty = false }) => {
                     .barcode-label.empty {
                         border: 1px dashed #ccc;
                         background: #f9f9f9;
-                        padding: 8px;
-                        text-align: center;
+                        width: 2.4in;
+                        height: 1.5in;
                         display: flex;
-                        flex-direction: column;
                         justify-content: center;
                         align-items: center;
-                        min-height: 1.2in;
-                        font-size: 10px;
-                        page-break-inside: avoid;
                     }
                 `}</style>
                 <div style={{ color: '#999', fontSize: '8px' }}>EMPTY SLOT</div>
@@ -32,45 +28,72 @@ const BarcodeLabel = ({ item, isEmpty = false }) => {
         <div className="barcode-label">
             <style jsx>{`
                 .barcode-label {
-                    border: 1px solid #000;
-                    padding: 8px;
-                    text-align: center;
+                    /* Exact dimensions for your paper */
+                    width: 2.4in;
+                    height: 1.5in;
+                    
+                    /* Change to Row for side-by-side layout */
+                    display: flex;
+                    flex-direction: row;
+                    align-items: center;
+                    justify-content: space-between;
+                    
+                    padding-right: 25px;
+                    box-sizing: border-box;
+                    background: grey; /* Changed from grey to white for thermal printing */
+                    page-break-inside: avoid;
+                }
+
+                .left-content {
+                    flex: 1; /* Takes up remaining space */
                     display: flex;
                     flex-direction: column;
+                    align-items: flex-start; /* Align text to left */
+                    text-align: left;
+                    overflow: hidden;
+                }
+
+                .right-content {
+                    width: 60px; /* Fixed width for the QR code column */
+                    display: flex;
                     justify-content: center;
                     align-items: center;
-                    min-height: 1.2in;
-                    font-size: 10px;
-                    page-break-inside: avoid;
-                    background: grey;
+                    margin-left: 5px;
                 }
                 
                 @media print {
                     .barcode-label {
-                        border: 1px solid #000;
-                        background: grey;
+                        border: none !important;
+                        background: white !important;
+                        -webkit-print-color-adjust: exact;
                     }
                 }
                 
                 @media screen {
                     .barcode-label {
                         border: 1px solid #ccc;
+                        margin-bottom: 10px;
                     }
                 }
             `}</style>
 
-            <ProductInfo
-                product={item.product}
-                status={item.status}
-                costPrice={item.cost_price}
-            />
+            {/* LEFT SIDE: Name, Price, and SKU Text */}
+            <div className="left-content">
+                <ProductInfo
+                    product={item.product}
+                    status={item.status}
+                    costPrice={item.selling_price}
+                />
+                <SkuDisplay sku={item.sku} />
+            </div>
 
-            <SkuDisplay sku={item.sku} />
-
-            <BarcodeDisplay
-                barcode={item.barcode}
-                sku={item.sku}
-            />
+            {/* RIGHT SIDE: The QR Code */}
+            <div className="right-content">
+                <BarcodeDisplay
+                    barcode={item.barcode}
+                    sku={item.sku}
+                />
+            </div>
         </div>
     );
 };

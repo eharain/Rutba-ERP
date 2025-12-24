@@ -1,6 +1,5 @@
 ﻿// file: /pos-desk/pages/stock-items.js
-import React, { useEffect, useState } from "react";
-import Link from "next/link";
+import React, { useEffect, useState, useRef } from "react";
 import {
     Table,
     TableHead,
@@ -13,9 +12,12 @@ import {
 import Layout from "../components/Layout";
 import ProtectedRoute from "../components/ProtectedRoute";
 import { authApi, getStockStatus } from "../lib/api";
+import { useUtil } from "../context/UtilContext";
+import { searchStockItems } from "../lib/pos";
 
 
 export default function StockItemsPage() {
+    const { currency } = useUtil();
     const [stockItems, setStockItems] = useState([]);
     const [stock_status, setStockStatus] = useState({ statuses: [] });
     const [filteredItems, setFilteredItems] = useState([]);
@@ -26,6 +28,8 @@ export default function StockItemsPage() {
     const [selectedItems, setSelectedItems] = useState(new Set());
     const [statusFilter, setStatusFilter] = useState("Received");
     const [searchTerm, setSearchTerm] = useState("");
+    const lastSearchRef = useRef("");
+    const firstLoadRef = useRef(true);
 
     useEffect(() => {
         (async () => {
@@ -37,22 +41,52 @@ export default function StockItemsPage() {
         loadStockItems();
     }, [page, rowsPerPage, statusFilter]);
 
+    // Search stock items with debounce
     useEffect(() => {
-        let sterm= searchTerm.toLowerCase()
-        const filtered = stockItems.filter(item =>
-            item.sku?.toLowerCase().includes(sterm) ||
-            item.barcode?.toLowerCase().includes(sterm) ||
-            item.product?.name?.toLowerCase().includes(sterm)
-        );
-        setFilteredItems(filtered);
-    }, [stockItems, searchTerm]);
+        const trimmed = searchTerm.trim();
+    
+        const handler = setTimeout(() => {
+            if (firstLoadRef.current) {
+                firstLoadRef.current = false;
+                return;
+            }
+            
+            if (trimmed.length === 0) {
+                lastSearchRef.current = "";
+                setPage(0);
+                loadStockItems();
+                return;
+            }
+            
+            if (trimmed.length < 3) {
+                return;
+            }
+            
+            if (trimmed === lastSearchRef.current) {
+                return;
+            }
+    
+            lastSearchRef.current = trimmed;
+            handleStockItemsSearch(trimmed);
+    
+        }, 400);
+    
+        return () => clearTimeout(handler);
+    }, [searchTerm]);
 
     async function loadStockItems() {
         setLoading(true);
         try {
            
             const response = await authApi.get("/stock-items", {
-                populate: ["product", "purchase_item"],
+                populate: {
+                    product: true,
+                    purchase_item: {
+                    populate: {
+                            purchase: true
+                        }
+                    }
+                },
                 filters: {
                     status: statusFilter
                 },
@@ -69,6 +103,24 @@ export default function StockItemsPage() {
             setTotal(response.meta?.pagination?.total || 0);
         } catch (error) {
             console.error("Error loading stock items:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+    
+
+    const handleStockItemsSearch = async (searchText) => {
+        setLoading(true);
+        try {
+            const stockItemsResult = await searchStockItems(searchText, page, rowsPerPage, statusFilter);
+            setStockItems(stockItemsResult.data);
+            setFilteredItems(stockItemsResult.data);
+            setTotal(stockItemsResult.meta?.pagination?.total ?? 0);
+            setPage(0);
+        } catch (error) {
+            console.error('Error searching stock items:', error);
+            setStockItems([]);
+            setFilteredItems([]);
         } finally {
             setLoading(false);
         }
@@ -167,6 +219,11 @@ export default function StockItemsPage() {
         window.open(`/print-bulk-barcodes?key=${storageKey}&title=${titleParam}`, '_blank', 'width=800,height=600');
     };
 
+    const handleStatusFilterChange = (event) => {
+        setStatusFilter(event.target.value);
+        setPage(0);
+    };
+
     const getStatusColor = (status) => {
         switch (status) {
             case "Received": return "#28a745";
@@ -199,7 +256,7 @@ export default function StockItemsPage() {
                             </label>
                             <select
                                 value={statusFilter}
-                                onChange={(e) => setStatusFilter(e.target.value)}
+                                onChange={handleStatusFilterChange}
                                 style={{
                                     width: '100%',
                                     padding: '8px',
@@ -223,7 +280,7 @@ export default function StockItemsPage() {
                             </label>
                             <input
                                 type="text"
-                                placeholder="Search by SKU, barcode, or product name..."
+                                placeholder="SKU, barcode, product name, purchase no..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 style={{
@@ -242,7 +299,7 @@ export default function StockItemsPage() {
                             style={{
                                 padding: '10px 16px',
                                 background: selectedItems.size > 0 ? '#dc3545' : '#6c757d',
-                                color: 'grey',
+                                color: 'white',
                                 border: 'none',
                                 borderRadius: '4px',
                                 cursor: selectedItems.size > 0 ? 'pointer' : 'not-allowed',
@@ -260,7 +317,7 @@ export default function StockItemsPage() {
                             style={{
                                 padding: '10px 16px',
                                 background: filteredItems.length > 0 ? '#28a745' : '#6c757d',
-                                color: 'grey',
+                                color: 'white',
                                 border: 'none',
                                 borderRadius: '4px',
                                 cursor: filteredItems.length > 0 ? 'pointer' : 'not-allowed',
@@ -301,6 +358,7 @@ export default function StockItemsPage() {
                                 </TableCell>
                                 <TableCell>SKU</TableCell>
                                 <TableCell>Barcode</TableCell>
+                                <TableCell>Purchase No</TableCell>
                                 <TableCell>Product</TableCell>
                                 <TableCell>Cost Price</TableCell>
                                 <TableCell>Selling Price</TableCell>
@@ -359,13 +417,16 @@ export default function StockItemsPage() {
                                                 )}
                                             </TableCell>
                                             <TableCell>
+                                                {item.purchase_item?.purchase?.purchase_no || 'N/A'}
+                                            </TableCell>
+                                            <TableCell>
                                                 {item.product?.name || 'N/A'}
                                             </TableCell>
                                             <TableCell>
-                                                ${parseFloat(item.cost_price || 0).toFixed(2)}
+                                                {currency}{parseFloat(item.cost_price || 0).toFixed(2)}
                                             </TableCell>
                                             <TableCell>
-                                                ${parseFloat(item.selling_price || 0).toFixed(2)}
+                                                {currency}{parseFloat(item.selling_price || 0).toFixed(2)}
                                             </TableCell>
                                             <TableCell>
                                                 <span
@@ -373,7 +434,7 @@ export default function StockItemsPage() {
                                                         padding: '4px 8px',
                                                         borderRadius: '4px',
                                                         backgroundColor: getStatusColor(item.status),
-                                                        color: 'grey',
+                                                        color: 'white',
                                                         fontSize: '12px',
                                                         fontWeight: 'bold'
                                                     }}
