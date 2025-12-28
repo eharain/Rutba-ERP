@@ -76,7 +76,7 @@ export default function SalesItemsList({ items, onUpdateItem, onRemoveItem }) {
                         return (
                             <TableRow key={index}>
                                 <TableCell>
-                                    <strong>{item.product?.product?.name}</strong>
+                                    <strong>{item.product?.name}</strong>
                                     {item.product.product?.barcode && (
                                         <div style={{ fontSize: '12px', color: '#666' }}>
                                             SKU: {item.product.product.sku}

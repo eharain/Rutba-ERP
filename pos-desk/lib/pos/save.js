@@ -8,15 +8,25 @@ import { urlAndRelations } from './queries';
 
 // Save changes to sale items
 export async function saveSaleItems(id, items) {
-    return await authApi.put(`/sales/${id}`, {
-        data: {
-            items: items.map((i) => ({
-                stock_item: i?.stock_item?.id,
+    const promises = items.map(async (i) => {
+        [await authApi.post(`/sale-items`, {
+            data: {
+                items: [i.id],
                 quantity: i.quantity,
                 price: i.price,
-            })),
-        },
-    });
+                product: i.product.id,
+                sale: id
+            }
+        }),
+        await authApi.put(`/stock-items/${i.documentId}`, {
+            data: {
+                status: 'Sold'
+            }
+        })
+    ]
+    }).flat(2);
+
+    return await Promise.all(promises);
 }
 
 
