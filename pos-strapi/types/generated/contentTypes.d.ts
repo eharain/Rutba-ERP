@@ -391,6 +391,7 @@ export interface ApiBranchBranch extends Struct.CollectionTypeSchema {
       Schema.Attribute.Private;
     currency: Schema.Attribute.Relation<'oneToOne', 'api::currency.currency'>;
     desks: Schema.Attribute.Component<'pos.sales-desks', true>;
+    email: Schema.Attribute.String;
     gallery: Schema.Attribute.Media<
       'images' | 'files' | 'videos' | 'audios',
       true
@@ -405,6 +406,7 @@ export interface ApiBranchBranch extends Struct.CollectionTypeSchema {
     logo: Schema.Attribute.Media<'images' | 'files' | 'videos' | 'audios'>;
     name: Schema.Attribute.String;
     payments: Schema.Attribute.Relation<'manyToMany', 'api::payment.payment'>;
+    phone: Schema.Attribute.String;
     po_prefix: Schema.Attribute.String;
     products: Schema.Attribute.Relation<'manyToMany', 'api::product.product'>;
     publishedAt: Schema.Attribute.DateTime;
@@ -421,6 +423,8 @@ export interface ApiBranchBranch extends Struct.CollectionTypeSchema {
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    watsapp: Schema.Attribute.String;
+    web: Schema.Attribute.String;
   };
 }
 

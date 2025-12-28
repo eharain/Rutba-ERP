@@ -11,9 +11,26 @@
   },
   "pluginOptions": {},
   "attributes": {
+
+    "companyName": {
+      "type": "string"
+    },
     "name": {
       "type": "string"
     },
+    "web": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "watsapp": {
+      "type": "string"
+    },
+
     "po_prefix": {
       "type": "string"
     },
