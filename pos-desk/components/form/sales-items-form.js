@@ -25,7 +25,6 @@ export default function SalesItemsForm({ onAddItem }) {
         setLoading(true);
         try {
             const productResult = await searchStockItems(searchText, 0, 100, 'InStock');
-            console.log(productResult);
             setSearchResults(productResult.data);
             setShowResults(true);
         } catch (error) {

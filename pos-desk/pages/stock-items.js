@@ -112,7 +112,7 @@ export default function StockItemsPage() {
     const handleStockItemsSearch = async (searchText) => {
         setLoading(true);
         try {
-            const stockItemsResult = await searchStockItems(searchText, page, rowsPerPage, statusFilter);
+            const stockItemsResult = await searchStockItems(searchText, page + 1, rowsPerPage, statusFilter);
             setStockItems(stockItemsResult.data);
             setFilteredItems(stockItemsResult.data);
             setTotal(stockItemsResult.meta?.pagination?.total ?? 0);
@@ -124,6 +124,29 @@ export default function StockItemsPage() {
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleStockInStock = async () => {
+        setLoading(true);
+        const documentIdsToUpdate = Array.from(selectedItems);
+        try {
+            for (const documentId of documentIdsToUpdate) {
+                await authApi.put(`/stock-items/${documentId}`, {
+                    data: {
+                        status: 'InStock'
+                    }
+                });
+            }
+            alert(`Stock in stock status updated successfully for ${documentIdsToUpdate.length} items`);
+            setSelectedItems(new Set());
+            loadStockItems();
+        }
+        catch (error) {
+            console.error('Error updating stock in stock status:', error);
+            setSelectedItems(new Set());
+        } finally {
+            setLoading(false);
+        }   
     };
 
     const handleChangePage = (event, newPage) => {
@@ -291,6 +314,22 @@ export default function StockItemsPage() {
                                 }}
                             />
                         </div>
+
+                        {statusFilter === 'Received' && <button
+                            onClick={handleStockInStock}
+                            disabled={selectedItems.size === 0}
+                            style={{
+                                padding: '10px 16px',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '4px',
+                                cursor: selectedItems.size > 0 ? 'pointer' : 'not-allowed',
+                                background: selectedItems.size > 0 ? '#007bff' : '#6c757d',
+                            }}
+                            title={`Update ${selectedItems.size} selected items to stock in stock status`}
+                        >
+                            Update to Stock In Stock Status
+                        </button>}
 
                         {/* Bulk Print Buttons */}
                         <button

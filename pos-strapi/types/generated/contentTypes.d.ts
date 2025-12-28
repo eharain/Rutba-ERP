@@ -386,6 +386,7 @@ export interface ApiBranchBranch extends Struct.CollectionTypeSchema {
   attributes: {
     address: Schema.Attribute.String;
     city: Schema.Attribute.String;
+    companyName: Schema.Attribute.String;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;

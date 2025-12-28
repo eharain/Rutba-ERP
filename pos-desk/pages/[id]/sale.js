@@ -8,6 +8,7 @@ import PermissionCheck from '../../components/PermissionCheck';
 import SalesItemsForm from '../../components/form/sales-items-form';
 import SalesItemsList from '../../components/lists/sales-items-list';
 import { useUtil } from '../../context/UtilContext';
+import CheckoutModal from '../../components/CheckoutModal';
 
 export default function SalePage() {
     const router = useRouter();
@@ -22,6 +23,7 @@ export default function SalePage() {
         tax: 0,
         total: 0
     });
+    const [showCheckout, setShowCheckout] = useState(false);
 
     useEffect(() => {
         if (id) loadSaleData();
@@ -78,14 +80,15 @@ export default function SalePage() {
 
     const addItem = (product) => {
         const newItem = {
-            product,
+            id: product.id,
+            documentId: product.documentId,
+            product: product.product,
             quantity: 1,
             price: product.selling_price || 0,
             discount: 0, // Default 0% discount
             tax: (product.selling_price || 0) * 0.1,
             total: product.selling_price || 0
         };
-
         setItems(prev => [...prev, newItem]);
     };
 
@@ -107,23 +110,10 @@ export default function SalePage() {
         setItems(prev => prev.filter((_, i) => i !== index));
     };
 
-    const handleSave = async () => {
+    const handleCheckoutComplete = async () => {
         setLoading(true);
         try {
-            await saveSaleItems(id, items);
-            alert('Sale updated successfully!');
-        } catch (error) {
-            console.error('Error saving sale:', error);
-            alert('Error saving sale');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleCheckout = async () => {
-        setLoading(true);
-        try {
-            await saveSaleItems(id, items);
+            await saveSaleItems(sale.documentId || sale.id, items);
 
             // Update sale status to completed
             await authApi.put(`/sales/${sale.documentId || sale.id}`, {
@@ -136,14 +126,37 @@ export default function SalePage() {
                 }
             });
 
+            // Reload sale data to update payment status
+            await loadSaleData();
+
             alert('Sale completed successfully!');
-            router.push('/sales');
+            setShowCheckout(false);
         } catch (error) {
             console.error('Error completing sale:', error);
             alert('Error completing sale');
         } finally {
             setLoading(false);
         }
+    };
+
+    const handlePrint = () => {
+        if (!sale || items.length === 0) {
+            alert('No sale data to print');
+            return;
+        }
+
+        // Store sale data in localStorage
+        const storageKey = `print_invoice_${Date.now()}`;
+        localStorage.setItem(storageKey, JSON.stringify({
+            sale: sale,
+            items: items,
+            totals: totals,
+            timestamp: Date.now()
+        }));
+
+        // Open print window
+        const saleId = sale.documentId || sale.id || sale.invoice_no;
+        window.open(`/print-invoice?key=${storageKey}&saleId=${saleId}`, '_blank', 'width=1000,height=800');
     };
 
     if (loading && !sale) return <div>Loading...</div>;
@@ -176,38 +189,48 @@ export default function SalePage() {
                             </div>
 
                             <div style={{ textAlign: 'right' }}>
-                                <div style={{ fontSize: '18px', fontWeight: 'bold' }}>
+                                <div style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '10px' }}>
                                     Total: {currency}{totals.total.toFixed(2)}
                                 </div>
-                                <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                                    <button
-                                        onClick={handleSave}
-                                        disabled={loading}
-                                        style={{
-                                            padding: '10px 20px',
-                                            background: '#007bff',
-                                            color: 'black',
-                                            border: 'none',
-                                            borderRadius: '4px',
-                                            cursor: 'pointer'
-                                        }}
-                                    >
-                                        {loading ? 'Saving...' : 'Save'}
-                                    </button>
-                                    <button
-                                        onClick={handleCheckout}
-                                        disabled={loading || items.length === 0}
-                                        style={{
-                                            padding: '10px 20px',
-                                            background: '#28a745',
-                                            color: 'black',
-                                            border: 'none',
-                                            borderRadius: '4px',
-                                            cursor: 'pointer'
-                                        }}
-                                    >
-                                        Complete Sale
-                                    </button>
+                                <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                                    {sale?.payment_status === 'Paid' && (
+                                        <button
+                                            onClick={handlePrint}
+                                            disabled={loading || items.length === 0}
+                                            style={{
+                                                padding: '12px 30px',
+                                                background: '#007bff',
+                                                color: 'white',
+                                                border: 'none',
+                                                borderRadius: '4px',
+                                                cursor: items.length === 0 ? 'not-allowed' : 'pointer',
+                                                fontSize: '16px',
+                                                fontWeight: 'bold',
+                                                opacity: items.length === 0 ? 0.6 : 1
+                                            }}
+                                        >
+                                            Print
+                                        </button>
+                                    )}
+                                    {sale?.payment_status !== 'Paid' && (
+                                        <button
+                                            onClick={() => setShowCheckout(true)}
+                                            disabled={loading || items.length === 0}
+                                            style={{
+                                                padding: '12px 30px',
+                                                background: '#28a745',
+                                                color: 'white',
+                                                border: 'none',
+                                                borderRadius: '4px',
+                                                cursor: items.length === 0 ? 'not-allowed' : 'pointer',
+                                                fontSize: '16px',
+                                                fontWeight: 'bold',
+                                                opacity: items.length === 0 ? 0.6 : 1
+                                            }}
+                                        >
+                                            Checkout
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -257,6 +280,15 @@ export default function SalePage() {
                             </div>
                         )}
                     </div>
+
+                    {/* Checkout Modal */}
+                    <CheckoutModal
+                        isOpen={showCheckout}
+                        onClose={() => setShowCheckout(false)}
+                        total={totals.total}
+                        onComplete={handleCheckoutComplete}
+                        loading={loading}
+                    />
                 </PermissionCheck>
             </ProtectedRoute>
         </Layout>
