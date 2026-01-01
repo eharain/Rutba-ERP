@@ -1,6 +1,6 @@
 // file: /pos-desk/components/BarcodePrintPreview.js
 import React from 'react';
-import PrintBarcodeLabels from './PrintBarcodeLabels';
+import PrintBarcodeLabels from '../PrintBarcodeLabels';
 
 const BarcodePrintPreview = ({ items, title, onClose }) => {
     const handlePrint = () => {
