@@ -1,0 +1,112 @@
+{
+  "collectionName": "stock_inputs",
+  "info": {
+    "singularName": "stock-input",
+    "pluralName": "stock-inputs",
+    "displayName": "Stock Inputs",
+    "description": "Stock intake via barcode, OCR, or manual entry"
+  },
+  "kind": "collectionType",
+  "options": {
+    "draftAndPublish": false
+  },
+
+  "attributes": {
+    "productName": {
+      "type": "string",
+      "required": true
+    },
+
+    "barcode": {
+      "type": "string"
+    },
+
+    "quantity": {
+      "type": "integer",
+      "required": true
+    },
+
+    "costPrice": {
+      "type": "decimal"
+    },
+
+    "sellingPrice": {
+      "type": "decimal"
+    },
+
+    "purchaseOrderNumber": {
+      "type": "string"
+    },
+
+    "supplierName": {
+      "type": "string"
+    },
+
+    "brandName": {
+      "type": "string"
+    },
+
+    "categoryName": {
+      "type": "string"
+    },
+
+    "keywords": {
+      "type": "json",
+      "default": []
+    },
+
+    "images": {
+      "type": "media",
+      "multiple": true,
+      "allowedTypes": [ "images" ]
+    },
+
+    "product": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::product.product"
+    },
+
+    "supplier": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::supplier.supplier"
+    },
+
+    "brand": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::brand.brand"
+    },
+
+    "category": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::category.category"
+    },
+
+    "terms": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::term.term"
+    },
+
+    "processe": {
+      "type": "boolean",
+      "default": false
+    },
+
+    "processed": {
+      "type": "boolean",
+      "default": false
+    },
+
+    "processedAt": {
+      "type": "datetime"
+    },
+    "importName": {
+      "type": "string",
+      "unique": true
+    }
+  }
+}

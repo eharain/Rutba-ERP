@@ -18,7 +18,9 @@
     },
     "sku": {
       "type": "string"
-
+    },
+    "supplierCode": {
+      "type": "string"
     },
     "barcode": {
       "type": "string"

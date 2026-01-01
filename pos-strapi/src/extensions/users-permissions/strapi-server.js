@@ -26,6 +26,7 @@ if (!isEdiding) {
         plugin.contentTypes.user.schema.attributes.isStaff = {
             "type": "boolean"
         };
+
         console.log('Adding custom user permissions routes');
         //meRoute.forEach(route => capi.routes.push(route));
         //   Object.assign(, userSchema);
