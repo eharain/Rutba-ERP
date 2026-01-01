@@ -241,6 +241,10 @@ const SaleInvoice = ({ sale, items, totals }) => {
                             <td>Subtotal:</td>
                             <td>{currency}{safeTotals.subtotal.toFixed(2)}</td>
                         </tr>
+                        <tr>
+                            <td>Tax:</td>
+                            <td>{currency}{safeTotals.tax.toFixed(2)}</td>
+                        </tr>
                         {safeTotals.discount > 0 && (
                             <tr>
                                 <td>Disc:</td>

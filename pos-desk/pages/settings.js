@@ -1,5 +1,5 @@
 ﻿import React, { useEffect, useState } from "react";
-import { authApi } from "../lib/api";
+import { authApi, api } from "../lib/api";
 import Layout from "../components/Layout";
 import PermissionCheck from "../components/PermissionCheck";
 import { useUtil } from "../context/UtilContext"
@@ -11,7 +11,7 @@ export default function SettingsPage() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const response = await authApi.get("/branches?populate[0]=desks&populate[1]=currency");
+                const response = await api.get("/branches?populate[0]=desks&populate[1]=currency");
                 setBranches(response.data || []);
                 setSelectedBranch(branch);
                 setSelectedDesk(desk)
