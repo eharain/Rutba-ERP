@@ -1120,6 +1120,7 @@ export interface ApiStockInputStockInput extends Struct.CollectionTypeSchema {
     draftAndPublish: false;
   };
   attributes: {
+    auto: Schema.Attribute.JSON & Schema.Attribute.DefaultTo<{}>;
     barcode: Schema.Attribute.String;
     brand: Schema.Attribute.Relation<'manyToOne', 'api::brand.brand'>;
     brandName: Schema.Attribute.String;
@@ -1130,23 +1131,34 @@ export interface ApiStockInputStockInput extends Struct.CollectionTypeSchema {
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     images: Schema.Attribute.Media<'images', true>;
-    importName: Schema.Attribute.String & Schema.Attribute.Unique;
+    importName: Schema.Attribute.String;
     keywords: Schema.Attribute.JSON & Schema.Attribute.DefaultTo<[]>;
+    lastError: Schema.Attribute.String;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
       'api::stock-input.stock-input'
     > &
       Schema.Attribute.Private;
-    processe: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    offerPrice: Schema.Attribute.Decimal;
+    process: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     processed: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     processedAt: Schema.Attribute.DateTime;
+    processedOk: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     product: Schema.Attribute.Relation<'manyToOne', 'api::product.product'>;
     productName: Schema.Attribute.String & Schema.Attribute.Required;
     publishedAt: Schema.Attribute.DateTime;
+    purchaseItem: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::purchase-item.purchase-item'
+    >;
     purchaseOrderNumber: Schema.Attribute.String;
     quantity: Schema.Attribute.Integer & Schema.Attribute.Required;
     sellingPrice: Schema.Attribute.Decimal;
+    stockItems: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::stock-item.stock-item'
+    >;
     supplier: Schema.Attribute.Relation<'manyToOne', 'api::supplier.supplier'>;
     supplierName: Schema.Attribute.String;
     terms: Schema.Attribute.Relation<'manyToMany', 'api::term.term'>;
@@ -1180,6 +1192,7 @@ export interface ApiStockItemStockItem extends Struct.CollectionTypeSchema {
       'api::stock-item.stock-item'
     > &
       Schema.Attribute.Private;
+    offer_price: Schema.Attribute.Decimal;
     product: Schema.Attribute.Relation<'manyToOne', 'api::product.product'>;
     publishedAt: Schema.Attribute.DateTime;
     purchase_item: Schema.Attribute.Relation<
