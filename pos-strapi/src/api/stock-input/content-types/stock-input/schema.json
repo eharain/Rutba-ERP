@@ -80,6 +80,11 @@
       "relation": "manyToOne",
       "target": "api::supplier.supplier"
     },
+    "purchase": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::purchase.purchase"
+    },
     "supplierCode": {
       "type": "string"
     },
@@ -100,6 +105,7 @@
       "relation": "manyToMany",
       "target": "api::term.term"
     },
+
     "purchaseItem": {
       "type": "relation",
       "relation": "manyToOne",

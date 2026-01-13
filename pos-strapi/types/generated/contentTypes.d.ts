@@ -1152,6 +1152,7 @@ export interface ApiStockInputStockInput extends Struct.CollectionTypeSchema {
     product: Schema.Attribute.Relation<'manyToOne', 'api::product.product'>;
     productName: Schema.Attribute.String & Schema.Attribute.Required;
     publishedAt: Schema.Attribute.DateTime;
+    purchase: Schema.Attribute.Relation<'manyToOne', 'api::purchase.purchase'>;
     purchaseItem: Schema.Attribute.Relation<
       'manyToOne',
       'api::purchase-item.purchase-item'
