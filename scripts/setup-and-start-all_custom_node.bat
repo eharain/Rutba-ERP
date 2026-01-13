@@ -78,10 +78,10 @@ IF NOT EXIST "..\pos-strapi\.env" (
 )
 
 REM Prompt for pos-desk .env.local variable
-set "NEXT_PUBLIC_API_URL_DEFAULT=http://localhost:1337"
-set /p NEXT_PUBLIC_API_URL="Enter NEXT_PUBLIC_API_URL [!NEXT_PUBLIC_API_URL_DEFAULT!]: "
+set "NEXT_PUBLIC_API_URL=http://localhost:1337"
+set /p NEXT_PUBLIC_API_URL="Enter NEXT_PUBLIC_API_URL [!NEXT_PUBLIC_API_URL!]: "
 if "!NEXT_PUBLIC_API_URL!"=="" (
-    set "NEXT_PUBLIC_API_URL=!NEXT_PUBLIC_API_URL_DEFAULT!"
+    set "NEXT_PUBLIC_API_URL=!NEXT_PUBLIC_API_URL!"
 )
 
 set "NEXT_PUBLIC_API_URL=!NEXT_PUBLIC_API_URL!/api"

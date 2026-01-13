@@ -171,7 +171,7 @@ export default function EditProduct() {
                     <form onSubmit={handleSubmit} style={{ background: '#f9f9f9', padding: '20px', borderRadius: '8px' }}>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
                             <div>
-                                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
+                                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'black' }}>
                                     Product Name *
                                 </label>
                                 <input
@@ -191,7 +191,7 @@ export default function EditProduct() {
                             </div>
 
                             <div>
-                                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
+                                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'black' }}>
                                     SKU
                                 </label>
                                 <input
@@ -212,7 +212,7 @@ export default function EditProduct() {
 
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
                             <div>
-                                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
+                                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'black' }}>
                                     Barcode
                                 </label>
                                 <input
@@ -231,7 +231,7 @@ export default function EditProduct() {
                             </div>
 
                             <div>
-                                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
+                                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'black' }}>
                                     Selling Price *
                                 </label>
                                 <input
@@ -255,7 +255,7 @@ export default function EditProduct() {
 
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
                             <div>
-                                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
+                                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'black' }}>
                                     Cost Price
                                 </label>
                                 <input
@@ -276,7 +276,7 @@ export default function EditProduct() {
                             </div>
 
                             <div>
-                                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
+                                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'black' }}>
                                     Tax Rate (%)
                                 </label>
                                 <input
@@ -299,7 +299,7 @@ export default function EditProduct() {
 
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
                             <div>
-                                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
+                                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'black' }}>
                                     Stock Quantity
                                 </label>
                                 <input
@@ -319,7 +319,7 @@ export default function EditProduct() {
                             </div>
 
                             <div>
-                                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
+                                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'black' }}>
                                     Reorder Level
                                 </label>
                                 <input
@@ -341,7 +341,7 @@ export default function EditProduct() {
 
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
                             <div>
-                                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
+                                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'black' }}>
                                     Bundle Units
                                 </label>
                                 <input
@@ -361,7 +361,7 @@ export default function EditProduct() {
                             </div>
 
                             <div>
-                                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
+                                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'black' }}>
                                     Category
                                 </label>
                                 <select
@@ -387,7 +387,7 @@ export default function EditProduct() {
 
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
                             <div>
-                                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
+                                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'black' }}>
                                     Brand
                                 </label>
                                 <select
@@ -411,7 +411,7 @@ export default function EditProduct() {
                             </div>
 
                             <div>
-                                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
+                                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'black' }}>
                                     Active Status
                                 </label>
                                 <div style={{ marginTop: '8px' }}>
@@ -422,13 +422,13 @@ export default function EditProduct() {
                                         onChange={handleChange}
                                         style={{ marginRight: '8px' }}
                                     />
-                                    <span>Product is active</span>
+                                    <span style={{ color: 'black' }}>Product is active</span>
                                 </div>
                             </div>
                         </div>
 
                         <div style={{ marginBottom: '20px' }}>
-                            <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
+                            <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'black' }}>
                                 Suppliers
                             </label>
                             <select
@@ -449,11 +449,11 @@ export default function EditProduct() {
                                     </option>
                                 ))}
                             </select>
-                            <small>Hold Ctrl/Cmd to select multiple suppliers</small>
+                            <small style={{ color: 'black' }}>Hold Ctrl/Cmd to select multiple suppliers</small>
                         </div>
 
                         <div style={{ marginBottom: '20px' }}>
-                            <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
+                            <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'black' }}>
                                 Description
                             </label>
                             <textarea
@@ -472,7 +472,7 @@ export default function EditProduct() {
                         </div>
 
                         <div style={{ marginBottom: '20px' }}>
-                            <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
+                            <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'black' }}>
                                 Product Images
                             </label>
                             <FileView multiple={true} />
@@ -485,7 +485,7 @@ export default function EditProduct() {
                                 style={{
                                     padding: '10px 20px',
                                     background: '#007bff',
-                                    color: 'grey',
+                                    color: 'black',
                                     border: 'none',
                                     borderRadius: '4px',
                                     cursor: submitting ? 'not-allowed' : 'pointer'
@@ -499,7 +499,7 @@ export default function EditProduct() {
                                 style={{
                                     padding: '10px 20px',
                                     background: '#6c757d',
-                                    color: 'grey',
+                                    color: 'black',
                                     border: 'none',
                                     borderRadius: '4px',
                                     cursor: 'pointer'

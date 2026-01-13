@@ -11,10 +11,11 @@ import { fetchEntities, fetchProducts } from "../lib/pos";
 import { useCart } from "../context/CartContext";
 import StrapiImage from "../components/StrapiImage";
 import { ProductFilter } from "../components/filter/product-filter";
+import { useUtil } from "../context/UtilContext";
 
 export default function Products() {
     const [products, setProducts] = useState([]);
-   
+    const { currency } = useUtil();
     const { add } = useCart();
     const [page, setPage] = useState(0);
     const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -118,8 +119,8 @@ export default function Products() {
                                                 <TableCell>{product.barcode}</TableCell>
                                                 <TableCell>{product.sku}</TableCell>
                                                 <TableCell>{product.suppliers?.map(s => s.name)}</TableCell>
-                                                <TableCell>{product.cost_price}</TableCell>
-                                                <TableCell>{product.selling_price}</TableCell>
+                                                <TableCell>{currency}{product.cost_price}</TableCell>
+                                                <TableCell>{currency}{product.selling_price}</TableCell>
                                                 <TableCell>{product.stock_quantity}</TableCell>
                                                 <TableCell>{product.status}</TableCell>
 
