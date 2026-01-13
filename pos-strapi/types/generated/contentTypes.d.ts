@@ -714,6 +714,10 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    description: Schema.Attribute.RichText &
+      Schema.Attribute.SetMinMaxLength<{
+        minLength: 50;
+      }>;
     gallery: Schema.Attribute.Media<
       'images' | 'files' | 'videos' | 'audios',
       true
@@ -1160,6 +1164,7 @@ export interface ApiStockInputStockInput extends Struct.CollectionTypeSchema {
       'api::stock-item.stock-item'
     >;
     supplier: Schema.Attribute.Relation<'manyToOne', 'api::supplier.supplier'>;
+    supplierCode: Schema.Attribute.String;
     supplierName: Schema.Attribute.String;
     terms: Schema.Attribute.Relation<'manyToMany', 'api::term.term'>;
     updatedAt: Schema.Attribute.DateTime;
@@ -1192,6 +1197,7 @@ export interface ApiStockItemStockItem extends Struct.CollectionTypeSchema {
       'api::stock-item.stock-item'
     > &
       Schema.Attribute.Private;
+    name: Schema.Attribute.String;
     offer_price: Schema.Attribute.Decimal;
     product: Schema.Attribute.Relation<'manyToOne', 'api::product.product'>;
     publishedAt: Schema.Attribute.DateTime;

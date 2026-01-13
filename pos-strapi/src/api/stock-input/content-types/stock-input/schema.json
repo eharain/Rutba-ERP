@@ -33,7 +33,7 @@
     "sellingPrice": {
       "type": "decimal"
     },
-    
+
     "offerPrice": {
       "type": "decimal"
     },
@@ -80,7 +80,9 @@
       "relation": "manyToOne",
       "target": "api::supplier.supplier"
     },
-
+    "supplierCode": {
+      "type": "string"
+    },
     "brand": {
       "type": "relation",
       "relation": "manyToOne",
