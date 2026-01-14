@@ -122,6 +122,28 @@ export default function EditProduct() {
         router.push('/products');
     };
 
+    // Simple Markdown preview renderer (safe-ish, minimal features)
+    const renderMarkdownPreview = (md) => {
+        if (!md) return { __html: '' };
+        const escapeHtml = (s) => s
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+
+        let html = escapeHtml(md);
+
+        html = html
+            .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+            .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+            .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+            .replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/gim, '<em>$1</em>')
+            .replace(/\[(.*?)\]\((.*?)\)/gim, '<a href="$2" target="_blank" rel="noreferrer">$1</a>')
+            .replace(/\n/g, '<br/>');
+
+        return { __html: html };
+    };
+
     if (loading) {
         return (
             <ProtectedRoute>
@@ -137,7 +159,7 @@ export default function EditProduct() {
     return (
         <ProtectedRoute>
             <Layout>
-                <div style={{ padding: '20px', maxWidth: '800px', margin: '0 auto' }}>
+                <div style={{ padding: '20px', maxWidth: '900px', margin: '0 auto' }}>
                     <h1 style={{ marginBottom: '20px' }}>
                         {id && id !== 'new' ? 'Edit Product' : 'Create New Product'}
                     </h1>
@@ -169,6 +191,7 @@ export default function EditProduct() {
                     )}
 
                     <form onSubmit={handleSubmit} style={{ background: '#f9f9f9', padding: '20px', borderRadius: '8px' }}>
+                        {/* Name + Description (markdown editor + preview) */}
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
                             <div>
                                 <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'black' }}>
@@ -192,6 +215,44 @@ export default function EditProduct() {
 
                             <div>
                                 <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'black' }}>
+                                    Description (Markdown)
+                                </label>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                                    <textarea
+                                        name="description"
+                                        value={formData.description}
+                                        onChange={handleChange}
+                                        rows="6"
+                                        style={{
+                                            width: '100%',
+                                            padding: '8px',
+                                            border: '1px solid #ccc',
+                                            borderRadius: '4px',
+                                            minHeight: '140px',
+                                            resize: 'vertical'
+                                        }}
+                                        placeholder="Write product description in markdown..."
+                                    />
+                                    <div style={{
+                                        border: '1px solid #e0e0e0',
+                                        borderRadius: '4px',
+                                        padding: '8px',
+                                        background: '#fff',
+                                        minHeight: '140px',
+                                        overflowY: 'auto'
+                                    }}>
+                                        <div style={{ fontSize: '12px', color: '#666', marginBottom: '6px' }}>Preview</div>
+                                        <div dangerouslySetInnerHTML={renderMarkdownPreview(formData.description)} />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* SKU + Barcode */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'black' }}>
                                     SKU
                                 </label>
                                 <input
@@ -208,9 +269,7 @@ export default function EditProduct() {
                                     placeholder="SKU"
                                 />
                             </div>
-                        </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
                             <div>
                                 <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'black' }}>
                                     Barcode
@@ -229,7 +288,10 @@ export default function EditProduct() {
                                     placeholder="Barcode"
                                 />
                             </div>
+                        </div>
 
+                        {/* Selling Price + Cost Price */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
                             <div>
                                 <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'black' }}>
                                     Selling Price *
@@ -251,9 +313,7 @@ export default function EditProduct() {
                                     placeholder="0.00"
                                 />
                             </div>
-                        </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
                             <div>
                                 <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'black' }}>
                                     Cost Price
@@ -274,7 +334,10 @@ export default function EditProduct() {
                                     placeholder="0.00"
                                 />
                             </div>
+                        </div>
 
+                        {/* Tax Rate + Stock Quantity */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
                             <div>
                                 <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'black' }}>
                                     Tax Rate (%)
@@ -295,9 +358,7 @@ export default function EditProduct() {
                                     placeholder="0.00"
                                 />
                             </div>
-                        </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
                             <div>
                                 <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'black' }}>
                                     Stock Quantity
@@ -317,7 +378,10 @@ export default function EditProduct() {
                                     placeholder="0"
                                 />
                             </div>
+                        </div>
 
+                        {/* Reorder Level + Bundle Units */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
                             <div>
                                 <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'black' }}>
                                     Reorder Level
@@ -337,9 +401,7 @@ export default function EditProduct() {
                                     placeholder="0"
                                 />
                             </div>
-                        </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
                             <div>
                                 <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'black' }}>
                                     Bundle Units
@@ -359,7 +421,10 @@ export default function EditProduct() {
                                     placeholder="1"
                                 />
                             </div>
+                        </div>
 
+                        {/* Category + Brand */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
                             <div>
                                 <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'black' }}>
                                     Category
@@ -383,9 +448,7 @@ export default function EditProduct() {
                                     ))}
                                 </select>
                             </div>
-                        </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
                             <div>
                                 <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'black' }}>
                                     Brand
@@ -409,7 +472,9 @@ export default function EditProduct() {
                                     ))}
                                 </select>
                             </div>
+                        </div>
 
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
                             <div>
                                 <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'black' }}>
                                     Active Status
@@ -425,50 +490,31 @@ export default function EditProduct() {
                                     <span style={{ color: 'black' }}>Product is active</span>
                                 </div>
                             </div>
-                        </div>
 
-                        <div style={{ marginBottom: '20px' }}>
-                            <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'black' }}>
-                                Suppliers
-                            </label>
-                            <select
-                                multiple
-                                value={formData.suppliers.map(s => s.id)}
-                                onChange={handleSupplierChange}
-                                style={{
-                                    width: '100%',
-                                    padding: '8px',
-                                    border: '1px solid #ccc',
-                                    borderRadius: '4px',
-                                    height: '100px'
-                                }}
-                            >
-                                {suppliers.map(supplier => (
-                                    <option key={supplier.id} value={supplier.id}>
-                                        {supplier.name} - {supplier.contact_person}
-                                    </option>
-                                ))}
-                            </select>
-                            <small style={{ color: 'black' }}>Hold Ctrl/Cmd to select multiple suppliers</small>
-                        </div>
-
-                        <div style={{ marginBottom: '20px' }}>
-                            <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'black' }}>
-                                Description
-                            </label>
-                            <textarea
-                                name="description"
-                                value={formData.description}
-                                onChange={handleChange}
-                                rows="4"
-                                style={{
-                                    width: '100%',
-                                    padding: '8px',
-                                    border: '1px solid #ccc',
-                                    borderRadius: '4px'
-                                }}
-                                placeholder="Product description..."
-                            />
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'black' }}>
+                                    Suppliers
+                                </label>
+                                <select
+                                    multiple
+                                    value={formData.suppliers.map(s => s.id)}
+                                    onChange={handleSupplierChange}
+                                    style={{
+                                        width: '100%',
+                                        padding: '8px',
+                                        border: '1px solid #ccc',
+                                        borderRadius: '4px',
+                                        height: '100px'
+                                    }}
+                                >
+                                    {suppliers.map(supplier => (
+                                        <option key={supplier.id} value={supplier.id}>
+                                            {supplier.name} - {supplier.contact_person}
+                                        </option>
+                                    ))}
+                                </select>
+                                <small style={{ color: 'black' }}>Hold Ctrl/Cmd to select multiple suppliers</small>
+                            </div>
                         </div>
 
                         <div style={{ marginBottom: '20px' }}>
