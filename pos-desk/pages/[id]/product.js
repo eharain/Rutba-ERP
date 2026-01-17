@@ -343,7 +343,7 @@ export default function EditProduct() {
 
                             <div>
                                 <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'black' }}>
-                                    Cost Price
+                                    Offer Price
                                 </label>
                                 <input
                                     type="number"
