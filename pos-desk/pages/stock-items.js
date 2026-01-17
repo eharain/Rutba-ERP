@@ -399,7 +399,7 @@ export default function StockItemsPage() {
                                 <TableCell>Barcode</TableCell>
                                 <TableCell>Purchase No</TableCell>
                                 <TableCell>Product</TableCell>
-                                <TableCell>Cost Price</TableCell>
+                                <TableCell>Offer Price</TableCell>
                                 <TableCell>Selling Price</TableCell>
                                 <TableCell>Status</TableCell>
                                 <TableCell>Actions</TableCell>
@@ -462,7 +462,7 @@ export default function StockItemsPage() {
                                                 {item.product?.name || 'N/A'}
                                             </TableCell>
                                             <TableCell>
-                                                {currency}{parseFloat(item.cost_price || 0).toFixed(2)}
+                                                {currency}{parseFloat(item.offer_price || 0).toFixed(2)}
                                             </TableCell>
                                             <TableCell>
                                                 {currency}{parseFloat(item.selling_price || 0).toFixed(2)}
