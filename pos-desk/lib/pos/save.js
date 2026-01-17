@@ -57,26 +57,6 @@ export async function saveProductItems(id, items) {
     });
 }
 
-
-export async function loadProduct(id) {
-    let res = await authApi.get(`/products/${id}`);
-    let prod = res.data || res;
-    let data = {
-        name: prod.name || '',
-        sku: prod.sku || '',
-        barcode: prod.barcode || '',
-        cost_price: prod.cost_price || '',
-        selling_price: prod.selling_price || '',
-        tax_rate: prod.tax_rate || '',
-        stock_quantity: prod.stock_quantity || '',
-        reorder_level: prod.reorder_level || '',
-        is_active: prod.is_active !== undefined ? prod.is_active : true,
-        category: prod.category?.id || '',
-        brand: prod.brand?.id || ''
-    };
-    return data;
-}
-
 export async function saveProduct(id, formData) {
     const url = id && id !== 'new' ? `/products/${id}` : '/products';
     const method = id && id !== 'new' ? 'PUT' : 'POST';
@@ -105,11 +85,11 @@ export async function saveProduct(id, formData) {
     });
 
     const data = typeof id == 'string' && containsAlphabet(id)
-        ? { ...convertedFormData, documentId: id }
+        ? { ...convertedFormData }
         : { ...convertedFormData, id };
 
     const response = (method === 'PUT')
-        ? await authApi.put(url, data)
+        ? await authApi.put(url, { data })
         : authApi.post(url, { data });
     return response;
 }

@@ -15,15 +15,15 @@ export default function EditProduct() {
         name: '',
         sku: '',
         barcode: '',
-        cost_price: '',
-        selling_price: '',
-        tax_rate: '',
-        stock_quantity: '',
-        reorder_level: '',
+        cost_price: 0,
+        selling_price: 0,
+        tax_rate: 0,
+        stock_quantity: 0,
+        reorder_level: 0,
         bundle_units: 1,
         is_active: true,
-        category: '',
-        brand: '',
+        categories: [],
+        brands: [],
         suppliers: [],
         description: ''
     });
@@ -36,6 +36,26 @@ export default function EditProduct() {
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
 
+    async function fetchAllRecords(endpoint) {
+        let allRecords = [];
+        let page = 1;
+        let totalPages = 1;
+    
+        do {
+            // Fetch current page
+            const response = await authApi.get(`${endpoint}?pagination[page]=${page}&pagination[pageSize]=100`);
+            const { data, meta } = response;
+            
+            allRecords = [...allRecords, ...data];
+            
+            // Update pagination info
+            totalPages = meta.pagination.pageCount;
+            page++;
+        } while (page <= totalPages);
+    
+        return allRecords;
+    }
+
     useEffect(() => {
         const fetchData = async () => {
             try {
@@ -43,14 +63,14 @@ export default function EditProduct() {
 
                 // Fetch categories, brands, and suppliers
                 const [categoriesRes, brandsRes, suppliersRes] = await Promise.all([
-                    authApi.get('/categories'),
-                    authApi.get('/brands'),
-                    authApi.get('/suppliers')
+                    fetchAllRecords('/categories'),
+                    fetchAllRecords('/brands'),
+                    fetchAllRecords('/suppliers')
                 ]);
 
-                setCategories(categoriesRes.data || []);
-                setBrands(brandsRes.data || []);
-                setSuppliers(suppliersRes.data || []);
+                setCategories(categoriesRes || []);
+                setBrands(brandsRes || []);
+                setSuppliers(suppliersRes || []);
 
                 // If editing existing product, fetch product data
                 if (id && id !== 'new') {
@@ -58,8 +78,8 @@ export default function EditProduct() {
                     setFormData(prev => ({
                         ...prev,
                         ...productData,
-                        category: productData.category?.id || productData.category || '',
-                        brand: productData.brand?.id || productData.brand || '',
+                        categories: productData.categories[0]?.id || productData.categories || '',
+                        brands: productData.brands[0]?.id || productData.brands || '',
                         suppliers: productData.suppliers || []
                     }));
                 }
@@ -100,7 +120,14 @@ export default function EditProduct() {
         setSuccess('');
 
         try {
-            const response = await saveProduct(id, formData);
+            const productData = {
+                ...formData,
+                categories: formData.categories === "" ? [] : [parseInt(formData.categories)],
+                brands: formData.brands === "" ? [] : [parseInt(formData.brands)],
+                suppliers: formData.suppliers.length > 0 ? formData.suppliers.map(s => parseInt(s.id)) : [],
+                description: formData.description === "" ? null : formData.description
+            };
+            const response = await saveProduct(id, productData);
 
             if (response.data?.id || response.data?.documentId) {
                 setSuccess('Product saved successfully!');
@@ -365,8 +392,8 @@ export default function EditProduct() {
                                     Category
                                 </label>
                                 <select
-                                    name="category"
-                                    value={formData.category}
+                                    name="categories"
+                                    value={formData.categories}
                                     onChange={handleChange}
                                     style={{
                                         width: '100%',
@@ -391,8 +418,8 @@ export default function EditProduct() {
                                     Brand
                                 </label>
                                 <select
-                                    name="brand"
-                                    value={formData.brand}
+                                    name="brands"
+                                    value={formData.brands}
                                     onChange={handleChange}
                                     style={{
                                         width: '100%',
