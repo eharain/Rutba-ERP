@@ -90,7 +90,7 @@ export default function Products() {
                                         <TableCell>Barcode</TableCell>
                                         <TableCell>SKU</TableCell>
                                         <TableCell>Suppliers</TableCell>
-                                        <TableCell align="right">Cost Price</TableCell>
+                                        <TableCell align="right">Offer Price</TableCell>
                                         <TableCell align="right">Selling Price</TableCell>
                                         <TableCell align="right">Stock Quantity</TableCell>
                                         <TableCell>Status</TableCell>
@@ -119,7 +119,7 @@ export default function Products() {
                                                 <TableCell>{product.barcode}</TableCell>
                                                 <TableCell>{product.sku}</TableCell>
                                                 <TableCell>{product.suppliers?.map(s => s.name)}</TableCell>
-                                                <TableCell>{currency}{product.cost_price}</TableCell>
+                                                <TableCell>{currency}{product.offer_price}</TableCell>
                                                 <TableCell>{currency}{product.selling_price}</TableCell>
                                                 <TableCell>{product.stock_quantity}</TableCell>
                                                 <TableCell>{product.status}</TableCell>

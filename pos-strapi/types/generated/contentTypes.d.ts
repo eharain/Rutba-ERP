@@ -733,6 +733,7 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
       Schema.Attribute.Private;
     logo: Schema.Attribute.Media<'images' | 'files' | 'videos' | 'audios'>;
     name: Schema.Attribute.String;
+    offer_price: Schema.Attribute.Decimal;
     publishedAt: Schema.Attribute.DateTime;
     purchase_items: Schema.Attribute.Relation<
       'oneToMany',
