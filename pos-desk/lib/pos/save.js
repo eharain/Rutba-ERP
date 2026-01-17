@@ -63,7 +63,7 @@ export async function saveProduct(id, formData) {
     /**the relations like category,brand, users, term-types , terms should be added as connect and disconnect paramter */
     // List of numeric properties to convert
     const numericProps = [
-        'cost_price',
+        'offer_price',
         'selling_price',
         'tax_rate',
         'stock_quantity',

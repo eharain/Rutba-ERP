@@ -15,7 +15,7 @@ export default function EditProduct() {
         name: '',
         sku: '',
         barcode: '',
-        cost_price: 0,
+        offer_price: 0,
         selling_price: 0,
         tax_rate: 0,
         stock_quantity: 0,
@@ -347,10 +347,10 @@ export default function EditProduct() {
                                 </label>
                                 <input
                                     type="number"
-                                    name="cost_price"
+                                    name="offer_price"
                                     step="0.01"
                                     min="0"
-                                    value={formData.cost_price}
+                                    value={formData.offer_price}
                                     onChange={handleChange}
                                     style={{
                                         width: '100%',
