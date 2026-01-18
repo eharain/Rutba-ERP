@@ -89,7 +89,13 @@ export default function SalePage() {
             tax: (product.selling_price || 0) * 0.1,
             total: product.selling_price || 0
         };
-        setItems(prev => [...prev, newItem]);
+        if (items.find(item => item.id === newItem.id)) {
+            updateItem(items.findIndex(item => item.id === newItem.id), {
+                quantity: items.find(item => item.id === newItem.id).quantity + 1
+            });
+        } else {
+            setItems(prev => [...prev, newItem]);
+        }
     };
 
     const updateItem = (index, updates) => {
@@ -238,6 +244,7 @@ export default function SalePage() {
                         {/* Product Search Form */}
                         <SalesItemsForm
                             onAddItem={addItem}
+                            disabled={sale?.payment_status === 'Paid'}
                         />
 
                         {/* Items List */}
@@ -245,6 +252,7 @@ export default function SalePage() {
                             items={items}
                             onUpdateItem={updateItem}
                             onRemoveItem={removeItem}
+                            disabled={sale?.payment_status === 'Paid'}
                         />
 
                         {/* Totals Summary */}
