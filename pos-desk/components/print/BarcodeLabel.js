@@ -1,10 +1,22 @@
 // file: /pos-desk/components/print/BarcodeLabel.js
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import ProductInfo from './ProductInfo';
 import SkuDisplay from './SkuDisplay';
 import BarcodeDisplay from './BarcodeDisplay';
 
 const BarcodeLabel = ({ item, isEmpty = false }) => {
+    const [dpi, setDpi] = useState(96); // Default DPI
+    
+    useEffect(() => {
+        // Detect screen resolution and DPI for print normalization
+        if (typeof window !== 'undefined') {
+            // Get device pixel ratio (handles high-DPI displays)
+            const devicePixelRatio = window.devicePixelRatio || 1;
+            // Standard DPI calculation
+            const screenDPI = 96 * devicePixelRatio;
+            setDpi(screenDPI);
+        }
+    }, []);
     if (isEmpty) {
         return (
             <div className="barcode-label empty">
@@ -62,10 +74,40 @@ const BarcodeLabel = ({ item, isEmpty = false }) => {
                 }
                 
                 @media print {
+                    /* Force fixed dimensions for print regardless of screen resolution */
+                    @page {
+                        margin: 0;
+                        size: 2.4in 1.5in;
+                    }
+                    
                     .barcode-label {
+                        width: 2.4in !important;
+                        height: 1.5in !important;
+                        max-width: 2.4in !important;
+                        max-height: 1.5in !important;
+                        min-width: 2.4in !important;
+                        min-height: 1.5in !important;
                         border: none !important;
                         background: white !important;
                         -webkit-print-color-adjust: exact;
+                        print-color-adjust: exact;
+                        page-break-inside: avoid;
+                        break-inside: avoid;
+                        overflow: hidden;
+                        box-sizing: border-box;
+                        padding: 0.1in 0.15in;
+                        margin: 0;
+                    }
+                    
+                    .left-content {
+                        max-width: calc(2.4in - 0.75in);
+                        overflow: hidden;
+                    }
+                    
+                    .right-content {
+                        width: 0.6in !important;
+                        min-width: 0.6in !important;
+                        max-width: 0.6in !important;
                     }
                 }
                 
@@ -84,7 +126,7 @@ const BarcodeLabel = ({ item, isEmpty = false }) => {
                     status={item.status}
                     costPrice={item.selling_price}
                 />
-                <SkuDisplay sku={item.sku} />
+                <SkuDisplay sku={item.barcode || item.sku} />
             </div>
 
             {/* RIGHT SIDE: The QR Code */}

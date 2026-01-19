@@ -36,25 +36,37 @@ const LabelSheet = ({ items, sheetIndex, totalSheets, title, totalItems }) => {
                 
                 @media print {
                     @page {
-                        margin: 0.5in;
-                        size: 30mm 60mm portrait;
+                        margin: 0;
+                        size: 2.4in 1.5in;
                     }
                     
                     .label-sheet {
                         margin: 0;
-                        padding: 0.5in;
-                        height: 30mm;
-                        min-height: 30mm;
+                        padding: 0;
+                        width: 2.4in !important;
+                        height: 1.5in !important;
+                        max-width: 2.4in !important;
+                        max-height: 1.5in !important;
+                        min-width: 2.4in !important;
+                        min-height: 1.5in !important;
                         border: none !important;
                         page-break-after: always;
+                        box-sizing: border-box;
+                        overflow: hidden;
                     }
                     
                     .labels-grid {
-                        grid-template-columns: repeat(1, 1fr);
-                        grid-template-rows: repeat(1, 1fr);
-                        gap: 0.15in;
-                        page-break-after: always;
+                        width: 100% !important;
+                        height: 100% !important;
+                        grid-template-columns: 1fr !important;
+                        grid-template-rows: 1fr !important;
+                        gap: 0;
+                        margin: 0;
+                        padding: 0;
+                        page-break-inside: avoid;
+                        break-inside: avoid;
                     }
+                    
                     .sheet-header {
                         display: none !important;
                     }
