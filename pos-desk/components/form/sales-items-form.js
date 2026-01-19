@@ -1,12 +1,22 @@
 import { useState, useEffect } from 'react';
 import { searchStockItems } from '../../lib/pos';
 import { useUtil } from '../../context/UtilContext';
-export default function SalesItemsForm({ onAddItem }) {
+export default function SalesItemsForm({ onAddItem, disabled = false }) {
     const [productSearch, setProductSearch] = useState('');
     const [searchResults, setSearchResults] = useState([]);
     const [showResults, setShowResults] = useState(false);
     const [loading, setLoading] = useState(false);
     const { currency } = useUtil();
+
+    function uniqueStockeItemsByProduct(list){
+        return list.reduce((acc, item) => {
+            if (!acc.find(i => i.product.id === item.product.id)) {
+                acc.push(item);
+            }
+            return acc;
+        }, []);
+    }
+
     // Product search with debounce
     useEffect(() => {
         const delayDebounceFn = setTimeout(() => {
@@ -25,7 +35,9 @@ export default function SalesItemsForm({ onAddItem }) {
         setLoading(true);
         try {
             const productResult = await searchStockItems(searchText, 0, 100, 'InStock');
-            setSearchResults(productResult.data);
+            
+            const uniqueStockItems = uniqueStockeItemsByProduct(productResult.data);
+            setSearchResults(uniqueStockItems);
             setShowResults(true);
         } catch (error) {
             console.error('Error searching products:', error);
@@ -52,21 +64,25 @@ export default function SalesItemsForm({ onAddItem }) {
     };
 
     return (
-        <div style={{ marginBottom: '20px', position: 'relative' }}>
+        <div style={{ marginBottom: '20px', position: 'relative', opacity: disabled ? 0.5 : 1 }}>
             <input
                 type="text"
                 value={productSearch}
-                onChange={(e) => setProductSearch(e.target.value)}
+                onChange={(e) => !disabled && setProductSearch(e.target.value)}
                 onKeyPress={handleKeyPress}
-                placeholder="Scan barcode or search product..."
+                placeholder={disabled ? "Sale is completed - cannot add items" : "Scan barcode or search product..."}
+                disabled={disabled}
                 style={{
                     width: '100%',
                     padding: '12px',
                     fontSize: '16px',
                     border: '2px solid #007bff',
-                    borderRadius: '4px'
+                    borderRadius: '4px',
+                    backgroundColor: disabled ? '#f5f5f5' : 'white',
+                    color: disabled ? '#666' : 'black',
+                    cursor: disabled ? 'not-allowed' : 'text'
                 }}
-                autoFocus
+                autoFocus={!disabled}
             />
 
             {loading && (
@@ -97,31 +113,31 @@ export default function SalesItemsForm({ onAddItem }) {
                     zIndex: 1000,
                     boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
                 }}>
-                    {searchResults.map(product => (
+                    {searchResults.map(stockItem => (
                         <div
-                            key={product.id}
-                            onClick={() => handleProductSelect(product)}
+                            key={stockItem.id}
+                            onClick={() => !disabled && handleProductSelect(stockItem)}
                             style={{
                                 padding: '12px',
-                                cursor: 'pointer',
+                                cursor: disabled ? 'not-allowed' : 'pointer',
                                 borderBottom: '1px solid #eee',
                                 display: 'flex',
                                 justifyContent: 'space-between',
                                 alignItems: 'center'
                             }}
-                            onMouseEnter={(e) => e.target.style.background = '#f5f5f5'}
-                            onMouseLeave={(e) => e.target.style.background = 'grey'}
+                            onMouseEnter={(e) => !disabled && (e.target.style.background = '#f5f5f5')}
+                            onMouseLeave={(e) => !disabled && (e.target.style.background = 'black')}
                         >
                             <div>
-                                <strong>{product.product.name}</strong>
-                                {product.barcode && (
+                                <strong>{stockItem.product.name}</strong>
+                                {stockItem.barcode && (
                                     <span style={{ color: '#666', marginLeft: '10px' }}>
-                                        ({product.barcode})
+                                        ({stockItem.barcode})
                                     </span>
                                 )}
                             </div>
-                            <div style={{ fontWeight: 'bold', color: 'black' }}>
-                                {currency}{product.selling_price || 0}
+                            <div style={{ fontWeight: 'bold', color: disabled ? '#666' : 'black' }}>
+                                {currency}{stockItem.selling_price || 0}
                             </div>
                         </div>
                     ))}

@@ -1,7 +1,7 @@
 import { Table, TableHead, TableBody, TableRow, TableCell } from '../Table';
 import { useUtil } from '../../context/UtilContext';
 
-export default function SalesItemsList({ items, onUpdateItem, onRemoveItem }) {
+export default function SalesItemsList({ items, onUpdateItem, onRemoveItem, disabled = false }) {
     const { currency } = useUtil();
     const calculateItemDetails = (item) => {
         const subtotal = item.price * item.quantity;
@@ -57,7 +57,7 @@ export default function SalesItemsList({ items, onUpdateItem, onRemoveItem }) {
     };
 
     return (
-        <div>
+        <div style={{ opacity: disabled ? 0.5 : 1, pointerEvents: disabled ? 'none' : 'auto' }}>
             <Table>
                 <TableHead>
                     <TableRow>
@@ -93,15 +93,17 @@ export default function SalesItemsList({ items, onUpdateItem, onRemoveItem }) {
                                 <TableCell align="center">
                                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
                                         <button
-                                            onClick={() => handleQuantityQuickUpdate(index, -1)}
+                                            onClick={() => !disabled && handleQuantityQuickUpdate(index, -1)}
+                                            disabled={disabled}
                                             style={{
                                                 padding: '4px 8px',
-                                                background: '#dc3545',
+                                                background: disabled ? '#ccc' : '#dc3545',
                                                 color: 'lightgrey',
                                                 border: 'none',
                                                 borderRadius: '4px',
-                                                cursor: 'pointer',
-                                                fontSize: '12px'
+                                                cursor: disabled ? 'not-allowed' : 'pointer',
+                                                fontSize: '12px',
+                                                opacity: disabled ? 0.6 : 1
                                             }}
                                         >
                                             -
@@ -110,26 +112,30 @@ export default function SalesItemsList({ items, onUpdateItem, onRemoveItem }) {
                                             type="number"
                                             min="1"
                                             value={item.quantity}
-                                            onChange={(e) => handleQuantityChange(index, parseInt(e.target.value) || 1)}
+                                            onChange={(e) => !disabled && handleQuantityChange(index, parseInt(e.target.value) || 1)}
+                                            disabled={disabled}
                                             style={{
                                                 width: '60px',
                                                 padding: '6px',
                                                 border: '1px solid #ccc',
                                                 borderRadius: '4px',
                                                 textAlign: 'center',
-                                                fontSize: '14px'
+                                                fontSize: '14px',
+                                                cursor: disabled ? 'not-allowed' : 'text'
                                             }}
                                         />
                                         <button
-                                            onClick={() => handleQuantityQuickUpdate(index, 1)}
+                                            onClick={() => !disabled && handleQuantityQuickUpdate(index, 1)}
+                                            disabled={disabled}
                                             style={{
                                                 padding: '4px 8px',
-                                                background: '#28a745',
+                                                background: disabled ? '#ccc' : '#28a745',
                                                 color: 'lightgrey',
                                                 border: 'none',
                                                 borderRadius: '4px',
-                                                cursor: 'pointer',
-                                                fontSize: '12px'
+                                                cursor: disabled ? 'not-allowed' : 'pointer',
+                                                fontSize: '12px',
+                                                opacity: disabled ? 0.6 : 1
                                             }}
                                         >
                                             +
@@ -144,14 +150,16 @@ export default function SalesItemsList({ items, onUpdateItem, onRemoveItem }) {
                                         min="0"
                                         step="0.01"
                                         value={item.price}
-                                        onChange={(e) => handlePriceChange(index, parseFloat(e.target.value) || 0)}
+                                        onChange={(e) => !disabled && handlePriceChange(index, parseFloat(e.target.value) || 0)}
+                                        disabled={disabled}
                                         style={{
                                             width: '80px',
                                             padding: '6px',
                                             border: '1px solid #ccc',
                                             borderRadius: '4px',
                                             textAlign: 'center',
-                                            fontSize: '14px'
+                                            fontSize: '14px',
+                                            cursor: disabled ? 'not-allowed' : 'text'
                                         }}
                                     />
                                 </TableCell>
@@ -160,15 +168,16 @@ export default function SalesItemsList({ items, onUpdateItem, onRemoveItem }) {
                                 <TableCell align="center">
                                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
                                         <button
-                                            onClick={() => handleDiscountQuickUpdate(index, -5)}
+                                            onClick={() => !disabled && handleDiscountQuickUpdate(index, -5)}
+                                            disabled={disabled}
                                             style={{
                                                 padding: '4px 8px',
-                                                background: '#6c757d',
                                                 color: 'lightgrey',
                                                 border: 'none',
                                                 borderRadius: '4px',
-                                                cursor: 'pointer',
-                                                fontSize: '12px'
+                                                cursor: disabled ? 'not-allowed' : 'pointer',
+                                                fontSize: '12px',
+                                                opacity: disabled ? 0.6 : 1
                                             }}
                                         >
                                             -5%
@@ -179,26 +188,29 @@ export default function SalesItemsList({ items, onUpdateItem, onRemoveItem }) {
                                             max="100"
                                             step="1"
                                             value={item.discount || 0}
-                                            onChange={(e) => handleDiscountChange(index, parseFloat(e.target.value) || 0)}
+                                            onChange={(e) => !disabled && handleDiscountChange(index, parseFloat(e.target.value) || 0)}
+                                            disabled={disabled}
                                             style={{
                                                 width: '60px',
                                                 padding: '6px',
                                                 border: '1px solid #ccc',
                                                 borderRadius: '4px',
                                                 textAlign: 'center',
-                                                fontSize: '14px'
+                                                fontSize: '14px',
+                                                cursor: disabled ? 'not-allowed' : 'text'
                                             }}
                                         />
                                         <button
-                                            onClick={() => handleDiscountQuickUpdate(index, 5)}
+                                            onClick={() => !disabled && handleDiscountQuickUpdate(index, 5)}
+                                            disabled={disabled}
                                             style={{
                                                 padding: '4px 8px',
-                                                background: '#6c757d',
                                                 color: 'lightgrey',
                                                 border: 'none',
                                                 borderRadius: '4px',
-                                                cursor: 'pointer',
-                                                fontSize: '12px'
+                                                cursor: disabled ? 'not-allowed' : 'pointer',
+                                                fontSize: '12px',
+                                                opacity: disabled ? 0.6 : 1
                                             }}
                                         >
                                             +5%
@@ -226,15 +238,17 @@ export default function SalesItemsList({ items, onUpdateItem, onRemoveItem }) {
                                 {/* Actions Column */}
                                 <TableCell align="center">
                                     <button
-                                        onClick={() => onRemoveItem(index)}
+                                        onClick={() => !disabled && onRemoveItem(index)}
+                                        disabled={disabled}
                                         style={{
                                             padding: '6px 12px',
-                                            background: '#dc3545',
+                                            background: disabled ? '#ccc' : '#dc3545',
                                             color: 'lightgrey',
                                             border: 'none',
                                             borderRadius: '4px',
-                                            cursor: 'pointer',
-                                            fontSize: '12px'
+                                            cursor: disabled ? 'not-allowed' : 'pointer',
+                                            fontSize: '12px',
+                                            opacity: disabled ? 0.6 : 1
                                         }}
                                     >
                                         Remove
