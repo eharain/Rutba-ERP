@@ -456,7 +456,7 @@ export default function StockItemsPage() {
                                                 )}
                                             </TableCell>
                                             <TableCell>
-                                                {item.purchase_item?.purchase?.purchase_no || 'N/A'}
+                                                {item.purchase_item?.purchase?.orderId || 'N/A'}
                                             </TableCell>
                                             <TableCell>
                                                 {item.product?.name || 'N/A'}

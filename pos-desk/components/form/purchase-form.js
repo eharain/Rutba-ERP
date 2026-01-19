@@ -6,7 +6,7 @@ import { useUtil } from '../../context/UtilContext';
 const PurchaseForm = ({ purchase, onSubmit, onCancel }) => {
     const { generateNextPONumber, branch, user } = useUtil();
     const [formData, setFormData] = useState({
-        purchase_no: '',
+        orderId: '',
         order_date: new Date().toISOString().split('T')[0],
         suppliers: [],
         status: 'Draft',
@@ -18,7 +18,7 @@ const PurchaseForm = ({ purchase, onSubmit, onCancel }) => {
     useEffect(() => {
         if (purchase) {
             setFormData({
-                purchase_no: purchase.purchase_no || '',
+                orderId: purchase.orderId || '',
                 order_date: purchase.order_date?.split('T')[0] || new Date().toISOString().split('T')[0],
                 suppliers: purchase.suppliers || [],
                 status: purchase.status || 'Draft',
@@ -27,7 +27,7 @@ const PurchaseForm = ({ purchase, onSubmit, onCancel }) => {
         } else {
             setFormData(prev => ({
                 ...prev,
-                purchase_no: generateNextPONumber()
+                orderId: generateNextPONumber()
             }));
         }
         loadSuppliers();
@@ -90,8 +90,8 @@ const PurchaseForm = ({ purchase, onSubmit, onCancel }) => {
                     <label>Purchase Number:</label>
                     <input
                         type="text"
-                        name="purchase_no"
-                        value={formData.purchase_no}
+                        name="orderId"
+                        value={formData.orderId}
                         onChange={handleInputChange}
                         required
                         style={{ width: '100%', padding: '8px' }}

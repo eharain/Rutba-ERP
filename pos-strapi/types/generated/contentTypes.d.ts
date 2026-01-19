@@ -925,8 +925,8 @@ export interface ApiPurchasePurchase extends Struct.CollectionTypeSchema {
       Schema.Attribute.Private;
     order_date: Schema.Attribute.DateTime;
     order_recieved_date: Schema.Attribute.DateTime;
+    orderId: Schema.Attribute.String & Schema.Attribute.Required;
     publishedAt: Schema.Attribute.DateTime;
-    purchase_no: Schema.Attribute.String & Schema.Attribute.Required;
     receipts: Schema.Attribute.Media<
       'files' | 'images' | 'videos' | 'audios',
       true
@@ -1146,6 +1146,7 @@ export interface ApiStockInputStockInput extends Struct.CollectionTypeSchema {
     > &
       Schema.Attribute.Private;
     offerPrice: Schema.Attribute.Decimal;
+    orderId: Schema.Attribute.String;
     process: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     processed: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     processedAt: Schema.Attribute.DateTime;
@@ -1158,7 +1159,6 @@ export interface ApiStockInputStockInput extends Struct.CollectionTypeSchema {
       'manyToOne',
       'api::purchase-item.purchase-item'
     >;
-    purchaseOrderNumber: Schema.Attribute.String;
     quantity: Schema.Attribute.Integer & Schema.Attribute.Required;
     sellingPrice: Schema.Attribute.Decimal;
     stockItems: Schema.Attribute.Relation<

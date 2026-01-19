@@ -13,7 +13,7 @@ export default function PurchaseHeader({ purchase, totals }) {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
                     <h1 style={{ margin: '0 0 10px 0', color: '#333' }}>
-                        Purchase Order: {purchase.purchase_no}
+                        Purchase Order: {purchase.orderId}
                     </h1>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
                         <div>

@@ -206,7 +206,7 @@ export default function PurchasePage() {
                         </button>
                     </div>
 
-                    <h1>Purchase #{purchase.purchase_no || purchase.documentId}</h1>
+                    <h1>Purchase #{purchase.orderId || purchase.documentId}</h1>
 
                     {/* Purchase Header Info */}
                     <div style={{
@@ -220,7 +220,7 @@ export default function PurchasePage() {
                     }}>
                         <div><strong>Supplier:</strong> {purchase.supplier?.name || "N/A"}</div>
                         <div><strong>Date:</strong> {purchase.order_date ? new Date(purchase.order_date).toLocaleDateString() : 'N/A'}</div>
-                        <div><strong>Invoice:</strong> {purchase.purchase_no || "N/A"}</div>
+                        <div><strong>Invoice:</strong> {purchase.orderId || "N/A"}</div>
                         <div>
                             <strong>Status:</strong>
                             <select

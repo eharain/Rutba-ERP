@@ -38,7 +38,7 @@
       "type": "decimal"
     },
 
-    "purchaseOrderNumber": {
+    "orderId": {
       "type": "string"
     },
 

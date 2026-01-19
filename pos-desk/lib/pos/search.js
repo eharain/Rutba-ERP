@@ -55,7 +55,7 @@ export async function featchSearch(searchTerm, page, rowsPerPage) {
             return {
                 entity: res.entity,
                 name: r.name ?? r?.product?.name,
-                code: r.purchase_no ?? r.invoice_no,
+                code: r.orderId ?? r.invoice_no,
                 barcode: r.barcode,
                 sku: r.sku,
                 id: r.id,

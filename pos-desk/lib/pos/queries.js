@@ -30,7 +30,7 @@ export const buildQueries = (searchText, page = 1, rowsPerPage = 5, statusFilter
             search_filters: {
                 $or: [
                     { suppliers: { $or: [{ name: { $containsi: searchText } }, { phone: { $containsi: searchText } }] } },
-                    { purchase_no: { $eq: searchText } },
+                    { orderId: { $eq: searchText } },
                 ]
             },
             query: {
@@ -71,7 +71,7 @@ export const buildQueries = (searchText, page = 1, rowsPerPage = 5, statusFilter
                     { barcode: { $containsi: searchText } },
                     { sku: { $containsi: searchText } },
                     { product: {name: { $containsi: searchText } }},
-                    { purchase_item: { purchase: { purchase_no: { $containsi: searchText } } } }
+                    { purchase_item: { purchase: { orderId: { $containsi: searchText } } } }
                 ],
                 status: statusFilter
             },

@@ -91,7 +91,7 @@ const PurchaseReceive = ({ purchase, onComplete }) => {
 
     return (
         <div style={{ padding: '20px' }}>
-            <h2>Receive Purchase: {purchase.purchase_no}</h2>
+            <h2>Receive Purchase: {purchase.orderId}</h2>
 
             <div style={{ marginBottom: '20px' }}>
                 <label>Receiving Date: </label>

@@ -61,7 +61,7 @@ export default function PurchasesPage() {
 
 
     function getStatusAction(purchase) {
-        const identifier = purchase.documentId || purchase.id || purchase.purchase_no;
+        const identifier = purchase.documentId || purchase.id || purchase.orderId;
 
         if(['Submitted','Partially Received'].includes(purchase.status)){
             return {action:'Receive' ,url:`/${identifier}/receive`,identifier}
@@ -79,7 +79,7 @@ export default function PurchasesPage() {
 
 
     const handleEdit = (purchase) => {
-        // Navigate to individual purchase edit page using documentId, id, or purchase_no
+        // Navigate to individual purchase edit page using documentId, id, or orderId
         
 
         const sa = getStatusAction(purchase)
@@ -156,11 +156,11 @@ export default function PurchasesPage() {
                                     purchases.map((purchase) => (
                                         <TableRow key={purchase.id}>
                                             <TableCell>
-                                                <strong>{purchase.purchase_no}</strong>
+                                                <strong>{purchase.orderId}</strong>
                                             </TableCell>
                                             <TableCell>{purchase.order_date ? new Date(purchase.order_date).toLocaleDateString() : 'N/A'}</TableCell>
                                             <TableCell>{purchase?.suppliers?.map(s => s.name)}</TableCell>
-                                            <TableCell>{purchase.purchase_no}</TableCell>
+                                            <TableCell>{purchase.orderId}</TableCell>
                                             <TableCell align="right">
                                                 {currency}{parseFloat(purchase.total || 0).toFixed(2)}
                                             </TableCell>
