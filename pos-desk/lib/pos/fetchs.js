@@ -19,7 +19,7 @@ export async function fetchReturns(page, rowsPerPage = 100) {
 
 // Fetch purchases for reports
 export async function fetchPurchases( page, rowsPerPage = 100) {
-    return await authApi.fetch("/purchases", { sort: ['createdAt:desc'], pagination: { page, pageSize: rowsPerPage } });
+    return await authApi.fetch("/purchases", { sort: ['createdAt:desc'], pagination: { page, pageSize: rowsPerPage }, populate: { suppliers: true } });
 }
 
 //fetchCategories 

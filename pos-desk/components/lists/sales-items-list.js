@@ -1,5 +1,6 @@
 import { Table, TableHead, TableBody, TableRow, TableCell } from '../Table';
 import { useUtil } from '../../context/UtilContext';
+import { calculateTax } from '../../lib/utils';
 
 export default function SalesItemsList({ items, onUpdateItem, onRemoveItem, disabled = false }) {
     const { currency } = useUtil();
@@ -7,7 +8,7 @@ export default function SalesItemsList({ items, onUpdateItem, onRemoveItem, disa
         const subtotal = item.price * item.quantity;
         const discountAmount = subtotal * ((item.discount || 0) / 100);
         const taxableAmount = subtotal - discountAmount;
-        const taxAmount = taxableAmount * 0.1; // 10% tax
+        const taxAmount = calculateTax(taxableAmount); // 10% tax
         const total = taxableAmount + taxAmount;
 
         return {
@@ -34,7 +35,11 @@ export default function SalesItemsList({ items, onUpdateItem, onRemoveItem, disa
     };
 
     const handleDiscountChange = (index, discount) => {
+        const item = items[index];
         const newDiscount = Math.max(0, Math.min(100, discount)); // Limit between 0-100%
+        if (item.price - (item.price * (newDiscount / 100)) < item.cost_price) {
+            return;
+        }
         onUpdateItem(index, {
             discount: newDiscount
         });
@@ -51,8 +56,25 @@ export default function SalesItemsList({ items, onUpdateItem, onRemoveItem, disa
     const handleDiscountQuickUpdate = (index, change) => {
         const item = items[index];
         const newDiscount = Math.max(0, Math.min(100, (item.discount || 0) + change));
+        if (item.price - (item.price * (newDiscount / 100)) < item.cost_price) {
+            return;
+        }
         onUpdateItem(index, {
             discount: newDiscount
+        });
+    };
+
+    const handleUseOfferPrice = (index) => {
+        const item = items[index];
+        onUpdateItem(index, {
+            price: item.offer_price
+        });
+    };
+
+    const handleUseSellingPrice = (index) => {
+        const item = items[index];
+        onUpdateItem(index, {
+            price: item.selling_price
         });
     };
 
@@ -253,6 +275,8 @@ export default function SalesItemsList({ items, onUpdateItem, onRemoveItem, disa
                                     >
                                         Remove
                                     </button>
+                                    <button onClick={() => !disabled && handleUseOfferPrice(index)} disabled={disabled} hidden={item.price === item.offer_price} title="Use offer price" style={{ marginLeft: '4px', padding: '6px 12px', background: disabled ? '#ccc' : '#007bff', color: 'lightgrey', border: 'none', borderRadius: '4px', cursor: disabled ? 'not-allowed' : 'pointer', fontSize: '12px', opacity: disabled ? 0.6 : 1 }}><i className="fas fa-arrow-down"></i></button>
+                                    <button onClick={() => !disabled && handleUseSellingPrice(index)} disabled={disabled} hidden={item.price === item.selling_price} title="Use selling price" style={{ marginLeft: '4px', padding: '6px 12px', background: disabled ? '#ccc' : '#007bff', color: 'lightgrey', border: 'none', borderRadius: '4px', cursor: disabled ? 'not-allowed' : 'pointer', fontSize: '12px', opacity: disabled ? 0.6 : 1 }}><i className="fas fa-arrow-up"></i></button>
                                 </TableCell>
                             </TableRow>
                         );

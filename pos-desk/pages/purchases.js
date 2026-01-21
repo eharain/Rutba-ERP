@@ -159,7 +159,7 @@ export default function PurchasesPage() {
                                                 <strong>{purchase.orderId}</strong>
                                             </TableCell>
                                             <TableCell>{purchase.order_date ? new Date(purchase.order_date).toLocaleDateString() : 'N/A'}</TableCell>
-                                            <TableCell>{purchase?.suppliers?.map(s => s.name)}</TableCell>
+                                            <TableCell>{purchase?.suppliers?.map(s => s.name).join(', ')}</TableCell>
                                             <TableCell>{purchase.orderId}</TableCell>
                                             <TableCell align="right">
                                                 {currency}{parseFloat(purchase.total || 0).toFixed(2)}
