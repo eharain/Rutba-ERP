@@ -54,6 +54,10 @@ export function generateNextPONumber() {
         );
 }
 
+// TODO: Make this configurable
+export function calculateTax(amount) {
+    return amount * 0.0;
+}
 
 export function generateNextInvoiceNumber() {
 

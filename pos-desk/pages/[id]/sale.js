@@ -9,6 +9,7 @@ import SalesItemsForm from '../../components/form/sales-items-form';
 import SalesItemsList from '../../components/lists/sales-items-list';
 import { useUtil } from '../../context/UtilContext';
 import CheckoutModal from '../../components/CheckoutModal';
+import { calculateTax } from '../../lib/utils';
 
 export default function SalePage() {
     const router = useRouter();
@@ -56,7 +57,7 @@ export default function SalePage() {
         const subtotal = item.price * item.quantity;
         const discountAmount = subtotal * ((item.discount || 0) / 100);
         const taxableAmount = subtotal - discountAmount;
-        const taxAmount = taxableAmount * 0.1; // 10% tax
+        const taxAmount = calculateTax(taxableAmount); // 10% tax
         return taxableAmount + taxAmount;
     };
 
@@ -67,7 +68,7 @@ export default function SalePage() {
             return sum + (itemSubtotal * ((item.discount || 0) / 100));
         }, 0);
         const taxableAmount = subtotal - totalDiscount;
-        const tax = taxableAmount * 0.1; // 10% tax
+        const tax = calculateTax(taxableAmount); // 10% tax
         const total = taxableAmount + tax;
 
         setTotals({
@@ -86,8 +87,11 @@ export default function SalePage() {
             quantity: 1,
             price: product.selling_price || 0,
             discount: 0, // Default 0% discount
-            tax: (product.selling_price || 0) * 0.1,
-            total: product.selling_price || 0
+            tax: calculateTax(product.selling_price || 0),
+            total: product.selling_price || 0,
+            offer_price: product.offer_price || 0,
+            selling_price: product.selling_price || 0,
+            cost_price: product.cost_price || 0
         };
         if (items.find(item => item.id === newItem.id)) {
             updateItem(items.findIndex(item => item.id === newItem.id), {
@@ -103,7 +107,7 @@ export default function SalePage() {
             if (i === index) {
                 const updatedItem = { ...item, ...updates };
                 // Recalculate total when price, quantity, or discount changes
-                if (updates.price !== undefined || updates.quantity !== undefined || updates.discount !== undefined) {
+                if (updates.price !== undefined || updates.quantity !== undefined || updates.discount !== undefined || updates.offer_price !== undefined) {
                     updatedItem.total = calculateItemTotal(updatedItem);
                 }
                 return updatedItem;
