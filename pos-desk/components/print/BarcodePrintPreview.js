@@ -16,10 +16,8 @@ const BarcodePrintPreview = ({ items, title, onClose }) => {
     };
 
     React.useEffect(() => {
-        // Auto-print when component mounts
         const timer = setTimeout(() => {
             window.print();
-            // Close window after a delay if this is a popup
             if (window.opener) {
                 setTimeout(() => window.close(), 1000);
             }
@@ -30,58 +28,30 @@ const BarcodePrintPreview = ({ items, title, onClose }) => {
 
     return (
         <div>
-            <style jsx global>{`
-                @media screen {
-                    .no-print {
-                        display: block;
-                    }
-                }
-                @media print {
-                    .no-print {
-                        display: none;
-                    }
-                }
-                body {
-                    margin: 0;
-                    padding: 20px;
-                }
-            `}</style>
-
             {/* Controls that don't print */}
-            <div className="no-print" style={{
-                position: 'fixed',
-                top: '10px',
-                right: '10px',
-                background: 'grey',
-                padding: '10px',
-                border: '1px solid #ccc',
-                borderRadius: '4px',
-                zIndex: 1000
-            }}>
+            <div
+                className="d-print-none position-fixed"
+                style={{
+                    top: '10px',
+                    right: '10px',
+                    background: 'grey',
+                    padding: '10px',
+                    border: '1px solid #ccc',
+                    borderRadius: '4px',
+                    zIndex: 1000,
+                    display: 'flex',
+                    gap: '8px'
+                }}
+            >
                 <button
                     onClick={handlePrint}
-                    style={{
-                        marginRight: '10px',
-                        padding: '8px 16px',
-                        background: '#007bff',
-                        color: 'grey',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: 'pointer'
-                    }}
+                    className="btn btn-primary"
                 >
                     Print
                 </button>
                 <button
                     onClick={handleClose}
-                    style={{
-                        padding: '8px 16px',
-                        background: '#6c757d',
-                        color: 'grey',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: 'pointer'
-                    }}
+                    className="btn btn-secondary"
                 >
                     Close
                 </button>

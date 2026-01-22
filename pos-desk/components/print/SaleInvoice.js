@@ -5,7 +5,6 @@ import BarcodeDisplay from './BarcodeDisplay';
 const SaleInvoice = ({ sale, items, totals }) => {
     const { currency, branch, user } = useUtil();
     
-    // --- Safe Data Handling ---
     const companyName = branch?.companyName || branch?.name || 'Company Name';
     const branchName = branch?.name || 'Branch Name';
     const userName = user?.username || user?.email || 'User';
@@ -26,21 +25,18 @@ const SaleInvoice = ({ sale, items, totals }) => {
     const remaining = Math.max(0, safeTotals.total - paid);
 
     return (
-        <div className="sale-invoice-container">
+        <div className="sale-invoice-container" style={{ fontFamily: "'Courier New', monospace", width: '80mm', margin: '20px auto', padding: '10px', textAlign: 'center' }}>
             <style jsx global>{`
-                /* --- PRINTING STRATEGY --- */
+                /* keep essential print isolation behavior */
                 @media print {
-                    /* 1. Hide everything on the page */
                     body * {
                         visibility: hidden;
                     }
 
-                    /* 2. Make only the invoice container visible */
                     .sale-invoice-container, .sale-invoice-container * {
                         visibility: visible;
                     }
 
-                    /* 3. Position the invoice at the very top left of the paper */
                     .sale-invoice-container {
                         position: absolute;
                         left: 0;
@@ -48,10 +44,9 @@ const SaleInvoice = ({ sale, items, totals }) => {
                         width: 100%;
                         margin: 0;
                         padding: 0;
-                        background: white !important; /* Ensure background is white */
+                        background: white !important;
                     }
 
-                    /* 4. Remove default browser margins */
                     @page {
                         margin: 0;
                         size: auto;
@@ -59,151 +54,9 @@ const SaleInvoice = ({ sale, items, totals }) => {
                 }
             `}</style>
 
-            <style jsx>{`
-                /* --- SCREEN STYLES (Black Receipt) --- */
-                .sale-invoice-container {
-                    font-family: 'Courier New', monospace;
-                    font-weight: bold !important;
-                    background: black;
-                    color: white;
-                    width: 80mm; /* Screen width */
-                    margin: 20px auto;
-                    padding: 10px;
-                    text-align: center;
-                    box-shadow: 0 0 10px rgba(0,0,0,0.5);
-                }
-
-                /* --- SPECIFIC PRINT STYLES (Overrides Screen) --- */
-                @media print {
-                    .sale-invoice-container {
-                        width: 72mm !important; /* Thermal Paper Width */
-                        background: white !important;
-                        color: black !important;
-                        box-shadow: none !important;
-                        border: none !important;
-                        overflow: visible !important;
-                    }
-                    
-                    /* Force all text to be black for thermal printing */
-                    div, span, p, td, th, h1, h2, h3 {
-                        color: black !important;
-                        text-shadow: none !important;
-                    }
-
-                    /* Add borders for clarity on paper */
-                    .invoice-header, .totals-section, .items-table th {
-                        border-bottom: 1px solid black !important;
-                    }
-                }
-
-                /* --- GENERAL LAYOUT --- */
-                .invoice-header {
-                    margin-bottom: 10px;
-                    padding-bottom: 5px;
-                    border-bottom: 1px dashed #555;
-                }
-
-                .company-name { font-size: 16px; font-weight: bold; text-transform: uppercase; }
-                .invoice-meta { font-size: 10px; margin-top: 5px; line-height: 1.4; }
-
-                /* TABLE */
-                .items-table {
-                    width: 100%;
-                    border-collapse: collapse;
-                    font-size: 10px;
-                    margin-bottom: 10px;
-                }
-                
-                .items-table th { text-align: left; padding: 2px 0; }
-                .items-table td { padding: 2px 0; vertical-align: top; }
-                
-                /* Column Widths */
-                .col-qty { width: 15%; text-align: center; }
-                .col-item { width: 60%; text-align: left; }
-                .col-price { width: 25%; text-align: right; }
-
-                /* TOTALS */
-                .totals-section {
-                    border-top: 1px dashed #555;
-                    padding-top: 5px;
-                    font-size: 11px;
-                }
-
-                .totals-table {
-                    width: 100%;
-                    border-collapse: collapse;
-                    font-size: 11px;
-                }
-                
-                .totals-table td {
-                    padding: 2px 0;
-                    vertical-align: top;
-                }
-                
-                .totals-table td:first-child {
-                    text-align: left;
-                    width: 50%;
-                }
-                
-                .totals-table td:last-child {
-                    text-align: right;
-                    width: 50%;
-                }
-                
-                .total-row {
-                    font-weight: bold;
-                    font-size: 14px;
-                    border-top: 1px solid #555;
-                    padding-top: 5px;
-                    margin-top: 5px;
-                }
-
-                .invoice-footer {
-                    margin-top: 15px;
-                    font-size: 10px;
-                    text-align: center;
-                }
-                
-                .invoice-number-section {
-                    margin-bottom: 10px;
-                    text-align: center;
-                }
-                
-                .invoice-number-text {
-                    font-size: 10px;
-                    margin-bottom: 5px;
-                }
-                
-                .barcode-container {
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    margin: 5px 0;
-                }
-                
-                .barcode-container :global(svg) {
-                    width: 80px !important;
-                    height: 80px !important;
-                }
-                
-                @media print {
-                    .barcode-container :global(svg) {
-                        width: 80px !important;
-                        height: 80px !important;
-                    }
-                }
-
-                .footer {
-                    margin-top: 10px;
-                    font-size: 10px;
-                    text-align: center;
-                }
-            `}</style>
-
-            {/* --- INVOICE CONTENT --- */}
-            <div className="invoice-header">
-                <div className="company-name">{companyName}</div>
-                <div className="invoice-meta">
+            <div className="invoice-header mb-2 pb-1" style={{ borderBottom: '1px dashed #555' }}>
+                <div className="company-name fs-5 fw-bold text-uppercase">{companyName}</div>
+                <div className="invoice-meta small mt-1" style={{ lineHeight: 1.4 }}>
                     {branchName}<br/>
                     {website && <>{website}<br/></>}
                     {saleDate}<br/>
@@ -211,22 +64,22 @@ const SaleInvoice = ({ sale, items, totals }) => {
                 </div>
             </div>
 
-            <table className="items-table">
+            <table className="items-table w-100 table-borderless" style={{ fontSize: '10px', marginBottom: '10px' }}>
                 <thead>
                     <tr>
-                        <th className="col-qty">Qty</th>
-                        <th className="col-item">Item</th>
-                        <th className="col-price">Amt</th>
+                        <th className="col-qty text-center" style={{ width: '15%' }}>Qty</th>
+                        <th className="col-item text-start" style={{ width: '60%' }}>Item</th>
+                        <th className="col-price text-end" style={{ width: '25%' }}>Amt</th>
                     </tr>
                 </thead>
                 <tbody>
                     {items.map((item, index) => (
                         <tr key={index}>
-                            <td className="col-qty">{item.quantity}</td>
-                            <td className="col-item">
+                            <td className="col-qty text-center">{item.quantity}</td>
+                            <td className="col-item text-start">
                                 {item.product?.name || 'Item'}
                             </td>
-                            <td className="col-price">
+                            <td className="col-price text-end">
                                 {Math.round((item.price * item.quantity))}
                             </td>
                         </tr>
@@ -234,49 +87,49 @@ const SaleInvoice = ({ sale, items, totals }) => {
                 </tbody>
             </table>
 
-            <div className="totals-section">
-                <table className="totals-table">
+            <div className="totals-section" style={{ borderTop: '1px dashed #555', paddingTop: '5px', fontSize: '11px' }}>
+                <table className="totals-table w-100" style={{ borderCollapse: 'collapse', fontSize: '11px' }}>
                     <tbody>
                         <tr>
-                            <td>Subtotal:</td>
-                            <td>{currency}{safeTotals.subtotal.toFixed(2)}</td>
+                            <td className="text-start" style={{ width: '50%' }}>Subtotal:</td>
+                            <td className="text-end" style={{ width: '50%' }}>{currency}{safeTotals.subtotal.toFixed(2)}</td>
                         </tr>
                         <tr>
-                            <td>Tax:</td>
-                            <td>{currency}{safeTotals.tax.toFixed(2)}</td>
+                            <td className="text-start">Tax:</td>
+                            <td className="text-end">{currency}{safeTotals.tax.toFixed(2)}</td>
                         </tr>
                         {safeTotals.discount > 0 && (
                             <tr>
-                                <td>Disc:</td>
-                                <td>-{currency}{safeTotals.discount.toFixed(2)}</td>
+                                <td className="text-start">Disc:</td>
+                                <td className="text-end">-{currency}{safeTotals.discount.toFixed(2)}</td>
                             </tr>
                         )}
-                        <tr className="total-row">
-                            <td>Total:</td>
-                            <td>{currency}{safeTotals.total.toFixed(2)}</td>
-                        </tr>
-                        <tr style={{marginTop: '5px'}}>
-                            <td>Paid:</td>
-                            <td>{currency}{paid.toFixed(2)}</td>
+                        <tr className="total-row fw-bold" style={{ fontSize: '14px', borderTop: '1px solid #555', paddingTop: '5px', marginTop: '5px' }}>
+                            <td className="text-start">Total:</td>
+                            <td className="text-end">{currency}{safeTotals.total.toFixed(2)}</td>
                         </tr>
                         <tr>
-                            <td>Change:</td>
-                            <td>{currency}{Math.abs(remaining).toFixed(2)}</td>
+                            <td className="text-start">Paid:</td>
+                            <td className="text-end">{currency}{paid.toFixed(2)}</td>
+                        </tr>
+                        <tr>
+                            <td className="text-start">Change:</td>
+                            <td className="text-end">{currency}{Math.abs(remaining).toFixed(2)}</td>
                         </tr>
                     </tbody>
                 </table>
             </div>
 
-            <div className="invoice-footer">
+            <div className="invoice-footer mt-3">
                 <div className="invoice-number-section">
-                    <div className="invoice-number-text">Invoice: {invoiceNo}</div>
-                    <div className="barcode-container">
+                    <div className="invoice-number-text small mb-1">Invoice: {invoiceNo}</div>
+                    <div className="barcode-container d-flex justify-content-center align-items-center mb-2">
                         <BarcodeDisplay barcode={invoiceNo} />
                     </div>
                 </div>
             </div>
 
-            <div className="footer">
+            <div className="footer mt-2">
                 Thank You!
             </div>
         </div>

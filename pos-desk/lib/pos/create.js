@@ -15,8 +15,8 @@ export async function createNewEntity(name) {
             sale_date: new Date().toISOString(),
             total: 0,
             users: {
-                connect: [user.id],
-                disconnect: [],
+                connect: [user.documentId],
+            //    disconnect: [],
             }
         };
     } else if (name === 'purchases' || name === 'purchase') {
@@ -26,8 +26,8 @@ export async function createNewEntity(name) {
             order_date: new Date().toISOString(),
             total: 0,
             users: {
-                connect: [user.id],
-                disconnect: [],
+                connect: [user.documentId],
+            //    disconnect: [],
             },
         };
     } else if (name === 'product' || name === 'products') {
@@ -38,13 +38,13 @@ export async function createNewEntity(name) {
             reorder_level: 1,
             is_active: false,
             branches: {
-                connect: [branch.id],
-                disconnect: [],
+                connect: [branch.documentId],
+          //      disconnect: [],
             },
 
             users: {
-                connect: [user.id],
-                disconnect: [],
+                connect: [user.documentId],
+            //    disconnect: [],
             },
         };
     }

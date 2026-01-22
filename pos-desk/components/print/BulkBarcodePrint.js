@@ -20,7 +20,6 @@ const BulkBarcodePrint = ({ storageKey, title = "Bulk Barcode Labels" }) => {
                 setLoading(true);
                 setError(null);
 
-                // Get document IDs from storage
                 const storedData = JSON.parse(localStorage.getItem(storageKey) || '{}');
                 const documentIds = storedData.documentIds || [];
 
@@ -32,7 +31,6 @@ const BulkBarcodePrint = ({ storageKey, title = "Bulk Barcode Labels" }) => {
 
                 console.log(`Loading ${documentIds.length} items for printing...`);
 
-                // Load items in batches to avoid overwhelming the API
                 const batchSize = documentIds.length > 20 ? 20 : documentIds.length;
                 const itemsData = [];
 
@@ -53,15 +51,12 @@ const BulkBarcodePrint = ({ storageKey, title = "Bulk Barcode Labels" }) => {
                     const batchResults = await Promise.all(batchPromises);
                     itemsData.push(...batchResults.filter(item => item !== null));
 
-                    // Small delay between batches to avoid rate limiting
                     if (i + batchSize < documentIds.length) {
                         await new Promise(resolve => setTimeout(resolve, 100));
                     }
                 }
 
                 setItems(itemsData);
-
-                // Clean up storage after successful load
                 localStorage.removeItem(storageKey);
 
             } catch (error) {
@@ -75,7 +70,6 @@ const BulkBarcodePrint = ({ storageKey, title = "Bulk Barcode Labels" }) => {
         loadItems();
     }, [storageKey]);
 
-    // Group items into sheets
     const generateLabelSheets = () => {
         if (loading || items.length === 0) return [];
 
@@ -93,27 +87,11 @@ const BulkBarcodePrint = ({ storageKey, title = "Bulk Barcode Labels" }) => {
 
     if (error) {
         return (
-            <div style={{
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                height: '200px',
-                fontSize: '16px',
-                color: '#dc3545',
-                flexDirection: 'column',
-                gap: '10px'
-            }}>
+            <div className="d-flex flex-column justify-content-center align-items-center" style={{ height: '200px', fontSize: '16px', color: '#dc3545' }}>
                 <div>❌ {error}</div>
                 <button
                     onClick={() => window.close()}
-                    style={{
-                        padding: '8px 16px',
-                        background: '#6c757d',
-                        color: 'lightgrey',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: 'pointer'
-                    }}
+                    className="btn btn-secondary mt-2"
                 >
                     Close
                 </button>
@@ -123,15 +101,7 @@ const BulkBarcodePrint = ({ storageKey, title = "Bulk Barcode Labels" }) => {
 
     if (loading) {
         return (
-            <div style={{
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                height: '200px',
-                fontSize: '16px',
-                flexDirection: 'column',
-                gap: '10px'
-            }}>
+            <div className="d-flex flex-column justify-content-center align-items-center" style={{ height: '200px', fontSize: '16px' }}>
                 <div>🔄 Loading items for printing...</div>
                 <div style={{ fontSize: '12px', color: '#666' }}>
                     Loading {items.length > 0 ? `${items.length} items` : 'items'}...
@@ -142,36 +112,14 @@ const BulkBarcodePrint = ({ storageKey, title = "Bulk Barcode Labels" }) => {
 
     if (items.length === 0) {
         return (
-            <div style={{
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                height: '200px',
-                fontSize: '16px',
-                color: '#666'
-            }}>
+            <div className="d-flex justify-content-center align-items-center" style={{ height: '200px', fontSize: '16px', color: '#666' }}>
                 No items found to print.
             </div>
         );
     }
 
     return (
-        <div className="bulk-barcode-print">
-            <style jsx>{`
-                .bulk-barcode-print {
-                    font-family: Arial, sans-serif;
-                    margin: 0;
-                    padding: 0;
-                }
-                
-                @media screen {
-                    .bulk-barcode-print {
-                        background: lightgrey;
-                        padding: 20px;
-                    }
-                }
-            `}</style>
-
+        <div className="bulk-barcode-print container-fluid p-0">
             {sheets.map((sheet, sheetIndex) => (
                 <LabelSheet
                     key={sheetIndex}

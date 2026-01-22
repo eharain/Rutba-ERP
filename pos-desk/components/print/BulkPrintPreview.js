@@ -18,7 +18,6 @@ const BulkPrintPreview = ({ storageKey, title, onClose }) => {
     };
 
     useEffect(() => {
-        // Auto-print when component mounts with longer delay for data loading
         const timer = setTimeout(() => {
             window.print();
         }, 3000);
@@ -28,63 +27,32 @@ const BulkPrintPreview = ({ storageKey, title, onClose }) => {
 
     return (
         <div>
-            <style jsx global>{`
-                @media screen {
-                    .print-controls {
-                        display: flex;
-                        position: fixed;
-                        top: 20px;
-                        right: 20px;
-                        background: lightgrey;
-                        padding: 15px;
-                        border: 2px solid #007bff;
-                        border-radius: 8px;
-                        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-                        z-index: 1000;
-                        gap: 10px;
-                        align-items: center;
-                    }
-                }
-                
-                @media print {
-                    .print-controls {
-                        display: none !important;
-                    }
-                }
-                
-                body {
-                    margin: 0;
-                    padding: 0;
-                    background: #f5f5f5;
-                }
-            `}</style>
-
             {/* Print Controls - Only visible on screen */}
-            <div className="print-controls no-print">
+            <div
+                className="d-print-none position-fixed"
+                style={{
+                    top: '20px',
+                    right: '20px',
+                    background: 'lightgrey',
+                    padding: '15px',
+                    border: '2px solid #007bff',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                    zIndex: 1000,
+                    display: 'flex',
+                    gap: '10px',
+                    alignItems: 'center'
+                }}
+            >
                 <button
                     onClick={handlePrint}
-                    style={{
-                        padding: '10px 20px',
-                        background: '#28a745',
-                        color: 'lightgrey',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: 'pointer',
-                        fontWeight: 'bold'
-                    }}
+                    className="btn btn-success"
                 >
                     🖨️ Print Now
                 </button>
                 <button
                     onClick={handleClose}
-                    style={{
-                        padding: '10px 20px',
-                        background: '#6c757d',
-                        color: 'lightgrey',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: 'pointer'
-                    }}
+                    className="btn btn-secondary"
                 >
                     Close
                 </button>
