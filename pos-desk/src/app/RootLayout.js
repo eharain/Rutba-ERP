@@ -10,7 +10,6 @@ import './links.css';
 import styles from "./page.module.css";
 
 
-
 const geistSans = Geist({
     variable: "--font-geist-sans",
     subsets: ["latin"],
@@ -31,7 +30,7 @@ import { UtilProvider } from "../../context/UtilContext";
 export default function RootLayout({ children }) {
     return (
         <html lang="en">
-            <body className={`${geistSans.variable} ${geistMono.variable}`}>
+            <body className={`${geistSans.variable} ${geistMono.variable}`}> dd
                 <AuthProvider>
                     <CartProvider>
                         <UtilProvider>

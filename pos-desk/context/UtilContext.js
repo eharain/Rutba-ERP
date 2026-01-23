@@ -9,14 +9,26 @@ export function UtilProvider({ children }) {
     const [desk, setDeskState] = useState(null);
     const [user, setUserState] = useState(null);
     const [currency, setCurrencyState] = useState(null);
+    const [labelSize, setLabelSizeState] = useState('2.4x1.5'); // in inches
+
+    function getLabelSize() {
+        return labelSize;
+    }
 
     // Load values from storage once on mount
     useEffect(() => {
-        setBranchState(storage.getJSON("branch"));
-        setDeskState(storage.getJSON("branch-desk"));
-        setUserState(storage.getJSON("user") ?? null);
-        setCurrencyState(storage.getJSON("currency") ?? null);
-    }, []);
+        try {
+            setBranchState(storage.getJSON("branch") ?? null);
+            setDeskState(storage.getJSON("branch-desk") ?? null);
+            setUserState(storage.getJSON("user") ?? null);
+            setCurrencyState(storage.getJSON("currency") ?? null);
+            // label-size stored as a simple value (string)
+            setLabelSizeState(storage.getJSON("label-size") ?? '2.4x1.5');
+        } catch (err) {
+            // If storage access fails, keep defaults and continue
+            console.error('UtilProvider: failed to load from storage', err);
+        }
+    }, []); // run once
 
     function getBranch() {
         return branch;
@@ -32,16 +44,38 @@ export function UtilProvider({ children }) {
     }
     function setCurrency(newCurrency) {
         setCurrencyState(newCurrency);
-        storage.setJSON("currency", newCurrency);
+        try {
+            storage.setJSON("currency", newCurrency);
+        } catch (err) {
+            console.error('Failed to persist currency', err);
+        }
     }
     function setBranch(newBranch) {
         setBranchState(newBranch);
-        storage.setJSON("branch", newBranch);
+        try {
+            storage.setJSON("branch", newBranch);
+        } catch (err) {
+            console.error('Failed to persist branch', err);
+        }
     }
     function setBranchDesk(newDesk) {
         setDeskState(newDesk);
-        storage.setJSON("branch-desk", newDesk);
+        try {
+            storage.setJSON("branch-desk", newDesk);
+        } catch (err) {
+            console.error('Failed to persist branch-desk', err);
+        }
     }
+    function setLabelSize(newSize) {
+        setLabelSizeState(newSize);
+        try {
+            // store label size as a simple string under "label-size"
+            storage.setJSON("label-size", newSize);
+        } catch (err) {
+            console.error('Failed to persist label-size', err);
+        }
+    }
+
     function getLocation() {
         if (!branch || !desk) {
             return null;
@@ -112,8 +146,11 @@ export function UtilProvider({ children }) {
         padHex,
         branch,
         desk,
-        user
-    }), [branch, desk, user, currency]);
+        user,
+        labelSize,
+        getLabelSize,
+        setLabelSize,
+    }), [branch, desk, user, labelSize, currency]);
 
     return (
         <UtilContext.Provider value={value}>

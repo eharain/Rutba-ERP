@@ -1,67 +1,56 @@
-﻿// file: /pos-desk/components/print/BulkBarcodePrint.js
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { authApi } from '../../lib/api';
-import LabelSheet from './LabelSheet';
+import "./print-labels.css";
+import { useUtil } from '../../context/UtilContext';
+import { QRCodeSVG } from 'qrcode.react';
 
-const BulkBarcodePrint = ({ storageKey, title = "Bulk Barcode Labels" }) => {
+const BulkBarcodePrint = ({
+    storageKey,
+    title = "Bulk Barcode Labels",
+    labelSize = '2.4x1.5',
+    printMode = 'thermal'   // 'thermal' | 'a4'
+}) => {
+
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const { currency, branch } = useUtil();
+    const size = labelSize || '2.4x1.5';
+
+    function displayBranchName() {
+        return branch.companyName ?? branch.company_name;
+    }
+
+    function displayName(item) {
+        const name = item?.name || 'N/A';
+        return name.length > 50 ? name.substring(0, 47) + '...' : name;
+    }
+
+    function displayBarcode(item) {
+        return item.barcode ?? item.sku;
+    }
+
+    function displayPrice(item) {
+        return currency + ' ' + Math.round(parseFloat(item.selling_price ?? item.offer_price));
+    }
 
     useEffect(() => {
         const loadItems = async () => {
-            if (!storageKey) {
-                setError('No storage key provided');
-                setLoading(false);
-                return;
-            }
-
             try {
-                setLoading(true);
-                setError(null);
-
                 const storedData = JSON.parse(localStorage.getItem(storageKey) || '{}');
                 const documentIds = storedData.documentIds || [];
 
-                if (documentIds.length === 0) {
-                    setError('No items found to print');
-                    setLoading(false);
-                    return;
-                }
+                const results = await Promise.all(
+                    documentIds.map(id =>
+                        authApi.get(`/stock-items/${id}`, { populate: ['product'] })
+                            .then(res => res.data)
+                            .catch(() => null)
+                    )
+                );
 
-                console.log(`Loading ${documentIds.length} items for printing...`);
-
-                const batchSize = documentIds.length > 20 ? 20 : documentIds.length;
-                const itemsData = [];
-
-                for (let i = 0; i < documentIds.length; i += batchSize) {
-                    const batch = documentIds.slice(i, i + batchSize);
-                    const batchPromises = batch.map(async (docId) => {
-                        try {
-                            const response = await authApi.get(`/stock-items/${docId}`, {
-                                populate: ['product']
-                            });
-                            return response.data;
-                        } catch (error) {
-                            console.error(`Error loading item ${docId}:`, error);
-                            return null;
-                        }
-                    });
-
-                    const batchResults = await Promise.all(batchPromises);
-                    itemsData.push(...batchResults.filter(item => item !== null));
-
-                    if (i + batchSize < documentIds.length) {
-                        await new Promise(resolve => setTimeout(resolve, 100));
-                    }
-                }
-
-                setItems(itemsData);
-                localStorage.removeItem(storageKey);
-
-            } catch (error) {
-                console.error('Error loading items for print:', error);
-                setError('Failed to load items for printing');
+                setItems(results.filter(Boolean));
+            } catch {
+                setError("Failed to load items");
             } finally {
                 setLoading(false);
             }
@@ -70,65 +59,47 @@ const BulkBarcodePrint = ({ storageKey, title = "Bulk Barcode Labels" }) => {
         loadItems();
     }, [storageKey]);
 
-    const generateLabelSheets = () => {
-        if (loading || items.length === 0) return [];
+    if (error) return <div className="text-danger">{error}</div>;
+    if (loading) return <div>Loading...</div>;
 
-        const labelsPerSheet = 1;
-        const sheets = [];
+    const labelsPerSheet = printMode === 'a4' ? { '2.4x1.5': 21, '2.25x1.25': 24, '2x1': 40, '1.5x1': 50, '1x1': 60 }[size] || 21 : 1;
 
-        for (let i = 0; i < items.length; i += labelsPerSheet) {
-            sheets.push(items.slice(i, i + labelsPerSheet));
-        }
-
-        return sheets;
-    };
-
-    const sheets = generateLabelSheets();
-
-    if (error) {
-        return (
-            <div className="d-flex flex-column justify-content-center align-items-center" style={{ height: '200px', fontSize: '16px', color: '#dc3545' }}>
-                <div>❌ {error}</div>
-                <button
-                    onClick={() => window.close()}
-                    className="btn btn-secondary mt-2"
-                >
-                    Close
-                </button>
-            </div>
-        );
-    }
-
-    if (loading) {
-        return (
-            <div className="d-flex flex-column justify-content-center align-items-center" style={{ height: '200px', fontSize: '16px' }}>
-                <div>🔄 Loading items for printing...</div>
-                <div style={{ fontSize: '12px', color: '#666' }}>
-                    Loading {items.length > 0 ? `${items.length} items` : 'items'}...
-                </div>
-            </div>
-        );
-    }
-
-    if (items.length === 0) {
-        return (
-            <div className="d-flex justify-content-center align-items-center" style={{ height: '200px', fontSize: '16px', color: '#666' }}>
-                No items found to print.
-            </div>
-        );
+    const sheets = [];
+    for (let i = 0; i < items.length; i += labelsPerSheet) {
+        sheets.push(items.slice(i, i + labelsPerSheet));
     }
 
     return (
-        <div className="bulk-barcode-print container-fluid p-0">
+        <div className={`container py-3 print-root ${printMode}`}>
             {sheets.map((sheet, sheetIndex) => (
-                <LabelSheet
-                    key={sheetIndex}
-                    items={sheet}
-                    sheetIndex={sheetIndex}
-                    totalSheets={sheets.length}
-                    title={title}
-                    totalItems={items.length}
-                />
+                <div key={sheetIndex} className={`print-sheet sheet-${size}`}>
+                    {sheet.map(item => (
+                        <div key={item.id} className={`print-label label-${size}`}>
+
+                            <div className="company">{displayBranchName()}</div>
+
+                            <div className="row-layout">
+                                <div className="left">
+                                    <div className="name">{displayName(item)}</div>
+                                    <div className="price">{displayPrice(item)}</div>
+                                </div>
+
+                                <div className="right">
+                                    <QRCodeSVG
+                                        value={displayBarcode(item)}
+                                        level="M"
+                                        fgColor="#000"
+                                        bgColor="#fff"
+                                    />
+                                    <div className="barcode-text">
+                                        {displayBarcode(item)}
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    ))}
+                </div>
             ))}
         </div>
     );

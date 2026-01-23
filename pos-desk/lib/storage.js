@@ -2,7 +2,9 @@
 function buildWrapper() {
 
     const wrapper = {
+
         setItem: function (key, value) {
+
             console.debug(`[storage] setItem called with key: ${key}, value: ${value}`);
             if (typeof value != 'undefined') {
                 localStorage.setItem(key, value);
@@ -35,12 +37,8 @@ function buildWrapper() {
     };
     return wrapper;
 }
-//export default getStore()
 
 const storage = buildWrapper();
 
 export default storage;
 export { buildWrapper, storage };
-//export default buildWrapper();
-
-//export storage = { storage: buildWrapper() };
