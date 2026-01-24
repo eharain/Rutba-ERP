@@ -10,6 +10,7 @@ export function UtilProvider({ children }) {
     const [user, setUserState] = useState(null);
     const [currency, setCurrencyState] = useState(null);
     const [labelSize, setLabelSizeState] = useState('2.4x1.5'); // in inches
+    const [printMode, setPrintModeState] = useState('thermal');
 
     function getLabelSize() {
         return labelSize;
@@ -22,10 +23,9 @@ export function UtilProvider({ children }) {
             setDeskState(storage.getJSON("branch-desk") ?? null);
             setUserState(storage.getJSON("user") ?? null);
             setCurrencyState(storage.getJSON("currency") ?? null);
-            // label-size stored as a simple value (string)
             setLabelSizeState(storage.getJSON("label-size") ?? '2.4x1.5');
+            setPrintModeState(storage.getJSON("print-mode") ?? 'thermal');
         } catch (err) {
-            // If storage access fails, keep defaults and continue
             console.error('UtilProvider: failed to load from storage', err);
         }
     }, []); // run once
@@ -69,10 +69,17 @@ export function UtilProvider({ children }) {
     function setLabelSize(newSize) {
         setLabelSizeState(newSize);
         try {
-            // store label size as a simple string under "label-size"
             storage.setJSON("label-size", newSize);
         } catch (err) {
             console.error('Failed to persist label-size', err);
+        }
+    }
+    function setPrintMode(newMode) {
+        setPrintModeState(newMode);
+        try {
+            storage.setJSON("print-mode", newMode);
+        } catch (err) {
+            console.error('Failed to persist print-mode', err);
         }
     }
 
@@ -150,7 +157,9 @@ export function UtilProvider({ children }) {
         labelSize,
         getLabelSize,
         setLabelSize,
-    }), [branch, desk, user, labelSize, currency]);
+        printMode,
+        setPrintMode,
+    }), [branch, desk, user, labelSize, currency, printMode]);
 
     return (
         <UtilContext.Provider value={value}>

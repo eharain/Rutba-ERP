@@ -27,7 +27,7 @@ const BulkBarcodePrint = ({
     }
 
     function displayBarcode(item) {
-        return item.barcode ?? item.sku;
+        return item.barcode ? item.barcode : item.sku;
     }
 
     function displayPrice(item) {
@@ -70,7 +70,7 @@ const BulkBarcodePrint = ({
     }
 
     return (
-        <div className={`container py-3 print-root ${printMode}`}>
+        <div className={`print-root ${printMode}`}>
             {sheets.map((sheet, sheetIndex) => (
                 <div key={sheetIndex} className={`print-sheet sheet-${size}`}>
                     {sheet.map(item => (
@@ -82,6 +82,9 @@ const BulkBarcodePrint = ({
                                 <div className="left">
                                     <div className="name">{displayName(item)}</div>
                                     <div className="price">{displayPrice(item)}</div>
+                                    <div className="barcode-text">
+                                        {displayBarcode(item)}
+                                    </div>
                                 </div>
 
                                 <div className="right">
@@ -91,9 +94,7 @@ const BulkBarcodePrint = ({
                                         fgColor="#000"
                                         bgColor="#fff"
                                     />
-                                    <div className="barcode-text">
-                                        {displayBarcode(item)}
-                                    </div>
+                                   
                                 </div>
                             </div>
 

@@ -1,5 +1,5 @@
 /* =========================================================
-   PRINT LABEL SYSTEM — Rutba POS (FINAL)
+   PRINT LABEL SYSTEM — Rutba POS (FIXED)
    ========================================================= */
 
 /* -------- PRINT RESET -------- */
@@ -41,52 +41,62 @@
 .print-label .barcode-text { font-size: 8px; font-weight: 600; letter-spacing: 0.4px; line-height: 1; text-align: center; }
 
 /* =========================================================
-   PRIORITY RULES
-   QR > Barcode > Price > Name > Company
+   FIXED: Always show name, price, and barcode text
    ========================================================= */
 
+/* Remove the display: none rules for name, price, and barcode-text */
+/* Only company can be hidden for certain sizes if needed */
+
 .label-1x1 .company,
-/*.label-1x1 .name,*/
-.label-1x1 .price,
-.label-1x1 .barcode-text { display: none; }
-
 .label-1\.5x1 .company,
-/*.label-1\.5x1 .name,*/
-.label-1\.5x1 .price,
-.label-1\.5x1 .barcode-text { display: none; }
-
 .label-2x1 .company,
-/*.label-2x1 .name,*/
-.label-2x1 .price { display: none; }
+.label-2\.25x1\.25 .company { display: none; }
 
-.label-2\.25x1\.25 .company,
-.label-2\.25x1\.25 .name { display: none; }
+/* Ensure name, price, and barcode are always visible */
+.label-1x1 .name,
+.label-1\.5x1 .name,
+.label-2x1 .name,
+.label-2\.25x1\.25 .name,
+.label-1x1 .price,
+.label-1\.5x1 .price,
+.label-2x1 .price,
+.label-2\.25x1\.25 .price,
+.label-1x1 .barcode-text,
+.label-1\.5x1 .barcode-text,
+.label-2x1 .barcode-text,
+.label-2\.25x1\.25 .barcode-text,
+.label-2\.4x1\.5 .barcode-text,
+.label-4x6 .barcode-text { display: block !important; }
 
 /**
     NAME SIZE ADJUSTMENTS
 */
-
-
-.label-1x1 .name { max-width:80%; overflow:hidden; }
-.label-1\.5x1 .name { max-width: 80%; overflow: hidden; }
-.label-2x1 .name { max-width: 80%; overflow: hidden; }
-.label-2\.25x1\.25 .name { max-width: 80%; overflow: hidden; }
-
-
+.label-1x1 .name,
+.label-1\.5x1 .name,
+.label-2x1 .name,
+.label-2\.25x1\.25 .name { max-width: 80%; overflow: hidden; text-overflow: ellipsis; }
 
 /* =========================================================
-   QR SCALING (FIXED FOR ALL SIZES)
+   BARCODE & QR SCALING (FIXED FOR ALL SIZES)
    ========================================================= */
 
-.print-label svg { max-width: 90%; max-height: 100%; }
+/* Ensure barcode SVG is always visible and properly sized */
+.print-label svg { display: block !important; max-width: 90%; max-height: 100%; }
 
+/* Specific adjustments for different label sizes */
 .label-1x1 svg,
-.label-1\.5x1 svg { width: 90% !important; height: 100% !important; }
+.label-1\.5x1 svg { width: 90% !important; height: auto !important; max-height: 100% !important; }
 
-.label-2x1 svg { width: 90% !important; }
-.label-2\.25x1\.25 svg { width: 80% !important; }
-.label-2\.4x1\.5 svg { width: 65% !important; }
-.label-4x6 svg { width: 65% !important; }
+.label-2x1 svg { width: 90% !important; height: auto !important; }
+
+.label-2\.25x1\.25 svg { width: 80% !important; height: auto !important; }
+
+.label-2\.4x1\.5 svg { width: 65% !important; height: auto !important; }
+
+.label-4x6 svg { width: 65% !important; height: auto !important; }
+
+/* Additional barcode container styling */
+.print-label .barcode-container { display: flex !important; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; }
 
 /* =========================================================
    LABEL SIZES
@@ -118,10 +128,17 @@
    ========================================================= */
 
 @media print {
-
     .print-root.thermal .print-sheet { page-break-after: always; break-after: page; }
-
     .print-root.a4 .print-sheet { page-break-after: always; break-after: page; }
-
     .print-label { break-inside: avoid; page-break-inside: avoid; }
+}
+
+/* =========================================================
+   FALLBACK STYLES FOR PRINT
+   ========================================================= */
+@media print {
+    .print-label .name,
+    .print-label .price,
+    .print-label .barcode-text,
+    .print-label svg { display: block !important; visibility: visible !important; opacity: 1 !important; }
 }
