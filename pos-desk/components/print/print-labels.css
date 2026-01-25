@@ -1,5 +1,7 @@
 /* =========================================================
-   PRINT LABEL SYSTEM — Rutba POS (FIXED)
+   PRINT LABEL SYSTEM — Rutba POS (UPDATED)
+   Uses Bootstrap grid for layout; enforces product-name on top,
+   company+price on left, QR/Barcode on right, barcode-text below QR.
    ========================================================= */
 
 /* -------- PRINT RESET -------- */
@@ -10,98 +12,57 @@
 }
 
 /* -------- ROOT -------- */
-.print-root { display: block; width: 100%; text-align: center; }
+.print-root { display: block; width: 100%;  }
 
-    /* -------- THERMAL MODE -------- */
     .print-root.thermal .print-sheet { display: block; width: fit-content; margin: 0 auto; }
-
-    /* -------- A4 MODE -------- */
     .print-root.a4 .print-sheet { display: grid; margin: 0 auto 8mm; }
 
-/* -------- LABEL -------- */
-.print-label { border: 1px dashed #bbb; padding: 4px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; font-family: Arial, Helvetica, sans-serif; font-size: 10px; overflow: hidden; }
+/* -------- LABEL (shared) -------- */
+.print-label { border: 1px dashed #bbb; padding: 6px; box-sizing: border-box;  flex-direction: column; font-family: Arial, Helvetica, sans-serif; font-size: 10px; overflow: hidden; background: #fff; }
 
 @media print {
-    .print-label { border: none; }
+    .print-label { border: none; background: #fff;  }
 }
 
+/* Main row uses Bootstrap .row but style a helper to ensure spacing */
+/* .print-label .row-layout { display: flex; gap: 6px; width: 100%; align-items: stretch; } */
+
+
+
+/* Company name */
+.print-label .company { font-weight: 700; font-size: 8px; text-transform: uppercase; width: 100%; overflow: hidden; text-overflow: ellipsis; text-align: left; }
 /* -------- CONTENT LAYOUT -------- */
-.print-label .company { font-weight: 700; font-size: 9px; text-transform: uppercase; text-align: center; }
+/* Product name always on top and centered */
+.print-label .name { margin-top: 5px; font-weight: 700; font-size: 10px; white-space: wrap;  text-overflow: ellipsis; line-height: 1.1; text-align: left; }
 
-.print-label .row-layout { display: flex; justify-content: space-between; align-items: center; gap: 4px; height: 100%; }
 
-.print-label .left { flex: 1; display: flex; flex-direction: column; justify-content: center; }
 
-.print-label .name { font-weight: 700; font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Price */
+.print-label .price { margin-top:5px; font-weight: 800; font-size: 11px; color: #111; text-align: left; }
+.print-label .code-text { font-weight: 400; font-size: 11px; color: #111; text-align: left; }
 
-.print-label .price { font-weight: 800; font-size: 11px; }
 
-.print-label .right { width: 42%; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+/* Barcode container centers the QR/svg */
+.print-label .barcode-container { display: flex !important; align-items: self-start; justify-content: right; width: 100%; height: auto; }
 
-.print-label .barcode-text { font-size: 8px; font-weight: 600; letter-spacing: 0.4px; line-height: 1; text-align: center; }
+/* Ensure SVG stays visible and scales correctly */
+.print-label svg { display: block !important; max-width: 100% !important; max-height: 100% !important; height: auto !important; width: auto !important; }
 
-/* =========================================================
-   FIXED: Always show name, price, and barcode text
-   ========================================================= */
+/* Barcode text below QR, centered */
+.print-label .barcode-text { font-size: 8px; font-weight: 600; letter-spacing: 0.4px; line-height: 1;  width: 100%; word-break: break-word; }
 
-/* Remove the display: none rules for name, price, and barcode-text */
-/* Only company can be hidden for certain sizes if needed */
-
-.label-1x1 .company,
-.label-1\.5x1 .company,
-.label-2x1 .company,
-.label-2\.25x1\.25 .company { display: none; }
-
-/* Ensure name, price, and barcode are always visible */
-.label-1x1 .name,
-.label-1\.5x1 .name,
-.label-2x1 .name,
-.label-2\.25x1\.25 .name,
-.label-1x1 .price,
-.label-1\.5x1 .price,
-.label-2x1 .price,
-.label-2\.25x1\.25 .price,
-.label-1x1 .barcode-text,
-.label-1\.5x1 .barcode-text,
-.label-2x1 .barcode-text,
-.label-2\.25x1\.25 .barcode-text,
-.label-2\.4x1\.5 .barcode-text,
-.label-4x6 .barcode-text { display: block !important; }
-
-/**
-    NAME SIZE ADJUSTMENTS
-*/
-.label-1x1 .name,
-.label-1\.5x1 .name,
-.label-2x1 .name,
-.label-2\.25x1\.25 .name { max-width: 80%; overflow: hidden; text-overflow: ellipsis; }
+/* Ensure these elements are visible on print */
+@media print {
+    .print-label .name,
+    .print-label .company,
+    .print-label .price,
+    .print-label .barcode-text,
+    .print-label svg { display: block !important; visibility: visible !important; opacity: 1 !important; }
+}
 
 /* =========================================================
-   BARCODE & QR SCALING (FIXED FOR ALL SIZES)
+   LABEL SIZES (kept from original)
    ========================================================= */
-
-/* Ensure barcode SVG is always visible and properly sized */
-.print-label svg { display: block !important; max-width: 90%; max-height: 100%; }
-
-/* Specific adjustments for different label sizes */
-.label-1x1 svg,
-.label-1\.5x1 svg { width: 90% !important; height: auto !important; max-height: 100% !important; }
-
-.label-2x1 svg { width: 90% !important; height: auto !important; }
-
-.label-2\.25x1\.25 svg { width: 80% !important; height: auto !important; }
-
-.label-2\.4x1\.5 svg { width: 65% !important; height: auto !important; }
-
-.label-4x6 svg { width: 65% !important; height: auto !important; }
-
-/* Additional barcode container styling */
-.print-label .barcode-container { display: flex !important; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; }
-
-/* =========================================================
-   LABEL SIZES
-   ========================================================= */
-
 .label-2\.4x1\.5 { width: 2.4in; height: 1.5in; }
 .label-2\.25x1\.25 { width: 2.25in; height: 1.25in; }
 .label-2x1 { width: 2in; height: 1in; }
@@ -109,36 +70,16 @@
 .label-1x1 { width: 1in; height: 1in; }
 .label-4x6 { width: 4in; height: 6in; }
 
-/* =========================================================
-   A4 GRID LAYOUTS
-   ========================================================= */
-
+/* A4 grid templates retained */
 .print-root.a4 .sheet-2\.4x1\.5 { grid-template-columns: repeat(3, 2.4in); grid-template-rows: repeat(7, 1.5in); }
-
 .print-root.a4 .sheet-2\.25x1\.25 { grid-template-columns: repeat(3, 2.25in); grid-template-rows: repeat(8, 1.25in); }
-
 .print-root.a4 .sheet-2x1 { grid-template-columns: repeat(4, 2in); grid-template-rows: repeat(10, 1in); }
-
 .print-root.a4 .sheet-1\.5x1 { grid-template-columns: repeat(5, 1.5in); grid-template-rows: repeat(10, 1in); }
-
 .print-root.a4 .sheet-1x1 { grid-template-columns: repeat(6, 1in); grid-template-rows: repeat(10, 1in); }
 
-/* =========================================================
-   PAGE BREAK CONTROL
-   ========================================================= */
-
+/* PAGE BREAK CONTROL */
 @media print {
     .print-root.thermal .print-sheet { page-break-after: always; break-after: page; }
     .print-root.a4 .print-sheet { page-break-after: always; break-after: page; }
     .print-label { break-inside: avoid; page-break-inside: avoid; }
-}
-
-/* =========================================================
-   FALLBACK STYLES FOR PRINT
-   ========================================================= */
-@media print {
-    .print-label .name,
-    .print-label .price,
-    .print-label .barcode-text,
-    .print-label svg { display: block !important; visibility: visible !important; opacity: 1 !important; }
 }
