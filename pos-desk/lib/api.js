@@ -6,7 +6,7 @@ import qs from 'qs';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:1337/api";
 
-export const IMAGE_URL = API_URL.substring(0, API_URL.length-4)
+export const IMAGE_URL = API_URL.substring(0, API_URL.length - 4)
 
 // ------------------ Base Helper ------------------
 function authHeaders(jwt) {
@@ -51,10 +51,16 @@ async function del(path, jwt) {
 }
 
 
-async function uploadFile(file, ref, field, refId,jwt) {
+async function uploadFile(files, ref, field, refId, { name, alt, caption }, jwt) {
     const form = new FormData();
+    if (Array.isArray(files)) {
+        for (const file of files) {
+            form.append('files', file);
+        }
+    } else {
+        form.append('files', files);
+    }
 
-    form.append('files', file);
     if (ref) {
         form.append('ref', `api::${ref}.${ref}`);
     }
@@ -66,7 +72,51 @@ async function uploadFile(file, ref, field, refId,jwt) {
         form.append('refId', refId);
     }
 
-    return post('/upload', form, jwt)
+    if (name || alt || caption) {
+        // optional metadata
+        let finfor = {
+            name,
+            alternativeText: alt,
+            caption: caption,
+        }
+
+        if (Array.isArray(files)) {
+            finfor = files.map((f,i) => {
+                return {
+                    name:(name??"") + i,
+                    alternativeText: alt,
+                    caption: caption,
+                }
+            });
+        }
+        form.append('fileInfo', JSON.stringify(finfor));
+
+    }
+    const res = await axios.post(`${API_URL}/upload`, form, {
+        headers: { 'Content-Type': 'multipart/form-data', ...authHeaders(jwt) },
+    });
+
+    const data = res.data;
+
+
+    if (Array.isArray(data)) {
+        data.filter(d => (d.url ?? "").startsWith('/')).forEach(d => d.url = StraipImageUrl(d.url))
+    } else {
+        data.url = StraipImageUrl(data.url);
+    }
+
+    return data;
+}
+async function deleteFile(fileId, jwt) {
+    const res = await axios.delete(`${API_URL}upload/files/${fileId}`, {
+        headers: { 'Content-Type': 'multipart/form-data', ...authHeaders(jwt) },
+    });
+    // Strapi v5 DELETE returns 204 No Content on success
+    console.log('Delete file status:', res.status); // 204
+    return res.status === 204;
+}
+export function StraipImageUrl(url) {
+    return (url ?? "").startsWith('/') ? IMAGE_URL + url : url;
 }
 
 // ------------------ Public API (no auth) ------------------
@@ -87,7 +137,8 @@ export const authApi = {
     post: async (path, data) => await post(path, data, storage.getItem("jwt")),
     put: async (path, data) => await put(path, data, storage.getItem("jwt")),
     del: async (path) => await del(path, storage.getItem("jwt")),
-    uploadFile: async (file, ref, field, refId) => await uploadFile(file, ref, field, refId, storage.getItem("jwt")),
+    uploadFile: async (file, ref, field, refId, info) => await uploadFile(file, ref, field, refId, info, storage.getItem("jwt")),
+    deleteFile: async (fileId) => await deleteFile(fileId, storage.getItem("jwt")),
 };
 
 

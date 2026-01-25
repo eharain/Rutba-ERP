@@ -97,11 +97,13 @@ export async function loadProduct(id) {
     let res = await authApi.get(`/products/${id}?populate[categories][populate]=*&populate[brands][populate]=*&populate[suppliers][populate]=*`);
     let prod = res.data || res;
     let data = {
+        id: prod.id || '',
         name: prod.name || '',
         sku: prod.sku || '',
         barcode: prod.barcode || '',
         cost_price: prod.cost_price || 0,
         selling_price: prod.selling_price || 0,
+        offer_price: prod.offer_price || 0,
         tax_rate: prod.tax_rate || 0,
         stock_quantity: prod.stock_quantity || 0,
         reorder_level: prod.reorder_level || 0,

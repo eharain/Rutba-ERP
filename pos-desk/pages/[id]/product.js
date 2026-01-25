@@ -28,6 +28,7 @@ export default function EditProduct() {
         description: ''
     });
 
+    const [productNumId, setProductId] = useState([]);
     const [categories, setCategories] = useState([]);
     const [brands, setBrands] = useState([]);
     const [suppliers, setSuppliers] = useState([]);
@@ -75,6 +76,7 @@ export default function EditProduct() {
                 // If editing existing product, fetch product data
                 if (id && id !== 'new') {
                     const productData = await loadProduct(id);
+                    setProductId(productData.id);
                     setFormData(prev => ({
                         ...prev,
                         ...productData,
@@ -546,9 +548,13 @@ export default function EditProduct() {
 
                         <div style={{ marginBottom: '20px' }}>
                             <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'black' }}>
+                                Product Logo
+                            </label>
+                            <FileView multiple={false} ref='product' refId={productNumId} field="logo" name={formData.name} />
+                            <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'black' }}>
                                 Product Images
                             </label>
-                            <FileView multiple={true} />
+                            <FileView multiple={true} ref='product' refId={productNumId} field="gallery" name={formData.name} />
                         </div>
 
                         <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>

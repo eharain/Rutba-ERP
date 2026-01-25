@@ -38,7 +38,7 @@ export default function StockItemsPage() {
 
     useEffect(() => {
         const trimmed = searchTerm.trim();
-        
+        setSelectedItems(new Set()); // Clear selections on new load
         // Handle Debounce for Search
         const handler = setTimeout(() => {
             // If there's a search term (3+ chars), use search logic
