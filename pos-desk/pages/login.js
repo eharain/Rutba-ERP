@@ -1,14 +1,21 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Layout from "../components/Layout";
 import { useAuth } from "../context/AuthContext";
+import { useRouter } from "next/navigation";
 
 export default function Login() {
-    const { login } = useAuth();
-   
+    const { login, user } = useAuth();
+    const router = useRouter();
     const [identifier, setIdentifier] = useState("");
     const [password, setPassword] = useState("");
     const [errorMessage, setErrorMessage] = useState("");
     const [busyLoading, setBusyLoading] = useState(false);
+
+    useEffect(() => {
+        if (user) {
+            router.push("/");
+        }
+    }, [user]);
 
     async function onSubmit(e) {
         e?.preventDefault();

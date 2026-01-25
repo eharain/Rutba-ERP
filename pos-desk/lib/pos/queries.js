@@ -88,6 +88,29 @@ export const buildQueries = (searchText, page = 1, rowsPerPage = 5, statusFilter
                 pagination: { page, pageSize: rowsPerPage }
             }
         },
+        'me/stock-items-search': {
+            search_filters: {
+                $or: [
+                    { barcode: { $containsi: searchText } },
+                    { sku: { $containsi: searchText } },
+                    { product: {name: { $containsi: searchText } }},
+                    { purchase_item: { purchase: { orderId: { $containsi: searchText } } } }
+                ],
+                status: statusFilter
+            },
+            query: {
+
+                populate: {
+                    product: true,
+                    purchase_item: {
+                        populate: {
+                            purchase: true
+                        }
+                    }
+                },
+                pagination: { page, pageSize: rowsPerPage }
+            }
+        },
         branches: {
             search_filters: {
                 $or: [

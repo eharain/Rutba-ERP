@@ -9,3 +9,4 @@
 node
 /pos-strapi/src/api/utils/routes/validator.js
 /pos-strapi/src/api/utils/controllers/validator.js
+/pos-strapi/types/generated/*

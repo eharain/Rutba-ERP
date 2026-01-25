@@ -33,6 +33,10 @@ function buildWrapper() {
             } else {
                 s.removeItem(key);
             }
+        },
+        removeItem: function (key) {
+            console.debug(`[storage] removeItem called with key: ${key}`);
+            localStorage.removeItem(key);
         }
     };
     return wrapper;

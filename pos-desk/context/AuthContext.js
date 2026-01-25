@@ -10,7 +10,6 @@ export function AuthProvider({ children }) {
     const [currentJwt, setJwt] = useState(null);
     const [currentPermissions, setPermissions] = useState([]);
     const [loading, setReLoading] = useState(true);
-
     // Bootstrap from localStorage
     useEffect(() => {
         const user = storage.getJSON("user");

@@ -28,8 +28,6 @@ export default function StockItemsPage() {
     const [selectedItems, setSelectedItems] = useState(new Set());
     const [statusFilter, setStatusFilter] = useState("Received");
     const [searchTerm, setSearchTerm] = useState("");
-    const lastSearchRef = useRef("");
-    const firstLoadRef = useRef(true);
 
     useEffect(() => {
         (async () => {
@@ -37,48 +35,50 @@ export default function StockItemsPage() {
         })();
     }, [])
 
-    useEffect(() => {
-        loadStockItems();
-    }, [page, rowsPerPage, statusFilter]);
 
-    // Search stock items with debounce
     useEffect(() => {
         const trimmed = searchTerm.trim();
-    
+        
+        // Handle Debounce for Search
         const handler = setTimeout(() => {
-            if (firstLoadRef.current) {
-                firstLoadRef.current = false;
-                return;
-            }
-            
-            if (trimmed.length === 0) {
-                lastSearchRef.current = "";
-                setPage(0);
+            // If there's a search term (3+ chars), use search logic
+            if (trimmed.length >= 3) {
+                handleStockItemsSearch(trimmed);
+            } else {
+                // Otherwise, load default list (Received/InStock etc)
                 loadStockItems();
-                return;
             }
-            
-            if (trimmed.length < 3) {
-                return;
-            }
-            
-            if (trimmed === lastSearchRef.current) {
-                return;
-            }
-    
-            lastSearchRef.current = trimmed;
-            handleStockItemsSearch(trimmed);
-    
         }, 400);
-    
+
         return () => clearTimeout(handler);
-    }, [searchTerm]);
+    }, [page, rowsPerPage, statusFilter, searchTerm]);
+
+    const handleStockItemsSearch = async (searchText) => {
+        setLoading(true);
+        try {
+            // We pass current 'page + 1' so pagination works while searching
+            const stockItemsResult = await searchStockItems(searchText, page + 1, rowsPerPage, statusFilter);
+            setStockItems(stockItemsResult.data);
+            setFilteredItems(stockItemsResult.data);
+            setTotal(stockItemsResult.meta?.pagination?.total ?? 0);
+        } catch (error) {
+            console.error('Error searching stock items:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // 3. Simple change handler: ONLY reset page to 0 when typing a NEW search
+    const handleSearchChange = (e) => {
+        setSearchTerm(e.target.value);
+        setPage(0); // Reset to first page because results will change entirely
+    };
 
     async function loadStockItems() {
         setLoading(true);
         try {
            
-            const response = await authApi.get("/stock-items", {
+            const response = await authApi.get("/me/stock-items-search", {
                 populate: {
                     product: true,
                     purchase_item: {
@@ -107,36 +107,14 @@ export default function StockItemsPage() {
             setLoading(false);
         }
     };
-    
 
-    const handleStockItemsSearch = async (searchText) => {
-        setLoading(true);
-        try {
-            const stockItemsResult = await searchStockItems(searchText, page + 1, rowsPerPage, statusFilter);
-            setStockItems(stockItemsResult.data);
-            setFilteredItems(stockItemsResult.data);
-            setTotal(stockItemsResult.meta?.pagination?.total ?? 0);
-            setPage(0);
-        } catch (error) {
-            console.error('Error searching stock items:', error);
-            setStockItems([]);
-            setFilteredItems([]);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleStockInStock = async () => {
+    const changeStockStatusToInStock = async () => {
         setLoading(true);
         const documentIdsToUpdate = Array.from(selectedItems);
         try {
-            for (const documentId of documentIdsToUpdate) {
-                await authApi.put(`/stock-items/${documentId}`, {
-                    data: {
-                        status: 'InStock'
-                    }
-                });
-            }
+            await Promise.all(documentIdsToUpdate.map(id => 
+                authApi.put(`/stock-items/${id}`, { data: { status: 'InStock' } })
+            ));
             alert(`Stock in stock status updated successfully for ${documentIdsToUpdate.length} items`);
             setSelectedItems(new Set());
             loadStockItems();
@@ -305,7 +283,7 @@ export default function StockItemsPage() {
                                 type="text"
                                 placeholder="SKU, barcode, product name, purchase no..."
                                 value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
+                                onChange={handleSearchChange}
                                 style={{
                                     width: '100%',
                                     padding: '8px',
@@ -316,7 +294,7 @@ export default function StockItemsPage() {
                         </div>
 
                         {statusFilter === 'Received' && <button
-                            onClick={handleStockInStock}
+                            onClick={changeStockStatusToInStock}
                             disabled={selectedItems.size === 0}
                             style={{
                                 padding: '10px 16px',
