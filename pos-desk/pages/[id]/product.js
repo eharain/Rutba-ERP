@@ -107,7 +107,20 @@ export default function EditProduct() {
     };
 
     const handleFileChange = (field, files, multiple) => {
-        product[field] = files;
+        //const newFiles = multiple ? (files : Array.isArray(files)?files[0]:files;
+        if (multiple) {
+            let fa = product[field];
+            if (Array.isArray(fa)) {
+                while (fa.length > 0) {
+                    fa.pop();
+                }
+            } else {
+                fa = product[field] = [];
+            }
+            fa.push(...files);
+        } else {
+            product[field] = files;
+        }
     }
 
     const handleSubmit = async (e) => {
@@ -120,7 +133,7 @@ export default function EditProduct() {
 
             console.log('Form Data to submit:', product);
 
-            const productData = {
+            const payload = {
                 ...product,
                 ...relationConnects({
                     categories: product.categories,
@@ -129,16 +142,18 @@ export default function EditProduct() {
                 }),
 
                 logo: product.logo?.id ? product.logo?.id : null,
-                gallery: product.gallery?.map(g => g.id > 0 ? g.id : g) ?? null,
+                gallery: product.gallery?.map(g => g.id) ?? null,
             };
-            //if (productData.gallery == null) {
-            //    delete productData.gallery;
-            //}
-            //if (product.logo == null) {
-            //    delete productData.logo;
-            //}
+      
+            delete payload.createdAt;
+            delete payload.updatedAt;
+            delete payload.publishedAt;
+            delete payload.id;
+            delete payload.documentId;
 
-            const response = await saveProduct(documentId, productData);
+    
+
+            const response = await saveProduct(documentId, payload);
 
             if (response.data?.documentId || response.data?.documentId) {
                 setSuccess('Product saved successfully!');
@@ -495,11 +510,11 @@ export default function EditProduct() {
                             <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'black' }}>
                                 Logo
                             </label>
-                            <FileView onFileChange={handleFileChange} single={product.Logo} multiple={false} ref='product' refId={productId} field="logo" name={product.name} />
+                            <FileView onFileChange={handleFileChange} single={product.logo} multiple={false} refName='product' refId={productId} field="logo" name={product.name} />
                             <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'black' }}>
                                 Gallery
                             </label>
-                            <FileView onFileChange={handleFileChange} gallery={product.gallery} multiple={true} ref='product' refId={productId} field="gallery" name={product.name} />
+                            <FileView onFileChange={handleFileChange} gallery={product.gallery} multiple={true} refName='product' refId={productId} field="gallery" name={product.name} />
                         </div>
 
                         <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>

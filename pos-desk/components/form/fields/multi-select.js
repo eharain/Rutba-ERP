@@ -1,24 +1,41 @@
-export function MultiSelect({ entity, label, name, collection, fomatDisplay = function (item) { return item.name }, onSupplierChange = function () { } }) {
+export default function MultiSelect({ entity, label, name, collection = [], formatDisplay = function (item) { return item.name ?? '' }, onSupplierChange = function () { } }) {
 
     const handleSelectionChange = (e) => {
-        const selectedOptions = Array.from(e.target.selectedOptions, option => collection.find(s => s.documentId == option.value));
+        // Ensure entity[name] exists and is an array
+        if (!Array.isArray(entity[name])) {
+            entity[name] = [];
+        }
 
-        console.log('Selected options:', selectedOptions);
-        console.log('Selected entity[name]:', entity[name]);
-        console.log("e", e)
+        const selectedOptions = Array.from(e.target.selectedOptions, option => {
+            // Find by documentId or fallback to id; compare as strings
+            return collection.find(s => String(s.documentId ?? s.id) === String(option.value));
+        }).filter(Boolean);
 
+        // mark all existing as disconnected by default
         const clist = entity[name];
         if (Array.isArray(clist)) {
-            clist.forEach(n => { n.disconnect = true })
-            selectedOptions.forEach(n => { n.disconnect = false })
-            const attachs = selectedOptions.filter(n => clist.findIndex(a => a.id == n.id) < 0)
-            clist.push(...attachs);
+            clist.forEach(n => { n.disconnect = true; });
 
+            // mark selected options as connected (disconnect = false)
+            selectedOptions.forEach(n => { n.disconnect = false; });
+
+            // find attachments that are selected but not currently present in clist
+            const attachs = selectedOptions.filter(n =>
+                clist.findIndex(a => String(a.documentId ?? a.id) === String(n.documentId ?? n.id)) < 0
+            );
+
+            if (attachs.length > 0) {
+                clist.push(...attachs);
+            }
         } else {
-            selectedOptions.forEach(n => { n.disconnect = false })
+            // fallback: store selectedOptions array
             entity[name] = selectedOptions;
         }
     };
+
+    const valueArray = (Array.isArray(entity[name]) ? entity[name] : [])
+        .filter(f => !f.disconnect)
+        .map(s => String(s.documentId ?? s.id));
 
     return (
         <div>
@@ -28,7 +45,7 @@ export function MultiSelect({ entity, label, name, collection, fomatDisplay = fu
             <select
                 multiple
                 name={name}
-                value={entity[name].filter(f => !f.disconnect).map(s => s.documentId)}
+                value={valueArray}
                 onChange={handleSelectionChange}
                 style={{
                     width: '100%',
@@ -38,9 +55,9 @@ export function MultiSelect({ entity, label, name, collection, fomatDisplay = fu
                     height: '100px'
                 }}
             >
-                {collection.filter(f => !f.disconnect).map(supplier => (
-                    <option key={supplier.documentId} value={supplier.documentId}>
-                        {fomatDisplay(supplier)}
+                {collection.map(item => (
+                    <option key={String(item.documentId ?? item.id)} value={String(item.documentId ?? item.id)}>
+                        {formatDisplay(item)}
                     </option>
                 ))}
             </select>
@@ -48,5 +65,3 @@ export function MultiSelect({ entity, label, name, collection, fomatDisplay = fu
         </div>
     )
 }
-
-export default MultiSelect;

@@ -1,4 +1,3 @@
-
 import axios from "axios";
 import { storage } from "./storage";
 import qs from 'qs';
@@ -83,7 +82,7 @@ async function uploadFile(files, ref, field, refId, { name, alt, caption }, jwt)
             caption: caption,
         }
 
-        if (Array.isArray(files)) {
+        if (Array.isArray(files) && files.length>1) {
             finfor = files.map((f, i) => {
                 return {
                     name: (name ?? "") + i,
@@ -102,16 +101,16 @@ async function uploadFile(files, ref, field, refId, { name, alt, caption }, jwt)
     const data = res.data;
 
 
-    if (Array.isArray(data)) {
-        data.filter(d => (d.url ?? "").startsWith('/')).forEach(d => d.url = StraipImageUrl(d.url))
-    } else {
-        data.url = StraipImageUrl(data.url);
-    }
+    //if (Array.isArray(data)) {
+    //    data.filter(d => (d.url ?? "").startsWith('/')).forEach(d => d.url = StraipImageUrl(d.url))
+    //} else {
+    //    data.url = StraipImageUrl(data.url);
+    //}
 
     return data;
 }
 async function deleteFile(fileId, jwt) {
-    const res = await axios.delete(`${API_URL}upload/files/${fileId}`, {
+    const res = await axios.delete(`${API_URL}/upload/files/${fileId}`, {
         headers: { 'Content-Type': 'multipart/form-data', ...authHeaders(jwt) },
     });
     // Strapi v5 DELETE returns 204 No Content on success

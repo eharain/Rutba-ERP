@@ -3,14 +3,13 @@ import { storage } from '../lib/storage';
 import { authApi, StraipImageUrl, isImage, isPDF } from '../lib/api';
 // Utility functions
 
-
 // Upload helper using fetch so multipart boundaries are handled by the browser.
 // Attaches to the entity if ref/refId/field provided (Strapi upload attachment pattern).
 export async function uploadToStrapiFiles(files = [], ref, field, refId, info) {
     return await authApi.uploadFile(files, ref, field, refId, info);
 }
 
-function FileView({ onFileChange = function (field, files, multiple){ }, single = null, gallery = [], multiple = false, ref: refName = null, refId = null, field = null, autoUpload = true, name = null }) {
+function FileView({ onFileChange = function (field, files, multiple) { }, single = null, gallery = [], multiple = false, refName = null, refId = null, field = null, autoUpload = true, name = null }) {
     const [singleFile, setSingleFile] = useState(single);
     const [galleryFiles, setGalleryFiles] = useState(gallery);
     const [uploading, setUploading] = useState(false);
@@ -24,16 +23,16 @@ function FileView({ onFileChange = function (field, files, multiple){ }, single 
 
         if (multiple) {
             // show local previews immediately
-
+            let current = [galleryFiles ?? []].map((f) => { return { ...f } })
             setGalleryFiles([]);
 
             if (autoUpload && refName && refId && field) {
                 setUploading(true);
                 try {
                     const uploaded = await uploadToStrapiFiles(selected, refName, field, refId, { name, alt: name, caption: name });
-
-                    setGalleryFiles(uploaded);
-                    onFileChange(field, uploaded, multiple);
+                    const all = [current, uploaded].flat(3).filter(f => f);
+                    setGalleryFiles(all);
+                    onFileChange(field, all, multiple);
                 } catch (err) {
                     console.error('Upload error', err);
                     setUploadError(err.message || 'Upload failed');
@@ -41,7 +40,14 @@ function FileView({ onFileChange = function (field, files, multiple){ }, single 
                     setUploading(false);
                 }
             } else {
-                // keep local previews only
+                // keep local previews only (build simple local file objects for preview)
+                const previews = selected.map((f, i) => ({
+                    name: f.name,
+                    url: URL.createObjectURL(f),
+                    mime: f.type
+                }));
+                setGalleryFiles(previews);
+                onFileChange(field, previews, multiple);
                 setUploading(false);
             }
         } else {
@@ -59,6 +65,11 @@ function FileView({ onFileChange = function (field, files, multiple){ }, single 
                 } finally {
                     setUploading(false);
                 }
+            } else {
+                // local preview for single
+                const preview = { name: selected[0].name, url: URL.createObjectURL(selected[0]), mime: selected[0].type };
+                setSingleFile(preview);
+                onFileChange(field, preview, multiple);
             }
         }
 
@@ -76,18 +87,17 @@ function FileView({ onFileChange = function (field, files, multiple){ }, single 
                 console.warn('Failed to delete remote file', err);
             }
         }
-        setGalleryFiles((prev) => prev.filter((_, i) => i !== index));
-        onFileChange(field, galleryFiles.filter((_, i) => i !== index), multiple);
+        const updated = galleryFiles.filter((_, i) => i !== index);
+        setGalleryFiles(updated);
+        onFileChange(field, updated, multiple);
     };
 
     const handleRemoveSingle = async () => {
         const target = singleFile;
         if (!target) return;
         if (target?.id) {
-            const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:1337';
-            const jwt = storage.getItem('jwt');
             try {
-                authApi.deleteFile(target.id);
+                await authApi.deleteFile(target.id);
             } catch (err) {
                 console.warn('Failed to delete remote file', err);
             }

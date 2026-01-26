@@ -23,7 +23,7 @@ export async function saveSaleItems(id, items) {
                 status: 'Sold'
             }
         })
-    ]
+        ]
     }).flat(2);
 
     return await Promise.all(promises);
@@ -56,10 +56,12 @@ export async function saveProductItems(id, items) {
         },
     });
 }
-
+//prepareForPut()
 export async function saveProduct(id, formData) {
     const url = id && id !== 'new' ? `/products/${id}` : '/products';
     const method = id && id !== 'new' ? 'PUT' : 'POST';
+
+    ;
     /**the relations like category,brand, users, term-types , terms should be added as connect and disconnect paramter */
     // List of numeric properties to convert
     const numericProps = [
@@ -121,7 +123,7 @@ export async function savePurchase(idx, purchase) {
 
     purchaseData.items = { connect: saveItems.map(i => i.documentId) };
 
-    const { url, relations } = urlAndRelations('purchases', purchaseData.id >-1 ? purchaseData.documentId : null, null, 1, 1);
+    const { url, relations } = urlAndRelations('purchases', purchaseData.id > -1 ? purchaseData.documentId : null, null, 1, 1);
 
     if (purchaseData.id > 0) {
         const res = await authApi.put(url, { data: prepareForPut(purchaseData, relations) });
@@ -140,9 +142,9 @@ export async function savePurchase(idx, purchase) {
 * @returns {Promise<Object>} The saved item response.
 */
 export async function savePurchaseItem(item) {
-    const { url, relations } = urlAndRelations('purchase-items', item.id>-1 ? item.documentId : null, null, 1, 1);
+    const { url, relations } = urlAndRelations('purchase-items', item.id > -1 ? item.documentId : null, null, 1, 1);
 
-    if (item.id>-1) {
+    if (item.id > -1) {
         const res = await authApi.put(url, { data: prepareForPut(item, relations) });
         return dataNode(res);//?.data?.data ?? res?.data ?? res;
     } else {
