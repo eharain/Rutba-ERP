@@ -2,33 +2,36 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '../../components/Layout';
 import ProtectedRoute from '../../components/ProtectedRoute';
-import { authApi } from '../../lib/api';
+import { authApi, relationConnects } from '../../lib/api';
 import { saveProduct, loadProduct } from '../../lib/pos';
 import StrapiImage from '../../components/StrapiImage';
 import FileView from '../../components/FileView';
-
+import MultiSelect from '../../components/form/fields/multi-select';
 export default function EditProduct() {
     const router = useRouter();
-    const { id } = router.query;
+    const { id: documentId } = router.query;
 
-    const [formData, setFormData] = useState({
-        name: '',
-        sku: '',
-        barcode: '',
-        offer_price: 0,
-        selling_price: 0,
-        tax_rate: 0,
-        stock_quantity: 0,
-        reorder_level: 0,
-        bundle_units: 1,
-        is_active: true,
-        categories: [],
-        brands: [],
-        suppliers: [],
-        description: ''
-    });
+    //const [product, setFormData] = useState({
+    //    name: '',
+    //    sku: '',
+    //    barcode: '',
+    //    offer_price: 0,
+    //    selling_price: 0,
+    //    tax_rate: 0,
+    //    stock_quantity: 0,
+    //    reorder_level: 0,
+    //    bundle_units: 1,
+    //    is_active: true,
+    //    categories: [],
+    //    brands: [],
+    //    suppliers: [],
+    //    description: '',
+    //    logo: null,
+    //    gallery: []
+    //});
 
-    const [productNumId, setProductId] = useState([]);
+    const [productId, setProductId] = useState([]);
+    const [product, setProduct] = useState({});
     const [categories, setCategories] = useState([]);
     const [brands, setBrands] = useState([]);
     const [suppliers, setSuppliers] = useState([]);
@@ -36,24 +39,25 @@ export default function EditProduct() {
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
-
+    //const [productLogo, setProductLogo] = useState(null);
+    //const [productGallery, setProductGallery] = useState([]);
     async function fetchAllRecords(endpoint) {
         let allRecords = [];
         let page = 1;
         let totalPages = 1;
-    
+
         do {
             // Fetch current page
             const response = await authApi.get(`${endpoint}?pagination[page]=${page}&pagination[pageSize]=100`);
             const { data, meta } = response;
-            
+
             allRecords = [...allRecords, ...data];
-            
+
             // Update pagination info
             totalPages = meta.pagination.pageCount;
             page++;
         } while (page <= totalPages);
-    
+
         return allRecords;
     }
 
@@ -73,17 +77,10 @@ export default function EditProduct() {
                 setBrands(brandsRes || []);
                 setSuppliers(suppliersRes || []);
 
-                // If editing existing product, fetch product data
-                if (id && id !== 'new') {
-                    const productData = await loadProduct(id);
+                if (documentId && documentId !== 'new') {
+                    const productData = await loadProduct(documentId);
                     setProductId(productData.id);
-                    setFormData(prev => ({
-                        ...prev,
-                        ...productData,
-                        categories: productData.categories[0]?.id || productData.categories || '',
-                        brands: productData.brands[0]?.id || productData.brands || '',
-                        suppliers: productData.suppliers || []
-                    }));
+                    setProduct(productData);
                 }
             } catch (err) {
                 setError('Failed to fetch data');
@@ -93,27 +90,25 @@ export default function EditProduct() {
             }
         };
 
-        if (id) {
+        if (documentId) {
             fetchData();
         }
-    }, [id]);
+    }, [documentId]);
 
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            [name]: type === 'checkbox' ? checked :
-                type === 'number' ? (value === '' ? '' : parseFloat(value)) :
-                    value
-        }));
+        if (type === 'checkbox') {
+            product[name] = checked ? true : false;
+        } else if (type === 'number') {
+            product[name] = parseFloat(value);
+        } else {
+            product[name] = value;
+        }
     };
 
-    const handleSupplierChange = (e) => {
-        const selectedOptions = Array.from(e.target.selectedOptions, option =>
-            suppliers.find(s => s.id == option.value)
-        );
-        setFormData(prev => ({ ...prev, suppliers: selectedOptions }));
-    };
+    const handleFileChange = (field, files, multiple) => {
+        product[field] = files;
+    }
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -122,16 +117,30 @@ export default function EditProduct() {
         setSuccess('');
 
         try {
-            const productData = {
-                ...formData,
-                categories: formData.categories === "" ? [] : [parseInt(formData.categories)],
-                brands: formData.brands === "" ? [] : [parseInt(formData.brands)],
-                suppliers: formData.suppliers.length > 0 ? formData.suppliers.map(s => parseInt(s.id)) : [],
-                description: formData.description === "" ? null : formData.description
-            };
-            const response = await saveProduct(id, productData);
 
-            if (response.data?.id || response.data?.documentId) {
+            console.log('Form Data to submit:', product);
+
+            const productData = {
+                ...product,
+                ...relationConnects({
+                    categories: product.categories,
+                    brands: product.brands,
+                    suppliers: product.suppliers
+                }),
+
+                logo: product.logo?.id ? product.logo?.id : null,
+                gallery: product.gallery?.map(g => g.id > 0 ? g.id : g) ?? null,
+            };
+            //if (productData.gallery == null) {
+            //    delete productData.gallery;
+            //}
+            //if (product.logo == null) {
+            //    delete productData.logo;
+            //}
+
+            const response = await saveProduct(documentId, productData);
+
+            if (response.data?.documentId || response.data?.documentId) {
                 setSuccess('Product saved successfully!');
                 setTimeout(() => {
                     router.push('/products');
@@ -190,7 +199,7 @@ export default function EditProduct() {
             <Layout>
                 <div style={{ padding: '20px', maxWidth: '900px', margin: '0 auto' }}>
                     <h1 style={{ marginBottom: '20px' }}>
-                        {id && id !== 'new' ? 'Edit Product' : 'Create New Product'}
+                        {documentId && documentId !== 'new' ? 'Edit Product' : 'Create New Product'}
                     </h1>
 
                     {error && (
@@ -229,7 +238,7 @@ export default function EditProduct() {
                                 <input
                                     type="text"
                                     name="name"
-                                    value={formData.name}
+                                    value={product.name ?? ""}
                                     onChange={handleChange}
                                     required
                                     style={{
@@ -250,7 +259,7 @@ export default function EditProduct() {
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                                     <textarea
                                         name="description"
-                                        value={formData.description}
+                                        value={product.description ?? ""}
                                         onChange={handleChange}
                                         rows="6"
                                         style={{
@@ -272,7 +281,7 @@ export default function EditProduct() {
                                         overflowY: 'auto'
                                     }}>
                                         <div style={{ fontSize: '12px', color: '#666', marginBottom: '6px' }}>Preview</div>
-                                        <div dangerouslySetInnerHTML={renderMarkdownPreview(formData.description)} />
+                                        <div dangerouslySetInnerHTML={renderMarkdownPreview(product.description)} />
                                     </div>
                                 </div>
                             </div>
@@ -287,7 +296,7 @@ export default function EditProduct() {
                                 <input
                                     type="text"
                                     name="sku"
-                                    value={formData.sku}
+                                    value={product.sku ?? ""}
                                     onChange={handleChange}
                                     style={{
                                         width: '100%',
@@ -306,7 +315,7 @@ export default function EditProduct() {
                                 <input
                                     type="text"
                                     name="barcode"
-                                    value={formData.barcode}
+                                    value={product.barcode ?? ""}
                                     onChange={handleChange}
                                     style={{
                                         width: '100%',
@@ -330,7 +339,7 @@ export default function EditProduct() {
                                     name="selling_price"
                                     step="0.01"
                                     min="0"
-                                    value={formData.selling_price}
+                                    value={product.selling_price ?? 0}
                                     onChange={handleChange}
                                     required
                                     style={{
@@ -352,7 +361,7 @@ export default function EditProduct() {
                                     name="offer_price"
                                     step="0.01"
                                     min="0"
-                                    value={formData.offer_price}
+                                    value={product.offer_price ?? 0}
                                     onChange={handleChange}
                                     style={{
                                         width: '100%',
@@ -376,7 +385,7 @@ export default function EditProduct() {
                                     name="tax_rate"
                                     step="0.01"
                                     min="0"
-                                    value={formData.tax_rate}
+                                    value={product.tax_rate ?? 0}
                                     onChange={handleChange}
                                     style={{
                                         width: '100%',
@@ -396,7 +405,7 @@ export default function EditProduct() {
                                     type="number"
                                     name="stock_quantity"
                                     min="0"
-                                    value={formData.stock_quantity}
+                                    value={product.stock_quantity ?? 0}
                                     onChange={handleChange}
                                     style={{
                                         width: '100%',
@@ -419,7 +428,7 @@ export default function EditProduct() {
                                     type="number"
                                     name="reorder_level"
                                     min="0"
-                                    value={formData.reorder_level}
+                                    value={product.reorder_level ?? 0}
                                     onChange={handleChange}
                                     style={{
                                         width: '100%',
@@ -439,7 +448,7 @@ export default function EditProduct() {
                                     type="number"
                                     name="bundle_units"
                                     min="1"
-                                    value={formData.bundle_units}
+                                    value={product.bundle_units ?? 0}
                                     onChange={handleChange}
                                     style={{
                                         width: '100%',
@@ -454,53 +463,9 @@ export default function EditProduct() {
 
                         {/* Category + Brand */}
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'black' }}>
-                                    Category
-                                </label>
-                                <select
-                                    name="categories"
-                                    value={formData.categories}
-                                    onChange={handleChange}
-                                    style={{
-                                        width: '100%',
-                                        padding: '8px',
-                                        border: '1px solid #ccc',
-                                        borderRadius: '4px'
-                                    }}
-                                >
-                                    <option value="">Select Category</option>
-                                    {categories.map(cat => (
-                                        <option key={cat.id} value={cat.id}>
-                                            {cat.name}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
+                            <MultiSelect label="Category" name="categories" entity={product} collection={categories} ></MultiSelect>
+                            <MultiSelect label="Brands" name="brands" entity={product} collection={brands} ></MultiSelect>
 
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'black' }}>
-                                    Brand
-                                </label>
-                                <select
-                                    name="brands"
-                                    value={formData.brands}
-                                    onChange={handleChange}
-                                    style={{
-                                        width: '100%',
-                                        padding: '8px',
-                                        border: '1px solid #ccc',
-                                        borderRadius: '4px'
-                                    }}
-                                >
-                                    <option value="">Select Brand</option>
-                                    {brands.map(brand => (
-                                        <option key={brand.id} value={brand.id}>
-                                            {brand.name}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
                         </div>
 
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
@@ -512,7 +477,7 @@ export default function EditProduct() {
                                     <input
                                         type="checkbox"
                                         name="is_active"
-                                        checked={formData.is_active}
+                                        checked={product.is_active ?? true}
                                         onChange={handleChange}
                                         style={{ marginRight: '8px' }}
                                     />
@@ -520,41 +485,21 @@ export default function EditProduct() {
                                 </div>
                             </div>
 
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'black' }}>
-                                    Suppliers
-                                </label>
-                                <select
-                                    multiple
-                                    value={formData.suppliers.map(s => s.id)}
-                                    onChange={handleSupplierChange}
-                                    style={{
-                                        width: '100%',
-                                        padding: '8px',
-                                        border: '1px solid #ccc',
-                                        borderRadius: '4px',
-                                        height: '100px'
-                                    }}
-                                >
-                                    {suppliers.map(supplier => (
-                                        <option key={supplier.id} value={supplier.id}>
-                                            {supplier.name} - {supplier.contact_person}
-                                        </option>
-                                    ))}
-                                </select>
-                                <small style={{ color: 'black' }}>Hold Ctrl/Cmd to select multiple suppliers</small>
-                            </div>
+                            <MultiSelect label="Suppliers" name="suppliers"
+                                formatDisplay={function (supplier) { return supplier.name + '' + supplier.contact_person }}
+                                entity={product} collection={suppliers} ></MultiSelect>
+
                         </div>
 
                         <div style={{ marginBottom: '20px' }}>
                             <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'black' }}>
-                                Product Logo
+                                Logo
                             </label>
-                            <FileView multiple={false} ref='product' refId={productNumId} field="logo" name={formData.name} />
+                            <FileView onFileChange={handleFileChange} single={product.Logo} multiple={false} ref='product' refId={productId} field="logo" name={product.name} />
                             <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'black' }}>
-                                Product Images
+                                Gallery
                             </label>
-                            <FileView multiple={true} ref='product' refId={productNumId} field="gallery" name={formData.name} />
+                            <FileView onFileChange={handleFileChange} gallery={product.gallery} multiple={true} ref='product' refId={productId} field="gallery" name={product.name} />
                         </div>
 
                         <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
@@ -570,7 +515,7 @@ export default function EditProduct() {
                                     cursor: submitting ? 'not-allowed' : 'pointer'
                                 }}
                             >
-                                {submitting ? 'Saving...' : (id && id !== 'new' ? 'Update Product' : 'Create Product')}
+                                {submitting ? 'Saving...' : (documentId && documentId !== 'new' ? 'Update Product' : 'Create Product')}
                             </button>
                             <button
                                 type="button"
@@ -593,3 +538,5 @@ export default function EditProduct() {
         </ProtectedRoute>
     );
 }
+
+

@@ -14,7 +14,10 @@ function authHeaders(jwt) {
 }
 
 async function get(path, data = {}, jwt) {
-    const res = await axios.get(querify(`${API_URL}${path}`, data), {
+
+    let query = "";// Object.keys(data).length > 0 ? "?" + qs.stringify(data, { encodeValuesOnly: true }) : "";
+
+    const res = await axios.get(querify(`${API_URL}${path}${query}`, data), {
         data,
         headers: { ...authHeaders(jwt) },
     });
@@ -81,9 +84,9 @@ async function uploadFile(files, ref, field, refId, { name, alt, caption }, jwt)
         }
 
         if (Array.isArray(files)) {
-            finfor = files.map((f,i) => {
+            finfor = files.map((f, i) => {
                 return {
-                    name:(name??"") + i,
+                    name: (name ?? "") + i,
                     alternativeText: alt,
                     caption: caption,
                 }
@@ -115,10 +118,30 @@ async function deleteFile(fileId, jwt) {
     console.log('Delete file status:', res.status); // 204
     return res.status === 204;
 }
-export function StraipImageUrl(url) {
+export function StraipImageUrl(file) {
+    const url = file.url ?? file;
     return (url ?? "").startsWith('/') ? IMAGE_URL + url : url;
 }
 
+export function isImage(file) {
+    return (file?.mime ?? '').startsWith('image/')
+};
+
+export function isPDF(file) {
+    return (file?.mime ?? '') === 'application/pdf';
+}
+
+export function relationConnects(relations) {
+    const connects = {};
+    Object.entries(relations).forEach(([key, obj]) => {
+        if (obj?.documentId) {
+            connects[key] = { connect: obj.documentId }
+        } else if (Array.isArray(obj) && obj.length > 0) {
+            connects[key] = { connect: obj.map(a => a.documentId) }
+        }
+    });
+    return connects;
+}
 // ------------------ Public API (no auth) ------------------
 export const api = {
     fetch: async (path, params) => await get(path, params),

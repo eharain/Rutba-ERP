@@ -18,7 +18,7 @@ export async function fetchReturns(page, rowsPerPage = 100) {
 }
 
 // Fetch purchases for reports
-export async function fetchPurchases( page, rowsPerPage = 100) {
+export async function fetchPurchases(page, rowsPerPage = 100) {
     return await authApi.fetch("/purchases", { sort: ['createdAt:desc'], pagination: { page, pageSize: rowsPerPage }, populate: { suppliers: true } });
 }
 
@@ -68,49 +68,66 @@ export async function fetchEnumsValues(name, field) {
 export async function fetchProducts(filters, page, rowsPerPage) {
     const { brands, categories, suppliers, terms, stockStatus, searchText } = filters;
 
-   
+
 
     const entity = 'products';
     const documentId = null;
 
     const { query, relations, url } = urlAndRelations(entity, documentId, searchText, page, rowsPerPage)
 
-    
+
     for (const key of Object.entries(filters)) {
 
         if (relations.includes(key)) {
             query.filters
 
         }
-     //   delete query.query.filters[key];
+        //   delete query.query.filters[key];
     }
 
 
     const res = await authApi.get(url);
     console.log('res', res)
-   // let data = dataNode(res);
+    // let data = dataNode(res);
     return res; //{data: res.data, meta: res.meta };
     //  return await fetchEntities('products', page, rowsPerPage);
 }
 
 export async function loadProduct(id) {
-    let res = await authApi.get(`/products/${id}?populate[categories][populate]=*&populate[brands][populate]=*&populate[suppliers][populate]=*`);
+
+    const query = {
+      //  filters: { documentId: id },
+        populate: {
+            categories: true,
+            brands: true,
+            suppliers: true,
+            logo: true,
+            gallery: true,
+            suppliers: true
+        }
+    }
+
+    let res = await authApi.get(`/products/${id}`, query);
     let prod = res.data || res;
-    let data = {
-        id: prod.id || '',
-        name: prod.name || '',
-        sku: prod.sku || '',
-        barcode: prod.barcode || '',
-        cost_price: prod.cost_price || 0,
-        selling_price: prod.selling_price || 0,
-        offer_price: prod.offer_price || 0,
-        tax_rate: prod.tax_rate || 0,
-        stock_quantity: prod.stock_quantity || 0,
-        reorder_level: prod.reorder_level || 0,
-        is_active: prod.is_active !== undefined ? prod.is_active : true,
-        categories: prod.categories[0]?.id || '',
-        brands: prod.brands[0]?.id || '',
-        suppliers: prod.suppliers || []
-    };
-    return data;
+    //let data = {
+    //    id: prod.id || '',
+    //    documentId: prod.documentId || '',
+    //    name: prod.name || '',
+    //    sku: prod.sku || '',
+    //    barcode: prod.barcode || '',
+    //    cost_price: prod.cost_price || 0,
+    //    selling_price: prod.selling_price || 0,
+    //    offer_price: prod.offer_price || 0,
+    //    tax_rate: prod.tax_rate || 0,
+    //    stock_quantity: prod.stock_quantity || 0,
+    //    reorder_level: prod.reorder_level || 0,
+    //    is_active: prod.is_active !== undefined ? prod.is_active : true,
+    //    categories: prod.categories[0]?.id || '',
+    //    brands: prod.brands[0]?.id || '',
+    //    suppliers: prod.suppliers || [],
+    //    logo: prod.logo || null,
+    //    gallery: prod.gallery || [],
+
+    //};
+    return prod;
 }

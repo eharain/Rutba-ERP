@@ -1,9 +1,8 @@
 import React, { useRef, useState } from 'react';
 import { storage } from '../lib/storage';
-import { authApi, uploadFile } from '../lib/api';
+import { authApi, StraipImageUrl, isImage, isPDF } from '../lib/api';
 // Utility functions
-const isImage = (file) => (file?.type ?? '').startsWith('image/');
-const isPDF = (file) => (file?.type ?? '') === 'application/pdf';
+
 
 // Upload helper using fetch so multipart boundaries are handled by the browser.
 // Attaches to the entity if ref/refId/field provided (Strapi upload attachment pattern).
@@ -11,9 +10,9 @@ export async function uploadToStrapiFiles(files = [], ref, field, refId, info) {
     return await authApi.uploadFile(files, ref, field, refId, info);
 }
 
-function FileView({ multiple = false, ref: refName = null, refId = null, field = null, autoUpload = true,name=null }) {
-    const [singleFile, setSingleFile] = useState(null);
-    const [galleryFiles, setGalleryFiles] = useState([]);
+function FileView({ onFileChange = function (field, files, multiple){ }, single = null, gallery = [], multiple = false, ref: refName = null, refId = null, field = null, autoUpload = true, name = null }) {
+    const [singleFile, setSingleFile] = useState(single);
+    const [galleryFiles, setGalleryFiles] = useState(gallery);
     const [uploading, setUploading] = useState(false);
     const [uploadError, setUploadError] = useState(null);
     const inputRef = useRef();
@@ -25,15 +24,16 @@ function FileView({ multiple = false, ref: refName = null, refId = null, field =
 
         if (multiple) {
             // show local previews immediately
-            
+
             setGalleryFiles([]);
 
             if (autoUpload && refName && refId && field) {
                 setUploading(true);
                 try {
-                    const uploaded = await uploadToStrapiFiles(selected, refName, field, refId, {name,alt: name,caption:name });
-                  
+                    const uploaded = await uploadToStrapiFiles(selected, refName, field, refId, { name, alt: name, caption: name });
+
                     setGalleryFiles(uploaded);
+                    onFileChange(field, uploaded, multiple);
                 } catch (err) {
                     console.error('Upload error', err);
                     setUploadError(err.message || 'Upload failed');
@@ -45,12 +45,14 @@ function FileView({ multiple = false, ref: refName = null, refId = null, field =
                 setUploading(false);
             }
         } else {
-    
+
             if (autoUpload && refName && refId && field) {
                 setUploading(true);
                 try {
                     const uploaded = await uploadToStrapiFiles([selected[0]], refName, field, refId, { name, alt: name, caption: name });
                     setSingleFile(uploaded[0]);
+                    onFileChange(field, uploaded[0], multiple);
+
                 } catch (err) {
                     console.error('Upload error', err);
                     setUploadError(err.message || 'Upload failed');
@@ -69,12 +71,13 @@ function FileView({ multiple = false, ref: refName = null, refId = null, field =
         // If uploaded and has id, attempt to detach/delete from Strapi
         if (target?.id) {
             try {
-                authApi.deleteFile(target.id);
+                await authApi.deleteFile(target.id);
             } catch (err) {
                 console.warn('Failed to delete remote file', err);
             }
         }
         setGalleryFiles((prev) => prev.filter((_, i) => i !== index));
+        onFileChange(field, galleryFiles.filter((_, i) => i !== index), multiple);
     };
 
     const handleRemoveSingle = async () => {
@@ -90,6 +93,7 @@ function FileView({ multiple = false, ref: refName = null, refId = null, field =
             }
         }
         setSingleFile(null);
+        onFileChange(field, null, multiple);
     };
 
     return (
@@ -128,16 +132,16 @@ function FileView({ multiple = false, ref: refName = null, refId = null, field =
                         style={{ zIndex: 2 }}
                     />
                     <div className="d-flex align-items-center justify-content-center h-100">
-                        {isImage(singleFile?.file) || singleFile?.preview ? (
+                        {isImage(singleFile) ? (
                             <img
-                                src={singleFile.preview}
+                                src={StraipImageUrl(singleFile)}
                                 alt={singleFile.name}
                                 className="img-fluid h-100 w-100"
                                 style={{ objectFit: 'cover' }}
                             />
-                        ) : isPDF(singleFile?.file) ? (
+                        ) : isPDF(singleFile) ? (
                             <embed
-                                src={singleFile.preview}
+                                src={StraipImageUrl(singleFile)}
                                 type="application/pdf"
                                 width="100%"
                                 height="100%"
@@ -154,10 +158,10 @@ function FileView({ multiple = false, ref: refName = null, refId = null, field =
             )}
 
             {/* Gallery view for multiple files */}
-            {multiple && galleryFiles.length > 0 && (
+            {multiple && galleryFiles?.length > 0 && (
                 <div className="row g-3">
                     {galleryFiles.map((fileObj, idx) => (
-                        <div key={fileObj.id ?? fileObj.preview ?? idx} className="col-6 col-sm-4 col-md-3">
+                        <div key={fileObj.id ?? fileObj.url ?? idx} className="col-6 col-sm-4 col-md-3">
                             <div className="card position-relative" style={{ width: 140, height: 140 }}>
                                 <button
                                     type="button"
@@ -168,16 +172,16 @@ function FileView({ multiple = false, ref: refName = null, refId = null, field =
                                     style={{ zIndex: 2 }}
                                 />
                                 <div className="d-flex align-items-center justify-content-center h-100">
-                                    {isImage(fileObj?.file) || fileObj?.preview ? (
+                                    {isImage(fileObj) ? (
                                         <img
-                                            src={fileObj.preview ?? fileObj.url}
+                                            src={StraipImageUrl(fileObj)}
                                             alt={fileObj.name}
                                             className="img-fluid h-100 w-100"
                                             style={{ objectFit: 'cover' }}
                                         />
-                                    ) : isPDF(fileObj?.file) ? (
-                                            <embed
-                                                src={fileObj.preview ?? fileObj.url}
+                                    ) : isPDF(fileObj) ? (
+                                        <embed
+                                            src={StraipImageUrl(fileObj)}
                                             type="application/pdf"
                                             width="100%"
                                             height="100%"
