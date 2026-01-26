@@ -33,7 +33,6 @@ module.exports = createCoreController('plugin::users-permissions.me', ({ strapi 
                 return ctx.unauthorized("You must be logged in");
             }
             const { filters, pagination, sort, populate } = ctx.query;
-            console.log('populate', ctx.query);
             const entries = await strapi.entityService.findMany('api::stock-item.stock-item', {
                 filters: filters,
                 start: pagination?.page > 1 ? (pagination.page - 1) * (pagination.pageSize || 20) : 0,
