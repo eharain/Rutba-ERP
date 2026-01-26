@@ -11,10 +11,10 @@ export async function saveSaleItems(id, items) {
     const promises = items.map(async (i) => {
         [await authApi.post(`/sale-items`, {
             data: {
-                items: [i.id],
+                items: [i.documentId],
                 quantity: i.quantity,
                 price: i.price,
-                product: i.product.id,
+                product: i.product.documentId,
                 sale: id
             }
         }),
