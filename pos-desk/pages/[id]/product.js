@@ -6,29 +6,14 @@ import { authApi, relationConnects } from '../../lib/api';
 import { saveProduct, loadProduct } from '../../lib/pos';
 import StrapiImage from '../../components/StrapiImage';
 import FileView from '../../components/FileView';
-import MultiSelect from '../../components/form/fields/multi-select';
+// Replaced local MultiSelect with PrimeReact MultiSelect
+import { MultiSelect } from 'primereact/multiselect';
+
+
+
 export default function EditProduct() {
     const router = useRouter();
     const { id: documentId } = router.query;
-
-    //const [product, setFormData] = useState({
-    //    name: '',
-    //    sku: '',
-    //    barcode: '',
-    //    offer_price: 0,
-    //    selling_price: 0,
-    //    tax_rate: 0,
-    //    stock_quantity: 0,
-    //    reorder_level: 0,
-    //    bundle_units: 1,
-    //    is_active: true,
-    //    categories: [],
-    //    brands: [],
-    //    suppliers: [],
-    //    description: '',
-    //    logo: null,
-    //    gallery: []
-    //});
 
     const [productId, setProductId] = useState([]);
     const [product, setProduct] = useState({});
@@ -39,8 +24,7 @@ export default function EditProduct() {
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
-    //const [productLogo, setProductLogo] = useState(null);
-    //const [productGallery, setProductGallery] = useState([]);
+
     async function fetchAllRecords(endpoint) {
         let allRecords = [];
         let page = 1;
@@ -81,6 +65,9 @@ export default function EditProduct() {
                     const productData = await loadProduct(documentId);
                     setProductId(productData.id);
                     setProduct(productData);
+                } else {
+                    // ensure arrays exist for new product
+                    setProduct(p => ({ ...p, categories: [], brands: [], suppliers: [] }));
                 }
             } catch (err) {
                 setError('Failed to fetch data');
@@ -104,10 +91,11 @@ export default function EditProduct() {
         } else {
             product[name] = value;
         }
+        // keep product state in sync for re-render
+        setProduct({ ...product });
     };
 
     const handleFileChange = (field, files, multiple) => {
-        //const newFiles = multiple ? (files : Array.isArray(files)?files[0]:files;
         if (multiple) {
             let fa = product[field];
             if (Array.isArray(fa)) {
@@ -121,6 +109,7 @@ export default function EditProduct() {
         } else {
             product[field] = files;
         }
+        setProduct({ ...product });
     }
 
     const handleSubmit = async (e) => {
@@ -150,8 +139,6 @@ export default function EditProduct() {
             delete payload.publishedAt;
             delete payload.id;
             delete payload.documentId;
-
-    
 
             const response = await saveProduct(documentId, payload);
 
@@ -196,6 +183,11 @@ export default function EditProduct() {
 
         return { __html: html };
     };
+
+    // Prepare PrimeReact options (label/value shape)
+    const categoryOptions = categories.map(c => ({ label: c.name ?? '', value: c }));
+    const brandOptions = brands.map(b => ({ label: b.name ?? '', value: b }));
+    const supplierOptions = suppliers.map(s => ({ label: (s.name ?? '') + (s.contact_person ? ' ' + s.contact_person : ''), value: s }));
 
     if (loading) {
         return (
@@ -476,11 +468,45 @@ export default function EditProduct() {
                             </div>
                         </div>
 
-                        {/* Category + Brand */}
+                        {/* Category + Brand (PrimeReact MultiSelect) */}
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
-                            <MultiSelect label="Category" name="categories" entity={product} collection={categories} ></MultiSelect>
-                            <MultiSelect label="Brands" name="brands" entity={product} collection={brands} ></MultiSelect>
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'black' }}>
+                                    Category
+                                </label>
+                                <MultiSelect
+                                    value={product.categories ?? []}
+                                    options={categoryOptions}
+                                    onChange={(e) => {
+                                        product.categories = e.value;
+                                        setProduct({ ...product });
+                                    }}
+                                    optionLabel="label"
+                                    optionValue="value"
+                                    placeholder="Select categories"
+                                    display="chip"
+                                    style={{ width: '100%' }}
+                                />
+                            </div>
 
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'black' }}>
+                                    Brands
+                                </label>
+                                <MultiSelect
+                                    value={product.brands ?? []}
+                                    options={brandOptions}
+                                    onChange={(e) => {
+                                        product.brands = e.value;
+                                        setProduct({ ...product });
+                                    }}
+                                    optionLabel="label"
+                                    optionValue="value"
+                                    placeholder="Select brands"
+                                    display="chip"
+                                    style={{ width: '100%' }}
+                                />
+                            </div>
                         </div>
 
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
@@ -500,10 +526,24 @@ export default function EditProduct() {
                                 </div>
                             </div>
 
-                            <MultiSelect label="Suppliers" name="suppliers"
-                                formatDisplay={function (supplier) { return supplier.name + '' + supplier.contact_person }}
-                                entity={product} collection={suppliers} ></MultiSelect>
-
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'black' }}>
+                                    Suppliers
+                                </label>
+                                <MultiSelect
+                                    value={product.suppliers ?? []}
+                                    options={supplierOptions}
+                                    onChange={(e) => {
+                                        product.suppliers = e.value;
+                                        setProduct({ ...product });
+                                    }}
+                                    optionLabel="label"
+                                    optionValue="value"
+                                    placeholder="Select suppliers"
+                                    display="chip"
+                                    style={{ width: '100%' }}
+                                />
+                            </div>
                         </div>
 
                         <div style={{ marginBottom: '20px' }}>
