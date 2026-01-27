@@ -17,6 +17,7 @@ export default function SalePage() {
     const { id } = router.query;
     const { currency } = useUtil();
     const [sale, setSale] = useState(null);
+    const [customer, setCustomer] = useState(null);
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(false);
     const [totals, setTotals] = useState({
@@ -40,6 +41,7 @@ export default function SalePage() {
         try {
             const saleData = await fetchSaleByIdOrInvoice(id);
             setSale(saleData);
+            setCustomer(saleData.customer || null);
             // Initialize items with discount if present
             const initialItems = saleData.items?.map(item => ({
                 ...item,
@@ -125,7 +127,9 @@ export default function SalePage() {
         setLoading(true);
         try {
             await saveSaleItems(sale.documentId || sale.id, items);
-
+            let updatedCustomer = customer ? {
+                customer: { connect: customer.documentId || customer.id }
+            } : {};
             // Update sale status to completed
             await authApi.put(`/sales/${sale.documentId || sale.id}`, {
                 data: {
@@ -133,7 +137,8 @@ export default function SalePage() {
                     total: totals.total,
                     subtotal: totals.subtotal,
                     discount: totals.discount,
-                    tax: totals.tax
+                    tax: totals.tax,
+                    ...updatedCustomer
                 }
             });
 
@@ -169,23 +174,29 @@ export default function SalePage() {
         const saleId = sale.documentId || sale.id || sale.invoice_no;
         window.open(`/print-invoice?key=${storageKey}&saleId=${saleId}`, '_blank', 'width=1000,height=800');
     };
+    const handleCustomerChange = async (ncustomer) => {
+        setSale(prev => ({
+            ...prev,
+            ncustomer
+        }));
+        setCustomer(ncustomer);
 
-    const handleCustomerChange = async (customer) => {
-        // Update UI immediately
-        setSale(prev => ({ ...prev, customer }));
-        // Persist change to backend if sale exists
         if (!sale) return;
+
         try {
-            const payload = customer ? { customer: { connect: [customer.documentId || customer.id] } } : { customer: null };
-            await authApi.put(`/sales/${sale.documentId || sale.id}`, { data: payload });
-            // reload to sync any other changes
-            await loadSaleData();
+            await authApi.put(`/sales/${sale.documentId || sale.id}`, {
+                data: {
+                    customer: ncustomer
+                        ? { connect: [ncustomer.documentId || ncustomer.id] }
+                        : null
+                }
+            });
         } catch (err) {
             console.error('Failed to update sale customer', err);
-            // revert UI load
             await loadSaleData();
         }
     };
+
 
     if (loading && !sale) return <div>Loading...</div>;
 
@@ -193,85 +204,64 @@ export default function SalePage() {
         <Layout>
             <ProtectedRoute>
                 <PermissionCheck required='api::sale.sale.find,api::sale-item.sale-item.find,api::stock-item.stock-item.find'>
-                    <div style={{ padding: '20px' }}>
+                    <div className="m-4" style={{ padding: '4px' }}>
                         {/* Header */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                            <div>
-                                <button
-                                    onClick={() => router.push('/sales')}
-                                    style={{
-                                        padding: '8px 16px',
-                                        background: 'transparent',
-                                        color: '#007bff',
-                                        border: '1px solid #007bff',
-                                        borderRadius: '4px',
-                                        cursor: 'pointer',
-                                        marginBottom: '10px'
-                                    }}
-                                >
-                                    ← Back to Sales
-                                </button>
-                                <h1>Sale #{sale?.invoice_no || id}</h1>
-                                <p>Date: {sale?.sale_date ? new Date(sale.sale_date).toLocaleDateString() : 'N/A'}</p>
-
+                        <div >
+                            <div className="row ">
+                                <div className="col-md-8">
+                                    <h3>Sale #{sale?.invoice_no || id}</h3>
+                                </div>
+                                <div className="col-md-2">
+                                    <p>Date: {sale?.sale_date ? new Date(sale.sale_date).toLocaleDateString() : 'N/A'}</p>
+                                </div>
+                                <div className="col-md-2" style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '10px' }}>
+                                    Total: {currency}{totals.total.toFixed(2)}
+                                </div>
+                            </div>
+                            <div className="row">
                                 {/* Customer control replaced here */}
-                                <div style={{ marginTop: 8 }}>
-                                    <label style={{ display: 'block', marginBottom: 6 }}>Customer:</label>
+                                <div className="col-md-4">
+                                    <label className="mb-6" >Customer: <span className="w-60 text-wrap"> {customer ? `${customer.name || ''} ${customer.email ? `· ${customer.email}` : ''} ${customer.phone ? `· ${customer.phone}` : ''}` : 'Walk-in Customer'}</span></label>
+                                </div>
+                                <div className="col-md-7">
                                     <CustomerSelect
-                                        value={sale?.customer ?? null}
+                                        value={customer ?? null}
                                         onChange={handleCustomerChange}
                                         disabled={sale?.payment_status === 'Paid'}
                                     />
-                                    <div style={{ marginTop: 6, color: '#666' }}>
-                                        {/* show small hint or fallback */}
-                                        {sale?.customer ? `${sale.customer.name || ''} ${sale.customer.email ? `· ${sale.customer.email}` : ''} ${sale.customer.phone ? `· ${sale.customer.phone}` : ''}` : 'Walk-in Customer'}
-                                    </div>
                                 </div>
-                            </div>
 
-                            <div style={{ textAlign: 'right' }}>
-                                <div style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '10px' }}>
-                                    Total: {currency}{totals.total.toFixed(2)}
-                                </div>
-                                <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-                                    {sale?.payment_status === 'Paid' && (
-                                        <button
-                                            onClick={handlePrint}
-                                            disabled={loading || items.length === 0}
-                                            style={{
-                                                padding: '12px 30px',
-                                                background: '#007bff',
-                                                color: 'white',
-                                                border: 'none',
-                                                borderRadius: '4px',
-                                                cursor: items.length === 0 ? 'not-allowed' : 'pointer',
-                                                fontSize: '16px',
-                                                fontWeight: 'bold',
-                                                opacity: items.length === 0 ? 0.6 : 1
-                                            }}
-                                        >
-                                            Print
-                                        </button>
-                                    )}
-                                    {sale?.payment_status !== 'Paid' && (
-                                        <button
-                                            onClick={() => setShowCheckout(true)}
-                                            disabled={loading || items.length === 0}
-                                            style={{
-                                                padding: '12px 30px',
-                                                background: '#28a745',
-                                                color: 'white',
-                                                border: 'none',
-                                                borderRadius: '4px',
-                                                cursor: items.length === 0 ? 'not-allowed' : 'pointer',
-                                                fontSize: '16px',
-                                                fontWeight: 'bold',
-                                                opacity: items.length === 0 ? 0.6 : 1
-                                            }}
-                                        >
-                                            Checkout
-                                        </button>
-                                    )}
+                                <div className="col-md-1" style={{ textAlign: 'right' }}>
+
+                                    <div >
+                                        {sale?.payment_status === 'Paid' && (
+                                            <button
+                                                onClick={handlePrint}
+                                                disabled={loading || items.length === 0}
+                                                className="btn btn-success"
+                                                style={{
+                                                    cursor: items.length === 0 ? 'not-allowed' : 'pointer',
+                                                    opacity: items.length === 0 ? 0.6 : 1
+                                                }}
+                                            >
+                                                Print
+                                            </button>
+                                        )}
+                                        {sale?.payment_status !== 'Paid' && (
+                                            <button
+                                                className="btn btn-info"
+                                                onClick={() => setShowCheckout(true)}
+                                                disabled={loading || items.length === 0}
+                                            
+                                                style={{
+                                                    cursor: items.length === 0 ? 'not-allowed' : 'pointer',
+                                                    opacity: items.length === 0 ? 0.6 : 1
+                                                }}
+                                            >
+                                                Checkout
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -304,10 +294,12 @@ export default function SalePage() {
                                     <span>Subtotal:</span>
                                     <span>{currency}{totals.subtotal.toFixed(2)}</span>
                                 </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', color: '#dc3545' }}>
-                                    <span>Discount:</span>
-                                    <span>-{currency}{totals.discount.toFixed(2)}</span>
-                                </div>
+                                {totals.discount > 0 && (
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', color: '#dc3545' }}>
+                                        <span>Discount:</span>
+                                        <span>-{currency}{totals.discount.toFixed(2)}</span>
+                                    </div>
+                                )}
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                                     <span>Taxable Amount:</span>
                                     <span>{currency}{(totals.subtotal - totals.discount).toFixed(2)}</span>
