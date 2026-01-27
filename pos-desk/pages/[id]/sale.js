@@ -10,6 +10,7 @@ import SalesItemsList from '../../components/lists/sales-items-list';
 import { useUtil } from '../../context/UtilContext';
 import CheckoutModal from '../../components/CheckoutModal';
 import { calculateTax } from '../../lib/utils';
+import CustomerSelect from '../../components/CustomerSelect';
 
 export default function SalePage() {
     const router = useRouter();
@@ -169,6 +170,23 @@ export default function SalePage() {
         window.open(`/print-invoice?key=${storageKey}&saleId=${saleId}`, '_blank', 'width=1000,height=800');
     };
 
+    const handleCustomerChange = async (customer) => {
+        // Update UI immediately
+        setSale(prev => ({ ...prev, customer }));
+        // Persist change to backend if sale exists
+        if (!sale) return;
+        try {
+            const payload = customer ? { customer: { connect: [customer.documentId || customer.id] } } : { customer: null };
+            await authApi.put(`/sales/${sale.documentId || sale.id}`, { data: payload });
+            // reload to sync any other changes
+            await loadSaleData();
+        } catch (err) {
+            console.error('Failed to update sale customer', err);
+            // revert UI load
+            await loadSaleData();
+        }
+    };
+
     if (loading && !sale) return <div>Loading...</div>;
 
     return (
@@ -195,7 +213,20 @@ export default function SalePage() {
                                 </button>
                                 <h1>Sale #{sale?.invoice_no || id}</h1>
                                 <p>Date: {sale?.sale_date ? new Date(sale.sale_date).toLocaleDateString() : 'N/A'}</p>
-                                <p>Customer: {sale?.customer?.name || 'Walk-in Customer'}</p>
+
+                                {/* Customer control replaced here */}
+                                <div style={{ marginTop: 8 }}>
+                                    <label style={{ display: 'block', marginBottom: 6 }}>Customer:</label>
+                                    <CustomerSelect
+                                        value={sale?.customer ?? null}
+                                        onChange={handleCustomerChange}
+                                        disabled={sale?.payment_status === 'Paid'}
+                                    />
+                                    <div style={{ marginTop: 6, color: '#666' }}>
+                                        {/* show small hint or fallback */}
+                                        {sale?.customer ? `${sale.customer.name || ''} ${sale.customer.email ? `· ${sale.customer.email}` : ''} ${sale.customer.phone ? `· ${sale.customer.phone}` : ''}` : 'Walk-in Customer'}
+                                    </div>
+                                </div>
                             </div>
 
                             <div style={{ textAlign: 'right' }}>

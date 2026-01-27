@@ -66,19 +66,22 @@ export function generateNextInvoiceNumber() {
     if (!loc || !loc.branch || !loc.desk || !user) {
         throw new Error("Branch, desk, or user not set");
     }
-    return (loc?.desk?.invoice_prefix ?? 'INV') + '-' + generateNextDocumentId();
+    return (loc?.desk?.invoice_prefix ?? 'I') + '' + generateNextDocumentId();
 }
 
 export function generateNextDocumentId() {
     const user = getUser();
     const loc = getLocation();
+    const fixDate = new Date(2026, 1, 1, 1, 0, 0);
+    let time = Date.now() - fixDate.getTime();
+
     if (!loc || !loc.branch || !loc.desk || !user) {
         throw new Error("Branch, desk, or user not set");
     }
     return padHex(loc?.branch.id, 2, RandomNon22Char()) +
         padHex(loc?.desk.id, 2, RandomNon22Char()) +
-        padHex(user?.id, 3, RandomNon22Char()) +
-        padHex(Date.now(), 6, RandomNon22Char())
+        padHex(user?.id, 2, RandomNon22Char()) +
+        padHex(time, 2, RandomNon22Char())
 
 }
 export function RandomNon22Char() {
@@ -90,10 +93,10 @@ export function RandomNon22Char() {
 
 export function padHex(value, length, char = ' ') {
     if (typeof value === 'number') {
-        value = value.toString(22).toUpperCase(); // convert to hex and uppercase
+        value = value.toString(32).toUpperCase(); // convert to hex and uppercase
     }
 
-    let ps = char + String(value ?? '')//.padStart(length, char); // or padEnd for right padding
+    let ps = char + String(value ?? '').padStart(length,char)//.padStart(length, char); // or padEnd for right padding
     return ps.length > length * 2 ? ps.substring(0, length * 2) : ps; // truncate if too long
 }
 
