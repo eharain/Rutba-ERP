@@ -2,30 +2,54 @@ import React from 'react';
 import { useUtil } from '../../context/UtilContext';
 import BarcodeDisplay from './BarcodeDisplay';
 
-const SaleInvoice = ({ sale, items, totals }) => {
-    const { currency, branch, user } = useUtil();
-    
+const SaleInvoice = ({ sale, items, totals}) => { 
+    const { currency, branch, user, invoicePrintSettings } = useUtil();
+
     const companyName = branch?.companyName || branch?.name || 'Company Name';
     const branchName = branch?.name || 'Branch Name';
-    const userName = user?.username || user?.email || 'User';
+    const userName = user?.displayName || user?.username || user?.email || 'User';
     const invoiceNo = sale?.invoice_no || 'N/A';
     const saleDate = sale?.sale_date ? new Date(sale.sale_date).toLocaleDateString() : new Date().toLocaleDateString();
     const customerName = sale?.customer?.name || 'Walk-in Customer';
     const website = branch?.web ? branch.web.toUpperCase() : '';
-    
+
     const safeTotals = {
         subtotal: Number(totals?.subtotal) || 0,
         discount: Number(totals?.discount) || 0,
         tax: Number(totals?.tax) || 0,
         total: Number(totals?.total) || 0
     };
-    
+
     const paymentStatus = sale?.payment_status || 'Pending';
     const paid = paymentStatus === 'Paid' ? safeTotals.total : (Number(sale?.paid) || 0);
     const remaining = Math.max(0, safeTotals.total - paid);
 
+    // Apply invoice print settings
+    const paperWidth = invoicePrintSettings?.paperWidth || '80mm';
+    const fontSize = invoicePrintSettings?.fontSize || 11;
+    const showTax = invoicePrintSettings?.showTax ?? true;
+    const showBranch = invoicePrintSettings?.showBranch ?? true;
+    const branchFields = invoicePrintSettings?.branchFields ?? ['name', 'companyName', 'web'];
+
+    // helper to render selected branch fields
+    const renderBranchFields = () => {
+        if (!showBranch || !branch) return null;
+        const pieces = [];
+        if (branchFields.includes('companyName') && (branch.companyName || branch.name)) {
+            pieces.push(branch.companyName || branch.name);
+        }
+        if (branchFields.includes('name') && branch.name && branch.companyName) {
+            pieces.push(branch.name);
+        }
+        if (branchFields.includes('web') && branch.web) {
+            pieces.push(branch.web.toUpperCase());
+        }
+        if (pieces.length === 0 && branch.name) pieces.push(branch.name);
+        return pieces.map((p, i) => <div key={i}>{p}</div>);
+    };
+
     return (
-        <div className="sale-invoice-container" style={{ fontFamily: "'Courier New', monospace", width: '80mm', margin: '20px auto', padding: '10px', textAlign: 'center' }}>
+        <div className="sale-invoice-container" style={{ fontFamily: "'Courier New', monospace", width: paperWidth, margin: '20px auto', padding: '10px', textAlign: 'center', fontSize: `${fontSize}px` }}>
             <style jsx global>{`
                 /* keep essential print isolation behavior */
                 @media print {
@@ -57,9 +81,8 @@ const SaleInvoice = ({ sale, items, totals }) => {
             <div className="invoice-header mb-2 pb-1" style={{ borderBottom: '1px dashed #555' }}>
                 <div className="company-name fs-5 fw-bold text-uppercase">{companyName}</div>
                 <div className="invoice-meta small mt-1" style={{ lineHeight: 1.4 }}>
-                    {branchName}<br/>
-                    {website && <>{website}<br/></>}
-                    {saleDate}<br/>
+                    {showBranch && renderBranchFields()}
+                    {saleDate}<br />
                     User: {userName}
                 </div>
             </div>
@@ -94,10 +117,12 @@ const SaleInvoice = ({ sale, items, totals }) => {
                             <td className="text-start" style={{ width: '50%' }}>Subtotal:</td>
                             <td className="text-end" style={{ width: '50%' }}>{currency}{safeTotals.subtotal.toFixed(2)}</td>
                         </tr>
-                        <tr>
-                            <td className="text-start">Tax:</td>
-                            <td className="text-end">{currency}{safeTotals.tax.toFixed(2)}</td>
-                        </tr>
+                        {showTax && (
+                            <tr>
+                                <td className="text-start">Tax:</td>
+                                <td className="text-end">{currency}{safeTotals.tax.toFixed(2)}</td>
+                            </tr>
+                        )}
                         {safeTotals.discount > 0 && (
                             <tr>
                                 <td className="text-start">Disc:</td>
@@ -122,9 +147,9 @@ const SaleInvoice = ({ sale, items, totals }) => {
 
             <div className="invoice-footer mt-3">
                 <div className="invoice-number-section">
-                    <div className="invoice-number-text small mb-1">Invoice: {invoiceNo}</div>
-                    <div className="barcode-container d-flex justify-content-center align-items-center mb-2">
-                        <BarcodeDisplay barcode={invoiceNo} />
+                    <div className="barcode-container">
+                        <BarcodeDisplay barcode={invoiceNo} fontSize={fontSize} />
+                        {invoiceNo}
                     </div>
                 </div>
             </div>

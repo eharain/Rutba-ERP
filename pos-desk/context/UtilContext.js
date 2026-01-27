@@ -12,6 +12,15 @@ export function UtilProvider({ children }) {
     const [labelSize, setLabelSizeState] = useState('2.4x1.5'); // in inches
     const [printMode, setPrintModeState] = useState('thermal');
 
+    // New: invoice print settings persisted under 'invoice-print-settings'
+    const [invoicePrintSettings, setInvoicePrintSettingsState] = useState({
+        paperWidth: '80mm',          // width applied to invoice container
+        fontSize: 11,                // base font size in px
+        showTax: true,               // whether to show tax row
+        showBranch: true,            // whether to show branch information
+        branchFields: ['name', 'companyName', 'web'] // which branch fields to show
+    });
+
     function getLabelSize() {
         return labelSize;
     }
@@ -25,6 +34,13 @@ export function UtilProvider({ children }) {
             setCurrencyState(storage.getJSON("currency") ?? null);
             setLabelSizeState(storage.getJSON("label-size") ?? '2.4x1.5');
             setPrintModeState(storage.getJSON("print-mode") ?? 'thermal');
+            setInvoicePrintSettingsState(storage.getJSON("invoice-print-settings") ?? {
+                paperWidth: '80mm',
+                fontSize: 11,
+                showTax: true,
+                showBranch: true,
+                branchFields: ['name', 'companyName', 'web']
+            });
         } catch (err) {
             console.error('UtilProvider: failed to load from storage', err);
         }
@@ -80,6 +96,16 @@ export function UtilProvider({ children }) {
             storage.setJSON("print-mode", newMode);
         } catch (err) {
             console.error('Failed to persist print-mode', err);
+        }
+    }
+
+    // New: setter that persists invoice print settings
+    function setInvoicePrintSettings(newSettings) {
+        setInvoicePrintSettingsState(newSettings);
+        try {
+            storage.setJSON("invoice-print-settings", newSettings);
+        } catch (err) {
+            console.error('Failed to persist invoice-print-settings', err);
         }
     }
 
@@ -159,7 +185,9 @@ export function UtilProvider({ children }) {
         setLabelSize,
         printMode,
         setPrintMode,
-    }), [branch, desk, user, labelSize, currency, printMode]);
+        invoicePrintSettings,
+        setInvoicePrintSettings
+    }), [branch, desk, user, labelSize, currency, printMode, invoicePrintSettings]);
 
     return (
         <UtilContext.Provider value={value}>
