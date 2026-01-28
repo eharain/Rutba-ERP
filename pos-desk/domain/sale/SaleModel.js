@@ -22,6 +22,7 @@ export default class SaleModel {
         this.items.push(
             new SaleItem({
                 id: stockItem.id,
+                documentId: stockItem.documentId,
                 name: stockItem.product.name,
                 sellingPrice: stockItem.selling_price,
                 costPrice: stockItem.cost_price || 0,

@@ -13,6 +13,22 @@ export default function SalesItemsForm({
     const [highlightIndex, setHighlightIndex] = useState(0);
     const { currency } = useUtil();
 
+    /* ---------------- Aggregate stock items by product ---------------- */
+    const aggregateByProduct = (list = []) => {
+        const map = new Map();
+
+        for (const stockItem of list) {
+            const product = stockItem.product;
+            if (!product) continue;
+
+            if (!map.has(product.id)) {
+                map.set(product.id, stockItem);
+            }
+        }
+
+        return Array.from(map.values());
+    };
+
     /* ---------------- Search with debounce ---------------- */
     useEffect(() => {
         const t = setTimeout(() => {
@@ -29,8 +45,12 @@ export default function SalesItemsForm({
 
     const search = async (text) => {
         try {
-            const res = await searchStockItems(text, 0, 50, 'InStock');
-            setResults(res.data || []);
+            const res = await searchStockItems(text, 0, 100, 'InStock');
+
+            // 🔥 FIX: aggregate by product
+            const aggregated = aggregateByProduct(res.data || []);
+
+            setResults(aggregated);
             setShowResults(true);
             setHighlightIndex(0);
         } catch (e) {
@@ -108,13 +128,18 @@ export default function SalesItemsForm({
                 <div className="dropdown-menu show w-100">
                     {results.map((item, index) => (
                         <div
-                            key={item.id}
-                            className={`dropdown-item ${index === highlightIndex ? 'active' : ''
-                                }`}
+                            key={item.product.id}
+                            className={`dropdown-item ${index === highlightIndex ? 'active' : ''}`}
                             onMouseEnter={() => setHighlightIndex(index)}
                             onClick={() => selectStockItem(item)}
                         >
-                            {item.product.name} — {currency}{item.selling_price}
+                            <div className="d-flex justify-content-between">
+                                <span>{item.product.name}</span>
+                                <strong>
+                                    {currency}
+                                    {item.selling_price || 0}
+                                </strong>
+                            </div>
                         </div>
                     ))}
 

@@ -114,7 +114,7 @@ async function deleteFile(fileId, jwt) {
         headers: { 'Content-Type': 'multipart/form-data', ...authHeaders(jwt) },
     });
     // Strapi v5 DELETE returns 204 No Content on success
-    console.log('Delete file status:', res.status); // 204
+  //  console.log('Delete file status:', res.status); // 204
     return res.status === 204;
 }
 export function StraipImageUrl(file) {

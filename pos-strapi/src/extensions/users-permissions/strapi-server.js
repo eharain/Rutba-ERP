@@ -27,7 +27,7 @@ if (!isEdiding) {
             "type": "boolean"
         };
 
-        console.log('Adding custom user permissions routes');
+      //  console.log('Adding custom user permissions routes');
         //meRoute.forEach(route => capi.routes.push(route));
         //   Object.assign(, userSchema);
         plugin.contentTypes.me = { schema: meSchema }

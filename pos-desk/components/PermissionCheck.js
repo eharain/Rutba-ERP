@@ -14,8 +14,8 @@ export function PermissionCheck({ required, has, children }) {
     }
     if (required) {
         const miss = findMissing(required);
-        console.log(miss);
         if (miss.length > 0) {
+            console.log("permission check miss ",miss);
             return <p style={{ color: "crimson", fontWeight: 600 }}>
                 Access Denied — missing permission: {miss.length} Required {required}
                 {miss.map((perm, i) => {

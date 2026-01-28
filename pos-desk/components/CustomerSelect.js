@@ -7,11 +7,20 @@ export default function CustomerSelect({ value, onChange, disabled }) {
     const [results, setResults] = useState([]);
     const [mode, setMode] = useState('idle'); // idle | search | form
     const [editingCustomer, setEditingCustomer] = useState(null);
+    const [customer, setCustomer] = useState(null);
     const [loading, setLoading] = useState(false);
     const [highlightIndex, setHighlightIndex] = useState(0);
 
     const timer = useRef(null);
     const containerRef = useRef(null);
+
+   // const __onChange=onChange;
+
+    function handleChange(customer) {
+            setCustomer(customer);
+            if(onChange)
+            onChange(customer);
+    };
 
     /* ---------------- Outside click ---------------- */
     useEffect(() => {
@@ -95,13 +104,17 @@ export default function CustomerSelect({ value, onChange, disabled }) {
     };
 
     const selectCustomer = (customer) => {
-        onChange?.(customer);
+        handleChange?.(customer);
         setQuery(customer?.name || '');
         setMode('idle');
     };
 
+    function customerName() {
+        return [customer?.name,customer?.email,customer?.phone].filter(f=>f!=null).join(' , ')
+    }
     return (
         <div className="position-relative" ref={containerRef}>
+         <label className="form-label">Customer: <span>{customerName()}</span> </label>
             <div className="input-group">
                 <input
                     className="form-control"
@@ -179,7 +192,7 @@ export default function CustomerSelect({ value, onChange, disabled }) {
                             initialQuery={query}
                             onCancel={() => setMode('idle')}
                             onSaved={(customer) => {
-                                onChange?.(customer);
+                                handleChange?.(customer);
                                 setQuery(customer?.name || '');
                                 setMode('idle');
                             }}

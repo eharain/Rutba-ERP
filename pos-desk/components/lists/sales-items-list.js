@@ -9,21 +9,38 @@ export default function SalesItemsList({
                 <tr>
                     <th>Item</th>
                     <th width="80">Qty</th>
-                    <th width="120">Price</th>
-                    <th width="120">Total</th>
-                    <th width="50"></th>
+                    <th width="120">Unit Price</th>
+                    <th width="90">Disc %</th>
+                    <th width="120">Row Total</th>
+                    <th width="60"></th>
                 </tr>
             </thead>
+
             <tbody>
                 {items.map((item, index) => (
                     <tr key={index}>
-                        <td>{item.name}</td>
+                        {/* NAME */}
+                        <td>
+                            {item.isStockItem ? (
+                                <strong>{item.name}</strong>
+                            ) : (
+                                <input
+                                    className="form-control"
+                                    value={item.name}
+                                    onChange={e =>
+                                        onUpdate(index, i => i.setName(e.target.value))
+                                    }
+                                />
+                            )}
+                        </td>
+
+                        {/* QTY */}
                         <td>
                             <input
                                 type="number"
-                                value={item.quantity}
                                 min="1"
                                 className="form-control"
+                                value={item.quantity}
                                 onChange={e =>
                                     onUpdate(index, i =>
                                         i.setQuantity(+e.target.value)
@@ -31,11 +48,47 @@ export default function SalesItemsList({
                                 }
                             />
                         </td>
-                        <td>{item.unitNetPrice.toFixed(2)}</td>
+
+                        {/* UNIT PRICE */}
+                        <td>
+                            {item.isStockItem ? (
+                                item.unitNetPrice.toFixed(2)
+                            ) : (
+                                <input
+                                    type="number"
+                                    className="form-control"
+                                    value={item.sellingPrice}
+                                    onChange={e =>
+                                        onUpdate(index, i =>
+                                            i.setSellingPrice(+e.target.value)
+                                        )
+                                    }
+                                />
+                            )}
+                        </td>
+
+                        {/* DISCOUNT */}
+                        <td>
+                            <input
+                                type="number"
+                                className="form-control"
+                                value={item.discountPercent}
+                                min="0"
+                                onChange={e =>
+                                    onUpdate(index, i =>
+                                        i.setDiscountPercent(+e.target.value)
+                                    )
+                                }
+                            />
+                        </td>
+
+                        {/* TOTAL */}
                         <td>{item.total.toFixed(2)}</td>
+
+                        {/* ACTIONS */}
                         <td>
                             <button
-                                className="btn btn-danger btn-sm"
+                                className="btn btn-sm btn-danger"
                                 onClick={() => onRemove(index)}
                             >
                                 ✕

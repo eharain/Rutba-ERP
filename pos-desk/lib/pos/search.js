@@ -78,7 +78,7 @@ export async function featchSearch(searchTerm, page, rowsPerPage) {
     }, { total: 0, page, pageSize: rowsPerPage });
 
     const result = { results, data, pagination, meta: { pagination } };
-    console.log(result);
+    console.log('search results',result);
 
     return result;
 }
