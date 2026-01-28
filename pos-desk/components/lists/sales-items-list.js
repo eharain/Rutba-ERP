@@ -8,11 +8,11 @@ export default function SalesItemsList({
             <thead>
                 <tr>
                     <th>Item</th>
-                    <th width="80">Qty</th>
-                    <th width="120">Unit Price</th>
+                    <th width="70">Qty</th>
+                    <th width="110">Unit</th>
                     <th width="90">Disc %</th>
-                    <th width="120">Row Total</th>
-                    <th width="60"></th>
+                    <th width="130">Row Total</th>
+                    <th width="140">Actions</th>
                 </tr>
             </thead>
 
@@ -28,7 +28,9 @@ export default function SalesItemsList({
                                     className="form-control"
                                     value={item.name}
                                     onChange={e =>
-                                        onUpdate(index, i => i.setName(e.target.value))
+                                        onUpdate(index, i =>
+                                            i.setName(e.target.value)
+                                        )
                                     }
                                 />
                             )}
@@ -74,6 +76,7 @@ export default function SalesItemsList({
                                 className="form-control"
                                 value={item.discountPercent}
                                 min="0"
+                                disabled={item.offerActive}
                                 onChange={e =>
                                     onUpdate(index, i =>
                                         i.setDiscountPercent(+e.target.value)
@@ -86,7 +89,31 @@ export default function SalesItemsList({
                         <td>{item.total.toFixed(2)}</td>
 
                         {/* ACTIONS */}
-                        <td>
+                        <td className="d-flex gap-1">
+                            {!item.offerActive ? (
+                                <button
+                                    className="btn btn-sm btn-outline-success"
+                                    title="Apply offer price"
+                                    onClick={() =>
+                                        onUpdate(index, i =>
+                                            i.applyOfferPrice(i.offerPrice)
+                                        )
+                                    }
+                                >
+                                    Offer+
+                                </button>
+                            ) : (
+                                <button
+                                    className="btn btn-sm btn-warning"
+                                    title="Revert offer"
+                                    onClick={() =>
+                                        onUpdate(index, i => i.revertOffer())
+                                    }
+                                >
+                                    Offer-
+                                </button>
+                            )}
+
                             <button
                                 className="btn btn-sm btn-danger"
                                 onClick={() => onRemove(index)}
