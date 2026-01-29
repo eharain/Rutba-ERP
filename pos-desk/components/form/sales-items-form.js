@@ -32,7 +32,7 @@ export default function SalesItemsForm({
     /* ---------------- Search with debounce ---------------- */
     useEffect(() => {
         const t = setTimeout(() => {
-            if (query.length > 2) {
+            if (query.length > 1) {
                 search(query);
             } else {
                 setResults([]);

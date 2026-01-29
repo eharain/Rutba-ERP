@@ -9,7 +9,8 @@ export default class SaleItem {
         sellingPrice,
         costPrice = 0,
         offerPrice = null,
-        isStockItem = true
+        isStockItem = true,
+        stockItem=null
     }) {
         this.id = id;
         this.documentId = documentId;
@@ -18,7 +19,10 @@ export default class SaleItem {
         this.sellingPrice = sellingPrice;
         this.costPrice = costPrice;
         this.isStockItem = isStockItem;
-
+        this.stockItems=[];
+        if(stockItem){
+            this.stockItems.push(stockItem);
+        }
         /* ---------------- Discount / Offer state ---------------- */
 
         // active discount percent (cashier-visible)
@@ -54,7 +58,14 @@ export default class SaleItem {
     }
 
     setQuantity(qty) {
-        this.quantity = Math.max(1, qty);
+        if(this.isStockItem){
+            this.quantity = Math.max(1, qty);
+        }else{
+         //@TODO:fetch the stock items simmilar to first stock item , add the stock item to stock items array and update the quantity;
+            
+            //this.quantity = Math.max(0, qty);
+        }
+
     }
 
     setDiscountPercent(percent) {

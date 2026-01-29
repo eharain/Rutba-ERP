@@ -10,12 +10,22 @@ export default class SaleModel {
     /* ---------------- Items ---------------- */
 
     addStockItem(stockItem) {
+
+        ///handle stock items array properly so that it dosent add a different priced item to existing one
+        ///rather it adds as a new item. 
+
         const existing = this.items.find(
-            i => i.id === stockItem.id
+            i => {
+                    i.id === stockItem.id&&
+                    i.costPrice === (stockItem.cost_price || 0)&&
+                    i.sellingPrice === stockItem.selling_price&&
+                    i.offerPrice === (stockItem.offer_price || null)
+                 }
         );
 
         if (existing) {
             existing.setQuantity(existing.quantity + 1);
+            existing.stockItems.push(stockItem);
             return;
         }
 
@@ -27,7 +37,8 @@ export default class SaleModel {
                 sellingPrice: stockItem.selling_price,
                 costPrice: stockItem.cost_price || 0,
                 offerPrice: stockItem.offer_price || null,
-                isStockItem: true
+                isStockItem: true,
+                stockItem:stockItem
             })
         );
     }
@@ -69,7 +80,9 @@ export default class SaleModel {
 
     get discountTotal() {
         return this.items.reduce((sum, i) => {
-            const full = i.sellingPrice * i.quantity;
+            //const full =Math.max(i.sellingPrice * i.quantity,i.costPrice);
+            const full =i.sellingPrice * i.quantity;
+
             return sum + (full - i.subtotal);
         }, 0);
     }

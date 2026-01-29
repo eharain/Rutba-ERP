@@ -100,17 +100,17 @@ export default function SalesItemsList({
                                         )
                                     }
                                 >
-                                    Offer+
+                                    Offer-
                                 </button>
                             ) : (
                                 <button
-                                    className="btn btn-sm btn-warning"
+                                    className="btn btn-sm btn-outline-danger"
                                     title="Revert offer"
                                     onClick={() =>
                                         onUpdate(index, i => i.revertOffer())
                                     }
                                 >
-                                    Offer-
+                                    Offer+
                                 </button>
                             )}
 
