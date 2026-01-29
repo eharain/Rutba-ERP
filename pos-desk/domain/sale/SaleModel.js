@@ -2,43 +2,63 @@ import SaleItem from './SaleItem';
 import { calculateTax } from './pricing';
 
 export default class SaleModel {
-    constructor({ customer = null } = {}) {
+    constructor({ customer = null, id = null } = {}) {
+        this.id = id;
         this.customer = customer;
         this.items = [];
     }
 
-    /* ---------------- Items ---------------- */
+    /* ===============================
+       Hydration
+    =============================== */
+
+    static fromApi(sale) {
+        const model = new SaleModel({
+            id: sale.documentId,
+            customer: sale.customer || null
+        });
+
+        sale.items?.forEach(item => {
+            model.addNonStockItem({
+                name: item.product_name || item.name,
+                price: item.selling_price,
+                costPrice: item.cost_price || 0
+            });
+        });
+
+        return model;
+    }
+
+    /* ===============================
+       Items
+    =============================== */
 
     addStockItem(stockItem) {
-
-        ///handle stock items array properly so that it dosent add a different priced item to existing one
-        ///rather it adds as a new item. 
-
-        const existing = this.items.find(
-            i => {
-                    i.id === stockItem.id&&
-                    i.costPrice === (stockItem.cost_price || 0)&&
-                    i.sellingPrice === stockItem.selling_price&&
-                    i.offerPrice === (stockItem.offer_price || null)
-                 }
+        const existing = this.items.find(i =>
+            i.id === stockItem.id &&
+            i.costPrice === (stockItem.cost_price || 0) &&
+            i.sellingPrice === stockItem.selling_price &&
+            i.offerPrice === (stockItem.offer_price || null)
         );
 
         if (existing) {
-            existing.setQuantity(existing.quantity + 1);
             existing.stockItems.push(stockItem);
+            existing.setQuantity(existing.stockItems.length);
             return;
         }
+
+        let name = stockItem.name ?? stockItem?.product?.name;
 
         this.items.push(
             new SaleItem({
                 id: stockItem.id,
                 documentId: stockItem.documentId,
-                name: stockItem.product.name,
+                name,
                 sellingPrice: stockItem.selling_price,
                 costPrice: stockItem.cost_price || 0,
                 offerPrice: stockItem.offer_price || null,
                 isStockItem: true,
-                stockItem:stockItem
+                stockItem
             })
         );
     }
@@ -49,7 +69,8 @@ export default class SaleModel {
                 name,
                 sellingPrice: price,
                 costPrice,
-                isStockItem: false
+                isStockItem: false,
+                stockItem: { name, selling_price: price, cost_price: price * 0.75, offer_price:  price * 0.85 }
             })
         );
     }
@@ -64,7 +85,9 @@ export default class SaleModel {
         this.items.splice(index, 1);
     }
 
-    /* ---------------- Totals ---------------- */
+    /* ===============================
+       Totals
+    =============================== */
 
     get subtotal() {
         return this.items.reduce((sum, i) => sum + i.subtotal, 0);
@@ -80,14 +103,14 @@ export default class SaleModel {
 
     get discountTotal() {
         return this.items.reduce((sum, i) => {
-            //const full =Math.max(i.sellingPrice * i.quantity,i.costPrice);
-            const full =i.sellingPrice * i.quantity;
-
+            const full = i.sellingPrice * i.quantity;
             return sum + (full - i.subtotal);
         }, 0);
     }
 
-    /* ---------------- Serialization ---------------- */
+    /* ===============================
+       Serialization
+    =============================== */
 
     toPayload() {
         return {

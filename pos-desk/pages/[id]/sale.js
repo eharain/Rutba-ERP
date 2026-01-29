@@ -1,7 +1,5 @@
 ﻿import { useEffect, useReducer, useState } from 'react';
 import { useRouter } from 'next/router';
-import { authApi } from '../../lib/api';
-import { fetchSaleByIdOrInvoice } from '../../lib/pos';
 
 import Layout from '../../components/Layout';
 import ProtectedRoute from '../../components/ProtectedRoute';
@@ -12,44 +10,37 @@ import SalesItemsList from '../../components/lists/sales-items-list';
 import CheckoutModal from '../../components/CheckoutModal';
 
 import { useUtil } from '../../context/UtilContext';
+
 import SaleModel from '../../domain/sale/SaleModel';
+import SaleApi from '../../lib/saleApi';
 
 export default function SalePage() {
     const router = useRouter();
     const { id } = router.query;
     const { currency } = useUtil();
 
-    // single source of truth
-    const [saleModel] = useState(() => new SaleModel());
+    // Single source of truth
+    const [saleModel, setSaleModel] = useState(null);
     const [, forceUpdate] = useReducer(x => x + 1, 0);
 
     const [loading, setLoading] = useState(false);
     const [showCheckout, setShowCheckout] = useState(false);
 
-    /* ---------------- Load existing sale ---------------- */
+    /* ===============================
+       Load existing sale
+    =============================== */
+
     useEffect(() => {
-        if (id) loadSale();
+        if (!id) return;
+        loadSale();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [id]);
 
     const loadSale = async () => {
         setLoading(true);
         try {
-            const sale = await fetchSaleByIdOrInvoice(id);
-
-            // customer
-            saleModel.customer = sale.customer || null;
-
-            // existing items (safe fallback as non-stock)
-            sale.items?.forEach(item => {
-                saleModel.addNonStockItem({
-                    name: item.product_name || item.name,
-                    price: item.selling_price,
-                    costPrice: item.cost_price || 0
-                });
-            });
-
-            forceUpdate();
+            const model = await SaleApi.loadSale(id);
+            setSaleModel(model);
         } catch (err) {
             console.error('Failed to load sale', err);
         } finally {
@@ -57,36 +48,42 @@ export default function SalePage() {
         }
     };
 
-    /* ---------------- Customer ---------------- */
-    const handleCustomerChange = async (customer) => {
-        
-        saleModel.customer = customer;
+    if (!saleModel) {
+        return (
+            <Layout>
+                <ProtectedRoute>
+                    <div className="p-4">Loading sale...</div>
+                </ProtectedRoute>
+            </Layout>
+        );
+    }
 
+    /* ===============================
+       Customer
+    =============================== */
+
+    const handleCustomerChange = async (customer) => {
+        saleModel.customer = customer;
         forceUpdate();
 
         try {
-            await authApi.put(`/sales/${id}`, {
-                data: {
-                    customer: customer
-                        ? { connect: [customer.documentId] }
-                        : null
-                }
-            });
+            await SaleApi.updateCustomer(saleModel.id, customer);
         } catch (err) {
             console.error('Failed to update customer', err);
         }
     };
 
-    /* ---------------- Checkout ---------------- */
+    /* ===============================
+       Checkout
+    =============================== */
+
     const handleCheckoutComplete = async () => {
         setLoading(true);
         try {
-            await authApi.put(`/sales/${id}`, {
-                data: {
-                    ...saleModel.toPayload(),
-                    payment_status: 'Paid'
-                }
-            });
+            await saleModel.completeCheckout(
+                saleModel.id,
+                saleModel.toPayload()
+            );
 
             alert('Sale completed successfully');
             setShowCheckout(false);
@@ -98,7 +95,10 @@ export default function SalePage() {
         }
     };
 
-    /* ---------------- Print ---------------- */
+    /* ===============================
+       Print
+    =============================== */
+
     const handlePrint = () => {
         if (saleModel.items.length === 0) return;
 
@@ -149,7 +149,6 @@ export default function SalePage() {
 
                         {/* Customer */}
                         <div className="mb-3">
-                           
                             <CustomerSelect
                                 value={saleModel.customer}
                                 onChange={handleCustomerChange}
