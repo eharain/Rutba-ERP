@@ -2,10 +2,11 @@ import SaleItem from './SaleItem';
 import { calculateTax } from './pricing';
 
 export default class SaleModel {
-    constructor({ customer = null, id = null } = {}) {
+    constructor({ customer = null, id = null, payments } = {}) {
         this.id = id;
         this.customer = customer;
         this.items = [];
+        this.payments = [];
     }
 
     /* ===============================
@@ -15,20 +16,25 @@ export default class SaleModel {
     static fromApi(sale) {
         const model = new SaleModel({
             id: sale.documentId,
-            customer: sale.customer || null
+            customer: sale.customer || null,
+            payments: sale.payments || []
         });
 
         sale.items?.forEach(item => {
-            model.addNonStockItem({
-                name: item.product_name || item.name,
-                price: item.selling_price,
-                costPrice: item.cost_price || 0
-            });
+            item.items.forEach(stockItem => {
+                model.addStockItem(stockItem);
+            }
         });
 
         return model;
     }
 
+    addPayment({ payment_method = 'Cash', amount = 0, payment_date = new Date() }) {
+        this.payments.push({ payment_date, payment_method, amount });
+    }
+    removePayment(index) {
+        this.payments.splice(index, 1);
+    }
     /* ===============================
        Items
     =============================== */
@@ -70,7 +76,7 @@ export default class SaleModel {
                 sellingPrice: price,
                 costPrice,
                 isStockItem: false,
-                stockItem: { name, selling_price: price, cost_price: price * 0.75, offer_price:  price * 0.85 }
+                stockItem: { name, selling_price: price, cost_price: price * 0.75, offer_price: price * 0.85 }
             })
         );
     }
@@ -114,9 +120,8 @@ export default class SaleModel {
 
     toPayload() {
         return {
-            customer: this.customer
-                ? { connect: [this.customer.documentId] }
-                : null,
+            customer: this.customer ? { connect: [this.customer.documentId] } : null,
+            payments: { connect: this.payments.map(p => p.documentId) },//.map(p => ({ payment_date:p.payment_date, payment_method: p.payment_method, amount: p.amount })),
             subtotal: this.subtotal,
             discount: this.discountTotal,
             tax: this.tax,

@@ -10,7 +10,7 @@ export default class SaleItem {
         costPrice = 0,
         offerPrice = null,
         isStockItem = true,
-        stockItem=null
+        stockItem = null
     }) {
         this.id = id;
         this.documentId = documentId;
@@ -19,8 +19,8 @@ export default class SaleItem {
         this.sellingPrice = sellingPrice;
         this.costPrice = costPrice;
         this.isStockItem = isStockItem;
-        this.stockItems=[];
-        if(stockItem){
+        this.stockItems = [];
+        if (stockItem) {
             this.stockItems.push(stockItem);
         }
         /* ---------------- Discount / Offer state ---------------- */
@@ -58,15 +58,46 @@ export default class SaleItem {
     }
 
     setQuantity(qty) {
-        if(this.isStockItem){
-            this.quantity = Math.max(1, qty);
-        }else{
-         //@TODO:fetch the stock items simmilar to first stock item , add the stock item to stock items array and update the quantity;
-            
-            //this.quantity = Math.max(0, qty);
+        const netQty = Math.max(1, qty);
+        const currentQty = this.quantity;
+
+        if (!Array.isArray(this.stockItems)) {
+            this.stockItems = [];
         }
 
+        if (!this.stockItems[0]?.more) {
+            this.stockItems[0].more = [];
+        }
+
+        const pool = this.stockItems[0].more;
+
+        // REMOVE
+        if (netQty < currentQty) {
+            const removeCount = currentQty - netQty;
+
+            for (let i = 0; i < removeCount; i++) {
+                const removed = this.stockItems.pop();
+                if (removed) pool.push(removed);
+            }
+        }
+
+        // ADD
+        else if (netQty > currentQty) {
+            const addCount = netQty - currentQty;
+
+            for (let i = 0; i < addCount; i++) {
+                if (pool.length > 0) {
+                    this.stockItems.push(pool.shift());
+                } else {
+                    // fallback: clone base item (should not normally happen)
+                    this.stockItems.push({ ...this.stockItems[0], ...{ id: 0, documentId: null } });
+                }
+            }
+        }
+
+        this.quantity = netQty;
     }
+
 
     setDiscountPercent(percent) {
         this.discountPercent = Math.max(0, percent);
@@ -143,7 +174,8 @@ export default class SaleItem {
             subtotal: this.subtotal,
             tax: this.tax,
             total: this.total,
-            is_stock_item: this.isStockItem
+            is_stock_item: this.isStockItem,
+            stockItems:this.stockItems
         };
     }
 }

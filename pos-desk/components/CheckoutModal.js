@@ -37,7 +37,7 @@ const CheckoutModal = ({ isOpen, onClose, total, onComplete, loading }) => {
     };
 
     const handleExactAmount = () => {
-        setCashReceived(total.toFixed(2));
+        setCashReceived(Math.ceil(total.toFixed(4)));
     };
 
     if (!isOpen) return null;

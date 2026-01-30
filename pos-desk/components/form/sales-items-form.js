@@ -16,17 +16,30 @@ export default function SalesItemsForm({
     /* ---------------- Aggregate stock items by product ---------------- */
     const aggregateByProduct = (list = []) => {
         const map = new Map();
-
+        const nullProductIds = [];
         for (const stockItem of list) {
             const product = stockItem.product;
-            if (!product) continue;
+            if (!product) {
+                //nullProductIds.push(stockItem.id);
+                if (stockItem.name) {
+
+                    if (!map.has(stockItem.name)) {
+                        map.set(stockItem.name, {...stockItem,more:[] });
+                    } else {
+                        map.get(stockItem.name).more.push(stockItem);
+                    }
+                }
+                continue;
+            }
 
             if (!map.has(product.id)) {
-                map.set(product.id, stockItem);
+                map.set(product.id, { ...stockItem, more: [] });
+            } else {
+                map.get(product.id).more.push(stockItem);
             }
         }
 
-        return Array.from(map.values());
+        return Array.from(map.values(),);
     };
 
     /* ---------------- Search with debounce ---------------- */
@@ -45,7 +58,7 @@ export default function SalesItemsForm({
 
     const search = async (text) => {
         try {
-            const res = await searchStockItems(text, 0, 100, 'InStock');
+            const res = await searchStockItems(text, 0, 300, 'InStock');
 
             // 🔥 FIX: aggregate by product
             const aggregated = aggregateByProduct(res.data || []);
@@ -128,7 +141,7 @@ export default function SalesItemsForm({
                 <div className="dropdown-menu show w-100">
                     {results.map((item, index) => (
                         <div
-                            key={item.product.id}
+                            key={item.id??item.product.id}
                             className={`dropdown-item ${index === highlightIndex ? 'active' : ''}`}
                             onMouseEnter={() => setHighlightIndex(index)}
                             onClick={() => selectStockItem(item)}

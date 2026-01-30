@@ -114,7 +114,7 @@ export function dataNode(res) {
 }
 
 
-export async function searchStockItems(searchTerm, page = 0, rowsPerPage = 100, statusFilter = null) {
+export async function searchStockItems(searchTerm, page = 0, rowsPerPage = 200, statusFilter = null) {
     const query = buildQueries(searchTerm, page, rowsPerPage, statusFilter)['me/stock-items-search']
     console.log('Stock items search query:', query);    
     const res = await authApi.fetchWithPagination(query.url);

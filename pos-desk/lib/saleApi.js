@@ -1,6 +1,7 @@
 import { authApi } from './api';
 import { fetchSaleByIdOrInvoice } from './pos';
 import SaleModel from '../domain/sale/SaleModel';
+import { discountFromOffer } from '../domain/sale/pricing';
 
 export default class SaleApi {
 
@@ -82,54 +83,72 @@ export default class SaleApi {
     ===================================================== */
 
     static async saveSaleItems(saleId, saleItems, { paid = false } = {}) {
-        const requests = [];
+        const results = [];
 
         for (const item of saleItems) {
-            for (const stockItem of item.stockItems) {
+            // base stock item (if any) to derive product relation
+            const baseStockItem = Array.isArray(item.stockItems) && item.stockItems.length ? item.stockItems[0] : null;
 
-                // CREATE sale-item
-                if (!stockItem.saleItemDocumentId) {
-                    requests.push(
-                        authApi.post('/sale-items', {
-                            data: {
-                                sale: saleId,
-                                product: stockItem.product.documentId,
-                                stock_item: stockItem.documentId,
-                                quantity: 1,
-                                price: item.unitNetPrice
-                            }
-                        }).then(res => {
-                            stockItem.saleItemDocumentId =
-                                res.data.data.documentId;
-                        })
-                    );
-                }
-                // UPDATE sale-item
-                else {
-                    requests.push(
-                        authApi.put(
-                            `/sale-items/${stockItem.saleItemDocumentId}`,
-                            {
-                                data: {
-                                    price: item.unitNetPrice
-                                }
-                            }
-                        )
-                    );
-                }
+            // build payload for sale-item
+            const saleItemPayload = {
+                quantity: item.quantity || 1,
+                price: item.unitNetPrice,
+                discount: item.discountPercent || 0,
+                tax: item.tax,
+                total: item.total,
+                sale: { connect: [saleId] },
+            };
 
-                // MARK STOCK SOLD ONLY IF PAID
-                if (paid) {
-                    requests.push(
-                        authApi.put(`/stock-items/${stockItem.documentId}`, {
-                            data: { status: 'Sold' }
-                        })
-                    );
+            if (baseStockItem?.product?.documentId || baseStockItem?.product?.id) {
+                saleItemPayload.product = { connect: [baseStockItem.product.documentId || baseStockItem.product.id] };
+            }
+
+            if (item.documentId) {
+                // update existing sale-item
+                const res = await authApi.put(`/sale-items/${item.documentId}`, { data: saleItemPayload });
+                results.push(res.data);
+            } else {
+                // create new sale-item
+                const res = await authApi.post('/sale-items', { data: saleItemPayload });
+                const created = res.data;
+                // attach returned id to item for later stock-item linking
+                item.documentId = created.documentId ?? created.id;
+                results.push(created);
+            }
+
+            // ensure we have a sale-item id to connect stock-items
+            const saleItemId = item.documentId;
+
+            // update/create stock-items and link to sale-item
+            if (Array.isArray(item.stockItems)) {
+                for (const sitem of item.stockItems) {
+                    if (!sitem) continue;
+
+                    const stockPayload = {
+                        selling_price: item.unitNetPrice,
+                        ...paid ? { status: 'Sold' } : {},
+                        sale_item: { connect: [saleItemId] }
+                    };
+
+                    if (sitem.name) stockPayload.name = sitem.name;
+                    if (sitem.cost_price || sitem.costPrice) stockPayload.cost_price = sitem.cost_price ?? sitem.costPrice;
+
+                    if (sitem.product?.documentId || sitem.product?.id) {
+                        stockPayload.product = { connect: [sitem.product.documentId || sitem.product.id] };
+                    }
+
+                    if (sitem.documentId) {
+                        // update existing stock-item
+                        await authApi.put(`/stock-items/${sitem.documentId}`, { data: stockPayload });
+                    } else {
+                        // create new stock-item
+                        await authApi.post('/stock-items', { data: stockPayload });
+                    }
                 }
             }
         }
 
-        return Promise.all(requests);
+        return results;
     }
 
     /* =====================================================
