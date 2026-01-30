@@ -74,7 +74,7 @@ export default function SalesItemsList({
                             <input
                                 type="number"
                                 className="form-control"
-                                value={item.discountPercent}
+                                value={item.discount}
                                 min="0"
                                 disabled={item.offerActive}
                                 onChange={e =>
@@ -95,9 +95,7 @@ export default function SalesItemsList({
                                     className="btn btn-sm btn-outline-success"
                                     title="Apply offer price"
                                     onClick={() =>
-                                        onUpdate(index, i =>
-                                            i.applyOfferPrice(i.offerPrice)
-                                        )
+                                        onUpdate(index, i => i.applyOfferPrice(i.offerPrice))
                                     }
                                 >
                                     Offer-

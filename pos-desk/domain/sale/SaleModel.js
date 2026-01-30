@@ -1,12 +1,29 @@
 import SaleItem from './SaleItem';
 import { calculateTax } from './pricing';
 
+import { generateNextInvoiceNumber } from '../../lib/utils';
+
 export default class SaleModel {
-    constructor({ customer = null, id = null, payments } = {}) {
+    constructor({
+        id = null,
+        documentId = null,
+        invoice_no = generateNextInvoiceNumber(),
+        sale_date = new Date(),
+        payment_status = "Unpaid",
+
+        customer = null,
+        items = [],
+        payments = [],
+
+    }) {
         this.id = id;
+        this.documentId = documentId;
+        this.invoice_no = invoice_no;
+        this.sale_date = Date.parse(sale_date) > new Date(1, 1, 2025).getTime() ? new Date(sale_date) : new Date();
+        this.payment_status = payment_status || 'Unpaid';
+        payments?.forEach(p => this.addPayment(p));
         this.customer = customer;
-        this.items = [];
-        this.payments = [];
+        this.items = items?.map(item => new SaleItem(item));
     }
 
     /* ===============================
@@ -14,23 +31,18 @@ export default class SaleModel {
     =============================== */
 
     static fromApi(sale) {
-        const model = new SaleModel({
-            id: sale.documentId,
-            customer: sale.customer || null,
-            payments: sale.payments || []
-        });
-
-        sale.items?.forEach(item => {
-            item.items.forEach(stockItem => {
-                model.addStockItem(stockItem);
-            }
-        });
-
+        const model = new SaleModel(sale);
+        // keep both id and documentId for compatibility with API helpers
         return model;
     }
 
     addPayment({ payment_method = 'Cash', amount = 0, payment_date = new Date() }) {
         this.payments.push({ payment_date, payment_method, amount });
+
+        const sum = this.payments.reduce((sum, p) => sum + p.amount, 0);
+        if (sum >= this.total) {
+            this.payment_status = 'Paid';
+        }
     }
     removePayment(index) {
         this.payments.splice(index, 1);
@@ -48,37 +60,24 @@ export default class SaleModel {
         );
 
         if (existing) {
-            existing.stockItems.push(stockItem);
-            existing.setQuantity(existing.stockItems.length);
+            existing.items.push(stockItem);
+            existing.setQuantity(existing.items.length);
             return;
         }
 
-        let name = stockItem.name ?? stockItem?.product?.name;
+        // let name = stockItem.name ?? stockItem?.product?.name;
 
-        this.items.push(
-            new SaleItem({
-                id: stockItem.id,
-                documentId: stockItem.documentId,
-                name,
-                sellingPrice: stockItem.selling_price,
-                costPrice: stockItem.cost_price || 0,
-                offerPrice: stockItem.offer_price || null,
-                isStockItem: true,
-                stockItem
-            })
-        );
+        this.items.push(new SaleItem({ stockItem }));
     }
 
     addNonStockItem({ name, price, costPrice = 0 }) {
         this.items.push(
             new SaleItem({
-                name,
-                sellingPrice: price,
-                costPrice,
-                isStockItem: false,
                 stockItem: { name, selling_price: price, cost_price: price * 0.75, offer_price: price * 0.85 }
             })
         );
+
+        
     }
 
     updateItem(index, updater) {

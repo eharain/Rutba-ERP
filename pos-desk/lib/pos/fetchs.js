@@ -43,7 +43,7 @@ export async function fetchSaleByIdOrInvoice(id) {
         populate: {
             customer: true, items: { populate: { "product": true, items: { populate: ['product'] } },} }
     });
-    let data = res?.data?.data ?? res?.data;
+    let data = res?.data ?? res;
     return Array.isArray(data) ? data[0] : data;
 }
 

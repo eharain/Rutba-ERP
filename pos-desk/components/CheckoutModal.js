@@ -33,11 +33,12 @@ const CheckoutModal = ({ isOpen, onClose, total, onComplete, loading }) => {
             alert(`Insufficient payment. Total is ${currency}${total.toFixed(2)}, but only ${currency}${cash.toFixed(2)} received.`);
             return;
         }
-        onComplete();
+        onComplete({ payment_method: 'Cash', amount : cash, payment_date : new Date() });
     };
 
     const handleExactAmount = () => {
-        setCashReceived(Math.ceil(total.toFixed(4)));
+        // set cash received to total (formatted) to satisfy validation
+        setCashReceived((Math.ceil(total * 100) / 100).toFixed(2));
     };
 
     if (!isOpen) return null;

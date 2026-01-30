@@ -32,7 +32,14 @@ export default function SalePage() {
 
     useEffect(() => {
         if (!id) return;
-        loadSale();
+        // If creating a new sale (route uses 'new'), initialize an empty model instead of fetching
+        if (id === 'new') {
+            const model = new SaleModel({ id: 'new' });
+            model.documentId = null;
+            setSaleModel(model);
+        } else {
+            loadSale();
+        }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [id]);
 
@@ -63,11 +70,15 @@ export default function SalePage() {
     =============================== */
 
     const handleCustomerChange = async (customer) => {
+        // For unsaved/new sales just update local model. Persist only for existing sales.
         saleModel.customer = customer;
         forceUpdate();
 
+        const saleId = saleModel.documentId ?? saleModel.id;
+        if (!saleId || saleId === 'new') return;
+
         try {
-            await SaleApi.updateCustomer(saleModel.id, customer);
+            await SaleApi.updateCustomer(saleId, customer);
         } catch (err) {
             console.error('Failed to update customer', err);
         }
@@ -77,13 +88,11 @@ export default function SalePage() {
        Checkout
     =============================== */
 
-    const handleCheckoutComplete = async () => {
+    const handleCheckoutComplete = async (payment) => {
         setLoading(true);
         try {
-            await saleModel.completeCheckout(
-                saleModel.id,
-                saleModel.toPayload()
-            );
+            SaleApi.addPayment(payment);
+            await SaleApi.checkout(saleModel);
 
             alert('Sale completed successfully');
             setShowCheckout(false);

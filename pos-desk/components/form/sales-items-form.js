@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { searchStockItems } from '../../lib/pos';
+
 import { useUtil } from '../../context/UtilContext';
+import SaleApi from '../../lib/saleApi';
 
 export default function SalesItemsForm({
     onAddItem,
@@ -13,34 +14,6 @@ export default function SalesItemsForm({
     const [highlightIndex, setHighlightIndex] = useState(0);
     const { currency } = useUtil();
 
-    /* ---------------- Aggregate stock items by product ---------------- */
-    const aggregateByProduct = (list = []) => {
-        const map = new Map();
-        const nullProductIds = [];
-        for (const stockItem of list) {
-            const product = stockItem.product;
-            if (!product) {
-                //nullProductIds.push(stockItem.id);
-                if (stockItem.name) {
-
-                    if (!map.has(stockItem.name)) {
-                        map.set(stockItem.name, {...stockItem,more:[] });
-                    } else {
-                        map.get(stockItem.name).more.push(stockItem);
-                    }
-                }
-                continue;
-            }
-
-            if (!map.has(product.id)) {
-                map.set(product.id, { ...stockItem, more: [] });
-            } else {
-                map.get(product.id).more.push(stockItem);
-            }
-        }
-
-        return Array.from(map.values(),);
-    };
 
     /* ---------------- Search with debounce ---------------- */
     useEffect(() => {
@@ -58,11 +31,13 @@ export default function SalesItemsForm({
 
     const search = async (text) => {
         try {
-            const res = await searchStockItems(text, 0, 300, 'InStock');
 
-            // 🔥 FIX: aggregate by product
-            const aggregated = aggregateByProduct(res.data || []);
+           // const res = await searchStockItems(text, 0, 300, 'InStock');
+            //const res = await searchStockItems(text, 0, 300, 'InStock');
 
+            //// 🔥 FIX: aggregate by product
+            //const aggregated = aggregateByProduct(res.data || []);
+            const aggregated = await SaleApi.searchStockItemsByNameOrBarcode(text);
             setResults(aggregated);
             setShowResults(true);
             setHighlightIndex(0);
@@ -141,13 +116,13 @@ export default function SalesItemsForm({
                 <div className="dropdown-menu show w-100">
                     {results.map((item, index) => (
                         <div
-                            key={item.id??item.product.id}
+                            key={(item.id ?? item.product?.id ?? item.name) + '_' + index}
                             className={`dropdown-item ${index === highlightIndex ? 'active' : ''}`}
                             onMouseEnter={() => setHighlightIndex(index)}
                             onClick={() => selectStockItem(item)}
                         >
                             <div className="d-flex justify-content-between">
-                                <span>{item.product.name}</span>
+                                <span>{item.product?.name ?? item.name}</span>
                                 <strong>
                                     {currency}
                                     {item.selling_price || 0}

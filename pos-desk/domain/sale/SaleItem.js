@@ -4,35 +4,29 @@ export default class SaleItem {
     constructor({
         id = null,
         documentId = null,
-        name,
+        // name,
         quantity = 1,
-        sellingPrice,
-        costPrice = 0,
-        offerPrice = null,
-        isStockItem = true,
-        stockItem = null
+        discount = 0,
+        price = 0,
+        stockItem = null,
+        items = [],
     }) {
         this.id = id;
         this.documentId = documentId;
-        this.name = name;
+
         this.quantity = quantity;
-        this.sellingPrice = sellingPrice;
-        this.costPrice = costPrice;
-        this.isStockItem = isStockItem;
-        this.stockItems = [];
+        this.items = items ?? [];
+
         if (stockItem) {
-            this.stockItems.push(stockItem);
+            this.items.push(stockItem);
         }
         /* ---------------- Discount / Offer state ---------------- */
 
-        // active discount percent (cashier-visible)
-        this.discountPercent = offerPrice
-            ? discountFromOffer(sellingPrice, offerPrice)
-            : 0;
+        this.price = price;
 
-        // offer bookkeeping (NON-DESTRUCTIVE)
-        this.offerPrice = offerPrice ?? sellingPrice;
-        this.offerActive = !!offerPrice;
+        this.discount = discount;
+        //this.offerPrice ? discountFromOffer(sellingPrice, offerPrice) : 0;
+
 
         // saved discount before offer (for revert)
         this._discountBeforeOffer = null;
@@ -40,12 +34,62 @@ export default class SaleItem {
 
     /* ---------------- Editable fields ---------------- */
 
+    first() {
+        if (this.items?.length > 0) {
+            return this.items[0];
+        }
+        if (this.items == null) {
+            this.items = [];
+        }
+        this.items.push({ name: '', selling_price: 0, cost_price: 0, offer_price: 0 });
+
+        return this.items[0];
+    }
+
+
+    get name() {
+        return this.first()?.name || 'Unnamed Item';
+    };
+
+    set name(n) {
+        this.first().name = n;
+    }
+
+
     setName(name) {
         if (!this.isStockItem) {
             this.name = name;
         }
     }
 
+    get sellingPrice() {
+        return this.first()?.selling_price || 0;
+    }
+    set sellingPrice(price) {
+        return this.first().selling_price = price;
+    }
+
+    get costPrice() {
+        return this.first()?.cost_price || 0;
+    }
+    set costPrice(price) {
+        return this.first().cost_price = price;
+    }
+
+    get offerPrice() {
+        return this.first()?.offer_price || this.price;
+    }
+    set offerPrice(price) {
+        return this.first().offer_price = price;
+    }
+
+    get isStockItem() {
+        return this.first().product == null;
+    }
+
+    get offerActive() {
+        return this.price == this.offerPrice;
+    }
     setSellingPrice(price) {
         if (!this.isStockItem) {
             this.sellingPrice = Math.max(0, price);
@@ -61,22 +105,22 @@ export default class SaleItem {
         const netQty = Math.max(1, qty);
         const currentQty = this.quantity;
 
-        if (!Array.isArray(this.stockItems)) {
-            this.stockItems = [];
+        if (!Array.isArray(this.items)) {
+            this.items = [];
         }
 
-        if (!this.stockItems[0]?.more) {
-            this.stockItems[0].more = [];
+        if (!first()?.more) {
+            first().more = [];
         }
 
-        const pool = this.stockItems[0].more;
+        const pool = first().more;
 
         // REMOVE
         if (netQty < currentQty) {
             const removeCount = currentQty - netQty;
 
             for (let i = 0; i < removeCount; i++) {
-                const removed = this.stockItems.pop();
+                const removed = this.items.pop();
                 if (removed) pool.push(removed);
             }
         }
@@ -87,20 +131,28 @@ export default class SaleItem {
 
             for (let i = 0; i < addCount; i++) {
                 if (pool.length > 0) {
-                    this.stockItems.push(pool.shift());
-                } else {
-                    // fallback: clone base item (should not normally happen)
-                    this.stockItems.push({ ...this.stockItems[0], ...{ id: 0, documentId: null } });
+                    this.items.push(pool.shift());
                 }
+                //else {
+                //    // fallback: clone base item (should not normally happen)
+                //    this.items.push({ ...first(), ...{ id: 0, documentId: null } });
+                //}
             }
         }
 
-        this.quantity = netQty;
+        this.quantity = this.items.length + 1;
     }
 
 
     setDiscountPercent(percent) {
-        this.discountPercent = Math.max(0, percent);
+        this.discount = Math.max(0, percent);
+
+
+        this.price = this.sellingPrice - this.sellingPrice * this.discount;
+
+        this.price = Math.min(Math.max(this.price, this.costPrice), this.sellingPrice);
+
+        return this.price;
     }
 
     /* ---------------- Offer logic (FIXED & SAFE) ---------------- */
@@ -109,30 +161,35 @@ export default class SaleItem {
         if (this.offerActive) return;
 
         // remember existing discount
-        this._discountBeforeOffer = this.discountPercent;
+        this._discountBeforeOffer = this.discount;
 
         // offer price must never go below cost
-        this.offerPrice = Math.max(offerPrice, this.costPrice);
+        //this.price = Math.max(offerPrice, this.costPrice);
 
         // derive discount from offer price
-        this.discountPercent = discountFromOffer(
+        this.discount = discountFromOffer(
             this.sellingPrice,
             this.offerPrice
         );
 
-        this.offerActive = true;
+        this.price = this.sellingPrice - this.sellingPrice * this.discount;
+
+        this.price = Math.min(Math.max(this.price, this.costPrice), this.sellingPrice);
+
+        return this.price;
     }
 
     revertOffer() {
-        if (!this.offerActive) return;
+       // if (!this.offerActive) return;
 
         // restore previous discount
-        this.discountPercent =
-            this._discountBeforeOffer ?? this.discountPercent;
-
-        this.offerActive = false;
+        this.discount = this._discountBeforeOffer ?? this.discount;
         this._discountBeforeOffer = null;
 
+
+        this.price = this.sellingPrice - this.sellingPrice * this.discount;
+        this.price = Math.min(Math.max(this.price, this.costPrice),this.sellingPrice);
+        return this.price;
         // keep offerPrice as last known value (do NOT null it)
     }
 
@@ -142,12 +199,12 @@ export default class SaleItem {
         return applyDiscount({
             sellingPrice: this.sellingPrice,
             costPrice: this.costPrice,
-            discountPercent: this.discountPercent
+            discount: this.discount
         });
     }
 
     get subtotal() {
-        return this.unitNetPrice * this.quantity;
+        return this.price * this.quantity;
     }
 
     get tax() {
@@ -166,16 +223,22 @@ export default class SaleItem {
             documentId: this.documentId,
             name: this.name,
             quantity: this.quantity,
-            selling_price: this.sellingPrice,
-            cost_price: this.costPrice,
-            discount: this.discountPercent,
-            offer_price: this.offerPrice,
-            offer_active: this.offerActive,
+            price: this.price,
+            discount: this.discount,
+
             subtotal: this.subtotal,
             tax: this.tax,
+
             total: this.total,
+
+            selling_price: this.sellingPrice,
+            cost_price: this.costPrice,
+
+            offer_price: this.offerPrice,
+            offer_active: this.offerActive,
+
             is_stock_item: this.isStockItem,
-            stockItems:this.stockItems
+            items: this.items
         };
     }
 }
