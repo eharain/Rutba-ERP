@@ -18,7 +18,7 @@ export default function Sales() {
     useEffect(() => {
         (async () => {
             //const res = await authApi.fetch("/sales", { sort: ["id:desc"], pagination: { pageSize: 100 } });
-            const res = await fetchSales(page, rowsPerPage);
+            const res = await fetchSales(page + 1, rowsPerPage);
             setSales(res.data || []);
             setTotal(res.meta.pagination.total);
             setLoading(false);

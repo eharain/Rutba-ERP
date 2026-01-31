@@ -25,7 +25,7 @@ export default function Products() {
     async function loadProductsData() {
         setLoading(true);
         // Fetch purchases for reports
-        const { data, meta } = await fetchProducts(filters, page, rowsPerPage);
+        const { data, meta } = await fetchProducts(filters, page + 1, rowsPerPage);
 
         setProducts(data);
         setTotal(meta.pagination.total);

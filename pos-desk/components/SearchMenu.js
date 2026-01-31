@@ -19,7 +19,7 @@ export default function SearchMenu() {
         async function loadPurchaseData() {
             if (!searchText) return;
             setLoading(true);
-            const data = await pos.featchSearch(searchText, page, rowsPerPage);
+            const data = await pos.featchSearch(searchText, page + 1, rowsPerPage);
             setResults(data.data || []);
             setTotal(data.meta.pagination.total);
             setLoading(false);
