@@ -3,6 +3,9 @@
 ## General Guidelines
 - Prefer using Bootstrap utility classes instead of inline `<style jsx>` blocks for print-related components in `pos-desk/components/print`.
 - Use Bootstrap grid (row/col) for print label layout; product name should be on top, company and price on the left column, QR/Barcode on the right column with barcode text below the QR. Use classes: `.name`, `.company`, `.price`, `.barcode-container`, `.barcode-text`.
+- Strapi version 5.x.x is api provider the schema and components are defined in  `pos-strapi/src` and the code is in `pos-strapi/`
+- front end is built with next js and the code is in `pos-desk/'
+- editing any pos-desk component do check the approperiate strapi schema if present
 
 ## Project-Specific Rules
 - Context providers should load state from local storage on mount, ensuring the initial load effect runs only once (with empty dependencies). Use distinct state setter names (e.g., `setLabelSizeState`) to avoid name collisions and persist changes to storage using consistent keys (e.g., 'label-size').

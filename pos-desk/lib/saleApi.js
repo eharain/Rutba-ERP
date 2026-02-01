@@ -1,7 +1,7 @@
 import { authApi } from './api';
 import { fetchSaleByIdOrInvoice, searchStockItems } from './pos';
 import SaleModel from '../domain/sale/SaleModel';
-import { discountFromOffer } from '../domain/sale/pricing';
+import { discountRateFromPrice } from '../domain/sale/pricing';
 
 export default class SaleApi {
 
@@ -19,26 +19,21 @@ export default class SaleApi {
     /* ---------------- Aggregate stock items by product ---------------- */
     static aggregateByProduct = (list = []) => {
         const map = new Map();
-        const nullProductIds = [];
+        const addByKey = (key, value) => {
+            if (!map.has(key)) {
+                map.set(key, { ...value, more: [] });
+                return;
+            }
+            map.get(key).more.push(value);
+        }
         for (const stockItem of list) {
             const product = stockItem.product;
             if (!product) {
-                //nullProductIds.push(stockItem.id);
-                if (stockItem.name) {
-
-                    if (!map.has(stockItem.name)) {
-                        map.set(stockItem.name, { ...stockItem, more: [] });
-                    } else {
-                        map.get(stockItem.name).more.push(stockItem);
-                    }
-                }
-                continue;
-            }
-
-            if (!map.has(product.id)) {
-                map.set(product.id, { ...stockItem, more: [] });
+                addByKey(stockItem.name || `null-name-${stockItem.id}`, stockItem);
+            } else if (product?.id > 0) {
+                addByKey(product.id || `null-product-${stockItem.id}`, stockItem);
             } else {
-                map.get(product.id).more.push(stockItem);
+                addByKey(`${stockItem.id}-stock-id`, stockItem);
             }
         }
 
@@ -60,41 +55,36 @@ export default class SaleApi {
     static async saveSale(saleModel, { paid = false } = {}) {
         const payload = {
             ...saleModel.toPayload(),
-            customer: this.customerPayload(saleModel.customer),
-            payment_status: paid ? 'Paid' : undefined
+            ...await this.customerPayload(saleModel.customer),
+            ...await this.paymentPayload(saleModel.payments),
+            ...paid ? { payment_status: 'Paid' } : {},
         };
 
         // Strapi may reject nested relations for items when creating/updating sale
         // Persist items separately via saveSaleItems. Remove items from payload sent to /sales.
         const payloadNoItems = { ...payload };
-        if (payloadNoItems.items) delete payloadNoItems.items;
 
         let saleResponse;
 
         // Determine existing id (documentId preferred)
-        const existingId = saleModel.documentId ?? saleModel.id;
+        let existingId = saleModel.documentId ?? saleModel.id;
+
         const isNew = !existingId || existingId === 'new' || existingId === 'undefined';
+
+        existingId = isNew ? null : existingId;
 
         // CREATE
         if (isNew) {
             saleResponse = await authApi.post('/sales', {
                 data: {
-                    ...payloadNoItems,
-                    payment_status: paid ? 'Paid' : 'Pending'
+                    ...payloadNoItems
                 }
             });
 
             // normalize response shape (authApi.post returns res.data)
             const createdSale = saleResponse?.data ?? saleResponse;
             // try several possible shapes
-            const createdId = createdSale?.documentId
-                //?? createdSale?.id
-                //?? createdSale?.data?.documentId
-                //?? createdSale?.data?.id
-                //?? createdSale?.data?.data?.documentId
-                //?? createdSale?.data?.data?.id
-                //?? createdSale?.attributes?.id
-                ?? null;
+            const createdId = createdSale?.documentId ?? null;
 
             saleModel.id = createdSale.id;
             saleModel.documentId = createdId;
@@ -124,30 +114,69 @@ export default class SaleApi {
        CUSTOMER
     ===================================================== */
 
-    static async updateCustomer(id, customer) {
-        // id may be a raw id or a model object
-        const saleId = id?.documentId ?? id?.id ?? id;
-        if (!saleId) {
-            throw new Error('updateCustomer: missing sale id');
-        }
 
-        return authApi.put(`/sales/${saleId}`, {
-            data: {
-                customer: customer
-                    ? { connect: [customer.documentId] }
-                    : null
-            }
-        });
+
+    static removeNullAttributes(obj = {}) {
+
+        if (!obj || typeof obj !== 'object') return {};
+
+        return Object.fromEntries(Object.entries(obj).filter(([_, v]) => v != null));
     }
 
-    static customerPayload(customer) {
+    static async customerPayload(customer) {
+        const nullConnect = { customer: { disconnect: true } };;
         if (!customer) {
-            return { disconnect: true };
+            return nullConnect;
+        }
+        const { documentId, name, email, phone } = customer;
+        const isEmpty = !name && !email && !phone;
+
+        if (isEmpty) {
+            return nullConnect;
         }
 
-        return { connect: [customer.documentId] };
+        const data = this.removeNullAttributes({ name, email, phone });
+
+        console.log('Customer payload data:', documentId, data, customer);
+
+        if (customer) {
+
+            if (documentId) {
+                let cs = authApi.post('/customers', { data });
+                cs = cs.data || cs;
+                customer.documentId = cs.documentId;
+
+            }
+            else if (name || phone || email) {
+                let cs = await authApi.put(`/customers/${documentId}`, { data });
+                cs = cs.data || cs;
+                customer.documentId = cs.documentId;
+                //   return { connect: [cs.documentId ?? cs.id ?? cs?.attributes?.id] };
+            }
+        }
+        if (documentId) {
+            return { customer: { connect: [customer.documentId] } };
+        }
+
+        return nullConnect;
     }
 
+    static async paymentPayload(payments = []) {
+        if (!Array.isArray(payments) || payments.length === 0) {
+            return { payments: { disconnect: true } };
+        }
+        let connectIds = [];
+        for (const p of payments) {
+            if (!p.documentId) {
+                const res = await authApi.post('/payments', { data: p });
+                p.documentId = res?.data?.documentId ?? res?.data?.id ?? res?.documentId ?? res?.id;
+            } else {
+                const res = await authApi.put(`/payments/${p.documentId}`, { data: p });
+            }
+            connectIds.push(p.documentId);
+        }
+        return { payments: { connect: connectIds } };
+    }
     /* =====================================================
        SALE ITEMS + STOCK
     ===================================================== */
@@ -162,15 +191,15 @@ export default class SaleApi {
             // build payload for sale-item
             const saleItemPayload = {
                 quantity: item.quantity || 1,
-                price: item.unitNetPrice,
+                price: item.price,
                 discount: item.discount || 0,
                 tax: item.tax,
                 total: item.total,
                 sale: { connect: [saleId] },
             };
 
-            if (baseStockItem?.product?.documentId || baseStockItem?.product?.id) {
-                saleItemPayload.product = { connect: [baseStockItem.product.documentId || baseStockItem.product.id] };
+            if (baseStockItem?.product?.documentId) {
+                saleItemPayload.product = { connect: [baseStockItem.product.documentId] };
             }
 
             if (item.documentId) {
@@ -183,7 +212,7 @@ export default class SaleApi {
                 const res = await authApi.post('/sale-items', { data: saleItemPayload });
                 const created = res?.data ?? res;
                 // attach returned id to item for later stock-item linking
-                item.documentId = created.documentId ?? created.id ?? created?.attributes?.id;
+                item.documentId = created.documentId;
                 results.push(created);
             }
 
@@ -192,32 +221,47 @@ export default class SaleApi {
 
             // update/create stock-items and link to sale-item
             if (Array.isArray(item.items)) {
-                for (const sitem of item.items) {
-                    if (!sitem) continue;
+                for (const stockItem of item.items) {
+                    if (!stockItem) continue;
 
                     const stockPayload = {
-                        selling_price: item.unitNetPrice,
+                        //   selling_price: item.selling_price,
                         ...paid ? { status: 'Sold' } : {},
                         sale_item: { connect: [saleItemId] }
                     };
 
-                    if (sitem.name) stockPayload.name = sitem.name;
-                    if (sitem.cost_price || sitem.costPrice) stockPayload.cost_price = sitem.cost_price ?? sitem.costPrice;
+                    if (stockItem.product) {
+                        if (!stockItem.name) {
+                            stockItem.name = stockItem.product.name
+                        }
 
-                    if (sitem.product?.documentId || sitem.product?.id) {
-                        stockPayload.product = { connect: [sitem.product.documentId || sitem.product.id] };
+                        if (!stockItem.cost_price) {
+                            stockItem.cost_price = stockItem.product.cost_price
+                        }
+
+                        if (!stockItem.offer_price) {
+                            stockItem.offer_price = stockItem.product.offer_price
+                        }
+                        if (!stockItem.selling_price) {
+                            stockItem.selling_price = stockItem.product.selling_price
+                        }
                     }
 
-                    if (sitem.documentId) {
+
+                    if (stockItem.product?.documentId || stockItem.product?.id) {
+                        stockPayload.product = { connect: [stockItem.product.documentId || stockItem.product.id] };
+                    }
+
+                    if (stockItem.documentId) {
                         // update existing stock-item
-                        const res = await authApi.put(`/stock-items/${sitem.documentId}`, { data: stockPayload });
+                        const res = await authApi.put(`/stock-items/${stockItem.documentId}`, { data: stockPayload });
                         // ignore response
                     } else {
                         // create new stock-item
                         const res = await authApi.post('/stock-items', { data: stockPayload });
                         const createdStock = res?.data ?? res;
                         // set documentId if returned
-                        sitem.documentId = createdStock.documentId ?? createdStock.id ?? createdStock?.attributes?.id;
+                        stockItem.documentId = createdStock.documentId ?? createdStock.id ?? createdStock?.attributes?.id;
                     }
                 }
             }

@@ -22,7 +22,7 @@ const geistMono = Geist_Mono({
 
 export default function App({ Component, pageProps }) {
     return (
-        <div className={`${geistSans.variable} ${geistMono.variable}`}>
+        <div className={`${geistSans.variable} ${geistMono.variable} h-100`}>
             <AuthProvider>
                 <CartProvider>
                     <UtilProvider>

@@ -41,8 +41,8 @@ export const buildQueries = (searchText, page = 1, rowsPerPage = 5, statusFilter
                     gallery: true,
                     items: {
                         populate: {
-                            product:true
-                            }
+                            product: true
+                        }
                     }
                 },
                 pagination: { page, pageSize: rowsPerPage }
@@ -70,7 +70,7 @@ export const buildQueries = (searchText, page = 1, rowsPerPage = 5, statusFilter
                 $or: [
                     { barcode: { $containsi: searchText } },
                     { sku: { $containsi: searchText } },
-                    { product: {name: { $containsi: searchText } }},
+                    { product: { name: { $containsi: searchText } } },
                     { purchase_item: { purchase: { orderId: { $containsi: searchText } } } }
                 ],
                 status: statusFilter
@@ -93,13 +93,12 @@ export const buildQueries = (searchText, page = 1, rowsPerPage = 5, statusFilter
                 $or: [
                     { barcode: { $containsi: searchText } },
                     { sku: { $containsi: searchText } },
-                    { product: {name: { $containsi: searchText } }},
+                    { product: { name: { $containsi: searchText } } },
                     { purchase_item: { purchase: { orderId: { $containsi: searchText } } } }
                 ],
                 status: statusFilter
             },
             query: {
-
                 populate: {
                     product: true,
                     purchase_item: {
@@ -187,7 +186,7 @@ export const buildQueries = (searchText, page = 1, rowsPerPage = 5, statusFilter
 
 }
 
-export function buildItemQueries(searchText,page = 1, rowsPerPage = 5) {
+export function buildItemQueries(searchText, page = 1, rowsPerPage = 5) {
     const queries = {
 
         "purchase-items": {
@@ -248,7 +247,7 @@ export function buildItemQueries(searchText,page = 1, rowsPerPage = 5) {
     }
 
     return __standeriseQuery(queries, !searchText || searchText.trim().length === 0);
-    
+
 }
 
 
@@ -287,7 +286,7 @@ export function queryRelationsFromPopulate(q) {
 
     if (q && q.query && q.query.populate) {
         const populate = q.query.populate;
-        if( Array.isArray(populate)) {
+        if (Array.isArray(populate)) {
             populate.forEach(item => extractRelations(item));
         } else if (typeof populate === 'object') {
             Object.keys(populate).forEach(key => extractRelations(key));

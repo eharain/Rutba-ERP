@@ -668,9 +668,12 @@ export interface ApiPaymentPayment extends Struct.CollectionTypeSchema {
   attributes: {
     amount: Schema.Attribute.Decimal;
     branches: Schema.Attribute.Relation<'manyToMany', 'api::branch.branch'>;
+    cash_received: Schema.Attribute.Decimal;
+    change: Schema.Attribute.Decimal;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    due: Schema.Attribute.Decimal;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',

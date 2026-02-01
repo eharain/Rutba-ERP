@@ -71,17 +71,9 @@ export default function SalePage() {
 
     const handleCustomerChange = async (customer) => {
         // For unsaved/new sales just update local model. Persist only for existing sales.
-        saleModel.customer = customer;
+        saleModel.setCustomer(customer);
         forceUpdate();
 
-        const saleId = saleModel.documentId ?? saleModel.id;
-        if (!saleId || saleId === 'new') return;
-
-        try {
-            await SaleApi.updateCustomer(saleId, customer);
-        } catch (err) {
-            console.error('Failed to update customer', err);
-        }
     };
 
     /* ===============================
@@ -91,7 +83,7 @@ export default function SalePage() {
     const handleCheckoutComplete = async (payment) => {
         setLoading(true);
         try {
-            SaleApi.addPayment(payment);
+            saleModel.addPayment(payment);
             await SaleApi.checkout(saleModel);
 
             alert('Sale completed successfully');

@@ -37,13 +37,19 @@ export default function CustomerSelect({ value, onChange, disabled }) {
     /* ---------------- Sync external value ---------------- */
     useEffect(() => {
         if (value?.name) {
-            setQuery(value.name);
+            setCustomer(value);
+            //setQuery(value.name);
+            setMode('idle');
+            setEditingCustomer(null);
+
+        } else {
+            setCustomer(null);
         }
     }, [value?.documentId]);
 
     /* ---------------- Search ---------------- */
     useEffect(() => {
-        if (!query) {
+        if (!query || query == customer?.name) {
             setResults([]);
             setMode('idle');
             return;
@@ -62,11 +68,12 @@ export default function CustomerSelect({ value, onChange, disabled }) {
     const fetchCustomers = async () => {
         setLoading(true);
         try {
+            let equery = encodeURIComponent(query);
             const qs = [
-                `filters[$or][0][name][$containsi]=${encodeURIComponent(query)}`,
-                `filters[$or][1][email][$containsi]=${encodeURIComponent(query)}`,
-                `filters[$or][2][phone][$containsi]=${encodeURIComponent(query)}`,
-                'pagination[pageSize]=8'
+                `filters[$or][0][name][$containsi]=${equery}`,
+                `filters[$or][1][email][$containsi]=${equery}`,
+                `filters[$or][2][phone][$containsi]=${equery}`,
+                'pagination[pageSize]=20'
             ].join('&');
 
             const res = await authApi.get(`/customers?${qs}`);
@@ -106,6 +113,7 @@ export default function CustomerSelect({ value, onChange, disabled }) {
     const selectCustomer = (customer) => {
         handleChange?.(customer);
         setQuery(customer?.name || '');
+        setEditingCustomer(null);
         setMode('idle');
     };
 
@@ -114,7 +122,7 @@ export default function CustomerSelect({ value, onChange, disabled }) {
     }
     return (
         <div className="position-relative" ref={containerRef}>
-         <label className="form-label">Customer: <span>{customerName()}</span> </label>
+            <label className="form-label">Customer: <span>{customerName()}</span> <span onClick={() => { setMode("idle"); setEditingCustomer(customer) }}><i className="fas fa-edit"></i></span> </label>
             <div className="input-group">
                 <input
                     className="form-control"
@@ -136,7 +144,7 @@ export default function CustomerSelect({ value, onChange, disabled }) {
                 </button>
             </div>
 
-            {mode !== 'idle' && (
+            {!editingCustomer && mode === 'search' && (
                 <div className="dropdown-menu show w-100 shadow-sm mt-1 p-0">
                     {mode === 'search' && (
                         <div className="list-group list-group-flush">
@@ -186,15 +194,14 @@ export default function CustomerSelect({ value, onChange, disabled }) {
                         </div>
                     )}
 
-                    {mode === 'form' && (
+                    {editingCustomer && (
                         <CustomerForm
                             customer={editingCustomer}
                             initialQuery={query}
                             onCancel={() => setMode('idle')}
                             onSaved={(customer) => {
                                 handleChange?.(customer);
-                                setQuery(customer?.name || '');
-                                setMode('idle');
+//                                setQuery(customer?.name || '');
                             }}
                         />
                     )}

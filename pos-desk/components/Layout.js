@@ -24,11 +24,11 @@ export default function Layout({ children }) {
                 </main>
 
                 {/* Aside (toggleable) */}
-                {showAside && (
-                    <aside className="col-md-3">
-                        <SearchMenu />
-                    </aside>
-                )}
+                {/*{showAside && (*/}
+                {/*    <aside className="col-md-3">*/}
+                {/*        <SearchMenu />*/}
+                {/*    </aside>*/}
+                {/*)}*/}
             </div>
 
             {/* Footer outside row */}

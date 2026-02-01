@@ -30,7 +30,7 @@ import { UtilProvider } from "../../context/UtilContext";
 export default function RootLayout({ children }) {
     return (
         <html lang="en">
-            <body className={`${geistSans.variable} ${geistMono.variable}`}> dd
+            <body className={`${geistSans.variable} ${geistMono.variable}  h-100`}> 
                 <AuthProvider>
                     <CartProvider>
                         <UtilProvider>

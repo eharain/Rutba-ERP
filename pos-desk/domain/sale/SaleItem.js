@@ -1,4 +1,4 @@
-import { applyDiscount, discountFromOffer, calculateTax } from './pricing';
+import { applyDiscount, discountRateFromPrice, calculateTax, ValidNumberOrDefault } from './pricing';
 
 export default class SaleItem {
     constructor({
@@ -13,37 +13,40 @@ export default class SaleItem {
     }) {
         this.id = id;
         this.documentId = documentId;
-
         this.quantity = quantity;
         this.items = items ?? [];
+
+        this.price = price ?? 0;
+
+        this.discount = discount ?? 0;
+
 
         if (stockItem) {
             this.items.push(stockItem);
         }
+
         /* ---------------- Discount / Offer state ---------------- */
-
-        this.price = price;
-
-        this.discount = discount;
-        //this.offerPrice ? discountFromOffer(sellingPrice, offerPrice) : 0;
-
 
         // saved discount before offer (for revert)
         this._discountBeforeOffer = null;
+
+        console.log('SaleItem created:', this);
     }
 
     /* ---------------- Editable fields ---------------- */
 
     first() {
-        if (this.items?.length > 0) {
-            return this.items[0];
-        }
         if (this.items == null) {
             this.items = [];
         }
-        this.items.push({ name: '', selling_price: 0, cost_price: 0, offer_price: 0 });
+        if (this.items?.length > 0) {
+            return this.items[0];
+        }
 
-        return this.items[0];
+
+        // this.items.push({ name: '', selling_price: 0, cost_price: 0, offer_price: 0 });
+
+        return null;
     }
 
 
@@ -57,9 +60,9 @@ export default class SaleItem {
 
 
     setName(name) {
-        if (!this.isStockItem) {
-            this.name = name;
-        }
+        // if (!this.isStockItem) {
+        this.name = name;
+        // }
     }
 
     get sellingPrice() {
@@ -84,21 +87,54 @@ export default class SaleItem {
     }
 
     get isStockItem() {
-        return this.first().product == null;
+
+        return this.first()?.product != null;
     }
 
     get offerActive() {
         return this.price == this.offerPrice;
     }
-    setSellingPrice(price) {
-        if (!this.isStockItem) {
-            this.sellingPrice = Math.max(0, price);
 
-            // keep offer price aligned if offer not active
-            if (!this.offerActive) {
-                this.offerPrice = this.sellingPrice;
-            }
+    setSellingPrice(price) {
+        price = ValidNumberOrDefault(price, 0);
+        this.sellingPrice = price;
+
+        if (!this.costPrice) {
+            this.costPrice = price * 0.75;
         }
+        if (this.offerPrice == null || this.offerPrice == 0) {
+            this.offerPrice = price * 0.85;
+        }
+
+        const actualPrice = this.sellingPrice ?? price ?? 0;
+
+        const discount = discountRateFromPrice(actualPrice, price);
+
+        console.log('setSellingPrice:', { price, actualPrice, discount });
+
+        this.setDiscountPercent(discount);
+        //if (!this.isStockItem) {
+        //    this.price = Math.max(0, price);
+
+        //    // keep offer price aligned if offer not active
+        //    if (!this.offerActive) {
+        //        this.offerPrice = this.sellingPrice;
+        //    }
+        //}
+    }
+
+    //get unitNetPrice() {
+    //    return applyDiscount({
+    //        sellingPrice: this.sellingPrice,
+    //        costPrice: this.costPrice,
+    //        discount: this.discount
+    //    });
+    //}
+
+
+    setDiscountPercent(percent) {
+        this.discount = Math.min(Math.max(percent, 0), 100);
+        return this.restPriceToDicount();
     }
 
     setQuantity(qty) {
@@ -108,12 +144,12 @@ export default class SaleItem {
         if (!Array.isArray(this.items)) {
             this.items = [];
         }
-
-        if (!first()?.more) {
-            first().more = [];
+        let stockItemWithMore = this.first();
+        if (!stockItemWithMore?.more) {
+            stockItemWithMore.more = [];
         }
 
-        const pool = first().more;
+        const pool = stockItemWithMore.more;
 
         // REMOVE
         if (netQty < currentQty) {
@@ -140,71 +176,60 @@ export default class SaleItem {
             }
         }
 
-        this.quantity = this.items.length + 1;
+        this.quantity = this.items.length;
     }
 
 
-    setDiscountPercent(percent) {
-        this.discount = Math.max(0, percent);
 
-
-        this.price = this.sellingPrice - this.sellingPrice * this.discount;
-
-        this.price = Math.min(Math.max(this.price, this.costPrice), this.sellingPrice);
-
-        return this.price;
-    }
 
     /* ---------------- Offer logic (FIXED & SAFE) ---------------- */
 
-    applyOfferPrice(offerPrice) {
-        if (this.offerActive) return;
+    applyOfferPrice() {
+        //if (this.offerActive) return;
 
         // remember existing discount
         this._discountBeforeOffer = this.discount;
 
         // offer price must never go below cost
-        //this.price = Math.max(offerPrice, this.costPrice);
+
+        this.price = Math.max(this.offerPrice, this.costPrice);
 
         // derive discount from offer price
-        this.discount = discountFromOffer(
-            this.sellingPrice,
-            this.offerPrice
-        );
+        this.discount = discountRateFromPrice(this.price, this.offerPrice);
 
-        this.price = this.sellingPrice - this.sellingPrice * this.discount;
-
-        this.price = Math.min(Math.max(this.price, this.costPrice), this.sellingPrice);
-
-        return this.price;
+        return this.restPriceToDicount();
     }
 
     revertOffer() {
-       // if (!this.offerActive) return;
+        // if (!this.offerActive) return;
 
         // restore previous discount
         this.discount = this._discountBeforeOffer ?? this.discount;
         this._discountBeforeOffer = null;
+        this.restPriceToDicount();
 
 
-        this.price = this.sellingPrice - this.sellingPrice * this.discount;
-        this.price = Math.min(Math.max(this.price, this.costPrice),this.sellingPrice);
-        return this.price;
         // keep offerPrice as last known value (do NOT null it)
     }
 
+    restPriceToDicount() {
+        this.price = (this.sellingPrice - this.sellingPrice * this.discount);
+        this.price = Math.min(Math.max(this.price, this.costPrice), this.sellingPrice);
+        return this.price;
+    }
     /* ---------------- Pricing ---------------- */
 
-    get unitNetPrice() {
-        return applyDiscount({
-            sellingPrice: this.sellingPrice,
-            costPrice: this.costPrice,
-            discount: this.discount
-        });
-    }
+
 
     get subtotal() {
-        return this.price * this.quantity;
+
+        const dp = this.items.reduce((sum, item) => {
+            let costPrice = ValidNumberOrDefault(item.cost_price, item.offer_price ?? (item.selling_price * .75));
+            return sum + applyDiscount(item.selling_price, costPrice, this.discount ?? 0);
+        }, 0)
+        let total = ValidNumberOrDefault(dp, 0);
+     //   console.log('SaleItem.subtotal:', { dp, total, itemCount: this.items.length, discount: this.discount, items: this.items });
+        return total
     }
 
     get tax() {
@@ -237,7 +262,6 @@ export default class SaleItem {
             offer_price: this.offerPrice,
             offer_active: this.offerActive,
 
-            is_stock_item: this.isStockItem,
             items: this.items
         };
     }

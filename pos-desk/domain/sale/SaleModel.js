@@ -21,6 +21,7 @@ export default class SaleModel {
         this.invoice_no = invoice_no;
         this.sale_date = Date.parse(sale_date) > new Date(1, 1, 2025).getTime() ? new Date(sale_date) : new Date();
         this.payment_status = payment_status || 'Unpaid';
+        this.payments = [];
         payments?.forEach(p => this.addPayment(p));
         this.customer = customer;
         this.items = items?.map(item => new SaleItem(item));
@@ -36,8 +37,15 @@ export default class SaleModel {
         return model;
     }
 
-    addPayment({ payment_method = 'Cash', amount = 0, payment_date = new Date() }) {
-        this.payments.push({ payment_date, payment_method, amount });
+    setCustomer(customer) {
+        this.customer = customer;
+    }
+    addPayment(payment) {
+        if (!payment) return;
+
+        payment = Object.assign({}, { payment_method: 'Cash', amount: 0, payment_date: new Date(),/* cash_received, change, due*/ }, payment)
+
+        this.payments.push(payment);
 
         const sum = this.payments.reduce((sum, p) => sum + p.amount, 0);
         if (sum >= this.total) {
@@ -67,17 +75,26 @@ export default class SaleModel {
 
         // let name = stockItem.name ?? stockItem?.product?.name;
 
-        this.items.push(new SaleItem({ stockItem }));
+        this.items.push(new SaleItem({
+            price: stockItem.selling_price,
+            discount: 0,
+            quantity: 1,
+            items: [],
+            stockItem
+        }));
     }
 
-    addNonStockItem({ name, price, costPrice = 0 }) {
+    addNonStockItem({ name, price, costPrice }) {
         this.items.push(
             new SaleItem({
-                stockItem: { name, selling_price: price, cost_price: price * 0.75, offer_price: price * 0.85 }
+                price,
+                discount: 0,
+                quantity: 1,
+                items: [],
+                tax: calculateTax(price),
+                stockItem: { name, selling_price: price, cost_price: costPrice ?? price * 0.75, offer_price: price * 0.85 }
             })
         );
-
-        
     }
 
     updateItem(index, updater) {
@@ -99,7 +116,10 @@ export default class SaleModel {
     }
 
     get tax() {
-        return calculateTax(this.subtotal);
+        return this.items.reduce((sum, i) => {
+            const full = i.tax;
+            return sum + full;
+        }, 0);
     }
 
     get total() {
@@ -108,8 +128,8 @@ export default class SaleModel {
 
     get discountTotal() {
         return this.items.reduce((sum, i) => {
-            const full = i.sellingPrice * i.quantity;
-            return sum + (full - i.subtotal);
+            const full = i.sellingPrice - i.discount;
+            return sum + full;
         }, 0);
     }
 
@@ -119,13 +139,11 @@ export default class SaleModel {
 
     toPayload() {
         return {
-            customer: this.customer ? { connect: [this.customer.documentId] } : null,
-            payments: { connect: this.payments.map(p => p.documentId) },//.map(p => ({ payment_date:p.payment_date, payment_method: p.payment_method, amount: p.amount })),
             subtotal: this.subtotal,
             discount: this.discountTotal,
             tax: this.tax,
             total: this.total,
-            items: this.items.map(i => i.toJSON())
+            payment_status: this.payment_status,
         };
     }
 }
