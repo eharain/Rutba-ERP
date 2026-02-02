@@ -3,7 +3,7 @@ import { authApi } from '../../lib/api';
 
 export default function CustomerForm({
     customer,
-    initialQuery,
+   // initialQuery,
     onSaved,
     onCancel
 }) {
@@ -20,13 +20,15 @@ export default function CustomerForm({
             setName(customer.name || '');
             setEmail(customer.email || '');
             setPhone(customer.phone || '');
-        } else if (initialQuery) {
-            const q = initialQuery.trim();
-            if (q.includes('@')) setEmail(q);
-            else if (/^\+?\d{6,15}$/.test(q)) setPhone(q);
-            else setName(q);
         }
-    }, [customer, initialQuery]);
+        //else if (initialQuery) {
+
+        //    const q = initialQuery.trim();
+        //    if (q.includes('@')) setEmail(q);
+        //    else if (/^\+?\d{6,15}$/.test(q)) setPhone(q);
+        //    else setName(q);
+        //}
+    }, [customer]);
 
     const checkDuplicate = async () => {
         if (!email && !phone) return;
@@ -62,13 +64,14 @@ export default function CustomerForm({
 
         setSaving(true);
         try {
-            const payload = { name, email, phone };
-            //const res = customer
-            //    ? await authApi.put(`/customers/${customer.documentId}`, { data: payload })
-            //    : await authApi.post('/customers', { data: payload });
-
-            // onSaved(res.data?.data);
-
+            // Do not persist here. Return the customer object to parent for higher-level handling.
+            const result = {
+                ...(customer?.documentId ? { documentId: customer.documentId } : {}),
+                name: name || undefined,
+                email: email || undefined,
+                phone: phone || undefined,
+            };
+            if (onSaved) onSaved(result);
         } catch (e) {
             console.error('Customer save failed', e);
         } finally {

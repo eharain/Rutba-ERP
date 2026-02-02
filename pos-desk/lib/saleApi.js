@@ -2,6 +2,7 @@ import { authApi } from './api';
 import { fetchSaleByIdOrInvoice, searchStockItems } from './pos';
 import SaleModel from '../domain/sale/SaleModel';
 import { discountRateFromPrice } from '../domain/sale/pricing';
+import { prepareForPut } from "../lib/utils";
 
 export default class SaleApi {
 
@@ -128,8 +129,9 @@ export default class SaleApi {
         if (!customer) {
             return nullConnect;
         }
-        const { documentId, name, email, phone } = customer;
-        const isEmpty = !name && !email && !phone;
+        let { documentId, name, email, phone } = customer;
+
+        const isEmpty = !documentId && !name?.trim() && !email?.trim() && !phone?.trim();
 
         if (isEmpty) {
             return nullConnect;
@@ -141,11 +143,10 @@ export default class SaleApi {
 
         if (customer) {
 
-            if (documentId) {
+            if (!documentId) {
                 let cs = authApi.post('/customers', { data });
                 cs = cs.data || cs;
                 customer.documentId = cs.documentId;
-
             }
             else if (name || phone || email) {
                 let cs = await authApi.put(`/customers/${documentId}`, { data });
@@ -154,7 +155,8 @@ export default class SaleApi {
                 //   return { connect: [cs.documentId ?? cs.id ?? cs?.attributes?.id] };
             }
         }
-        if (documentId) {
+
+        if (customer.documentId) {
             return { customer: { connect: [customer.documentId] } };
         }
 
@@ -171,7 +173,7 @@ export default class SaleApi {
                 const res = await authApi.post('/payments', { data: p });
                 p.documentId = res?.data?.documentId ?? res?.data?.id ?? res?.documentId ?? res?.id;
             } else {
-                const res = await authApi.put(`/payments/${p.documentId}`, { data: p });
+                const res = await authApi.put(`/payments/${p.documentId}`, { data: prepareForPut(p) });
             }
             connectIds.push(p.documentId);
         }

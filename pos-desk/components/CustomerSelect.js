@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { authApi } from '../lib/api';
+import { parseContactLine } from '../lib/utils';
 import CustomerForm from './form/customer-form';
 
 export default function CustomerSelect({ value, onChange, disabled }) {
@@ -20,6 +21,22 @@ export default function CustomerSelect({ value, onChange, disabled }) {
             setCustomer(customer);
             if(onChange)
             onChange(customer);
+    };
+
+    const createCustomerFromQuery = (q) => {
+        const parsed = parseContactLine((q || '').toString());
+        if (parsed.name && parsed.email && parsed.phone) {
+            // fully specified: return to parent without persisting
+            handleChange(parsed);
+            setQuery('');
+            setResults([]);
+            setMode('idle');
+            setEditingCustomer(null);
+        } else {
+            // open form with parsed fields for user to complete
+            setEditingCustomer(parsed.name || parsed.email || parsed.phone ? parsed : null);
+            setMode('form');
+        }
     };
 
     /* ---------------- Outside click ---------------- */
@@ -45,7 +62,7 @@ export default function CustomerSelect({ value, onChange, disabled }) {
         } else {
             setCustomer(null);
         }
-    }, [value?.documentId]);
+    }, [value?.documentId, value?.name, value?.email, value?.phone]);
 
     /* ---------------- Search ---------------- */
     useEffect(() => {
@@ -112,7 +129,7 @@ export default function CustomerSelect({ value, onChange, disabled }) {
 
     const selectCustomer = (customer) => {
         handleChange?.(customer);
-        setQuery(customer?.name || '');
+        setQuery('');
         setEditingCustomer(null);
         setMode('idle');
     };
@@ -122,7 +139,7 @@ export default function CustomerSelect({ value, onChange, disabled }) {
     }
     return (
         <div className="position-relative" ref={containerRef}>
-            <label className="form-label">Customer: <span>{customerName()}</span> <span onClick={() => { setMode("idle"); setEditingCustomer(customer) }}><i className="fas fa-edit"></i></span> </label>
+            <label className="form-label">Customer: <span>{customerName()}</span> <span onClick={() => { setMode('form'); setEditingCustomer(customer); }}><i className="fas fa-edit"></i></span> </label>
             <div className="input-group">
                 <input
                     className="form-control"
@@ -134,77 +151,70 @@ export default function CustomerSelect({ value, onChange, disabled }) {
                 />
                 <button
                     className="btn btn-primary"
-                    disabled={disabled}
-                    onClick={() => {
-                        setEditingCustomer(null);
-                        setMode('form');
-                    }}
+                    disabled={disabled || !query || query.trim() === ''}
+                    onClick={() => createCustomerFromQuery(query)}
                 >
                     Add
                 </button>
             </div>
-
-            {!editingCustomer && mode === 'search' && (
+            {mode === 'search' && (
                 <div className="dropdown-menu show w-100 shadow-sm mt-1 p-0">
-                    {mode === 'search' && (
-                        <div className="list-group list-group-flush">
-                            {loading && (
-                                <div className="list-group-item text-muted">
-                                    Searching…
-                                </div>
-                            )}
+                    <div className="list-group list-group-flush">
+                        {loading && (
+                            <div className="list-group-item text-muted">Searching…</div>
+                        )}
 
-                            {!loading && results.map((c, i) => (
+                        {!loading && results.map((c, i) => (
+                            <div
+                                key={c.documentId || c.id}
+                                className={`list-group-item d-flex justify-content-between ${i === highlightIndex ? 'active' : ''}`}
+                            >
                                 <div
-                                    key={c.documentId || c.id}
-                                    className={`list-group-item d-flex justify-content-between ${i === highlightIndex ? 'active' : ''
-                                        }`}
+                                    className="flex-grow-1"
+                                    style={{ cursor: 'pointer' }}
+                                    onClick={() => selectCustomer(c)}
                                 >
-                                    <div
-                                        className="flex-grow-1"
-                                        style={{ cursor: 'pointer' }}
-                                        onClick={() => selectCustomer(c)}
-                                    >
-                                        <strong>{c.name}</strong><br />
-                                        <small>{c.email} {c.phone && `· ${c.phone}`}</small>
-                                    </div>
-                                    <button
-                                        className="btn btn-sm btn-outline-secondary"
-                                        onClick={() => {
-                                            setEditingCustomer(c);
-                                            setMode('form');
-                                        }}
-                                    >
-                                        Edit
-                                    </button>
+                                    <strong>{c.name}</strong><br />
+                                    <small>{c.email} {c.phone && `· ${c.phone}`}</small>
                                 </div>
-                            ))}
-
-                            {!loading && results.length === 0 && (
                                 <button
-                                    className="list-group-item text-success"
+                                    className="btn btn-sm btn-outline-secondary"
                                     onClick={() => {
-                                        setEditingCustomer(null);
+                                        setEditingCustomer(c);
                                         setMode('form');
                                     }}
                                 >
-                                    ➕ Create new customer
+                                    Edit
                                 </button>
-                            )}
-                        </div>
-                    )}
+                            </div>
+                        ))}
 
-                    {editingCustomer && (
-                        <CustomerForm
-                            customer={editingCustomer}
-                            initialQuery={query}
-                            onCancel={() => setMode('idle')}
-                            onSaved={(customer) => {
-                                handleChange?.(customer);
-//                                setQuery(customer?.name || '');
-                            }}
-                        />
-                    )}
+                        {!loading && results.length === 0 && (
+                            <button
+                                className="list-group-item text-success"
+                                onClick={() => createCustomerFromQuery(query)}
+                            >
+                                ➕ Create new customer
+                            </button>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {mode === 'form' && (
+                <div className="dropdown-menu show w-100 shadow-sm mt-1 p-0">
+                    <CustomerForm
+                        customer={editingCustomer}
+                        initialQuery={query}
+                        onCancel={() => { setMode('idle'); setEditingCustomer(null); }}
+                        onSaved={(customer) => {
+                            handleChange?.(customer);
+                            setQuery('');
+                            setResults([]);
+                            setMode('idle');
+                            setEditingCustomer(null);
+                        }}
+                    />
                 </div>
             )}
         </div>

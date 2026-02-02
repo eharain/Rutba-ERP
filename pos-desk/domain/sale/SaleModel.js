@@ -1,7 +1,7 @@
 import SaleItem from './SaleItem';
 import { calculateTax } from './pricing';
 
-import { generateNextInvoiceNumber } from '../../lib/utils';
+import { generateNextInvoiceNumber, parseContactLine, parseStockLine } from '../../lib/utils';
 
 export default class SaleModel {
     constructor({
@@ -37,8 +37,21 @@ export default class SaleModel {
         return model;
     }
 
+    parseAndSetCustomer(line){
+        if (!line) return this.customer;
+
+        if (typeof line === 'string') {
+            const parsed = parseContactLine(line);
+            this.setCustomer(parsed);
+        } else if (typeof line === 'object') {
+            this.setCustomer(line);
+        }
+
+        return this.customer;
+    }
     setCustomer(customer) {
-        this.customer = customer;
+        this.customer = customer ? Object.assign({}, customer) : null;
+
     }
     addPayment(payment) {
         if (!payment) return;
@@ -97,7 +110,7 @@ export default class SaleModel {
 
     addNonStockItem(input) {
         if (!input) return;
-        const { name, price, quantity, discount } = this.parseLine(input);
+        const { name, price, quantity, discount } = parseStockLine(input);
         this.items.push(
             new SaleItem(
                 {
@@ -110,22 +123,9 @@ export default class SaleModel {
         );
     }
 
-    parseLine(input) {
-        const match = input.trim().match(
-            /^(?<name>[a-zA-Z\s]+)(?:\s+(?<price>\d+(?:\.\d+)?))?(?:\s+(?<qty>\d+))?(?:\s+(?<discount>\d+)%?)?$/
-        );
 
-        if (!match) return null;
 
-        const { name, price, qty, discount } = match.groups;
 
-        return {
-            name: name.trim(),
-            price: price ? Number(price) : 0,
-            quantity: qty ? Number(qty) : 0,
-            discount: discount ? Number(discount) : 0
-        };
-    }
 
     updateItem(index, updater) {
         const item = this.items[index];

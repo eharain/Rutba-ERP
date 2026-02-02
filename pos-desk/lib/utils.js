@@ -101,9 +101,13 @@ export function padHex(value, length, char = ' ') {
 }
 
 
-export function prepareForPut(obj, relations) {
+export function prepareForPut(obj, relations = []) {
+    if (!Array.isArray(relations)) {
+        relations = [];
+    }
+
     const copy = {}
-    const skip = ['id',  'createdAt', 'updatedAt', 'publishedAt']
+    const skip = ['id','documentId',  'createdAt', 'updatedAt', 'publishedAt']
   //  const skip = ['id', 'documentId', 'createdAt', 'updatedAt', 'publishedAt']
 
     const mediaFields = ['logo', 'gallery', 'receipts'] // adjust to your schema
@@ -143,3 +147,44 @@ export function prepareForPut(obj, relations) {
 }
 
 
+const EMAIL_REGEX = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
+const PHONE_REGEX = /(\+?\d{1,3}[\s-]?)?\d{3,4}[\s-]?\d{6,7}/;
+
+export function parseContactLine(input) {
+    const text = input.trim();
+
+    const emailMatch = text.match(EMAIL_REGEX);
+    const phoneMatch = text.match(PHONE_REGEX);
+
+    const email = emailMatch ? emailMatch[0] : '';
+    const phone = phoneMatch ? phoneMatch[0].replace(/\s+/g, '') : '';
+
+    // Remove detected email & phone to get name
+    let name = text
+        .replace(email, '')
+        .replace(phoneMatch ? phoneMatch[0] : '', '')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+    return {
+        name: name || '',
+        email: email || '',
+        phone: phone || ''
+    };
+}
+export function parseStockLine(input) {
+    const match = input.trim().match(
+        /^(?<name>[a-zA-Z\s]+)(?:\s+(?<price>\d+(?:\.\d+)?))?(?:\s+(?<qty>\d+))?(?:\s+(?<discount>\d+)%?)?$/
+    );
+
+    if (!match) return null;
+
+    const { name, price, qty, discount } = match.groups;
+
+    return {
+        name: name.trim(),
+        price: price ? Number(price) : 0,
+        quantity: qty ? Number(qty) : 0,
+        discount: discount ? Number(discount) : 0
+    };
+}
