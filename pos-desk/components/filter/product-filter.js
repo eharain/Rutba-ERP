@@ -45,19 +45,6 @@ export function ProductFilter({ onFilterChange }) {
 
         console.log('selected filters', filters); 
 
-        //const filters = {
-        //    ...(selectedBrand) ? { brands: { populate: "*", selectedBrand } } : {},
-        //    ...(selectedCategory) ? { categories: { populate: "*", selectedCategory } } : {}
-        //}
-
-
-
-        //if (selectedBrand) filters["filters[brands][id][$in]"] = selectedBrand;
-        //if (selectedCategory) filters["filters[categories][id][$in]"] = selectedCategory;
-        //if (selectedSupplier) filters["filters[suppliers][id][$in]"] = selectedSupplier;
-        //if (selectedTerm) filters["filters[terms][id][$in]"] = selectedTerm;
-        //if (inStockOnly) filters["filters[items][status][$eq]"] = "InStock";
-
         // Pass query object upwards
         onFilterChange(filters);
     }, [selectedBrand, selectedCategory, selectedSupplier, selectedTerm, stockStatus, searchText]);
@@ -126,7 +113,7 @@ export function ProductFilter({ onFilterChange }) {
                 )}
             </select>
 
-            <select
+            {/* <select
                 className="border p-2 rounded"
                 value={stockStatus}
                 onChange={(e) => setStockStatus(e.target.value)}
@@ -136,7 +123,7 @@ export function ProductFilter({ onFilterChange }) {
                 <option value="inStock">In Stock</option>
                 <option value="outofStock">Out Of Stock</option>
                
-            </select>
+            </select> */}
 
         </div>
     );

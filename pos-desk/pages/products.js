@@ -34,7 +34,7 @@ export default function Products() {
 
     useEffect(() => {
         loadProductsData();
-    }, [page, rowsPerPage]);
+    }, [page, rowsPerPage, filters]);
 
 
 
@@ -52,17 +52,6 @@ export default function Products() {
         setFilters(filters);
         setPage(0);
     }
-
-
-    //const filtered = useMemo(() => {
-    //    return products.filter((a) => {
-    //        // const a =  p;
-    //        const name = (a.name || "").toLowerCase();
-    //        const barcode = (a.barcode || "");
-    //        const needle = searchText.toLowerCase();
-    //        return name.includes(needle) || barcode.includes(searchText);
-    //    });
-    //}, [products, searchText, page, total]);
 
     return (
         <ProtectedRoute>

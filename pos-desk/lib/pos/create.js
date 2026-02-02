@@ -80,9 +80,10 @@ export async function generateStockItems(purchase, purchaseItem, quantity) {
             status: 'Received',
             cost_price: purchaseItem.unit_price,
             selling_price: purchaseItem.product.selling_price,
+            offer_price: purchaseItem.product.offer_price,
             product: purchaseItem.product.documentId || purchaseItem.product.id,
             purchase_item: purchaseItem.documentId || purchaseItem.id,
-            branch: purchase.branch?.documentId || purchase.branch?.id
+            branch: getBranch()?.documentId || getBranch()?.id
         };
 
         try {
