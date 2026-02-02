@@ -1,6 +1,6 @@
 import qs from 'qs';
 
-export const buildQueries = (searchText, page = 1, rowsPerPage = 5, statusFilter = null) => {
+export const buildQueries = (searchText, page = 1, rowsPerPage = 5) => {
 
     const queries =
     {
@@ -72,8 +72,7 @@ export const buildQueries = (searchText, page = 1, rowsPerPage = 5, statusFilter
                     { sku: { $containsi: searchText } },
                     { product: { name: { $containsi: searchText } } },
                     { purchase_item: { purchase: { orderId: { $containsi: searchText } } } }
-                ],
-                status: statusFilter
+                ]
             },
             query: {
 
@@ -95,8 +94,7 @@ export const buildQueries = (searchText, page = 1, rowsPerPage = 5, statusFilter
                     { sku: { $containsi: searchText } },
                     { product: { name: { $containsi: searchText } } },
                     { purchase_item: { purchase: { orderId: { $containsi: searchText } } } }
-                ],
-                status: statusFilter
+                ]
             },
             query: {
                 populate: {

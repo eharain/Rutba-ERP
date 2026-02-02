@@ -11,10 +11,9 @@ import {
 } from "../components/Table";
 import Layout from "../components/Layout";
 import ProtectedRoute from "../components/ProtectedRoute";
-import { authApi, getStockStatus } from "../lib/api";
+import { authApi, getStockStatus, getBranches } from "../lib/api";
 import { useUtil } from "../context/UtilContext";
 import { searchStockItems } from "../lib/pos";
-
 
 export default function StockItemsPage() {
     const { currency } = useUtil();
@@ -28,10 +27,15 @@ export default function StockItemsPage() {
     const [selectedItems, setSelectedItems] = useState(new Set());
     const [statusFilter, setStatusFilter] = useState("Received");
     const [searchTerm, setSearchTerm] = useState("");
+    const [branches, setBranches] = useState([]);
+    const [selectedBranch, setSelectedBranch] = useState(null);
+    const [selectedDestinationBranch, setSelectedDestinationBranch] = useState(null);
 
     useEffect(() => {
         (async () => {
             setStockStatus(await getStockStatus());
+            const branches = await getBranches();
+            setBranches(branches.data);
         })();
     }, [])
 
@@ -42,22 +46,22 @@ export default function StockItemsPage() {
         // Handle Debounce for Search
         const handler = setTimeout(() => {
             // If there's a search term (3+ chars), use search logic
-            if (trimmed.length >= 3) {
+            if (trimmed.length >= 2) {
                 handleStockItemsSearch(trimmed);
             } else {
                 // Otherwise, load default list (Received/InStock etc)
                 loadStockItems();
             }
-        }, 400);
+        }, 200);
 
         return () => clearTimeout(handler);
-    }, [page, rowsPerPage, statusFilter, searchTerm]);
+    }, [page, rowsPerPage, statusFilter, searchTerm, selectedBranch]);
 
     const handleStockItemsSearch = async (searchText) => {
         setLoading(true);
         try {
             // We pass current 'page + 1' so pagination works while searching
-            const stockItemsResult = await searchStockItems(searchText, page + 1, rowsPerPage, statusFilter);
+            const stockItemsResult = await searchStockItems(searchText, page + 1, rowsPerPage, statusFilter, selectedBranch);
             setStockItems(stockItemsResult.data);
             setFilteredItems(stockItemsResult.data);
             setTotal(stockItemsResult.meta?.pagination?.total ?? 0);
@@ -68,7 +72,6 @@ export default function StockItemsPage() {
         }
     };
 
-    // 3. Simple change handler: ONLY reset page to 0 when typing a NEW search
     const handleSearchChange = (e) => {
         setSearchTerm(e.target.value);
         setPage(0); // Reset to first page because results will change entirely
@@ -88,7 +91,8 @@ export default function StockItemsPage() {
                     }
                 },
                 filters: {
-                    status: statusFilter
+                    ...(statusFilter ? { status: statusFilter } : {}),
+                    ...(selectedBranch ? { branch: {documentId: selectedBranch} } : {})
                 },
                 pagination: {
                     page: page + 1,
@@ -96,7 +100,6 @@ export default function StockItemsPage() {
                 },
                 sort: ["createdAt:desc"]
             });
-
             const data = response.data || [];
             setStockItems(data);
             setFilteredItems(data);
@@ -108,21 +111,27 @@ export default function StockItemsPage() {
         }
     };
 
-    const changeStockStatusToInStock = async () => {
+    const onBranchChange = async (selectedBranch) => {
+              
+        setSelectedBranch(selectedBranch ? selectedBranch : null);
+        setPage(0);
+    };
+
+    const sendStockToBranch = async (destinationBranch) => {
         setLoading(true);
         const documentIdsToUpdate = Array.from(selectedItems);
         try {
             await Promise.all(documentIdsToUpdate.map(id => 
-                authApi.put(`/stock-items/${id}`, { data: { status: 'InStock' } })
+                authApi.put(`/stock-items/${id}`, { data: { status: 'InStock', branch: destinationBranch } })
             ));
-            alert(`Stock in stock status updated successfully for ${documentIdsToUpdate.length} items`);
-            setSelectedItems(new Set());
+            alert(`Stock sent to ${destinationBranch} successfully for ${documentIdsToUpdate.length} items`);
             loadStockItems();
         }
         catch (error) {
             console.error('Error updating stock in stock status:', error);
-            setSelectedItems(new Set());
         } finally {
+            setSelectedItems(new Set());
+            setSelectedDestinationBranch(null);
             setLoading(false);
         }   
     };
@@ -292,60 +301,94 @@ export default function StockItemsPage() {
                                 }}
                             />
                         </div>
-
-                        {statusFilter === 'Received' && <button
-                            onClick={changeStockStatusToInStock}
-                            disabled={selectedItems.size === 0}
-                            style={{
-                                padding: '10px 16px',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '4px',
-                                cursor: selectedItems.size > 0 ? 'pointer' : 'not-allowed',
-                                background: selectedItems.size > 0 ? '#007bff' : '#6c757d',
-                            }}
-                            title={`Update ${selectedItems.size} selected items to stock in stock status`}
-                        >
-                            Update to Stock In Stock Status
-                        </button>}
-
+                        <div style={{ flex: 1 }}>
+                            <label style={{ display: 'block', color: 'white', marginBottom: '4px' }}>
+                                Branch:
+                            </label>
+                            <select
+                                value={selectedBranch || ''}
+                                onChange={(e) => onBranchChange(e.target.value)}
+                                style={{
+                                    width: '100%',
+                                    padding: '8px',
+                                    border: '1px solid #ccc',
+                                    borderRadius: '4px',
+                                    fontSize: '14px'
+                                }}
+                            >
+                                <option value="">Select Branch...</option>
+                                {branches.map(branch => (
+                                    <option key={branch.id} value={branch.documentId}>
+                                        {branch.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        
                         {/* Bulk Print Buttons */}
-                        <button
-                            onClick={handleBulkPrintSelected}
-                            disabled={selectedItems.size === 0}
-                            style={{
-                                padding: '10px 16px',
-                                background: selectedItems.size > 0 ? '#dc3545' : '#6c757d',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '4px',
-                                cursor: selectedItems.size > 0 ? 'pointer' : 'not-allowed',
-                                fontWeight: 'bold',
-                                fontSize: '14px'
-                            }}
-                            title={`Print ${selectedItems.size} selected items`}
-                        >
-                            🖨️ Bulk Print Selected
-                        </button>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                            <label>Actions:</label>
+                            <div style={{ display: 'flex', gap: '10px', border: '1px solid #ccc', padding: '10px', borderRadius: '4px' }}>
 
-                        <button
-                            onClick={handleBulkPrintAllFiltered}
-                            disabled={filteredItems.length === 0}
-                            style={{
-                                padding: '10px 16px',
-                                background: filteredItems.length > 0 ? '#28a745' : '#6c757d',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '4px',
-                                cursor: filteredItems.length > 0 ? 'pointer' : 'not-allowed',
-                                fontWeight: 'bold',
-                                fontSize: '14px'
-                            }}
-                            title={`Print all ${filteredItems.length} filtered items`}
-                        >
-                            🖨️ Bulk Print All
-                        </button>
+                                <button
+                                    onClick={handleBulkPrintSelected}
+                                    disabled={selectedItems.size === 0}
+                                    style={{
+                                        padding: '10px 16px',
+                                        background: selectedItems.size > 0 ? '#dc3545' : '#6c757d',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '4px',
+                                        cursor: selectedItems.size > 0 ? 'pointer' : 'not-allowed',
+                                        fontWeight: 'bold',
+                                        fontSize: '14px'
+                                    }}
+                                    title={`Print ${selectedItems.size} selected items`}
+                                >
+                                    🖨️ Bulk Print Selected
+                                </button>
 
+                                <button
+                                    onClick={handleBulkPrintAllFiltered}
+                                    disabled={filteredItems.length === 0}
+                                    style={{
+                                        padding: '10px 16px',
+                                        background: filteredItems.length > 0 ? '#28a745' : '#6c757d',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '4px',
+                                        cursor: filteredItems.length > 0 ? 'pointer' : 'not-allowed',
+                                        fontWeight: 'bold',
+                                        fontSize: '14px'
+                                    }}
+                                    title={`Print all ${filteredItems.length} filtered items`}
+                                >
+                                    🖨️ Bulk Print All
+                                </button>
+                                
+                                <select
+                                    value={selectedDestinationBranch || ''}
+                                    disabled={selectedItems.size === 0}
+                                    onChange={(e) => sendStockToBranch(e.target.value)}
+                                    style={{
+                                        padding: '8px',
+                                        border: '1px solid #ccc',
+                                        borderRadius: '4px',
+                                        fontSize: '14px'
+                                    }}
+                                    title={`Send ${selectedItems.size} selected items to selected branch.`}
+                                >
+                                    <option value="">Send to Branch...</option>
+                                    {branches.map(branch => (
+                                        <option key={branch.id} value={branch.documentId}>
+                                            {branch.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+                        
+                        
                         {/* Selection Info */}
                         <div style={{
                             padding: '8px 12px',

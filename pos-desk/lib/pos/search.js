@@ -78,7 +78,7 @@ export async function featchSearch(searchTerm, page, rowsPerPage) {
     }, { total: 0, page, pageSize: rowsPerPage });
 
     const result = { results, data, pagination, meta: { pagination } };
-    console.log('search results',result);
+    console.log(result);
 
     return result;
 }
@@ -114,8 +114,14 @@ export function dataNode(res) {
 }
 
 
-export async function searchStockItems(searchTerm, page = 0, rowsPerPage = 200, statusFilter = null) {
-    const query = buildQueries(searchTerm, page, rowsPerPage, statusFilter)['me/stock-items-search']
+export async function searchStockItems(searchTerm, page = 0, rowsPerPage = 100, statusFilter = null, branch = null) {
+    let query = buildQueries(searchTerm, page, rowsPerPage)['me/stock-items-search']
+    if (statusFilter) {
+        query.url += `&filters[status]=${statusFilter}`;
+    }
+    if (branch) {
+        query.url += `&filters[branch][documentId]=${branch}`;
+    }
     console.log('Stock items search query:', query);    
     const res = await authApi.fetchWithPagination(query.url);
     return { data: res.data, meta: res.meta };

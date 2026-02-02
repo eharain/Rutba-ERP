@@ -194,3 +194,7 @@ export async function getStockStatus() {
     }, { statuses: [] });
 
 }
+
+export async function getBranches() {
+    return await authApi.fetch("/branches");
+}

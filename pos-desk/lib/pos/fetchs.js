@@ -74,24 +74,21 @@ export async function fetchProducts(filters, page, rowsPerPage) {
     const entity = 'products';
     const documentId = null;
 
-    const { query, relations, url } = urlAndRelations(entity, documentId, searchText, page, rowsPerPage)
+    let { query, relations, url } = urlAndRelations(entity, documentId, searchText, page, rowsPerPage)
 
-
-    for (const key of Object.entries(filters)) {
-
-        if (relations.includes(key)) {
-            query.filters
-
+    for (const [field, values] of Object.entries(filters)) {
+        if (field === 'stockStatus' || field === 'searchText') {
+            continue;
         }
-        //   delete query.query.filters[key];
+        if (Array.isArray(values) && values.length > 0) {
+            values.forEach((val, index) => {
+                url += `&filters[${field}][documentId][$in][${index}]=${val}`;
+            });
+        }
     }
-
-
+    console.log('products search url', url);
     const res = await authApi.get(url);
-    console.log('res', res)
-    // let data = dataNode(res);
-    return res; //{data: res.data, meta: res.meta };
-    //  return await fetchEntities('products', page, rowsPerPage);
+    return res;
 }
 
 export async function loadProduct(id) {
