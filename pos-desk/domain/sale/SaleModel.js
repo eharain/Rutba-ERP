@@ -64,7 +64,7 @@ export default class SaleModel {
 
     updatePaymentStatus() {
         const sum = this.totalPaid;
-        if (sum >= this.total) {
+        if (sum >= this.total && this.payments?.length>0) {
             this.payment_status = 'Paid';
         }
     }
