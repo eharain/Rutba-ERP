@@ -73,6 +73,9 @@ export default function SalePage() {
     =============================== */
 
     const handleCustomerChange = async (customer) => {
+        // Prevent changing customer on paid sales
+        if (saleModel.isPaid) return;
+
         // For unsaved/new sales just update local model. Persist only for existing sales.
         saleModel.setCustomer(customer);
         forceUpdate();
@@ -145,7 +148,9 @@ export default function SalePage() {
                         {/* Header */}
                         <div className="row align-items-center mb-3">
                             <div className="col-md-8">
-                                <h3>Sale #{id}</h3>
+                                <h3>
+                                    Sale #{id} {saleModel.isPaid && <span className="badge bg-success ms-2">Paid</span>}
+                                </h3>
                             </div>
                             <div className="col-md-4 text-end">
                                 <h4>
@@ -160,13 +165,13 @@ export default function SalePage() {
                             <CustomerSelect
                                 value={saleModel.customer}
                                 onChange={handleCustomerChange}
-                                disabled={false}
+                                disabled={saleModel.isPaid}
                             />
                         </div>
 
                         {/* Add Items */}
                         <SalesItemsForm
-                            disabled={false}
+                            disabled={saleModel.isPaid}
                             onAddItem={(stockItem) => {
                                 saleModel.addStockItem(stockItem);
                                 forceUpdate();
@@ -180,6 +185,7 @@ export default function SalePage() {
                         {/* Items List */}
                         <SalesItemsList
                             items={saleModel.items}
+                            disabled={saleModel.isPaid}
                             onUpdate={(index, updater) => {
                                 saleModel.updateItem(index, updater);
                                 forceUpdate();
@@ -233,15 +239,15 @@ export default function SalePage() {
                             <button
                                 className="btn btn-success"
                                 onClick={() => setShowCheckout(true)}
-                                disabled={saleModel.items.length === 0}
+                                disabled={saleModel.items.length === 0 || saleModel.isPaid}
                             >
-                                Checkout
+                                {saleModel.isPaid ? 'Paid' : 'Checkout'}
                             </button>
                         </div>
 
                         {/* Checkout Modal */}
                         <CheckoutModal
-                            isOpen={showCheckout}
+                            isOpen={showCheckout && !saleModel.isPaid}
                             onClose={() => setShowCheckout(false)}
                             total={saleModel.total}
                             onComplete={handleCheckoutComplete}

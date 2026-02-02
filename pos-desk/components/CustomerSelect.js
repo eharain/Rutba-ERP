@@ -139,7 +139,7 @@ export default function CustomerSelect({ value, onChange, disabled }) {
     }
     return (
         <div className="position-relative" ref={containerRef}>
-            <label className="form-label">Customer: <span>{customerName()}</span> <span onClick={() => { setMode('form'); setEditingCustomer(customer); }}><i className="fas fa-edit"></i></span> </label>
+            <label className="form-label">Customer: <span>{customerName()}</span> <span onClick={() => { if (!disabled) { setMode('form'); setEditingCustomer(customer); } }}><i className="fas fa-edit"></i></span> </label>
             <div className="input-group">
                 <input
                     className="form-control"

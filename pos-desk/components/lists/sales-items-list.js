@@ -1,7 +1,8 @@
 export default function SalesItemsList({
     items,
     onUpdate,
-    onRemove
+    onRemove,
+    disabled = false
 }) {
     return (
         <table className="table table-bordered mt-3">
@@ -32,6 +33,7 @@ export default function SalesItemsList({
                                             i.setName(e.target.value)
                                         )
                                     }
+                                    disabled={disabled}
                                 />
                             )}
                         </td>
@@ -52,6 +54,7 @@ export default function SalesItemsList({
                                             i.setSellingPrice(+e.target.value)
                                         )
                                     }
+                                    disabled={disabled}
                                 />
                             )}
                         </td>
@@ -68,6 +71,7 @@ export default function SalesItemsList({
                                         i.setQuantity(+e.target.value)
                                     )
                                 }
+                                disabled={disabled}
                             />
                         </td>
 
@@ -84,6 +88,7 @@ export default function SalesItemsList({
                                         i.setDiscountPercent(+e.target.value)
                                     )
                                 }
+                                disabled={disabled}
                             />
                         </td>
 
@@ -100,6 +105,7 @@ export default function SalesItemsList({
                                     onClick={() =>
                                         onUpdate(index, i => i.applyOfferPrice())
                                     }
+                                    disabled={disabled}
                                 >
                                     Offer-
                                 </button>
@@ -110,6 +116,7 @@ export default function SalesItemsList({
                                     onClick={() =>
                                         onUpdate(index, i => i.revertOffer())
                                     }
+                                    disabled={disabled}
                                 >
                                     Offer+
                                 </button>
@@ -118,6 +125,7 @@ export default function SalesItemsList({
                             <button
                                 className="btn btn-sm btn-danger"
                                 onClick={() => onRemove(index)}
+                                disabled={disabled}
                             >
                                 ✕
                             </button>
