@@ -10,7 +10,7 @@ const SaleInvoice = ({ sale, items, totals}) => {
     const userName = user?.displayName || user?.username || user?.email || 'User';
     const invoiceNo = sale?.invoice_no || 'N/A';
     const saleDate = sale?.sale_date ? new Date(sale.sale_date).toLocaleDateString() : new Date().toLocaleDateString();
-    const customerName = sale?.customer?.name || 'Walk-in Customer';
+    const customerName = sale?.customer?.name || sale?.customer?.email || sale?.customer?.phone || 'Walk-in Customer';
     const website = branch?.web ? branch.web.toUpperCase() : '';
 
     const safeTotals = {
@@ -20,8 +20,17 @@ const SaleInvoice = ({ sale, items, totals}) => {
         total: Number(totals?.total) || 0
     };
 
-    const paymentStatus = sale?.payment_status || 'Pending';
-    const paid = paymentStatus === 'Paid' ? safeTotals.total : (Number(sale?.paid) || 0);
+    const payments = Array.isArray(sale?.payments) ? sale.payments : [];
+    // total paid is derived from payments when available, otherwise fall back to sale.paid or status
+    const paid = payments.length > 0
+        ? payments.reduce((s, p) => s + (Number(p.amount) || 0), 0)
+        : (Number(sale?.paid) || (sale?.payment_status === 'Paid' ? safeTotals.total : 0));
+
+    // change given: prefer sum of payment.change when payments are present, otherwise compute overpayment
+    const changeGiven = payments.length > 0
+        ? payments.reduce((s, p) => s + (Number(p.change) || 0), 0)
+        : Math.max(0, paid - safeTotals.total);
+
     const remaining = Math.max(0, safeTotals.total - paid);
 
     // Apply invoice print settings
@@ -29,6 +38,7 @@ const SaleInvoice = ({ sale, items, totals}) => {
     const fontSize = invoicePrintSettings?.fontSize || 11;
     const showTax = invoicePrintSettings?.showTax ?? true;
     const showBranch = invoicePrintSettings?.showBranch ?? true;
+    const showCustomer = invoicePrintSettings?.showCustomer ?? true;
     const branchFields = invoicePrintSettings?.branchFields ?? ['name', 'companyName', 'web'];
 
     // helper to render selected branch fields
@@ -85,6 +95,14 @@ const SaleInvoice = ({ sale, items, totals}) => {
                     {saleDate}<br />
                     User: {userName}
                 </div>
+
+                {showCustomer && (
+                    <div className="customer-contact small mt-2" style={{ lineHeight: 1.2 }}>
+                        <strong>Customer: </strong>{customerName}
+                        {sale?.customer?.email && <div>{sale.customer.email}</div>}
+                        {sale?.customer?.phone && <div>{sale.customer.phone}</div>}
+                    </div>
+                )}
             </div>
 
             <table className="items-table w-100 table-borderless" style={{ fontSize: '10px', marginBottom: '10px' }}>
@@ -137,9 +155,21 @@ const SaleInvoice = ({ sale, items, totals}) => {
                             <td className="text-start">Paid:</td>
                             <td className="text-end">{currency}{paid.toFixed(2)}</td>
                         </tr>
+                        {payments.length > 0 && (
+                            <tr>
+                                <td className="text-start">Payments:</td>
+                                <td className="text-end small">
+                                    {payments.map((p, i) => (
+                                        <div key={i} style={{ textAlign: 'right' }}>
+                                            {p.payment_method || 'Payment'} {p.transaction_no ? `(${p.transaction_no})` : ''}: {currency}{Number(p.amount || 0).toFixed(2)}{p.change ? ` (Change: ${currency}${Number(p.change).toFixed(2)})` : ''}
+                                        </div>
+                                    ))}
+                                </td>
+                            </tr>
+                        )}
                         <tr>
                             <td className="text-start">Change:</td>
-                            <td className="text-end">{currency}{Math.abs(remaining).toFixed(2)}</td>
+                            <td className="text-end">{currency}{changeGiven.toFixed(2)}</td>
                         </tr>
                     </tbody>
                 </table>

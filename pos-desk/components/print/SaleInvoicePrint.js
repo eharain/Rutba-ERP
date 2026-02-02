@@ -10,6 +10,7 @@ const SaleInvoicePrint = ({ sale, items, totals, onClose  }) => {
         paperWidth: '80mm',
         fontSize: 20,
         showTax: true,
+        showCustomer: true,
         showBranch: true,
         branchFields: ['name', 'companyName', 'web']
     });
@@ -38,13 +39,40 @@ const SaleInvoicePrint = ({ sale, items, totals, onClose  }) => {
         setLocalSettings({ ...localSettings, branchFields: Array.from(next) });
     }
 
+    const [showControls, setShowControls] = useState(false);
+
     return (
         <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
-            {/* Print Controls - Only visible on screen */}
+            {/* Toggle button - visible on screen only */}
+            <button
+                type="button"
+                className="d-print-none btn btn-sm btn-primary position-fixed"
+                aria-label="Toggle print settings"
+                onClick={() => setShowControls(s => !s)}
+                style={{ top: '20px', right: '20px', zIndex: 1100, borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+                ⚙
+            </button>
+
+            {/* Quick print button shown when controls are hidden */}
+            {!showControls && (
+                <button
+                    type="button"
+                    className="d-print-none btn btn-sm btn-success position-fixed"
+                    aria-label="Quick print"
+                    onClick={() => { applyAndSave(); window.print(); }}
+                    style={{ top: '20px', right: '70px', zIndex: 1100, borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                >
+                    🖨
+                </button>
+            )}
+
+            {/* Print Controls - Only visible on screen and when toggled */}
+            {showControls && (
             <div
                 className="d-print-none position-fixed"
                 style={{
-                    top: '20px',
+                    top: '70px',
                     right: '20px',
                     background: 'black',
                     padding: '15px',
@@ -84,26 +112,39 @@ const SaleInvoicePrint = ({ sale, items, totals, onClose  }) => {
                     />
                 </div>
 
-                <div className="form-check form-check-inline text-white">
-                    <input
-                        className="form-check-input"
-                        type="checkbox"
-                        id="showTax"
-                        checked={localSettings.showTax}
-                        onChange={(e) => setLocalSettings({ ...localSettings, showTax: e.target.checked })}
-                    />
-                    <label className="form-check-label small" htmlFor="showTax">Show Tax</label>
-                </div>
+                <div className="w-100 mb-2 text-white">
+                    <div className="form-check text-white mb-1">
+                        <input
+                            className="form-check-input"
+                            type="checkbox"
+                            id="showTax"
+                            checked={localSettings.showTax}
+                            onChange={(e) => setLocalSettings({ ...localSettings, showTax: e.target.checked })}
+                        />
+                        <label className="form-check-label small" htmlFor="showTax">Show Tax</label>
+                    </div>
 
-                <div className="form-check form-check-inline text-white">
-                    <input
-                        className="form-check-input"
-                        type="checkbox"
-                        id="showBranch"
-                        checked={localSettings.showBranch}
-                        onChange={(e) => setLocalSettings({ ...localSettings, showBranch: e.target.checked })}
-                    />
-                    <label className="form-check-label small" htmlFor="showBranch">Show Branch</label>
+                    <div className="form-check text-white mb-1">
+                        <input
+                            className="form-check-input"
+                            type="checkbox"
+                            id="showBranch"
+                            checked={localSettings.showBranch}
+                            onChange={(e) => setLocalSettings({ ...localSettings, showBranch: e.target.checked })}
+                        />
+                        <label className="form-check-label small" htmlFor="showBranch">Show Branch</label>
+                    </div>
+
+                    <div className="form-check text-white">
+                        <input
+                            className="form-check-input"
+                            type="checkbox"
+                            id="showCustomer"
+                            checked={localSettings.showCustomer}
+                            onChange={(e) => setLocalSettings({ ...localSettings, showCustomer: e.target.checked })}
+                        />
+                        <label className="form-check-label small" htmlFor="showCustomer">Show Customer</label>
+                    </div>
                 </div>
 
                 <div className="w-100 mt-2" style={{ maxHeight: '120px', overflowY: 'auto' }}>
@@ -122,17 +163,17 @@ const SaleInvoicePrint = ({ sale, items, totals, onClose  }) => {
                     </div>
                 </div>
 
-                <div className="d-flex w-100 gap-2 mt-2">
+                <div className="d-grid w-100 gap-2 mt-2">
                     <button
                         onClick={() => { applyAndSave(); window.print(); }}
-                        className="btn btn-primary btn-sm"
-                        style={{ fontSize: '14px', fontWeight: 'bold', flex: 1 }}
+                        className="btn btn-primary btn-sm w-100"
+                        style={{ fontSize: '14px', fontWeight: 'bold' }}
                     >
                         Print
                     </button>
                     <button
                         onClick={() => { applyAndSave(); }}
-                        className="btn btn-success btn-sm"
+                        className="btn btn-success btn-sm w-100"
                         style={{ fontSize: '14px', fontWeight: 'bold' }}
                     >
                         Save
@@ -147,6 +188,7 @@ const SaleInvoicePrint = ({ sale, items, totals, onClose  }) => {
                     Close
                 </button>
             </div>
+            )}
 
             <SaleInvoice sale={sale} items={items} totals={totals}  />
         </div>

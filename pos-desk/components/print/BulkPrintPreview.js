@@ -1,5 +1,5 @@
 ﻿// file: /pos-desk/components/print/BulkPrintPreview.js
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import BulkBarcodePrint from './BulkBarcodePrint';
 import { useUtil } from '../../context/UtilContext';
 
@@ -28,10 +28,37 @@ const BulkPrintPreview = ({ storageKey, title, onClose }) => {
         return () => clearTimeout(timer);
     }, []);
 
+    const [showControls, setShowControls] = useState(false);
+
     return (
         <div>
-            {/* Print Controls - Only visible on screen */}
-            <div className="d-print-none position-fixed top-0 end-0 m-3" style={{ zIndex: 1100, minWidth: 260 }}>
+            {/* Gear toggle - visible on screen only */}
+            <button
+                type="button"
+                className="d-print-none btn btn-sm btn-primary position-fixed"
+                aria-label="Toggle print settings"
+                onClick={() => setShowControls(s => !s)}
+                style={{ top: '20px', right: '20px', zIndex: 1100, borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+                ⚙
+            </button>
+
+            {/* Quick print when controls hidden */}
+            {!showControls && (
+                <button
+                    type="button"
+                    className="d-print-none btn btn-sm btn-success position-fixed"
+                    aria-label="Quick print"
+                    onClick={handlePrint}
+                    style={{ top: '20px', right: '70px', zIndex: 1100, borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                >
+                    🖨
+                </button>
+            )}
+
+            {/* Print Controls - Only visible on screen and when toggled */}
+            {showControls && (
+            <div className="d-print-none position-fixed" style={{ top: '70px', right: '20px', zIndex: 1100, minWidth: 260 }}>
                 <div className="card shadow-sm">
                     <div className="card-body p-2">
                         <div className="container-fluid">
@@ -81,6 +108,7 @@ const BulkPrintPreview = ({ storageKey, title, onClose }) => {
                     </div>
                 </div>
             </div>
+            )}
 
             <BulkBarcodePrint storageKey={storageKey} title={title} labelSize={labelSize} printMode={printMode} />
         </div>
