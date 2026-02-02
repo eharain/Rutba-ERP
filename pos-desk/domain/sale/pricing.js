@@ -4,23 +4,13 @@ export const TAX_RATE = 0.10;
  * Calculate discount percentage from selling → offer price
  */
 export function discountRateFromPrice(actual, discounted) {
-    //let xsell = selling
-    //selling = Math.max(selling, offer);
-    //offer = Math.min(offer, xsell);
-    /**
-    const dicounted = actual- actual * (discount / 100);
-    discount=    (actual-dicounted/actual)*100 ;
-
-    
-    */
-    //if (!actual || dicounted >= actual) return 0;
-
     discounted = ValidNumberOrDefault(discounted, ValidNumberOrDefault(actual, 0));
     actual = ValidNumberOrDefault(actual, ValidNumberOrDefault(discounted, 0));
 
     if (!actual || actual==0 || + actual == 0) {
         return 0;
     }
+
     return ((actual - discounted) / actual) * 100;
 }
 

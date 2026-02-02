@@ -21,10 +21,10 @@ export default class SaleModel {
         this.invoice_no = invoice_no;
         this.sale_date = Date.parse(sale_date) > new Date(1, 1, 2025).getTime() ? new Date(sale_date) : new Date();
         this.payment_status = payment_status || 'Unpaid';
-        this.payments = [];
-        payments?.forEach(p => this.addPayment(p));
+        this.payments = payments || [];
+        //  payments?.forEach(p => this.addPayment(p));
         this.customer = customer;
-        this.items = items?.map(item => new SaleItem(item));
+        this.items = items?.map(item => new SaleItem(item)) || [];
     }
 
     /* ===============================
@@ -61,15 +61,16 @@ export default class SaleModel {
 
     addStockItem(stockItem) {
         const existing = this.items.find(i =>
-            i.id === stockItem.id &&
+            i.documentId === stockItem.documentId &&
             i.costPrice === (stockItem.cost_price || 0) &&
             i.sellingPrice === stockItem.selling_price &&
             i.offerPrice === (stockItem.offer_price || null)
         );
 
         if (existing) {
-            existing.items.push(stockItem);
-            existing.setQuantity(existing.items.length);
+            existing.addStockItem(stockItem);
+
+            //   existing.setQuantity(existing.items.length);
             return;
         }
 
@@ -77,24 +78,40 @@ export default class SaleModel {
 
         this.items.push(new SaleItem({
             price: stockItem.selling_price,
-            discount: 0,
-            quantity: 1,
-            items: [],
             stockItem
         }));
     }
 
-    addNonStockItem({ name, price, costPrice }) {
+    addNonStockItem(input) {
+        if (!input) return;
+        const { name, price, quantity, discount } = this.parseLine(input);
         this.items.push(
-            new SaleItem({
-                price,
-                discount: 0,
-                quantity: 1,
-                items: [],
-                tax: calculateTax(price),
-                stockItem: { name, selling_price: price, cost_price: costPrice ?? price * 0.75, offer_price: price * 0.85 }
-            })
+            new SaleItem(
+                {
+                    discount,
+                    quantity,
+                    price,
+                    stockItem: { name, selling_price: price, cost_price: price * 0.75, offer_price: price * 0.85 }
+                }
+            )
         );
+    }
+
+    parseLine(input) {
+        const match = input.trim().match(
+            /^(?<name>[a-zA-Z\s]+)(?:\s+(?<price>\d+(?:\.\d+)?))?(?:\s+(?<qty>\d+))?(?:\s+(?<discount>\d+)%?)?$/
+        );
+
+        if (!match) return null;
+
+        const { name, price, qty, discount } = match.groups;
+
+        return {
+            name: name.trim(),
+            price: price ? Number(price) : 0,
+            quantity: qty ? Number(qty) : 0,
+            discount: discount ? Number(discount) : 0
+        };
     }
 
     updateItem(index, updater) {

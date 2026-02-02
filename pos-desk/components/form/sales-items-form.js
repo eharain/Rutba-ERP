@@ -32,7 +32,7 @@ export default function SalesItemsForm({
     const search = async (text) => {
         try {
 
-           // const res = await searchStockItems(text, 0, 300, 'InStock');
+            // const res = await searchStockItems(text, 0, 300, 'InStock');
             //const res = await searchStockItems(text, 0, 300, 'InStock');
 
             //// 🔥 FIX: aggregate by product
@@ -56,11 +56,7 @@ export default function SalesItemsForm({
     const addNonStockItem = () => {
         if (!query.trim()) return;
 
-        onAddNonStock({
-            name: query,
-            price: 0,
-            costPrice: 0
-        });
+        onAddNonStock(query);
 
         setQuery('');
         setShowResults(false);
@@ -133,7 +129,7 @@ export default function SalesItemsForm({
 
                     {results.length === 0 && (
                         <div className="dropdown-item text-muted">
-                            Press Enter to add as non-stock item
+                            Type item (name → price → quantity → discount%) to add a non stock item
                         </div>
                     )}
                 </div>
