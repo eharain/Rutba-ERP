@@ -46,11 +46,24 @@ export default class SaleModel {
         payment = Object.assign({}, { payment_method: 'Cash', amount: 0, payment_date: new Date(),/* cash_received, change, due*/ }, payment)
 
         this.payments.push(payment);
+        this.updatePaymentStatus()
+    }
 
-        const sum = this.payments.reduce((sum, p) => sum + p.amount, 0);
+    updatePaymentStatus() {
+        const sum = this.totalPaid;
         if (sum >= this.total) {
             this.payment_status = 'Paid';
         }
+    }
+    get isPaid() {
+        this.updatePaymentStatus()
+        return this.payment_status == 'Paid'
+    }
+
+
+    get totalPaid() {
+        const sum = this.payments.reduce((sum, p) => sum + p.amount, 0);
+        return sum
     }
     removePayment(index) {
         this.payments.splice(index, 1);

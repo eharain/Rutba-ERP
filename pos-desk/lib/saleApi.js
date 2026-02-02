@@ -124,7 +124,7 @@ export default class SaleApi {
     }
 
     static async customerPayload(customer) {
-        const nullConnect = { customer: { disconnect: true } };;
+        const nullConnect = { customer: [] };
         if (!customer) {
             return nullConnect;
         }
@@ -163,7 +163,7 @@ export default class SaleApi {
 
     static async paymentPayload(payments = []) {
         if (!Array.isArray(payments) || payments.length === 0) {
-            return { payments: { disconnect: true } };
+            return { payments: [] };
         }
         let connectIds = [];
         for (const p of payments) {

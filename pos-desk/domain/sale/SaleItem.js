@@ -177,17 +177,22 @@ export default class SaleItem {
         let sum = this.items.reduce((sum, i) => sum + i.selling_price, 0)
         return sum / this.items.length
     }
-    get subtotal() {
+ 
+    getSubtotal() {
         const dp = this.items.reduce((sum, item) => {
             let costPrice = ValidNumberOrDefault(item.cost_price, item.offer_price ?? (item.selling_price * .75));
             return sum +  applyDiscount(item.selling_price, costPrice, this.discount ?? 0);
         }, 0)
 
         let total = ValidNumberOrDefault(dp, 0);
-        console.log("sub total", this.items, dp, total)
+      //  console.log("sub total", this.items, dp, total)
         return total
     }
 
+    get subtotal() {
+        let subTotal = this.getSubtotal();
+        return subTotal - subTotal * this.discount / 100;
+    }
     get tax() {
         return calculateTax(this.subtotal);
     }

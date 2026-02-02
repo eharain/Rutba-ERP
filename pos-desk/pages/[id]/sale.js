@@ -21,6 +21,7 @@ export default function SalePage() {
 
     // Single source of truth
     const [saleModel, setSaleModel] = useState(null);
+    const [paid, setPaid] = useState(false);
     const [, forceUpdate] = useReducer(x => x + 1, 0);
 
     const [loading, setLoading] = useState(false);
@@ -35,6 +36,7 @@ export default function SalePage() {
         // If creating a new sale (route uses 'new'), initialize an empty model instead of fetching
         if (id === 'new') {
             const model = new SaleModel({ id: 'new' });
+           
             model.documentId = null;
             setSaleModel(model);
         } else {
@@ -47,6 +49,7 @@ export default function SalePage() {
         setLoading(true);
         try {
             const model = await SaleApi.loadSale(id);
+            setPaid(model.isPaid);
             setSaleModel(model);
         } catch (err) {
             console.error('Failed to load sale', err);
@@ -84,10 +87,14 @@ export default function SalePage() {
         setLoading(true);
         try {
             saleModel.addPayment(payment);
+            setPaid(saleModel.isPaid);
+             
             await SaleApi.checkout(saleModel);
 
             alert('Sale completed successfully');
             setShowCheckout(false);
+
+            loadSale();
         } catch (err) {
             console.error('Checkout failed', err);
             alert('Checkout failed');
@@ -185,7 +192,7 @@ export default function SalePage() {
 
                         {/* Totals */}
                         {saleModel.items.length > 0 && (
-                            <div
+                            <div 
                                 className="mt-4 p-3 bg-dark text-white rounded"
                                 style={{ maxWidth: 420, marginLeft: 'auto' }}
                             >

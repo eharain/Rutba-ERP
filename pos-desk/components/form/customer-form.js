@@ -40,7 +40,7 @@ export default function CustomerForm({
                 email && `filters[email][$eq]=${encodeURIComponent(email)}`,
                 phone && `filters[phone][$eq]=${encodeURIComponent(phone)}`,
                 'pagination[pageSize]=1'
-            ].filter(Boolean).join('&');
+            ].join('&');
 
             const res = await authApi.get(`/customers?${qs}`);
             const found = res.data?.data?.[0];
@@ -63,11 +63,12 @@ export default function CustomerForm({
         setSaving(true);
         try {
             const payload = { name, email, phone };
-            const res = customer
-                ? await authApi.put(`/customers/${customer.documentId}`, { data: payload })
-                : await authApi.post('/customers', { data: payload });
+            //const res = customer
+            //    ? await authApi.put(`/customers/${customer.documentId}`, { data: payload })
+            //    : await authApi.post('/customers', { data: payload });
 
-            onSaved(res.data?.data);
+            // onSaved(res.data?.data);
+
         } catch (e) {
             console.error('Customer save failed', e);
         } finally {
