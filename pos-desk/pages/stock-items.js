@@ -80,19 +80,19 @@ export default function StockItemsPage() {
     async function loadStockItems() {
         setLoading(true);
         try {
-           
+
             const response = await authApi.get("/me/stock-items-search", {
                 populate: {
                     product: true,
                     purchase_item: {
-                    populate: {
+                        populate: {
                             purchase: true
                         }
                     }
                 },
                 filters: {
                     ...(statusFilter ? { status: statusFilter } : {}),
-                    ...(selectedBranch ? { branch: {documentId: selectedBranch} } : {})
+                    ...(selectedBranch ? { branch: { documentId: selectedBranch } } : {})
                 },
                 pagination: {
                     page: page + 1,
@@ -112,7 +112,7 @@ export default function StockItemsPage() {
     };
 
     const onBranchChange = async (selectedBranch) => {
-              
+
         setSelectedBranch(selectedBranch ? selectedBranch : null);
         setPage(0);
     };
@@ -121,7 +121,7 @@ export default function StockItemsPage() {
         setLoading(true);
         const documentIdsToUpdate = Array.from(selectedItems);
         try {
-            await Promise.all(documentIdsToUpdate.map(id => 
+            await Promise.all(documentIdsToUpdate.map(id =>
                 authApi.put(`/stock-items/${id}`, { data: { status: 'InStock', branch: destinationBranch } })
             ));
             alert(`Stock sent to ${destinationBranch} successfully for ${documentIdsToUpdate.length} items`);
@@ -133,7 +133,7 @@ export default function StockItemsPage() {
             setSelectedItems(new Set());
             setSelectedDestinationBranch(null);
             setLoading(false);
-        }   
+        }
     };
 
     const handleChangePage = (event, newPage) => {
@@ -248,164 +248,60 @@ export default function StockItemsPage() {
     return (
         <ProtectedRoute>
             <Layout>
-                <div style={{ padding: '20px' }}>
-                    <h2 style={{ marginBottom: '20px' }}>Stock Items - Bulk Print</h2>
-
-                    {/* Enhanced Filters and Actions */}
-                    <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: '1fr 1fr auto auto auto',
-                        gap: '15px',
-                        marginBottom: '20px',
-                        alignItems: 'end'
-                    }}>
-                        {/* Status Filter */}
-                        <div>
-                            <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
-                                Status Filter:
-                            </label>
-                            <select
-                                value={statusFilter}
-                                onChange={handleStatusFilterChange}
-                                style={{
-                                    width: '100%',
-                                    padding: '8px',
-                                    border: '1px solid #ccc',
-                                    borderRadius: '4px'
-                                }}
-                            >
-                                <option value="">All Statuses</option>
-                                {stock_status.statuses.map(status => (
-                                    <option key={status} value={status}>
-                                        {status}
-                                    </option>
-                                ))}
-                            </select>
+                <div className="p-4">
+                    <div className="d-flex justify-content-between align-items-center mb-3">
+                        <h2 className="mb-0">Stock Items - Bulk Print</h2>
+                        <div className="text-end">
+                            <div className="small text-muted">Selected</div>
+                            <div className="badge bg-primary">{selectedItems.size} / {filteredItems.length}</div>
                         </div>
+                    </div>
+                </div>
+                {/* Filters and actions toolbar */}
+                <div className="card mb-3">
+                    <div className="card-body">
+                        <div className="row g-2 align-items-end">
+                            <div className="col-sm-12 col-md-3">
+                                <label className="form-label small mb-1">Status</label>
+                                <select className="form-select form-select-sm" value={statusFilter} onChange={handleStatusFilterChange}>
+                                    <option value="">All Statuses</option>
+                                    {stock_status.statuses.map(status => (
+                                        <option key={status} value={status}>{status}</option>
+                                    ))}
+                                </select>
+                            </div>
 
-                        {/* Search */}
-                        <div>
-                            <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
-                                Search:
-                            </label>
-                            <input
-                                type="text"
-                                placeholder="SKU, barcode, product name, purchase no..."
-                                value={searchTerm}
-                                onChange={handleSearchChange}
-                                style={{
-                                    width: '100%',
-                                    padding: '8px',
-                                    border: '1px solid #ccc',
-                                    borderRadius: '4px'
-                                }}
-                            />
-                        </div>
-                        <div style={{ flex: 1 }}>
-                            <label style={{ display: 'block', color: 'white', marginBottom: '4px' }}>
-                                Branch:
-                            </label>
-                            <select
-                                value={selectedBranch || ''}
-                                onChange={(e) => onBranchChange(e.target.value)}
-                                style={{
-                                    width: '100%',
-                                    padding: '8px',
-                                    border: '1px solid #ccc',
-                                    borderRadius: '4px',
-                                    fontSize: '14px'
-                                }}
-                            >
-                                <option value="">Select Branch...</option>
-                                {branches.map(branch => (
-                                    <option key={branch.id} value={branch.documentId}>
-                                        {branch.name}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-                        
-                        {/* Bulk Print Buttons */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                            <label>Actions:</label>
-                            <div style={{ display: 'flex', gap: '10px', border: '1px solid #ccc', padding: '10px', borderRadius: '4px' }}>
+                            <div className="col-sm-12 col-md-4">
+                                <label className="form-label small mb-1">Search</label>
+                                <input type="text" value={searchTerm} onChange={handleSearchChange} className="form-control form-control-sm" placeholder="SKU, barcode, product name, purchase no..." />
+                            </div>
 
-                                <button
-                                    onClick={handleBulkPrintSelected}
-                                    disabled={selectedItems.size === 0}
-                                    style={{
-                                        padding: '10px 16px',
-                                        background: selectedItems.size > 0 ? '#dc3545' : '#6c757d',
-                                        color: 'white',
-                                        border: 'none',
-                                        borderRadius: '4px',
-                                        cursor: selectedItems.size > 0 ? 'pointer' : 'not-allowed',
-                                        fontWeight: 'bold',
-                                        fontSize: '14px'
-                                    }}
-                                    title={`Print ${selectedItems.size} selected items`}
-                                >
-                                    🖨️ Bulk Print Selected
-                                </button>
-
-                                <button
-                                    onClick={handleBulkPrintAllFiltered}
-                                    disabled={filteredItems.length === 0}
-                                    style={{
-                                        padding: '10px 16px',
-                                        background: filteredItems.length > 0 ? '#28a745' : '#6c757d',
-                                        color: 'white',
-                                        border: 'none',
-                                        borderRadius: '4px',
-                                        cursor: filteredItems.length > 0 ? 'pointer' : 'not-allowed',
-                                        fontWeight: 'bold',
-                                        fontSize: '14px'
-                                    }}
-                                    title={`Print all ${filteredItems.length} filtered items`}
-                                >
-                                    🖨️ Bulk Print All
-                                </button>
-                                
-                                <select
-                                    value={selectedDestinationBranch || ''}
-                                    disabled={selectedItems.size === 0}
-                                    onChange={(e) => sendStockToBranch(e.target.value)}
-                                    style={{
-                                        padding: '8px',
-                                        border: '1px solid #ccc',
-                                        borderRadius: '4px',
-                                        fontSize: '14px'
-                                    }}
-                                    title={`Send ${selectedItems.size} selected items to selected branch.`}
-                                >
-                                    <option value="">Send to Branch...</option>
+                            <div className="col-sm-12 col-md-3">
+                                <label className="form-label small mb-1">Branch</label>
+                                <select className="form-select form-select-sm" value={selectedBranch || ''} onChange={(e) => onBranchChange(e.target.value)}>
+                                    <option value="">Select Branch...</option>
                                     {branches.map(branch => (
-                                        <option key={branch.id} value={branch.documentId}>
-                                            {branch.name}
-                                        </option>
+                                        <option key={branch.id} value={branch.documentId}>{branch.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="col-sm-12 col-md-2 d-grid">
+                                <button className="btn btn-danger btn-sm mb-2" onClick={handleBulkPrintSelected} disabled={selectedItems.size === 0}>🖨️ Bulk Print Selected</button>
+                                <button className="btn btn-success btn-sm" onClick={handleBulkPrintAllFiltered} disabled={filteredItems.length === 0}>🖨️ Bulk Print All</button>
+                                   <select className="form-select form-select-sm" value={selectedDestinationBranch || ''} disabled={selectedItems.size === 0} onChange={(e) => sendStockToBranch(e.target.value)}>
+                                    <option value="">Send selected to branch...</option>
+                                    {branches.map(branch => (
+                                        <option key={branch.id} value={branch.documentId}>{branch.name}</option>
                                     ))}
                                 </select>
                             </div>
                         </div>
-                        
-                        
-                        {/* Selection Info */}
-                        <div style={{
-                            padding: '8px 12px',
-                            background: '#f8f9fa',
-                            border: '1px solid #dee2e6',
-                            borderRadius: '4px',
-                            textAlign: 'center',
-                            minWidth: '120px'
-                        }}>
-                            <div style={{ fontSize: '12px', color: '#6c757d' }}>Selected</div>
-                            <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#007bff' }}>
-                                {selectedItems.size} / {filteredItems.length}
-                            </div>
-                        </div>
+            
                     </div>
+                </div>
 
-                    {/* Stock Items Table */}
+                <div className="table-responsive">
                     <Table>
                         <TableHead>
                             <TableRow>
@@ -423,7 +319,7 @@ export default function StockItemsPage() {
                                 <TableCell>Offer Price</TableCell>
                                 <TableCell>Selling Price</TableCell>
                                 <TableCell>Status</TableCell>
-                                <TableCell>Actions</TableCell>
+                                <TableCell style={{ width: '120px' }} className="text-center">Actions</TableCell>
                             </TableRow>
                         </TableHead>
                         <TableBody>
@@ -502,22 +398,8 @@ export default function StockItemsPage() {
                                                     {item.status}
                                                 </span>
                                             </TableCell>
-                                            <TableCell>
-                                                <button
-                                                    onClick={() => handleQuickPrint(item)}
-                                                    style={{
-                                                        padding: '4px 12px',
-                                                        background: 'transparent',
-                                                        color: '#007bff',
-                                                        border: '1px solid #007bff',
-                                                        borderRadius: '4px',
-                                                        cursor: 'pointer',
-                                                        fontSize: '12px'
-                                                    }}
-                                                    title="Print single label"
-                                                >
-                                                    🖨️ Print
-                                                </button>
+                                            <TableCell className="text-center">
+                                                <button className="btn btn-sm btn-outline-primary" onClick={() => handleQuickPrint(item)} title="Print single label">🖨️</button>
                                             </TableCell>
                                         </TableRow>
                                     );

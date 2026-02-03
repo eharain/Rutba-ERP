@@ -122,6 +122,22 @@
       "type": "relation",
       "relation": "manyToMany",
       "target": "api::term.term"
+    },
+    "parent": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::product.product",
+      "inversedBy": "variants"
+    },
+    "variants": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::product.product",
+      "mappedBy": "parent"
+    },
+    "is_variant": {
+      "type": "boolean",
+      "default": false
     }
   }
 }

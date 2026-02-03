@@ -1,13 +1,13 @@
 // file: /pos-desk/components/Navigation.js
 import Link from "next/link";
 import { useAuth } from "../context/AuthContext";
-
+import { getBranch } from "../lib/utils"
 export default function Navigation() {
     const { user, logout } = useAuth();
 
     return (
-        <nav className="navbar navbar-expand-lg navbar-dark bg-dark px-3">
-            <Link className="navbar-brand fw-bold" href="/">Rutba POS</Link>
+        <nav className="navbar navbar-expand-lg navbar-dark bg-dark px-3 text-white">
+            <Link className="navbar-brand fw-bold" href="/">Rutba POS : {getBranch()?.companyName}</Link>
             <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav" aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span className="navbar-toggler-icon"></span>
             </button>
@@ -25,13 +25,13 @@ export default function Navigation() {
                 <div className="d-flex align-items-center">
                     {user ? (
                         <>
-                            <span className="text-grey me-3">Hello, {user.username || user.email}</span>
+                            <span className="me-3">Hello, {user.username || user.email}</span>
                             <button className="btn btn-outline-light btn-sm me-2" onClick={logout}>Logout</button>
                         </>
                     ) : (
                         <Link className="btn btn-outline-light btn-sm me-2" href="/login">Login</Link>
                     )}
-                    <Link className="nav-link text-grey" href="/settings" title="Settings">
+                    <Link className="nav-link " href="/settings" title="Settings">
                         <i className="fas fa-cog"></i>
                     </Link>
                 </div>

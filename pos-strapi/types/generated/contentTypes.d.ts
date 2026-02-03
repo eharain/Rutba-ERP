@@ -727,6 +727,7 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
       true
     >;
     is_active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    is_variant: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     items: Schema.Attribute.Relation<'oneToMany', 'api::stock-item.stock-item'>;
     keywords: Schema.Attribute.JSON;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
@@ -738,6 +739,7 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
     logo: Schema.Attribute.Media<'images' | 'files' | 'videos' | 'audios'>;
     name: Schema.Attribute.String;
     offer_price: Schema.Attribute.Decimal;
+    parent: Schema.Attribute.Relation<'manyToOne', 'api::product.product'>;
     publishedAt: Schema.Attribute.DateTime;
     purchase_items: Schema.Attribute.Relation<
       'oneToMany',
@@ -761,6 +763,7 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
       'manyToMany',
       'plugin::users-permissions.user'
     >;
+    variants: Schema.Attribute.Relation<'oneToMany', 'api::product.product'>;
   };
 }
 
