@@ -477,6 +477,7 @@ export interface ApiBranchBranch extends Struct.CollectionTypeSchema {
       'api::sale-return.sale-return'
     >;
     sales: Schema.Attribute.Relation<'manyToMany', 'api::sale.sale'>;
+    tax_rate: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
     town: Schema.Attribute.String;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &

@@ -1,5 +1,8 @@
 import { storage } from "./storage";
 
+export function brachTaxRate() {
+    return getBranch()?.tax_rate ?? 0;
+}
 export function getBranch() {
     const branch = storage.getJSON("branch");
     return branch;
@@ -96,7 +99,7 @@ export function padHex(value, length, char = ' ') {
         value = value.toString(32).toUpperCase(); // convert to hex and uppercase
     }
 
-    let ps = char + String(value ?? '').padStart(length,char)//.padStart(length, char); // or padEnd for right padding
+    let ps = char + String(value ?? '').padStart(length, char)//.padStart(length, char); // or padEnd for right padding
     return ps.length > length * 2 ? ps.substring(0, length * 2) : ps; // truncate if too long
 }
 
@@ -107,8 +110,8 @@ export function prepareForPut(obj, relations = []) {
     }
 
     const copy = {}
-    const skip = ['id','documentId',  'createdAt', 'updatedAt', 'publishedAt']
-  //  const skip = ['id', 'documentId', 'createdAt', 'updatedAt', 'publishedAt']
+    const skip = ['id', 'documentId', 'createdAt', 'updatedAt', 'publishedAt']
+    //  const skip = ['id', 'documentId', 'createdAt', 'updatedAt', 'publishedAt']
 
     const mediaFields = ['logo', 'gallery', 'receipts'] // adjust to your schema
     if (relations.includes('users')) {
@@ -174,17 +177,17 @@ export function parseContactLine(input) {
 }
 export function parseStockLine(input) {
     const match = input.trim().match(
-        /^(?<name>[a-zA-Z\s]+)(?:\s+(?<price>\d+(?:\.\d+)?))?(?:\s+(?<qty>\d+))?(?:\s+(?<discount>\d+)%?)?$/
+        /^(?<name>[a-zA-Z\s]+)(?:\s+(?<price>\d+(?:\.\d+)?))?(?:\s+(?<qty>\d+))?(?:\s+(?<discount>\d+)%?)?.*$/
     );
 
-    if (!match) return null;
+    if (!match) return { name: '', price: 0, quantity: 1, discount: 0 };
 
     const { name, price, qty, discount } = match.groups;
 
     return {
-        name: name.trim(),
+        name: (name ?? "").trim(),
         price: price ? Number(price) : 0,
-        quantity: qty ? Number(qty) : 0,
+        quantity: qty ? Number(qty) : 1,
         discount: discount ? Number(discount) : 0
     };
 }

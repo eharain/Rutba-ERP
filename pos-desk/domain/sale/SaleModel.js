@@ -110,6 +110,7 @@ export default class SaleModel {
 
     addNonStockItem(input) {
         if (!input) return;
+        
         const { name, price, quantity, discount } = parseStockLine(input);
         this.items.push(
             new SaleItem(

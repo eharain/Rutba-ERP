@@ -105,6 +105,23 @@ export default function CustomerSelect({ value, onChange, disabled }) {
 
     /* ---------------- Keyboard navigation ---------------- */
     const handleKeyDown = (e) => {
+        // If Enter pressed and there's a query, use it to create/select customer
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const q = (query || '').toString().trim();
+            if (q) {
+                // If in search mode with results, select highlighted result
+                if (mode === 'search' && results.length > 0) {
+                    selectCustomer(results[highlightIndex]);
+                    return;
+                }
+
+                // Otherwise, create customer from query (this will open form if needed)
+                createCustomerFromQuery(q);
+                return;
+            }
+        }
+
         if (mode !== 'search' || results.length === 0) return;
 
         if (e.key === 'ArrowDown') {
@@ -115,11 +132,6 @@ export default function CustomerSelect({ value, onChange, disabled }) {
         if (e.key === 'ArrowUp') {
             e.preventDefault();
             setHighlightIndex(i => Math.max(i - 1, 0));
-        }
-
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            selectCustomer(results[highlightIndex]);
         }
 
         if (e.key === 'Escape') {
@@ -139,7 +151,7 @@ export default function CustomerSelect({ value, onChange, disabled }) {
     }
     return (
         <div className="position-relative" ref={containerRef}>
-            <label className="form-label">Customer: <span>{customerName()}</span> <span onClick={() => { if (!disabled) { setMode('form'); setEditingCustomer(customer); } }}><i className="fas fa-edit"></i></span> </label>
+            <h4 className="form-label" style={{ minHeight: '50px' }}>Customer: <span>{customerName()}</span> <span className="float-end" onClick={() => { if (!disabled) { setMode('form'); setEditingCustomer(customer); } }}><i className="fas fa-edit"></i></span> </h4>
             <div className="input-group">
                 <input
                     className="form-control"

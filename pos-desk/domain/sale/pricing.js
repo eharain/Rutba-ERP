@@ -1,4 +1,6 @@
-export const TAX_RATE = 0.10;
+import { brachTaxRate } from '../../lib/utils'
+
+
 
 /**
  * Calculate discount percentage from selling → offer price
@@ -35,6 +37,12 @@ export function applyDiscount(
     return Math.max(discounted, costPrice);
 }
 
+
+export const TAX_RATE = 0.0;
+let ___taxRate = null;
 export function calculateTax(amount) {
-    return amount * TAX_RATE;
+    if (___taxRate == null) {
+        ___taxRate = brachTaxRate()
+    }
+    return amount * ___taxRate;
 }
