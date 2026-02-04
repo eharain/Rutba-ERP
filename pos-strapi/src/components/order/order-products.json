@@ -1,0 +1,16 @@
+{
+  "collectionName": "components_order_order_products",
+  "info": {
+    "displayName": "Order Products",
+    "icon": "grid",
+    "description": ""
+  },
+  "options": {},
+  "attributes": {
+    "items": {
+      "type": "component",
+      "repeatable": true,
+      "component": "order.order-product-item"
+    }
+  }
+}

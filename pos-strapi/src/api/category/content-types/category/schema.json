@@ -17,6 +17,9 @@
       "type": "string",
       "unique": true
     },
+    "summary": {
+      "type": "text"
+    },
     "description": {
       "type": "text"
     },

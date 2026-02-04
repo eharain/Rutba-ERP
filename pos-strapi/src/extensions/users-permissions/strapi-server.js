@@ -1,47 +1,34 @@
 const meRoute = require('./routes/me');
 const meController = require('./controllers/me');
-//const userSchema = require('./content-types/user/schema');
-
-const isEdiding = false;
-
+// @ts-ignore
 const meSchema = require('./content-types/me/schema.json');
+// @ts-ignore
+const userSchema = require('./content-types/user/schema.json');
 
-//const providers = require('./services/providers')
-//const email = require('./services/email')
-//const payment = require('./services/payment')
+module.exports = (plugin) => {
+  // Ensure plugin content types use the shipped schemas rather than mutating runtime objects
+  plugin.contentTypes = plugin.contentTypes || {};
+  plugin.contentTypes.user = { schema: userSchema };
+  plugin.contentTypes.me = { schema: meSchema };
 
-if (!isEdiding) {
-    module.exports = (plugin) => {
-       // console.info('plugins', strapi.internal_config)
+  // Register custom controller
+  plugin.controllers = plugin.controllers || {};
+  plugin.controllers.me = meController;
 
-        const capi = plugin.routes['content-api'];
-
-        plugin.routes['content-api'] = (...args) => {
-
-            const resp = typeof capi === 'function' ? capi(...args) : capi;
-            resp.routes.push(...meRoute);
-            return resp;
-
-        }
-        plugin.contentTypes.user.schema.attributes.isStaff = {
-            "type": "boolean"
-        };
-
-      //  console.log('Adding custom user permissions routes');
-        //meRoute.forEach(route => capi.routes.push(route));
-        //   Object.assign(, userSchema);
-        plugin.contentTypes.me = { schema: meSchema }
-        // Object.assign(plugin.controllers.user, meController);
-        plugin.controllers.me = meController
-
-        return plugin;
-    }
-
-} else {
-    module.exports = (plugin) => {
-        //console.log('Editing user permissions plugin');
-        //plugin.contentTypes.me = { schema: meSchema }
-        //plugin.controllers.me = meController
-        return plugin;
+  // Register routes for content-api (preserve existing routes)
+  const capi = plugin.routes && plugin.routes['content-api'];
+  if (capi) {
+    plugin.routes['content-api'] = (...args) => {
+      const resp = typeof capi === 'function' ? capi(...args) : capi;
+      resp.routes = resp.routes || [];
+      resp.routes.push(...meRoute);
+      return resp;
     };
-}
+  } else {
+    // fallback: define content-api routes if missing
+    plugin.routes = plugin.routes || {};
+    plugin.routes['content-api'] = { routes: [...meRoute] };
+  }
+
+  return plugin;
+};

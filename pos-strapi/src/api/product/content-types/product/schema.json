@@ -17,8 +17,7 @@
       "required": false
     },
     "description": {
-      "type": "richtext",
-      "minLength": 50
+      "type": "richtext"
     },
     "sku": {
       "type": "string"
