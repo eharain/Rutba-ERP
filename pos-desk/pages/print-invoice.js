@@ -2,7 +2,7 @@ import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 import SaleInvoicePrint from '../components/print/SaleInvoicePrint';
 import { fetchSaleByIdOrInvoice } from '../lib/pos';
-
+import { calculateTax } from '../domain/sale/pricing'
 const PrintInvoicePage = () => {
     const router = useRouter();
     const [sale, setSale] = useState(null);
@@ -37,14 +37,14 @@ const PrintInvoicePage = () => {
                     // Load from API using sale ID
                     saleData = await fetchSaleByIdOrInvoice(saleId);
                     itemsData = saleData.items || [];
-                    
+
                     // Calculate totals from items
                     const subtotal = itemsData.reduce((sum, item) => {
                         const price = Number(item.price) || 0;
                         const qty = Number(item.quantity) || 0;
                         return sum + (price * qty);
                     }, 0);
-                    
+
                     const totalDiscount = itemsData.reduce((sum, item) => {
                         const price = Number(item.price) || 0;
                         const qty = Number(item.quantity) || 0;
@@ -52,11 +52,11 @@ const PrintInvoicePage = () => {
                         const itemSubtotal = price * qty;
                         return sum + (itemSubtotal * (discount / 100));
                     }, 0);
-                    
+
                     const taxableAmount = subtotal - totalDiscount;
-                    const tax = taxableAmount * 0.1;
+                    const tax = calculateTax(taxableAmount);
                     const total = taxableAmount + tax;
-                    
+
                     // Use sale totals if available, otherwise use calculated
                     totalsData = {
                         subtotal: Number(saleData.subtotal) || subtotal,
@@ -75,7 +75,7 @@ const PrintInvoicePage = () => {
                         tax: 0,
                         total: 0
                     };
-                    
+
                     // Clean up storage after loading
                     localStorage.removeItem(storageKey);
                 } else {
@@ -119,7 +119,7 @@ const PrintInvoicePage = () => {
             window.close();
         } else {
             window.history.back();
-        }        
+        }
     };
 
     if (loading) {

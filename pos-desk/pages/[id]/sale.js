@@ -52,7 +52,7 @@ export default function SalePage() {
             const model = await SaleApi.loadSale(id);
             setPaid(model.isPaid);
             setSaleModel(model);
-            console.log("model loaded", model)
+            //   console.log("model loaded", model)
         } catch (err) {
             console.error('Failed to load sale', err);
         } finally {
@@ -89,7 +89,7 @@ export default function SalePage() {
 
             await SaleApi.checkout(saleModel);
 
-            alert('Sale completed successfully');
+            // alert('Sale completed successfully');
             setShowCheckout(false);
 
             await loadSale();

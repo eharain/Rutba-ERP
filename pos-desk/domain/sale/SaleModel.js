@@ -132,6 +132,8 @@ export default class SaleModel {
         const item = this.items[index];
         if (!item) return;
         updater(item);
+        // replace items array reference so React components receiving `items` detect changes
+        this.items = [...this.items];
     }
 
     removeItem(index) {

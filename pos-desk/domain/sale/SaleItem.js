@@ -22,7 +22,7 @@ export default class SaleItem {
         }
 
         this.quantity = quantity;
-        this.price = price ?? 0;
+        this._price = price ?? 0;
 
         /* ---------------- Discount / Offer state ---------------- */
 
@@ -61,6 +61,7 @@ export default class SaleItem {
     }
 
     set sellingPrice(price) {
+        // update underlying stock items
         this.applyOnAll({ selling_price: price });;
     }
     set costPrice(price) {
@@ -80,7 +81,12 @@ export default class SaleItem {
     }
 
     get offerPrice() {
-        return this.first()?.offer_price || this.price;
+        return this.first()?.offer_price || this.sellingPrice;
+    }
+
+    // expose a `price` property used by UI components
+    get price() {
+        return this.sellingPrice || this._price || this.averagePrice || 0;
     }
 
     get isDynamicStock() {
@@ -92,22 +98,24 @@ export default class SaleItem {
     }
 
     applyOnAll(diff) {
-        //if (this.isDynamicStock) {
         this.items.forEach(item => {
-            let itemsKeys = Object.keys(item)
-            let invalid = Object.keys(diff).filter(f => !itemsKeys.includes(f));
-            console.log("invalid keys", invalid)
+            Object.keys(diff).forEach(key => {
+                if (!(key in item)) {
+                    item[key] = diff[key]; // initialize first
+                }
+            });
+
             Object.assign(item, diff);
-        })
-        // }
+        });
     }
 
     setSellingPrice(price) {
-     
-        //console.log('setting selling price to ', price, this.items[0]);
-        //price = (+price)//ValidNumberOrDefault(price, 0);
-        this.applyOnAll({ selling_price: price, offer_price: price * 0.75, cost_price: price * 0.5 });
-        //console.log('setting selling price to ', price, this.items);
+
+        let change = { selling_price: price, offer_price: price * 0.75, cost_price: price * 0.5 }
+
+        console.log("before change ", price, change, JSON.stringify(this.first()))
+        this.applyOnAll(change);
+        console.log("after change ", price, change, JSON.stringify(this.first()));
     }
 
     setDiscountPercent(percent) {
@@ -178,21 +186,21 @@ export default class SaleItem {
         let sum = this.items.reduce((sum, i) => sum + i.selling_price, 0)
         return sum / this.items.length
     }
- 
+
     getSubtotal() {
         const dp = this.items.reduce((sum, item) => {
             let costPrice = ValidNumberOrDefault(item.cost_price, item.offer_price ?? (item.selling_price * .75));
-            return sum +  applyDiscount(item.selling_price, costPrice, this.discount ?? 0);
+            return sum + applyDiscount(item.selling_price, costPrice, this.discount ?? 0);
         }, 0)
 
         let total = ValidNumberOrDefault(dp, 0);
-      //  console.log("sub total", this.items, dp, total)
+        //  console.log("sub total", this.items, dp, total)
         return total
     }
 
     get subtotal() {
         let subTotal = this.getSubtotal();
-        return subTotal - subTotal * this.discount / 100;
+        return subTotal;//- subTotal * this.discount / 100;
     }
     get tax() {
         return calculateTax(this.subtotal);
@@ -216,7 +224,7 @@ export default class SaleItem {
             tax: this.tax,
             total: this.total,
             items: this.items,
-          //  product: this.product ?? this.first()?.product
+            //  product: this.product ?? this.first()?.product
         };
     }
 }

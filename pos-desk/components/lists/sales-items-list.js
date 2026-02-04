@@ -43,12 +43,12 @@ export default function SalesItemsList({
                         {/* UNIT PRICE */}
                         <td>
                             {item.isDynamicStock ? (
-                                item.price.toFixed(2)
+                                ((item.price ?? 0).toFixed(2))
                             ) : (
                                 <input
                                     type="number"
                                     className="form-control"
-                                    value={item.price}
+                                    value={item.price ?? 0}
                                     onChange={e =>
                                         onUpdate(index, i =>
                                             i.setSellingPrice(+e.target.value)
@@ -93,7 +93,7 @@ export default function SalesItemsList({
                         </td>
 
                         {/* TOTAL */}
-                        <td>{item.subtotal.toFixed(2)}</td>
+                        <td>{((item.subtotal ?? 0).toFixed(2))}</td>
 
                         {/* ACTIONS */}
                         <td className="d-flex gap-1">
