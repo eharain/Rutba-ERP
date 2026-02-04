@@ -113,7 +113,11 @@ export default function Products() {
                                                 <TableCell>{product.stock_quantity}</TableCell>
                                                 <TableCell>{product.status}</TableCell>
 
-                                                <TableCell><Link href={`/${product.documentId ?? product.id}/product`}> <i className="fas fa-edit"></i> Edit</Link></TableCell>
+                                                <TableCell>
+                                                    <Link href={`/${product.documentId ?? product.id}/product`}> <i className="fas fa-edit"></i> Edit</Link>
+                                                    <br />
+                                                    <Link href={`/${product.documentId ?? product.id}/product-variants`}><i className="fas fa-fighter-jet"></i> Variants</Link>
+                                                </TableCell>
                                             </TableRow>
                                         ))
                                     )}

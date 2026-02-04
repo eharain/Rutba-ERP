@@ -175,19 +175,45 @@ export function parseContactLine(input) {
         phone: phone || ''
     };
 }
+
+
+
+const STOCK_LINE_PATTERNS = [
+    // name price qty discount
+    /^(?<name>[a-zA-Z\s]+)\s+(?<price>\d+(?:\.\d+)?)\s+(?<qty>\d+)\s+(?<discount>\d+)%?$/,
+
+    // name price qty
+    /^(?<name>[a-zA-Z\s]+)\s+(?<price>\d+(?:\.\d+)?)\s+(?<qty>\d+)$/,
+
+    // name price
+    /^(?<name>[a-zA-Z\s]+)\s+(?<price>\d+(?:\.\d+)?)$/,
+
+    // name only
+    /^(?<name>[a-zA-Z\s]+)$/
+];
+
 export function parseStockLine(input) {
-    const match = input.trim().match(
-        /^(?<name>[a-zA-Z\s]+)(?:\s+(?<price>\d+(?:\.\d+)?))?(?:\s+(?<qty>\d+))?(?:\s+(?<discount>\d+)%?)?.*$/
-    );
+    const text = input.trim();
 
-    if (!match) return { name: '', price: 0, quantity: 1, discount: 0 };
+    for (const regex of STOCK_LINE_PATTERNS) {
+        const match = text.match(regex);
+        if (!match) continue;
 
-    const { name, price, qty, discount } = match.groups;
+        const { name, price, qty, discount } = match.groups || {};
 
+        return {
+            name: name?.trim() ?? '',
+            price: price ? Number(price) : 0,
+            quantity: qty ? Number(qty) : 1,
+            discount: discount ? Number(discount) : 0
+        };
+    }
+
+    // No match at all
     return {
-        name: (name ?? "").trim(),
-        price: price ? Number(price) : 0,
-        quantity: qty ? Number(qty) : 1,
-        discount: discount ? Number(discount) : 0
+        name: '',
+        price: 0,
+        quantity: 1,
+        discount: 0
     };
 }

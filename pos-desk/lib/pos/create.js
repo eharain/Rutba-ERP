@@ -50,7 +50,7 @@ export async function createNewEntity(name) {
     }
     const res = await authApi.post(`/${namePlural}`, { data });
     const rdata = res?.data || {};
-    const id = rdata.orderId ?? rdata.invoice_no ?? rdata.documentId ?? rdata.id;
+    const id = /*rdata.orderId ?? rdata.invoice_no ??*/ rdata.documentId ?? rdata.id;
     return { data: rdata, id, nameSinglar, namePlural };
 }
 

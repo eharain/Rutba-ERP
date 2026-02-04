@@ -37,7 +37,8 @@
     "sale": {
       "type": "relation",
       "relation": "manyToOne",
-      "target": "api::sale.sale"
+      "target": "api::sale.sale",
+      "inversedBy": "payments"
     },
     "branches": {
       "type": "relation",

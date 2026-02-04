@@ -2,12 +2,20 @@
 import Link from "next/link";
 import { useAuth } from "../context/AuthContext";
 import { getBranch } from "../lib/utils"
+import { useEffect } from "react";
+
 export default function Navigation() {
     const { user, logout } = useAuth();
-
+    const { companName,setCompanyName } = useAuth('Rutba');
+    useEffect(() => {
+        try {
+            setCompanyName(getBranch()?.companyName);
+        } catch (e) { }
+    }, [])
+    //getBranch()?.companyName
     return (
         <nav className="navbar navbar-expand-lg navbar-dark bg-dark px-3 text-white">
-            <Link className="navbar-brand fw-bold" href="/">Rutba POS : {getBranch()?.companyName}</Link>
+            <Link className="navbar-brand fw-bold" href="/">Rutba POS : {}</Link>
             <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav" aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span className="navbar-toggler-icon"></span>
             </button>

@@ -11,7 +11,7 @@ export default class SaleModel {
         sale_date = new Date(),
         payment_status = "Unpaid",
 
-        customer = null,
+        customer ,
         items = [],
         payments = [],
 

@@ -9,6 +9,7 @@ export default class SaleItem {
         discount = 0,
         price = 0,
         stockItem = null,
+        product,
         items = [],
     }) {
         this.id = id;
@@ -214,7 +215,8 @@ export default class SaleItem {
             subtotal: this.subtotal,
             tax: this.tax,
             total: this.total,
-            items: this.items
+            items: this.items,
+          //  product: this.product ?? this.first()?.product
         };
     }
 }

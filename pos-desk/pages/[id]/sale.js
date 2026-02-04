@@ -1,4 +1,5 @@
-﻿import { useEffect, useReducer, useState } from 'react';
+﻿`use client`;
+import { useEffect, useReducer, useState } from 'react';
 import { useRouter } from 'next/router';
 
 import Layout from '../../components/Layout';
@@ -51,6 +52,7 @@ export default function SalePage() {
             const model = await SaleApi.loadSale(id);
             setPaid(model.isPaid);
             setSaleModel(model);
+            console.log("model loaded", model)
         } catch (err) {
             console.error('Failed to load sale', err);
         } finally {
@@ -58,15 +60,7 @@ export default function SalePage() {
         }
     };
 
-    if (!saleModel) {
-        return (
-            <Layout>
-                <ProtectedRoute>
-                    <div className="p-4">Loading sale...</div>
-                </ProtectedRoute>
-            </Layout>
-        );
-    }
+
 
     /* ===============================
        Customer
@@ -78,6 +72,7 @@ export default function SalePage() {
 
         // For unsaved/new sales just update local model. Persist only for existing sales.
         saleModel.setCustomer(customer);
+
         forceUpdate();
 
     };
@@ -97,7 +92,7 @@ export default function SalePage() {
             alert('Sale completed successfully');
             setShowCheckout(false);
 
-            loadSale();
+            await loadSale();
         } catch (err) {
             console.error('Checkout failed', err);
             alert('Checkout failed');
@@ -138,6 +133,16 @@ export default function SalePage() {
             'width=1000,height=800'
         );
     };
+
+    if (!saleModel) {
+        return (
+            <Layout>
+                <ProtectedRoute>
+                    <div className="p-4">Loading sale...</div>
+                </ProtectedRoute>
+            </Layout>
+        );
+    }
 
     return (
         <Layout>

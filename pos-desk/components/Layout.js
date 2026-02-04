@@ -62,7 +62,7 @@ export default function Layout({ children }) {
             </div>
 
             {/* Fixed footer close to browser bottom */}
-            <footer ref={footerRef} className="position-fixed bottom-0 start-0 end-0" style={{ zIndex: 1020 }}>
+            <footer ref={footerRef} className="bottom-0 start-0 end-0" style={{ zIndex: 1020 }}>
                 <div className="container py-2">
                     <FooterInfo />
                 </div>
