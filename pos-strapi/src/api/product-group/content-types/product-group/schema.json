@@ -2,8 +2,8 @@
   "kind": "collectionType",
   "collectionName": "product_groups",
   "info": {
-    "singularName": "product-groups",
-    "pluralName": "product-group",
+    "singularName": "product-group",
+    "pluralName": "product-groups",
     "displayName": "Product Groups",
     "description": ""
   },

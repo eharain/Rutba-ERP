@@ -558,38 +558,6 @@ export interface ApiCategoryCategory extends Struct.CollectionTypeSchema {
   };
 }
 
-export interface ApiCollectionCollection extends Struct.CollectionTypeSchema {
-  collectionName: 'collections';
-  info: {
-    description: '';
-    displayName: 'Collection';
-    pluralName: 'collections';
-    singularName: 'collection';
-  };
-  options: {
-    draftAndPublish: true;
-  };
-  attributes: {
-    createdAt: Schema.Attribute.DateTime;
-    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
-      Schema.Attribute.Private;
-    image: Schema.Attribute.Media<'images'> & Schema.Attribute.Required;
-    locale: Schema.Attribute.String & Schema.Attribute.Private;
-    localizations: Schema.Attribute.Relation<
-      'oneToMany',
-      'api::collection.collection'
-    > &
-      Schema.Attribute.Private;
-    name: Schema.Attribute.String & Schema.Attribute.Required;
-    products: Schema.Attribute.Relation<'manyToMany', 'api::product.product'>;
-    publishedAt: Schema.Attribute.DateTime;
-    slug: Schema.Attribute.UID<'name'> & Schema.Attribute.Required;
-    updatedAt: Schema.Attribute.DateTime;
-    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
-      Schema.Attribute.Private;
-  };
-}
-
 export interface ApiCurrencyCurrency extends Struct.CollectionTypeSchema {
   collectionName: 'currencies';
   info: {
@@ -690,35 +658,6 @@ export interface ApiEmployeeEmployee extends Struct.CollectionTypeSchema {
   };
 }
 
-export interface ApiFeaturedSneakerFeaturedSneaker
-  extends Struct.SingleTypeSchema {
-  collectionName: 'featured_sneakers';
-  info: {
-    displayName: 'Featured Sneaker';
-    pluralName: 'featured-sneakers';
-    singularName: 'featured-sneaker';
-  };
-  options: {
-    draftAndPublish: false;
-  };
-  attributes: {
-    createdAt: Schema.Attribute.DateTime;
-    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
-      Schema.Attribute.Private;
-    locale: Schema.Attribute.String & Schema.Attribute.Private;
-    localizations: Schema.Attribute.Relation<
-      'oneToMany',
-      'api::featured-sneaker.featured-sneaker'
-    > &
-      Schema.Attribute.Private;
-    products: Schema.Attribute.Relation<'oneToMany', 'api::product.product'>;
-    publishedAt: Schema.Attribute.DateTime;
-    updatedAt: Schema.Attribute.DateTime;
-    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
-      Schema.Attribute.Private;
-  };
-}
-
 export interface ApiPaymentPayment extends Struct.CollectionTypeSchema {
   collectionName: 'payments';
   info: {
@@ -757,6 +696,39 @@ export interface ApiPaymentPayment extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiProductGroupProductGroup
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'product_groups';
+  info: {
+    description: '';
+    displayName: 'Product Groups';
+    pluralName: 'product-groups';
+    singularName: 'product-group';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    gallery: Schema.Attribute.Media<'images'> & Schema.Attribute.Required;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::product-group.product-group'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    products: Schema.Attribute.Relation<'manyToMany', 'api::product.product'>;
+    publishedAt: Schema.Attribute.DateTime;
+    slug: Schema.Attribute.UID<'name'> & Schema.Attribute.Required;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiProductProduct extends Struct.CollectionTypeSchema {
   collectionName: 'products';
   info: {
@@ -782,10 +754,7 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     description: Schema.Attribute.RichText;
-    gallery: Schema.Attribute.Media<
-      'images' | 'files' | 'videos' | 'audios',
-      true
-    >;
+    gallery: Schema.Attribute.Media<'images' | 'videos' | 'audios', true>;
     is_active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
     is_variant: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     items: Schema.Attribute.Relation<'oneToMany', 'api::stock-item.stock-item'>;
@@ -796,7 +765,7 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
       'api::product.product'
     > &
       Schema.Attribute.Private;
-    logo: Schema.Attribute.Media<'images' | 'files' | 'videos' | 'audios'>;
+    logo: Schema.Attribute.Media<'images'>;
     name: Schema.Attribute.String;
     offer_price: Schema.Attribute.Decimal;
     parent: Schema.Attribute.Relation<'manyToOne', 'api::product.product'>;
@@ -2000,12 +1969,11 @@ declare module '@strapi/strapi' {
       'api::branch.branch': ApiBranchBranch;
       'api::brand.brand': ApiBrandBrand;
       'api::category.category': ApiCategoryCategory;
-      'api::collection.collection': ApiCollectionCollection;
       'api::currency.currency': ApiCurrencyCurrency;
       'api::customer.customer': ApiCustomerCustomer;
       'api::employee.employee': ApiEmployeeEmployee;
-      'api::featured-sneaker.featured-sneaker': ApiFeaturedSneakerFeaturedSneaker;
       'api::payment.payment': ApiPaymentPayment;
+      'api::product-group.product-group': ApiProductGroupProductGroup;
       'api::product.product': ApiProductProduct;
       'api::purchase-item.purchase-item': ApiPurchaseItemPurchaseItem;
       'api::purchase-return-item.purchase-return-item': ApiPurchaseReturnItemPurchaseReturnItem;
