@@ -92,10 +92,7 @@
       "type": "media",
       "multiple": false,
       "allowedTypes": [
-        "images",
-        "files",
-        "videos",
-        "audios"
+        "images"
       ]
     },
     "gallery": {
@@ -103,7 +100,6 @@
       "multiple": true,
       "allowedTypes": [
         "images",
-        "files",
         "videos",
         "audios"
       ]

@@ -161,7 +161,7 @@ export default class SaleModel {
 
     get discountTotal() {
         return this.items.reduce((sum, i) => {
-            const full = i.sellingPrice - i.discount;
+            const full = i.sellingPrice - i.sellingPrice* i.discount;
             return sum + full;
         }, 0);
     }

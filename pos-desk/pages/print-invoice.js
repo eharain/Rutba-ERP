@@ -2,7 +2,6 @@ import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 import SaleInvoicePrint from '../components/print/SaleInvoicePrint';
 import { fetchSaleByIdOrInvoice } from '../lib/pos';
-import { calculateTax } from '../domain/sale/pricing'
 const PrintInvoicePage = () => {
     const router = useRouter();
     const [sale, setSale] = useState(null);
@@ -38,31 +37,12 @@ const PrintInvoicePage = () => {
                     saleData = await fetchSaleByIdOrInvoice(saleId);
                     itemsData = saleData.items || [];
 
-                    // Calculate totals from items
-                    const subtotal = itemsData.reduce((sum, item) => {
-                        const price = Number(item.price) || 0;
-                        const qty = Number(item.quantity) || 0;
-                        return sum + (price * qty);
-                    }, 0);
-
-                    const totalDiscount = itemsData.reduce((sum, item) => {
-                        const price = Number(item.price) || 0;
-                        const qty = Number(item.quantity) || 0;
-                        const discount = Number(item.discount) || 0;
-                        const itemSubtotal = price * qty;
-                        return sum + (itemSubtotal * (discount / 100));
-                    }, 0);
-
-                    const taxableAmount = subtotal - totalDiscount;
-                    const tax = calculateTax(taxableAmount);
-                    const total = taxableAmount + tax;
-
-                    // Use sale totals if available, otherwise use calculated
+                    // Use totals as persisted on the sale record
                     totalsData = {
-                        subtotal: Number(saleData.subtotal) || subtotal,
-                        discount: Number(saleData.discount) || totalDiscount,
-                        tax: Number(saleData.tax) || tax,
-                        total: Number(saleData.total) || total
+                        subtotal: Number(saleData.subtotal) || 0,
+                        discount: Number(saleData.discount) || 0,
+                        tax: Number(saleData.tax) || 0,
+                        total: Number(saleData.total) || 0
                     };
                 } else if (storageKey) {
                     // Load from localStorage

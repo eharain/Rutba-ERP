@@ -189,7 +189,7 @@ export default class SaleItem {
 
     getSubtotal() {
         // If items array length matches quantity, sum per-item (used for tracked stock items).
-        if (Array.isArray(this.items) && this.items.length === this.quantity && this.items.length > 0) {
+        if (Array.isArray(this.items)) {
             const dp = this.items.reduce((sum, item) => {
                 let costPrice = ValidNumberOrDefault(item.cost_price, item.offer_price ?? (item.selling_price * .75));
                 return sum + applyDiscount(item.selling_price, costPrice, this.discount ?? 0);
@@ -201,9 +201,9 @@ export default class SaleItem {
         const firstItem = this.first();
         if (!firstItem) return 0;
 
-        const unitCostPrice = ValidNumberOrDefault(firstItem.cost_price, firstItem.offer_price ?? (firstItem.selling_price * .75));
-        const unitPrice = applyDiscount(firstItem.selling_price, unitCostPrice, this.discount ?? 0);
-        return ValidNumberOrDefault(unitPrice * (this.quantity || 1), 0);
+        //const unitCostPrice = ValidNumberOrDefault(firstItem.cost_price, firstItem.offer_price ?? (firstItem.selling_price * .75));
+        //const unitPrice = applyDiscount(firstItem.selling_price, unitCostPrice, this.discount ?? 0);
+        //return ValidNumberOrDefault(unitPrice * (this.quantity || 1), 0);
     }
 
     get subtotal() {
