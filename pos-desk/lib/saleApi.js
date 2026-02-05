@@ -195,11 +195,7 @@ export default class SaleApi {
             const baseStockItem = item.items?.[0] ?? null;
 
             const saleItemPayload = {
-                quantity: item.quantity || 1,
-                price: item.price,
-                discount: item.discount || 0,
-                tax: item.tax,
-                total: item.total,
+                ...item.toPayload(),
                 sale: { connect: [saleId] }
             };
 

@@ -11,7 +11,7 @@ export default class SaleModel {
         sale_date = new Date(),
         payment_status = "Unpaid",
 
-        customer ,
+        customer,
         items = [],
         payments = [],
 
@@ -37,7 +37,7 @@ export default class SaleModel {
         return model;
     }
 
-    parseAndSetCustomer(line){
+    parseAndSetCustomer(line) {
         if (!line) return this.customer;
 
         if (typeof line === 'string') {
@@ -64,7 +64,7 @@ export default class SaleModel {
 
     updatePaymentStatus() {
         const sum = this.totalPaid;
-        if (sum >= this.total && this.payments?.length>0) {
+        if (sum >= this.total && this.payments?.length > 0) {
             this.payment_status = 'Paid';
         }
     }
@@ -110,18 +110,15 @@ export default class SaleModel {
 
     addNonStockItem(input) {
         if (!input) return;
-        
+
         const { name, price, quantity, discount } = parseStockLine(input);
-        this.items.push(
-            new SaleItem(
-                {
-                    discount,
-                    quantity,
-                    price,
-                    stockItem: { name, selling_price: price, cost_price: price * 0.75, offer_price: price * 0.85 }
-                }
-            )
-        );
+
+        let items = [];
+        for (let i = 0; i < (quantity ?? 1); i++) {
+            items.push({ name, selling_price: price, cost_price: price * 0.75, offer_price: price * 0.85, more: [...items] });
+        }
+
+        this.items.push(new SaleItem({ discount_percentage: discount, quantity, price, items }));
     }
 
 
@@ -156,12 +153,15 @@ export default class SaleModel {
     }
 
     get total() {
-        return this.subtotal + this.tax;
+        return this.items.reduce((sum, i) => {
+            const full = i.total;
+            return sum + full;
+        }, 0);
     }
 
     get discountTotal() {
         return this.items.reduce((sum, i) => {
-            const full =  i.sellingPrice* i.discount;
+            const full = i.row_discount;
             return sum + full;
         }, 0);
     }

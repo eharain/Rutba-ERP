@@ -21,19 +21,16 @@ const SaleInvoice = ({ sale, items, totals}) => {
     };
 
     const payments = Array.isArray(sale?.payments) ? sale.payments : [];
-    // total paid is derived from payments when available, otherwise fall back to sale.paid or status
     const paid = payments.length > 0
         ? payments.reduce((s, p) => s + (Number(p.amount) || 0), 0)
         : (Number(sale?.paid) || (sale?.payment_status === 'Paid' ? safeTotals.total : 0));
 
-    // change given: prefer sum of payment.change when payments are present, otherwise compute overpayment
     const changeGiven = payments.length > 0
         ? payments.reduce((s, p) => s + (Number(p.change) || 0), 0)
         : Math.max(0, paid - safeTotals.total);
 
     const remaining = Math.max(0, safeTotals.total - paid);
 
-    // Apply invoice print settings
     const paperWidth = invoicePrintSettings?.paperWidth || '80mm';
     const fontSize = invoicePrintSettings?.fontSize || 11;
     const showTax = invoicePrintSettings?.showTax ?? true;
@@ -41,7 +38,6 @@ const SaleInvoice = ({ sale, items, totals}) => {
     const showCustomer = invoicePrintSettings?.showCustomer ?? true;
     const branchFields = invoicePrintSettings?.branchFields ?? ['name', 'companyName', 'web'];
 
-    // helper to render selected branch fields
     const renderBranchFields = () => {
         if (!showBranch || !branch) return null;
         const pieces = [];
@@ -61,7 +57,6 @@ const SaleInvoice = ({ sale, items, totals}) => {
     return (
         <div className="sale-invoice-container" style={{ fontFamily: "'Courier New', monospace", width: paperWidth, margin: '20px auto', padding: '10px', textAlign: 'center', fontSize: `${fontSize}px` }}>
             <style jsx global>{`
-                /* keep essential print isolation behavior */
                 @media print {
                     body * {
                         visibility: hidden;
@@ -114,17 +109,22 @@ const SaleInvoice = ({ sale, items, totals}) => {
                     </tr>
                 </thead>
                 <tbody>
-                    {items.map((item, index) => (
-                        <tr key={index}>
-                            <td className="col-qty text-center">{item.quantity}</td>
-                            <td className="col-item text-start">
-                                {item?.items[0]?.name|| item.product?.name || 'Item'}
-                            </td>
-                            <td className="col-price text-end">
-                                {Math.round((item.price * item.quantity))}
-                            </td>
-                        </tr>
-                    ))}
+                    {items.map((item, index) => {
+                        const rowSubtotal = Number(item.subtotal) || 0;
+                        const rowDiscount = Number(item.discount) || 0;
+                        const rowTotal = rowSubtotal - rowDiscount;
+                        return (
+                            <tr key={index}>
+                                <td className="col-qty text-center">{item.quantity}</td>
+                                <td className="col-item text-start">
+                                    {item?.items?.[0]?.name || item.product?.name || 'Item'}
+                                </td>
+                                <td className="col-price text-end">
+                                    {Math.round(rowTotal)}
+                                </td>
+                            </tr>
+                        );
+                    })}
                 </tbody>
             </table>
 

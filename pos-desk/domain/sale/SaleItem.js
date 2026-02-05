@@ -7,6 +7,7 @@ export default class SaleItem {
         // name,
         quantity = 1,
         discount = 0,
+        discount_percentage = null,
         price = 0,
         stockItem = null,
         product,
@@ -15,6 +16,7 @@ export default class SaleItem {
         this.id = id;
         this.documentId = documentId;
         this.discount = discount ?? 0;
+        this.discount_percentage = discount_percentage ?? 0;// ValidNumberOrDefault(discount_percentage, this.discount);
 
         this.items = items ?? [];
         if (stockItem) {
@@ -56,6 +58,7 @@ export default class SaleItem {
     set name(n) {
         this.applyOnAll({ name: n });
     }
+
     set offerPrice(price) {
         this.applyOnAll({ offer_price: price });
     }
@@ -64,6 +67,7 @@ export default class SaleItem {
         // update underlying stock items
         this.applyOnAll({ selling_price: price });;
     }
+
     set costPrice(price) {
         this.applyOnAll({ cost_price: price });;
     }
@@ -94,7 +98,7 @@ export default class SaleItem {
     }
 
     get offerActive() {
-        return this.discount == discountRateFromPrice(this.sellingPrice, this.offerPrice);
+        return this.discount_percentage == discountRateFromPrice(this.sellingPrice, this.offerPrice);
     }
 
     applyOnAll(diff) {
@@ -110,27 +114,27 @@ export default class SaleItem {
     }
 
     setSellingPrice(price) {
-
         let change = { selling_price: price, offer_price: price * 0.75, cost_price: price * 0.5 }
 
-   //     console.log("before change ", price, change, JSON.stringify(this.first()))
         this.applyOnAll(change);
-     //   console.log("after change ", price, change, JSON.stringify(this.first()));
     }
 
     setDiscountPercent(percent) {
-        this.discount = Math.min(Math.max(percent, 0), 40);
-
-        //return this.restPriceToDicount();
+        this.discount_percentage = Math.min(Math.max(percent, 0), 40);
+        this.discount = this.row_discount;
     }
 
     setQuantity(qty) {
         const netQty = Math.max(1, qty);
+        if (qty < 1) {
+            return
+        }
         const currentQty = this.quantity;
 
         if (!Array.isArray(this.items)) {
             this.items = [];
         }
+
         let stockItemWithMore = this.first();
         if (!Array.isArray(stockItemWithMore?.more)) {
             stockItemWithMore.more = [];
@@ -167,72 +171,84 @@ export default class SaleItem {
     /* ---------------- Offer logic (FIXED & SAFE) ---------------- */
 
     applyOfferPrice() {
-        this._discountBeforeOffer = this.discount;
+        this._discountBeforeOffer = this.discount_percentage;
         let offer = this.offerPrice;
         let sale = this.sellingPrice;
-        this.discount = discountRateFromPrice(sale, offer);
+        this.discount_percentage = discountRateFromPrice(sale, offer);
+        // this.discount_percentage = this.subtotal * this.discount_percentage / 100;
     }
 
     revertOffer() {
-        this.discount = this._discountBeforeOffer ?? this.discount ?? 0;
+        this.discount_percentage = this._discountBeforeOffer ?? this.discount_percentage;
         this._discountBeforeOffer = null;
     }
 
+    sumBy(field = 'selling_price') {
+        let ValidFields = ['selling_price', 'cost_price', 'offer_price'];
+        if (!ValidFields.includes(field)) {
+            throw new Error(`Invalid field for sum: ${field}`);
+        }
+        if (!Array.isArray(this.items) || this.items.length == 0) {
+            return 0;
+        }
+        return this.items.reduce((sum, item) => { return sum + (item[field] || 0); }, 0)
+
+    }
 
     /* ---------------- Pricing ---------------- */
 
     get averagePrice() {
-        if (this.items?.length ?? 0 == 0) return 0;
-        let sum = this.items.reduce((sum, i) => sum + i.selling_price, 0)
-        return sum / this.items.length
+        if (this.items?.length == 0) return 0;
+        let sum = this.sumBy('selling_price');
+        return sum / this.items.length;
     }
-
-    getSubtotal() {
-        // If items array length matches quantity, sum per-item (used for tracked stock items).
-        if (Array.isArray(this.items)) {
-            const dp = this.items.reduce((sum, item) => {
-                let costPrice = ValidNumberOrDefault(item.cost_price, item.offer_price ?? (item.selling_price * .75));
-                return sum + applyDiscount(item.selling_price, costPrice, this.discount ?? 0);
-            }, 0)
-            return ValidNumberOrDefault(dp, 0);
-        }
-
-        // Fallback: treat first item as representative unit and multiply by quantity (for non-dynamic or aggregated items)
-        const firstItem = this.first();
-        if (!firstItem) return 0;
-
-        //const unitCostPrice = ValidNumberOrDefault(firstItem.cost_price, firstItem.offer_price ?? (firstItem.selling_price * .75));
-        //const unitPrice = applyDiscount(firstItem.selling_price, unitCostPrice, this.discount ?? 0);
-        //return ValidNumberOrDefault(unitPrice * (this.quantity || 1), 0);
+    get row_discount() {
+        const dp = this.sumBy('selling_price');
+        return dp * (this.discount_percentage / 100);
     }
-
     get subtotal() {
-        let subTotal = this.getSubtotal();
-        return subTotal;//- subTotal * this.discount / 100;
+        if (this.items?.length == 0) return 0;
+        let sum = this.sumBy('selling_price');
+        let subTotal = sum || 0;
+
+        return subTotal;
+    }
+    get dicountedSubtotal() {
+        let subTotal = this.subtotal;
+        let thisDiscount = this.row_discount;
+        return subTotal - thisDiscount;
     }
     get tax() {
-        return calculateTax(this.subtotal);
+        return calculateTax(this.dicountedSubtotal);
     }
 
     get total() {
-        return this.subtotal + this.tax;
+        return this.dicountedSubtotal + this.tax;
     }
 
     /* ---------------- Serialization ---------------- */
-
+    toPayload() {
+        return {
+            
+            quantity: this.items.length,
+            price: this.averagePrice,
+            discount: this.row_discount,
+            discount_percentage: this.discount_percentage,
+            subtotal: this.subtotal,
+            tax: this.tax,
+            total: this.total,
+        }
+    }
     toJSON() {
+
         return {
             id: this.id,
             documentId: this.documentId,
             name: this.name,
-            quantity: this.items.length,
-            price: this.averagePrice,
-            discount: this.discount,
-            subtotal: this.subtotal,
-            tax: this.tax,
-            total: this.total,
+
+            ... this.toPayload(),
+
             items: this.items,
-            //  product: this.product ?? this.first()?.product
         };
     }
 }

@@ -110,7 +110,7 @@ export function prepareForPut(obj, relations = []) {
     }
 
     const copy = {}
-    const skip = ['id', 'documentId', 'createdAt', 'updatedAt', 'publishedAt']
+    const skip = ['id', 'documentId', 'createdAt', 'updatedAt', 'publishedAt',"more"]
     //  const skip = ['id', 'documentId', 'createdAt', 'updatedAt', 'publishedAt']
 
     const mediaFields = ['logo', 'gallery', 'receipts'] // adjust to your schema

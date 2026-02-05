@@ -1009,6 +1009,7 @@ export interface ApiSaleItemSaleItem extends Struct.CollectionTypeSchema {
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     discount: Schema.Attribute.Decimal;
+    discount_percentage: Schema.Attribute.Decimal;
     items: Schema.Attribute.Relation<'oneToMany', 'api::stock-item.stock-item'>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
@@ -1021,6 +1022,7 @@ export interface ApiSaleItemSaleItem extends Struct.CollectionTypeSchema {
     publishedAt: Schema.Attribute.DateTime;
     quantity: Schema.Attribute.Integer;
     sale: Schema.Attribute.Relation<'manyToOne', 'api::sale.sale'>;
+    subtotal: Schema.Attribute.Decimal;
     tax: Schema.Attribute.Decimal;
     total: Schema.Attribute.Decimal;
     updatedAt: Schema.Attribute.DateTime;

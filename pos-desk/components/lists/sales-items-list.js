@@ -12,7 +12,7 @@ export default function SalesItemsList({
                     <th width="110">Unit Price</th>
                     <th width="70">Quantity</th>
                     <th width="90">Disc %</th>
-                    <th width="130">Item Total</th>
+                    <th width="130">Row Total</th>
                     <th width="140">Actions</th>
                 </tr>
             </thead>
@@ -80,8 +80,9 @@ export default function SalesItemsList({
                             <input
                                 type="number"
                                 className="form-control"
-                                value={item.discount}
+                                value={item.discount_percentage}
                                 min="0"
+                                max="100"
                                 //disabled={item.discount}
                                 onChange={e =>
                                     onUpdate(index, i =>
@@ -93,7 +94,7 @@ export default function SalesItemsList({
                         </td>
 
                         {/* TOTAL */}
-                        <td>{((item.subtotal ?? 0).toFixed(2))}</td>
+                        <td>{item.subtotal.toFixed(2)} / {item.dicountedSubtotal.toFixed(2)}</td>
 
                         {/* ACTIONS */}
                         <td className="d-flex gap-1">
