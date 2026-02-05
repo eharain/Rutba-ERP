@@ -228,9 +228,9 @@ export default class SaleApi {
 
             for (const stockItem of item.items) {
                 if (!stockItem) continue;
-
+                const status = paid ? { status: 'Sold' } : {}
                 const stockPayload = {
-                    ...(paid ? { status: 'Sold' } : {}),
+                    ...status,
                     sale_item: { connect: [saleItemId] }
                 };
 
@@ -240,13 +240,20 @@ export default class SaleApi {
                     };
                 }
 
+
+
                 if (stockItem.documentId) {
                     await authApi.put(
                         `/stock-items/${stockItem.documentId}`,
                         { data: stockPayload }
                     );
                 } else {
-                    const res = await authApi.post('/stock-items', { data: stockPayload });
+                    const res = await authApi.post('/stock-items', {
+                        data: {
+                            ...prepareForPut(stockItem),
+                            ...stockPayload
+                        }
+                    });
                     const created = res?.data ?? res;
                     stockItem.documentId = created.documentId ?? created.id;
                 }

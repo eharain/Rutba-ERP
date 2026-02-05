@@ -118,7 +118,7 @@ const SaleInvoice = ({ sale, items, totals}) => {
                         <tr key={index}>
                             <td className="col-qty text-center">{item.quantity}</td>
                             <td className="col-item text-start">
-                                {item.product?.name || 'Item'}
+                                {item?.items[0]?.name|| item.product?.name || 'Item'}
                             </td>
                             <td className="col-price text-end">
                                 {Math.round((item.price * item.quantity))}

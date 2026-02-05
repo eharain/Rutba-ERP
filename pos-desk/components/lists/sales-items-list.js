@@ -10,9 +10,9 @@ export default function SalesItemsList({
                 <tr>
                     <th>Item</th>
                     <th width="110">Unit Price</th>
-                    <th width="70">Qty</th>
+                    <th width="70">Quantity</th>
                     <th width="90">Disc %</th>
-                    <th width="130">Sub Total</th>
+                    <th width="130">Item Total</th>
                     <th width="140">Actions</th>
                 </tr>
             </thead>

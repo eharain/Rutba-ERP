@@ -113,9 +113,9 @@ export default class SaleItem {
 
         let change = { selling_price: price, offer_price: price * 0.75, cost_price: price * 0.5 }
 
-        console.log("before change ", price, change, JSON.stringify(this.first()))
+   //     console.log("before change ", price, change, JSON.stringify(this.first()))
         this.applyOnAll(change);
-        console.log("after change ", price, change, JSON.stringify(this.first()));
+     //   console.log("after change ", price, change, JSON.stringify(this.first()));
     }
 
     setDiscountPercent(percent) {
@@ -188,14 +188,22 @@ export default class SaleItem {
     }
 
     getSubtotal() {
-        const dp = this.items.reduce((sum, item) => {
-            let costPrice = ValidNumberOrDefault(item.cost_price, item.offer_price ?? (item.selling_price * .75));
-            return sum + applyDiscount(item.selling_price, costPrice, this.discount ?? 0);
-        }, 0)
+        // If items array length matches quantity, sum per-item (used for tracked stock items).
+        if (Array.isArray(this.items) && this.items.length === this.quantity && this.items.length > 0) {
+            const dp = this.items.reduce((sum, item) => {
+                let costPrice = ValidNumberOrDefault(item.cost_price, item.offer_price ?? (item.selling_price * .75));
+                return sum + applyDiscount(item.selling_price, costPrice, this.discount ?? 0);
+            }, 0)
+            return ValidNumberOrDefault(dp, 0);
+        }
 
-        let total = ValidNumberOrDefault(dp, 0);
-        //  console.log("sub total", this.items, dp, total)
-        return total
+        // Fallback: treat first item as representative unit and multiply by quantity (for non-dynamic or aggregated items)
+        const firstItem = this.first();
+        if (!firstItem) return 0;
+
+        const unitCostPrice = ValidNumberOrDefault(firstItem.cost_price, firstItem.offer_price ?? (firstItem.selling_price * .75));
+        const unitPrice = applyDiscount(firstItem.selling_price, unitCostPrice, this.discount ?? 0);
+        return ValidNumberOrDefault(unitPrice * (this.quantity || 1), 0);
     }
 
     get subtotal() {
