@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '../../components/Layout';
 import ProtectedRoute from '../../components/ProtectedRoute';
-import { authApi } from '../../lib/api';
+import { authApi, relationConnects } from '../../lib/api';
 import { saveProduct } from '../../lib/pos/save';
 
 export default function ProductVariantsPage() {
@@ -14,8 +14,10 @@ export default function ProductVariantsPage() {
     const [stockItems, setStockItems] = useState([]);
     const [loading, setLoading] = useState(false);
     const [selectedItems, setSelectedItems] = useState(new Set());
-
-    const [variantForm, setVariantForm] = useState({ name: '', sku: '', barcode: '', selling_price: 0, offer_price: 0, is_active: true });
+    const [termTypes, setTermTypes] = useState([]);
+    const [selectedTermTypeId, setSelectedTermTypeId] = useState('');
+    const [termForms, setTermForms] = useState({});
+    const [nameAffix, setNameAffix] = useState('suffix');
 
     useEffect(() => {
         if (documentId) {
@@ -23,10 +25,14 @@ export default function ProductVariantsPage() {
         }
     }, [documentId]);
 
+    useEffect(() => {
+        loadTermTypes();
+    }, []);
+
     async function loadProductDetails(id) {
         setLoading(true);
         try {
-            const res = await authApi.get(`/products/${id}`, { populate: { variants: true, items: true } });
+            const res = await authApi.get(`/products/${id}`, { populate: { variants: { populate: ['terms'] }, items: true, terms: true } });
             const prod = res.data || res;
             setSelectedProduct(prod);
             setVariants(prod.variants || []);
@@ -46,28 +52,96 @@ export default function ProductVariantsPage() {
         }
     }
 
-    function handleVariantFormChange(e) {
-        const { name, value, type, checked } = e.target;
-        setVariantForm(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+    async function loadTermTypes() {
+        try {
+            const res = await authApi.fetch('/term-types', {
+                filters: { is_variant: true },
+                populate: { terms: true },
+                pagination: { page: 1, pageSize: 500 },
+                sort: ['name:asc']
+            });
+            const types = res?.data ?? res;
+            setTermTypes(types || []);
+        } catch (err) {
+            console.error('Failed to load term types', err);
+        }
     }
 
-    async function handleCreateVariant(e) {
-        e.preventDefault();
+    function buildVariantName(termName) {
+        if (!termName) return selectedProduct?.name || '';
+        if (!selectedProduct?.name) return termName;
+        return nameAffix === 'prefix'
+            ? `${termName} - ${selectedProduct.name}`
+            : `${selectedProduct.name} - ${termName}`;
+    }
+
+    function getDefaultVariantForm() {
+        return {
+            sku: selectedProduct?.sku || '',
+            barcode: selectedProduct?.barcode || '',
+            selling_price: selectedProduct?.selling_price ?? 0,
+            offer_price: selectedProduct?.offer_price ?? 0,
+            is_active: selectedProduct?.is_active ?? true,
+            move_count: 0
+        };
+    }
+
+    function getTermForm(termId) {
+        return termForms[termId] || getDefaultVariantForm();
+    }
+
+    function updateTermForm(termId, field, value) {
+        setTermForms(prev => ({
+            ...prev,
+            [termId]: {
+                ...getTermForm(termId),
+                [field]: value
+            }
+        }));
+    }
+
+    async function handleCreateVariant(term) {
         if (!selectedProduct) return alert('Missing product');
+        const selectedTermType = termTypes.find(t => (t.documentId || t.id) === selectedTermTypeId);
+        if (!selectedTermType) return alert('Choose a term type');
+        if (!term) return alert('Choose a term');
+        const hasTermVariant = variants.some(v => (v.terms || []).some(t => (t.documentId || t.id) === (term.documentId || term.id)));
+        if (hasTermVariant) return alert('Variant already exists for this term');
+        const formValues = getTermForm(term.documentId || term.id);
         try {
+            setLoading(true);
             const parentDocumentId = selectedProduct.documentId || selectedProduct.id;
+            const name = buildVariantName(term.name);
             const payload = {
-                ...variantForm,
+                sku: formValues.sku,
+                barcode: formValues.barcode,
+                selling_price: formValues.selling_price,
+                offer_price: formValues.offer_price,
+                is_active: formValues.is_active,
+                name,
                 parent: parentDocumentId,
-                is_variant: true
+                is_variant: true,
+                ...relationConnects({ terms: [term] })
             };
-            await saveProduct('new', payload);
+            const response = await saveProduct('new', payload);
+            const createdVariant = response?.data?.data ?? response?.data ?? response;
+            const createdVariantId = createdVariant?.documentId || createdVariant?.id;
+            const createdVariantName = createdVariant?.name || name;
+            if (formValues.move_count > 0 && createdVariantId) {
+                const itemsToMove = stockItems.slice(0, Math.min(formValues.move_count, stockItems.length));
+                await Promise.all(itemsToMove.map(item => {
+                    const itemId = item.documentId || item.id;
+                    return authApi.put(`/stock-items/${itemId}`, { data: { product: createdVariantId, name: createdVariantName } });
+                }));
+            }
             await loadProductDetails(parentDocumentId);
-            setVariantForm({ name: '', sku: '', barcode: '', selling_price: 0, offer_price: 0, is_active: true });
+            setTermForms(prev => ({ ...prev, [term.documentId || term.id]: getDefaultVariantForm() }));
             alert('Variant created');
         } catch (err) {
             console.error('Failed to create variant', err);
             alert('Failed to create variant');
+        } finally {
+            setLoading(false);
         }
     }
 
@@ -111,8 +185,10 @@ export default function ProductVariantsPage() {
                 <div style={{ padding: 10 }}>
                     <h1>Variants for: {selectedProduct?.name}</h1>
 
+                    {loading && <div className="alert alert-info">Loading...</div>}
+
                     <div className="row">
-                        <div className="col-md-6">
+                        <div className="col-12">
                             <div className="card mb-3">
                                 <div className="card-body">
                                     <h5>Variants</h5>
@@ -127,31 +203,144 @@ export default function ProductVariantsPage() {
                                         ))}
                                         {variants.length === 0 && <li className="list-group-item">No variants yet</li>}
                                     </ul>
-
-                                    <form onSubmit={handleCreateVariant}>
-                                        <div className="mb-2">
-                                            <input name="name" value={variantForm.name} onChange={handleVariantFormChange} className="form-control" placeholder="Variant name (eg. Red / Size L)" required />
-                                        </div>
-                                        <div className="mb-2 d-flex gap-2">
-                                            <input name="sku" value={variantForm.sku} onChange={handleVariantFormChange} className="form-control" placeholder="SKU" />
-                                            <input name="barcode" value={variantForm.barcode} onChange={handleVariantFormChange} className="form-control" placeholder="Barcode" />
-                                        </div>
-                                        <div className="mb-2 d-flex gap-2">
-                                            <input name="selling_price" type="number" step="0.01" value={variantForm.selling_price} onChange={handleVariantFormChange} className="form-control" placeholder="Selling price" />
-                                            <input name="offer_price" type="number" step="0.01" value={variantForm.offer_price} onChange={handleVariantFormChange} className="form-control" placeholder="Offer price" />
-                                        </div>
-                                        <div className="mb-2 d-flex gap-2 align-items-center">
-                                            <input name="is_active" type="checkbox" checked={variantForm.is_active} onChange={handleVariantFormChange} /> <label className="small mb-0 ms-2">Active</label>
-                                        </div>
-                                        <div className="d-flex gap-2">
-                                            <button className="btn btn-primary" type="submit">Create Variant</button>
-                                        </div>
-                                    </form>
+                                    <div className="mb-3">
+                                        <select
+                                            className="form-select"
+                                            value={selectedTermTypeId}
+                                            onChange={(e) => setSelectedTermTypeId(e.target.value)}
+                                            required
+                                        >
+                                            <option value="">Choose term type</option>
+                                            {termTypes.map(tt => (
+                                                <option key={tt.documentId || tt.id} value={tt.documentId || tt.id}>{tt.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="mb-3">
+                                        <select
+                                            className="form-select"
+                                            value={nameAffix}
+                                            onChange={(e) => setNameAffix(e.target.value)}
+                                        >
+                                            <option value="suffix">Append term to parent name</option>
+                                            <option value="prefix">Prepend term to parent name</option>
+                                        </select>
+                                    </div>
+                                    <div className="table-responsive">
+                                        <table className="table table-sm align-middle">
+                                            <thead>
+                                                <tr>
+                                                    <th>Term</th>
+                                                    <th>Variant Name</th>
+                                                    <th>SKU</th>
+                                                    <th>Barcode</th>
+                                                    <th>Selling</th>
+                                                    <th>Offer</th>
+                                                    <th>Move</th>
+                                                    <th>Active</th>
+                                                    <th></th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {(termTypes.find(tt => (tt.documentId || tt.id) === selectedTermTypeId)?.terms || []).map(term => {
+                                                    const termId = term.documentId || term.id;
+                                                    const formValues = getTermForm(termId);
+                                                    return (
+                                                        <tr key={termId}>
+                                                            <td>{term.name}</td>
+                                                            <td>
+                                                                <input
+                                                                    value={buildVariantName(term.name)}
+                                                                    className="form-control form-control-sm"
+                                                                    readOnly
+                                                                />
+                                                            </td>
+                                                            <td>
+                                                                <input
+                                                                    value={formValues.sku}
+                                                                    onChange={(e) => updateTermForm(termId, 'sku', e.target.value)}
+                                                                    className="form-control form-control-sm"
+                                                                    placeholder="SKU"
+                                                                />
+                                                            </td>
+                                                            <td>
+                                                                <input
+                                                                    value={formValues.barcode}
+                                                                    onChange={(e) => updateTermForm(termId, 'barcode', e.target.value)}
+                                                                    className="form-control form-control-sm"
+                                                                    placeholder="Barcode"
+                                                                />
+                                                            </td>
+                                                            <td>
+                                                                <input
+                                                                    type="number"
+                                                                    step="0.01"
+                                                                    value={formValues.selling_price}
+                                                                    onChange={(e) => updateTermForm(termId, 'selling_price', e.target.value)}
+                                                                    className="form-control form-control-sm"
+                                                                    placeholder="Selling"
+                                                                />
+                                                            </td>
+                                                            <td>
+                                                                <input
+                                                                    type="number"
+                                                                    step="0.01"
+                                                                    value={formValues.offer_price}
+                                                                    onChange={(e) => updateTermForm(termId, 'offer_price', e.target.value)}
+                                                                    className="form-control form-control-sm"
+                                                                    placeholder="Offer"
+                                                                />
+                                                            </td>
+                                                            <td>
+                                                                <input
+                                                                    type="number"
+                                                                    min="0"
+                                                                    max={stockItems.length}
+                                                                    value={formValues.move_count}
+                                                                    onChange={(e) => updateTermForm(termId, 'move_count', Number(e.target.value))}
+                                                                    className="form-control form-control-sm"
+                                                                    placeholder="Count"
+                                                                />
+                                                            </td>
+                                                            <td>
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={formValues.is_active}
+                                                                    onChange={(e) => updateTermForm(termId, 'is_active', e.target.checked)}
+                                                                />
+                                                            </td>
+                                                            <td>
+                                                                <button
+                                                                    className="btn btn-sm btn-primary"
+                                                                    type="button"
+                                                                    onClick={() => handleCreateVariant(term)}
+                                                                >
+                                                                    Create
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                                {selectedTermTypeId && (termTypes.find(tt => (tt.documentId || tt.id) === selectedTermTypeId)?.terms || []).length === 0 && (
+                                                    <tr>
+                                                        <td colSpan="9" className="text-muted">No terms for this term type</td>
+                                                    </tr>
+                                                )}
+                                                {!selectedTermTypeId && (
+                                                    <tr>
+                                                        <td colSpan="9" className="text-muted">Choose a term type to see terms</td>
+                                                    </tr>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </div>
                             </div>
                         </div>
+                    </div>
 
-                        <div className="col-md-6">
+                    <div className="row">
+                        <div className="col-12">
                             <div className="card mb-3">
                                 <div className="card-body">
                                     <h5>Parent Stock Items</h5>
