@@ -159,26 +159,30 @@ const SaleInvoice = ({ sale, items, totals}) => {
                             <td className="text-start">Total:</td>
                             <td className="text-end">{currency}{safeTotals.total.toFixed(2)}</td>
                         </tr>
-                        <tr>
-                            <td className="text-start">Paid:</td>
-                            <td className="text-end">{currency}{paid.toFixed(2)}</td>
-                        </tr>
-                        {payments.length > 0 && (
-                            <tr>
-                                <td className="text-start">Payments:</td>
-                                <td className="text-end small">
-                                    {payments.map((p, i) => (
-                                        <div key={i} style={{ textAlign: 'right' }}>
-                                            {p.payment_method || 'Payment'} {p.transaction_no ? `(${p.transaction_no})` : ''}: {currency}{Number(p.amount || 0).toFixed(2)}{p.change ? ` (Change: ${currency}${Number(p.change).toFixed(2)})` : ''}
-                                        </div>
-                                    ))}
-                                </td>
-                            </tr>
+                        {isPaid && (
+                            <>
+                                <tr>
+                                    <td className="text-start">Paid:</td>
+                                    <td className="text-end">{currency}{paid.toFixed(2)}</td>
+                                </tr>
+                                {payments.length > 0 && (
+                                    <tr>
+                                        <td className="text-start">Payments:</td>
+                                        <td className="text-end small">
+                                            {payments.map((p, i) => (
+                                                <div key={i} style={{ textAlign: 'right' }}>
+                                                    {p.payment_method || 'Payment'} {p.transaction_no ? `(${p.transaction_no})` : ''}: {currency}{Number(p.amount || 0).toFixed(2)}{p.change ? ` (Change: ${currency}${Number(p.change).toFixed(2)})` : ''}
+                                                </div>
+                                            ))}
+                                        </td>
+                                    </tr>
+                                )}
+                                <tr>
+                                    <td className="text-start">Change:</td>
+                                    <td className="text-end">{currency}{changeGiven.toFixed(2)}</td>
+                                </tr>
+                            </>
                         )}
-                        <tr>
-                            <td className="text-start">Change:</td>
-                            <td className="text-end">{currency}{changeGiven.toFixed(2)}</td>
-                        </tr>
                     </tbody>
                 </table>
             </div>
