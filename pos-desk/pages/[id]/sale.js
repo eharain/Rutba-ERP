@@ -122,6 +122,9 @@ export default function SalePage() {
             JSON.stringify({
                 sale: {
                     customer: saleModel.customer,
+                    invoice_no: saleModel.invoice_no,
+                    sale_date: saleModel.sale_date,
+                    payment_status: saleModel.payment_status,
                     totals: {
                         subtotal: saleModel.subtotal,
                         discount: saleModel.discountTotal,
@@ -134,7 +137,8 @@ export default function SalePage() {
             })
         );
 
-        window.open(`/print-invoice?key=${storageKey}&saleId=${id}`, '_blank', 'width=1000,height=800');
+        const saleIdParam = id && id !== 'new' ? `&saleId=${id}` : '';
+        window.open(`/print-invoice?key=${storageKey}${saleIdParam}`, '_blank', 'width=1000,height=800');
     };
 
     if (!saleModel) {
@@ -274,13 +278,14 @@ function SaleButtons({ handlePrint, handleSave, saleModel, setShowCheckout }) {
                 Save
                 {/* {saleModel.isPaid ? 'Save' : 'Saved'}*/}
             </button>
-
-            <button
-                className="btn btn-success"
-                onClick={() => setShowCheckout(true)}
-                disabled={itemsCount === 0 || saleModel.isPaid}
-            >
-                {saleModel.isPaid ? 'Paid' : 'Checkout'}
-            </button>
+            <PermissionCheck has="api::payment.payment.create">
+                <button
+                    className="btn btn-success"
+                    onClick={() => setShowCheckout(true)}
+                    disabled={itemsCount === 0 || saleModel.isPaid}
+                >
+                    {saleModel.isPaid ? 'Paid' : 'Checkout'}
+                </button>
+            </PermissionCheck>
         </div>)
 }

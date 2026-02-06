@@ -25,6 +25,9 @@ const SaleInvoice = ({ sale, items, totals}) => {
         ? payments.reduce((s, p) => s + (Number(p.amount) || 0), 0)
         : (Number(sale?.paid) || (sale?.payment_status === 'Paid' ? safeTotals.total : 0));
 
+    const isPaid = sale?.payment_status === 'Paid' || (safeTotals.total > 0 && paid >= safeTotals.total);
+    const statusLabel = isPaid ? null : 'DRAFT / ESTIMATE';
+
     const changeGiven = payments.length > 0
         ? payments.reduce((s, p) => s + (Number(p.change) || 0), 0)
         : Math.max(0, paid - safeTotals.total);
@@ -90,6 +93,11 @@ const SaleInvoice = ({ sale, items, totals}) => {
                     {saleDate}<br />
                     User: {userName}
                 </div>
+                {statusLabel && (
+                    <div className="text-uppercase fw-bold text-danger small mt-1">
+                        {statusLabel}
+                    </div>
+                )}
 
                 {showCustomer && (
                     <div className="customer-contact small mt-2" style={{ lineHeight: 1.2 }}>
