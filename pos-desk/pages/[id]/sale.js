@@ -82,29 +82,36 @@ export default function SalePage() {
     =============================== */
 
     const handleCheckoutComplete = async (payment) => {
+        saleModel.addPayment(payment);
+        setLoading(true);
+        await doSave({ paid: true });
+        setShowCheckout(false);
+    };
+
+    const doSave = async (param) => {
         setLoading(true);
         try {
-            saleModel.addPayment(payment);
             setPaid(saleModel.isPaid);
 
-            await SaleApi.checkout(saleModel);
-
+            await SaleApi.saveSale(saleModel,param);
             // alert('Sale completed successfully');
-            setShowCheckout(false);
-
             await loadSale();
         } catch (err) {
-            console.error('Checkout failed', err);
-            alert('Checkout failed');
+            console.error('Save failed', err);
+            alert('Save failed');
         } finally {
             setLoading(false);
         }
+
     };
 
     /* ===============================
        Print
     =============================== */
 
+    const handleSave = async () => {
+        await doSave({ paid : false });
+    }
     const handlePrint = () => {
         if (saleModel.items.length === 0) return;
 
@@ -127,11 +134,7 @@ export default function SalePage() {
             })
         );
 
-        window.open(
-            `/print-invoice?key=${storageKey}&saleId=${id}`,
-            '_blank',
-            'width=1000,height=800'
-        );
+        window.open(`/print-invoice?key=${storageKey}&saleId=${id}`, '_blank', 'width=1000,height=800');
     };
 
     if (!saleModel) {
@@ -148,79 +151,58 @@ export default function SalePage() {
         <Layout>
             <ProtectedRoute>
                 <PermissionCheck required="api::sale.sale.find">
-                    <div style={{ padding: 8 }}>
+                    <div className="container">
 
-                        {/* Main area: left - items, right - customer/totals/actions */}
-                        <div className="row">
-                            <div className="col-md-8">
-                                <div className="d-flex justify-content-between align-items-start mb-2">
-                                    <div>
-                                        <h3 className="mb-0" style={{ minHeight: '50px' }}>Invoice #{saleModel.invoice_no} {saleModel.isPaid && <span className="badge bg-success ms-2">Paid</span>}</h3>
-                                    </div>
-                                    {/*<div className="d-flex gap-2">*/}
-                                    {/*    <button*/}
-                                    {/*        className="btn btn-secondary"*/}
-                                    {/*        onClick={handlePrint}*/}
-                                    {/*        disabled={saleModel.items.length === 0}*/}
-                                    {/*    >*/}
-                                    {/*        Print*/}
-                                    {/*    </button>*/}
-                                    {/*    <button*/}
-                                    {/*        className="btn btn-success"*/}
-                                    {/*        onClick={() => setShowCheckout(true)}*/}
-                                    {/*        disabled={saleModel.items.length === 0 || saleModel.isPaid}*/}
-                                    {/*    >*/}
-                                    {/*        {saleModel.isPaid ? 'Paid' : 'Checkout'}*/}
-                                    {/*    </button>*/}
-                                    {/*</div>*/}
+                        <div className="row w-100">
+
+                            <div className="col-5 mb-2">
+                                <div>
+                                    <h3 className="mb-0" style={{ minHeight: '50px' }}>Invoice #{saleModel.invoice_no} {saleModel.isPaid && <span className="badge bg-success ms-2">Paid</span>}</h3>
                                 </div>
+                            </div>
 
-                                {/* Add Items */}
-                                <SalesItemsForm
+                            <div className="col-7 mb-2 ">
+                                <CustomerSelect
+                                    value={saleModel.customer}
+                                    onChange={handleCustomerChange}
                                     disabled={saleModel.isPaid}
-                                    onAddItem={(stockItem) => {
-                                        saleModel.addStockItem(stockItem);
-                                        forceUpdate();
-                                    }}
-                                    onAddNonStock={(data) => {
-                                        saleModel.addNonStockItem(data);
-                                        forceUpdate();
-                                    }}
-                                />
-
-                                {/* Items List */}
-                                <SalesItemsList
-                                    items={saleModel.items}
-                                    disabled={saleModel.isPaid}
-                                    onUpdate={(index, updater) => {
-                                        saleModel.updateItem(index, updater);
-                                        forceUpdate();
-                                    }}
-                                    onRemove={(index) => {
-                                        saleModel.removeItem(index);
-                                        forceUpdate();
-                                    }}
                                 />
                             </div>
 
-                            <div className="col-md-4">
-                                {/*<div className="mb-2 text-end">*/}
-                                {/*    <h5 className="mb-0">Total: {currency}{saleModel.total.toFixed(2)}</h5>*/}
-                                {/*    <small className="text-muted">Invoice: {saleModel.invoice_no || 'N/A'}</small>*/}
-                                {/*</div>*/}
 
-                                {/* Customer select moved here */}
-                                <div className="mb-3">
-                                    <CustomerSelect
-                                        value={saleModel.customer}
-                                        onChange={handleCustomerChange}
-                                        disabled={saleModel.isPaid}
-                                    />
-                                </div>
+                        </div>
+                        {/* Add Items */}
+                        <SalesItemsForm
+                            disabled={saleModel.isPaid}
+                            onAddItem={(stockItem) => {
+                                saleModel.addStockItem(stockItem);
+                                forceUpdate();
+                            }}
+                            onAddNonStock={(data) => {
+                                saleModel.addNonStockItem(data);
+                                forceUpdate();
+                            }}
+                        />
 
+                        {/* Items List */}
+                        <SalesItemsList
+                            items={saleModel.items}
+                            disabled={saleModel.isPaid}
+                            onUpdate={(index, updater) => {
+                                saleModel.updateItem(index, updater);
+                                forceUpdate();
+                            }}
+                            onRemove={(index) => {
+                                saleModel.removeItem(index);
+                                forceUpdate();
+                            }}
+                        />
+
+                        <div className="row g-2 mt-2">
+                            <div className="col-lg-4 ms-lg-auto">
                                 {/* Totals summary */}
                                 {saleModel.items.length > 0 && (
-                                    <div className="mt-2 p-3 bg-dark text-white rounded">
+                                    <div className="p-3 bg-dark text-white rounded">
                                         <div className="d-flex justify-content-between">
                                             <span>Subtotal</span>
                                             <span>{currency}{saleModel.subtotal.toFixed(2)}</span>
@@ -231,7 +213,7 @@ export default function SalePage() {
                                             <span>-{currency}{saleModel.discountTotal.toFixed(2)}</span>
                                         </div>
                                         {saleModel.tax > 0 && (
-                                            <div className="d-flex justify-content-between" >
+                                            <div className="d-flex justify-content-between">
                                                 <span>Tax</span>
                                                 <span>{currency}{saleModel.tax.toFixed(2)}</span>
                                             </div>
@@ -244,27 +226,14 @@ export default function SalePage() {
                                         </div>
                                     </div>
                                 )}
+                            </div>
 
-                                {/* Actions in right column */}
-                                <div className="mt-3 d-grid gap-2">
-                                    <button
-                                        className="btn btn-secondary"
-                                        onClick={handlePrint}
-                                        disabled={saleModel.items.length === 0}
-                                    >
-                                        Print
-                                    </button>
-                                    <button
-                                        className="btn btn-success"
-                                        onClick={() => setShowCheckout(true)}
-                                        disabled={saleModel.items.length === 0 || saleModel.isPaid}
-                                    >
-                                        {saleModel.isPaid ? 'Paid' : 'Checkout'}
-                                    </button>
-                                </div>
+                        </div>
+                        <div className="row g-2 mt-2">
+                            <div className="col-lg-4 ms-lg-auto">
+                                <SaleButtons saleModel={saleModel} handlePrint={handlePrint} handleSave={handleSave} setShowCheckout={setShowCheckout}></SaleButtons>
                             </div>
                         </div>
-
                         {/* Checkout Modal */}
                         <CheckoutModal
                             isOpen={showCheckout && !saleModel.isPaid}
@@ -278,4 +247,40 @@ export default function SalePage() {
             </ProtectedRoute>
         </Layout>
     );
+
+
+
+
+}
+
+
+
+function SaleButtons({ handlePrint, handleSave, saleModel, setShowCheckout }) {
+    const itemsCount = saleModel.items.length;
+    return (
+        <div className="d-grid gap-2">
+            <button
+                className="btn btn-secondary"
+                onClick={handlePrint}
+                disabled={itemsCount === 0}
+            >
+                Print
+            </button>
+            <button
+                className="btn btn-success"
+                onClick={() => handleSave(true)}
+                disabled={itemsCount === 0 || saleModel.isPaid}
+            >
+                Save
+                {/* {saleModel.isPaid ? 'Save' : 'Saved'}*/}
+            </button>
+
+            <button
+                className="btn btn-success"
+                onClick={() => setShowCheckout(true)}
+                disabled={itemsCount === 0 || saleModel.isPaid}
+            >
+                {saleModel.isPaid ? 'Paid' : 'Checkout'}
+            </button>
+        </div>)
 }
