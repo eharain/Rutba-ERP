@@ -8,6 +8,7 @@ import './layout.css';
 import './links.css';
 
 import styles from "./page.module.css";
+import BootstrapClient from "./BootstrapClient";
 
 
 const geistSans = Geist({
@@ -31,6 +32,7 @@ export default function RootLayout({ children }) {
     return (
         <html lang="en">
             <body className={`${geistSans.variable} ${geistMono.variable}  h-100`}> 
+                <BootstrapClient />
                 <AuthProvider>
                     <CartProvider>
                         <UtilProvider>

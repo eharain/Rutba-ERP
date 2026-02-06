@@ -1,4 +1,5 @@
 // pages/_app.js
+import { useEffect } from "react";
 import { AuthProvider } from "../context/AuthContext";
 import { CartProvider } from "../context/CartContext";
 import { UtilProvider } from "../context/UtilContext";
@@ -21,6 +22,10 @@ const geistMono = Geist_Mono({
 });
 
 export default function App({ Component, pageProps }) {
+    useEffect(() => {
+        import("bootstrap/dist/js/bootstrap.bundle.min.js");
+    }, []);
+
     return (
         <div className={`${geistSans.variable} ${geistMono.variable} h-100`}>
             <AuthProvider>

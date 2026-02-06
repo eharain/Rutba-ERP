@@ -21,14 +21,28 @@ export default function Navigation() {
             </button>
             <div className="collapse navbar-collapse" id="mainNav">
                 <ul className="navbar-nav me-auto mb-2 mb-lg-0">
-                    <li className="nav-item"><Link className="nav-link" href="/products">Products</Link></li>
-                    <li className="nav-item"><Link className="nav-link" href="/purchases">Purchases</Link></li>
-                    <li className="nav-item"><Link className="nav-link" href="/sales">Sales</Link></li>
-                    <li className="nav-item"><Link className="nav-link" href="/stock-items">Stock Items</Link></li>
-                    <li className="nav-item"><Link className="nav-link" href="/term-types">Term Types</Link></li>
-                    <li className="nav-item"><Link className="nav-link" href="/sale-returns">Sale Returns</Link></li>
-                    <li className="nav-item"><Link className="nav-link" href="/purchase-returns">Purchase Returns</Link></li>
-                    <li className="nav-item"><Link className="nav-link" href="/reports">Reports</Link></li>
+                    <li className="nav-item dropdown">
+                        <a className="nav-link dropdown-toggle" href="#" id="stocksMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            Stocks
+                        </a>
+                        <ul className="dropdown-menu" aria-labelledby="stocksMenu">
+                            <li><Link className="dropdown-item" href="/products">Products</Link></li>
+                            <li><Link className="dropdown-item" href="/stock-items">Stock Items</Link></li>
+                            <li><Link className="dropdown-item" href="/purchases">Purchases</Link></li>
+                            <li><Link className="dropdown-item" href="/purchase-returns">Purchase Returns</Link></li>
+                            <li><Link className="dropdown-item" href="/term-types">Term Types</Link></li>
+                        </ul>
+                    </li>
+                    <li className="nav-item dropdown">
+                        <a className="nav-link dropdown-toggle" href="#" id="salesMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            Sales
+                        </a>
+                        <ul className="dropdown-menu" aria-labelledby="salesMenu">
+                            <li><Link className="dropdown-item" href="/sales">Sales</Link></li>
+                            <li><Link className="dropdown-item" href="/sale-returns">Sale Returns</Link></li>
+                            <li><Link className="dropdown-item" href="/reports">Reports</Link></li>
+                        </ul>
+                    </li>
                 </ul>
 
                 <div className="d-flex align-items-center">

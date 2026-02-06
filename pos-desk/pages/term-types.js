@@ -177,11 +177,22 @@ export default function TermTypesPage() {
 
     async function handleCreateTermType(e) {
         e.preventDefault();
+        const slugValue = termTypeForm.slug?.trim();
+        if (slugValue) {
+            const slugConflict = termTypes.find((type) => {
+                const id = getEntryId(type);
+                return type.slug === slugValue && id !== selectedTermTypeId;
+            });
+            if (slugConflict) {
+                alert("Slug must be unique. Please choose a different slug.");
+                return;
+            }
+        }
         setLoading(true);
         try {
             const payload = {
                 name: termTypeForm.name,
-                slug: termTypeForm.slug || undefined,
+                slug: slugValue || undefined,
                 is_variant: termTypeForm.is_variant,
                 is_public: termTypeForm.is_public
             };
