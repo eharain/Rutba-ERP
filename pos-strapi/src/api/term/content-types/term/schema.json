@@ -15,8 +15,9 @@
       "type": "string"
     },
     "slug": {
-      "type": "string",
-      "unique": true
+      "type": "uid",
+      "targetField": "name",
+      "required": true
     },
     "term_types": {
       "type": "relation",

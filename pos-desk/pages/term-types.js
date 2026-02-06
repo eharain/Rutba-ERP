@@ -8,6 +8,7 @@ export default function TermTypesPage() {
     const [terms, setTerms] = useState([]);
     const [loading, setLoading] = useState(false);
     const [selectedTermTypeId, setSelectedTermTypeId] = useState("");
+    const [isEditingTermType, setIsEditingTermType] = useState(false);
     const [termTypeForm, setTermTypeForm] = useState({
         name: "",
         slug: "",
@@ -15,10 +16,12 @@ export default function TermTypesPage() {
         is_public: true
     });
     const [termForm, setTermForm] = useState({ name: "", slug: "" });
-    const [selectedTermId, setSelectedTermId] = useState("");
     const [termSearch, setTermSearch] = useState("");
+    const [termSearchResults, setTermSearchResults] = useState([]);
+    const [isTermSearchLoading, setIsTermSearchLoading] = useState(false);
     const [mergeSearch, setMergeSearch] = useState("");
     const [mergeSelection, setMergeSelection] = useState(new Set());
+    const [isMergeOpen, setIsMergeOpen] = useState(false);
 
     useEffect(() => {
         loadData();
@@ -26,6 +29,48 @@ export default function TermTypesPage() {
 
     function getEntryId(entry) {
         return entry?.documentId || entry?.id;
+    }
+
+    useEffect(() => {
+        const searchValue = termSearch.trim();
+        if (!searchValue) {
+            setTermSearchResults([]);
+            return;
+        }
+
+        let isActive = true;
+        const timer = setTimeout(async () => {
+            setIsTermSearchLoading(true);
+            try {
+                const res = await authApi.fetch("/terms", {
+                    sort: ["name:asc"],
+                    filters: { name: { $containsi: searchValue } }
+                });
+                const data = res?.data ?? res;
+                if (isActive) {
+                    setTermSearchResults(data || []);
+                }
+            } catch (error) {
+                console.error("Failed to search terms", error);
+                if (isActive) {
+                    setTermSearchResults([]);
+                }
+            } finally {
+                if (isActive) {
+                    setIsTermSearchLoading(false);
+                }
+            }
+        }, 300);
+
+        return () => {
+            isActive = false;
+            clearTimeout(timer);
+        };
+    }, [termSearch]);
+
+    function getEntryKey(entry) {
+        const id = getEntryId(entry);
+        return id ? String(id) : "";
     }
 
     async function loadData() {
@@ -43,6 +88,10 @@ export default function TermTypesPage() {
             const existing = termTypesData?.find((type) => getEntryId(type) === selectedTermTypeId);
             if (!existing) {
                 setSelectedTermTypeId(getEntryId(termTypesData?.[0]) || "");
+            }
+            if (isEditingTermType && !existing) {
+                setIsEditingTermType(false);
+                setTermTypeForm({ name: "", slug: "", is_variant: false, is_public: true });
             }
         } catch (error) {
             console.error("Failed to load term types or terms", error);
@@ -74,6 +123,7 @@ export default function TermTypesPage() {
             );
 
             setMergeSelection(new Set());
+            setIsMergeOpen(false);
             await loadData();
         } catch (error) {
             console.error("Failed to merge term types", error);
@@ -81,6 +131,22 @@ export default function TermTypesPage() {
         } finally {
             setLoading(false);
         }
+    }
+
+    function openMergeDialog() {
+        if (!selectedTermTypeId) {
+            alert("Select a target term type first");
+            return;
+        }
+        setMergeSearch("");
+        setMergeSelection(new Set());
+        setIsMergeOpen(true);
+    }
+
+    function closeMergeDialog() {
+        setIsMergeOpen(false);
+        setMergeSearch("");
+        setMergeSelection(new Set());
     }
 
     function handleTermTypeChange(e) {
@@ -96,6 +162,19 @@ export default function TermTypesPage() {
         setTermForm((prev) => ({ ...prev, [name]: value }));
     }
 
+    function handleEditTermType() {
+        if (!selectedTermTypeId) return alert("Select a term type first");
+        const selected = termTypes.find((type) => getEntryId(type) === selectedTermTypeId);
+        if (!selected) return;
+        setTermTypeForm({
+            name: selected.name || "",
+            slug: selected.slug || "",
+            is_variant: !!selected.is_variant,
+            is_public: selected.is_public ?? true
+        });
+        setIsEditingTermType(true);
+    }
+
     async function handleCreateTermType(e) {
         e.preventDefault();
         setLoading(true);
@@ -106,11 +185,16 @@ export default function TermTypesPage() {
                 is_variant: termTypeForm.is_variant,
                 is_public: termTypeForm.is_public
             };
-            const res = await authApi.post("/term-types", { data: payload });
-            const created = res?.data ?? res;
+            if (isEditingTermType && selectedTermTypeId) {
+                await authApi.put(`/term-types/${selectedTermTypeId}`, { data: payload });
+            } else {
+                const res = await authApi.post("/term-types", { data: payload });
+                const created = res?.data ?? res;
+                setSelectedTermTypeId(getEntryId(created));
+            }
+            setIsEditingTermType(false);
             setTermTypeForm({ name: "", slug: "", is_variant: false, is_public: true });
             await loadData();
-            setSelectedTermTypeId(getEntryId(created));
         } catch (error) {
             console.error("Failed to create term type", error);
             alert("Failed to create term type");
@@ -140,15 +224,14 @@ export default function TermTypesPage() {
         }
     }
 
-    async function handleAddExistingTerm() {
+    async function handleAddExistingTerm(termId) {
         if (!selectedTermTypeId) return alert("Select a term type first");
-        if (!selectedTermId) return alert("Select a term to add");
+        if (!termId) return alert("Select a term to add");
         setLoading(true);
         try {
             await authApi.put(`/term-types/${selectedTermTypeId}`, {
-                data: { terms: { connect: [selectedTermId] } }
+                data: { terms: { connect: [termId] } }
             });
-            setSelectedTermId("");
             await loadData();
         } catch (error) {
             console.error("Failed to add term", error);
@@ -177,13 +260,11 @@ export default function TermTypesPage() {
     const selectedTermType = termTypes.find((type) => getEntryId(type) === selectedTermTypeId);
     const assignedTerms = selectedTermType?.terms || [];
     const assignedIds = useMemo(
-        () => new Set(assignedTerms.map((term) => getEntryId(term))),
+        () => new Set(assignedTerms.map((term) => getEntryKey(term))),
         [assignedTerms]
     );
-    const availableTerms = terms.filter((term) => !assignedIds.has(getEntryId(term)));
-    const filteredTerms = availableTerms.filter((term) =>
-        (term?.name || "").toLowerCase().includes(termSearch.trim().toLowerCase())
-    );
+    const termListSource = termSearch.trim() ? termSearchResults : terms;
+    const availableTerms = termListSource.filter((term) => !assignedIds.has(getEntryKey(term)));
     const mergeCandidates = termTypes.filter((type) => getEntryId(type) !== selectedTermTypeId);
     const filteredMergeCandidates = mergeCandidates.filter((type) =>
         (type?.name || "").toLowerCase().includes(mergeSearch.trim().toLowerCase())
@@ -196,10 +277,102 @@ export default function TermTypesPage() {
                     <h1>Term Types</h1>
                     {loading && <div className="text-muted mb-2">Loading...</div>}
                     <div className="row">
-                        <div className="col-lg-5">
+                        <div className="col-lg-8">
                             <div className="card mb-3">
                                 <div className="card-body">
-                                    <h5 className="card-title">Create Term Type</h5>
+                                    <div className="d-flex flex-wrap justify-content-between align-items-center mb-2">
+                                        <h5 className="card-title mb-0">Term Types</h5>
+                                        <div className="d-flex gap-2">
+                                            <button
+                                                type="button"
+                                                className="btn btn-outline-primary"
+                                                onClick={handleEditTermType}
+                                                disabled={!selectedTermTypeId}
+                                            >
+                                                Edit {selectedTermType?.name || "term type"}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className="btn btn-outline-danger"
+                                                onClick={openMergeDialog}
+                                            >
+                                                Merge {selectedTermType?.name ? `into ${selectedTermType.name}` : "term types"}
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div className="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-2">
+                                        {termTypes.map((type) => {
+                                            const id = getEntryId(type);
+                                            const isActive = id === selectedTermTypeId;
+                                            return (
+                                                <div key={id} className="col">
+                                                    <button
+                                                        type="button"
+                                                        className={`list-group-item list-group-item-action d-flex justify-content-between align-items-center w-100 ${
+                                                            isActive ? "active" : ""
+                                                        }`}
+                                                        style={{ cursor: "pointer" }}
+                                                        onClick={() => setSelectedTermTypeId(id)}
+                                                    >
+                                                        <span>{type.name}</span>
+                                                        <span className={`badge ${isActive ? "bg-light text-dark" : "bg-secondary"}`}>
+                                                            {type.terms?.length || 0}
+                                                        </span>
+                                                    </button>
+                                                </div>
+                                            );
+                                        })}
+                                        {termTypes.length === 0 && (
+                                            <div className="col">
+                                                <div className="list-group-item">No term types yet.</div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="card mb-3">
+                                <div className="card-body">
+                                    <h5 className="card-title">
+                                        Assigned terms {selectedTermType ? `for ${selectedTermType.name}` : ""}
+                                    </h5>
+                                    {!selectedTermType && (
+                                        <div className="text-muted">Select a term type to manage.</div>
+                                    )}
+                                    {selectedTermType && (
+                                        <div className="row row-cols-1 row-cols-md-2 g-2">
+                                            {assignedTerms.map((term) => {
+                                                const termId = getEntryId(term);
+                                                return (
+                                                    <div key={termId} className="col">
+                                                        <div className="list-group-item d-flex justify-content-between align-items-center">
+                                                            <span>{term.name}</span>
+                                                            <button
+                                                                type="button"
+                                                                className="btn btn-sm btn-outline-danger"
+                                                                onClick={() => handleRemoveTerm(termId)}
+                                                            >
+                                                                Remove
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                            {assignedTerms.length === 0 && (
+                                                <div className="col">
+                                                    <div className="list-group-item">No terms assigned yet.</div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="col-lg-4">
+                            <div className="card mb-3">
+                                <div className="card-body">
+                                    <h5 className="card-title">{isEditingTermType ? "Edit Term Type" : "Create Term Type"}</h5>
                                     <form onSubmit={handleCreateTermType}>
                                         <div className="mb-2">
                                             <input
@@ -242,8 +415,52 @@ export default function TermTypesPage() {
                                                 Public
                                             </label>
                                         </div>
-                                        <button className="btn btn-primary" type="submit">
-                                            Create Term Type
+                                        <div className="d-flex gap-2">
+                                            <button className="btn btn-primary" type="submit">
+                                                {isEditingTermType ? "Save Term Type" : "Create Term Type"}
+                                            </button>
+                                            {isEditingTermType && (
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-outline-secondary"
+                                                    onClick={() => {
+                                                        setIsEditingTermType(false);
+                                                        setTermTypeForm({ name: "", slug: "", is_variant: false, is_public: true });
+                                                    }}
+                                                >
+                                                    Cancel
+                                                </button>
+                                            )}
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+
+                            <div className="card mb-3">
+                                <div className="card-body">
+                                    <h5 className="card-title">Create new term</h5>
+                                    <form onSubmit={handleCreateTerm}>
+                                        <div className="mb-2">
+                                            <input
+                                                className="form-control"
+                                                name="name"
+                                                value={termForm.name}
+                                                onChange={handleTermChange}
+                                                placeholder="Term name"
+                                                required
+                                            />
+                                        </div>
+                                        <div className="mb-2">
+                                            <input
+                                                className="form-control"
+                                                name="slug"
+                                                value={termForm.slug}
+                                                onChange={handleTermChange}
+                                                placeholder="Slug (optional)"
+                                            />
+                                        </div>
+                                        <button className="btn btn-success" type="submit">
+                                            Create Term
                                         </button>
                                     </form>
                                 </div>
@@ -251,189 +468,116 @@ export default function TermTypesPage() {
 
                             <div className="card">
                                 <div className="card-body">
-                                    <h5 className="card-title">Term Types</h5>
-                                    <ul className="list-group">
-                                        {termTypes.map((type) => {
-                                            const id = getEntryId(type);
-                                            const isActive = id === selectedTermTypeId;
+                                    <h5 className="card-title">Add existing term</h5>
+                                    <input
+                                        className="form-control mb-2"
+                                        placeholder="Search terms"
+                                        value={termSearch}
+                                        onChange={(e) => setTermSearch(e.target.value)}
+                                    />
+                                    {isTermSearchLoading && (
+                                        <div className="text-muted mb-2">Searching terms...</div>
+                                    )}
+                                    <div className="row row-cols-1 row-cols-md-2 g-2 mb-2">
+                                        {availableTerms.map((term) => {
+                                            const termId = getEntryId(term);
+                                            const termKey = getEntryKey(term);
                                             return (
-                                                <li
-                                                    key={id}
-                                                    className={`list-group-item d-flex justify-content-between align-items-center ${
-                                                        isActive ? "active" : ""
-                                                    }`}
-                                                    style={{ cursor: "pointer" }}
-                                                    onClick={() => setSelectedTermTypeId(id)}
-                                                >
-                                                    <span>{type.name}</span>
-                                                    <span className="badge bg-secondary">
-                                                        {type.terms?.length || 0}
-                                                    </span>
-                                                </li>
+                                                <div key={termKey} className="col">
+                                                    <div className="list-group-item d-flex justify-content-between align-items-center">
+                                                        <span>{term.name}</span>
+                                                        <button
+                                                            type="button"
+                                                            className="btn btn-sm btn-outline-primary"
+                                                            onClick={() => handleAddExistingTerm(termId)}
+                                                            disabled={!selectedTermTypeId || !termId}
+                                                        >
+                                                            Add
+                                                        </button>
+                                                    </div>
+                                                </div>
                                             );
                                         })}
-                                        {termTypes.length === 0 && (
-                                            <li className="list-group-item">No term types yet.</li>
+                                        {availableTerms.length === 0 && (
+                                            <div className="col">
+                                                <div className="list-group-item text-muted">
+                                                    {termSearch.trim() ? "No matching terms." : "No terms available."}
+                                                </div>
+                                            </div>
                                         )}
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="col-lg-7">
-                            <div className="card mb-3">
-                                <div className="card-body">
-                                    <h5 className="card-title">
-                                        Manage Terms {selectedTermType ? `for ${selectedTermType.name}` : ""}
-                                    </h5>
-                                    {!selectedTermType && (
-                                        <div className="text-muted">Select a term type to manage.</div>
-                                    )}
-                                    {selectedTermType && (
-                                        <>
-                                            <div className="mb-3">
-                                                <label className="form-label">Add existing term</label>
-                                                <input
-                                                    className="form-control mb-2"
-                                                    placeholder="Search terms"
-                                                    value={termSearch}
-                                                    onChange={(e) => setTermSearch(e.target.value)}
-                                                />
-                                                <div className="list-group mb-2">
-                                                    {filteredTerms.map((term) => {
-                                                        const termId = getEntryId(term);
-                                                        return (
-                                                            <button
-                                                                key={termId}
-                                                                type="button"
-                                                                className={`list-group-item list-group-item-action ${
-                                                                    selectedTermId === termId ? "active" : ""
-                                                                }`}
-                                                                onClick={() => setSelectedTermId(termId)}
-                                                            >
-                                                                {term.name}
-                                                            </button>
-                                                        );
-                                                    })}
-                                                    {filteredTerms.length === 0 && (
-                                                        <div className="list-group-item text-muted">No matching terms.</div>
-                                                    )}
-                                                </div>
-                                                <button
-                                                    type="button"
-                                                    className="btn btn-outline-primary"
-                                                    onClick={handleAddExistingTerm}
-                                                >
-                                                    Add selected term
-                                                </button>
-                                            </div>
-
-                                            <div className="mb-3">
-                                                <label className="form-label">Merge other term types into this</label>
-                                                <input
-                                                    className="form-control mb-2"
-                                                    placeholder="Search term types"
-                                                    value={mergeSearch}
-                                                    onChange={(e) => setMergeSearch(e.target.value)}
-                                                />
-                                                <div className="list-group mb-2">
-                                                    {filteredMergeCandidates.map((type) => {
-                                                        const typeId = getEntryId(type);
-                                                        const isSelected = mergeSelection.has(typeId);
-                                                        return (
-                                                            <button
-                                                                key={typeId}
-                                                                type="button"
-                                                                className={`list-group-item list-group-item-action ${
-                                                                    isSelected ? "active" : ""
-                                                                }`}
-                                                                onClick={() => {
-                                                                    setMergeSelection((prev) => {
-                                                                        const next = new Set(prev);
-                                                                        if (next.has(typeId)) {
-                                                                            next.delete(typeId);
-                                                                        } else {
-                                                                            next.add(typeId);
-                                                                        }
-                                                                        return next;
-                                                                    });
-                                                                }}
-                                                            >
-                                                                {type.name}
-                                                            </button>
-                                                        );
-                                                    })}
-                                                    {filteredMergeCandidates.length === 0 && (
-                                                        <div className="list-group-item text-muted">No term types found.</div>
-                                                    )}
-                                                </div>
-                                                <button
-                                                    type="button"
-                                                    className="btn btn-outline-danger"
-                                                    onClick={handleMergeTermTypes}
-                                                >
-                                                    Merge selected term types
-                                                </button>
-                                            </div>
-
-                                            <form onSubmit={handleCreateTerm} className="mb-3">
-                                                <h6>Create new term</h6>
-                                                <div className="mb-2">
-                                                    <input
-                                                        className="form-control"
-                                                        name="name"
-                                                        value={termForm.name}
-                                                        onChange={handleTermChange}
-                                                        placeholder="Term name"
-                                                        required
-                                                    />
-                                                </div>
-                                                <div className="mb-2">
-                                                    <input
-                                                        className="form-control"
-                                                        name="slug"
-                                                        value={termForm.slug}
-                                                        onChange={handleTermChange}
-                                                        placeholder="Slug (optional)"
-                                                    />
-                                                </div>
-                                                <button className="btn btn-success" type="submit">
-                                                    Create Term
-                                                </button>
-                                            </form>
-
-                                            <h6>Assigned terms</h6>
-                                            <ul className="list-group">
-                                                {assignedTerms.map((term) => {
-                                                    const termId = getEntryId(term);
-                                                    return (
-                                                        <li
-                                                            key={termId}
-                                                            className="list-group-item d-flex justify-content-between align-items-center"
-                                                        >
-                                                            <span>{term.name}</span>
-                                                            <button
-                                                                type="button"
-                                                                className="btn btn-sm btn-outline-danger"
-                                                                onClick={() => handleRemoveTerm(termId)}
-                                                            >
-                                                                Remove
-                                                            </button>
-                                                        </li>
-                                                    );
-                                                })}
-                                                {assignedTerms.length === 0 && (
-                                                    <li className="list-group-item">No terms assigned yet.</li>
-                                                )}
-                                            </ul>
-                                        </>
-                                    )}
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </Layout>
+            {isMergeOpen && (
+                <div className="modal show d-block" tabIndex="-1" role="dialog" onClick={closeMergeDialog}>
+                    <div
+                        className="modal-dialog modal-lg modal-dialog-centered"
+                        role="document"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="modal-content">
+                            <div className="modal-header">
+                                <h5 className="modal-title">Merge term types</h5>
+                                <button type="button" className="btn-close" onClick={closeMergeDialog}></button>
+                            </div>
+                            <div className="modal-body">
+                                <p className="text-muted mb-2">
+                                    Target term type: <strong>{selectedTermType?.name}</strong>
+                                </p>
+                                <input
+                                    className="form-control mb-2"
+                                    placeholder="Search term types"
+                                    value={mergeSearch}
+                                    onChange={(e) => setMergeSearch(e.target.value)}
+                                />
+                                <div className="list-group">
+                                    {filteredMergeCandidates.map((type) => {
+                                        const typeId = getEntryId(type);
+                                        const isSelected = mergeSelection.has(typeId);
+                                        return (
+                                            <button
+                                                key={typeId}
+                                                type="button"
+                                                className={`list-group-item list-group-item-action ${
+                                                    isSelected ? "active" : ""
+                                                }`}
+                                                onClick={() => {
+                                                    setMergeSelection((prev) => {
+                                                        const next = new Set(prev);
+                                                        if (next.has(typeId)) {
+                                                            next.delete(typeId);
+                                                        } else {
+                                                            next.add(typeId);
+                                                        }
+                                                        return next;
+                                                    });
+                                                }}
+                                            >
+                                                {type.name}
+                                            </button>
+                                        );
+                                    })}
+                                    {filteredMergeCandidates.length === 0 && (
+                                        <div className="list-group-item text-muted">No term types found.</div>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="modal-footer">
+                                <button type="button" className="btn btn-secondary" onClick={closeMergeDialog}>
+                                    Cancel
+                                </button>
+                                <button type="button" className="btn btn-danger" onClick={handleMergeTermTypes}>
+                                    Merge selected term types
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </ProtectedRoute>
     );
 }
