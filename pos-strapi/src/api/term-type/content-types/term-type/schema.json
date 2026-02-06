@@ -43,6 +43,12 @@
         "videos",
         "audios"
       ]
+    },
+    "is_variant": {
+      "type": "boolean"
+    },
+    "is_public": {
+      "type": "boolean"
     }
   }
 }

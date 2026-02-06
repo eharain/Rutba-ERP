@@ -25,6 +25,7 @@ export default function Navigation() {
                     <li className="nav-item"><Link className="nav-link" href="/purchases">Purchases</Link></li>
                     <li className="nav-item"><Link className="nav-link" href="/sales">Sales</Link></li>
                     <li className="nav-item"><Link className="nav-link" href="/stock-items">Stock Items</Link></li>
+                    <li className="nav-item"><Link className="nav-link" href="/term-types">Term Types</Link></li>
                     <li className="nav-item"><Link className="nav-link" href="/sale-returns">Sale Returns</Link></li>
                     <li className="nav-item"><Link className="nav-link" href="/purchase-returns">Purchase Returns</Link></li>
                     <li className="nav-item"><Link className="nav-link" href="/reports">Reports</Link></li>

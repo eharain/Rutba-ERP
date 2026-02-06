@@ -1342,6 +1342,8 @@ export interface ApiTermTypeTermType extends Struct.CollectionTypeSchema {
       'images' | 'files' | 'videos' | 'audios',
       true
     >;
+    is_public: Schema.Attribute.Boolean;
+    is_variant: Schema.Attribute.Boolean;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
