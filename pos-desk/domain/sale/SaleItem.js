@@ -90,7 +90,7 @@ export default class SaleItem {
 
     // expose a `price` property used by UI components
     get price() {
-        return this.sellingPrice || this._price || this.averagePrice || 0;
+        return this.sellingPrice || this._price || this.unitPrice || 0;
     }
 
     get isDynamicStock() {
@@ -197,11 +197,18 @@ export default class SaleItem {
 
     /* ---------------- Pricing ---------------- */
 
-    get averagePrice() {
+    get unitPrice() {
         if (this.items?.length == 0) return 0;
         let sum = this.sumBy('selling_price');
         return sum / this.items.length;
     }
+
+    get unitDicountedPrice() {
+        let dp = this.unitPrice;
+
+        return dp - dp * (this.discount_percentage / 100);
+    }
+
     get row_discount() {
         const dp = this.sumBy('selling_price');
         return dp * (this.discount_percentage / 100);
@@ -229,9 +236,9 @@ export default class SaleItem {
     /* ---------------- Serialization ---------------- */
     toPayload() {
         return {
-            
+
             quantity: this.items.length,
-            price: this.averagePrice,
+            price: this.unitPrice,
             discount: this.row_discount,
             discount_percentage: this.discount_percentage,
             subtotal: this.subtotal,

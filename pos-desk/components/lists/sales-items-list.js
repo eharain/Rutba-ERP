@@ -38,17 +38,17 @@ export default function SalesItemsList({
                             )}
                         </td>
 
-                     
+
 
                         {/* UNIT PRICE */}
                         <td>
                             {item.isDynamicStock ? (
-                                ((item.price ?? 0).toFixed(2))
+                                ((item.unitPrice ?? 0).toFixed(2))
                             ) : (
                                 <input
                                     type="number"
                                     className="form-control"
-                                    value={item.price ?? 0}
+                                    value={item.unitPrice ?? 0}
                                     onChange={e =>
                                         onUpdate(index, i =>
                                             i.setSellingPrice(+e.target.value)
@@ -56,7 +56,7 @@ export default function SalesItemsList({
                                     }
                                     disabled={disabled}
                                 />
-                            )}
+                            )} / {(item.unitDicountedPrice ?? 0).toFixed(2)}
                         </td>
 
                         {/* QTY */}
