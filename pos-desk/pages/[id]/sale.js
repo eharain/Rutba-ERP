@@ -85,8 +85,9 @@ export default function SalePage() {
        Checkout
     =============================== */
 
-    const handleCheckoutComplete = async (payment) => {
-        saleModel.addPayment(payment);
+    const handleCheckoutComplete = async (payments) => {
+        const paymentsList = Array.isArray(payments) ? payments : [payments];
+        paymentsList.forEach((payment) => saleModel.addPayment(payment));
         setLoading(true);
         await doSave({ paid: true });
         setShowCheckout(false);
