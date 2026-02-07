@@ -117,6 +117,9 @@ export default function Products() {
                                                     <Link href={`/${product.documentId ?? product.id}/product`}> <i className="fas fa-edit"></i> Edit</Link>
                                                     <br />
                                                     <Link href={`/${product.documentId ?? product.id}/product-variants`}><i className="fas fa-fighter-jet"></i> Variants</Link>
+                                                    <br />
+                                                    <Link href={`/stock-items?product=${product.documentId ?? product.id}`}><i className="fas fa-boxes"></i> Stock Items</Link>
+
                                                 </TableCell>
                                             </TableRow>
                                         ))

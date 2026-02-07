@@ -1,5 +1,7 @@
 ﻿// file: /pos-desk/pages/stock-items.js
 import React, { useEffect, useState, useRef } from "react";
+import Link from "next/link";
+import { useRouter } from "next/router";
 import {
     Table,
     TableHead,
@@ -13,9 +15,11 @@ import Layout from "../components/Layout";
 import ProtectedRoute from "../components/ProtectedRoute";
 import { authApi, getStockStatus, getBranches } from "../lib/api";
 import { useUtil } from "../context/UtilContext";
+import { loadProduct } from "../lib/pos/fetchs";
 import { searchStockItems } from "../lib/pos";
 
 export default function StockItemsPage() {
+    const router = useRouter();
     const { currency } = useUtil();
     const [stockItems, setStockItems] = useState([]);
     const [stock_status, setStockStatus] = useState({ statuses: [] });
@@ -30,6 +34,9 @@ export default function StockItemsPage() {
     const [branches, setBranches] = useState([]);
     const [selectedBranch, setSelectedBranch] = useState(null);
     const [selectedDestinationBranch, setSelectedDestinationBranch] = useState(null);
+    const [productName, setProductName] = useState(null);
+
+    const productFilter = Array.isArray(router.query.product) ? router.query.product[0] : router.query.product;
 
     useEffect(() => {
         (async () => {
@@ -38,6 +45,27 @@ export default function StockItemsPage() {
             setBranches(branches.data);
         })();
     }, [])
+
+    useEffect(() => {
+        setPage(0);
+    }, [productFilter]);
+
+    useEffect(() => {
+        if (!productFilter) {
+            setProductName(null);
+            return;
+        }
+
+        (async () => {
+            try {
+                const product = await loadProduct(productFilter);
+                setProductName(product?.name || null);
+            } catch (error) {
+                console.error("Error loading product name:", error);
+                setProductName(null);
+            }
+        })();
+    }, [productFilter]);
 
 
     useEffect(() => {
@@ -55,13 +83,13 @@ export default function StockItemsPage() {
         }, 200);
 
         return () => clearTimeout(handler);
-    }, [page, rowsPerPage, statusFilter, searchTerm, selectedBranch]);
+    }, [page, rowsPerPage, statusFilter, searchTerm, selectedBranch, productFilter]);
 
     const handleStockItemsSearch = async (searchText) => {
         setLoading(true);
         try {
             // We pass current 'page + 1' so pagination works while searching
-            const stockItemsResult = await searchStockItems(searchText, page + 1, rowsPerPage, statusFilter, selectedBranch);
+            const stockItemsResult = await searchStockItems(searchText, page + 1, rowsPerPage, statusFilter, selectedBranch, productFilter);
             setStockItems(stockItemsResult.data);
             setFilteredItems(stockItemsResult.data);
             setTotal(stockItemsResult.meta?.pagination?.total ?? 0);
@@ -92,7 +120,8 @@ export default function StockItemsPage() {
                 },
                 filters: {
                     ...(statusFilter ? { status: statusFilter } : {}),
-                    ...(selectedBranch ? { branch: { documentId: selectedBranch } } : {})
+                    ...(selectedBranch ? { branch: { documentId: selectedBranch } } : {}),
+                    ...(productFilter ? { product: { documentId: productFilter } } : {})
                 },
                 pagination: {
                     page: page + 1,
@@ -250,7 +279,19 @@ export default function StockItemsPage() {
             <Layout>
                 <div className="p-4">
                     <div className="d-flex justify-content-between align-items-center mb-3">
-                        <h2 className="mb-0">Stock Items - Bulk Print</h2>
+                        <div>
+                            <h2 className="mb-0">
+                                Stock Items - Bulk Print
+                                {productName && (
+                                    <span className="ms-2 text-muted">{productName}</span>
+                                )}
+                            </h2>
+                            {productFilter && (
+                                <div className="small">
+                                    <Link href="/stock-items">View all stock items</Link>
+                                </div>
+                            )}
+                        </div>
                         <div className="text-end">
                             <div className="small text-muted">Selected</div>
                             <div className="badge bg-primary">{selectedItems.size} / {filteredItems.length}</div>

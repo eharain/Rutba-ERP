@@ -114,13 +114,16 @@ export function dataNode(res) {
 }
 
 
-export async function searchStockItems(searchTerm, page = 0, rowsPerPage = 100, statusFilter = null, branch = null) {
+export async function searchStockItems(searchTerm, page = 0, rowsPerPage = 100, statusFilter = null, branch = null, productDocumentId = null) {
     let query = buildQueries(searchTerm, page, rowsPerPage)['me/stock-items-search']
     if (statusFilter) {
         query.url += `&filters[status]=${statusFilter}`;
     }
     if (branch) {
         query.url += `&filters[branch][documentId]=${branch}`;
+    }
+    if (productDocumentId) {
+        query.url += `&filters[product][documentId]=${productDocumentId}`;
     }
     console.log('Stock items search query:', query);    
     const res = await authApi.fetchWithPagination(query.url);

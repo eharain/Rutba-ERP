@@ -24,6 +24,7 @@ export default function SalePage() {
     const [saleModel, setSaleModel] = useState(null);
     const [paid, setPaid] = useState(false);
     const [, forceUpdate] = useReducer(x => x + 1, 0);
+    const [isDirty, setIsDirty] = useState(false);
 
     const [loading, setLoading] = useState(false);
     const [showCheckout, setShowCheckout] = useState(false);
@@ -40,6 +41,7 @@ export default function SalePage() {
 
             model.documentId = null;
             setSaleModel(model);
+            setIsDirty(false);
         } else {
             loadSale();
         }
@@ -52,6 +54,7 @@ export default function SalePage() {
             const model = await SaleApi.loadSale(id);
             setPaid(model.isPaid);
             setSaleModel(model);
+            setIsDirty(false);
             //   console.log("model loaded", model)
         } catch (err) {
             console.error('Failed to load sale', err);
@@ -74,6 +77,7 @@ export default function SalePage() {
         saleModel.setCustomer(customer);
 
         forceUpdate();
+        setIsDirty(true);
 
     };
 
@@ -96,6 +100,7 @@ export default function SalePage() {
             await SaleApi.saveSale(saleModel,param);
             // alert('Sale completed successfully');
             await loadSale();
+            setIsDirty(false);
         } catch (err) {
             console.error('Save failed', err);
             alert('Save failed');
@@ -181,10 +186,12 @@ export default function SalePage() {
                             onAddItem={(stockItem) => {
                                 saleModel.addStockItem(stockItem);
                                 forceUpdate();
+                                setIsDirty(true);
                             }}
                             onAddNonStock={(data) => {
                                 saleModel.addNonStockItem(data);
                                 forceUpdate();
+                                setIsDirty(true);
                             }}
                         />
 
@@ -195,10 +202,12 @@ export default function SalePage() {
                             onUpdate={(index, updater) => {
                                 saleModel.updateItem(index, updater);
                                 forceUpdate();
+                                setIsDirty(true);
                             }}
                             onRemove={(index) => {
                                 saleModel.removeItem(index);
                                 forceUpdate();
+                                setIsDirty(true);
                             }}
                         />
 
@@ -235,7 +244,7 @@ export default function SalePage() {
                         </div>
                         <div className="row g-2 mt-2">
                             <div className="col-lg-4 ms-lg-auto">
-                                <SaleButtons saleModel={saleModel} handlePrint={handlePrint} handleSave={handleSave} setShowCheckout={setShowCheckout}></SaleButtons>
+                                <SaleButtons saleModel={saleModel} handlePrint={handlePrint} handleSave={handleSave} setShowCheckout={setShowCheckout} isDirty={isDirty}></SaleButtons>
                             </div>
                         </div>
                         {/* Checkout Modal */}
@@ -259,7 +268,7 @@ export default function SalePage() {
 
 
 
-function SaleButtons({ handlePrint, handleSave, saleModel, setShowCheckout }) {
+function SaleButtons({ handlePrint, handleSave, saleModel, setShowCheckout, isDirty }) {
     const itemsCount = saleModel.items.length;
     return (
         <div className="d-grid gap-2">
@@ -273,7 +282,7 @@ function SaleButtons({ handlePrint, handleSave, saleModel, setShowCheckout }) {
             <button
                 className="btn btn-success"
                 onClick={() => handleSave(true)}
-                disabled={itemsCount === 0 || saleModel.isPaid}
+                disabled={itemsCount === 0 || saleModel.isPaid || !isDirty}
             >
                 Save
                 {/* {saleModel.isPaid ? 'Save' : 'Saved'}*/}

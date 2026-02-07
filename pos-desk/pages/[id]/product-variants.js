@@ -18,6 +18,7 @@ export default function ProductVariantsPage() {
     const [selectedTermTypeId, setSelectedTermTypeId] = useState('');
     const [termForms, setTermForms] = useState({});
     const [nameAffix, setNameAffix] = useState('suffix');
+    const [variantBaseName, setVariantBaseName] = useState('');
 
     useEffect(() => {
         if (documentId) {
@@ -36,6 +37,7 @@ export default function ProductVariantsPage() {
             const prod = res.data || res;
             setSelectedProduct(prod);
             setVariants(prod.variants || []);
+            setVariantBaseName(prod?.name || '');
 
             const itemsRes = await authApi.fetch('/stock-items', {
                 filters: { product: { documentId: id } },
@@ -68,11 +70,12 @@ export default function ProductVariantsPage() {
     }
 
     function buildVariantName(termName) {
-        if (!termName) return selectedProduct?.name || '';
-        if (!selectedProduct?.name) return termName;
+        const baseName = variantBaseName || selectedProduct?.name || '';
+        if (!termName) return baseName;
+        if (!baseName) return termName;
         return nameAffix === 'prefix'
-            ? `${termName} - ${selectedProduct.name}`
-            : `${selectedProduct.name} - ${termName}`;
+            ? `${termName} - ${baseName}`
+            : `${baseName} - ${termName}`;
     }
 
     function getDefaultVariantForm() {
@@ -215,6 +218,14 @@ export default function ProductVariantsPage() {
                                                 <option key={tt.documentId || tt.id} value={tt.documentId || tt.id}>{tt.name}</option>
                                             ))}
                                         </select>
+                                    </div>
+                                    <div className="mb-3">
+                                        <input
+                                            className="form-control"
+                                            value={variantBaseName}
+                                            onChange={(e) => setVariantBaseName(e.target.value)}
+                                            placeholder="Parent name"
+                                        />
                                     </div>
                                     <div className="mb-3">
                                         <select
