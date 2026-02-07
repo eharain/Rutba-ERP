@@ -132,10 +132,10 @@ export default function ProductVariantsPage() {
             const createdVariantName = createdVariant?.name || name;
             if (formValues.move_count > 0 && createdVariantId) {
                 const itemsToMove = stockItems.slice(0, Math.min(formValues.move_count, stockItems.length));
-                await Promise.all(itemsToMove.map(item => {
+                for (const item of itemsToMove) {
                     const itemId = item.documentId || item.id;
-                    return authApi.put(`/stock-items/${itemId}`, { data: { product: createdVariantId, name: createdVariantName } });
-                }));
+                    await authApi.put(`/stock-items/${itemId}`, { data: { product: { set: [createdVariantId] }, name: createdVariantName } });
+                }
             }
             await loadProductDetails(parentDocumentId);
             setTermForms(prev => ({ ...prev, [term.documentId || term.id]: getDefaultVariantForm() }));
@@ -170,7 +170,14 @@ export default function ProductVariantsPage() {
         setLoading(true);
         try {
             const ids = Array.from(selectedItems);
-            await Promise.all(ids.map(id => authApi.put(`/stock-items/${id}`, { data: { product: variant.documentId || variant.id, name: variant.name } })));
+            for (const id of ids) {
+                await authApi.put(`/stock-items/${id}`, {
+                    data: {
+                        product: { set: [variant.documentId || variant.id] },
+                        name: variant.name
+                    }
+                });
+            }
             alert(`Moved ${ids.length} items to variant ${variant.name}`);
             const parentId = selectedProduct.documentId || selectedProduct.id;
             await loadProductDetails(parentId);

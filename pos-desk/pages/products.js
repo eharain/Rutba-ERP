@@ -1,19 +1,20 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/router";
 import { Table, TableHead, TableRow, TableCell, TableBody, CircularProgress, TablePagination } from "../components/Table";
 import Layout from "../components/Layout";
 import ProductCard from "../components/ProductCard";
-import SearchBar from "../components/SearchBar";
 import ProtectedRoute from "../components/ProtectedRoute";
 import PermissionCheck from "../components/PermissionCheck";
 import { authApi } from "../lib/api";
-import { fetchEntities, fetchProducts } from "../lib/pos";
+import { fetchProducts } from "../lib/pos";
 import { useCart } from "../context/CartContext";
 import StrapiImage from "../components/StrapiImage";
 import { ProductFilter } from "../components/filter/product-filter";
 import { useUtil } from "../context/UtilContext";
 
 export default function Products() {
+    const router = useRouter();
     const [products, setProducts] = useState([]);
     const { currency } = useUtil();
     const { add } = useCart();
@@ -22,6 +23,17 @@ export default function Products() {
     const [total, setTotal] = useState(0);
     const [loading, setLoading] = useState(false);
     const [filters, setFilters] = useState({});
+    const [brands, setBrands] = useState([]);
+    const [categories, setCategories] = useState([]);
+    const [suppliers, setSuppliers] = useState([]);
+    const [termTypes, setTermTypes] = useState([]);
+    const [selectedBrand, setSelectedBrand] = useState("");
+    const [selectedCategory, setSelectedCategory] = useState("");
+    const [selectedSupplier, setSelectedSupplier] = useState("");
+    const [selectedTerm, setSelectedTerm] = useState("");
+    const [stockStatus, setStockStatus] = useState(false);
+    const [searchText, setSearchText] = useState("");
+    const [filtersInitialized, setFiltersInitialized] = useState(false);
     async function loadProductsData() {
         setLoading(true);
         // Fetch purchases for reports
@@ -36,6 +48,73 @@ export default function Products() {
         loadProductsData();
     }, [page, rowsPerPage, filters]);
 
+    useEffect(() => {
+        Promise.all([
+            authApi.fetch("/brands"),
+            authApi.fetch("/categories"),
+            authApi.fetch("/suppliers"),
+            authApi.fetch("/term-types", { populate: ["terms"] }),
+        ]).then(([b, c, s, t]) => {
+            setBrands(b?.data || []);
+            setCategories(c?.data || []);
+            setSuppliers(s?.data || []);
+            setTermTypes(t?.data || []);
+        });
+    }, []);
+
+    useEffect(() => {
+        if (!router.isReady || filtersInitialized) {
+            return;
+        }
+
+        const getQueryValue = (value) => (Array.isArray(value) ? value[0] : value);
+        const { brands, categories, suppliers, terms, searchText, stockStatus } = router.query;
+
+        if (brands) {
+            setSelectedBrand(getQueryValue(brands));
+        }
+        if (categories) {
+            setSelectedCategory(getQueryValue(categories));
+        }
+        if (suppliers) {
+            setSelectedSupplier(getQueryValue(suppliers));
+        }
+        if (terms) {
+            setSelectedTerm(getQueryValue(terms));
+        }
+        if (searchText) {
+            setSearchText(getQueryValue(searchText));
+        }
+        if (stockStatus) {
+            setStockStatus(getQueryValue(stockStatus));
+        }
+
+        setFiltersInitialized(true);
+    }, [router.isReady, router.query, filtersInitialized]);
+
+    useEffect(() => {
+        const updatedFilters = {
+            brands: [selectedBrand],
+            categories: [selectedCategory],
+            suppliers: [selectedSupplier],
+            terms: [selectedTerm],
+            stockStatus,
+            searchText
+        };
+
+        for (const [key, value] of Object.entries(updatedFilters)) {
+            if (Array.isArray(value)) {
+                updatedFilters[key] = value.filter((v) => v);
+                if (updatedFilters[key].length === 0) {
+                    delete updatedFilters[key];
+                }
+            }
+        }
+
+        setFilters(updatedFilters);
+        setPage(0);
+    }, [selectedBrand, selectedCategory, selectedSupplier, selectedTerm, stockStatus, searchText]);
+
 
 
 
@@ -48,11 +127,6 @@ export default function Products() {
         setPage(0);
     };
 
-    function handleFiltersChange(filters) {
-        setFilters(filters);
-        setPage(0);
-    }
-
     return (
         <ProtectedRoute>
             <PermissionCheck required="api::product.product.find">
@@ -61,7 +135,22 @@ export default function Products() {
                         <h1>Products</h1>
                         <div>
                           
-                            <ProductFilter onFilterChange={handleFiltersChange}></ProductFilter>
+                            <ProductFilter
+                                brands={brands}
+                                categories={categories}
+                                suppliers={suppliers}
+                                termTypes={termTypes}
+                                selectedBrand={selectedBrand}
+                                selectedCategory={selectedCategory}
+                                selectedSupplier={selectedSupplier}
+                                selectedTerm={selectedTerm}
+                                searchText={searchText}
+                                onBrandChange={setSelectedBrand}
+                                onCategoryChange={setSelectedCategory}
+                                onSupplierChange={setSelectedSupplier}
+                                onTermChange={setSelectedTerm}
+                                onSearchTextChange={setSearchText}
+                            ></ProductFilter>
                             <TablePagination
                                 count={total}
                                 page={page}

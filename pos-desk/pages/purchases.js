@@ -64,7 +64,7 @@ export default function PurchasesPage() {
         const identifier = purchase.documentId || purchase.id || purchase.orderId;
 
         if(['Submitted','Partially Received'].includes(purchase.status)){
-            return {action:'Receive' ,url:`/${identifier}/receive`,identifier}
+            return { action: 'Receive', url: `/${identifier}/purchase-receive`,identifier}
         }
         
         if(['Draft','Pending'].includes(purchase.status)){

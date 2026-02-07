@@ -5,7 +5,7 @@ import { Table, TableHead, TableBody, TableRow, TableCell } from '../Table';
 import {generateStockItems} from '../../lib/pos/create';
 import { useUtil } from '../../context/UtilContext';
 
-const PurchaseReceive = ({ purchase, onComplete }) => {
+const PurchaseReceiveList = ({ purchase, onComplete }) => {
     const [receivedItems, setReceivedItems] = useState([]);
     const [receivingDate, setReceivingDate] = useState(new Date().toISOString().split('T')[0]);
     const [loading, setLoading] = useState(false);
@@ -196,4 +196,4 @@ const PurchaseReceive = ({ purchase, onComplete }) => {
     );
 };
 
-export default PurchaseReceive;
+export default PurchaseReceiveList;
