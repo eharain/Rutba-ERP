@@ -4,21 +4,26 @@ import dynamic from 'next/dynamic';
 export function PermissionCheck({ required, has, children }) {
 
     const { permissions } = useAuth();
-    function findMissing(required) {
-        const permCheck = (required?.trim()?.split(',') ?? '');
-        const miss = permCheck.filter(perm => {
-            return !permissions.includes(perm.trim())
-        }).filter(a => !a)
-        return miss;
+    function findMissing(requiredString) {
+        if (!requiredString) return [];
+        const userPerms = permissions || []; 
+        
+        const requiredArray = requiredString.split(',').map(s => s.trim());
+        const missing = requiredArray.filter(p => !userPerms.includes(p));
+        return missing;
     }
     if (required) {
         const miss = findMissing(required);
         if (miss.length > 0) {
+            console.log("permission check miss ",miss);
             return <p style={{ color: "crimson", fontWeight: 600 }}>
-                Access Denied — missing permission: {miss.length} Required    {permCheck}
+                Access Denied — missing permission: {miss.length} Required {required}
                 {miss.map((perm, i) => {
                     return <span key={i} className="badge bg-danger ms-1">{perm}</span>;
                 })}
+                <button style={{ marginLeft: 10 }} onClick={() => {
+                    window.history.back();
+                }}>Back</button>
             </p>
 
         }

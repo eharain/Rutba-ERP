@@ -20,6 +20,7 @@ import {
     savePurchase,
 } from "../lib/pos";
 import { useUtil } from "../context/UtilContext";
+import { PermissionCheck } from "../components/PermissionCheck";
 export default function PurchasesPage() {
     const [purchases, setPurchases] = useState([]);
     const [page, setPage] = useState(0);
@@ -30,7 +31,6 @@ export default function PurchasesPage() {
     const {currency} = useUtil();
     const router = useRouter();
 
-    
 
     useEffect(() => {
         loadData();
@@ -64,7 +64,7 @@ export default function PurchasesPage() {
         const identifier = purchase.documentId || purchase.id || purchase.orderId;
 
         if(['Submitted','Partially Received'].includes(purchase.status)){
-            return {action:'Receive' ,url:`/${identifier}/receive`,identifier}
+            return { action: 'Receive', url: `/${identifier}/purchase-receive`,identifier}
         }
         
         if(['Draft','Pending'].includes(purchase.status)){
@@ -107,6 +107,7 @@ export default function PurchasesPage() {
             <Layout>
                 <div>
                     <h2 style={{ marginBottom: 16 }}>Purchases</h2>
+                    <PermissionCheck required="api::purchase.purchase.find">
 
                     {/* Optional: Add New Purchase Button */}
                     <div style={{ marginBottom: 16 }}>
@@ -210,6 +211,7 @@ export default function PurchasesPage() {
                             rowsPerPageOptions={[5, 10, 25]}
                         />
                     </div>
+                    </PermissionCheck>
                 </div>
             </Layout>
         </ProtectedRoute>

@@ -8,7 +8,7 @@ import './layout.css';
 import './links.css';
 
 import styles from "./page.module.css";
-
+import BootstrapClient from "./BootstrapClient";
 
 
 const geistSans = Geist({
@@ -31,7 +31,8 @@ import { UtilProvider } from "../../context/UtilContext";
 export default function RootLayout({ children }) {
     return (
         <html lang="en">
-            <body className={`${geistSans.variable} ${geistMono.variable}`}>
+            <body className={`${geistSans.variable} ${geistMono.variable}  h-100`}> 
+                <BootstrapClient />
                 <AuthProvider>
                     <CartProvider>
                         <UtilProvider>

@@ -1,188 +1,178 @@
-﻿// file: /pos-desk/components/print/BulkBarcodePrint.js
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { authApi } from '../../lib/api';
-import LabelSheet from './LabelSheet';
+import "./print-labels.css";
+import { useUtil } from '../../context/UtilContext';
+import { QRCodeSVG } from 'qrcode.react';
+import Barcode from 'react-barcode'; // renders linear barcodes (Code39/Code128)
 
-const BulkBarcodePrint = ({ storageKey, title = "Bulk Barcode Labels" }) => {
+const BulkBarcodePrint = ({
+    storageKey,
+    title = "Bulk Barcode Labels",
+    labelSize = '2.4x1.5',
+    printMode = 'thermal'   // 'thermal' | 'a4'
+}) => {
+
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const { currency, branch } = useUtil();
+    const size = labelSize || '2.4x1.5';
+
+    function displayBranchName() {
+        return branch?.companyName ?? branch?.company_name ?? '';
+    }
+
+    function displayName(item) {
+        const name = item?.product?.name || item?.name || 'N/A';
+        return name.length > 50 ? name.substring(0, 47) + '...' : name;
+    }
+
+    function displayBarcode(item) {
+        return item?.barcode || item?.sku || '';
+    }
+
+    function displayPrice(item) {
+        const priceVal = item?.selling_price ?? item?.offer_price;
+        return priceVal ? `${currency ?? ''} ${Math.round(parseFloat(priceVal))}` : '';
+    }
+
+    // determine if label is "small" (< 1.5 inches in either dimension)
+    function isSmallLabel(labelSizeStr) {
+
+        if (!labelSizeStr) return false;
+        const parts = labelSizeStr.split('x').map(p => parseFloat(p));
+        if (parts.length !== 2 || parts.some(isNaN)) return false;
+        const [w, h] = parts;
+        return (w < 1.25) || (h < 1.25);
+    }
+
+    const smallLabel = isSmallLabel(size);
 
     useEffect(() => {
         const loadItems = async () => {
-            if (!storageKey) {
-                setError('No storage key provided');
-                setLoading(false);
-                return;
-            }
-
             try {
-                setLoading(true);
-                setError(null);
-
-                // Get document IDs from storage
                 const storedData = JSON.parse(localStorage.getItem(storageKey) || '{}');
                 const documentIds = storedData.documentIds || [];
 
-                if (documentIds.length === 0) {
-                    setError('No items found to print');
-                    setLoading(false);
-                    return;
-                }
+                const results = await Promise.all(
+                    documentIds.map(id =>
+                        authApi.get(`/stock-items/${id}`, { populate: ['product'] })
+                            .then(res => res.data)
+                            .catch(() => null)
+                    )
+                );
 
-                console.log(`Loading ${documentIds.length} items for printing...`);
-
-                // Load items in batches to avoid overwhelming the API
-                const batchSize = documentIds.length > 20 ? 20 : documentIds.length;
-                const itemsData = [];
-
-                for (let i = 0; i < documentIds.length; i += batchSize) {
-                    const batch = documentIds.slice(i, i + batchSize);
-                    const batchPromises = batch.map(async (docId) => {
-                        try {
-                            const response = await authApi.get(`/stock-items/${docId}`, {
-                                populate: ['product']
-                            });
-                            return response.data;
-                        } catch (error) {
-                            console.error(`Error loading item ${docId}:`, error);
-                            return null;
-                        }
-                    });
-
-                    const batchResults = await Promise.all(batchPromises);
-                    itemsData.push(...batchResults.filter(item => item !== null));
-
-                    // Small delay between batches to avoid rate limiting
-                    if (i + batchSize < documentIds.length) {
-                        await new Promise(resolve => setTimeout(resolve, 100));
-                    }
-                }
-
-                setItems(itemsData);
-
-                // Clean up storage after successful load
+                setItems(results.filter(Boolean));
+                // remove storage key after loading so repeated prints won't reuse stale data
                 localStorage.removeItem(storageKey);
-
-            } catch (error) {
-                console.error('Error loading items for print:', error);
-                setError('Failed to load items for printing');
+            } catch (err) {
+                console.error('BulkBarcodePrint load error', err);
+                setError("Failed to load items");
             } finally {
                 setLoading(false);
             }
         };
 
-        loadItems();
+        if (storageKey) loadItems();
+        else setLoading(false);
     }, [storageKey]);
 
-    // Group items into sheets
-    const generateLabelSheets = () => {
-        if (loading || items.length === 0) return [];
+    if (error) return <div className="text-danger">{error}</div>;
+    if (loading) return <div>Loading...</div>;
+    if (!items.length) return <div className="text-muted">No items to print.</div>;
 
-        const labelsPerSheet = 1;
-        const sheets = [];
+    const labelsPerSheet = printMode === 'a4'
+        ? { '2.4x1.5': 21, '2.25x1.25': 24, '2x1': 40, '1.5x1': 50, '1x1': 60 }[size] || 21
+        : 1;
 
-        for (let i = 0; i < items.length; i += labelsPerSheet) {
-            sheets.push(items.slice(i, i + labelsPerSheet));
-        }
-
-        return sheets;
-    };
-
-    const sheets = generateLabelSheets();
-
-    if (error) {
-        return (
-            <div style={{
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                height: '200px',
-                fontSize: '16px',
-                color: '#dc3545',
-                flexDirection: 'column',
-                gap: '10px'
-            }}>
-                <div>❌ {error}</div>
-                <button
-                    onClick={() => window.close()}
-                    style={{
-                        padding: '8px 16px',
-                        background: '#6c757d',
-                        color: 'lightgrey',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: 'pointer'
-                    }}
-                >
-                    Close
-                </button>
-            </div>
-        );
+    const sheets = [];
+    for (let i = 0; i < items.length; i += labelsPerSheet) {
+        sheets.push(items.slice(i, i + labelsPerSheet));
     }
 
-    if (loading) {
+    function printRates(item,codeValue) {
         return (
-            <div style={{
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                height: '200px',
-                fontSize: '16px',
-                flexDirection: 'column',
-                gap: '10px'
-            }}>
-                <div>🔄 Loading items for printing...</div>
-                <div style={{ fontSize: '12px', color: '#666' }}>
-                    Loading {items.length > 0 ? `${items.length} items` : 'items'}...
+            <div className="col-sm-5">
+                <div className="price ">
+                    {displayPrice(item)}
+                </div >
+                <div className="code-text">
+                    {codeValue}
                 </div>
-            </div>
-        );
-    }
+            </div >
+        )
 
-    if (items.length === 0) {
-        return (
-            <div style={{
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                height: '200px',
-                fontSize: '16px',
-                color: '#666'
-            }}>
-                No items found to print.
-            </div>
-        );
     }
 
     return (
-        <div className="bulk-barcode-print">
-            <style jsx>{`
-                .bulk-barcode-print {
-                    font-family: Arial, sans-serif;
-                    margin: 0;
-                    padding: 0;
-                }
-                
-                @media screen {
-                    .bulk-barcode-print {
-                        background: lightgrey;
-                        padding: 20px;
-                    }
-                }
-            `}</style>
-
+        <div className={`print-root ${printMode} align-middle`}>
             {sheets.map((sheet, sheetIndex) => (
-                <LabelSheet
-                    key={sheetIndex}
-                    items={sheet}
-                    sheetIndex={sheetIndex}
-                    totalSheets={sheets.length}
-                    title={title}
-                    totalItems={items.length}
-                />
-            ))}
-        </div>
+                <div key={sheetIndex} className={`print-sheet sheet-${size}`}>
+                    {sheet.map((item, idx) => {
+                        const codeValue = displayBarcode(item);
+                        const valueWithStartStop = codeValue;//`*${codeValue}*`; // use '*' start/stop (Code39-style)
+                        return (
+                            <div key={item.id ?? item.documentId ?? idx} className={`print-label label-${size}`}>
+                                {/* Product name always on top */}
+                                <div className="row  ">
+                                    <div className="col-sm-12">
+                                        <div className="company">
+                                            {displayBranchName()}
+                                        </div>
+                                    </div>
+                                    <div className="col-sm-12">
+                                        <div className="name">
+                                            {displayName(item)}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Use Bootstrap row/cols for the main layout */}
+                                <div className="row ">
+                                    {smallLabel ? ("") :
+                                        (<div className="col-sm-5">{printRates(item, codeValue)}</div>)}
+                                                                       
+                                    {codeValue ? (
+                                        <div className={smallLabel ? "col-12" : "col-7"}>
+
+
+                                            {smallLabel ? (
+                                                // render linear barcode for small labels
+                                                // Ensure start/stop characters are included (Code39 uses '*')
+                                                <Barcode
+                                                    value={valueWithStartStop}
+                                                    format="CODE39"
+                                                    lineColor="#000"
+                                                    width={1}
+                                                    height={36}
+                                                    displayValue={false}
+                                                    margin={0}
+                                                />
+                                            ) : (
+                                                // render QR for larger labels
+                                                <QRCodeSVG
+                                                    value={codeValue}
+                                                    level="M"
+                                                    fgColor="#000"
+                                                    bgColor="#fff"
+                                                    size={64}
+                                                />
+                                            )}
+
+                                        </div>
+
+                                    ) : (
+                                        <div className="text-muted small">No Code</div>
+                                    )}
+
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            ))
+            }
+        </div >
     );
 };
 

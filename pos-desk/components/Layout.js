@@ -1,59 +1,72 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import Navigation from "./Navigation";
 import NavigationSecondary from "./NavigationSecondary";
 import SearchMenu from "./SearchMenu";
 import FooterInfo from "./FooterInfo";
-import RootLayout from "../src/app/RootLayout";
+
 export default function Layout({ children }) {
     const [showAside, setShowAside] = useState(false);
+    const headerRef = useRef(null);
+    const footerRef = useRef(null);
+    const [headerHeight, setHeaderHeight] = useState(0);
+    const [footerHeight, setFooterHeight] = useState(0);
+
+    useEffect(() => {
+        function updateHeights() {
+            const hh = headerRef.current?.offsetHeight || 0;
+            const fh = footerRef.current?.offsetHeight || 0;
+            setHeaderHeight(hh);
+            setFooterHeight(fh);
+        }
+
+        updateHeights();
+        window.addEventListener('resize', updateHeights);
+        return () => window.removeEventListener('resize', updateHeights);
+    }, []);
+
+    // apply spacing so main content isn't hidden behind fixed header/footer
+    const contentStyle = {
+        paddingTop: headerHeight ? headerHeight + 12 : 24,
+        paddingBottom: footerHeight ? footerHeight + 12 : 24,
+    };
 
     return (
-        <div className="container mt-4">
-            <div className="row">
-                {/* Navigation always full width */}
-                <div className="col-12">
-                    <Navigation />
-                    <NavigationSecondary />
+        <div>
+            {/* Fixed header - stays on top */}
+            <header ref={headerRef} className="position-fixed top-0 start-0 end-0" style={{ zIndex: 1030 }}>
+                <div className="container d-flex flex-column py-2">
+                    <div>
+                        <Navigation />
+                    </div>
+                    <div>
+                        <NavigationSecondary />
+                    </div>
+                </div>
+            </header>
+
+            {/* Main container with spacing to account for fixed header/footer */}
+            <div className="container" style={contentStyle}>
+                <div className="row">
+                    {/* Main content */}
+                    <main className={` ${showAside ? "col-md-9" : "col-md-12" }`} >
+                        {children}
+                    </main>
+
+                    {/* Aside (toggleable) */}
+                    {/*{showAside && (
+                        <aside className="col-md-3">
+                            <SearchMenu />
+                        </aside>
+                    )}*/}
                 </div>
             </div>
-            <div className="row">
 
-                {/* Main content */}
-                <main className={` ${showAside ? "col-md-9" : "col-md-12" }`} >
-                    {children}
-                </main>
-
-                {/* Aside (toggleable) */}
-                {showAside && (
-                    <aside className="col-md-3">
-                        <SearchMenu />
-                    </aside>
-                )}
-            </div>
-
-            {/* Footer outside row */}
-            <FooterInfo />
-
-            {/* Floating toggle button */}
-            <button
-                className="btn btn-light border shadow-sm"
-                onClick={() => setShowAside(!showAside)}
-                style={{
-                    position: "fixed",
-                    right: "0.5rem",
-                    top: "10rem",
-                    borderRadius: "20%",
-                    width: "40px",
-                    height: "40px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    zIndex: 1050,
-                }}
-                title={showAside ? "Hide panel" : "Show panel"}
-            >
-                <i className={`fas fa-${showAside ? "times" : "search"}`} />
-            </button>
+            {/* Fixed footer close to browser bottom */}
+            <footer ref={footerRef} className="bottom-0 start-0 end-0" style={{ zIndex: 1020 }}>
+                <div className="container py-2">
+                    <FooterInfo />
+                </div>
+            </footer>
         </div>
     );
 }

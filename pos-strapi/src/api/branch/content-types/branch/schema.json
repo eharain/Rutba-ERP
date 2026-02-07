@@ -40,6 +40,10 @@
     "town": {
       "type": "string"
     },
+    "tax_rate": {
+      "type": "decimal",
+      "default": 0
+    },
     "city": {
       "type": "string"
     },

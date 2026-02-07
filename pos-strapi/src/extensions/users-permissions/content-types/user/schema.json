@@ -13,6 +13,13 @@
   },
   "pluginOptions": {},
   "attributes": {
+    "displayName": {
+      "type": "string",
+      "minLength": 3,
+      "unique": true,
+      "configurable": false,
+      "required": true
+    },
     "username": {
       "type": "string",
       "minLength": 3,
@@ -25,6 +32,9 @@
       "minLength": 6,
       "configurable": false,
       "required": true
+    },
+    "isStaff": {
+      "type": "boolean"
     },
     "provider": {
       "type": "string",

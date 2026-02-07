@@ -1,12 +1,12 @@
-// /pos-desk/pages/[id]/receive.js
+// /pos-desk/pages/[id]/purchase-receive.js
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '../../components/Layout';
 import ProtectedRoute from '../../components/ProtectedRoute';
-import PurchaseReceive from '../../components/lists/purchase-receive';
+import PurchaseReceiveList from '../../components/lists/purchase-receive-list';
 import { fetchPurchaseByIdDocumentIdOrPO } from '../../lib/pos';
 
-export default function ReceivePurchase() {
+export default function PurchaseReceivePage() {
     const router = useRouter();
     const { id } = router.query;
     const [purchase, setPurchase] = useState(null);
@@ -39,7 +39,7 @@ export default function ReceivePurchase() {
     return (
         <ProtectedRoute>
             <Layout>
-                <PurchaseReceive
+                <PurchaseReceiveList
                     purchase={purchase}
                     onComplete={handleComplete}
                 />

@@ -115,7 +115,7 @@ export default function PurchasePage() {
                         const res = await authApi.put(`/purchases/${purchase.documentId}`, {
                             data: { status: newStatus }
                         });
-                        router.push(`/${purchase.documentId}/receive`);
+                        router.push(`/${purchase.documentId}/purchase-receive`);
                         return;
                     }
                     else {

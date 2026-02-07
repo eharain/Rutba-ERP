@@ -14,8 +14,12 @@
       "required": true
     },
     "slug": {
-      "type": "string",
-      "unique": true
+      "type": "uid",
+      "targetField": "name",
+      "required": true
+    },
+    "summary": {
+      "type": "text"
     },
     "description": {
       "type": "text"

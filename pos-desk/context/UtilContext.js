@@ -9,14 +9,42 @@ export function UtilProvider({ children }) {
     const [desk, setDeskState] = useState(null);
     const [user, setUserState] = useState(null);
     const [currency, setCurrencyState] = useState(null);
+    const [labelSize, setLabelSizeState] = useState('2.4x1.5'); // in inches
+    const [printMode, setPrintModeState] = useState('thermal');
+
+    // New: invoice print settings persisted under 'invoice-print-settings'
+    const [invoicePrintSettings, setInvoicePrintSettingsState] = useState({
+        paperWidth: '80mm',          // width applied to invoice container
+        fontSize: 11,                // base font size in px
+        showTax: true,               // whether to show tax row
+        showBranch: true,            // whether to show branch information
+        branchFields: ['name', 'companyName', 'web'] // which branch fields to show
+    });
+
+    function getLabelSize() {
+        return labelSize;
+    }
 
     // Load values from storage once on mount
     useEffect(() => {
-        setBranchState(storage.getJSON("branch"));
-        setDeskState(storage.getJSON("branch-desk"));
-        setUserState(storage.getJSON("user") ?? null);
-        setCurrencyState(storage.getJSON("currency") ?? null);
-    }, []);
+        try {
+            setBranchState(storage.getJSON("branch") ?? null);
+            setDeskState(storage.getJSON("branch-desk") ?? null);
+            setUserState(storage.getJSON("user") ?? null);
+            setCurrencyState(storage.getJSON("currency") ?? null);
+            setLabelSizeState(storage.getJSON("label-size") ?? '2.4x1.5');
+            setPrintModeState(storage.getJSON("print-mode") ?? 'thermal');
+            setInvoicePrintSettingsState(storage.getJSON("invoice-print-settings") ?? {
+                paperWidth: '80mm',
+                fontSize: 11,
+                showTax: true,
+                showBranch: true,
+                branchFields: ['name', 'companyName', 'web']
+            });
+        } catch (err) {
+            console.error('UtilProvider: failed to load from storage', err);
+        }
+    }, []); // run once
 
     function getBranch() {
         return branch;
@@ -32,16 +60,55 @@ export function UtilProvider({ children }) {
     }
     function setCurrency(newCurrency) {
         setCurrencyState(newCurrency);
-        storage.setJSON("currency", newCurrency);
+        try {
+            storage.setJSON("currency", newCurrency);
+        } catch (err) {
+            console.error('Failed to persist currency', err);
+        }
     }
     function setBranch(newBranch) {
         setBranchState(newBranch);
-        storage.setJSON("branch", newBranch);
+        try {
+            storage.setJSON("branch", newBranch);
+        } catch (err) {
+            console.error('Failed to persist branch', err);
+        }
     }
     function setBranchDesk(newDesk) {
         setDeskState(newDesk);
-        storage.setJSON("branch-desk", newDesk);
+        try {
+            storage.setJSON("branch-desk", newDesk);
+        } catch (err) {
+            console.error('Failed to persist branch-desk', err);
+        }
     }
+    function setLabelSize(newSize) {
+        setLabelSizeState(newSize);
+        try {
+            storage.setJSON("label-size", newSize);
+        } catch (err) {
+            console.error('Failed to persist label-size', err);
+        }
+    }
+    function setPrintMode(newMode) {
+        setPrintModeState(newMode);
+        try {
+            storage.setJSON("print-mode", newMode);
+        } catch (err) {
+            console.error('Failed to persist print-mode', err);
+        }
+    }
+
+    // New: setter that persists invoice print settings
+    function setInvoicePrintSettings(newSettings) {
+        setInvoicePrintSettingsState(newSettings);
+        try {
+            storage.setJSON("invoice-print-settings", newSettings);
+        } catch (err) {
+            console.error('Failed to persist invoice-print-settings', err);
+        }
+    }
+
     function getLocation() {
         if (!branch || !desk) {
             return null;
@@ -112,8 +179,15 @@ export function UtilProvider({ children }) {
         padHex,
         branch,
         desk,
-        user
-    }), [branch, desk, user, currency]);
+        user,
+        labelSize,
+        getLabelSize,
+        setLabelSize,
+        printMode,
+        setPrintMode,
+        invoicePrintSettings,
+        setInvoicePrintSettings
+    }), [branch, desk, user, labelSize, currency, printMode, invoicePrintSettings]);
 
     return (
         <UtilContext.Provider value={value}>

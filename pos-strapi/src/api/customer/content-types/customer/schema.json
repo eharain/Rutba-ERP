@@ -10,8 +10,8 @@
   },
   "attributes": {
     "name": {
-      "type": "string",
-      "required": true
+      "type": "string"
+    
     },
     "picture": {
       "type": "media",
@@ -31,6 +31,13 @@
     },
     "address": {
       "type": "text"
+    }
+    ,
+    "sales": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::sale.sale",
+      "mappedBy": "customer"
     }
   }
 }

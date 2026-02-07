@@ -1,8 +1,10 @@
 @echo off
 SETLOCAL ENABLEDELAYEDEXPANSION
 
+SET "SCRIPT_DIR=%~dp0"
+
 REM Use local Node and add it to PATH
-set "LOCAL_NODE=..\node"
+set "LOCAL_NODE=%SCRIPT_DIR%..\node"
 set "PATH=%CD%\%LOCAL_NODE%;%PATH%"
 
 REM Check Node.js installation
@@ -17,15 +19,13 @@ if not exist "%LOCAL_NODE%\node.exe" (
 
 REM Run pos-strapi
 echo Starting pos-strapi...
-cd ..\pos-strapi
+cd /d "%SCRIPT_DIR%..\pos-strapi"
 start cmd /k "npm run develop"
-cd ..\scripts
 
 REM Run pos-desk (Next.js)
 echo Starting pos-desk...
-cd ..\pos-desk
+cd /d "%SCRIPT_DIR%..\pos-desk"
 start cmd /k "npm run dev"
-cd ..\scripts
 
 echo Both projects are running. Strapi on port 1337, Next.js on port 3000.
 ENDLOCAL

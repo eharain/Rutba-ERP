@@ -1,308 +1,300 @@
-﻿import { useState, useEffect } from 'react';
+﻿`use client`;
+import { useEffect, useReducer, useState } from 'react';
 import { useRouter } from 'next/router';
-import { authApi } from '../../lib/api';
-import { fetchSaleByIdOrInvoice, saveSaleItems } from '../../lib/pos';
-import ProtectedRoute from '../../components/ProtectedRoute';
+
 import Layout from '../../components/Layout';
+import ProtectedRoute from '../../components/ProtectedRoute';
 import PermissionCheck from '../../components/PermissionCheck';
+import CustomerSelect from '../../components/CustomerSelect';
 import SalesItemsForm from '../../components/form/sales-items-form';
 import SalesItemsList from '../../components/lists/sales-items-list';
-import { useUtil } from '../../context/UtilContext';
 import CheckoutModal from '../../components/CheckoutModal';
-import { calculateTax } from '../../lib/utils';
+
+import { useUtil } from '../../context/UtilContext';
+
+import SaleModel from '../../domain/sale/SaleModel';
+import SaleApi from '../../lib/saleApi';
 
 export default function SalePage() {
     const router = useRouter();
     const { id } = router.query;
     const { currency } = useUtil();
-    const [sale, setSale] = useState(null);
-    const [items, setItems] = useState([]);
+
+    // Single source of truth
+    const [saleModel, setSaleModel] = useState(null);
+    const [paid, setPaid] = useState(false);
+    const [, forceUpdate] = useReducer(x => x + 1, 0);
+    const [isDirty, setIsDirty] = useState(false);
+
     const [loading, setLoading] = useState(false);
-    const [totals, setTotals] = useState({
-        subtotal: 0,
-        discount: 0,
-        tax: 0,
-        total: 0
-    });
     const [showCheckout, setShowCheckout] = useState(false);
 
+    /* ===============================
+       Load existing sale
+    =============================== */
+
     useEffect(() => {
-        if (id) loadSaleData();
+        if (!id) return;
+        // If creating a new sale (route uses 'new'), initialize an empty model instead of fetching
+        if (id === 'new') {
+            const model = new SaleModel({ id: 'new' });
+
+            model.documentId = null;
+            setSaleModel(model);
+            setIsDirty(false);
+        } else {
+            loadSale();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [id]);
 
-    useEffect(() => {
-        calculateTotals();
-    }, [items]);
-
-    const loadSaleData = async () => {
+    const loadSale = async () => {
         setLoading(true);
         try {
-            const saleData = await fetchSaleByIdOrInvoice(id);
-            setSale(saleData);
-            // Initialize items with discount if present
-            const initialItems = saleData.items?.map(item => ({
-                ...item,
-                discount: item.discount || 0,
-                total: calculateItemTotal(item)
-            })) || [];
-            setItems(initialItems);
-        } catch (error) {
-            console.error('Error loading sale:', error);
+            const model = await SaleApi.loadSale(id);
+            setPaid(model.isPaid);
+            setSaleModel(model);
+            setIsDirty(false);
+            //   console.log("model loaded", model)
+        } catch (err) {
+            console.error('Failed to load sale', err);
         } finally {
             setLoading(false);
         }
     };
 
-    const calculateItemTotal = (item) => {
-        const subtotal = item.price * item.quantity;
-        const discountAmount = subtotal * ((item.discount || 0) / 100);
-        const taxableAmount = subtotal - discountAmount;
-        const taxAmount = calculateTax(taxableAmount); // 10% tax
-        return taxableAmount + taxAmount;
+
+
+    /* ===============================
+       Customer
+    =============================== */
+
+    const handleCustomerChange = async (customer) => {
+        // Prevent changing customer on paid sales
+        if (saleModel.isPaid) return;
+
+        // For unsaved/new sales just update local model. Persist only for existing sales.
+        saleModel.setCustomer(customer);
+
+        forceUpdate();
+        setIsDirty(true);
+
     };
 
-    const calculateTotals = () => {
-        const subtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-        const totalDiscount = items.reduce((sum, item) => {
-            const itemSubtotal = item.price * item.quantity;
-            return sum + (itemSubtotal * ((item.discount || 0) / 100));
-        }, 0);
-        const taxableAmount = subtotal - totalDiscount;
-        const tax = calculateTax(taxableAmount); // 10% tax
-        const total = taxableAmount + tax;
+    /* ===============================
+       Checkout
+    =============================== */
 
-        setTotals({
-            subtotal,
-            discount: totalDiscount,
-            tax,
-            total
-        });
+    const handleCheckoutComplete = async (payment) => {
+        saleModel.addPayment(payment);
+        setLoading(true);
+        await doSave({ paid: true });
+        setShowCheckout(false);
     };
 
-    const addItem = (product) => {
-        const newItem = {
-            id: product.id,
-            documentId: product.documentId,
-            product: product.product,
-            quantity: 1,
-            price: product.selling_price || 0,
-            discount: 0, // Default 0% discount
-            tax: calculateTax(product.selling_price || 0),
-            total: product.selling_price || 0,
-            offer_price: product.offer_price || 0,
-            selling_price: product.selling_price || 0,
-            cost_price: product.cost_price || 0
-        };
-        if (items.find(item => item.id === newItem.id)) {
-            updateItem(items.findIndex(item => item.id === newItem.id), {
-                quantity: items.find(item => item.id === newItem.id).quantity + 1
-            });
-        } else {
-            setItems(prev => [...prev, newItem]);
-        }
-    };
-
-    const updateItem = (index, updates) => {
-        setItems(prev => prev.map((item, i) => {
-            if (i === index) {
-                const updatedItem = { ...item, ...updates };
-                // Recalculate total when price, quantity, or discount changes
-                if (updates.price !== undefined || updates.quantity !== undefined || updates.discount !== undefined || updates.offer_price !== undefined) {
-                    updatedItem.total = calculateItemTotal(updatedItem);
-                }
-                return updatedItem;
-            }
-            return item;
-        }));
-    };
-
-    const removeItem = (index) => {
-        setItems(prev => prev.filter((_, i) => i !== index));
-    };
-
-    const handleCheckoutComplete = async () => {
+    const doSave = async (param) => {
         setLoading(true);
         try {
-            await saveSaleItems(sale.documentId || sale.id, items);
+            setPaid(saleModel.isPaid);
 
-            // Update sale status to completed
-            await authApi.put(`/sales/${sale.documentId || sale.id}`, {
-                data: {
-                    payment_status: 'Paid',
-                    total: totals.total,
-                    subtotal: totals.subtotal,
-                    discount: totals.discount,
-                    tax: totals.tax
-                }
-            });
-
-            // Reload sale data to update payment status
-            await loadSaleData();
-
-            alert('Sale completed successfully!');
-            setShowCheckout(false);
-        } catch (error) {
-            console.error('Error completing sale:', error);
-            alert('Error completing sale');
+            await SaleApi.saveSale(saleModel,param);
+            // alert('Sale completed successfully');
+            await loadSale();
+            setIsDirty(false);
+        } catch (err) {
+            console.error('Save failed', err);
+            alert('Save failed');
         } finally {
             setLoading(false);
         }
+
     };
 
+    /* ===============================
+       Print
+    =============================== */
+
+    const handleSave = async () => {
+        await doSave({ paid : false });
+    }
     const handlePrint = () => {
-        if (!sale || items.length === 0) {
-            alert('No sale data to print');
-            return;
-        }
+        if (saleModel.items.length === 0) return;
 
-        // Store sale data in localStorage
         const storageKey = `print_invoice_${Date.now()}`;
-        localStorage.setItem(storageKey, JSON.stringify({
-            sale: sale,
-            items: items,
-            totals: totals,
-            timestamp: Date.now()
-        }));
 
-        // Open print window
-        const saleId = sale.documentId || sale.id || sale.invoice_no;
-        window.open(`/print-invoice?key=${storageKey}&saleId=${saleId}`, '_blank', 'width=1000,height=800');
+        localStorage.setItem(
+            storageKey,
+            JSON.stringify({
+                sale: {
+                    customer: saleModel.customer,
+                    invoice_no: saleModel.invoice_no,
+                    sale_date: saleModel.sale_date,
+                    payment_status: saleModel.payment_status,
+                    totals: {
+                        subtotal: saleModel.subtotal,
+                        discount: saleModel.discountTotal,
+                        tax: saleModel.tax,
+                        total: saleModel.total
+                    }
+                },
+                items: saleModel.items.map(i => i.toJSON()),
+                timestamp: Date.now()
+            })
+        );
+
+        const saleIdParam = id && id !== 'new' ? `&saleId=${id}` : '';
+        window.open(`/print-invoice?key=${storageKey}${saleIdParam}`, '_blank', 'width=1000,height=800');
     };
 
-    if (loading && !sale) return <div>Loading...</div>;
+    if (!saleModel) {
+        return (
+            <Layout>
+                <ProtectedRoute>
+                    <div className="p-4">Loading sale...</div>
+                </ProtectedRoute>
+            </Layout>
+        );
+    }
 
     return (
         <Layout>
             <ProtectedRoute>
-                <PermissionCheck required='api::sale.sale.find,api::sale-item.sale-item.find,api::stock-item.stock-item.find'>
-                    <div style={{ padding: '20px' }}>
-                        {/* Header */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                            <div>
-                                <button
-                                    onClick={() => router.push('/sales')}
-                                    style={{
-                                        padding: '8px 16px',
-                                        background: 'transparent',
-                                        color: '#007bff',
-                                        border: '1px solid #007bff',
-                                        borderRadius: '4px',
-                                        cursor: 'pointer',
-                                        marginBottom: '10px'
-                                    }}
-                                >
-                                    ← Back to Sales
-                                </button>
-                                <h1>Sale #{sale?.invoice_no || id}</h1>
-                                <p>Date: {sale?.sale_date ? new Date(sale.sale_date).toLocaleDateString() : 'N/A'}</p>
-                                <p>Customer: {sale?.customer?.name || 'Walk-in Customer'}</p>
+                <PermissionCheck required="api::sale.sale.find">
+                    <div className="container">
+
+                        <div className="row w-100">
+
+                            <div className="col-5 mb-2">
+                                <div>
+                                    <h3 className="mb-0" style={{ minHeight: '50px' }}>Invoice #{saleModel.invoice_no} {saleModel.isPaid && <span className="badge bg-success ms-2">Paid</span>}</h3>
+                                </div>
                             </div>
 
-                            <div style={{ textAlign: 'right' }}>
-                                <div style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '10px' }}>
-                                    Total: {currency}{totals.total.toFixed(2)}
-                                </div>
-                                <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-                                    {sale?.payment_status === 'Paid' && (
-                                        <button
-                                            onClick={handlePrint}
-                                            disabled={loading || items.length === 0}
-                                            style={{
-                                                padding: '12px 30px',
-                                                background: '#007bff',
-                                                color: 'white',
-                                                border: 'none',
-                                                borderRadius: '4px',
-                                                cursor: items.length === 0 ? 'not-allowed' : 'pointer',
-                                                fontSize: '16px',
-                                                fontWeight: 'bold',
-                                                opacity: items.length === 0 ? 0.6 : 1
-                                            }}
-                                        >
-                                            Print
-                                        </button>
-                                    )}
-                                    {sale?.payment_status !== 'Paid' && (
-                                        <button
-                                            onClick={() => setShowCheckout(true)}
-                                            disabled={loading || items.length === 0}
-                                            style={{
-                                                padding: '12px 30px',
-                                                background: '#28a745',
-                                                color: 'white',
-                                                border: 'none',
-                                                borderRadius: '4px',
-                                                cursor: items.length === 0 ? 'not-allowed' : 'pointer',
-                                                fontSize: '16px',
-                                                fontWeight: 'bold',
-                                                opacity: items.length === 0 ? 0.6 : 1
-                                            }}
-                                        >
-                                            Checkout
-                                        </button>
-                                    )}
-                                </div>
+                            <div className="col-7 mb-2 ">
+                                <CustomerSelect
+                                    value={saleModel.customer}
+                                    onChange={handleCustomerChange}
+                                    disabled={saleModel.isPaid}
+                                />
                             </div>
+
+
                         </div>
-
-                        {/* Product Search Form */}
+                        {/* Add Items */}
                         <SalesItemsForm
-                            onAddItem={addItem}
-                            disabled={sale?.payment_status === 'Paid'}
+                            disabled={saleModel.isPaid}
+                            onAddItem={(stockItem) => {
+                                saleModel.addStockItem(stockItem);
+                                forceUpdate();
+                                setIsDirty(true);
+                            }}
+                            onAddNonStock={(data) => {
+                                saleModel.addNonStockItem(data);
+                                forceUpdate();
+                                setIsDirty(true);
+                            }}
                         />
 
                         {/* Items List */}
                         <SalesItemsList
-                            items={items}
-                            onUpdateItem={updateItem}
-                            onRemoveItem={removeItem}
-                            disabled={sale?.payment_status === 'Paid'}
+                            items={saleModel.items}
+                            disabled={saleModel.isPaid}
+                            onUpdate={(index, updater) => {
+                                saleModel.updateItem(index, updater);
+                                forceUpdate();
+                                setIsDirty(true);
+                            }}
+                            onRemove={(index) => {
+                                saleModel.removeItem(index);
+                                forceUpdate();
+                                setIsDirty(true);
+                            }}
                         />
 
-                        {/* Totals Summary */}
-                        {items.length > 0 && (
-                            <div style={{
-                                marginTop: '20px',
-                                padding: '20px',
-                                background: 'black',
-                                borderRadius: '4px',
-                                maxWidth: '400px',
-                                marginLeft: 'auto'
-                            }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                                    <span>Subtotal:</span>
-                                    <span>{currency}{totals.subtotal.toFixed(2)}</span>
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', color: '#dc3545' }}>
-                                    <span>Discount:</span>
-                                    <span>-{currency}{totals.discount.toFixed(2)}</span>
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                                    <span>Taxable Amount:</span>
-                                    <span>{currency}{(totals.subtotal - totals.discount).toFixed(2)}</span>
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                                    <span>Tax (10%):</span>
-                                    <span>{currency}{totals.tax.toFixed(2)}</span>
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '18px', borderTop: '1px solid #ccc', paddingTop: '8px' }}>
-                                    <span>Total:</span>
-                                    <span>{currency}{totals.total.toFixed(2)}</span>
-                                </div>
-                            </div>
-                        )}
-                    </div>
+                        <div className="row g-2 mt-2">
+                            <div className="col-lg-4 ms-lg-auto">
+                                {/* Totals summary */}
+                                {saleModel.items.length > 0 && (
+                                    <div className="p-3 bg-dark text-white rounded">
+                                        <div className="d-flex justify-content-between">
+                                            <span>Subtotal</span>
+                                            <span>{currency}{saleModel.subtotal.toFixed(2)}</span>
+                                        </div>
 
-                    {/* Checkout Modal */}
-                    <CheckoutModal
-                        isOpen={showCheckout}
-                        onClose={() => setShowCheckout(false)}
-                        total={totals.total}
-                        onComplete={handleCheckoutComplete}
-                        loading={loading}
-                    />
+                                        <div className="d-flex justify-content-between text-danger">
+                                            <span>Discount</span>
+                                            <span>-{currency}{saleModel.discountTotal.toFixed(2)}</span>
+                                        </div>
+                                        {saleModel.tax > 0 && (
+                                            <div className="d-flex justify-content-between">
+                                                <span>Tax</span>
+                                                <span>{currency}{saleModel.tax.toFixed(2)}</span>
+                                            </div>
+                                        )}
+                                        <hr />
+
+                                        <div className="d-flex justify-content-between fw-bold fs-5">
+                                            <span>Total</span>
+                                            <span>{currency}{saleModel.total.toFixed(2)}</span>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                        </div>
+                        <div className="row g-2 mt-2">
+                            <div className="col-lg-4 ms-lg-auto">
+                                <SaleButtons saleModel={saleModel} handlePrint={handlePrint} handleSave={handleSave} setShowCheckout={setShowCheckout} isDirty={isDirty}></SaleButtons>
+                            </div>
+                        </div>
+                        {/* Checkout Modal */}
+                        <CheckoutModal
+                            isOpen={showCheckout && !saleModel.isPaid}
+                            onClose={() => setShowCheckout(false)}
+                            total={saleModel.total}
+                            onComplete={handleCheckoutComplete}
+                            loading={loading}
+                        />
+                    </div>
                 </PermissionCheck>
             </ProtectedRoute>
         </Layout>
     );
+
+
+
+
+}
+
+
+
+function SaleButtons({ handlePrint, handleSave, saleModel, setShowCheckout, isDirty }) {
+    const itemsCount = saleModel.items.length;
+    return (
+        <div className="d-grid gap-2">
+            <button
+                className="btn btn-secondary"
+                onClick={handlePrint}
+                disabled={itemsCount === 0}
+            >
+                Print
+            </button>
+            <button
+                className="btn btn-success"
+                onClick={() => handleSave(true)}
+                disabled={itemsCount === 0 || saleModel.isPaid || !isDirty}
+            >
+                Save
+                {/* {saleModel.isPaid ? 'Save' : 'Saved'}*/}
+            </button>
+            <PermissionCheck has="api::payment.payment.create">
+                <button
+                    className="btn btn-success"
+                    onClick={() => setShowCheckout(true)}
+                    disabled={itemsCount === 0 || saleModel.isPaid}
+                >
+                    {saleModel.isPaid ? 'Paid' : 'Checkout'}
+                </button>
+            </PermissionCheck>
+        </div>)
 }

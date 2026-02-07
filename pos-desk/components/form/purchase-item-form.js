@@ -44,13 +44,13 @@ const PurchaseItemForm = ({ purchaseItem, onSubmit, onCancel }) => {
     // Search products with debounce
     useEffect(() => {
         const delayDebounceFn = setTimeout(() => {
-            if (productSearch.length > 2 && !formData.product) {
+            if (productSearch.length >= 2 && !formData.product) {
                 handleProductSearch(productSearch);
             } else {
                 setSearchResults([]);
                 setShowResults(false);
             }
-        }, 300);
+        }, 200);
 
         return () => clearTimeout(delayDebounceFn);
     }, [productSearch, formData.product]);
