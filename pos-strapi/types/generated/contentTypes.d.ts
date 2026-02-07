@@ -519,6 +519,48 @@ export interface ApiBrandBrand extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiCashRegisterCashRegister
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'cash_registers';
+  info: {
+    displayName: 'Cash Register';
+    pluralName: 'cash-registers';
+    singularName: 'cash-register';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    branch_id: Schema.Attribute.Integer;
+    branch_name: Schema.Attribute.String;
+    closed_at: Schema.Attribute.DateTime;
+    closed_by: Schema.Attribute.String;
+    closed_by_id: Schema.Attribute.Integer;
+    closing_cash: Schema.Attribute.Decimal;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    desk_id: Schema.Attribute.Integer;
+    desk_name: Schema.Attribute.String;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::cash-register.cash-register'
+    > &
+      Schema.Attribute.Private;
+    opened_at: Schema.Attribute.DateTime;
+    opened_by: Schema.Attribute.String;
+    opened_by_id: Schema.Attribute.Integer;
+    opening_cash: Schema.Attribute.Decimal;
+    publishedAt: Schema.Attribute.DateTime;
+    status: Schema.Attribute.Enumeration<['Open', 'Closed']> &
+      Schema.Attribute.DefaultTo<'Open'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiCategoryCategory extends Struct.CollectionTypeSchema {
   collectionName: 'categories';
   info: {
@@ -1972,6 +2014,7 @@ declare module '@strapi/strapi' {
       'admin::user': AdminUser;
       'api::branch.branch': ApiBranchBranch;
       'api::brand.brand': ApiBrandBrand;
+      'api::cash-register.cash-register': ApiCashRegisterCashRegister;
       'api::category.category': ApiCategoryCategory;
       'api::currency.currency': ApiCurrencyCurrency;
       'api::customer.customer': ApiCustomerCustomer;
