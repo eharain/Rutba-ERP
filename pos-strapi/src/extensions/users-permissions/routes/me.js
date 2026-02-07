@@ -13,4 +13,12 @@ module.exports = [
             prefix: '',
         }
     },
+    {
+        method: "GET",
+        path: "/me/stock-items-search",
+        handler: "me.stockItemsSearch",
+        config: {
+            prefix: '',
+        }
+    }
 ];

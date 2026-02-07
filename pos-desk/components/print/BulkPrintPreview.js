@@ -1,8 +1,11 @@
 ﻿// file: /pos-desk/components/print/BulkPrintPreview.js
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import BulkBarcodePrint from './BulkBarcodePrint';
+import { useUtil } from '../../context/UtilContext';
 
 const BulkPrintPreview = ({ storageKey, title, onClose }) => {
+    const { labelSize, setLabelSize, printMode, setPrintMode } = useUtil();
+
     const handlePrint = () => {
         window.print();
     };
@@ -18,7 +21,6 @@ const BulkPrintPreview = ({ storageKey, title, onClose }) => {
     };
 
     useEffect(() => {
-        // Auto-print when component mounts with longer delay for data loading
         const timer = setTimeout(() => {
             window.print();
         }, 3000);
@@ -26,71 +28,85 @@ const BulkPrintPreview = ({ storageKey, title, onClose }) => {
         return () => clearTimeout(timer);
     }, []);
 
+    const [showControls, setShowControls] = useState(false);
+
     return (
         <div>
-            <style jsx global>{`
-                @media screen {
-                    .print-controls {
-                        display: flex;
-                        position: fixed;
-                        top: 20px;
-                        right: 20px;
-                        background: lightgrey;
-                        padding: 15px;
-                        border: 2px solid #007bff;
-                        border-radius: 8px;
-                        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-                        z-index: 1000;
-                        gap: 10px;
-                        align-items: center;
-                    }
-                }
-                
-                @media print {
-                    .print-controls {
-                        display: none !important;
-                    }
-                }
-                
-                body {
-                    margin: 0;
-                    padding: 0;
-                    background: #f5f5f5;
-                }
-            `}</style>
+            {/* Gear toggle - visible on screen only */}
+            <button
+                type="button"
+                className="d-print-none btn btn-sm btn-primary position-fixed"
+                aria-label="Toggle print settings"
+                onClick={() => setShowControls(s => !s)}
+                style={{ top: '20px', right: '20px', zIndex: 1100, borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+                ⚙
+            </button>
 
-            {/* Print Controls - Only visible on screen */}
-            <div className="print-controls no-print">
+            {/* Quick print when controls hidden */}
+            {!showControls && (
                 <button
+                    type="button"
+                    className="d-print-none btn btn-sm btn-success position-fixed"
+                    aria-label="Quick print"
                     onClick={handlePrint}
-                    style={{
-                        padding: '10px 20px',
-                        background: '#28a745',
-                        color: 'lightgrey',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: 'pointer',
-                        fontWeight: 'bold'
-                    }}
+                    style={{ top: '20px', right: '70px', zIndex: 1100, borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                 >
-                    🖨️ Print Now
+                    🖨
                 </button>
-                <button
-                    onClick={handleClose}
-                    style={{
-                        padding: '10px 20px',
-                        background: '#6c757d',
-                        color: 'lightgrey',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: 'pointer'
-                    }}
-                >
-                    Close
-                </button>
-            </div>
+            )}
 
-            <BulkBarcodePrint storageKey={storageKey} title={title} />
+            {/* Print Controls - Only visible on screen and when toggled */}
+            {showControls && (
+            <div className="d-print-none position-fixed" style={{ top: '70px', right: '20px', zIndex: 1100, minWidth: 260 }}>
+                <div className="card shadow-sm">
+                    <div className="card-body p-2">
+                        <div className="container-fluid">
+                            {/* Stacked controls: label size and print mode */}
+                            <div className="mb-2">
+                                <label className="form-label small mb-1">Label Size</label>
+                                <select
+                                    className="form-select form-select-sm"
+                                    value={labelSize}
+                                    onChange={(e) => setLabelSize(e.target.value)}
+                                >
+                                    <option value="2.4x1.5">2.4 x 1.5 in</option>
+                                    <option value="2.25x1.25">2.25 x 1.25 in</option>
+                                    <option value="2x1">2 x 1 in</option>
+                                    <option value="1.5x1">1.5 x 1 in</option>
+                                    <option value="1x1">1 x 1 in</option>
+                                    <option value="4x6">4 x 6 in (Shipping)</option>
+                                </select>
+                            </div>
+
+                            <div className="mb-2">
+                                <label className="form-label small mb-1">Print Mode</label>
+                                <select
+                                    className="form-select form-select-sm"
+                                    value={printMode}
+                                    onChange={(e) => setPrintMode(e.target.value)}
+                                >
+                                    <option value="thermal">Thermal Printer</option>
+                                    <option value="a4">A4 / Letter Printer</option>
+                                </select>
+                            </div>
+
+                            {/* Stacked buttons: print and close */}
+                            <div className="d-grid gap-2 mt-2">
+                                <button onClick={handlePrint} className="btn btn-sm btn-success w-100">
+                                    🖨️ Print Now
+                                </button>
+                                <button onClick={handleClose} className="btn btn-sm btn-secondary w-100">
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            )}
+
+            <BulkBarcodePrint storageKey={storageKey} title={title} labelSize={labelSize} printMode={printMode} />
         </div>
     );
 };

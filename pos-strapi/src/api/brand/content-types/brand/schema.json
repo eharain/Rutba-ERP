@@ -14,8 +14,9 @@
       "required": true
     },
     "slug": {
-      "type": "string",
-      "unique": true
+      "type": "uid",
+      "targetField": "name",
+      "required": true
     },
     "logo": {
       "type": "media",

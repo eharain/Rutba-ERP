@@ -1,7 +1,6 @@
 ﻿import React, { useEffect, useState } from "react";
 import { authApi, api } from "../lib/api";
 import Layout from "../components/Layout";
-import PermissionCheck from "../components/PermissionCheck";
 import { useUtil } from "../context/UtilContext"
 export default function SettingsPage() {
     const [branches, setBranches] = useState([]);
@@ -36,7 +35,6 @@ export default function SettingsPage() {
     };
 
     return (
-        <PermissionCheck required="api::branch.branch.find">
             <Layout>
                 <div className="p-6">
                     <h1 className="text-xl font-bold mb-4">Settings</h1>
@@ -79,6 +77,5 @@ export default function SettingsPage() {
                     </div>
                 </div>
             </Layout>
-        </PermissionCheck>
     );
 }

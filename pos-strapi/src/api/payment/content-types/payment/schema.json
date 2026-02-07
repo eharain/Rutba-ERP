@@ -29,10 +29,16 @@
     "payment_date": {
       "type": "datetime"
     },
+    
+    "cash_received": { "type": "decimal" },
+    "change": { "type": "decimal" },
+    "due": { "type": "decimal" },
+
     "sale": {
       "type": "relation",
       "relation": "manyToOne",
-      "target": "api::sale.sale"
+      "target": "api::sale.sale",
+      "inversedBy": "payments"
     },
     "branches": {
       "type": "relation",

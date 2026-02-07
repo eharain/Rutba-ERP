@@ -15,8 +15,8 @@ export async function createNewEntity(name) {
             sale_date: new Date().toISOString(),
             total: 0,
             users: {
-                connect: [user.id],
-                disconnect: [],
+                connect: [user.documentId],
+            //    disconnect: [],
             }
         };
     } else if (name === 'purchases' || name === 'purchase') {
@@ -26,8 +26,8 @@ export async function createNewEntity(name) {
             order_date: new Date().toISOString(),
             total: 0,
             users: {
-                connect: [user.id],
-                disconnect: [],
+                connect: [user.documentId],
+            //    disconnect: [],
             },
         };
     } else if (name === 'product' || name === 'products') {
@@ -38,19 +38,19 @@ export async function createNewEntity(name) {
             reorder_level: 1,
             is_active: false,
             branches: {
-                connect: [branch.id],
-                disconnect: [],
+                connect: [branch.documentId],
+          //      disconnect: [],
             },
 
             users: {
-                connect: [user.id],
-                disconnect: [],
+                connect: [user.documentId],
+            //    disconnect: [],
             },
         };
     }
     const res = await authApi.post(`/${namePlural}`, { data });
     const rdata = res?.data || {};
-    const id = rdata.orderId ?? rdata.invoice_no ?? rdata.documentId ?? rdata.id;
+    const id = /*rdata.orderId ?? rdata.invoice_no ??*/ rdata.documentId ?? rdata.id;
     return { data: rdata, id, nameSinglar, namePlural };
 }
 
@@ -80,9 +80,10 @@ export async function generateStockItems(purchase, purchaseItem, quantity) {
             status: 'Received',
             cost_price: purchaseItem.unit_price,
             selling_price: purchaseItem.product.selling_price,
+            offer_price: purchaseItem.product.offer_price,
             product: purchaseItem.product.documentId || purchaseItem.product.id,
             purchase_item: purchaseItem.documentId || purchaseItem.id,
-            branch: purchase.branch?.documentId || purchase.branch?.id
+            branch: getBranch()?.documentId || getBranch()?.id
         };
 
         try {

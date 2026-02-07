@@ -477,6 +477,7 @@ export interface ApiBranchBranch extends Struct.CollectionTypeSchema {
       'api::sale-return.sale-return'
     >;
     sales: Schema.Attribute.Relation<'manyToMany', 'api::sale.sale'>;
+    tax_rate: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
     town: Schema.Attribute.String;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
@@ -511,7 +512,7 @@ export interface ApiBrandBrand extends Struct.CollectionTypeSchema {
     logo: Schema.Attribute.Media<'images' | 'files' | 'videos' | 'audios'>;
     name: Schema.Attribute.String & Schema.Attribute.Required;
     publishedAt: Schema.Attribute.DateTime;
-    slug: Schema.Attribute.String & Schema.Attribute.Unique;
+    slug: Schema.Attribute.UID<'name'> & Schema.Attribute.Required;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -549,7 +550,8 @@ export interface ApiCategoryCategory extends Struct.CollectionTypeSchema {
     name: Schema.Attribute.String & Schema.Attribute.Required;
     parent: Schema.Attribute.Relation<'manyToOne', 'api::category.category'>;
     publishedAt: Schema.Attribute.DateTime;
-    slug: Schema.Attribute.String & Schema.Attribute.Unique;
+    slug: Schema.Attribute.UID<'name'> & Schema.Attribute.Required;
+    summary: Schema.Attribute.Text;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -613,10 +615,11 @@ export interface ApiCustomerCustomer extends Struct.CollectionTypeSchema {
       'api::customer.customer'
     > &
       Schema.Attribute.Private;
-    name: Schema.Attribute.String & Schema.Attribute.Required;
+    name: Schema.Attribute.String;
     phone: Schema.Attribute.String;
     picture: Schema.Attribute.Media<'images' | 'files' | 'videos' | 'audios'>;
     publishedAt: Schema.Attribute.DateTime;
+    sales: Schema.Attribute.Relation<'oneToMany', 'api::sale.sale'>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -668,9 +671,12 @@ export interface ApiPaymentPayment extends Struct.CollectionTypeSchema {
   attributes: {
     amount: Schema.Attribute.Decimal;
     branches: Schema.Attribute.Relation<'manyToMany', 'api::branch.branch'>;
+    cash_received: Schema.Attribute.Decimal;
+    change: Schema.Attribute.Decimal;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    due: Schema.Attribute.Decimal;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
@@ -684,6 +690,39 @@ export interface ApiPaymentPayment extends Struct.CollectionTypeSchema {
     publishedAt: Schema.Attribute.DateTime;
     sale: Schema.Attribute.Relation<'manyToOne', 'api::sale.sale'>;
     transaction_no: Schema.Attribute.String;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiProductGroupProductGroup
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'product_groups';
+  info: {
+    description: '';
+    displayName: 'Product Groups';
+    pluralName: 'product-groups';
+    singularName: 'product-group';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    gallery: Schema.Attribute.Media<'images'> & Schema.Attribute.Required;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::product-group.product-group'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    products: Schema.Attribute.Relation<'manyToMany', 'api::product.product'>;
+    publishedAt: Schema.Attribute.DateTime;
+    slug: Schema.Attribute.UID<'name'> & Schema.Attribute.Required;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -714,15 +753,10 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
-    description: Schema.Attribute.RichText &
-      Schema.Attribute.SetMinMaxLength<{
-        minLength: 50;
-      }>;
-    gallery: Schema.Attribute.Media<
-      'images' | 'files' | 'videos' | 'audios',
-      true
-    >;
+    description: Schema.Attribute.RichText;
+    gallery: Schema.Attribute.Media<'images' | 'videos' | 'audios', true>;
     is_active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    is_variant: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     items: Schema.Attribute.Relation<'oneToMany', 'api::stock-item.stock-item'>;
     keywords: Schema.Attribute.JSON;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
@@ -731,9 +765,10 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
       'api::product.product'
     > &
       Schema.Attribute.Private;
-    logo: Schema.Attribute.Media<'images' | 'files' | 'videos' | 'audios'>;
+    logo: Schema.Attribute.Media<'images'>;
     name: Schema.Attribute.String;
     offer_price: Schema.Attribute.Decimal;
+    parent: Schema.Attribute.Relation<'manyToOne', 'api::product.product'>;
     publishedAt: Schema.Attribute.DateTime;
     purchase_items: Schema.Attribute.Relation<
       'oneToMany',
@@ -757,6 +792,7 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
       'manyToMany',
       'plugin::users-permissions.user'
     >;
+    variants: Schema.Attribute.Relation<'oneToMany', 'api::product.product'>;
   };
 }
 
@@ -973,6 +1009,7 @@ export interface ApiSaleItemSaleItem extends Struct.CollectionTypeSchema {
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     discount: Schema.Attribute.Decimal;
+    discount_percentage: Schema.Attribute.Decimal;
     items: Schema.Attribute.Relation<'oneToMany', 'api::stock-item.stock-item'>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
@@ -985,6 +1022,7 @@ export interface ApiSaleItemSaleItem extends Struct.CollectionTypeSchema {
     publishedAt: Schema.Attribute.DateTime;
     quantity: Schema.Attribute.Integer;
     sale: Schema.Attribute.Relation<'manyToOne', 'api::sale.sale'>;
+    subtotal: Schema.Attribute.Decimal;
     tax: Schema.Attribute.Decimal;
     total: Schema.Attribute.Decimal;
     updatedAt: Schema.Attribute.DateTime;
@@ -1304,6 +1342,8 @@ export interface ApiTermTypeTermType extends Struct.CollectionTypeSchema {
       'images' | 'files' | 'videos' | 'audios',
       true
     >;
+    is_public: Schema.Attribute.Boolean;
+    is_variant: Schema.Attribute.Boolean;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
@@ -1313,7 +1353,7 @@ export interface ApiTermTypeTermType extends Struct.CollectionTypeSchema {
     logo: Schema.Attribute.Media<'images' | 'files' | 'videos' | 'audios'>;
     name: Schema.Attribute.String;
     publishedAt: Schema.Attribute.DateTime;
-    slug: Schema.Attribute.String & Schema.Attribute.Unique;
+    slug: Schema.Attribute.UID<'name'> & Schema.Attribute.Required;
     terms: Schema.Attribute.Relation<'manyToMany', 'api::term.term'>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
@@ -1346,7 +1386,7 @@ export interface ApiTermTerm extends Struct.CollectionTypeSchema {
     logo: Schema.Attribute.Media<'images' | 'files' | 'videos' | 'audios'>;
     name: Schema.Attribute.String;
     publishedAt: Schema.Attribute.DateTime;
-    slug: Schema.Attribute.String & Schema.Attribute.Unique;
+    slug: Schema.Attribute.UID<'name'> & Schema.Attribute.Required;
     term_types: Schema.Attribute.Relation<
       'manyToMany',
       'api::term-type.term-type'
@@ -1863,6 +1903,12 @@ export interface PluginUsersPermissionsUser
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    displayName: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.Unique &
+      Schema.Attribute.SetMinMaxLength<{
+        minLength: 3;
+      }>;
     email: Schema.Attribute.Email &
       Schema.Attribute.Required &
       Schema.Attribute.SetMinMaxLength<{
@@ -1931,6 +1977,7 @@ declare module '@strapi/strapi' {
       'api::customer.customer': ApiCustomerCustomer;
       'api::employee.employee': ApiEmployeeEmployee;
       'api::payment.payment': ApiPaymentPayment;
+      'api::product-group.product-group': ApiProductGroupProductGroup;
       'api::product.product': ApiProductProduct;
       'api::purchase-item.purchase-item': ApiPurchaseItemPurchaseItem;
       'api::purchase-return-item.purchase-return-item': ApiPurchaseReturnItemPurchaseReturnItem;

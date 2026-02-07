@@ -20,7 +20,13 @@
     "discount": {
       "type": "decimal"
     },
+    "discount_percentage": {
+      "type": "decimal"
+    },
     "tax": {
+      "type": "decimal"
+    },
+    "subtotal": {
       "type": "decimal"
     },
     "total": {

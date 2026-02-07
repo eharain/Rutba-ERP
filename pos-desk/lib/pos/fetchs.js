@@ -18,7 +18,7 @@ export async function fetchReturns(page, rowsPerPage = 100) {
 }
 
 // Fetch purchases for reports
-export async function fetchPurchases( page, rowsPerPage = 100) {
+export async function fetchPurchases(page, rowsPerPage = 100) {
     return await authApi.fetch("/purchases", { sort: ['createdAt:desc'], pagination: { page, pageSize: rowsPerPage }, populate: { suppliers: true } });
 }
 
@@ -40,9 +40,10 @@ export async function fetchSaleByIdOrInvoice(id) {
         filters: {
             $or: [{ invoice_no: id }, { id }, { documentId: id }]
         },
-        populate: { items: { populate: ["product"] } }
+        populate: {
+          payments:true,  customer: true, items: { populate: { "product": true, items: { populate: ['product'] } },} }
     });
-    let data = res?.data?.data ?? res?.data;
+    let data = res?.data ?? res;
     return Array.isArray(data) ? data[0] : data;
 }
 
@@ -68,47 +69,63 @@ export async function fetchEnumsValues(name, field) {
 export async function fetchProducts(filters, page, rowsPerPage) {
     const { brands, categories, suppliers, terms, stockStatus, searchText } = filters;
 
-   
+
 
     const entity = 'products';
     const documentId = null;
 
-    const { query, relations, url } = urlAndRelations(entity, documentId, searchText, page, rowsPerPage)
+    let { query, relations, url } = urlAndRelations(entity, documentId, searchText, page, rowsPerPage)
 
-    
-    for (const key of Object.entries(filters)) {
-
-        if (relations.includes(key)) {
-            query.filters
-
+    for (const [field, values] of Object.entries(filters)) {
+        if (field === 'stockStatus' || field === 'searchText') {
+            continue;
         }
-     //   delete query.query.filters[key];
+        if (Array.isArray(values) && values.length > 0) {
+            values.forEach((val, index) => {
+                url += `&filters[${field}][documentId][$in][${index}]=${val}`;
+            });
+        }
     }
-
-
+    console.log('products search url', url);
     const res = await authApi.get(url);
-    console.log('res', res)
-   // let data = dataNode(res);
-    return res; //{data: res.data, meta: res.meta };
-    //  return await fetchEntities('products', page, rowsPerPage);
+    return res;
 }
 
 export async function loadProduct(id) {
-    let res = await authApi.get(`/products/${id}?populate[categories][populate]=*&populate[brands][populate]=*&populate[suppliers][populate]=*`);
+
+    const query = {
+      //  filters: { documentId: id },
+        populate: {
+            categories: true,
+            brands: true,
+            suppliers: true,
+            logo: true,
+            gallery: true,
+            suppliers: true
+        }
+    }
+
+    let res = await authApi.get(`/products/${id}`, query);
     let prod = res.data || res;
-    let data = {
-        name: prod.name || '',
-        sku: prod.sku || '',
-        barcode: prod.barcode || '',
-        cost_price: prod.cost_price || 0,
-        selling_price: prod.selling_price || 0,
-        tax_rate: prod.tax_rate || 0,
-        stock_quantity: prod.stock_quantity || 0,
-        reorder_level: prod.reorder_level || 0,
-        is_active: prod.is_active !== undefined ? prod.is_active : true,
-        categories: prod.categories[0]?.id || '',
-        brands: prod.brands[0]?.id || '',
-        suppliers: prod.suppliers || []
-    };
-    return data;
+    //let data = {
+    //    id: prod.id || '',
+    //    documentId: prod.documentId || '',
+    //    name: prod.name || '',
+    //    sku: prod.sku || '',
+    //    barcode: prod.barcode || '',
+    //    cost_price: prod.cost_price || 0,
+    //    selling_price: prod.selling_price || 0,
+    //    offer_price: prod.offer_price || 0,
+    //    tax_rate: prod.tax_rate || 0,
+    //    stock_quantity: prod.stock_quantity || 0,
+    //    reorder_level: prod.reorder_level || 0,
+    //    is_active: prod.is_active !== undefined ? prod.is_active : true,
+    //    categories: prod.categories[0]?.id || '',
+    //    brands: prod.brands[0]?.id || '',
+    //    suppliers: prod.suppliers || [],
+    //    logo: prod.logo || null,
+    //    gallery: prod.gallery || [],
+
+    //};
+    return prod;
 }

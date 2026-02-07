@@ -44,7 +44,8 @@
     "customer": {
       "type": "relation",
       "relation": "manyToOne",
-      "target": "api::customer.customer"
+      "target": "api::customer.customer",
+      "inversedBy": "sales"
     },
     "employee": {
       "type": "relation",
@@ -61,7 +62,8 @@
     "payments": {
       "type": "relation",
       "relation": "oneToMany",
-      "target": "api::payment.payment"
+      "target": "api::payment.payment",
+      "mappedBy": "sale"
     },
     "users": {
       "type": "relation",

@@ -21,8 +21,9 @@
       "inversedBy": "term_types"
     },
     "slug": {
-      "type": "string",
-      "unique": true
+      "type": "uid",
+      "targetField": "name",
+      "required": true
     },
     "logo": {
       "type": "media",
@@ -43,6 +44,12 @@
         "videos",
         "audios"
       ]
+    },
+    "is_variant": {
+      "type": "boolean"
+    },
+    "is_public": {
+      "type": "boolean"
     }
   }
 }

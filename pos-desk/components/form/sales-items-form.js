@@ -1,146 +1,137 @@
 import { useState, useEffect } from 'react';
-import { searchStockItems } from '../../lib/pos';
+
 import { useUtil } from '../../context/UtilContext';
-export default function SalesItemsForm({ onAddItem, disabled = false }) {
-    const [productSearch, setProductSearch] = useState('');
-    const [searchResults, setSearchResults] = useState([]);
+import SaleApi from '../../lib/saleApi';
+
+export default function SalesItemsForm({
+    onAddItem,
+    onAddNonStock,
+    disabled = false
+}) {
+    const [query, setQuery] = useState('');
+    const [results, setResults] = useState([]);
     const [showResults, setShowResults] = useState(false);
-    const [loading, setLoading] = useState(false);
+    const [highlightIndex, setHighlightIndex] = useState(0);
     const { currency } = useUtil();
 
-    function uniqueStockeItemsByProduct(list){
-        return list.reduce((acc, item) => {
-            if (!acc.find(i => i.product.id === item.product.id)) {
-                acc.push(item);
-            }
-            return acc;
-        }, []);
-    }
 
-    // Product search with debounce
+    /* ---------------- Search with debounce ---------------- */
     useEffect(() => {
-        const delayDebounceFn = setTimeout(() => {
-            if (productSearch.length > 2) {
-                handleProductSearch(productSearch);
+        const t = setTimeout(() => {
+            if (query.length > 1) {
+                search(query);
             } else {
-                setSearchResults([]);
+                setResults([]);
                 setShowResults(false);
             }
         }, 300);
 
-        return () => clearTimeout(delayDebounceFn);
-    }, [productSearch]);
+        return () => clearTimeout(t);
+    }, [query]);
 
-    const handleProductSearch = async (searchText) => {
-        setLoading(true);
+    const search = async (text) => {
         try {
-            const productResult = await searchStockItems(searchText, 0, 100, 'InStock');
-            
-            const uniqueStockItems = uniqueStockeItemsByProduct(productResult.data);
-            setSearchResults(uniqueStockItems);
+
+            // const res = await searchStockItems(text, 0, 300, 'InStock');
+            //const res = await searchStockItems(text, 0, 300, 'InStock');
+
+            //// 🔥 FIX: aggregate by product
+            //const aggregated = aggregateByProduct(res.data || []);
+            const aggregated = await SaleApi.searchStockItemsByNameOrBarcode(text);
+            setResults(aggregated);
             setShowResults(true);
-        } catch (error) {
-            console.error('Error searching products:', error);
-            setSearchResults([]);
-        } finally {
-            setLoading(false);
+            setHighlightIndex(0);
+        } catch (e) {
+            console.error('Product search failed', e);
+            setResults([]);
         }
     };
 
-    const handleProductSelect = (product) => {
-        onAddItem(product);
-        setProductSearch('');
+    const selectStockItem = (item) => {
+        onAddItem(item);
+        setQuery('');
         setShowResults(false);
     };
 
-    const handleKeyPress = (e) => {
+    const addNonStockItem = () => {
+        if (!query.trim()) return;
+
+        onAddNonStock(query);
+
+        setQuery('');
+        setShowResults(false);
+    };
+
+    /* ---------------- Keyboard navigation ---------------- */
+    const handleKeyDown = (e) => {
+        if (!showResults) return;
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            setHighlightIndex(i =>
+                Math.min(i + 1, results.length - 1)
+            );
+            return;
+        }
+
+        if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            setHighlightIndex(i =>
+                Math.max(i - 1, 0)
+            );
+            return;
+        }
+
         if (e.key === 'Enter') {
             e.preventDefault();
-            // Auto-select first result on Enter if there are results
-            if (searchResults.length > 0) {
-                handleProductSelect(searchResults[0]);
-            }
+            results.length
+                ? selectStockItem(results[highlightIndex])
+                : addNonStockItem();
+            return;
+        }
+
+        if (e.key === 'Escape') {
+            setShowResults(false);
         }
     };
 
     return (
-        <div style={{ marginBottom: '20px', position: 'relative', opacity: disabled ? 0.5 : 1 }}>
+        <div style={{ position: 'relative', marginBottom: 20 }}>
             <input
                 type="text"
-                value={productSearch}
-                onChange={(e) => !disabled && setProductSearch(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder={disabled ? "Sale is completed - cannot add items" : "Scan barcode or search product..."}
+                className="form-control"
+                value={query}
                 disabled={disabled}
-                style={{
-                    width: '100%',
-                    padding: '12px',
-                    fontSize: '16px',
-                    border: '2px solid #007bff',
-                    borderRadius: '4px',
-                    backgroundColor: disabled ? '#f5f5f5' : 'white',
-                    color: disabled ? '#666' : 'black',
-                    cursor: disabled ? 'not-allowed' : 'text'
-                }}
+                placeholder="Scan barcode / search / add custom item"
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={handleKeyDown}
                 autoFocus={!disabled}
             />
 
-            {loading && (
-                <div style={{
-                    position: 'absolute',
-                    top: '100%',
-                    left: 0,
-                    right: 0,
-                    background: 'grey',
-                    border: '1px solid #ccc',
-                    padding: '8px',
-                    zIndex: 1001
-                }}>
-                    Searching...
-                </div>
-            )}
-
-            {showResults && searchResults.length > 0 && (
-                <div style={{
-                    position: 'absolute',
-                    top: '100%',
-                    left: 0,
-                    right: 0,
-                    background: 'black',
-                    border: '1px solid #ccc',
-                    maxHeight: '200px',
-                    overflowY: 'auto',
-                    zIndex: 1000,
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-                }}>
-                    {searchResults.map(stockItem => (
+            {showResults && (
+                <div className="dropdown-menu show w-100">
+                    {results.map((item, index) => (
                         <div
-                            key={stockItem.id}
-                            onClick={() => !disabled && handleProductSelect(stockItem)}
-                            style={{
-                                padding: '12px',
-                                cursor: disabled ? 'not-allowed' : 'pointer',
-                                borderBottom: '1px solid #eee',
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center'
-                            }}
-                            onMouseEnter={(e) => !disabled && (e.target.style.background = '#f5f5f5')}
-                            onMouseLeave={(e) => !disabled && (e.target.style.background = 'black')}
+                            key={(item.id ?? item.product?.id ?? item.name) + '_' + index}
+                            className={`dropdown-item ${index === highlightIndex ? 'active' : ''}`}
+                            onMouseEnter={() => setHighlightIndex(index)}
+                            onClick={() => selectStockItem(item)}
                         >
-                            <div>
-                                <strong>{stockItem.product.name}</strong>
-                                {stockItem.barcode && (
-                                    <span style={{ color: '#666', marginLeft: '10px' }}>
-                                        ({stockItem.barcode})
-                                    </span>
-                                )}
-                            </div>
-                            <div style={{ fontWeight: 'bold', color: disabled ? '#666' : 'black' }}>
-                                {currency}{stockItem.selling_price || 0}
+                            <div className="d-flex justify-content-between">
+                                <span>{item.product?.name ?? item.name}</span>
+                                <strong>
+                                    {currency}
+                                    {item.selling_price || 0}
+                                </strong>
                             </div>
                         </div>
                     ))}
+
+                    {results.length === 0 && (
+                        <div className="dropdown-item text-muted">
+                            Type item (name → price → quantity → discount%) to add a non stock item
+                        </div>
+                    )}
                 </div>
             )}
         </div>

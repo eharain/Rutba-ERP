@@ -18,7 +18,7 @@ export default function Sales() {
     useEffect(() => {
         (async () => {
             //const res = await authApi.fetch("/sales", { sort: ["id:desc"], pagination: { pageSize: 100 } });
-            const res = await fetchSales(page, rowsPerPage);
+            const res = await fetchSales(page + 1, rowsPerPage);
             setSales(res.data || []);
             setTotal(res.meta.pagination.total);
             setLoading(false);
@@ -64,9 +64,12 @@ export default function Sales() {
                                             <TableCell align="right">{currency}{s.total}</TableCell>
                                             <TableCell>{s.payment_status}</TableCell>
                                             <TableCell>
-                                                <Link href={`/${s.payment_status!=='Paid'?s.documentId:s.invoice_no}/sale`} style={{textDecoration: 'none'}}>
+                                                <Link href={`/${s.documentId}/sale`} style={{textDecoration: 'none'}}>
                                                     <i className="fas fa-edit"></i> Edit
                                                 </Link>
+                                                {/*<Link href={`/${s.payment_status!=='Paid'?s.documentId:s.invoice_no}/sale`} style={{textDecoration: 'none'}}>*/}
+                                                {/*    <i className="fas fa-edit"></i> Edit*/}
+                                                {/*</Link>*/}
                                             </TableCell>
                                         </TableRow>
                                     ))}

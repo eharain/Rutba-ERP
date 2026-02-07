@@ -30,7 +30,7 @@ const config = {
 };
 
 const bootstrap = (app) => {
-  console.log(app);
+  console.log('bootstrap app example app',app);
 };
 
 export default {

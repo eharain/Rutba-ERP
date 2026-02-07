@@ -1,294 +1,165 @@
-import { Table, TableHead, TableBody, TableRow, TableCell } from '../Table';
-import { useUtil } from '../../context/UtilContext';
-import { calculateTax } from '../../lib/utils';
-
-export default function SalesItemsList({ items, onUpdateItem, onRemoveItem, disabled = false }) {
-    const { currency } = useUtil();
-    const calculateItemDetails = (item) => {
-        const subtotal = item.price * item.quantity;
-        const discountAmount = subtotal * ((item.discount || 0) / 100);
-        const taxableAmount = subtotal - discountAmount;
-        const taxAmount = calculateTax(taxableAmount); // 10% tax
-        const total = taxableAmount + taxAmount;
-
-        return {
-            subtotal,
-            discountAmount,
-            taxableAmount,
-            taxAmount,
-            total
-        };
-    };
-
-    const handleQuantityChange = (index, quantity) => {
-        const newQuantity = Math.max(1, quantity);
-        onUpdateItem(index, {
-            quantity: newQuantity
-        });
-    };
-
-    const handlePriceChange = (index, price) => {
-        const newPrice = Math.max(0, price);
-        onUpdateItem(index, {
-            price: newPrice
-        });
-    };
-
-    const handleDiscountChange = (index, discount) => {
-        const item = items[index];
-        const newDiscount = Math.max(0, Math.min(100, discount)); // Limit between 0-100%
-        if (item.price - (item.price * (newDiscount / 100)) < item.cost_price) {
-            return;
-        }
-        onUpdateItem(index, {
-            discount: newDiscount
-        });
-    };
-
-    const handleQuantityQuickUpdate = (index, change) => {
-        const item = items[index];
-        const newQuantity = Math.max(1, item.quantity + change);
-        onUpdateItem(index, {
-            quantity: newQuantity
-        });
-    };
-
-    const handleDiscountQuickUpdate = (index, change) => {
-        const item = items[index];
-        const newDiscount = Math.max(0, Math.min(100, (item.discount || 0) + change));
-        if (item.price - (item.price * (newDiscount / 100)) < item.cost_price) {
-            return;
-        }
-        onUpdateItem(index, {
-            discount: newDiscount
-        });
-    };
-
-    const handleUseOfferPrice = (index) => {
-        const item = items[index];
-        onUpdateItem(index, {
-            price: item.offer_price
-        });
-    };
-
-    const handleUseSellingPrice = (index) => {
-        const item = items[index];
-        onUpdateItem(index, {
-            price: item.selling_price
-        });
-    };
-
+export default function SalesItemsList({
+    items,
+    onUpdate,
+    onRemove,
+    disabled = false
+}) {
     return (
-        <div style={{ opacity: disabled ? 0.5 : 1, pointerEvents: disabled ? 'none' : 'auto' }}>
-            <Table>
-                <TableHead>
-                    <TableRow>
-                        <TableCell>Product</TableCell>
-                        <TableCell align="center">Quantity</TableCell>
-                        <TableCell align="center">Price</TableCell>
-                        <TableCell align="center">Discount %</TableCell>
-                        <TableCell align="center">Total</TableCell>
-                        <TableCell align="center">Actions</TableCell>
-                    </TableRow>
-                </TableHead>
-                <TableBody>
-                    {items.map((item, index) => {
-                        const details = calculateItemDetails(item);
+        <table className="table table-bordered mt-3">
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th width="160">Unit Price</th>
+                    <th width="70">Quantity</th>
+                    <th width="160">Discount / Offer</th>
+                    <th width="160">Row Total</th>
+                    <th width="50">Actions</th>
+                </tr>
+            </thead>
 
-                        return (
-                            <TableRow key={index}>
-                                <TableCell>
-                                    <strong>{item.product?.name}</strong>
-                                    {item.product.product?.barcode && (
-                                        <div style={{ fontSize: '12px', color: '#666' }}>
-                                            SKU: {item.product.product.sku}
-                                        </div>
+            <tbody>
+                {items.map((item, index) => (
+                    <tr key={index}>
+                        {/* NAME */}
+                        <td>
+                            {item.isDynamicStock ? (
+                                <strong>{item.name}</strong>
+                            ) : (
+                                <input
+                                    className="form-control"
+                                    value={item.name}
+                                    onChange={e =>
+                                        onUpdate(index, i =>
+                                            i.setName(e.target.value)
+                                        )
+                                    }
+                                    disabled={disabled}
+                                />
+                            )}
+                        </td>
+
+
+
+                        {/* UNIT PRICE */}
+                        <td>
+                            {item.isDynamicStock ? (
+                                <div className="d-flex align-items-center">
+                                    <span className={item.discount_percentage > 0 ? 'text-decoration-line-through text-muted' : ''}>
+                                        {(item.unitPrice ?? 0).toFixed(2)}
+                                    </span>
+                                    {item.discount_percentage > 0 && (
+                                        <span className="ms-2 fw-semibold">
+                                            {(item.unitDicountedPrice ?? 0).toFixed(2)}
+                                        </span>
                                     )}
-                                    {item.product?.bundle_units > 1 && (
-                                        <div style={{ fontSize: '11px', color: '#888' }}>
-                                            Bundle: {item.product.bundle_units}
-                                        </div>
-                                    )}
-                                </TableCell>
-
-                                {/* Quantity Column */}
-                                <TableCell align="center">
-                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                                        <button
-                                            onClick={() => !disabled && handleQuantityQuickUpdate(index, -1)}
-                                            disabled={disabled}
-                                            style={{
-                                                padding: '4px 8px',
-                                                background: disabled ? '#ccc' : '#dc3545',
-                                                color: 'lightgrey',
-                                                border: 'none',
-                                                borderRadius: '4px',
-                                                cursor: disabled ? 'not-allowed' : 'pointer',
-                                                fontSize: '12px',
-                                                opacity: disabled ? 0.6 : 1
-                                            }}
-                                        >
-                                            -
-                                        </button>
-                                        <input
-                                            type="number"
-                                            min="1"
-                                            value={item.quantity}
-                                            onChange={(e) => !disabled && handleQuantityChange(index, parseInt(e.target.value) || 1)}
-                                            disabled={disabled}
-                                            style={{
-                                                width: '60px',
-                                                padding: '6px',
-                                                border: '1px solid #ccc',
-                                                borderRadius: '4px',
-                                                textAlign: 'center',
-                                                fontSize: '14px',
-                                                cursor: disabled ? 'not-allowed' : 'text'
-                                            }}
-                                        />
-                                        <button
-                                            onClick={() => !disabled && handleQuantityQuickUpdate(index, 1)}
-                                            disabled={disabled}
-                                            style={{
-                                                padding: '4px 8px',
-                                                background: disabled ? '#ccc' : '#28a745',
-                                                color: 'lightgrey',
-                                                border: 'none',
-                                                borderRadius: '4px',
-                                                cursor: disabled ? 'not-allowed' : 'pointer',
-                                                fontSize: '12px',
-                                                opacity: disabled ? 0.6 : 1
-                                            }}
-                                        >
-                                            +
-                                        </button>
-                                    </div>
-                                </TableCell>
-
-                                {/* Price Column */}
-                                <TableCell align="center">
+                                </div>
+                            ) : (
+                                <div className="d-flex align-items-center">
                                     <input
                                         type="number"
-                                        min="0"
-                                        step="0.01"
-                                        value={item.price}
-                                        onChange={(e) => !disabled && handlePriceChange(index, parseFloat(e.target.value) || 0)}
+                                        className="form-control"
+                                        value={item.unitPrice ?? 0}
+                                        onChange={e =>
+                                            onUpdate(index, i =>
+                                                i.setSellingPrice(+e.target.value)
+                                            )
+                                        }
                                         disabled={disabled}
-                                        style={{
-                                            width: '80px',
-                                            padding: '6px',
-                                            border: '1px solid #ccc',
-                                            borderRadius: '4px',
-                                            textAlign: 'center',
-                                            fontSize: '14px',
-                                            cursor: disabled ? 'not-allowed' : 'text'
-                                        }}
                                     />
-                                </TableCell>
-
-                                {/* Discount Column */}
-                                <TableCell align="center">
-                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                                        <button
-                                            onClick={() => !disabled && handleDiscountQuickUpdate(index, -5)}
-                                            disabled={disabled}
-                                            style={{
-                                                padding: '4px 8px',
-                                                color: 'lightgrey',
-                                                border: 'none',
-                                                borderRadius: '4px',
-                                                cursor: disabled ? 'not-allowed' : 'pointer',
-                                                fontSize: '12px',
-                                                opacity: disabled ? 0.6 : 1
-                                            }}
-                                        >
-                                            -5%
-                                        </button>
-                                        <input
-                                            type="number"
-                                            min="0"
-                                            max="100"
-                                            step="1"
-                                            value={item.discount || 0}
-                                            onChange={(e) => !disabled && handleDiscountChange(index, parseFloat(e.target.value) || 0)}
-                                            disabled={disabled}
-                                            style={{
-                                                width: '60px',
-                                                padding: '6px',
-                                                border: '1px solid #ccc',
-                                                borderRadius: '4px',
-                                                textAlign: 'center',
-                                                fontSize: '14px',
-                                                cursor: disabled ? 'not-allowed' : 'text'
-                                            }}
-                                        />
-                                        <button
-                                            onClick={() => !disabled && handleDiscountQuickUpdate(index, 5)}
-                                            disabled={disabled}
-                                            style={{
-                                                padding: '4px 8px',
-                                                color: 'lightgrey',
-                                                border: 'none',
-                                                borderRadius: '4px',
-                                                cursor: disabled ? 'not-allowed' : 'pointer',
-                                                fontSize: '12px',
-                                                opacity: disabled ? 0.6 : 1
-                                            }}
-                                        >
-                                            +5%
-                                        </button>
-                                    </div>
-                                    {item.discount > 0 && (
-                                        <div style={{ fontSize: '11px', color: '#dc3545', marginTop: '4px' }}>
-                                            Save: {currency} {details.discountAmount.toFixed(2)}
-                                        </div>
+                                    {item.discount_percentage > 0 && (
+                                        <span className="ms-2 fw-semibold">
+                                            {(item.unitDicountedPrice ?? 0).toFixed(2)}
+                                        </span>
                                     )}
-                                </TableCell>
+                                </div>
+                            )}
+                        </td>
 
-                                {/* Total Column */}
-                                <TableCell align="center">
-                                    <div>
-                                        <strong>{currency} {details.total.toFixed(2)}</strong>
-                                        {item.discount > 0 && (
-                                            <div style={{ fontSize: '11px', color: '#666', textDecoration: 'line-through' }}>
-                                                {currency} {details.subtotal.toFixed(2)}
-                                            </div>
-                                        )}
-                                    </div>
-                                </TableCell>
+                        {/* QTY */}
+                        <td>
+                            <input
+                                type="number"
+                                min="1"
+                                className="form-control"
+                                value={item.quantity}
+                                onChange={e =>
+                                    onUpdate(index, i =>
+                                        i.setQuantity(+e.target.value)
+                                    )
+                                }
+                                disabled={disabled}
+                            />
+                        </td>
 
-                                {/* Actions Column */}
-                                <TableCell align="center">
+                        {/* DISCOUNT / OFFER */}
+                        <td>
+                            <div className="d-flex gap-2">
+                                <input
+                                    type="number"
+                                    className="form-control"
+                                    value={item.discount_percentage}
+                                    min="0"
+                                    max="100"
+                                    onChange={e =>
+                                        onUpdate(index, i =>
+                                            i.setDiscountPercent(+e.target.value)
+                                        )
+                                    }
+                                    disabled={disabled}
+                                />
+                                {!item.offerActive ? (
                                     <button
-                                        onClick={() => !disabled && onRemoveItem(index)}
+                                        className="btn btn-sm btn-outline-success"
+                                        title="Apply offer price"
+                                        onClick={() =>
+                                            onUpdate(index, i => i.applyOfferPrice())
+                                        }
                                         disabled={disabled}
-                                        style={{
-                                            padding: '6px 12px',
-                                            background: disabled ? '#ccc' : '#dc3545',
-                                            color: 'lightgrey',
-                                            border: 'none',
-                                            borderRadius: '4px',
-                                            cursor: disabled ? 'not-allowed' : 'pointer',
-                                            fontSize: '12px',
-                                            opacity: disabled ? 0.6 : 1
-                                        }}
                                     >
-                                        Remove
+                                        Offer-
                                     </button>
-                                    <button onClick={() => !disabled && handleUseOfferPrice(index)} disabled={disabled} hidden={item.price === item.offer_price} title="Use offer price" style={{ marginLeft: '4px', padding: '6px 12px', background: disabled ? '#ccc' : '#007bff', color: 'lightgrey', border: 'none', borderRadius: '4px', cursor: disabled ? 'not-allowed' : 'pointer', fontSize: '12px', opacity: disabled ? 0.6 : 1 }}><i className="fas fa-arrow-down"></i></button>
-                                    <button onClick={() => !disabled && handleUseSellingPrice(index)} disabled={disabled} hidden={item.price === item.selling_price} title="Use selling price" style={{ marginLeft: '4px', padding: '6px 12px', background: disabled ? '#ccc' : '#007bff', color: 'lightgrey', border: 'none', borderRadius: '4px', cursor: disabled ? 'not-allowed' : 'pointer', fontSize: '12px', opacity: disabled ? 0.6 : 1 }}><i className="fas fa-arrow-up"></i></button>
-                                </TableCell>
-                            </TableRow>
-                        );
-                    })}
-                </TableBody>
-            </Table>
+                                ) : (
+                                    <button
+                                        className="btn btn-sm btn-outline-danger"
+                                        title="Revert offer"
+                                        onClick={() =>
+                                            onUpdate(index, i => i.revertOffer())
+                                        }
+                                        disabled={disabled}
+                                    >
+                                        Offer+
+                                    </button>
+                                )}
+                            </div>
+                        </td>
 
-            {items.length === 0 && (
-                <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
-                    <p>No items added to sale. Search for products above to add items.</p>
-                </div>
-            )}
-        </div>
+                        {/* TOTAL */}
+                        <td>
+                            <div className="d-flex align-items-center">
+                                <span className={item.discount_percentage > 0 ? 'text-decoration-line-through text-muted' : ''}>
+                                    {item.subtotal.toFixed(2)}
+                                </span>
+                                {item.discount_percentage > 0 && (
+                                    <span className="ms-2 fw-semibold">
+                                        {item.dicountedSubtotal.toFixed(2)}
+                                    </span>
+                                )}
+                            </div>
+                        </td>
+
+                        {/* ACTIONS */}
+                        <td>
+                            <button
+                                className="btn btn-sm btn-danger"
+                                onClick={() => onRemove(index)}
+                                disabled={disabled}
+                            >
+                                ✕
+                            </button>
+                        </td>
+                    </tr>
+                ))}
+            </tbody>
+        </table>
     );
 }
