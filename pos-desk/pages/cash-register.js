@@ -5,7 +5,7 @@ import { authApi } from "../lib/api";
 import { useUtil } from "../context/UtilContext";
 
 export default function CashRegisterPage() {
-    const { branch, desk, user, currency } = useUtil();
+    const { branch, desk, user, currency, setCashRegister } = useUtil();
     const [activeRegister, setActiveRegister] = useState(null);
     const [openingCash, setOpeningCash] = useState("");
     const [closingCash, setClosingCash] = useState("");
@@ -44,6 +44,7 @@ export default function CashRegisterPage() {
             });
             const register = res?.data?.[0] ?? null;
             setActiveRegister(register);
+            setCashRegister(register);
         } catch (err) {
             console.error("Failed to load cash register", err);
             setError("Failed to load cash register");
@@ -54,7 +55,8 @@ export default function CashRegisterPage() {
 
     const handleOpenRegister = async (event) => {
         event.preventDefault();
-        const branchId = branch?.id ?? branch?.documentId;
+        const branchId = branch?.documentId ?? branch?.id;
+        const userId = user?.documentId ?? user?.id;
         if (!desk?.id || !branchId) return;
         setLoading(true);
         setError(null);
@@ -68,11 +70,14 @@ export default function CashRegisterPage() {
                 branch_id: branchId ?? null,
                 branch_name: branch?.name ?? "",
                 opened_by: user?.username || user?.email || "",
-                opened_by_id: user?.id ?? null
+                opened_by_id: user?.id ?? null,
+                ...(branchId ? { branch: { connect: [branchId] } } : {}),
+                ...(userId ? { opened_by_user: { connect: [userId] } } : {})
             };
             const res = await authApi.post("/cash-registers", { data: payload });
             const created = res?.data ?? res;
             setActiveRegister(created);
+            setCashRegister(created);
             setOpeningCash("");
         } catch (err) {
             console.error("Failed to open register", err);
@@ -86,6 +91,7 @@ export default function CashRegisterPage() {
         event.preventDefault();
         if (!activeRegister) return;
         const registerId = activeRegister?.documentId ?? activeRegister?.id;
+        const userId = user?.documentId ?? user?.id;
         if (!registerId) return;
         setLoading(true);
         setError(null);
@@ -95,10 +101,12 @@ export default function CashRegisterPage() {
                 closed_at: new Date().toISOString(),
                 status: "Closed",
                 closed_by: user?.username || user?.email || "",
-                closed_by_id: user?.id ?? null
+                closed_by_id: user?.id ?? null,
+                ...(userId ? { closed_by_user: { connect: [userId] } } : {})
             };
             await authApi.put(`/cash-registers/${registerId}`, { data: payload });
             setClosingCash("");
+            setCashRegister(null);
             await loadActiveRegister();
         } catch (err) {
             console.error("Failed to close register", err);

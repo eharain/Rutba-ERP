@@ -12,6 +12,10 @@ export function getBranchDesk() {
     return desk;
 }
 
+export function getCashRegister() {
+    return storage.getJSON("cash-register");
+}
+
 export function getUser() {
     const storedUser = storage.getJSON("user");
     return storedUser ?? null;

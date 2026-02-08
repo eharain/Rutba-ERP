@@ -1,7 +1,7 @@
 import { authApi } from './api';
 import { fetchSaleByIdOrInvoice, searchStockItems } from './pos';
 import SaleModel from '../domain/sale/SaleModel';
-import { prepareForPut } from "../lib/utils";
+import { getCashRegister, prepareForPut } from "../lib/utils";
 
 export default class SaleApi {
 
@@ -158,13 +158,16 @@ export default class SaleApi {
         }
 
         const connectIds = [];
+        const activeRegister = getCashRegister();
+        const activeRegisterId = activeRegister?.documentId ?? activeRegister?.id;
 
         for (const p of payments) {
             if (!p.documentId) {
                 const res = await authApi.post('/payments', {
                     data: {
                         ...p,
-                        ...saleId ? { sale: { connect: [saleId] } } : {}
+                        ...saleId ? { sale: { connect: [saleId] } } : {},
+                        ...(activeRegisterId ? { cash_register: { connect: [activeRegisterId] } } : {})
                     }
                 });
                 const created = res?.data ?? res;
@@ -173,7 +176,8 @@ export default class SaleApi {
                 await authApi.put(`/payments/${p.documentId}`, {
                     data: {
                         ...prepareForPut(p),
-                        ...saleId ? { sale: { connect: [saleId] } } : {}
+                        ...saleId ? { sale: { connect: [saleId] } } : {},
+                        ...(activeRegisterId ? { cash_register: { connect: [activeRegisterId] } } : {})
                     }
                 });
             }

@@ -11,6 +11,7 @@ export function UtilProvider({ children }) {
     const [currency, setCurrencyState] = useState(null);
     const [labelSize, setLabelSizeState] = useState('2.4x1.5'); // in inches
     const [printMode, setPrintModeState] = useState('thermal');
+    const [cashRegister, setCashRegisterState] = useState(null);
 
     // New: invoice print settings persisted under 'invoice-print-settings'
     const [invoicePrintSettings, setInvoicePrintSettingsState] = useState({
@@ -34,6 +35,7 @@ export function UtilProvider({ children }) {
             setCurrencyState(storage.getJSON("currency") ?? null);
             setLabelSizeState(storage.getJSON("label-size") ?? '2.4x1.5');
             setPrintModeState(storage.getJSON("print-mode") ?? 'thermal');
+            setCashRegisterState(storage.getJSON("cash-register") ?? null);
             setInvoicePrintSettingsState(storage.getJSON("invoice-print-settings") ?? {
                 paperWidth: '80mm',
                 fontSize: 11,
@@ -96,6 +98,15 @@ export function UtilProvider({ children }) {
             storage.setJSON("print-mode", newMode);
         } catch (err) {
             console.error('Failed to persist print-mode', err);
+        }
+    }
+
+    function setCashRegister(newRegister) {
+        setCashRegisterState(newRegister);
+        try {
+            storage.setJSON("cash-register", newRegister);
+        } catch (err) {
+            console.error('Failed to persist cash-register', err);
         }
     }
 
@@ -185,9 +196,11 @@ export function UtilProvider({ children }) {
         setLabelSize,
         printMode,
         setPrintMode,
+        cashRegister,
+        setCashRegister,
         invoicePrintSettings,
         setInvoicePrintSettings
-    }), [branch, desk, user, labelSize, currency, printMode, invoicePrintSettings]);
+    }), [branch, desk, user, labelSize, currency, printMode, cashRegister, invoicePrintSettings]);
 
     return (
         <UtilContext.Provider value={value}>
