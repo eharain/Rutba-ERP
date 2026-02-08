@@ -531,11 +531,16 @@ export interface ApiCashRegisterCashRegister
     draftAndPublish: false;
   };
   attributes: {
-    branch_id: Schema.Attribute.Integer;
+    branch: Schema.Attribute.Relation<'manyToOne', 'api::branch.branch'>;
+    branch_id: Schema.Attribute.String;
     branch_name: Schema.Attribute.String;
     closed_at: Schema.Attribute.DateTime;
     closed_by: Schema.Attribute.String;
     closed_by_id: Schema.Attribute.Integer;
+    closed_by_user: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
     closing_cash: Schema.Attribute.Decimal;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
@@ -551,7 +556,12 @@ export interface ApiCashRegisterCashRegister
     opened_at: Schema.Attribute.DateTime;
     opened_by: Schema.Attribute.String;
     opened_by_id: Schema.Attribute.Integer;
+    opened_by_user: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
     opening_cash: Schema.Attribute.Decimal;
+    payments: Schema.Attribute.Relation<'oneToMany', 'api::payment.payment'>;
     publishedAt: Schema.Attribute.DateTime;
     status: Schema.Attribute.Enumeration<['Open', 'Closed']> &
       Schema.Attribute.DefaultTo<'Open'>;
@@ -714,6 +724,10 @@ export interface ApiPaymentPayment extends Struct.CollectionTypeSchema {
     amount: Schema.Attribute.Decimal;
     branches: Schema.Attribute.Relation<'manyToMany', 'api::branch.branch'>;
     cash_received: Schema.Attribute.Decimal;
+    cash_register: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::cash-register.cash-register'
+    >;
     change: Schema.Attribute.Decimal;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
