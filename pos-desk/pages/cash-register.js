@@ -9,6 +9,9 @@ export default function CashRegisterPage() {
     const [activeRegister, setActiveRegister] = useState(null);
     const [openingCash, setOpeningCash] = useState("");
     const [closingCash, setClosingCash] = useState("");
+    const [registerPayments, setRegisterPayments] = useState([]);
+    const [paymentsLoading, setPaymentsLoading] = useState(false);
+    const [paymentsError, setPaymentsError] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
 
@@ -28,6 +31,61 @@ export default function CashRegisterPage() {
         loadActiveRegister();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [desk?.id]);
+
+    useEffect(() => {
+        if (!activeRegister) {
+            setRegisterPayments([]);
+            return;
+        }
+        loadRegisterPayments(activeRegister);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeRegister?.documentId, activeRegister?.id]);
+
+    const paymentSummary = useMemo(() => {
+        const summary = {
+            total: 0,
+            cash: 0,
+            card: 0,
+            bank: 0,
+            mobile: 0,
+            cashReceived: 0,
+            cashChange: 0
+        };
+
+        for (const payment of registerPayments) {
+            const amount = Number(payment.amount || 0);
+            summary.total += amount;
+            switch (payment.payment_method) {
+                case "Cash":
+                    summary.cash += amount;
+                    summary.cashReceived += Number(payment.cash_received || amount);
+                    summary.cashChange += Number(payment.change || 0);
+                    break;
+                case "Card":
+                    summary.card += amount;
+                    break;
+                case "Bank":
+                    summary.bank += amount;
+                    break;
+                case "Mobile Wallet":
+                    summary.mobile += amount;
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        summary.cashNet = summary.cashReceived - summary.cashChange;
+        return summary;
+    }, [registerPayments]);
+
+    const openingCashValue = useMemo(() => Number(activeRegister?.opening_cash || 0), [activeRegister]);
+    const expectedCash = useMemo(
+        () => openingCashValue + (Number.isFinite(paymentSummary.cashNet) ? paymentSummary.cashNet : 0),
+        [openingCashValue, paymentSummary.cashNet]
+    );
+    const closingCashValue = useMemo(() => Number(closingCash || 0), [closingCash]);
+    const shortCash = useMemo(() => Math.max(expectedCash - closingCashValue, 0), [expectedCash, closingCashValue]);
 
     const loadActiveRegister = async () => {
         setLoading(true);
@@ -50,6 +108,29 @@ export default function CashRegisterPage() {
             setError("Failed to load cash register");
         } finally {
             setLoading(false);
+        }
+    };
+
+    const loadRegisterPayments = async (register) => {
+        const id = register?.documentId ?? register?.id;
+        if (!id) return;
+        setPaymentsLoading(true);
+        setPaymentsError(null);
+        try {
+            const filters = register?.documentId
+                ? { cash_register: { documentId: { $eq: id } } }
+                : { cash_register: { id: { $eq: id } } };
+            const res = await authApi.fetch("/payments", {
+                filters,
+                sort: ["payment_date:asc"],
+                pagination: { page: 1, pageSize: 500 }
+            });
+            setRegisterPayments(res?.data ?? []);
+        } catch (err) {
+            console.error("Failed to load payments", err);
+            setPaymentsError("Failed to load payments");
+        } finally {
+            setPaymentsLoading(false);
         }
     };
 
@@ -96,8 +177,12 @@ export default function CashRegisterPage() {
         setLoading(true);
         setError(null);
         try {
+            const closingValue = Number(closingCash || 0);
+            const expectedValue = Number.isFinite(expectedCash) ? expectedCash : 0;
+            const shortCashValue = Math.max(expectedValue - closingValue, 0);
             const payload = {
-                closing_cash: Number(closingCash || 0),
+                closing_cash: closingValue,
+                short_cash: shortCashValue,
                 closed_at: new Date().toISOString(),
                 status: "Closed",
                 closed_by: user?.username || user?.email || "",
@@ -120,6 +205,9 @@ export default function CashRegisterPage() {
     const openedAtLabel = activeRegister?.opened_at
         ? new Date(activeRegister.opened_at).toLocaleString()
         : "Unknown";
+    const totalPaymentLabel = `${currency}${Number(paymentSummary.total || 0).toFixed(2)}`;
+    const expectedCashLabel = `${currency}${Number(expectedCash || 0).toFixed(2)}`;
+    const shortCashLabel = `${currency}${Number(shortCash || 0).toFixed(2)}`;
 
     return (
         <ProtectedRoute>
@@ -173,15 +261,86 @@ export default function CashRegisterPage() {
                                                         value={closingCash}
                                                         onChange={(e) => setClosingCash(e.target.value)}
                                                         disabled={loading || !activeRegister}
+                                                        required
                                                     />
                                                 </div>
+                                                {activeRegister && (
+                                                    <div className="text-muted small mt-1">
+                                                        Expected cash: {expectedCashLabel}
+                                                    </div>
+                                                )}
+                                                {activeRegister && shortCash > 0 && (
+                                                    <div className="text-danger small mt-1">
+                                                        Short cash: {shortCashLabel}
+                                                    </div>
+                                                )}
                                             </div>
-                                            <button className="btn btn-primary" type="submit" disabled={loading || !activeRegister}>
+                                            <button className="btn btn-primary" type="submit" disabled={loading || paymentsLoading || !activeRegister || closingCash === ""}>
                                                 Close Day
                                             </button>
                                         </form>
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+                    )}
+                    {activeRegister && (
+                        <div className="card mt-3">
+                            <div className="card-body">
+                                <h5 className="card-title">Register Payments</h5>
+                                <div className="row g-2 mb-3">
+                                    <div className="col-sm-6 col-lg-3">
+                                        <div className="border rounded p-2 h-100">
+                                            <div className="text-muted small">Total</div>
+                                            <div className="fw-bold">{totalPaymentLabel}</div>
+                                        </div>
+                                    </div>
+                                    <div className="col-sm-6 col-lg-3">
+                                        <div className="border rounded p-2 h-100">
+                                            <div className="text-muted small">Cash</div>
+                                            <div className="fw-bold">{currency}{Number(paymentSummary.cash || 0).toFixed(2)}</div>
+                                        </div>
+                                    </div>
+                                    <div className="col-sm-6 col-lg-3">
+                                        <div className="border rounded p-2 h-100">
+                                            <div className="text-muted small">Card</div>
+                                            <div className="fw-bold">{currency}{Number(paymentSummary.card || 0).toFixed(2)}</div>
+                                        </div>
+                                    </div>
+                                    <div className="col-sm-6 col-lg-3">
+                                        <div className="border rounded p-2 h-100">
+                                            <div className="text-muted small">Bank + Wallet</div>
+                                            <div className="fw-bold">{currency}{Number(paymentSummary.bank + paymentSummary.mobile || 0).toFixed(2)}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {paymentsLoading && <div className="text-muted">Loading payments...</div>}
+                                {paymentsError && <div className="alert alert-danger">{paymentsError}</div>}
+                                {!paymentsLoading && !paymentsError && registerPayments.length === 0 && (
+                                    <div className="text-muted">No payments recorded for this register yet.</div>
+                                )}
+                                {!paymentsLoading && !paymentsError && registerPayments.length > 0 && (
+                                    <div className="table-responsive">
+                                        <table className="table table-sm align-middle">
+                                            <thead>
+                                                <tr>
+                                                    <th>Date</th>
+                                                    <th>Method</th>
+                                                    <th className="text-end">Amount</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {registerPayments.map((payment) => (
+                                                    <tr key={payment.documentId ?? payment.id}>
+                                                        <td>{payment.payment_date ? new Date(payment.payment_date).toLocaleString() : ""}</td>
+                                                        <td>{payment.payment_method}</td>
+                                                        <td className="text-end">{currency}{Number(payment.amount || 0).toFixed(2)}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}

@@ -17,6 +17,9 @@
     "closing_cash": {
       "type": "decimal"
     },
+    "short_cash": {
+      "type": "decimal"
+    },
     "opened_at": {
       "type": "datetime"
     },
