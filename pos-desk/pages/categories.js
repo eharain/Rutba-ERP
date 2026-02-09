@@ -27,6 +27,11 @@ export default function CategoriesPage() {
     // Search / filter
     const [searchTerm, setSearchTerm] = useState(""); 
 
+    // Add product search
+    const [productSearch, setProductSearch] = useState("");
+    const [productSearchResults, setProductSearchResults] = useState([]);
+    const [productSearchLoading, setProductSearchLoading] = useState(false);
+
     useEffect(() => {
         loadCategories();
     }, []);
@@ -39,6 +44,45 @@ export default function CategoriesPage() {
             setSelectedProductIds(new Set());
         }
     }, [selectedCategoryId]);
+
+    useEffect(() => {
+        const searchValue = productSearch.trim();
+        if (!searchValue || searchValue.length < 2) {
+            setProductSearchResults([]);
+            return;
+        }
+
+        let isActive = true;
+        const timer = setTimeout(async () => {
+            setProductSearchLoading(true);
+            try {
+                const res = await authApi.fetch("/products", {
+                    sort: ["name:asc"],
+                    filters: {
+                        $or: [
+                            { name: { $containsi: searchValue } },
+                            { sku: { $containsi: searchValue } },
+                            { barcode: { $containsi: searchValue } }
+                        ]
+                    },
+                    populate: { categories: true },
+                    pagination: { page: 1, pageSize: 20 }
+                });
+                const data = res?.data ?? res;
+                if (isActive) setProductSearchResults(data || []);
+            } catch (error) {
+                console.error("Failed to search products", error);
+                if (isActive) setProductSearchResults([]);
+            } finally {
+                if (isActive) setProductSearchLoading(false);
+            }
+        }, 300);
+
+        return () => {
+            isActive = false;
+            clearTimeout(timer);
+        };
+    }, [productSearch]);
 
     function getEntryId(entry) {
         return entry?.documentId || entry?.id;
@@ -337,6 +381,24 @@ export default function CategoriesPage() {
         }
     }
 
+    async function handleAddProductToCategory(productDocId) {
+        if (!selectedCategoryId) return alert("Select a category first");
+        setLoading(true);
+        try {
+            await authApi.put(`/products/${productDocId}`, {
+                data: {
+                    categories: { connect: [selectedCategoryId] }
+                }
+            });
+            await loadProducts();
+        } catch (error) {
+            console.error("Failed to add product to category", error);
+            alert("Failed to add product to category");
+        } finally {
+            setLoading(false);
+        }
+    }
+
     // ---- Derived state ----
     const selectedCategory = categories.find(c => getEntryId(c) === selectedCategoryId);
     const filteredCategories = categories.filter(c =>
@@ -625,6 +687,64 @@ export default function CategoriesPage() {
                                             )}
                                         </div>
                                     </form>
+                                </div>
+                            </div>
+
+                            {/* Search & Add Products */}
+                            <div className="card mb-3">
+                                <div className="card-body">
+                                    <h5 className="card-title">Add Products to {selectedCategory?.name || "..."}</h5>
+                                    <input
+                                        className="form-control form-control-sm mb-2"
+                                        placeholder="Search by name, SKU, or barcode..."
+                                        value={productSearch}
+                                        onChange={e => setProductSearch(e.target.value)}
+                                        disabled={!selectedCategoryId}
+                                    />
+                                    {productSearchLoading && (
+                                        <div className="text-muted small mb-2">Searching...</div>
+                                    )}
+                                    {!selectedCategoryId && (
+                                        <div className="text-muted small">Select a category first.</div>
+                                    )}
+                                    {selectedCategoryId && productSearch.trim().length >= 2 && !productSearchLoading && (
+                                        <div className="list-group" style={{ maxHeight: 300, overflowY: "auto" }}>
+                                            {productSearchResults.map(product => {
+                                                const pId = getEntryId(product);
+                                                const alreadyInCategory = (product.categories || []).some(
+                                                    c => getEntryId(c) === selectedCategoryId
+                                                );
+                                                return (
+                                                    <div
+                                                        key={pId}
+                                                        className="list-group-item d-flex justify-content-between align-items-center"
+                                                    >
+                                                        <div>
+                                                            <div>{product.name || "N/A"}</div>
+                                                            <small className="text-muted">
+                                                                {product.sku || "-"}
+                                                                {product.selling_price ? ` · ${currency}${parseFloat(product.selling_price).toFixed(2)}` : ""}
+                                                            </small>
+                                                        </div>
+                                                        {alreadyInCategory ? (
+                                                            <span className="badge bg-success">Added</span>
+                                                        ) : (
+                                                            <button
+                                                                type="button"
+                                                                className="btn btn-sm btn-outline-primary"
+                                                                onClick={() => handleAddProductToCategory(pId)}
+                                                            >
+                                                                Add
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
+                                            {productSearchResults.length === 0 && (
+                                                <div className="list-group-item text-muted">No products found.</div>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
