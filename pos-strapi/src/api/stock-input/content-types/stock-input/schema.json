@@ -25,7 +25,10 @@
       "type": "integer",
       "required": true
     },
-
+    "sellableUnits": {
+      "type": "integer",
+      "default": 1
+    },
     "costPrice": {
       "type": "decimal"
     },

@@ -563,6 +563,7 @@ export interface ApiCashRegisterCashRegister
     opening_cash: Schema.Attribute.Decimal;
     payments: Schema.Attribute.Relation<'oneToMany', 'api::payment.payment'>;
     publishedAt: Schema.Attribute.DateTime;
+    short_cash: Schema.Attribute.Decimal;
     status: Schema.Attribute.Enumeration<['Open', 'Closed']> &
       Schema.Attribute.DefaultTo<'Open'>;
     updatedAt: Schema.Attribute.DateTime;
@@ -1254,6 +1255,7 @@ export interface ApiStockInputStockInput extends Struct.CollectionTypeSchema {
       'api::purchase-item.purchase-item'
     >;
     quantity: Schema.Attribute.Integer & Schema.Attribute.Required;
+    sellableUnits: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<1>;
     sellingPrice: Schema.Attribute.Decimal;
     stockItems: Schema.Attribute.Relation<
       'manyToMany',
@@ -1309,8 +1311,10 @@ export interface ApiStockItemStockItem extends Struct.CollectionTypeSchema {
       'manyToOne',
       'api::sale-return-item.sale-return-item'
     >;
+    sellable_units: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<1>;
     selling_price: Schema.Attribute.Decimal;
     sku: Schema.Attribute.String;
+    sold_units: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
     status: Schema.Attribute.Enumeration<
       [
         'Received',

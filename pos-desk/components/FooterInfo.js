@@ -12,7 +12,11 @@ function FooterInfo() {
 
     return (
         <footer className="bg-dark text-white text-center py-3">
-            {location ?? 'System will not work unless The Store Location and Desk are selected in settings'}
+            {location ?? (
+                <p>
+                    System will not work unless The Store Location and Desk are selected in <a href='/settings/>'>Settings</a>.
+                </p>
+            )}
         </footer>
     );
 }
