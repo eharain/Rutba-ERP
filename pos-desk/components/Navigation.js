@@ -40,7 +40,7 @@ export default function Navigation() {
                         </a>
                         <ul className="dropdown-menu" aria-labelledby="salesMenu">
                             <li><Link className="dropdown-item" href="/sales">Sales</Link></li>
-                            <li><Link className="dropdown-item" href="/sale-returns">Sale Returns</Link></li>
+                            <li><Link className="dropdown-item" href="/sales-returns">Sale Returns</Link></li>
                             <li><Link className="dropdown-item" href="/cash-register">Cash Register</Link></li>
                             <li><Link className="dropdown-item" href="/reports">Reports</Link></li>
                         </ul>
