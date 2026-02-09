@@ -39,6 +39,14 @@
         "Transferred"
       ]
     },
+    "sellable_units": {
+      "type": "integer",
+      "default": 1
+    },
+    "sold_units": {
+      "type": "integer",
+      "default": 0
+    },
     "cost_price": {
       "type": "decimal"
     },
