@@ -6,19 +6,19 @@ import { authApi } from "../lib/api";
 import { useUtil } from "../context/UtilContext";
 import FileView from "../components/FileView";
 
-export default function CategoriesPage() {
+export default function BrandsPage() {
     const { currency } = useUtil();
-    const [categories, setCategories] = useState([]);
+    const [brands, setBrands] = useState([]);
     const [loading, setLoading] = useState(false);
-    const [selectedCategoryId, setSelectedCategoryId] = useState("");
+    const [selectedBrandId, setSelectedBrandId] = useState("");
     const [isEditing, setIsEditing] = useState(false);
-    const [categoryForm, setCategoryForm] = useState({ name: "", slug: "", summary: "", parent: "" });
+    const [brandForm, setBrandForm] = useState({ name: "", slug: "" });
 
-    // Products in selected category
+    // Products in selected brand
     const [products, setProducts] = useState([]);
     const [productsLoading, setProductsLoading] = useState(false);
     const [selectedProductIds, setSelectedProductIds] = useState(new Set());
-    const [moveTargetCategoryId, setMoveTargetCategoryId] = useState("");
+    const [moveTargetBrandId, setMoveTargetBrandId] = useState("");
 
     // Merge
     const [mergeSearch, setMergeSearch] = useState("");
@@ -26,7 +26,7 @@ export default function CategoriesPage() {
     const [isMergeOpen, setIsMergeOpen] = useState(false);
 
     // Search / filter
-    const [searchTerm, setSearchTerm] = useState(""); 
+    const [searchTerm, setSearchTerm] = useState("");
 
     // Add product search
     const [productSearch, setProductSearch] = useState("");
@@ -34,17 +34,17 @@ export default function CategoriesPage() {
     const [productSearchLoading, setProductSearchLoading] = useState(false);
 
     useEffect(() => {
-        loadCategories();
+        loadBrands();
     }, []);
 
     useEffect(() => {
-        if (selectedCategoryId) {
+        if (selectedBrandId) {
             loadProducts();
         } else {
             setProducts([]);
             setSelectedProductIds(new Set());
         }
-    }, [selectedCategoryId]);
+    }, [selectedBrandId]);
 
     useEffect(() => {
         const searchValue = productSearch.trim();
@@ -66,7 +66,7 @@ export default function CategoriesPage() {
                             { barcode: { $containsi: searchValue } }
                         ]
                     },
-                    populate: { categories: true },
+                    populate: { brands: true },
                     pagination: { page: 1, pageSize: 20 }
                 });
                 const data = res?.data ?? res;
@@ -89,34 +89,34 @@ export default function CategoriesPage() {
         return entry?.documentId || entry?.id;
     }
 
-    async function loadCategories() {
+    async function loadBrands() {
         setLoading(true);
         try {
-            let allCategories = [];
+            let allBrands = [];
             let page = 1;
             let totalPages = 1;
             do {
-                const res = await authApi.fetch("/categories", {
+                const res = await authApi.fetch("/brands", {
                     sort: ["name:asc"],
-                    populate: { parent: true, childern: true, logo: true, gallery: true },
+                    populate: { logo: true, gallery: true },
                     pagination: { page, pageSize: 100 }
                 });
                 const data = res?.data ?? res;
-                allCategories = [...allCategories, ...(data || [])];
+                allBrands = [...allBrands, ...(data || [])];
                 totalPages = res?.meta?.pagination?.pageCount || 1;
                 page++;
             } while (page <= totalPages);
 
-            setCategories(allCategories);
+            setBrands(allBrands);
 
-            const existing = allCategories.find(c => getEntryId(c) === selectedCategoryId);
-            if (!existing && allCategories.length > 0) {
-                setSelectedCategoryId(getEntryId(allCategories[0]));
-            } else if (allCategories.length === 0) {
-                setSelectedCategoryId("");
+            const existing = allBrands.find(b => getEntryId(b) === selectedBrandId);
+            if (!existing && allBrands.length > 0) {
+                setSelectedBrandId(getEntryId(allBrands[0]));
+            } else if (allBrands.length === 0) {
+                setSelectedBrandId("");
             }
         } catch (error) {
-            console.error("Failed to load categories", error);
+            console.error("Failed to load brands", error);
         } finally {
             setLoading(false);
         }
@@ -131,8 +131,8 @@ export default function CategoriesPage() {
             let totalPages = 1;
             do {
                 const res = await authApi.fetch("/products", {
-                    filters: { categories: { documentId: selectedCategoryId } },
-                    populate: { categories: true },
+                    filters: { brands: { documentId: selectedBrandId } },
+                    populate: { brands: true },
                     pagination: { page, pageSize: 100 },
                     sort: ["name:asc"]
                 });
@@ -143,74 +143,70 @@ export default function CategoriesPage() {
             } while (page <= totalPages);
             setProducts(allProducts);
         } catch (error) {
-            console.error("Failed to load products for category", error);
+            console.error("Failed to load products for brand", error);
         } finally {
             setProductsLoading(false);
         }
     }
 
-    // ---- Category CRUD ----
+    // ---- Brand CRUD ----
     function handleFormChange(e) {
         const { name, value } = e.target;
-        setCategoryForm(prev => ({ ...prev, [name]: value }));
+        setBrandForm(prev => ({ ...prev, [name]: value }));
     }
 
-    function handleEditCategory() {
-        if (!selectedCategoryId) return alert("Select a category first");
-        const selected = categories.find(c => getEntryId(c) === selectedCategoryId);
+    function handleEditBrand() {
+        if (!selectedBrandId) return alert("Select a brand first");
+        const selected = brands.find(b => getEntryId(b) === selectedBrandId);
         if (!selected) return;
-        setCategoryForm({
+        setBrandForm({
             name: selected.name || "",
-            slug: selected.slug || "",
-            summary: selected.summary || "",
-            parent: getEntryId(selected.parent) || ""
+            slug: selected.slug || ""
         });
         setIsEditing(true);
     }
 
-    async function handleSaveCategory(e) {
+    async function handleSaveBrand(e) {
         e.preventDefault();
-        if (!categoryForm.name.trim()) return alert("Name is required");
+        if (!brandForm.name.trim()) return alert("Name is required");
         setLoading(true);
         try {
             const payload = {
-                name: categoryForm.name.trim(),
-                slug: categoryForm.slug.trim() || undefined,
-                summary: categoryForm.summary.trim() || undefined,
-                parent: categoryForm.parent ? { connect: [categoryForm.parent] } : { disconnect: true }
+                name: brandForm.name.trim(),
+                slug: brandForm.slug.trim() || undefined
             };
-            if (isEditing && selectedCategoryId) {
-                await authApi.put(`/categories/${selectedCategoryId}`, { data: payload });
+            if (isEditing && selectedBrandId) {
+                await authApi.put(`/brands/${selectedBrandId}`, { data: payload });
             } else {
-                const res = await authApi.post("/categories", { data: payload });
+                const res = await authApi.post("/brands", { data: payload });
                 const created = res?.data ?? res;
-                setSelectedCategoryId(getEntryId(created));
+                setSelectedBrandId(getEntryId(created));
             }
             setIsEditing(false);
-            setCategoryForm({ name: "", slug: "", summary: "", parent: "" });
-            await loadCategories();
+            setBrandForm({ name: "", slug: "" });
+            await loadBrands();
         } catch (error) {
-            console.error("Failed to save category", error);
-            alert("Failed to save category");
+            console.error("Failed to save brand", error);
+            alert("Failed to save brand");
         } finally {
             setLoading(false);
         }
     }
 
-    async function handleDeleteCategory() {
-        if (!selectedCategoryId) return;
+    async function handleDeleteBrand() {
+        if (!selectedBrandId) return;
         if (products.length > 0) {
-            return alert("Cannot delete a category that has products. Move or remove products first.");
+            return alert("Cannot delete a brand that has products. Move or remove products first.");
         }
-        if (!confirm("Are you sure you want to delete this category?")) return;
+        if (!confirm("Are you sure you want to delete this brand?")) return;
         setLoading(true);
         try {
-            await authApi.del(`/categories/${selectedCategoryId}`);
-            setSelectedCategoryId("");
-            await loadCategories();
+            await authApi.del(`/brands/${selectedBrandId}`);
+            setSelectedBrandId("");
+            await loadBrands();
         } catch (error) {
-            console.error("Failed to delete category", error);
-            alert("Failed to delete category");
+            console.error("Failed to delete brand", error);
+            alert("Failed to delete brand");
         } finally {
             setLoading(false);
         }
@@ -218,7 +214,7 @@ export default function CategoriesPage() {
 
     // ---- Merge ----
     function openMergeDialog() {
-        if (!selectedCategoryId) return alert("Select a target category first");
+        if (!selectedBrandId) return alert("Select a target brand first");
         setMergeSearch("");
         setMergeSelection(new Set());
         setIsMergeOpen(true);
@@ -230,20 +226,19 @@ export default function CategoriesPage() {
         setMergeSelection(new Set());
     }
 
-    async function handleMergeCategories() {
-        if (!selectedCategoryId) return alert("Select a target category first");
-        if (mergeSelection.size === 0) return alert("Select categories to merge");
-        if (!confirm(`Merge ${mergeSelection.size} category(ies) into "${selectedCategory?.name}"? Products will be moved and source categories deleted.`)) return;
+    async function handleMergeBrands() {
+        if (!selectedBrandId) return alert("Select a target brand first");
+        if (mergeSelection.size === 0) return alert("Select brands to merge");
+        if (!confirm(`Merge ${mergeSelection.size} brand(s) into "${selectedBrand?.name}"? Products will be moved and source brands deleted.`)) return;
         setLoading(true);
         try {
-            // For each source category, find its products and connect them to target
-            for (const sourceCatId of mergeSelection) {
+            for (const sourceBrandId of mergeSelection) {
                 let page = 1;
                 let totalPages = 1;
                 do {
                     const res = await authApi.fetch("/products", {
-                        filters: { categories: { documentId: sourceCatId } },
-                        populate: { categories: true },
+                        filters: { brands: { documentId: sourceBrandId } },
+                        populate: { brands: true },
                         pagination: { page, pageSize: 100 }
                     });
                     const sourceProducts = res?.data ?? res ?? [];
@@ -253,9 +248,9 @@ export default function CategoriesPage() {
                         const productDocId = getEntryId(product);
                         await authApi.put(`/products/${productDocId}`, {
                             data: {
-                                categories: {
-                                    connect: [selectedCategoryId],
-                                    disconnect: [sourceCatId]
+                                brands: {
+                                    connect: [selectedBrandId],
+                                    disconnect: [sourceBrandId]
                                 }
                             }
                         });
@@ -263,27 +258,16 @@ export default function CategoriesPage() {
                     page++;
                 } while (page <= totalPages);
 
-                // Also move children categories to target's parent (or make them root)
-                const sourceCat = categories.find(c => getEntryId(c) === sourceCatId);
-                const sourceChildren = sourceCat?.childern || [];
-                for (const child of sourceChildren) {
-                    const childId = getEntryId(child);
-                    await authApi.put(`/categories/${childId}`, {
-                        data: { parent: { connect: [selectedCategoryId] } }
-                    });
-                }
-
-                // Delete the source category
-                await authApi.del(`/categories/${sourceCatId}`);
+                await authApi.del(`/brands/${sourceBrandId}`);
             }
 
             setMergeSelection(new Set());
             setIsMergeOpen(false);
-            await loadCategories();
+            await loadBrands();
             await loadProducts();
         } catch (error) {
-            console.error("Failed to merge categories", error);
-            alert("Failed to merge categories");
+            console.error("Failed to merge brands", error);
+            alert("Failed to merge brands");
         } finally {
             setLoading(false);
         }
@@ -311,24 +295,24 @@ export default function CategoriesPage() {
     }
 
     async function handleMoveProducts() {
-        if (!moveTargetCategoryId) return alert("Select a destination category");
+        if (!moveTargetBrandId) return alert("Select a destination brand");
         if (selectedProductIds.size === 0) return alert("Select products to move");
-        if (moveTargetCategoryId === selectedCategoryId) return alert("Destination must be different from source");
-        if (!confirm(`Move ${selectedProductIds.size} product(s) from "${selectedCategory?.name}" to "${categories.find(c => getEntryId(c) === moveTargetCategoryId)?.name}"?`)) return;
+        if (moveTargetBrandId === selectedBrandId) return alert("Destination must be different from source");
+        if (!confirm(`Move ${selectedProductIds.size} product(s) from "${selectedBrand?.name}" to "${brands.find(b => getEntryId(b) === moveTargetBrandId)?.name}"?`)) return;
         setLoading(true);
         try {
             for (const productDocId of selectedProductIds) {
                 await authApi.put(`/products/${productDocId}`, {
                     data: {
-                        categories: {
-                            connect: [moveTargetCategoryId],
-                            disconnect: [selectedCategoryId]
+                        brands: {
+                            connect: [moveTargetBrandId],
+                            disconnect: [selectedBrandId]
                         }
                     }
                 });
             }
             setSelectedProductIds(new Set());
-            setMoveTargetCategoryId("");
+            setMoveTargetBrandId("");
             await loadProducts();
         } catch (error) {
             console.error("Failed to move products", error);
@@ -339,23 +323,23 @@ export default function CategoriesPage() {
     }
 
     async function handleCopyProducts() {
-        if (!moveTargetCategoryId) return alert("Select a destination category");
+        if (!moveTargetBrandId) return alert("Select a destination brand");
         if (selectedProductIds.size === 0) return alert("Select products to copy");
-        if (moveTargetCategoryId === selectedCategoryId) return alert("Destination must be different from source");
+        if (moveTargetBrandId === selectedBrandId) return alert("Destination must be different from source");
         setLoading(true);
         try {
             for (const productDocId of selectedProductIds) {
                 await authApi.put(`/products/${productDocId}`, {
                     data: {
-                        categories: {
-                            connect: [moveTargetCategoryId]
+                        brands: {
+                            connect: [moveTargetBrandId]
                         }
                     }
                 });
             }
             setSelectedProductIds(new Set());
-            setMoveTargetCategoryId("");
-            alert("Products added to destination category (kept in source too).");
+            setMoveTargetBrandId("");
+            alert("Products added to destination brand (kept in source too).");
         } catch (error) {
             console.error("Failed to copy products", error);
             alert("Failed to copy products");
@@ -364,89 +348,87 @@ export default function CategoriesPage() {
         }
     }
 
-    async function handleRemoveFromCategory(productDocId) {
-        if (!confirm("Remove this product from the category?")) return;
+    async function handleRemoveFromBrand(productDocId) {
+        if (!confirm("Remove this product from the brand?")) return;
         setLoading(true);
         try {
             await authApi.put(`/products/${productDocId}`, {
                 data: {
-                    categories: { disconnect: [selectedCategoryId] }
+                    brands: { disconnect: [selectedBrandId] }
                 }
             });
             await loadProducts();
         } catch (error) {
-            console.error("Failed to remove product from category", error);
+            console.error("Failed to remove product from brand", error);
             alert("Failed to remove product");
         } finally {
             setLoading(false);
         }
     }
 
-    async function handleAddProductToCategory(productDocId) {
-        if (!selectedCategoryId) return alert("Select a category first");
+    async function handleAddProductToBrand(productDocId) {
+        if (!selectedBrandId) return alert("Select a brand first");
         setLoading(true);
         try {
             await authApi.put(`/products/${productDocId}`, {
                 data: {
-                    categories: { connect: [selectedCategoryId] }
+                    brands: { connect: [selectedBrandId] }
                 }
             });
             await loadProducts();
         } catch (error) {
-            console.error("Failed to add product to category", error);
-            alert("Failed to add product to category");
+            console.error("Failed to add product to brand", error);
+            alert("Failed to add product to brand");
         } finally {
             setLoading(false);
         }
     }
 
     function handleMediaChange(field, files, multiple) {
-        if (!selectedCategoryId) return;
-        // Update the category in local state so the UI refreshes
-        setCategories(prev => prev.map(c => {
-            if (getEntryId(c) !== selectedCategoryId) return c;
-            return { ...c, [field]: multiple ? files : files };
+        if (!selectedBrandId) return;
+        setBrands(prev => prev.map(b => {
+            if (getEntryId(b) !== selectedBrandId) return b;
+            return { ...b, [field]: files };
         }));
     }
 
     // ---- Derived state ----
-    const selectedCategory = categories.find(c => getEntryId(c) === selectedCategoryId);
-    const filteredCategories = categories.filter(c =>
-        (c.name || "").toLowerCase().includes(searchTerm.trim().toLowerCase())
+    const selectedBrand = brands.find(b => getEntryId(b) === selectedBrandId);
+    const filteredBrands = brands.filter(b =>
+        (b.name || "").toLowerCase().includes(searchTerm.trim().toLowerCase())
     );
-    const mergeCandidates = categories.filter(c => getEntryId(c) !== selectedCategoryId);
-    const filteredMergeCandidates = mergeCandidates.filter(c =>
-        (c.name || "").toLowerCase().includes(mergeSearch.trim().toLowerCase())
+    const mergeCandidates = brands.filter(b => getEntryId(b) !== selectedBrandId);
+    const filteredMergeCandidates = mergeCandidates.filter(b =>
+        (b.name || "").toLowerCase().includes(mergeSearch.trim().toLowerCase())
     );
-    const moveTargetOptions = categories.filter(c => getEntryId(c) !== selectedCategoryId);
-    const parentOptions = categories.filter(c => getEntryId(c) !== selectedCategoryId);
+    const moveTargetOptions = brands.filter(b => getEntryId(b) !== selectedBrandId);
 
     return (
         <ProtectedRoute>
             <Layout>
                 <div className="p-3">
                     <div className="d-flex justify-content-between align-items-center mb-3">
-                        <h1 className="mb-0">Categories</h1>
+                        <h1 className="mb-0">Brands</h1>
                         {loading && <span className="text-muted">Loading...</span>}
                     </div>
 
                     <div className="row">
-                        {/* Left column: Categories list + Products */}
+                        {/* Left column: Brands list + Products */}
                         <div className="col-lg-8">
-                            {/* Categories list */}
+                            {/* Brands list */}
                             <div className="card mb-3">
                                 <div className="card-body">
                                     <div className="d-flex flex-wrap justify-content-between align-items-center mb-2">
                                         <h5 className="card-title mb-0">
-                                            All Categories
-                                            <span className="badge bg-secondary ms-2">{categories.length}</span>
+                                            All Brands
+                                            <span className="badge bg-secondary ms-2">{brands.length}</span>
                                         </h5>
                                         <div className="d-flex gap-2">
                                             <button
                                                 type="button"
                                                 className="btn btn-outline-primary btn-sm"
-                                                onClick={handleEditCategory}
-                                                disabled={!selectedCategoryId}
+                                                onClick={handleEditBrand}
+                                                disabled={!selectedBrandId}
                                             >
                                                 Edit
                                             </button>
@@ -454,15 +436,15 @@ export default function CategoriesPage() {
                                                 type="button"
                                                 className="btn btn-outline-danger btn-sm"
                                                 onClick={openMergeDialog}
-                                                disabled={!selectedCategoryId}
+                                                disabled={!selectedBrandId}
                                             >
-                                                Merge into {selectedCategory?.name || "..."}
+                                                Merge into {selectedBrand?.name || "..."}
                                             </button>
                                             <button
                                                 type="button"
                                                 className="btn btn-outline-danger btn-sm"
-                                                onClick={handleDeleteCategory}
-                                                disabled={!selectedCategoryId}
+                                                onClick={handleDeleteBrand}
+                                                disabled={!selectedBrandId}
                                             >
                                                 Delete
                                             </button>
@@ -470,51 +452,41 @@ export default function CategoriesPage() {
                                     </div>
                                     <input
                                         className="form-control form-control-sm mb-2"
-                                        placeholder="Filter categories..."
+                                        placeholder="Filter brands..."
                                         value={searchTerm}
                                         onChange={e => setSearchTerm(e.target.value)}
                                     />
                                     <div className="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-2" style={{ maxHeight: 350, overflowY: "auto" }}>
-                                        {filteredCategories.map(cat => {
-                                            const id = getEntryId(cat);
-                                            const isActive = id === selectedCategoryId;
+                                        {filteredBrands.map(brand => {
+                                            const id = getEntryId(brand);
+                                            const isActive = id === selectedBrandId;
                                             return (
                                                 <div key={id} className="col">
                                                     <button
                                                         type="button"
                                                         className={`list-group-item list-group-item-action d-flex justify-content-between align-items-center w-100 ${isActive ? "active" : ""}`}
-                                                        onClick={() => setSelectedCategoryId(id)}
+                                                        onClick={() => setSelectedBrandId(id)}
                                                     >
-                                                        <span>
-                                                            {cat.name}
-                                                            {cat.parent && (
-                                                                <small className={`ms-1 ${isActive ? "text-light" : "text-muted"}`}>
-                                                                    ({cat.parent.name})
-                                                                </small>
-                                                            )}
-                                                        </span>
-                                                        <span className={`badge ${isActive ? "bg-light text-dark" : "bg-secondary"}`}>
-                                                            {cat.childern?.length || 0}
-                                                        </span>
+                                                        <span>{brand.name}</span>
                                                     </button>
                                                 </div>
                                             );
                                         })}
-                                        {filteredCategories.length === 0 && (
+                                        {filteredBrands.length === 0 && (
                                             <div className="col">
-                                                <div className="list-group-item text-muted">No categories found.</div>
+                                                <div className="list-group-item text-muted">No brands found.</div>
                                             </div>
                                         )}
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Products in selected category */}
+                            {/* Products in selected brand */}
                             <div className="card mb-3">
                                 <div className="card-body">
                                     <div className="d-flex flex-wrap justify-content-between align-items-center mb-2">
                                         <h5 className="card-title mb-0">
-                                            Products in {selectedCategory?.name || "..."}
+                                            Products in {selectedBrand?.name || "..."}
                                             <span className="badge bg-secondary ms-2">{products.length}</span>
                                         </h5>
                                         {selectedProductIds.size > 0 && (
@@ -523,19 +495,19 @@ export default function CategoriesPage() {
                                     </div>
 
                                     {/* Move / Copy toolbar */}
-                                    {selectedCategoryId && (
+                                    {selectedBrandId && (
                                         <div className="row g-2 mb-2 align-items-end">
                                             <div className="col-sm-5">
-                                                <label className="form-label small mb-1">Destination category</label>
+                                                <label className="form-label small mb-1">Destination brand</label>
                                                 <select
                                                     className="form-select form-select-sm"
-                                                    value={moveTargetCategoryId}
-                                                    onChange={e => setMoveTargetCategoryId(e.target.value)}
+                                                    value={moveTargetBrandId}
+                                                    onChange={e => setMoveTargetBrandId(e.target.value)}
                                                 >
-                                                    <option value="">Select category...</option>
-                                                    {moveTargetOptions.map(cat => (
-                                                        <option key={getEntryId(cat)} value={getEntryId(cat)}>
-                                                            {cat.name}
+                                                    <option value="">Select brand...</option>
+                                                    {moveTargetOptions.map(brand => (
+                                                        <option key={getEntryId(brand)} value={getEntryId(brand)}>
+                                                            {brand.name}
                                                         </option>
                                                     ))}
                                                 </select>
@@ -544,14 +516,14 @@ export default function CategoriesPage() {
                                                 <button
                                                     className="btn btn-warning btn-sm"
                                                     onClick={handleMoveProducts}
-                                                    disabled={selectedProductIds.size === 0 || !moveTargetCategoryId}
+                                                    disabled={selectedProductIds.size === 0 || !moveTargetBrandId}
                                                 >
                                                     Move ({selectedProductIds.size})
                                                 </button>
                                                 <button
                                                     className="btn btn-info btn-sm"
                                                     onClick={handleCopyProducts}
-                                                    disabled={selectedProductIds.size === 0 || !moveTargetCategoryId}
+                                                    disabled={selectedProductIds.size === 0 || !moveTargetBrandId}
                                                 >
                                                     Copy ({selectedProductIds.size})
                                                 </button>
@@ -561,10 +533,10 @@ export default function CategoriesPage() {
 
                                     {productsLoading ? (
                                         <div className="text-muted">Loading products...</div>
-                                    ) : !selectedCategoryId ? (
-                                        <div className="text-muted">Select a category to view its products.</div>
+                                    ) : !selectedBrandId ? (
+                                        <div className="text-muted">Select a brand to view its products.</div>
                                     ) : products.length === 0 ? (
-                                        <div className="text-muted">No products in this category.</div>
+                                        <div className="text-muted">No products in this brand.</div>
                                     ) : (
                                         <div className="table-responsive" style={{ maxHeight: 400, overflowY: "auto" }}>
                                             <table className="table table-sm table-hover mb-0">
@@ -580,7 +552,7 @@ export default function CategoriesPage() {
                                                         <th>Name</th>
                                                         <th>SKU</th>
                                                         <th>Price</th>
-                                                        <th>Categories</th>
+                                                        <th>Brands</th>
                                                         <th style={{ width: 100 }}>Actions</th>
                                                     </tr>
                                                 </thead>
@@ -603,13 +575,13 @@ export default function CategoriesPage() {
                                                                 <td><code>{product.sku || "-"}</code></td>
                                                                 <td>{currency}{parseFloat(product.selling_price || 0).toFixed(2)}</td>
                                                                 <td>
-                                                                    {(product.categories || []).map(c => c.name).join(", ") || "-"}
+                                                                    {(product.brands || []).map(b => b.name).join(", ") || "-"}
                                                                 </td>
                                                                 <td>
                                                                     <button
                                                                         className="btn btn-outline-danger btn-sm"
-                                                                        onClick={() => handleRemoveFromCategory(pId)}
-                                                                        title="Remove from this category"
+                                                                        onClick={() => handleRemoveFromBrand(pId)}
+                                                                        title="Remove from this brand"
                                                                     >
                                                                         Remove
                                                                     </button>
@@ -629,16 +601,16 @@ export default function CategoriesPage() {
                         <div className="col-lg-4">
                             <div className="card mb-3">
                                 <div className="card-body">
-                                    <h5 className="card-title">{isEditing ? "Edit Category" : "Create Category"}</h5>
-                                    <form onSubmit={handleSaveCategory}>
+                                    <h5 className="card-title">{isEditing ? "Edit Brand" : "Create Brand"}</h5>
+                                    <form onSubmit={handleSaveBrand}>
                                         <div className="mb-2">
                                             <label className="form-label small mb-1">Name *</label>
                                             <input
                                                 className="form-control"
                                                 name="name"
-                                                value={categoryForm.name}
+                                                value={brandForm.name}
                                                 onChange={handleFormChange}
-                                                placeholder="Category name"
+                                                placeholder="Brand name"
                                                 required
                                             />
                                         </div>
@@ -647,37 +619,10 @@ export default function CategoriesPage() {
                                             <input
                                                 className="form-control"
                                                 name="slug"
-                                                value={categoryForm.slug}
+                                                value={brandForm.slug}
                                                 onChange={handleFormChange}
                                                 placeholder="Slug (auto-generated if empty)"
                                             />
-                                        </div>
-                                        <div className="mb-2">
-                                            <label className="form-label small mb-1">Summary</label>
-                                            <textarea
-                                                className="form-control"
-                                                name="summary"
-                                                value={categoryForm.summary}
-                                                onChange={handleFormChange}
-                                                placeholder="Short summary"
-                                                rows={2}
-                                            />
-                                        </div>
-                                        <div className="mb-2">
-                                            <label className="form-label small mb-1">Parent Category</label>
-                                            <select
-                                                className="form-select"
-                                                name="parent"
-                                                value={categoryForm.parent}
-                                                onChange={handleFormChange}
-                                            >
-                                                <option value="">None (root category)</option>
-                                                {parentOptions.map(cat => (
-                                                    <option key={getEntryId(cat)} value={getEntryId(cat)}>
-                                                        {cat.name}
-                                                    </option>
-                                                ))}
-                                            </select>
                                         </div>
                                         <div className="d-flex gap-2">
                                             <button className="btn btn-primary" type="submit">
@@ -689,7 +634,7 @@ export default function CategoriesPage() {
                                                     className="btn btn-outline-secondary"
                                                     onClick={() => {
                                                         setIsEditing(false);
-                                                        setCategoryForm({ name: "", slug: "", summary: "", parent: "" });
+                                                        setBrandForm({ name: "", slug: "" });
                                                     }}
                                                 >
                                                     Cancel
@@ -703,26 +648,26 @@ export default function CategoriesPage() {
                             {/* Search & Add Products */}
                             <div className="card mb-3">
                                 <div className="card-body">
-                                    <h5 className="card-title">Add Products to {selectedCategory?.name || "..."}</h5>
+                                    <h5 className="card-title">Add Products to {selectedBrand?.name || "..."}</h5>
                                     <input
                                         className="form-control form-control-sm mb-2"
                                         placeholder="Search by name, SKU, or barcode..."
                                         value={productSearch}
                                         onChange={e => setProductSearch(e.target.value)}
-                                        disabled={!selectedCategoryId}
+                                        disabled={!selectedBrandId}
                                     />
                                     {productSearchLoading && (
                                         <div className="text-muted small mb-2">Searching...</div>
                                     )}
-                                    {!selectedCategoryId && (
-                                        <div className="text-muted small">Select a category first.</div>
+                                    {!selectedBrandId && (
+                                        <div className="text-muted small">Select a brand first.</div>
                                     )}
-                                    {selectedCategoryId && productSearch.trim().length >= 2 && !productSearchLoading && (
+                                    {selectedBrandId && productSearch.trim().length >= 2 && !productSearchLoading && (
                                         <div className="list-group" style={{ maxHeight: 300, overflowY: "auto" }}>
                                             {productSearchResults.map(product => {
                                                 const pId = getEntryId(product);
-                                                const alreadyInCategory = (product.categories || []).some(
-                                                    c => getEntryId(c) === selectedCategoryId
+                                                const alreadyInBrand = (product.brands || []).some(
+                                                    b => getEntryId(b) === selectedBrandId
                                                 );
                                                 return (
                                                     <div
@@ -736,13 +681,13 @@ export default function CategoriesPage() {
                                                                 {product.selling_price ? ` · ${currency}${parseFloat(product.selling_price).toFixed(2)}` : ""}
                                                             </small>
                                                         </div>
-                                                        {alreadyInCategory ? (
+                                                        {alreadyInBrand ? (
                                                             <span className="badge bg-success">Added</span>
                                                         ) : (
                                                             <button
                                                                 type="button"
                                                                 className="btn btn-sm btn-outline-primary"
-                                                                onClick={() => handleAddProductToCategory(pId)}
+                                                                onClick={() => handleAddProductToBrand(pId)}
                                                             >
                                                                 Add
                                                             </button>
@@ -758,34 +703,16 @@ export default function CategoriesPage() {
                                 </div>
                             </div>
 
-                            {/* Category details card */}
-                            {selectedCategory && (
+                            {/* Brand details card */}
+                            {selectedBrand && (
                                 <div className="card mb-3">
                                     <div className="card-body">
                                         <h5 className="card-title">Details</h5>
                                         <dl className="mb-0">
                                             <dt className="small text-muted">Name</dt>
-                                            <dd>{selectedCategory.name}</dd>
+                                            <dd>{selectedBrand.name}</dd>
                                             <dt className="small text-muted">Slug</dt>
-                                            <dd><code>{selectedCategory.slug || "-"}</code></dd>
-                                            {selectedCategory.parent && (
-                                                <>
-                                                    <dt className="small text-muted">Parent</dt>
-                                                    <dd>{selectedCategory.parent.name}</dd>
-                                                </>
-                                            )}
-                                            {selectedCategory.childern?.length > 0 && (
-                                                <>
-                                                    <dt className="small text-muted">Sub-categories</dt>
-                                                    <dd>{selectedCategory.childern.map(c => c.name).join(", ")}</dd>
-                                                </>
-                                            )}
-                                            {selectedCategory.summary && (
-                                                <>
-                                                    <dt className="small text-muted">Summary</dt>
-                                                    <dd>{selectedCategory.summary}</dd>
-                                                </>
-                                            )}
+                                            <dd><code>{selectedBrand.slug || "-"}</code></dd>
                                             <dt className="small text-muted">Products</dt>
                                             <dd>{products.length}</dd>
                                         </dl>
@@ -794,7 +721,7 @@ export default function CategoriesPage() {
                             )}
 
                             {/* Logo & Gallery */}
-                            {selectedCategory && (
+                            {selectedBrand && (
                                 <div className="card mb-3">
                                     <div className="card-body">
                                         <h5 className="card-title">Logo & Gallery</h5>
@@ -802,24 +729,24 @@ export default function CategoriesPage() {
                                             <label className="form-label small mb-1 fw-bold">Logo</label>
                                             <FileView
                                                 onFileChange={handleMediaChange}
-                                                single={selectedCategory.logo}
+                                                single={selectedBrand.logo}
                                                 multiple={false}
-                                                refName="category"
-                                                refId={selectedCategory.id}
+                                                refName="brand"
+                                                refId={selectedBrand.id}
                                                 field="logo"
-                                                name={selectedCategory.name}
+                                                name={selectedBrand.name}
                                             />
                                         </div>
                                         <div>
                                             <label className="form-label small mb-1 fw-bold">Gallery</label>
                                             <FileView
                                                 onFileChange={handleMediaChange}
-                                                gallery={selectedCategory.gallery || []}
+                                                gallery={selectedBrand.gallery || []}
                                                 multiple={true}
-                                                refName="category"
-                                                refId={selectedCategory.id}
+                                                refName="brand"
+                                                refId={selectedBrand.id}
                                                 field="gallery"
-                                                name={selectedCategory.name}
+                                                name={selectedBrand.name}
                                             />
                                         </div>
                                     </div>
@@ -839,51 +766,46 @@ export default function CategoriesPage() {
                         >
                             <div className="modal-content">
                                 <div className="modal-header">
-                                    <h5 className="modal-title">Merge Categories</h5>
+                                    <h5 className="modal-title">Merge Brands</h5>
                                     <button type="button" className="btn-close" onClick={closeMergeDialog}></button>
                                 </div>
                                 <div className="modal-body">
                                     <p className="text-muted mb-2">
-                                        Target category: <strong>{selectedCategory?.name}</strong>
+                                        Target brand: <strong>{selectedBrand?.name}</strong>
                                     </p>
                                     <p className="small text-muted mb-2">
-                                        All products from selected categories will be moved to the target. Source categories will be deleted.
+                                        All products from selected brands will be moved to the target. Source brands will be deleted.
                                     </p>
                                     <input
                                         className="form-control mb-2"
-                                        placeholder="Search categories..."
+                                        placeholder="Search brands..."
                                         value={mergeSearch}
                                         onChange={e => setMergeSearch(e.target.value)}
                                     />
                                     <div className="list-group" style={{ maxHeight: 300, overflowY: "auto" }}>
-                                        {filteredMergeCandidates.map(cat => {
-                                            const catId = getEntryId(cat);
-                                            const isSelected = mergeSelection.has(catId);
+                                        {filteredMergeCandidates.map(brand => {
+                                            const brandId = getEntryId(brand);
+                                            const isSelected = mergeSelection.has(brandId);
                                             return (
                                                 <button
-                                                    key={catId}
+                                                    key={brandId}
                                                     type="button"
                                                     className={`list-group-item list-group-item-action d-flex justify-content-between align-items-center ${isSelected ? "active" : ""}`}
                                                     onClick={() => {
                                                         setMergeSelection(prev => {
                                                             const next = new Set(prev);
-                                                            if (next.has(catId)) next.delete(catId);
-                                                            else next.add(catId);
+                                                            if (next.has(brandId)) next.delete(brandId);
+                                                            else next.add(brandId);
                                                             return next;
                                                         });
                                                     }}
                                                 >
-                                                    <span>{cat.name}</span>
-                                                    {cat.parent && (
-                                                        <small className={isSelected ? "text-light" : "text-muted"}>
-                                                            parent: {cat.parent.name}
-                                                        </small>
-                                                    )}
+                                                    <span>{brand.name}</span>
                                                 </button>
                                             );
                                         })}
                                         {filteredMergeCandidates.length === 0 && (
-                                            <div className="list-group-item text-muted">No categories found.</div>
+                                            <div className="list-group-item text-muted">No brands found.</div>
                                         )}
                                     </div>
                                 </div>
@@ -895,10 +817,10 @@ export default function CategoriesPage() {
                                     <button
                                         type="button"
                                         className="btn btn-danger"
-                                        onClick={handleMergeCategories}
+                                        onClick={handleMergeBrands}
                                         disabled={mergeSelection.size === 0}
                                     >
-                                        Merge {mergeSelection.size} into {selectedCategory?.name}
+                                        Merge {mergeSelection.size} into {selectedBrand?.name}
                                     </button>
                                 </div>
                             </div>
