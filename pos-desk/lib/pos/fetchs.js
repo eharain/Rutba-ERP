@@ -101,7 +101,8 @@ export async function loadProduct(id) {
             suppliers: true,
             logo: true,
             gallery: true,
-            suppliers: true
+            terms: true,
+            parent: true,
         }
     }
 

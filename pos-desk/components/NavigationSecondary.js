@@ -9,7 +9,7 @@ export default function NavigationSecondary() {
 			<ul className="navbar-nav align-items-center gap-2">
 				<li className="nav-item fw-semibold text-uppercase small text-muted me-1">Create:</li>
 				<li className="nav-item">
-					<Link className="btn btn-sm btn-outline-primary" href="/new/product">Product</Link>
+					<Link className="btn btn-sm btn-outline-primary" href="/new/product-edit">Product</Link>
 				</li>
 				<li className="nav-item">
 					<Link className="btn btn-sm btn-outline-success" href="/new/sale">Sale</Link>

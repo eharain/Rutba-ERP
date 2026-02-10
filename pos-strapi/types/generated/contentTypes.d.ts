@@ -835,6 +835,7 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
     selling_price: Schema.Attribute.Decimal;
     sku: Schema.Attribute.String;
     stock_quantity: Schema.Attribute.Integer;
+    summary: Schema.Attribute.RichText;
     supplierCode: Schema.Attribute.String;
     suppliers: Schema.Attribute.Relation<
       'manyToMany',

@@ -50,15 +50,15 @@ export default function Products() {
 
     useEffect(() => {
         Promise.all([
-            authApi.fetch("/brands"),
-            authApi.fetch("/categories"),
-            authApi.fetch("/suppliers"),
-            authApi.fetch("/term-types", { populate: ["terms"] }),
+            authApi.getAll("/brands"),
+            authApi.getAll("/categories"),
+            authApi.getAll("/suppliers"),
+            authApi.getAll("/term-types", { populate: ["terms"] }),
         ]).then(([b, c, s, t]) => {
-            setBrands(b?.data || []);
-            setCategories(c?.data || []);
-            setSuppliers(s?.data || []);
-            setTermTypes(t?.data || []);
+            setBrands(b?.data || b || []);
+            setCategories(c?.data || c || []);
+            setSuppliers(s?.data || s || []);
+            setTermTypes(t?.data || t || []);
         });
     }, []);
 
@@ -134,7 +134,7 @@ export default function Products() {
                     <div style={{ padding: 10 }}>
                         <h1>Products</h1>
                         <div>
-                          
+
                             <ProductFilter
                                 brands={brands}
                                 categories={categories}
@@ -203,7 +203,9 @@ export default function Products() {
                                                 <TableCell>{product.status}</TableCell>
 
                                                 <TableCell>
-                                                    <Link href={`/${product.documentId ?? product.id}/product`}> <i className="fas fa-edit"></i> Edit</Link>
+                                                    <Link href={`/${product.documentId ?? product.id}/product-edit`}> <i className="fas fa-edit"></i> Edit</Link>
+                                                    <br />
+                                                    <Link href={`/${product.documentId ?? product.id}/product`}> <i className="fas fa-edit"></i> Edit & Items</Link>
                                                     <br />
                                                     <Link href={`/${product.documentId ?? product.id}/product-variants`}><i className="fas fa-fighter-jet"></i> Variants</Link>
                                                     <br />

@@ -23,6 +23,35 @@ async function get(path, data = {}, jwt) {
     return res.data; // Strapi returns { data, meta }
 }
 
+async function getAll(path, params = {}, jwt ) {
+    let allItems = [];
+    let page = 0;
+    const pageSize = 50; // Adjust based on your Strapi settings
+    while (true) {
+        const query = qs.stringify({
+            ...params,
+            pagination: { page, pageSize }
+        });
+        const res = await axios.get(`${API_URL}${path}?${query}`, {
+            headers: { ...authHeaders(jwt) },
+        });
+
+        const data = res.data.data || res.data;
+
+        allItems = allItems.concat(data);
+        if (data.length < pageSize) {
+            break; // No more pages
+        }
+        page++;
+    }
+
+  //  console.log(`Fetched total ${allItems.length} items from ${path}`);
+
+    return allItems;
+
+}
+
+
 async function getWithPagination(path, data = {}, jwt) {
     const res = await axios.get(querify(`${API_URL}${path}`, data), {
         data,
@@ -149,6 +178,7 @@ export const api = {
     put: async (path, data) => await get(path, data),
     del: async (path) => await del(path),
     uploadFile: async (file, ref, field, refId) => await uploadFile(file, ref, field, refId),
+    getAll: async (path, params) => await getAll(path, params),
 };
 
 // ------------------ Auth API (uses localStorage JWT) ------------------
@@ -156,6 +186,7 @@ export const authApi = {
     fetch: async (path, data) => await get(path, data, storage.getItem("jwt")),
     fetchWithPagination: async (path, data) => await getWithPagination(path, data, storage.getItem("jwt")),
     get: async (path, data) => await get(path, data, storage.getItem("jwt")),
+    getAll: async (path, params) => await getAll(path, params, storage.getItem("jwt")),
     post: async (path, data) => await post(path, data, storage.getItem("jwt")),
     put: async (path, data) => await put(path, data, storage.getItem("jwt")),
     del: async (path) => await del(path, storage.getItem("jwt")),
@@ -198,3 +229,5 @@ export async function getStockStatus() {
 export async function getBranches() {
     return await authApi.fetch("/branches");
 }
+
+
