@@ -13,6 +13,7 @@
     "@fortawesome/fontawesome-free": "^7.0.0",
     "axios": "^1.11.0",
     "bootstrap": "^5.3.7",
+    "marked": "^17.0.1",
     "next": "15.4.6",
     "primereact": "^10.9.7",
     "qrcode.react": "^4.2.0",
