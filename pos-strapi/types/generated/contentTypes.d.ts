@@ -711,6 +711,51 @@ export interface ApiEmployeeEmployee extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiOrderOrder extends Struct.CollectionTypeSchema {
+  collectionName: 'orders';
+  info: {
+    description: '';
+    displayName: 'Order';
+    pluralName: 'orders';
+    singularName: 'order';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    customer_contact: Schema.Attribute.Component<'order.order-contact', false>;
+    label_image: Schema.Attribute.Text;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::order.order'> &
+      Schema.Attribute.Private;
+    order_id: Schema.Attribute.UID & Schema.Attribute.Required;
+    order_secret: Schema.Attribute.String;
+    payment_status: Schema.Attribute.String & Schema.Attribute.Required;
+    products: Schema.Attribute.Component<'order.order-products', false>;
+    publishedAt: Schema.Attribute.DateTime;
+    rate_id: Schema.Attribute.String;
+    shipping_id: Schema.Attribute.String;
+    shipping_label: Schema.Attribute.JSON;
+    shipping_name: Schema.Attribute.String;
+    shipping_price: Schema.Attribute.Decimal;
+    stripe_id: Schema.Attribute.String;
+    stripe_request: Schema.Attribute.JSON;
+    stripe_response_webhook: Schema.Attribute.JSON;
+    stripe_url: Schema.Attribute.Text;
+    subtotal: Schema.Attribute.Decimal;
+    total: Schema.Attribute.Decimal;
+    tracking_code: Schema.Attribute.String;
+    tracking_url: Schema.Attribute.Text;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    user_id: Schema.Attribute.String;
+  };
+}
+
 export interface ApiPaymentPayment extends Struct.CollectionTypeSchema {
   collectionName: 'payments';
   info: {
@@ -2039,6 +2084,7 @@ declare module '@strapi/strapi' {
       'api::currency.currency': ApiCurrencyCurrency;
       'api::customer.customer': ApiCustomerCustomer;
       'api::employee.employee': ApiEmployeeEmployee;
+      'api::order.order': ApiOrderOrder;
       'api::payment.payment': ApiPaymentPayment;
       'api::product-group.product-group': ApiProductGroupProductGroup;
       'api::product.product': ApiProductProduct;
