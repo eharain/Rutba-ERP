@@ -12,3 +12,4 @@ node
 /pos-strapi/types/generated/*
 /pos-strapi/src/.vs
 /data
+/pos-strapi/package-lock.json
