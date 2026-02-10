@@ -205,7 +205,7 @@ export default function Products() {
                                                 <TableCell>
                                                     <Link href={`/${product.documentId ?? product.id}/product-edit`}> <i className="fas fa-edit"></i> Edit</Link>
                                                     <br />
-                                                    <Link href={`/${product.documentId ?? product.id}/product`}> <i className="fas fa-edit"></i> Edit & Items</Link>
+                                                    <Link href={`/${product.documentId ?? product.id}/product-stock-items`}> <i className="fas fa-edit"></i> Edit & Items</Link>
                                                     <br />
                                                     <Link href={`/${product.documentId ?? product.id}/product-variants`}><i className="fas fa-fighter-jet"></i> Variants</Link>
                                                     <br />

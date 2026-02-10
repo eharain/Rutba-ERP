@@ -1,0 +1,82 @@
+{
+  "kind": "collectionType",
+  "collectionName": "orders",
+  "info": {
+    "singularName": "order",
+    "pluralName": "orders",
+    "displayName": "Order",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "order_id": {
+      "type": "uid",
+      "required": true
+    },
+    "customer_contact": {
+      "type": "component",
+      "repeatable": false,
+      "component": "order.order-contact"
+    },
+    "products": {
+      "type": "component",
+      "repeatable": false,
+      "component": "order.order-products"
+    },
+    "shipping_id": {
+      "type": "string"
+    },
+    "rate_id": {
+      "type": "string"
+    },
+    "shipping_name": {
+      "type": "string"
+    },
+    "stripe_id": {
+      "type": "string"
+    },
+    "stripe_url": {
+      "type": "text"
+    },
+    "stripe_request": {
+      "type": "json"
+    },
+    "stripe_response_webhook": {
+      "type": "json"
+    },
+    "subtotal": {
+      "type": "decimal"
+    },
+    "shipping_price": {
+      "type": "decimal"
+    },
+    "total": {
+      "type": "decimal"
+    },
+    "payment_status": {
+      "type": "string",
+      "required": true
+    },
+    "shipping_label": {
+      "type": "json"
+    },
+    "tracking_url": {
+      "type": "text"
+    },
+    "label_image": {
+      "type": "text"
+    },
+    "tracking_code": {
+      "type": "string"
+    },
+    "order_secret": {
+      "type": "string"
+    },
+    "user_id": {
+      "type": "string"
+    }
+  }
+}
