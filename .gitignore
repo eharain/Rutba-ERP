@@ -11,3 +11,4 @@ node
 /pos-strapi/src/api/utils/controllers/validator.js
 /pos-strapi/types/generated/*
 /pos-strapi/src/.vs
+/data
