@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { marked } from 'marked';
+import { marked } from '../lib/marked.esm.js';
 
 marked.setOptions({ breaks: true, gfm: true });
 

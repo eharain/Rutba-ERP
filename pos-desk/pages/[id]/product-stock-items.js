@@ -256,28 +256,6 @@ export default function EditProduct() {
         router.push('/products');
     };
 
-    // Simple Markdown preview renderer (safe-ish, minimal features)
-    const renderMarkdownPreview = (md) => {
-        if (!md) return { __html: '' };
-        const escapeHtml = (s) => s
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;');
-
-        let html = escapeHtml(md);
-
-        html = html
-            .replace(/^### (.*$)/gim, '<h3>$1</h3>')
-            .replace(/^## (.*$)/gim, '<h2>$1</h2>')
-            .replace(/^# (.*$)/gim, '<h1>$1</h1>')
-            .replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>')
-            .replace(/\*(.*?)\*/gim, '<em>$1</em>')
-            .replace(/\[(.*?)\]\((.*?)\)/gim, '<a href="$2" target="_blank" rel="noreferrer">$1</a>')
-            .replace(/\n/g, '<br/>');
-
-        return { __html: html };
-    };
-
     // Prepare PrimeReact options (label/value shape)
     const categoryOptions = categories.map(c => ({ label: c.name ?? '', value: c }));
     const brandOptions = brands.map(b => ({ label: b.name ?? '', value: b }));
@@ -330,62 +308,25 @@ export default function EditProduct() {
                     )}
 
                     <form onSubmit={handleSubmit} style={{ background: '#f9f9f9', padding: '20px', borderRadius: '8px' }}>
-                        {/* Name + Description (markdown editor + preview) */}
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'black' }}>
-                                    Product Name *
-                                </label>
-                                <input
-                                    type="text"
-                                    name="name"
-                                    value={product.name ?? ""}
-                                    onChange={handleChange}
-                                    required
-                                    style={{
-                                        width: '100%',
-                                        padding: '8px',
-                                        border: '1px solid #ccc',
-                                        borderRadius: '4px'
-                                    }}
-                                    placeholder="Product Name"
-                                />
-                            </div>
-
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'black' }}>
-                                    Description (Markdown)
-                                </label>
-
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                                    <textarea
-                                        name="description"
-                                        value={product.description ?? ""}
-                                        onChange={handleChange}
-                                        rows="6"
-                                        style={{
-                                            width: '100%',
-                                            padding: '8px',
-                                            border: '1px solid #ccc',
-                                            borderRadius: '4px',
-                                            minHeight: '140px',
-                                            resize: 'vertical'
-                                        }}
-                                        placeholder="Write product description in markdown..."
-                                    />
-                                    <div style={{
-                                        border: '1px solid #e0e0e0',
-                                        borderRadius: '4px',
-                                        padding: '8px',
-                                        background: '#fff',
-                                        minHeight: '140px',
-                                        overflowY: 'auto'
-                                    }}>
-                                        <div style={{ fontSize: '12px', color: '#666', marginBottom: '6px' }}>Preview</div>
-                                        <div dangerouslySetInnerHTML={renderMarkdownPreview(product.description)} />
-                                    </div>
-                                </div>
-                            </div>
+                        {/* Name */}
+                        <div style={{ marginBottom: '20px' }}>
+                            <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'black' }}>
+                                Product Name *
+                            </label>
+                            <input
+                                type="text"
+                                name="name"
+                                value={product.name ?? ""}
+                                onChange={handleChange}
+                                required
+                                style={{
+                                    width: '100%',
+                                    padding: '8px',
+                                    border: '1px solid #ccc',
+                                    borderRadius: '4px'
+                                }}
+                                placeholder="Product Name"
+                            />
                         </div>
 
                         {/* SKU + Barcode */}
