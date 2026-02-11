@@ -2,6 +2,6 @@
  * order router
  */
 
-const { factories } = require('@strapi/strapi');
+const { createCoreRouter } = require('@strapi/strapi').factories;
 
-module.exports = factories.createCoreRouter('api::order.order');
+module.exports = createCoreRouter('api::order.order');

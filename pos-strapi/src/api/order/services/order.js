@@ -2,6 +2,6 @@
  * order service
  */
 
-const { factories } = require('@strapi/strapi');
+const { createCoreService } = require('@strapi/strapi').factories;
 
-module.exports = factories.createCoreService('api::order.order');
+module.exports = createCoreService('api::order.order');
