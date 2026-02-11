@@ -33,6 +33,7 @@ export default function Navigation() {
                             <li><Link className="dropdown-item" href="/term-types">Term Types</Link></li>
                             <li><Link className="dropdown-item" href="/categories">Categories</Link></li>
                             <li><Link className="dropdown-item" href="/brands">Brands</Link></li>
+                            <li><Link className="dropdown-item" href="/suppliers">Suppliers</Link></li>
                         </ul>
                     </li>
                     <li className="nav-item dropdown">
