@@ -15,6 +15,7 @@
     "upgrade:dry": "npx @strapi/upgrade latest --dry"
   },
   "dependencies": {
+    "@easypost/api": "^8.5.0",
     "@strapi/plugin-cloud": "5.35.0",
     "@strapi/plugin-users-permissions": "5.35.0",
     "@strapi/strapi": "5.35.0",
@@ -22,6 +23,7 @@
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
     "react-router-dom": "^6.0.0",
+    "stripe": "^20.3.1",
     "styled-components": "^6.0.0"
   },
   "devDependencies": {
