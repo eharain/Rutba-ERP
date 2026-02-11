@@ -45,8 +45,9 @@ export default function Products() {
     }
 
     useEffect(() => {
+        if (!filtersInitialized) return;
         loadProductsData();
-    }, [page, rowsPerPage, filters]);
+    }, [page, rowsPerPage, filters, filtersInitialized]);
 
     useEffect(() => {
         Promise.all([
@@ -93,6 +94,8 @@ export default function Products() {
     }, [router.isReady, router.query, filtersInitialized]);
 
     useEffect(() => {
+        if (!filtersInitialized) return;
+
         const updatedFilters = {
             brands: [selectedBrand],
             categories: [selectedCategory],
@@ -101,6 +104,16 @@ export default function Products() {
             stockStatus,
             searchText
         };
+
+        // Sync current filter state to URL query params (shallow to avoid full reload)
+        const query = {};
+        if (selectedBrand) query.brands = selectedBrand;
+        if (selectedCategory) query.categories = selectedCategory;
+        if (selectedSupplier) query.suppliers = selectedSupplier;
+        if (selectedTerm) query.terms = selectedTerm;
+        if (searchText) query.searchText = searchText;
+        if (stockStatus) query.stockStatus = stockStatus;
+        router.replace({ pathname: router.pathname, query }, undefined, { shallow: true });
 
         for (const [key, value] of Object.entries(updatedFilters)) {
             if (Array.isArray(value)) {
@@ -113,7 +126,7 @@ export default function Products() {
 
         setFilters(updatedFilters);
         setPage(0);
-    }, [selectedBrand, selectedCategory, selectedSupplier, selectedTerm, stockStatus, searchText]);
+    }, [selectedBrand, selectedCategory, selectedSupplier, selectedTerm, stockStatus, searchText, filtersInitialized]);
 
 
 

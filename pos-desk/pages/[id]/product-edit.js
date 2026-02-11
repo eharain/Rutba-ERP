@@ -335,22 +335,26 @@ export default function ProductEditPage() {
                             <div className="card">
                                 <div className="card-body">
                                     <div className="row g-3">
-                                        <div className="col-md-4">
-                                            <label className="form-label fw-bold">Cost Price</label>
-                                            <div className="input-group">
-                                                <span className="input-group-text">{currency}</span>
-                                                <input
-                                                    type="number"
-                                                    name="cost_price"
-                                                    step="0.01"
-                                                    min="0"
-                                                    value={product.cost_price ?? ''}
-                                                    onChange={handleChange}
-                                                    className="form-control"
-                                                    placeholder="0.00"
-                                                />
-                                            </div>
-                                        </div>
+                                        {
+                                            product.product.cost_price <= 0 &&
+                                            (                                   
+                                                <div className="col-md-4">
+                                                    <label className="form-label fw-bold">Cost Price</label>
+                                                    <div className="input-group">
+                                                        <span className="input-group-text">{currency}</span>
+                                                        <input
+                                                            type="number"
+                                                            name="cost_price"
+                                                            step="0.01"
+                                                            min="0"
+                                                            value={product.cost_price ?? ''}
+                                                            onChange={handleChange}
+                                                            className="form-control"
+                                                            placeholder="0.00"
+                                                        />
+                                                    </div></div>) 
+                                        }
+                                        
                                         <div className="col-md-4">
                                             <label className="form-label fw-bold">Selling Price *</label>
                                             <div className="input-group">
@@ -612,6 +616,9 @@ export default function ProductEditPage() {
                                     </button>
                                     <button type="button" className="btn btn-outline-info" onClick={() => router.push(`/stock-items?product=${documentId}`)}>
                                         <i className="fas fa-boxes me-1" /> Stock Items
+                                    </button>
+                                    <button type="button" className="btn btn-outline-warning" onClick={() => router.push(`/${documentId}/product-stock-items?product=${documentId}`)}>
+                                        <i className="fas fa-boxes me-1" /> Stock Control
                                     </button>
                                 </>
                             )}

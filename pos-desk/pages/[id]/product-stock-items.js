@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '../../components/Layout';
 import ProtectedRoute from '../../components/ProtectedRoute';
 import { authApi, relationConnects, getStockStatus } from '../../lib/api';
 import { saveProduct, loadProduct } from '../../lib/pos';
 import { useUtil } from '../../context/UtilContext';
-import StrapiImage from '../../components/StrapiImage';
+import { printStorage } from '../../lib/printStorage';
+import { getBranch } from '../../lib/utils';
 import FileView from '../../components/FileView';
 // Replaced local MultiSelect with PrimeReact MultiSelect
 import { MultiSelect } from 'primereact/multiselect';
@@ -34,9 +35,25 @@ export default function EditProduct() {
     const [stockStatuses, setStockStatuses] = useState([]);
     const [selectedStockItems, setSelectedStockItems] = useState(new Set());
     const [applyingChanges, setApplyingChanges] = useState(false);
-    const [applyFields, setApplyFields] = useState({ name: true, selling_price: true, offer_price: true });
+    const [applyFields, setApplyFields] = useState({ name: true, selling_price: true, offer_price: true, status: false });
+    const [applyStatus, setApplyStatus] = useState('');
     const [stockItemsTotal, setStockItemsTotal] = useState(0);
     const [showStockSection, setShowStockSection] = useState(false);
+
+    // Add new stock items in bulk
+    const [addQty, setAddQty] = useState(1);
+    const [autoBarcode, setAutoBarcode] = useState(true);
+    const [addingItems, setAddingItems] = useState(false);
+
+    // Scan barcode to create new stock item
+    const [scanBarcode, setScanBarcode] = useState('');
+    const [scanAdding, setScanAdding] = useState(false);
+    const scanInputRef = useRef(null);
+
+    // Scan barcode to attach existing stock item
+    const [attachBarcode, setAttachBarcode] = useState('');
+    const [attachLoading, setAttachLoading] = useState(false);
+    const attachInputRef = useRef(null);
 
     async function fetchAllRecords(endpoint) {
         let allRecords = [];
@@ -154,6 +171,7 @@ export default function EditProduct() {
             if (applyFields.name) updates.name = product.name;
             if (applyFields.selling_price) updates.selling_price = parseFloat(product.selling_price) || 0;
             if (applyFields.offer_price) updates.offer_price = parseFloat(product.offer_price) || 0;
+            if (applyFields.status && applyStatus) updates.status = applyStatus;
 
             if (Object.keys(updates).length === 0) {
                 setError('Please select at least one field to apply');
@@ -173,6 +191,151 @@ export default function EditProduct() {
             console.error('Error applying changes:', err);
         } finally {
             setApplyingChanges(false);
+        }
+    };
+
+    // --- Method 1: Add new stock items in bulk with optional incremental barcodes ---
+    const handleAddNewItems = async () => {
+        if (!documentId || documentId === 'new' || addQty < 1) return;
+        setAddingItems(true);
+        setError('');
+        try {
+            const baseBarcode = product.barcode || '';
+            const baseSku = product.sku || product.id?.toString(22)?.toUpperCase() || '';
+            const branch = getBranch();
+            const nextIndex = stockItemsTotal;
+
+            for (let i = 0; i < addQty; i++) {
+                const idx = nextIndex + i;
+                const sku = `${baseSku}-${Date.now().toString(22)}-${idx.toString(22)}`.toUpperCase();
+                const barcode = autoBarcode && baseBarcode
+                    ? `${baseBarcode}-${(idx + 1).toString().padStart(4, '0')}`
+                    : undefined;
+
+                const data = {
+                    sku,
+                    barcode,
+                    name: product.name,
+                    status: 'Received',
+                    selling_price: parseFloat(product.selling_price) || 0,
+                    offer_price: parseFloat(product.offer_price) || 0,
+                    cost_price: parseFloat(product.cost_price) || 0,
+                    product: documentId,
+                    branch: branch?.documentId || branch?.id || undefined,
+                };
+
+                await authApi.post('/stock-items', { data });
+            }
+
+            setSuccess(`Created ${addQty} new stock item(s)`);
+            setAddQty(1);
+            fetchStockItems(stockStatusFilter);
+        } catch (err) {
+            setError('Failed to create stock items: ' + (err?.response?.data?.error?.message || err.message));
+            console.error('Error adding stock items:', err);
+        } finally {
+            setAddingItems(false);
+        }
+    };
+
+    // --- Method 2: Scan barcode to create a new stock item with that barcode ---
+    const handleScanBarcodeAdd = async () => {
+        const code = scanBarcode.trim();
+        if (!code || !documentId || documentId === 'new') return;
+        setScanAdding(true);
+        setError('');
+        try {
+            const existing = await authApi.get('/stock-items', {
+                filters: { barcode: { $eq: code } },
+                pagination: { pageSize: 1 }
+            });
+            if (existing?.data?.length > 0) {
+                setError(`Barcode "${code}" is already in use by another stock item`);
+                setScanAdding(false);
+                return;
+            }
+
+            const baseSku = product.sku || product.id?.toString(22)?.toUpperCase() || '';
+            const branch = getBranch();
+
+            const data = {
+                sku: `${baseSku}-${Date.now().toString(22)}`.toUpperCase(),
+                barcode: code,
+                name: product.name,
+                status: 'Received',
+                selling_price: parseFloat(product.selling_price) || 0,
+                offer_price: parseFloat(product.offer_price) || 0,
+                cost_price: parseFloat(product.cost_price) || 0,
+                product: documentId,
+                branch: branch?.documentId || branch?.id || undefined,
+            };
+
+            await authApi.post('/stock-items', { data });
+            setSuccess(`Stock item created with barcode "${code}"`);
+            setScanBarcode('');
+            if (scanInputRef.current) scanInputRef.current.focus();
+            fetchStockItems(stockStatusFilter);
+        } catch (err) {
+            setError('Failed to create stock item: ' + (err?.response?.data?.error?.message || err.message));
+            console.error('Error scan-adding stock item:', err);
+        } finally {
+            setScanAdding(false);
+        }
+    };
+
+    // --- Method 3: Scan barcode to find and attach an existing stock item ---
+    const handleAttachByBarcode = async () => {
+        const code = attachBarcode.trim();
+        if (!code || !documentId || documentId === 'new') return;
+        setAttachLoading(true);
+        setError('');
+        try {
+            const res = await authApi.get('/stock-items', {
+                filters: { barcode: { $eq: code } },
+                populate: { product: true },
+                pagination: { pageSize: 1 }
+            });
+            const items = res?.data || [];
+            if (items.length === 0) {
+                setError(`No stock item found with barcode "${code}"`);
+                setAttachLoading(false);
+                return;
+            }
+
+            const item = items[0];
+            const itemId = item.documentId || item.id;
+
+            await authApi.put(`/stock-items/${itemId}`, {
+                data: {
+                    product: documentId,
+                    name: product.name,
+                    selling_price: parseFloat(product.selling_price) || 0,
+                    offer_price: parseFloat(product.offer_price) || 0,
+                }
+            });
+
+            const prevProduct = item.product?.name || 'none';
+            setSuccess(`Attached stock item "${code}" to this product (was: ${prevProduct})`);
+            setAttachBarcode('');
+            if (attachInputRef.current) attachInputRef.current.focus();
+            fetchStockItems(stockStatusFilter);
+        } catch (err) {
+            setError('Failed to attach stock item: ' + (err?.response?.data?.error?.message || err.message));
+            console.error('Error attaching stock item:', err);
+        } finally {
+            setAttachLoading(false);
+        }
+    };
+
+    const handlePrintBarcodes = (mode) => {
+        const ids = mode === 'all'
+            ? stockItems.map(item => item.documentId || item.id)
+            : Array.from(selectedStockItems);
+        if (ids.length === 0) return;
+        const storageKey = printStorage.storePrintData({ documentIds: ids });
+        if (storageKey) {
+            const title = encodeURIComponent(`${product.name || 'Product'} - Barcodes`);
+            window.open(`/print-bulk-barcodes?key=${storageKey}&title=${title}`, '_blank');
         }
     };
 
@@ -624,6 +787,159 @@ export default function EditProduct() {
                         </div>
                     </form>
 
+    
+                    {/* ====== ADD STOCK ITEMS SECTION ====== */}
+                    {documentId && documentId !== 'new' && (
+                        <div style={{ marginTop: '30px', background: '#f0f8ff', padding: '20px', borderRadius: '8px', border: '1px solid #b8daff' }}>
+                            <h3 style={{ marginBottom: '16px', color: 'black' }}>
+                                <i className="fas fa-plus-circle" style={{ marginRight: '8px' }} />
+                                Add Stock Items
+                            </h3>
+                            <div style={{ marginBottom: '10px', padding: '8px 12px', background: '#e9ecef', borderRadius: '4px', fontSize: '13px', color: 'black' }}>
+                                <strong>Values copied from product:</strong>
+                                <span style={{ marginLeft: '12px' }}>Name: <em>{product.name || '—'}</em></span>
+                                <span style={{ marginLeft: '12px' }}>Selling: <em>{currency}{parseFloat(product.selling_price || 0).toFixed(2)}</em></span>
+                                <span style={{ marginLeft: '12px' }}>Offer: <em>{currency}{parseFloat(product.offer_price || 0).toFixed(2)}</em></span>
+                                <span style={{ marginLeft: '12px' }}>Cost: <em>{currency}{parseFloat(product.cost_price || 0).toFixed(2)}</em></span>
+                            </div>
+
+                            {/* --- Method 1: Bulk add new items --- */}
+                            <div style={{ background: '#fff', padding: '16px', borderRadius: '6px', border: '1px solid #dee2e6', marginBottom: '16px' }}>
+                                <h5 style={{ marginBottom: '12px', color: 'black' }}>
+                                    <i className="fas fa-layer-group" style={{ marginRight: '6px', color: '#007bff' }} />
+                                    Create New Items in Bulk
+                                </h5>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'flex-end' }}>
+                                    <div>
+                                        <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: 'bold', color: 'black' }}>Quantity</label>
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            max="500"
+                                            value={addQty}
+                                            onChange={(e) => setAddQty(Math.max(1, parseInt(e.target.value) || 1))}
+                                            style={{ width: '80px', padding: '6px 10px', border: '1px solid #ccc', borderRadius: '4px' }}
+                                        />
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <input
+                                            type="checkbox"
+                                            id="autoBarcode"
+                                            checked={autoBarcode}
+                                            onChange={(e) => setAutoBarcode(e.target.checked)}
+                                        />
+                                        <label htmlFor="autoBarcode" style={{ fontSize: '13px', color: 'black', cursor: 'pointer' }}>
+                                            Generate incremental barcodes
+                                            {product.barcode ? ` (${product.barcode}-0001, …)` : ' (no product barcode set)'}
+                                        </label>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={handleAddNewItems}
+                                        disabled={addingItems}
+                                        style={{
+                                            padding: '8px 16px',
+                                            background: addingItems ? '#aaa' : '#007bff',
+                                            color: 'white',
+                                            border: 'none',
+                                            borderRadius: '4px',
+                                            cursor: addingItems ? 'not-allowed' : 'pointer',
+                                            fontWeight: 'bold'
+                                        }}
+                                    >
+                                        {addingItems ? 'Creating...' : `Create ${addQty} Item(s)`}
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* --- Method 2: Scan barcode to create new item --- */}
+                            <div style={{ background: '#fff', padding: '16px', borderRadius: '6px', border: '1px solid #dee2e6', marginBottom: '16px' }}>
+                                <h5 style={{ marginBottom: '12px', color: 'black' }}>
+                                    <i className="fas fa-barcode" style={{ marginRight: '6px', color: '#28a745' }} />
+                                    Scan Barcode → Create New Item
+                                </h5>
+                                <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end' }}>
+                                    <div style={{ flex: 1 }}>
+                                        <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: 'bold', color: 'black' }}>Scan or type barcode</label>
+                                        <input
+                                            ref={scanInputRef}
+                                            type="text"
+                                            value={scanBarcode}
+                                            onChange={(e) => setScanBarcode(e.target.value)}
+                                            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleScanBarcodeAdd(); } }}
+                                            style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', fontFamily: 'monospace' }}
+                                            placeholder="Scan barcode here..."
+                                            autoComplete="off"
+                                        />
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={handleScanBarcodeAdd}
+                                        disabled={scanAdding || !scanBarcode.trim()}
+                                        style={{
+                                            padding: '8px 16px',
+                                            background: scanAdding || !scanBarcode.trim() ? '#aaa' : '#28a745',
+                                            color: 'white',
+                                            border: 'none',
+                                            borderRadius: '4px',
+                                            cursor: scanAdding || !scanBarcode.trim() ? 'not-allowed' : 'pointer',
+                                            fontWeight: 'bold',
+                                            whiteSpace: 'nowrap'
+                                        }}
+                                    >
+                                        {scanAdding ? 'Adding...' : 'Add Item'}
+                                    </button>
+                                </div>
+                                <div style={{ marginTop: '6px', fontSize: '12px', color: '#666' }}>
+                                    Creates a new stock item with the scanned barcode. Checks for duplicates. Press Enter to add.
+                                </div>
+                            </div>
+
+                            {/* --- Method 3: Scan barcode to attach existing item --- */}
+                            <div style={{ background: '#fff', padding: '16px', borderRadius: '6px', border: '1px solid #dee2e6' }}>
+                                <h5 style={{ marginBottom: '12px', color: 'black' }}>
+                                    <i className="fas fa-link" style={{ marginRight: '6px', color: '#fd7e14' }} />
+                                    Scan Barcode → Attach Existing Item
+                                </h5>
+                                <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end' }}>
+                                    <div style={{ flex: 1 }}>
+                                        <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: 'bold', color: 'black' }}>Scan or type barcode of existing item</label>
+                                        <input
+                                            ref={attachInputRef}
+                                            type="text"
+                                            value={attachBarcode}
+                                            onChange={(e) => setAttachBarcode(e.target.value)}
+                                            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAttachByBarcode(); } }}
+                                            style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', fontFamily: 'monospace' }}
+                                            placeholder="Scan existing item barcode..."
+                                            autoComplete="off"
+                                        />
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={handleAttachByBarcode}
+                                        disabled={attachLoading || !attachBarcode.trim()}
+                                        style={{
+                                            padding: '8px 16px',
+                                            background: attachLoading || !attachBarcode.trim() ? '#aaa' : '#fd7e14',
+                                            color: 'white',
+                                            border: 'none',
+                                            borderRadius: '4px',
+                                            cursor: attachLoading || !attachBarcode.trim() ? 'not-allowed' : 'pointer',
+                                            fontWeight: 'bold',
+                                            whiteSpace: 'nowrap'
+                                        }}
+                                    >
+                                        {attachLoading ? 'Searching...' : 'Attach Item'}
+                                    </button>
+                                </div>
+                                <div style={{ marginTop: '6px', fontSize: '12px', color: '#666' }}>
+                                    Finds an existing stock item by barcode and re-assigns it to this product. Updates name and pricing. Press Enter to attach.
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Stock Items Section - only for existing products */}
                     {documentId && documentId !== 'new' && (
                         <div style={{ marginTop: '30px' }}>
@@ -677,7 +993,27 @@ export default function EditProduct() {
                                                 <input type="checkbox" checked={applyFields.offer_price} onChange={(e) => setApplyFields(f => ({ ...f, offer_price: e.target.checked }))} style={{ marginRight: '4px' }} />
                                                 Offer Price
                                             </label>
+                                            <label style={{ fontSize: '13px', color: 'black' }}>
+                                                <input type="checkbox" checked={applyFields.status} onChange={(e) => setApplyFields(f => ({ ...f, status: e.target.checked }))} style={{ marginRight: '4px' }} />
+                                                Status
+                                            </label>
                                         </div>
+
+                                        {applyFields.status && (
+                                            <div>
+                                                <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: 'bold', color: 'black' }}>Set Status To</label>
+                                                <select
+                                                    value={applyStatus}
+                                                    onChange={(e) => setApplyStatus(e.target.value)}
+                                                    style={{ padding: '6px 10px', border: '1px solid #ccc', borderRadius: '4px' }}
+                                                >
+                                                    <option value="">— Select —</option>
+                                                    {stockStatuses.map(s => (
+                                                        <option key={s} value={s}>{s}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        )}
 
                                         <button
                                             type="button"
@@ -695,6 +1031,42 @@ export default function EditProduct() {
                                         >
                                             {applyingChanges ? 'Applying...' : `Apply to ${selectedStockItems.size} selected`}
                                         </button>
+
+                                        <button
+                                            type="button"
+                                            onClick={() => handlePrintBarcodes('selected')}
+                                            disabled={selectedStockItems.size === 0}
+                                            style={{
+                                                padding: '8px 16px',
+                                                background: selectedStockItems.size === 0 ? '#aaa' : '#17a2b8',
+                                                color: 'white',
+                                                border: 'none',
+                                                borderRadius: '4px',
+                                                cursor: selectedStockItems.size === 0 ? 'not-allowed' : 'pointer',
+                                                fontWeight: 'bold'
+                                            }}
+                                        >
+                                            <i className="fas fa-print" style={{ marginRight: '6px' }} />
+                                            Print {selectedStockItems.size} Selected
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            onClick={() => handlePrintBarcodes('all')}
+                                            disabled={stockItems.length === 0}
+                                            style={{
+                                                padding: '8px 16px',
+                                                background: stockItems.length === 0 ? '#aaa' : '#6c757d',
+                                                color: 'white',
+                                                border: 'none',
+                                                borderRadius: '4px',
+                                                cursor: stockItems.length === 0 ? 'not-allowed' : 'pointer',
+                                                fontWeight: 'bold'
+                                            }}
+                                        >
+                                            <i className="fas fa-print" style={{ marginRight: '6px' }} />
+                                            Print All ({stockItems.length})
+                                        </button>
                                     </div>
 
                                     {/* Preview of values to apply */}
@@ -703,6 +1075,7 @@ export default function EditProduct() {
                                         {applyFields.name && <span style={{ marginLeft: '12px' }}>Name: <em>{product.name || '—'}</em></span>}
                                         {applyFields.selling_price && <span style={{ marginLeft: '12px' }}>Selling Price: <em>{currency}{parseFloat(product.selling_price || 0).toFixed(2)}</em></span>}
                                         {applyFields.offer_price && <span style={{ marginLeft: '12px' }}>Offer Price: <em>{currency}{parseFloat(product.offer_price || 0).toFixed(2)}</em></span>}
+                                        {applyFields.status && <span style={{ marginLeft: '12px' }}>Status: <em>{applyStatus || '— not selected —'}</em></span>}
                                     </div>
 
                                     {/* Stock Items Table */}
@@ -768,10 +1141,23 @@ export default function EditProduct() {
                                             Showing {stockItems.length} of {stockItemsTotal} stock items
                                         </div>
                                     )}
+
+
                                 </div>
                             )}
                         </div>
                     )}
+                    <>
+                        <button type="button" className="btn btn-outline-info ms-auto" onClick={() => router.push(`/${documentId}/product-variants`)}>
+                            <i className="fas fa-fighter-jet me-1" /> Variants
+                        </button>
+                        <button type="button" className="btn btn-outline-info" onClick={() => router.push(`/stock-items?product=${documentId}`)}>
+                            <i className="fas fa-boxes me-1" /> Stock Items
+                        </button>
+                        <button type="button" className="btn btn-outline-warning" onClick={() => router.push(`/${documentId}/product-edit?product=${documentId}`)}>
+                            <i className="fas fa-boxes me-1" /> Edit
+                        </button>
+                    </>
                 </div>
             </Layout>
         </ProtectedRoute>

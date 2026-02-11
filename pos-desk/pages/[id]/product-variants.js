@@ -192,7 +192,7 @@ export default function ProductVariantsPage() {
     return (
         <ProtectedRoute>
             <Layout>
-                <div style={{ padding: 10 }}>
+                <div style={{ padding: 5 }}>
                     <h1>Variants for: {selectedProduct?.name}</h1>
 
                     {loading && <div className="alert alert-info">Loading...</div>}
@@ -355,7 +355,9 @@ export default function ProductVariantsPage() {
                                 </div>
                             </div>
                         </div>
+
                     </div>
+                   
 
                     <div className="row">
                         <div className="col-12">
@@ -403,6 +405,19 @@ export default function ProductVariantsPage() {
                                 </div>
                             </div>
                         </div>
+                    </div> 
+                    <div>
+                        <>
+                            <button type="button" className="btn btn-outline-info ms-auto" onClick={() => router.push(`/${documentId}/product-edit`)}>
+                                <i className="fas fa-fighter-jet me-1" /> Edit
+                            </button>
+                            <button type="button" className="btn btn-outline-info" onClick={() => router.push(`/stock-items?product=${documentId}`)}>
+                                <i className="fas fa-boxes me-1" /> Stock Items
+                            </button>
+                            <button type="button" className="btn btn-outline-warning" onClick={() => router.push(`/${documentId}/product-stock-items?product=${documentId}`)}>
+                                <i className="fas fa-boxes me-1" /> Stock Control
+                            </button>
+                        </>
                     </div>
                 </div>
             </Layout>
