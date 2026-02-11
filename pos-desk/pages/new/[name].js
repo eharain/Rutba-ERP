@@ -9,15 +9,19 @@ export default function Home() {
     const { name } = router.query
     const [errMessage, setErrorMessage] = useState('');
 
+    
     useEffect(() => {
         if (!name) return
 
         const createEntity = async () => {
             try {
                 setErrorMessage('');
-                const { data, id, nameSinglar } = await createNewEntity(name);
+                const entityName = name.replace('-edit', '');
+
+                const { data, id, nameSinglar } = await createNewEntity(entityName);
+
                 if (id) {
-                    router.replace(`/${id}/${nameSinglar}`)
+                    router.replace(`/${id}/${name}`)
                 } else {
                     console.error("Failed to create", res)
                 }

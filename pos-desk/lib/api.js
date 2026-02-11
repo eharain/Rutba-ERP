@@ -2,10 +2,18 @@ import axios from "axios";
 import { storage } from "./storage";
 import qs from 'qs';
 
+//const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:1337/api";
+//export const IMAGE_URL = API_URL.substring(0, API_URL.length - 4)
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:1337/api";
+import { initApiConfig } from './api-url-resolver';
 
-export const IMAGE_URL = API_URL.substring(0, API_URL.length - 4)
+await initApiConfig({
+  testPath: '/../admin',
+});
+
+import { API_URL, IMAGE_URL } from './api-url-resolver';
+export { API_URL, IMAGE_URL };
+
 
 // ------------------ Base Helper ------------------
 function authHeaders(jwt) {

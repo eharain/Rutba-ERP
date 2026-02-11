@@ -1,5 +1,5 @@
 module.exports = {
-  routes: [
+  routes1: [
     {
       method: 'POST',
       path: '/orders/checkout/count-price',
