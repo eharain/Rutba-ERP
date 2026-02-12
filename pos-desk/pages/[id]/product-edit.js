@@ -336,7 +336,7 @@ export default function ProductEditPage() {
                                 <div className="card-body">
                                     <div className="row g-3">
                                         {
-                                            product.product.cost_price <= 0 &&
+                                            product.cost_price <= 0 &&
                                             (                                   
                                                 <div className="col-md-4">
                                                     <label className="form-label fw-bold">Cost Price</label>
