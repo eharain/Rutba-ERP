@@ -14,3 +14,8 @@ node
 /data
 /pos-strapi/package-lock.json
 /pos-desk/package-lock.json
+.next
+/node_modules
+node_modules
+.package-lock.json
+package-lock.json
