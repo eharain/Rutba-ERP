@@ -4,15 +4,18 @@
     "packages/*",
     "pos-desk",
     "pos-stock",
-    "pos-sale"
+    "pos-sale",
+    "pos-auth"
   ],
   "scripts": {
     "dev:desk": "npm run dev --workspace=pos-desk",
+    "dev:auth": "npm run dev --workspace=pos-auth",
     "dev:stock": "npm run dev --workspace=pos-stock",
     "dev:sale": "npm run dev --workspace=pos-sale",
+    "build:auth": "npm run build --workspace=pos-auth",
     "build:stock": "npm run build --workspace=pos-stock",
     "build:sale": "npm run build --workspace=pos-sale",
-    "build:all": "npm run build --workspace=pos-stock && npm run build --workspace=pos-sale"
+    "build:all": "npm run build --workspace=pos-auth && npm run build --workspace=pos-stock && npm run build --workspace=pos-sale"
   },
   "dependencies": {
     "marked": "^17.0.1"
