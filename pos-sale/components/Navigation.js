@@ -1,16 +1,19 @@
 import Link from "next/link";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { getBranch } from "@rutba/pos-shared/lib/utils";
+import { getCrossAppLinks, APP_URLS } from "@rutba/pos-shared/lib/roles";
 import { useEffect } from "react";
 
 export default function Navigation() {
-    const { user, logout } = useAuth();
+    const { user, role, logout } = useAuth();
     const { companName, setCompanyName } = useAuth('Rutba');
     useEffect(() => {
         try {
             setCompanyName(getBranch()?.companyName);
         } catch (e) { }
     }, []);
+
+    const crossLinks = getCrossAppLinks(role, 'sale');
 
     return (
         <nav className="navbar navbar-expand-lg navbar-dark bg-dark px-3 text-white">
@@ -32,16 +35,28 @@ export default function Navigation() {
                     <li className="nav-item">
                         <Link className="nav-link" href="/reports">Reports</Link>
                     </li>
+                    {crossLinks.length > 0 && (
+                        <li className="nav-item dropdown">
+                            <a className="nav-link dropdown-toggle" href="#" id="crossAppMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                Switch App
+                            </a>
+                            <ul className="dropdown-menu" aria-labelledby="crossAppMenu">
+                                {crossLinks.map(link => (
+                                    <li key={link.key}><a className="dropdown-item" href={link.href}>{link.label}</a></li>
+                                ))}
+                            </ul>
+                        </li>
+                    )}
                 </ul>
 
                 <div className="d-flex align-items-center">
                     {user ? (
                         <>
                             <span className="me-3">Hello, {user.username || user.email}</span>
-                            <button className="btn btn-outline-light btn-sm me-2" onClick={logout}>Logout</button>
+                            <button className="btn btn-outline-light btn-sm me-2" onClick={() => { logout(); window.location.href = APP_URLS.auth + '/login'; }}>Logout</button>
                         </>
                     ) : (
-                        <Link className="btn btn-outline-light btn-sm me-2" href="/login">Login</Link>
+                        <a className="btn btn-outline-light btn-sm me-2" href={APP_URLS.auth + '/login'}>Login</a>
                     )}
                     <Link className="nav-link" href="/settings" title="Settings">
                         <i className="fas fa-cog"></i>
