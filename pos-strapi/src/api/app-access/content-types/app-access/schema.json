@@ -28,7 +28,7 @@
       "type": "relation",
       "relation": "manyToMany",
       "target": "plugin::users-permissions.user",
-      "inversedBy": "app_accesses"
+      "mappedBy": "app_accesses"
     }
   }
 }
