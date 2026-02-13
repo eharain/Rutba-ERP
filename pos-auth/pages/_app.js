@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { AuthProvider } from "@rutba/pos-shared/context/AuthContext";
+import { UtilProvider } from "@rutba/pos-shared/context/UtilContext";
 
 import 'bootstrap/dist/css/bootstrap.min.css';
 import '@fortawesome/fontawesome-free/css/all.min.css';
@@ -24,7 +25,9 @@ export default function App({ Component, pageProps }) {
     return (
         <div className={`${geistSans.variable} ${geistMono.variable} h-100`}>
             <AuthProvider>
-                <Component {...pageProps} />
+                <UtilProvider>
+                    <Component {...pageProps} />
+                </UtilProvider>
             </AuthProvider>
         </div>
     );

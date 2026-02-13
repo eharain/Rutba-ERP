@@ -2,10 +2,9 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { api } from "@rutba/pos-shared/lib/api";
-import { getHomeUrl, getAllowedApps } from "@rutba/pos-shared/lib/roles";
 
 export default function Login() {
-    const { login, user, role } = useAuth();
+    const { login, user, jwt } = useAuth();
     const router = useRouter();
 
     const [view, setView] = useState("login");
@@ -19,22 +18,21 @@ export default function Login() {
     const [errorMessage, setErrorMessage] = useState("");
     const [busyLoading, setBusyLoading] = useState(false);
 
-    // If already logged in, redirect to the right place
+    // If already logged in, complete the OAuth flow or go to dashboard
     useEffect(() => {
-        if (user && role) {
-            const returnUrl = router.query.returnUrl;
-            if (returnUrl) {
-                window.location.href = returnUrl;
-            } else {
-                const home = getHomeUrl(role);
-                if (home !== window.location.origin) {
-                    window.location.href = home;
-                } else {
-                    router.replace("/");
-                }
-            }
+        if (!router.isReady || !user || !jwt) return;
+
+        const { redirect_uri, state } = router.query;
+
+        if (redirect_uri) {
+            // OAuth flow — redirect back to /authorize which will issue the token
+            router.replace(`/authorize?redirect_uri=${encodeURIComponent(redirect_uri)}`
+                + (state ? `&state=${encodeURIComponent(state)}` : ''));
+        } else {
+            // Direct login on pos-auth — go to dashboard
+            router.replace("/");
         }
-    }, [user, role]);
+    }, [router.isReady, user, jwt]);
 
     // Pick up ?code= from URL for password reset
     useEffect(() => {
@@ -51,23 +49,8 @@ export default function Login() {
         setBusyLoading(true);
         setErrorMessage("");
         try {
-            const result = await login(identifier, password);
-            const loginRole = result?.role;
-            const returnUrl = router.query.returnUrl;
-
-            if (returnUrl) {
-                window.location.href = returnUrl;
-            } else if (loginRole) {
-                const apps = getAllowedApps(loginRole);
-                if (apps.length === 1) {
-                    window.location.href = getHomeUrl(loginRole);
-                } else {
-                    // Multiple apps or no access → go to dashboard
-                    window.location.href = "/";
-                }
-            } else {
-                window.location.href = "/";
-            }
+            await login(identifier, password);
+            // The useEffect above will handle the redirect once user/jwt are set
         } catch (e) {
             setErrorMessage("Login failed " + (e.message ?? ""));
         } finally {

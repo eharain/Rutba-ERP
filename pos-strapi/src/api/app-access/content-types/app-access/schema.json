@@ -1,0 +1,34 @@
+{
+  "kind": "collectionType",
+  "collectionName": "app_accesses",
+  "info": {
+    "singularName": "app-access",
+    "pluralName": "app-accesses",
+    "displayName": "App Access",
+    "description": "Defines which front-end applications exist. Assign to users to grant access."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "key": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "description": {
+      "type": "text"
+    },
+    "users": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::users-permissions.user",
+      "inversedBy": "app_accesses"
+    }
+  }
+}

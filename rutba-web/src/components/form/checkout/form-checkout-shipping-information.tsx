@@ -45,13 +45,21 @@ export default function FormCheckoutShippingInformation() {
   const { mutate: orderCheckout, isLoading } = useMutation(
     checkoutItem,
     {
-      onSuccess: () => {
-        alert("Order created successfully. Our team will contact you soon.");
+      onSuccess: (response) => {
+        const phoneNumber = "+923245303530";
+        const orderId = response?.order_id || "New Order";
+        const total = response?.total || 0;
+        
+        const message = `Hello! I just placed an order (ID: ${orderId}).\nTotal Amount: Rs. ${total}.\nPlease confirm my order.`;
+        const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
+  
         clearCart();
+  
+        window.open(whatsappUrl, "_blank");
         router.push("/");
       },
       onError: (err) => {
-        showError("Error:" + (err as Error).message);
+        showError("Error Placing Order: " + (err as Error).message);
       },
     }
   );
@@ -69,13 +77,11 @@ export default function FormCheckoutShippingInformation() {
 
     const cartItems = await getCart();
 
-    // 1. Calculate totals once to avoid NaN issues
     const calculatedSubtotal = cartItems.reduce(
       (acc, item) => acc + (Number(item.price) * Number(item.qty || 1)), 
       0
     );
 
-    // 2. Map items carefully
     const formattedItems = cartItems.map((item) => {
       const itemQty = Number(item.qty || 1);
       const itemPrice = Number(item.price || 0);
@@ -83,25 +89,22 @@ export default function FormCheckoutShippingInformation() {
       return {
         quantity: itemQty,
         price: itemPrice,
-        total: itemPrice * itemQty, // Ensure this isn't null
+        total: itemPrice * itemQty,
         product_name: item.name,
-        // Ensure this is the string ID Strapi wants
         product: item.documentId, 
       };
     });
 
-    // 3. Fire the checkout
     orderCheckout({
       products: {
         items: formattedItems,
       },
       customer_contact: {
         ...data,
-        // Ensure no fields Strapi expects are missing here
       },
       payment_status: "Ordered",
       user_id: userEmail,
-      order_id: `ORD-${Date.now()}`, // Strapi might need a unique string if order_id is required
+      order_id: `ORD-${Date.now()}`,
       subtotal: calculatedSubtotal,
       total: calculatedSubtotal,
     });
