@@ -15,7 +15,7 @@ export default function Footer() {
                 href="#"
                 className="block text-2xl font-medium text-gray-900 hover:opacity-75 sm:text-3xl"
               >
-                0123456789
+                +923245303530
               </a>
             </p>
 
@@ -66,7 +66,7 @@ export default function Footer() {
               <ul className="mt-6 space-y-4 text-sm">
                 <li>
                   <a
-                    href="https://www.facebook.com/rutba.pk"
+                    href="https://www.facebook.com/profile.php?id=61587364924242"
                     className="text-gray-700 transition hover:opacity-75"
                   >
                     Facebook
@@ -75,7 +75,7 @@ export default function Footer() {
 
                 <li>
                   <a
-                    href="https://www.instagram.com/rutba.pk"
+                    href="https://www.instagram.com/rutba.pakistan"
                     className="text-gray-700 transition hover:opacity-75"
                   >
                     Instagram
@@ -84,16 +84,16 @@ export default function Footer() {
 
                 <li>
                   <a
-                    href="https://www.twitter.com/rutba.pk"
+                    href="https://www.tiktok.com/@rutbapk"
                     className="text-gray-700 transition hover:opacity-75"
                   >
-                    Twitter
+                    TikTok
                   </a>
                 </li>
 
                 <li>
                   <a
-                    href="https://www.youtube.com/rutba.pk"
+                    href="https://www.youtube.com/@rutba-pk"
                     className="text-gray-700 transition hover:opacity-75"
                   >
                     Youtube
@@ -106,7 +106,7 @@ export default function Footer() {
 
         <div className="mt-12 border-t border-gray-100 pt-12">
           <div className="sm:flex sm:items-center sm:justify-between">
-            <ul className="flex flex-wrap gap-4 text-xs">
+            {/* <ul className="flex flex-wrap gap-4 text-xs">
               <li>
                 <a
                   href="#"
@@ -133,7 +133,7 @@ export default function Footer() {
                   Cookies
                 </a>
               </li>
-            </ul>
+            </ul> */}
 
             <p className="mt-8 text-xs text-gray-500 sm:mt-0">
               &copy; {new Date().getFullYear()}. Rutba.pk

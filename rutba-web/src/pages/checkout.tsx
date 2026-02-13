@@ -12,15 +12,21 @@ import { useRouter } from "next/router";
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowLeftIcon } from "lucide-react";
+import useErrorHandler from "@/hooks/useErrorHandler";
 
 export default function CheckoutPage() {
   const { currentForm, formShippingService } = useStoreCheckout();
   const router = useRouter();
   const session = useSession();
+  const { showError } = useErrorHandler();
 
   useEffect(() => {
     if (!session.data?.jwt) {
       router.push("/login?redirect=/checkout");
+    }
+    if (cartItem.length === 0) {
+      showError("No items in cart");
+      router.push("/");
     }
   }, [session.data?.jwt, router]);
 

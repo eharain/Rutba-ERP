@@ -1,65 +1,31 @@
 'use client';
 
 /**
- * Cookie-based auth storage for cross-app JWT sharing.
- * Cookies on localhost are shared across ports, so all apps
- * running on localhost:300x can read/write the same auth cookie.
+ * authStorage — DEPRECATED.
+ *
+ * Auth is now handled via an OAuth-like flow:
+ *   - pos-auth is the authorization server (login + /authorize endpoint)
+ *   - Other apps redirect to pos-auth and receive a JWT via /auth/callback
+ *   - Each app stores auth data in its own localStorage only
+ *
+ * This file is kept for backward-compatibility but should not be used
+ * in new code.  Import `storage` from './storage' instead.
  */
 
-const COOKIE_OPTIONS = 'path=/; SameSite=Lax; max-age=604800'; // 7 days
-
-function setCookie(name, value) {
-    if (typeof document === 'undefined') return;
-    document.cookie = `${name}=${encodeURIComponent(value)}; ${COOKIE_OPTIONS}`;
-}
-
-function getCookie(name) {
-    if (typeof document === 'undefined') return null;
-    const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
-    return match ? decodeURIComponent(match[1]) : null;
-}
+const COOKIE_OPTIONS = 'path=/; SameSite=Lax; max-age=604800';
 
 function removeCookie(name) {
     if (typeof document === 'undefined') return;
     document.cookie = `${name}=; path=/; max-age=0`;
 }
 
-/**
- * Stores auth data in both localStorage (app-local) and cookies (cross-app).
- */
 export const authStorage = {
-    setJwt(jwt) {
-        setCookie('rutba_jwt', jwt);
-    },
-    getJwt() {
-        return getCookie('rutba_jwt');
-    },
-    setUser(user) {
-        setCookie('rutba_user', JSON.stringify(user));
-    },
-    getUser() {
-        const raw = getCookie('rutba_user');
-        if (!raw) return null;
-        try { return JSON.parse(raw); } catch { return null; }
-    },
-    setRole(role) {
-        setCookie('rutba_role', role);
-    },
-    getRole() {
-        return getCookie('rutba_role');
-    },
-    setPermissions(permissions) {
-        setCookie('rutba_permissions', JSON.stringify(permissions));
-    },
-    getPermissions() {
-        const raw = getCookie('rutba_permissions');
-        if (!raw) return [];
-        try { return JSON.parse(raw); } catch { return []; }
-    },
+    /** Remove all legacy cookies (call once during migration). */
     clearAll() {
         removeCookie('rutba_jwt');
         removeCookie('rutba_user');
         removeCookie('rutba_role');
         removeCookie('rutba_permissions');
+        removeCookie('rutba_app_access');
     },
 };
