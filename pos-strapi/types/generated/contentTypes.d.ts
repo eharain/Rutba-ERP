@@ -430,6 +430,168 @@ export interface AdminUser extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiAccAccountAccAccount extends Struct.CollectionTypeSchema {
+  collectionName: 'acc_accounts';
+  info: {
+    description: 'Chart of accounts \u2014 ledger accounts';
+    displayName: 'Account';
+    pluralName: 'acc-accounts';
+    singularName: 'acc-account';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    account_type: Schema.Attribute.Enumeration<
+      ['Asset', 'Liability', 'Equity', 'Revenue', 'Expense']
+    > &
+      Schema.Attribute.Required;
+    balance: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    code: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.Unique;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    description: Schema.Attribute.Text;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::acc-account.acc-account'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    parent: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::acc-account.acc-account'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiAccExpenseAccExpense extends Struct.CollectionTypeSchema {
+  collectionName: 'acc_expenses';
+  info: {
+    description: 'Business expense records';
+    displayName: 'Expense';
+    pluralName: 'acc-expenses';
+    singularName: 'acc-expense';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    account: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::acc-account.acc-account'
+    >;
+    amount: Schema.Attribute.Decimal & Schema.Attribute.Required;
+    category: Schema.Attribute.String;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    date: Schema.Attribute.Date & Schema.Attribute.Required;
+    description: Schema.Attribute.Text;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::acc-expense.acc-expense'
+    > &
+      Schema.Attribute.Private;
+    payment_method: Schema.Attribute.Enumeration<
+      ['Cash', 'Card', 'Bank Transfer', 'Mobile Wallet', 'Other']
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    receipt: Schema.Attribute.Media<'images' | 'files'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiAccInvoiceAccInvoice extends Struct.CollectionTypeSchema {
+  collectionName: 'acc_invoices';
+  info: {
+    description: 'Customer invoices for accounts receivable';
+    displayName: 'Invoice';
+    pluralName: 'acc-invoices';
+    singularName: 'acc-invoice';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    amount: Schema.Attribute.Decimal & Schema.Attribute.Required;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    customer_name: Schema.Attribute.String;
+    date: Schema.Attribute.Date & Schema.Attribute.Required;
+    due_date: Schema.Attribute.Date;
+    invoice_number: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.Unique;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::acc-invoice.acc-invoice'
+    > &
+      Schema.Attribute.Private;
+    notes: Schema.Attribute.Text;
+    publishedAt: Schema.Attribute.DateTime;
+    status: Schema.Attribute.Enumeration<
+      ['Draft', 'Sent', 'Paid', 'Overdue', 'Cancelled']
+    > &
+      Schema.Attribute.DefaultTo<'Draft'>;
+    tax: Schema.Attribute.Decimal;
+    total: Schema.Attribute.Decimal;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiAccJournalEntryAccJournalEntry
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'acc_journal_entries';
+  info: {
+    description: 'Double-entry bookkeeping journal entries';
+    displayName: 'Journal Entry';
+    pluralName: 'acc-journal-entries';
+    singularName: 'acc-journal-entry';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    account: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::acc-account.acc-account'
+    >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    credit: Schema.Attribute.Decimal & Schema.Attribute.Required;
+    date: Schema.Attribute.Date & Schema.Attribute.Required;
+    debit: Schema.Attribute.Decimal & Schema.Attribute.Required;
+    description: Schema.Attribute.Text;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::acc-journal-entry.acc-journal-entry'
+    > &
+      Schema.Attribute.Private;
+    publishedAt: Schema.Attribute.DateTime;
+    reference: Schema.Attribute.String;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiAppAccessAppAccess extends Struct.CollectionTypeSchema {
   collectionName: 'app_accesses';
   info: {
@@ -648,6 +810,137 @@ export interface ApiCategoryCategory extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiCrmActivityCrmActivity extends Struct.CollectionTypeSchema {
+  collectionName: 'crm_activities';
+  info: {
+    description: 'Interaction logs \u2014 calls, emails, meetings, notes';
+    displayName: 'CRM Activity';
+    pluralName: 'crm-activities';
+    singularName: 'crm-activity';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    contact: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-contact.crm-contact'
+    >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    date: Schema.Attribute.DateTime & Schema.Attribute.Required;
+    description: Schema.Attribute.Text;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::crm-activity.crm-activity'
+    > &
+      Schema.Attribute.Private;
+    publishedAt: Schema.Attribute.DateTime;
+    subject: Schema.Attribute.String & Schema.Attribute.Required;
+    type: Schema.Attribute.Enumeration<
+      ['Call', 'Email', 'Meeting', 'Note', 'Follow-up']
+    > &
+      Schema.Attribute.DefaultTo<'Note'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiCrmContactCrmContact extends Struct.CollectionTypeSchema {
+  collectionName: 'crm_contacts';
+  info: {
+    description: 'Customer and business contacts for CRM';
+    displayName: 'CRM Contact';
+    pluralName: 'crm-contacts';
+    singularName: 'crm-contact';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    activities: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::crm-activity.crm-activity'
+    >;
+    address: Schema.Attribute.Text;
+    company: Schema.Attribute.String;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    email: Schema.Attribute.String;
+    leads: Schema.Attribute.Relation<'oneToMany', 'api::crm-lead.crm-lead'>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::crm-contact.crm-contact'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    notes: Schema.Attribute.Text;
+    phone: Schema.Attribute.String;
+    publishedAt: Schema.Attribute.DateTime;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiCrmLeadCrmLead extends Struct.CollectionTypeSchema {
+  collectionName: 'crm_leads';
+  info: {
+    description: 'Sales leads and opportunities';
+    displayName: 'CRM Lead';
+    pluralName: 'crm-leads';
+    singularName: 'crm-lead';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    assigned_to: Schema.Attribute.String;
+    company: Schema.Attribute.String;
+    contact: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-contact.crm-contact'
+    >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    email: Schema.Attribute.String;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::crm-lead.crm-lead'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    notes: Schema.Attribute.Text;
+    phone: Schema.Attribute.String;
+    publishedAt: Schema.Attribute.DateTime;
+    source: Schema.Attribute.Enumeration<
+      [
+        'Website',
+        'Referral',
+        'Social Media',
+        'Cold Call',
+        'Advertisement',
+        'Other',
+      ]
+    >;
+    status: Schema.Attribute.Enumeration<
+      ['New', 'Contacted', 'Qualified', 'Negotiation', 'Won', 'Lost']
+    > &
+      Schema.Attribute.DefaultTo<'New'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    value: Schema.Attribute.Decimal;
+  };
+}
+
 export interface ApiCurrencyCurrency extends Struct.CollectionTypeSchema {
   collectionName: 'currencies';
   info: {
@@ -748,6 +1041,179 @@ export interface ApiEmployeeEmployee extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiHrAttendanceHrAttendance
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'hr_attendances';
+  info: {
+    description: 'Daily attendance records for employees';
+    displayName: 'HR Attendance';
+    pluralName: 'hr-attendances';
+    singularName: 'hr-attendance';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    check_in: Schema.Attribute.Time;
+    check_out: Schema.Attribute.Time;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    date: Schema.Attribute.Date & Schema.Attribute.Required;
+    employee: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::hr-employee.hr-employee'
+    >;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::hr-attendance.hr-attendance'
+    > &
+      Schema.Attribute.Private;
+    notes: Schema.Attribute.Text;
+    publishedAt: Schema.Attribute.DateTime;
+    status: Schema.Attribute.Enumeration<
+      ['Present', 'Absent', 'Late', 'Leave']
+    > &
+      Schema.Attribute.DefaultTo<'Present'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiHrDepartmentHrDepartment
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'hr_departments';
+  info: {
+    description: 'Company departments';
+    displayName: 'HR Department';
+    pluralName: 'hr-departments';
+    singularName: 'hr-department';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    description: Schema.Attribute.Text;
+    employees: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::hr-employee.hr-employee'
+    >;
+    head: Schema.Attribute.String;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::hr-department.hr-department'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    publishedAt: Schema.Attribute.DateTime;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiHrEmployeeHrEmployee extends Struct.CollectionTypeSchema {
+  collectionName: 'hr_employees';
+  info: {
+    description: 'Employee records for HR management';
+    displayName: 'HR Employee';
+    pluralName: 'hr-employees';
+    singularName: 'hr-employee';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    address: Schema.Attribute.Text;
+    attendances: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::hr-attendance.hr-attendance'
+    >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    date_of_joining: Schema.Attribute.Date;
+    department: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::hr-department.hr-department'
+    >;
+    designation: Schema.Attribute.String;
+    email: Schema.Attribute.String;
+    leave_requests: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::hr-leave-request.hr-leave-request'
+    >;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::hr-employee.hr-employee'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    phone: Schema.Attribute.String;
+    publishedAt: Schema.Attribute.DateTime;
+    salary_structure: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::pay-salary-structure.pay-salary-structure'
+    >;
+    status: Schema.Attribute.Enumeration<
+      ['Active', 'Inactive', 'Terminated', 'On Leave']
+    > &
+      Schema.Attribute.DefaultTo<'Active'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiHrLeaveRequestHrLeaveRequest
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'hr_leave_requests';
+  info: {
+    description: 'Employee leave and time-off requests';
+    displayName: 'HR Leave Request';
+    pluralName: 'hr-leave-requests';
+    singularName: 'hr-leave-request';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    employee: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::hr-employee.hr-employee'
+    >;
+    end_date: Schema.Attribute.Date & Schema.Attribute.Required;
+    leave_type: Schema.Attribute.Enumeration<
+      ['Annual', 'Sick', 'Casual', 'Maternity', 'Paternity', 'Unpaid', 'Other']
+    > &
+      Schema.Attribute.Required;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::hr-leave-request.hr-leave-request'
+    > &
+      Schema.Attribute.Private;
+    publishedAt: Schema.Attribute.DateTime;
+    reason: Schema.Attribute.Text;
+    start_date: Schema.Attribute.Date & Schema.Attribute.Required;
+    status: Schema.Attribute.Enumeration<['Pending', 'Approved', 'Rejected']> &
+      Schema.Attribute.DefaultTo<'Pending'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiOrderOrder extends Struct.CollectionTypeSchema {
   collectionName: 'orders';
   info: {
@@ -790,6 +1256,120 @@ export interface ApiOrderOrder extends Struct.CollectionTypeSchema {
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     user_id: Schema.Attribute.String;
+  };
+}
+
+export interface ApiPayPayrollRunPayPayrollRun
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'pay_payroll_runs';
+  info: {
+    description: 'Monthly or periodic payroll processing batches';
+    displayName: 'Payroll Run';
+    pluralName: 'pay-payroll-runs';
+    singularName: 'pay-payroll-run';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::pay-payroll-run.pay-payroll-run'
+    > &
+      Schema.Attribute.Private;
+    payslips: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::pay-payslip.pay-payslip'
+    >;
+    period_end: Schema.Attribute.Date & Schema.Attribute.Required;
+    period_start: Schema.Attribute.Date & Schema.Attribute.Required;
+    publishedAt: Schema.Attribute.DateTime;
+    status: Schema.Attribute.Enumeration<['Draft', 'Processed', 'Cancelled']> &
+      Schema.Attribute.DefaultTo<'Draft'>;
+    total_deductions: Schema.Attribute.Decimal;
+    total_gross: Schema.Attribute.Decimal;
+    total_net: Schema.Attribute.Decimal;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiPayPayslipPayPayslip extends Struct.CollectionTypeSchema {
+  collectionName: 'pay_payslips';
+  info: {
+    description: 'Individual employee payslips per payroll run';
+    displayName: 'Payslip';
+    pluralName: 'pay-payslips';
+    singularName: 'pay-payslip';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    deductions: Schema.Attribute.Decimal;
+    employee: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::hr-employee.hr-employee'
+    >;
+    gross: Schema.Attribute.Decimal;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::pay-payslip.pay-payslip'
+    > &
+      Schema.Attribute.Private;
+    net_pay: Schema.Attribute.Decimal;
+    payroll_run: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::pay-payroll-run.pay-payroll-run'
+    >;
+    period: Schema.Attribute.String;
+    publishedAt: Schema.Attribute.DateTime;
+    status: Schema.Attribute.Enumeration<['Pending', 'Paid']> &
+      Schema.Attribute.DefaultTo<'Pending'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiPaySalaryStructurePaySalaryStructure
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'pay_salary_structures';
+  info: {
+    description: 'Defines salary grades and base compensation';
+    displayName: 'Salary Structure';
+    pluralName: 'pay-salary-structures';
+    singularName: 'pay-salary-structure';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    base_salary: Schema.Attribute.Decimal & Schema.Attribute.Required;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    description: Schema.Attribute.Text;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::pay-salary-structure.pay-salary-structure'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    publishedAt: Schema.Attribute.DateTime;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
   };
 }
 
@@ -2119,15 +2699,29 @@ declare module '@strapi/strapi' {
       'admin::transfer-token': AdminTransferToken;
       'admin::transfer-token-permission': AdminTransferTokenPermission;
       'admin::user': AdminUser;
+      'api::acc-account.acc-account': ApiAccAccountAccAccount;
+      'api::acc-expense.acc-expense': ApiAccExpenseAccExpense;
+      'api::acc-invoice.acc-invoice': ApiAccInvoiceAccInvoice;
+      'api::acc-journal-entry.acc-journal-entry': ApiAccJournalEntryAccJournalEntry;
       'api::app-access.app-access': ApiAppAccessAppAccess;
       'api::branch.branch': ApiBranchBranch;
       'api::brand.brand': ApiBrandBrand;
       'api::cash-register.cash-register': ApiCashRegisterCashRegister;
       'api::category.category': ApiCategoryCategory;
+      'api::crm-activity.crm-activity': ApiCrmActivityCrmActivity;
+      'api::crm-contact.crm-contact': ApiCrmContactCrmContact;
+      'api::crm-lead.crm-lead': ApiCrmLeadCrmLead;
       'api::currency.currency': ApiCurrencyCurrency;
       'api::customer.customer': ApiCustomerCustomer;
       'api::employee.employee': ApiEmployeeEmployee;
+      'api::hr-attendance.hr-attendance': ApiHrAttendanceHrAttendance;
+      'api::hr-department.hr-department': ApiHrDepartmentHrDepartment;
+      'api::hr-employee.hr-employee': ApiHrEmployeeHrEmployee;
+      'api::hr-leave-request.hr-leave-request': ApiHrLeaveRequestHrLeaveRequest;
       'api::order.order': ApiOrderOrder;
+      'api::pay-payroll-run.pay-payroll-run': ApiPayPayrollRunPayPayrollRun;
+      'api::pay-payslip.pay-payslip': ApiPayPayslipPayPayslip;
+      'api::pay-salary-structure.pay-salary-structure': ApiPaySalaryStructurePaySalaryStructure;
       'api::payment.payment': ApiPaymentPayment;
       'api::product-group.product-group': ApiProductGroupProductGroup;
       'api::product.product': ApiProductProduct;

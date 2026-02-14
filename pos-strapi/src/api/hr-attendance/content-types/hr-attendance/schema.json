@@ -1,0 +1,45 @@
+{
+  "kind": "collectionType",
+  "collectionName": "hr_attendances",
+  "info": {
+    "singularName": "hr-attendance",
+    "pluralName": "hr-attendances",
+    "displayName": "HR Attendance",
+    "description": "Daily attendance records for employees"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "date": {
+      "type": "date",
+      "required": true
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "Present",
+        "Absent",
+        "Late",
+        "Leave"
+      ],
+      "default": "Present"
+    },
+    "check_in": {
+      "type": "time"
+    },
+    "check_out": {
+      "type": "time"
+    },
+    "notes": {
+      "type": "text"
+    },
+    "employee": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-employee.hr-employee",
+      "inversedBy": "attendances"
+    }
+  }
+}

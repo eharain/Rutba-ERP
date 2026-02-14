@@ -1,0 +1,68 @@
+{
+  "kind": "collectionType",
+  "collectionName": "hr_employees",
+  "info": {
+    "singularName": "hr-employee",
+    "pluralName": "hr-employees",
+    "displayName": "HR Employee",
+    "description": "Employee records for HR management"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "email": {
+      "type": "string"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "designation": {
+      "type": "string"
+    },
+    "date_of_joining": {
+      "type": "date"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "Active",
+        "Inactive",
+        "Terminated",
+        "On Leave"
+      ],
+      "default": "Active"
+    },
+    "address": {
+      "type": "text"
+    },
+    "department": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-department.hr-department",
+      "inversedBy": "employees"
+    },
+    "attendances": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::hr-attendance.hr-attendance",
+      "mappedBy": "employee"
+    },
+    "leave_requests": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::hr-leave-request.hr-leave-request",
+      "mappedBy": "employee"
+    },
+    "salary_structure": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::pay-salary-structure.pay-salary-structure"
+    }
+  }
+}

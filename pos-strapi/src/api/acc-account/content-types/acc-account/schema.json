@@ -1,0 +1,48 @@
+{
+  "kind": "collectionType",
+  "collectionName": "acc_accounts",
+  "info": {
+    "singularName": "acc-account",
+    "pluralName": "acc-accounts",
+    "displayName": "Account",
+    "description": "Chart of accounts — ledger accounts"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "code": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "account_type": {
+      "type": "enumeration",
+      "enum": [
+        "Asset",
+        "Liability",
+        "Equity",
+        "Revenue",
+        "Expense"
+      ],
+      "required": true
+    },
+    "balance": {
+      "type": "decimal",
+      "default": 0
+    },
+    "description": {
+      "type": "text"
+    },
+    "parent": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::acc-account.acc-account"
+    }
+  }
+}

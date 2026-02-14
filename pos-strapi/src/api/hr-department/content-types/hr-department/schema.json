@@ -1,0 +1,32 @@
+{
+  "kind": "collectionType",
+  "collectionName": "hr_departments",
+  "info": {
+    "singularName": "hr-department",
+    "pluralName": "hr-departments",
+    "displayName": "HR Department",
+    "description": "Company departments"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "head": {
+      "type": "string"
+    },
+    "description": {
+      "type": "text"
+    },
+    "employees": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::hr-employee.hr-employee",
+      "mappedBy": "department"
+    }
+  }
+}
