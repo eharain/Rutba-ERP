@@ -5,17 +5,32 @@
     "pos-desk",
     "pos-stock",
     "pos-sale",
-    "pos-auth"
+    "pos-auth",
+    "rutba-web-user",
+    "rutba-crm",
+    "rutba-hr",
+    "rutba-accounts",
+    "rutba-payroll"
   ],
   "scripts": {
     "dev:desk": "npm run dev --workspace=pos-desk",
     "dev:auth": "npm run dev --workspace=pos-auth",
     "dev:stock": "npm run dev --workspace=pos-stock",
     "dev:sale": "npm run dev --workspace=pos-sale",
+    "dev:web-user": "npm run dev --workspace=rutba-web-user",
+    "dev:crm": "npm run dev --workspace=rutba-crm",
+    "dev:hr": "npm run dev --workspace=rutba-hr",
+    "dev:accounts": "npm run dev --workspace=rutba-accounts",
+    "dev:payroll": "npm run dev --workspace=rutba-payroll",
     "build:auth": "npm run build --workspace=pos-auth",
     "build:stock": "npm run build --workspace=pos-stock",
     "build:sale": "npm run build --workspace=pos-sale",
-    "build:all": "npm run build --workspace=pos-auth && npm run build --workspace=pos-stock && npm run build --workspace=pos-sale"
+    "build:web-user": "npm run build --workspace=rutba-web-user",
+    "build:crm": "npm run build --workspace=rutba-crm",
+    "build:hr": "npm run build --workspace=rutba-hr",
+    "build:accounts": "npm run build --workspace=rutba-accounts",
+    "build:payroll": "npm run build --workspace=rutba-payroll",
+    "build:all": "npm run build --workspace=pos-auth && npm run build --workspace=pos-stock && npm run build --workspace=pos-sale && npm run build --workspace=rutba-web-user && npm run build --workspace=rutba-crm && npm run build --workspace=rutba-hr && npm run build --workspace=rutba-accounts && npm run build --workspace=rutba-payroll"
   },
   "dependencies": {
     "marked": "^17.0.1"

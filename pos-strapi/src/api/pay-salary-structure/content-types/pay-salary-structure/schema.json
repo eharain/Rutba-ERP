@@ -1,0 +1,27 @@
+{
+  "kind": "collectionType",
+  "collectionName": "pay_salary_structures",
+  "info": {
+    "singularName": "pay-salary-structure",
+    "pluralName": "pay-salary-structures",
+    "displayName": "Salary Structure",
+    "description": "Defines salary grades and base compensation"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "base_salary": {
+      "type": "decimal",
+      "required": true
+    },
+    "description": {
+      "type": "text"
+    }
+  }
+}

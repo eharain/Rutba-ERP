@@ -1,0 +1,53 @@
+{
+  "kind": "collectionType",
+  "collectionName": "acc_expenses",
+  "info": {
+    "singularName": "acc-expense",
+    "pluralName": "acc-expenses",
+    "displayName": "Expense",
+    "description": "Business expense records"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "date": {
+      "type": "date",
+      "required": true
+    },
+    "category": {
+      "type": "string"
+    },
+    "description": {
+      "type": "text"
+    },
+    "amount": {
+      "type": "decimal",
+      "required": true
+    },
+    "payment_method": {
+      "type": "enumeration",
+      "enum": [
+        "Cash",
+        "Card",
+        "Bank Transfer",
+        "Mobile Wallet",
+        "Other"
+      ]
+    },
+    "receipt": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images",
+        "files"
+      ]
+    },
+    "account": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::acc-account.acc-account"
+    }
+  }
+}

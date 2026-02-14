@@ -15,6 +15,9 @@ const ENTRIES = [
     { key: 'delivery', name: 'Delivery', description: 'Delivery Managment' },
     { key: 'crm', name: 'Custmer Releation Management', description: 'Custmer Releation Management' },
     { key: 'auth', name: 'User Management', description: 'Manage users, roles and app access assignments' },
+    { key: 'web-user', name: 'My Orders', description: 'Track web orders, manage orders and request returns' },
+    { key: 'hr', name: 'Human Resources', description: 'Employees, departments, attendance and leave management' },
+    { key: 'payroll', name: 'Payroll', description: 'Salary structures, payroll runs and payslips' },
 
 ];
 
@@ -27,7 +30,7 @@ async function up(knex) {
 
         if (!existing) {
             await knex('app_accesses').insert({
-                document_id: entry.key + Math.random(),
+                document_id: hashCode([entry.description, entry.key, entry.name].join('-')),
                 key: entry.key,
                 name: entry.name,
                 description: entry.description,
@@ -46,5 +49,13 @@ async function down(knex) {
             .del();
     }
 }
+
+function hashCode(s) {
+    return s.split("").reduce(function (a, b) {
+        a = ((a << 5) - a) + b.charCodeAt(0);
+        return a & a;
+    }, 0);
+}
+
 
 module.exports = { up, down };

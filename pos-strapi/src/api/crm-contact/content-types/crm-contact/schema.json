@@ -1,0 +1,47 @@
+{
+  "kind": "collectionType",
+  "collectionName": "crm_contacts",
+  "info": {
+    "singularName": "crm-contact",
+    "pluralName": "crm-contacts",
+    "displayName": "CRM Contact",
+    "description": "Customer and business contacts for CRM"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "email": {
+      "type": "string"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "company": {
+      "type": "string"
+    },
+    "address": {
+      "type": "text"
+    },
+    "notes": {
+      "type": "text"
+    },
+    "leads": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::crm-lead.crm-lead",
+      "mappedBy": "contact"
+    },
+    "activities": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::crm-activity.crm-activity",
+      "mappedBy": "contact"
+    }
+  }
+}

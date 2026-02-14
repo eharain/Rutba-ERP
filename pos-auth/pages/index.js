@@ -4,7 +4,7 @@ import Link from "next/link";
 import Layout from "../components/Layout";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import { getAllowedApps, canAccessApp, APP_URLS } from "@rutba/pos-shared/lib/roles";
+import { getAllowedApps, canAccessApp, APP_URLS, APP_META } from "@rutba/pos-shared/lib/roles";
 
 export default function Home() {
     const { user, role, appAccess, loading } = useAuth();
@@ -14,6 +14,9 @@ export default function Home() {
 
     const apps = getAllowedApps(appAccess);
     const hasAuthAccess = canAccessApp(appAccess, 'auth');
+
+    // App keys that should show as launchable cards (exclude 'auth' itself)
+    const launchableApps = apps.filter(k => k !== 'auth' && APP_META[k]);
 
     return (
         <Layout>
@@ -28,39 +31,29 @@ export default function Home() {
                 </div>
 
                 {/* App cards */}
-                {apps.length === 0 ? (
+                {launchableApps.length === 0 ? (
                     <div className="alert alert-warning text-center">
                         Your account does not have access to any application.
                         Please contact your administrator.
                     </div>
                 ) : (
                     <div className="row justify-content-center g-4 mb-5">
-                        {apps.includes('stock') && (
-                            <div className="col-md-5">
-                                <a href={APP_URLS.stock} className="text-decoration-none">
-                                    <div className="card h-100 shadow-sm border-primary">
-                                        <div className="card-body text-center p-4">
-                                            <i className="fas fa-boxes fa-3x text-primary mb-3"></i>
-                                            <h4 className="card-title">Stock Management</h4>
-                                            <p className="card-text text-muted small">Products, purchases, inventory</p>
+                        {launchableApps.map(appKey => {
+                            const meta = APP_META[appKey];
+                            return (
+                                <div key={appKey} className="col-md-4 col-lg-3">
+                                    <a href={APP_URLS[appKey]} className="text-decoration-none">
+                                        <div className={`card h-100 shadow-sm ${meta.border}`}>
+                                            <div className="card-body text-center p-4">
+                                                <i className={`${meta.icon} fa-3x ${meta.color} mb-3`}></i>
+                                                <h5 className="card-title">{meta.label}</h5>
+                                                <p className="card-text text-muted small">{meta.description}</p>
+                                            </div>
                                         </div>
-                                    </div>
-                                </a>
-                            </div>
-                        )}
-                        {apps.includes('sale') && (
-                            <div className="col-md-5">
-                                <a href={APP_URLS.sale} className="text-decoration-none">
-                                    <div className="card h-100 shadow-sm border-success">
-                                        <div className="card-body text-center p-4">
-                                            <i className="fas fa-cash-register fa-3x text-success mb-3"></i>
-                                            <h4 className="card-title">Point of Sale</h4>
-                                            <p className="card-text text-muted small">Sales, cart, returns, reports</p>
-                                        </div>
-                                    </div>
-                                </a>
-                            </div>
-                        )}
+                                    </a>
+                                </div>
+                            );
+                        })}
                     </div>
                 )}
 
