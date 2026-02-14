@@ -29,6 +29,12 @@
       "relation": "manyToMany",
       "target": "plugin::users-permissions.user",
       "mappedBy": "app_accesses"
+    },
+    "admin_users": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::users-permissions.user",
+      "mappedBy": "admin_app_accesses"
     }
   }
 }

@@ -328,8 +328,8 @@ export default function StockItemsPage() {
                             </div>
 
                             <div className="col-sm-12 col-md-2 d-grid">
-                                <button className="btn btn-danger btn-sm mb-2" onClick={handleBulkPrintSelected} disabled={selectedItems.size === 0}>??? Bulk Print Selected</button>
-                                <button className="btn btn-success btn-sm" onClick={handleBulkPrintAllFiltered} disabled={filteredItems.length === 0}>??? Bulk Print All</button>
+                                <button className="btn btn-danger btn-sm mb-2" onClick={handleBulkPrintSelected} disabled={selectedItems.size === 0}><i className="fas fa-print me-1"></i> Bulk Print Selected</button>
+                                <button className="btn btn-success btn-sm" onClick={handleBulkPrintAllFiltered} disabled={filteredItems.length === 0}><i className="fas fa-print me-1"></i> Bulk Print All</button>
                                    <select className="form-select form-select-sm" value={selectedDestinationBranch || ''} disabled={selectedItems.size === 0} onChange={(e) => sendStockToBranch(e.target.value)}>
                                     <option value="">Send selected to branch...</option>
                                     {branches.map(branch => (
@@ -357,6 +357,7 @@ export default function StockItemsPage() {
                                 <TableCell>Barcode</TableCell>
                                 <TableCell>Purchase No</TableCell>
                                 <TableCell>Product</TableCell>
+                                <TableCell>Return / Exchange</TableCell>
                                 <TableCell>Offer Price</TableCell>
                                 <TableCell>Selling Price</TableCell>
                                 <TableCell>Status</TableCell>
@@ -420,6 +421,19 @@ export default function StockItemsPage() {
                                                 {item.product?.name || 'N/A'}
                                             </TableCell>
                                             <TableCell>
+                                                {item.product?.is_returnable === false ? (
+                                                    <span className="badge bg-danger" title="Non-returnable"><i className="fas fa-ban"></i></span>
+                                                ) : (
+                                                    <span className="badge bg-success" title="Returnable"><i className="fas fa-undo"></i></span>
+                                                )}
+                                                {' '}
+                                                {item.product?.is_exchangeable === false ? (
+                                                    <span className="badge bg-warning text-dark" title="Non-exchangeable"><i className="fas fa-ban"></i></span>
+                                                ) : (
+                                                    <span className="badge bg-success" title="Exchangeable"><i className="fas fa-exchange-alt"></i></span>
+                                                )}
+                                            </TableCell>
+                                            <TableCell>
                                                 {currency}{parseFloat(item.offer_price || 0).toFixed(2)}
                                             </TableCell>
                                             <TableCell>
@@ -440,7 +454,7 @@ export default function StockItemsPage() {
                                                 </span>
                                             </TableCell>
                                             <TableCell className="text-center">
-                                                <button className="btn btn-sm btn-outline-primary" onClick={() => handleQuickPrint(item)} title="Print single label">???</button>
+                                                <button className="btn btn-sm btn-outline-primary" onClick={() => handleQuickPrint(item)} title="Print single label"><i className="fas fa-print"></i></button>
                                             </TableCell>
                                         </TableRow>
                                     );

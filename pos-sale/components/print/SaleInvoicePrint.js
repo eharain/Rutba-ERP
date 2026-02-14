@@ -169,14 +169,14 @@ const SaleInvoicePrint = ({ sale, items, totals, onClose  }) => {
                         className="btn btn-primary btn-sm w-100"
                         style={{ fontSize: '14px', fontWeight: 'bold' }}
                     >
-                        Print
+                        <i className="fas fa-print me-1"></i>Print
                     </button>
                     <button
                         onClick={() => { applyAndSave(); }}
                         className="btn btn-success btn-sm w-100"
                         style={{ fontSize: '14px', fontWeight: 'bold' }}
                     >
-                        Save
+                        <i className="fas fa-save me-1"></i>Save
                     </button>
                 </div>
 
@@ -185,7 +185,7 @@ const SaleInvoicePrint = ({ sale, items, totals, onClose  }) => {
                     className="btn btn-secondary btn-sm w-100 mt-2"
                     style={{ fontSize: '14px', fontWeight: 'bold' }}
                 >
-                    Close
+                    <i className="fas fa-times me-1"></i>Close
                 </button>
             </div>
             )}

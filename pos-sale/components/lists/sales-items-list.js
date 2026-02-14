@@ -116,7 +116,7 @@ export default function SalesItemsList({
                                         }
                                         disabled={disabled}
                                     >
-                                        Offer-
+                                        <i className="fas fa-tag me-1"></i>Offer
                                     </button>
                                 ) : (
                                     <button
@@ -127,7 +127,7 @@ export default function SalesItemsList({
                                         }
                                         disabled={disabled}
                                     >
-                                        Offer+
+                                        <i className="fas fa-undo me-1"></i>Revert
                                     </button>
                                 )}
                             </div>
@@ -154,7 +154,7 @@ export default function SalesItemsList({
                                 onClick={() => onRemove(index)}
                                 disabled={disabled}
                             >
-                                ✕
+                                <i className="fas fa-trash"></i>
                             </button>
                         </td>
                     </tr>

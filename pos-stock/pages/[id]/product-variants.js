@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
+import Link from 'next/link';
 import Layout from '../../components/Layout';
 import ProtectedRoute from '@rutba/pos-shared/components/ProtectedRoute';
 import { authApi, relationConnects } from '@rutba/pos-shared/lib/api';
@@ -193,7 +194,29 @@ export default function ProductVariantsPage() {
         <ProtectedRoute>
             <Layout>
                 <div style={{ padding: 5 }}>
-                    <h1>Variants for: {selectedProduct?.name}</h1>
+                    {/* Page navigation */}
+                    <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
+                        <Link href={`/${documentId}/product-edit`} className="btn btn-outline-secondary btn-sm">
+                            <i className="fas fa-edit me-1" /> Edit
+                        </Link>
+                        <Link href={`/${documentId}/product-stock-items`} className="btn btn-outline-secondary btn-sm">
+                            <i className="fas fa-boxes me-1" /> Stock Control
+                        </Link>
+                        <span className="btn btn-primary btn-sm">
+                            <i className="fas fa-layer-group me-1" /> Variants
+                        </span>
+                        <Link href={`/stock-items?product=${documentId}`} className="btn btn-outline-secondary btn-sm">
+                            <i className="fas fa-barcode me-1" /> Stock Items
+                        </Link>
+                        <Link href={`/${documentId}/product-relations`} className="btn btn-outline-secondary btn-sm">
+                            <i className="fas fa-compress-arrows-alt me-1" /> Relations &amp; Merge
+                        </Link>
+                        <Link href="/products" className="btn btn-outline-dark btn-sm ms-auto">
+                            <i className="fas fa-arrow-left me-1" /> Products
+                        </Link>
+                    </div>
+
+                    <h1 className="mb-3">Variants for: {selectedProduct?.name}</h1>
 
                     {loading && <div className="alert alert-info">Loading...</div>}
 

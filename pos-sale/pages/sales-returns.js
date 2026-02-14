@@ -76,6 +76,8 @@ export default function SalesReturnsPage() {
 
     function toggleStockItem(saleItem, stockItem) {
         const stockDocId = getEntryId(stockItem);
+        const product = saleItem.product;
+        if (product && product.is_returnable === false) return;
         setReturnItems(prev => {
             const exists = prev.find(r => r.stockItemDocId === stockDocId);
             if (exists) {
@@ -103,6 +105,8 @@ export default function SalesReturnsPage() {
     }
 
     function selectAllFromSaleItem(saleItem) {
+        const product = saleItem.product;
+        if (product && product.is_returnable === false) return;
         const stockItems = saleItem.items || [];
         const eligibleItems = stockItems.filter(si => si.status === "Sold");
         const allSelected = eligibleItems.every(si =>
@@ -267,13 +271,13 @@ export default function SalesReturnsPage() {
                                         onClick={() => handleScan({ key: "Enter" })}
                                         disabled={loading || !scanValue.trim()}
                                     >
-                                        {loading ? "Loading..." : "Lookup"}
+                                        {loading ? (<><span className="spinner-border spinner-border-sm me-1"></span>Loading...</>) : (<><i className="fas fa-search me-1"></i>Lookup</>)}
                                     </button>
                                 </div>
                                 {sale && (
                                     <div className="col-auto">
                                         <button className="btn btn-outline-secondary" onClick={clearSale}>
-                                            Clear
+                                            <i className="fas fa-times me-1"></i>Clear
                                         </button>
                                     </div>
                                 )}
@@ -325,11 +329,14 @@ export default function SalesReturnsPage() {
                                 ) : (
                                     saleItems.map(saleItem => {
                                         const stockItems = saleItem.items || [];
+                                        const product = saleItem.product;
+                                        const isReturnable = product?.is_returnable !== false;
+                                        const isExchangeable = product?.is_exchangeable !== false;
                                         const soldStockItems = stockItems.filter(si => si.status === "Sold");
                                         const nonSoldStockItems = stockItems.filter(si => si.status !== "Sold");
-                                        const selectedCount = soldStockItems.filter(si =>
+                                        const selectedCount = isReturnable ? soldStockItems.filter(si =>
                                             returnItems.some(r => r.stockItemDocId === getEntryId(si))
-                                        ).length;
+                                        ).length : 0;
 
                                         return (
                                             <div key={getEntryId(saleItem)} className="card mb-2">
@@ -340,9 +347,19 @@ export default function SalesReturnsPage() {
                                                             <span className="text-muted ms-2 small">
                                                                 Qty: {saleItem.quantity} × {currency}{Number(saleItem.price || 0).toFixed(2)}
                                                             </span>
+                                                            {!isReturnable && (
+                                                                <span className="badge bg-danger ms-2" title="This product cannot be returned">
+                                                                    <i className="fas fa-ban me-1"></i>Non-Returnable
+                                                                </span>
+                                                            )}
+                                                            {!isExchangeable && isReturnable && (
+                                                                <span className="badge bg-warning text-dark ms-2" title="This product cannot be exchanged">
+                                                                    <i className="fas fa-exchange-alt me-1"></i>Non-Exchangeable
+                                                                </span>
+                                                            )}
                                                         </div>
                                                         <div className="d-flex gap-2 align-items-center">
-                                                            {soldStockItems.length > 0 && (
+                                                            {isReturnable && soldStockItems.length > 0 && (
                                                                 <button
                                                                     className={`btn btn-sm ${selectedCount === soldStockItems.length ? "btn-outline-secondary" : "btn-outline-primary"}`}
                                                                     onClick={() => selectAllFromSaleItem(saleItem)}
@@ -374,18 +391,19 @@ export default function SalesReturnsPage() {
                                                                     {stockItems.map(si => {
                                                                         const siDocId = getEntryId(si);
                                                                         const isSold = si.status === "Sold";
+                                                                        const canReturn = isSold && isReturnable;
                                                                         const selected = returnItems.find(r => r.stockItemDocId === siDocId);
                                                                         return (
-                                                                            <tr key={siDocId} className={selected ? "table-warning" : ""}>
+                                                                            <tr key={siDocId} className={selected ? "table-warning" : !isReturnable ? "table-light" : ""}>
                                                                                 <td>
-                                                                                    {isSold ? (
+                                                                                    {canReturn ? (
                                                                                         <input
                                                                                             type="checkbox"
                                                                                             checked={!!selected}
                                                                                             onChange={() => toggleStockItem(saleItem, si)}
                                                                                         />
                                                                                     ) : (
-                                                                                        <span className="text-muted" title="Only sold items can be returned">—</span>
+                                                                                        <span className="text-muted" title={!isReturnable ? "Non-returnable product" : "Only sold items can be returned"}>—</span>
                                                                                     )}
                                                                                 </td>
                                                                                 <td><code>{si.sku || "-"}</code></td>
@@ -421,7 +439,13 @@ export default function SalesReturnsPage() {
                                                         </div>
                                                     )}
 
-                                                    {nonSoldStockItems.length > 0 && soldStockItems.length === 0 && (
+                                                    {!isReturnable && (
+                                                        <div className="text-danger small mt-1">
+                                                            <i className="fas fa-ban me-1"></i>This product is marked as non-returnable and cannot be returned.
+                                                        </div>
+                                                    )}
+
+                                                    {isReturnable && nonSoldStockItems.length > 0 && soldStockItems.length === 0 && (
                                                         <div className="text-muted small mt-1">
                                                             All stock items for this line have already been returned or are no longer in &quot;Sold&quot; status.
                                                         </div>
@@ -460,7 +484,7 @@ export default function SalesReturnsPage() {
                                                                     className="btn btn-sm btn-outline-danger mt-1"
                                                                     onClick={() => setReturnItems(prev => prev.filter(r => r.stockItemDocId !== ri.stockItemDocId))}
                                                                 >
-                                                                    ✕
+                                                                    <i className="fas fa-times"></i>
                                                                 </button>
                                                             </div>
                                                         </li>
@@ -472,10 +496,10 @@ export default function SalesReturnsPage() {
                                                 </div>
                                                 <button
                                                     className="btn btn-danger w-100"
-                                                    onClick={processReturn}
-                                                    disabled={processing}
-                                                >
-                                                    {processing ? "Processing..." : `Process Return (${returnItems.length} items)`}
+                                                        onClick={processReturn}
+                                                        disabled={processing}
+                                                    >
+                                                        {processing ? (<><span className="spinner-border spinner-border-sm me-1"></span>Processing...</>) : (<><i className="fas fa-undo me-1"></i>{`Process Return (${returnItems.length} items)`}</>)}
                                                 </button>
                                             </>
                                         )}

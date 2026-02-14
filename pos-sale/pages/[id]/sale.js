@@ -278,15 +278,14 @@ function SaleButtons({ handlePrint, handleSave, saleModel, setShowCheckout, isDi
                 onClick={handlePrint}
                 disabled={itemsCount === 0}
             >
-                Print
+                <i className="fas fa-print me-1" />Print
             </button>
             <button
                 className="btn btn-success"
                 onClick={() => handleSave(true)}
                 disabled={itemsCount === 0 || saleModel.isPaid || !isDirty}
             >
-                Save
-                {/* {saleModel.isPaid ? 'Save' : 'Saved'}*/}
+                <i className="fas fa-save me-1" />Save
             </button>
             <PermissionCheck has="api::payment.payment.create">
                 <button
@@ -294,7 +293,7 @@ function SaleButtons({ handlePrint, handleSave, saleModel, setShowCheckout, isDi
                     onClick={() => setShowCheckout(true)}
                     disabled={itemsCount === 0 || saleModel.isPaid}
                 >
-                    {saleModel.isPaid ? 'Paid' : 'Checkout'}
+                    <i className={`fas ${saleModel.isPaid ? 'fa-check-circle' : 'fa-cash-register'} me-1`} />{saleModel.isPaid ? 'Paid' : 'Checkout'}
                 </button>
             </PermissionCheck>
         </div>)
