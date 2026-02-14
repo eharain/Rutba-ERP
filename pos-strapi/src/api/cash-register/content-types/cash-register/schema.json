@@ -78,6 +78,11 @@
       "relation": "oneToMany",
       "target": "api::payment.payment",
       "mappedBy": "cash_register"
+    },
+    "owners": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::users-permissions.user"
     }
   }
 }

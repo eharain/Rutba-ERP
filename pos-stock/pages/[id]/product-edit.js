@@ -143,7 +143,7 @@ export default function ProductEditPage() {
             delete payload.documentId;
             delete payload.items;
             delete payload.purchase_items;
-            delete payload.users;
+            delete payload.owners;
             delete payload.branches;
             delete payload.variants;
 

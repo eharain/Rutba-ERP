@@ -62,7 +62,7 @@ export async function saveProduct(id, formData) {
     const method = id && id !== 'new' ? 'PUT' : 'POST';
 
     ;
-    /**the relations like category,brand, users, term-types , terms should be added as connect and disconnect paramter */
+    /**the relations like category, brand, owners, term-types, terms should be added as connect and disconnect paramter */
     // List of numeric properties to convert
     const numericProps = [
         'offer_price',

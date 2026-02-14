@@ -61,11 +61,10 @@
       "target": "api::purchase-item.purchase-item",
       "mappedBy": "purchase"
     },
-    "users": {
+    "owners": {
       "type": "relation",
       "relation": "manyToMany",
-      "target": "plugin::users-permissions.user",
-      "mappedBy": "purchases"
+      "target": "plugin::users-permissions.user"
     },
     "gallery": {
       "type": "media",

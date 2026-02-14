@@ -23,11 +23,13 @@ module.exports = createCoreController('plugin::users-permissions.me', ({ strapi 
             });
 
             const appAccess = (fullUser?.app_accesses || []).map(a => a.key);
+            const isAdmin = appAccess.includes('auth');
 
             const data = {
                 role: user.role.name,
                 appAccess,
-                permissions: permissions.map(p => p.action)
+                permissions: permissions.map(p => p.action),
+                isAdmin,
             }
             ctx.send(data);
         } catch (err) {

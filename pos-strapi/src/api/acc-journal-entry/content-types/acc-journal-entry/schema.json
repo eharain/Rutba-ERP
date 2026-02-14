@@ -34,6 +34,11 @@
       "type": "relation",
       "relation": "manyToOne",
       "target": "api::acc-account.acc-account"
+    },
+    "owners": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::users-permissions.user"
     }
   }
 }

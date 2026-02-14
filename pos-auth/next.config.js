@@ -2,6 +2,7 @@
 
 const nextConfig = {
     reactStrictMode: true,
+    output: 'standalone',
     transpilePackages: ['@rutba/pos-shared'],
 };
 

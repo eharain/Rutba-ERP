@@ -29,10 +29,15 @@
 - `ProtectedRoute` (`packages/pos-shared/components/ProtectedRoute.js`) redirects unauthenticated users to `pos-auth/authorize`.
 - `AuthCallback` (`packages/pos-shared/components/AuthCallback.js`) is the shared callback handler re-exported by each app at `pages/auth/callback.js`.
 - **Logout:** Navigation calls `logout()` (clears local app state) then redirects to `pos-auth/logout` which clears pos-auth's state and shows the login page.
-- **Strapi role** (`role` field) is 1:1 per user and controls API-level permissions (which endpoints the user can call). It does **not** control app access.
+- **Strapi role** (`role` field) is 1:1 per user and controls Strapi's built-in API-level permissions. These are left mostly untouched — the `Authenticated` role should have broad permissions and the real access control is handled by the app-access guard middleware.
 - **App access** is controlled by the `App Access` content type (`api::app-access.app-access`), linked to users via a many-to-many relation (`user.app_accesses ↔ app-access.users`). Each entry has a unique `key` (e.g. `"stock"`, `"sale"`, `"auth"`) and a display `name`. Assign entries to users in Strapi admin → Content Manager → User. Standard entries are seeded via database migrations in `pos-strapi/database/migrations/` — add new ones there when creating new apps.
+- **App-access guard middleware** (`pos-strapi/src/middlewares/app-access-guard.js`) enforces two rules on every authenticated API request:
+  1. **Gate** — checks the user's `app_accesses` against the route map in `pos-strapi/config/app-access-routes.js`. Each content-type is mapped to the app-access key(s) that own it, optionally per action (find/create/update/delete). Requests without a matching key are denied with 403. Users with `"auth"` app-access bypass all gates (admin).
+  2. **Owner scoping** — for content-types that have an `owners` relation, the middleware auto-assigns `owners` on create, filters `find` queries to own records, and blocks update/delete on records owned by others. Users with `"auth"` bypass owner scoping.
+- **Adding a new content-type to the guard:** add an entry to `config/app-access-routes.js` mapping the UID to the app-access key(s). Add an `owners` relation (manyToMany to `plugin::users-permissions.user`) to the schema if the data should be ownership-scoped. The ownership relation on Strapi content-types must always be named `owners` (plural, manyToMany to `plugin::users-permissions.user`). Never use singular `owner` or the old `users` field name. The user schema has no inverse relations to entities — only `role` and `app_accesses` remain.
+- **`owners` is always manyToMany** (never manyToOne) so multiple users can share ownership of a record. The old `users` relation has been removed — use `owners` everywhere. 
 - Standard app-access keys: `"stock"` (Stock Management), `"sale"` (Point of Sale), `"auth"` (User Management — required to access user/access admin pages in `pos-auth`), `"web-user"` (My Orders), `"crm"` (CRM), `"hr"` (Human Resources), `"accounts"` (Accounting), `"payroll"` (Payroll).
-- `POST /me/permissions` returns `{ role, appAccess, permissions[] }` where `appAccess` is an array of keys like `["stock", "sale", "auth", "crm", "hr", "accounts", "payroll"]`.
+- `POST /me/permissions` returns `{ role, appAccess, permissions[], isAdmin }` where `appAccess` is an array of keys like `["stock", "sale", "auth", "crm", "hr", "accounts", "payroll"]`.
 - App-access utilities live in `packages/pos-shared/lib/roles.js` — `getAllowedApps(appAccess)`, `getHomeUrl(appAccess)`, `canAccessApp(appAccess, appKey)`, `getCrossAppLinks(appAccess, currentApp)`, and `APP_META` (icon/label/description for each app).
 - In `pos-auth`, admin pages (users, app-access) are wrapped in `AppAccessGate appKey="auth"` (`pos-auth/components/AppAccessGate.js`) which shows an access-denied message if the user lacks the `"auth"` app-access entry.
 - Cross-app "Switch App" links appear in Navigation bars based on the user's `appAccess`.
@@ -47,7 +52,7 @@
 ## Strapi API
 - Strapi version is **5.x.x**. Schemas and components are defined in `pos-strapi/src/`.
 - Before editing any front-end component that calls a Strapi endpoint, check the corresponding schema in `pos-strapi/src/`.
-- Custom user permissions endpoint: `POST /me/permissions` returns `{ role, appAccess[], permissions[] }`.
+- Custom user permissions endpoint: `POST /me/permissions` returns `{ role, appAccess[], permissions[], isAdmin }`.
 
 ## Front-End Guidelines (pos-stock, pos-sale & pos-auth)
 - All apps use **Next.js 15 pages router** with `transpilePackages: ['@rutba/pos-shared']` in `next.config.js`.

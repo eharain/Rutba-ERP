@@ -76,36 +76,6 @@
       "inversedBy": "users",
       "configurable": false
     },
-    "sales": {
-      "type": "relation",
-      "relation": "manyToMany",
-      "target": "api::sale.sale",
-      "inversedBy": "users"
-    },
-    "purchases": {
-      "type": "relation",
-      "relation": "manyToMany",
-      "target": "api::purchase.purchase",
-      "inversedBy": "users"
-    },
-    "products": {
-      "type": "relation",
-      "relation": "manyToMany",
-      "target": "api::product.product",
-      "inversedBy": "users"
-    },
-    "sale_returns": {
-      "type": "relation",
-      "relation": "manyToMany",
-      "target": "api::sale-return.sale-return",
-      "inversedBy": "users"
-    },
-    "purchase_returns": {
-      "type": "relation",
-      "relation": "manyToMany",
-      "target": "api::purchase-return.purchase-return",
-      "inversedBy": "users"
-    },
     "app_accesses": {
       "type": "relation",
       "relation": "manyToMany",

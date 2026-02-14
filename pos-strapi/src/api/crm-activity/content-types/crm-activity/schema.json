@@ -39,6 +39,11 @@
       "relation": "manyToOne",
       "target": "api::crm-contact.crm-contact",
       "inversedBy": "activities"
+    },
+    "owners": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::users-permissions.user"
     }
   }
 }

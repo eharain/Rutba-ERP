@@ -32,6 +32,7 @@ const urls = [
 
 const nextConfig = {
     reactStrictMode: true,
+    output: 'standalone',
     transpilePackages: ['@rutba/pos-shared'],
     images: {
         remotePatterns: generateRemotePatterns(urls)
