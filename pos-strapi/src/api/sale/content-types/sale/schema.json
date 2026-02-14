@@ -65,11 +65,10 @@
       "target": "api::payment.payment",
       "mappedBy": "sale"
     },
-    "users": {
+    "owners": {
       "type": "relation",
       "relation": "manyToMany",
-      "target": "plugin::users-permissions.user",
-      "mappedBy": "sales"
+      "target": "plugin::users-permissions.user"
     },
     "branches": {
       "type": "relation",

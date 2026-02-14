@@ -50,6 +50,11 @@
     },
     "notes": {
       "type": "text"
+    },
+    "owners": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::users-permissions.user"
     }
   }
 }

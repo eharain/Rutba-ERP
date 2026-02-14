@@ -79,11 +79,10 @@
       "target": "api::purchase-item.purchase-item",
       "mappedBy": "product"
     },
-    "users": {
+    "owners": {
       "type": "relation",
       "relation": "manyToMany",
-      "target": "plugin::users-permissions.user",
-      "mappedBy": "products"
+      "target": "plugin::users-permissions.user"
     },
     "branches": {
       "type": "relation",

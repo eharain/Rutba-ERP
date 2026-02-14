@@ -42,6 +42,11 @@
       "relation": "oneToMany",
       "target": "api::crm-activity.crm-activity",
       "mappedBy": "contact"
+    },
+    "owners": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::users-permissions.user"
     }
   }
 }

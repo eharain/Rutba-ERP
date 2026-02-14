@@ -501,6 +501,10 @@ export interface ApiAccExpenseAccExpense extends Struct.CollectionTypeSchema {
       'api::acc-expense.acc-expense'
     > &
       Schema.Attribute.Private;
+    owners: Schema.Attribute.Relation<
+      'manyToMany',
+      'plugin::users-permissions.user'
+    >;
     payment_method: Schema.Attribute.Enumeration<
       ['Cash', 'Card', 'Bank Transfer', 'Mobile Wallet', 'Other']
     >;
@@ -541,6 +545,10 @@ export interface ApiAccInvoiceAccInvoice extends Struct.CollectionTypeSchema {
     > &
       Schema.Attribute.Private;
     notes: Schema.Attribute.Text;
+    owners: Schema.Attribute.Relation<
+      'manyToMany',
+      'plugin::users-permissions.user'
+    >;
     publishedAt: Schema.Attribute.DateTime;
     status: Schema.Attribute.Enumeration<
       ['Draft', 'Sent', 'Paid', 'Overdue', 'Cancelled']
@@ -584,6 +592,10 @@ export interface ApiAccJournalEntryAccJournalEntry
       'api::acc-journal-entry.acc-journal-entry'
     > &
       Schema.Attribute.Private;
+    owners: Schema.Attribute.Relation<
+      'manyToMany',
+      'plugin::users-permissions.user'
+    >;
     publishedAt: Schema.Attribute.DateTime;
     reference: Schema.Attribute.String;
     updatedAt: Schema.Attribute.DateTime;
@@ -760,6 +772,10 @@ export interface ApiCashRegisterCashRegister
       'plugin::users-permissions.user'
     >;
     opening_cash: Schema.Attribute.Decimal;
+    owners: Schema.Attribute.Relation<
+      'manyToMany',
+      'plugin::users-permissions.user'
+    >;
     payments: Schema.Attribute.Relation<'oneToMany', 'api::payment.payment'>;
     publishedAt: Schema.Attribute.DateTime;
     short_cash: Schema.Attribute.Decimal;
@@ -837,6 +853,10 @@ export interface ApiCrmActivityCrmActivity extends Struct.CollectionTypeSchema {
       'api::crm-activity.crm-activity'
     > &
       Schema.Attribute.Private;
+    owners: Schema.Attribute.Relation<
+      'manyToMany',
+      'plugin::users-permissions.user'
+    >;
     publishedAt: Schema.Attribute.DateTime;
     subject: Schema.Attribute.String & Schema.Attribute.Required;
     type: Schema.Attribute.Enumeration<
@@ -880,6 +900,10 @@ export interface ApiCrmContactCrmContact extends Struct.CollectionTypeSchema {
       Schema.Attribute.Private;
     name: Schema.Attribute.String & Schema.Attribute.Required;
     notes: Schema.Attribute.Text;
+    owners: Schema.Attribute.Relation<
+      'manyToMany',
+      'plugin::users-permissions.user'
+    >;
     phone: Schema.Attribute.String;
     publishedAt: Schema.Attribute.DateTime;
     updatedAt: Schema.Attribute.DateTime;
@@ -918,6 +942,10 @@ export interface ApiCrmLeadCrmLead extends Struct.CollectionTypeSchema {
       Schema.Attribute.Private;
     name: Schema.Attribute.String & Schema.Attribute.Required;
     notes: Schema.Attribute.Text;
+    owners: Schema.Attribute.Relation<
+      'manyToMany',
+      'plugin::users-permissions.user'
+    >;
     phone: Schema.Attribute.String;
     publishedAt: Schema.Attribute.DateTime;
     source: Schema.Attribute.Enumeration<
@@ -1071,6 +1099,10 @@ export interface ApiHrAttendanceHrAttendance
     > &
       Schema.Attribute.Private;
     notes: Schema.Attribute.Text;
+    owners: Schema.Attribute.Relation<
+      'manyToMany',
+      'plugin::users-permissions.user'
+    >;
     publishedAt: Schema.Attribute.DateTime;
     status: Schema.Attribute.Enumeration<
       ['Present', 'Absent', 'Late', 'Leave']
@@ -1203,6 +1235,10 @@ export interface ApiHrLeaveRequestHrLeaveRequest
       'api::hr-leave-request.hr-leave-request'
     > &
       Schema.Attribute.Private;
+    owners: Schema.Attribute.Relation<
+      'manyToMany',
+      'plugin::users-permissions.user'
+    >;
     publishedAt: Schema.Attribute.DateTime;
     reason: Schema.Attribute.Text;
     start_date: Schema.Attribute.Date & Schema.Attribute.Required;
@@ -1488,6 +1524,10 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
     logo: Schema.Attribute.Media<'images'>;
     name: Schema.Attribute.String;
     offer_price: Schema.Attribute.Decimal;
+    owners: Schema.Attribute.Relation<
+      'manyToMany',
+      'plugin::users-permissions.user'
+    >;
     parent: Schema.Attribute.Relation<'manyToOne', 'api::product.product'>;
     publishedAt: Schema.Attribute.DateTime;
     purchase_items: Schema.Attribute.Relation<
@@ -1509,10 +1549,6 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
-    users: Schema.Attribute.Relation<
-      'manyToMany',
-      'plugin::users-permissions.user'
-    >;
     variants: Schema.Attribute.Relation<'oneToMany', 'api::product.product'>;
   };
 }
@@ -1629,6 +1665,10 @@ export interface ApiPurchaseReturnPurchaseReturn
       'api::purchase-return.purchase-return'
     > &
       Schema.Attribute.Private;
+    owners: Schema.Attribute.Relation<
+      'manyToMany',
+      'plugin::users-permissions.user'
+    >;
     publishedAt: Schema.Attribute.DateTime;
     purchase: Schema.Attribute.Relation<'manyToOne', 'api::purchase.purchase'>;
     return_date: Schema.Attribute.DateTime & Schema.Attribute.Required;
@@ -1637,10 +1677,6 @@ export interface ApiPurchaseReturnPurchaseReturn
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
-    users: Schema.Attribute.Relation<
-      'manyToMany',
-      'plugin::users-permissions.user'
-    >;
   };
 }
 
@@ -1683,6 +1719,10 @@ export interface ApiPurchasePurchase extends Struct.CollectionTypeSchema {
     order_date: Schema.Attribute.DateTime;
     order_recieved_date: Schema.Attribute.DateTime;
     orderId: Schema.Attribute.String & Schema.Attribute.Required;
+    owners: Schema.Attribute.Relation<
+      'manyToMany',
+      'plugin::users-permissions.user'
+    >;
     publishedAt: Schema.Attribute.DateTime;
     receipts: Schema.Attribute.Media<
       'files' | 'images' | 'videos' | 'audios',
@@ -1708,10 +1748,6 @@ export interface ApiPurchasePurchase extends Struct.CollectionTypeSchema {
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
-    users: Schema.Attribute.Relation<
-      'manyToMany',
-      'plugin::users-permissions.user'
-    >;
   };
 }
 
@@ -1814,6 +1850,10 @@ export interface ApiSaleReturnSaleReturn extends Struct.CollectionTypeSchema {
       'api::sale-return.sale-return'
     > &
       Schema.Attribute.Private;
+    owners: Schema.Attribute.Relation<
+      'manyToMany',
+      'plugin::users-permissions.user'
+    >;
     publishedAt: Schema.Attribute.DateTime;
     return_date: Schema.Attribute.DateTime & Schema.Attribute.Required;
     return_no: Schema.Attribute.String & Schema.Attribute.Required;
@@ -1822,10 +1862,6 @@ export interface ApiSaleReturnSaleReturn extends Struct.CollectionTypeSchema {
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
-    users: Schema.Attribute.Relation<
-      'manyToMany',
-      'plugin::users-permissions.user'
-    >;
   };
 }
 
@@ -1852,6 +1888,10 @@ export interface ApiSaleSale extends Struct.CollectionTypeSchema {
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<'oneToMany', 'api::sale.sale'> &
       Schema.Attribute.Private;
+    owners: Schema.Attribute.Relation<
+      'manyToMany',
+      'plugin::users-permissions.user'
+    >;
     payment_status: Schema.Attribute.Enumeration<
       ['Paid', 'Partial', 'Unpaid']
     > &
@@ -1865,10 +1905,6 @@ export interface ApiSaleSale extends Struct.CollectionTypeSchema {
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
-    users: Schema.Attribute.Relation<
-      'manyToMany',
-      'plugin::users-permissions.user'
-    >;
   };
 }
 
@@ -2655,27 +2691,13 @@ export interface PluginUsersPermissionsUser
       Schema.Attribute.SetMinMaxLength<{
         minLength: 6;
       }>;
-    products: Schema.Attribute.Relation<'manyToMany', 'api::product.product'>;
     provider: Schema.Attribute.String;
     publishedAt: Schema.Attribute.DateTime;
-    purchase_returns: Schema.Attribute.Relation<
-      'manyToMany',
-      'api::purchase-return.purchase-return'
-    >;
-    purchases: Schema.Attribute.Relation<
-      'manyToMany',
-      'api::purchase.purchase'
-    >;
     resetPasswordToken: Schema.Attribute.String & Schema.Attribute.Private;
     role: Schema.Attribute.Relation<
       'manyToOne',
       'plugin::users-permissions.role'
     >;
-    sale_returns: Schema.Attribute.Relation<
-      'manyToMany',
-      'api::sale-return.sale-return'
-    >;
-    sales: Schema.Attribute.Relation<'manyToMany', 'api::sale.sale'>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;

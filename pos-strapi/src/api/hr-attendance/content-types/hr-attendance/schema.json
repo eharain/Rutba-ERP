@@ -40,6 +40,11 @@
       "relation": "manyToOne",
       "target": "api::hr-employee.hr-employee",
       "inversedBy": "attendances"
+    },
+    "owners": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::users-permissions.user"
     }
   }
 }

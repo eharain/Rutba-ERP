@@ -32,11 +32,10 @@
       "relation": "oneToMany",
       "target": "api::purchase-return-item.purchase-return-item"
     },
-    "users": {
+    "owners": {
       "type": "relation",
       "relation": "manyToMany",
-      "target": "plugin::users-permissions.user",
-      "mappedBy": "purchase_returns"
+      "target": "plugin::users-permissions.user"
     },
     "branches": {
       "type": "relation",

@@ -50,6 +50,11 @@
       "relation": "manyToOne",
       "target": "api::hr-employee.hr-employee",
       "inversedBy": "leave_requests"
+    },
+    "owners": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::users-permissions.user"
     }
   }
 }

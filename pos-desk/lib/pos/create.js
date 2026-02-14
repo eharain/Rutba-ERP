@@ -14,9 +14,8 @@ export async function createNewEntity(name) {
             invoice_no: generateNextInvoiceNumber(),
             sale_date: new Date().toISOString(),
             total: 0,
-            users: {
+            owners: {
                 connect: [user.documentId],
-            //    disconnect: [],
             }
         };
     } else if (name === 'purchases' || name === 'purchase') {
@@ -25,9 +24,8 @@ export async function createNewEntity(name) {
             orderId: generateNextPONumber(),
             order_date: new Date().toISOString(),
             total: 0,
-            users: {
+            owners: {
                 connect: [user.documentId],
-            //    disconnect: [],
             },
         };
     } else if (name === 'product' || name === 'products') {
@@ -39,12 +37,10 @@ export async function createNewEntity(name) {
             is_active: false,
             branches: {
                 connect: [branch.documentId],
-          //      disconnect: [],
             },
 
-            users: {
+            owners: {
                 connect: [user.documentId],
-            //    disconnect: [],
             },
         };
     }

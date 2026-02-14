@@ -62,7 +62,7 @@ const PurchaseForm = ({ purchase, onSubmit, onCancel }) => {
             const purchaseData = {
                 ...formData,
                 suppliers: { connect: formData.suppliers.map(s => s.documentId || s.id) },
-                users: { connect: [user.documentId] },
+                owners: { connect: [user.documentId] },
                 
               //  branch: { connect: [branch.documentId || branch.id ]}
             };

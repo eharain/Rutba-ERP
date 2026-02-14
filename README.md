@@ -95,6 +95,39 @@ dev-stop.bat           # Stop ALL Node.js processes (Windows)
 npm run build:all
 ```
 
+### Docker (Production)
+
+```bash
+# 1. Copy and fill in environment variables
+cp .env.example .env
+
+# 2. Build and start all services (MySQL + Strapi + 9 Next.js apps)
+docker compose up -d --build
+
+# 3. View logs
+docker compose logs -f strapi auth stock
+
+# 4. Rebuild a single service
+docker compose up -d --build auth
+
+# 5. Stop everything
+docker compose down
+```
+
+| Service | URL |
+|---|---|
+| MySQL | `localhost:3306` |
+| Strapi API | http://localhost:1337 |
+| Public Website | http://localhost:3000 |
+| Stock Management | http://localhost:3001 |
+| Point of Sale | http://localhost:3002 |
+| Auth Portal | http://localhost:3003 |
+| My Orders | http://localhost:3004 |
+| CRM | http://localhost:3005 |
+| HR | http://localhost:3006 |
+| Accounts | http://localhost:3007 |
+| Payroll | http://localhost:3008 |
+
 ## Scripts Directory
 
 | Script | Purpose |

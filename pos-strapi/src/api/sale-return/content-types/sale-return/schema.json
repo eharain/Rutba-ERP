@@ -33,11 +33,10 @@
       "target": "api::sale-return-item.sale-return-item",
       "mappedBy": "sale_return"
     },
-    "users": {
+    "owners": {
       "type": "relation",
       "relation": "manyToMany",
-      "target": "plugin::users-permissions.user",
-      "mappedBy": "sale_returns"
+      "target": "plugin::users-permissions.user"
     },
     "branches": {
       "type": "relation",
