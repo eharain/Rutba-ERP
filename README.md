@@ -1,37 +1,129 @@
-# POS
-Point of Sale System (POS) - Rutba POS - Open Source Web and Desktop Application with Strapi Backend
+# Rutba POS — Modular Business Management Platform
 
-Rutba POS is under development for a retail environment, consisting of two main components: the POS Desk and the Strapi backend.
-Please stay tuned for updates and releases. Contributions and feedback are welcome!
-Please refer to the individual directories for more details on each component.
-Contact me if you are looking to collaborate or contribute or need assistance.
+An open-source, modular business management system built as an **npm workspaces monorepo**. Each domain (stock, sales, CRM, HR, accounting, payroll) lives in its own Next.js 15 app, sharing authentication and UI through a common library. Strapi 5 provides the headless API backend.
 
-## Description
+## Architecture
 
-This repository contains a Point of Sale (POS) system consisting of two main components:
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                      pos-strapi (Strapi 5)                      │
+│                     Headless API — port 1337                     │
+└───────────┬──────────┬──────────┬──────────┬──────────┬─────────┘
+            │          │          │          │          │
+  ┌─────────┴──┐ ┌─────┴────┐ ┌──┴───┐ ┌───┴──┐ ┌────┴─────┐
+  │ pos-auth   │ │ pos-stock│ │pos-  │ │rutba-│ │rutba-web │
+  │ :3003      │ │ :3001    │ │sale  │ │web-  │ │ :3000    │
+  │ Auth Portal│ │ Stock    │ │:3002 │ │user  │ │ Public   │
+  └────────────┘ └──────────┘ └──────┘ │:3004 │ │ Website  │
+                                       └──────┘ └──────────┘
+  ┌──────────┐ ┌──────────┐ ┌────────────┐ ┌────────────┐
+  │ rutba-crm│ │ rutba-hr │ │ rutba-     │ │ rutba-     │
+  │ :3005    │ │ :3006    │ │ accounts   │ │ payroll    │
+  │ CRM      │ │ HR       │ │ :3007      │ │ :3008      │
+  └──────────┘ └──────────┘ └────────────┘ └────────────┘
+```
 
-### 1. POS Desk
-The POS Desk is a desktop application designed for retail environments to manage sales transactions, inventory, and customer data. It provides an intuitive user interface for cashiers and store managers to process sales, print receipts, and track daily operations efficiently.
+## Applications
 
-### 2. Strapi Backend
-The Strapi backend serves as the headless CMS and API provider for the POS Desk. It manages product catalogs, inventory levels, user accounts, and sales data. The backend ensures secure data storage, synchronization, and provides RESTful or GraphQL APIs for seamless integration with the POS Desk and other services.
+| Directory | App | Port | Description |
+|---|---|---|---|
+| `pos-strapi/` | **Strapi API** | 1337 | Strapi 5.x headless CMS — all content types, REST API |
+| `packages/pos-shared/` | **Shared Library** | — | Components, context providers, utilities shared by all apps |
+| `pos-auth/` | **Auth Portal** | 3003 | Login, OAuth flow, user management, app-access admin |
+| `pos-stock/` | **Stock Management** | 3001 | Products, purchases, stock items, suppliers, brands, categories |
+| `pos-sale/` | **Point of Sale** | 3002 | Sales, cart, returns, cash register, reports |
+| `rutba-web/` | **Public Website** | 3000 | Customer-facing store (Next.js 15, TypeScript, Tailwind CSS) |
+| `rutba-web-user/` | **My Orders** | 3004 | Customer order tracking, returns, account management |
+| `rutba-crm/` | **CRM** | 3005 | Contacts, leads, activities, customer relationship management |
+| `rutba-hr/` | **Human Resources** | 3006 | Employees, departments, attendance, leave requests |
+| `rutba-accounts/` | **Accounting** | 3007 | Chart of accounts, journal entries, invoices, expenses |
+| `rutba-payroll/` | **Payroll** | 3008 | Salary structures, payroll runs, payslips |
+| `pos-desk/` | Legacy App | 3000 | Original combined app — kept for reference, not actively developed |
 
-## Features
+## Tech Stack
 
-- Product and inventory management
-- Sales processing and receipt generation
-- Customer management
-- User authentication and role-based access
-- Real-time data synchronization between POS Desk and Strapi backend
-- Reporting and analytics
+- **Frontend:** Next.js 15, React 19, Bootstrap 5 (POS apps), Tailwind CSS (rutba-web)
+- **Backend:** Strapi 5.x (MySQL)
+- **Auth:** OAuth-like flow via `pos-auth` with JWT, per-app localStorage
+- **Monorepo:** npm workspaces
 
-## Getting Started
+## Quick Start
 
-Refer to the documentation in each component's directory for setup and usage instructions.
+### Prerequisites
+
+- Node.js ≥ 18
+- MySQL 8.x (or MariaDB)
+
+### Development
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/eharain/Rutba-POS.git
+cd Rutba-POS
+
+# 2. Install all dependencies (monorepo-wide)
+npm install
+
+# 3. Set up Strapi .env (copy and edit)
+cp pos-strapi/.env.example pos-strapi/.env
+
+# 4. Start Strapi API
+cd pos-strapi && npm run develop
+
+# 5. In separate terminals, start any app:
+npm run dev:auth       # Auth Portal   → http://localhost:3003
+npm run dev:stock      # Stock Mgmt    → http://localhost:3001
+npm run dev:sale       # Point of Sale → http://localhost:3002
+npm run dev:web        # Public Website→ http://localhost:3000
+npm run dev:web-user   # My Orders     → http://localhost:3004
+npm run dev:crm        # CRM           → http://localhost:3005
+npm run dev:hr         # HR            → http://localhost:3006
+npm run dev:accounts   # Accounts      → http://localhost:3007
+npm run dev:payroll    # Payroll       → http://localhost:3008
+```
+
+Or use the convenience batch files:
+
+```bash
+dev-start.bat          # Start ALL services (Windows)
+dev-stop.bat           # Stop ALL Node.js processes (Windows)
+```
+
+### Build All Apps
+
+```bash
+npm run build:all
+```
+
+## Scripts Directory
+
+| Script | Purpose |
+|---|---|
+| `scripts/setup-and-start-all.bat` | Interactive first-time setup (env config, install, start) — Windows |
+| `scripts/setup-and-start-all.sh` | Same as above — Linux/macOS |
+| `scripts/setup-and-start-all_custom_node.bat` | Same setup using a local Node.js binary |
+| `scripts/run_strapi_and_pos.bat` | Quick start Strapi + all Next.js apps — Windows |
+| `scripts/run_strapi_and_pos_custom_node.bat` | Same using local Node.js binary |
+| `scripts/start-pos-strapi-forever.sh` | Start Strapi with `forever` (production) |
+| `scripts/rutba_deploy_master.sh` | CI/CD deploy script (pull, build, restart systemd services) |
+
+## Strapi Content Types
+
+| Domain | Content Types |
+|---|---|
+| **Core** | Product, Category, Brand, Supplier, Purchase, Stock Item, Sale, Sale Item, Return |
+| **Auth** | App Access (linked to users for per-app access control) |
+| **CRM** | CRM Contact, CRM Lead, CRM Activity |
+| **HR** | HR Employee, HR Department, HR Attendance, HR Leave Request |
+| **Payroll** | Salary Structure, Payroll Run, Payslip |
+| **Accounting** | Account (chart of accounts), Journal Entry, Invoice, Expense |
 
 ## Contributing
-Contributions are welcome! Please read the [CONTRIBUTING.md](CONTRIBUTING.md) file for guidelines on how to contribute to this project.
+
+Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
 ## License
+
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
-contact: Ejaz Arain - https://www.linkedin.com/in/ejazarain/
+Contact: Ejaz Arain — https://www.linkedin.com/in/ejazarain/

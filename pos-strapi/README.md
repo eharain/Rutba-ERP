@@ -1,61 +1,64 @@
-# 🚀 Getting started with Strapi
+# Rutba POS — Strapi 5 API Backend
 
-Strapi comes with a full featured [Command Line Interface](https://docs.strapi.io/dev-docs/cli) (CLI) which lets you scaffold and manage your project in seconds.
+Headless CMS and REST API provider for all Rutba POS front-end applications. Built on **Strapi 5.x** with MySQL.
 
-### `develop`
+## Content Types
 
-Start your Strapi application with autoReload enabled. [Learn more](https://docs.strapi.io/dev-docs/cli#strapi-develop)
+| Domain | API IDs |
+|---|---|
+| **Core POS** | `product`, `category`, `brand`, `supplier`, `purchase`, `stock-item`, `sale`, `sale-item`, `return` |
+| **Auth** | `app-access` (many-to-many with users — controls per-app access) |
+| **CRM** | `crm-contact`, `crm-lead`, `crm-activity` |
+| **HR** | `hr-employee`, `hr-department`, `hr-attendance`, `hr-leave-request` |
+| **Payroll** | `pay-salary-structure`, `pay-payroll-run`, `pay-payslip` |
+| **Accounting** | `acc-account`, `acc-journal-entry`, `acc-invoice`, `acc-expense` |
 
-```
+## Custom Endpoints
+
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/me/permissions` | Returns `{ role, appAccess[], permissions[] }` for the authenticated user |
+
+## Getting Started
+
+```bash
+# Install dependencies
+npm install
+
+# Development (with auto-reload)
 npm run develop
-# or
-yarn develop
-```
 
-### `start`
-
-Start your Strapi application with autoReload disabled. [Learn more](https://docs.strapi.io/dev-docs/cli#strapi-start)
-
-```
-npm run start
-# or
-yarn start
-```
-
-### `build`
-
-Build your admin panel. [Learn more](https://docs.strapi.io/dev-docs/cli#strapi-build)
-
-```
+# Production
 npm run build
-# or
-yarn build
+npm run start
 ```
 
-## ⚙️ Deployment
+### Environment Variables
 
-Strapi gives you many possible deployment options for your project including [Strapi Cloud](https://cloud.strapi.io). Browse the [deployment section of the documentation](https://docs.strapi.io/dev-docs/deployment) to find the best solution for your use case.
+Copy `.env.example` to `.env` and fill in:
 
 ```
-yarn strapi deploy
+DATABASE_CLIENT=mysql
+DATABASE_HOST=localhost
+DATABASE_PORT=3306
+DATABASE_NAME=rutba_pos
+DATABASE_USERNAME=your_user
+DATABASE_PASSWORD=your_password
+APP_KEYS=<generated>
+JWT_SECRET=<generated>
+API_TOKEN_SALT=<generated>
+ADMIN_JWT_SECRET=<generated>
+TRANSFER_TOKEN_SALT=<generated>
+ENCRYPTION_KEY=<generated>
 ```
 
-## 📚 Learn more
+### Database Migrations
 
-- [Resource center](https://strapi.io/resource-center) - Strapi resource center.
-- [Strapi documentation](https://docs.strapi.io) - Official Strapi documentation.
-- [Strapi tutorials](https://strapi.io/tutorials) - List of tutorials made by the core team and the community.
-- [Strapi blog](https://strapi.io/blog) - Official Strapi blog containing articles made by the Strapi team and the community.
-- [Changelog](https://strapi.io/changelog) - Find out about the Strapi product updates, new features and general improvements.
+Seed data (app-access entries) is managed via migrations in `database/migrations/`. Strapi runs these automatically on startup.
 
-Feel free to check out the [Strapi GitHub repository](https://github.com/strapi/strapi). Your feedback and contributions are welcome!
+## Learn More
 
-## ✨ Community
-
-- [Discord](https://discord.strapi.io) - Come chat with the Strapi community including the core team.
-- [Forum](https://forum.strapi.io/) - Place to discuss, ask questions and find answers, show your Strapi project and get feedback or just talk with other Community members.
-- [Awesome Strapi](https://github.com/strapi/awesome-strapi) - A curated list of awesome things related to Strapi.
-
----
+- [Strapi 5 Documentation](https://docs.strapi.io)
+- [Strapi CLI Reference](https://docs.strapi.io/dev-docs/cli)
 
 <sub>🤫 Psst! [Strapi is hiring](https://strapi.io/careers).</sub>

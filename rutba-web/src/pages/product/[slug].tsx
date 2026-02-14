@@ -190,3 +190,5 @@ export default function ProductDetail() {
     </LayoutMain>
   );
 }
+
+export async function getServerSideProps() { return { props: {} }; }

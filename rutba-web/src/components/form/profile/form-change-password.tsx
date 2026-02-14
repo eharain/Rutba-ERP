@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 export default function FormChangePassword({
   trigger,
 }: {
-  trigger: JSX.Element;
+  trigger: React.JSX.Element;
 }) {
   return (
     <>

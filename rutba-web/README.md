@@ -1,52 +1,53 @@
-# Starter ecommerce Integration for NextJS and Strapi
+# Rutba Web — Public Website
 
-![Cover](/public/github/cover.png)
+Customer-facing e-commerce storefront built with **Next.js 15**, **React 19**, and **Tailwind CSS**. Part of the Rutba POS monorepo.
 
-Welcome to the Starter eCommerce Integration for NextJS and Strapi! This project is designed to help you kickstart your eCommerce website development by integrating the Next.js framework with the Strapi headless CMS. With this starter, you can build a fast, modern, and fully customizable eCommerce site tailored to your specific needs.
+## Tech Stack
 
-## Backend / CMS
-
-The backend is using Strapi, a flexible and open-source content management system, serving as the backend for this eCommerce content.
-Checkout the repository [here](https://github.com/JungRama/strapi-ecommerce-cms)
+- **Next.js 15** (pages router, TypeScript)
+- **React 19**
+- **Tailwind CSS 3** + Radix UI primitives
+- **NextAuth** for customer authentication (Google OAuth, credentials)
+- **TanStack React Query v5** for data fetching
+- **Strapi 5** REST API backend
 
 ## Features
 
-- **Next.js Framework:** A powerful and versatile React framework for building server-rendered and static web applications.
-- **Strapi Headless CMS:** A flexible and open-source content management system, serving as the backend for your eCommerce content.
-- **Fully Customizable:** Tailor the starter to your specific eCommerce requirements, from product listings to checkout processes.
-- **Product Catalog:** Create, update, and manage product listings and categories seamlessly.
-- **Order Management:** Manage customer orders and track order status.
-- **Authentication and User Management:** Easily implement user registration, authentication, and profile management.
-- **Responsive Design:** Built with mobile-first design principles, ensuring a great user experience on all devices.
-- **Stripe Integration:** Easily integrate Stripe for processing payments securely.
-- **EasyPost Integration:** Utilize EasyPost for efficient shipping and tracking of orders.
-
-## Screenshoot
-
-![Screenshoot](/public/github/screenshoot-1.png)
-
-<details>
-  <summary>Checkout Page Screenshoot</summary>
-  
-  ![Screenshoot](/public/github/screenshoot-2.png)
-</details>
-<details>
-  <summary>Order Page Screenshoot</summary>
-
-![Screenshoot](/public/github/screenshoot-3.png)
-
-</details>
+- Product catalogue with filtering, search, and collections
+- Shopping cart and checkout
+- Customer authentication (login, register, forgot password)
+- Order tracking and order history
+- Responsive mobile-first design
 
 ## Getting Started
 
-To get started, follow these steps:
+```bash
+# From the monorepo root:
+npm install
+npm run dev:web        # → http://localhost:3000
+```
 
-1. Clone this repository to your local machine.
-2. Install the required dependencies.
-3. Copy .env.example and fill the information.
-4. Start the application.
-5. Open your browser and navigate to `http://localhost:3000` to access the web.
+### Environment Variables
+
+Copy `.env.example` to `.env` and configure:
+
+```
+NEXTAUTH_SECRET=<your-secret>
+GOOGLE_CLIENT_KEY=<google-oauth-client-id>
+GOOGLE_SECRET_KEY=<google-oauth-secret>
+NEXT_PUBLIC_API_URL=http://localhost:1337/api/
+NEXT_PUBLIC_IMAGE_URL=http://localhost:1337
+NEXT_PUBLIC_IMAGE_HOST_PROTOCOL=http
+NEXT_PUBLIC_IMAGE_HOST_NAME=localhost
+NEXT_PUBLIC_IMAGE_HOST_PORT=1337
+```
+
+## Build
+
+```bash
+npm run build:web
+```
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+MIT — see [LICENSE](../LICENSE) for details.

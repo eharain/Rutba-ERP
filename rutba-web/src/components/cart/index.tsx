@@ -19,7 +19,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useCartService } from "@/services/cart";
 
 export interface propsInterface {
-  trigger: JSX.Element;
+  trigger: React.JSX.Element;
 }
 
 export default function Cart(props: propsInterface) {

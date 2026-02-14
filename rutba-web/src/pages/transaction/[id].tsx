@@ -21,10 +21,9 @@ export default function OrderDetailGuest() {
   );
   const [secret, setSecret] = useState("");
 
-  const { mutate: mutateGetTransaction, isLoading } = useMutation(
-    getTransactionWithSecret,
-    {
-      onSuccess: (data) => {
+  const { mutate: mutateGetTransaction, isPending: isLoading } = useMutation({
+    mutationFn: getTransactionWithSecret,
+    onSuccess: (data) => {
         setDataTransaction(data);
         setValidToView(true);
       },
@@ -143,3 +142,5 @@ export default function OrderDetailGuest() {
     </LayoutMain>
   );
 }
+
+export async function getServerSideProps() { return { props: {} }; }

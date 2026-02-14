@@ -11,7 +11,7 @@ import SearchModal from "../search/search-modal";
 import { ArrowUpRightSquare, Search, User2 } from "lucide-react";
 
 export interface propsInterface {
-  trigger: JSX.Element;
+  trigger: React.JSX.Element;
 }
 
 export default function MenuSideBarMobile(props: propsInterface) {

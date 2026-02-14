@@ -17,7 +17,7 @@ import useProductsService from "@/services/products";
 import { currencyFormat } from "@/lib/use-currency";
 
 export interface propsInterface {
-  trigger: JSX.Element;
+  trigger: React.JSX.Element;
 }
 
 export default function SearchModal(props: propsInterface) {
