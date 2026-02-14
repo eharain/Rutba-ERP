@@ -33,13 +33,13 @@ const VALID_APP_KEYS = ['stock', 'sale', 'auth', 'web-user', 'crm', 'hr', 'accou
  * a consistent catalogue of apps.
  */
 export const APP_META = {
-    stock:      { icon: 'fas fa-boxes',          label: 'Stock Management',  description: 'Products, purchases, inventory',             border: 'border-primary',   color: 'text-primary' },
-    sale:       { icon: 'fas fa-cash-register',  label: 'Point of Sale',     description: 'Sales, cart, returns, reports',               border: 'border-success',   color: 'text-success' },
-    'web-user': { icon: 'fas fa-shopping-bag',   label: 'My Orders',         description: 'Track orders, manage returns',                border: 'border-info',      color: 'text-info' },
-    crm:        { icon: 'fas fa-handshake',      label: 'CRM',              description: 'Contacts, leads, activities',                  border: 'border-warning',   color: 'text-warning' },
-    hr:         { icon: 'fas fa-users',          label: 'Human Resources',   description: 'Employees, departments, attendance, leave',   border: 'border-secondary', color: 'text-secondary' },
-    accounts:   { icon: 'fas fa-chart-line',     label: 'Accounts',          description: 'Chart of accounts, journals, invoices',       border: 'border-dark',      color: 'text-dark' },
-    payroll:    { icon: 'fas fa-money-check-alt', label: 'Payroll',          description: 'Salary structures, payroll runs, payslips',   border: 'border-danger',    color: 'text-danger' },
+    stock:      { icon: 'fa-solid fa-boxes-stacked',    label: 'Stock Management',  description: 'Products, purchases, inventory',             border: 'border-primary',   color: 'text-primary' },
+    sale:       { icon: 'fa-solid fa-cash-register',    label: 'Point of Sale',     description: 'Sales, cart, returns, reports',               border: 'border-success',   color: 'text-success' },
+    'web-user': { icon: 'fa-solid fa-bag-shopping',     label: 'My Orders',         description: 'Track orders, manage returns',                border: 'border-info',      color: 'text-info' },
+    crm:        { icon: 'fa-solid fa-handshake',        label: 'CRM',              description: 'Contacts, leads, activities',                  border: 'border-warning',   color: 'text-warning' },
+    hr:         { icon: 'fa-solid fa-users',            label: 'Human Resources',   description: 'Employees, departments, attendance, leave',   border: 'border-secondary', color: 'text-secondary' },
+    accounts:   { icon: 'fa-solid fa-chart-line',       label: 'Accounts',          description: 'Chart of accounts, journals, invoices',       border: 'border-dark',      color: 'text-dark' },
+    payroll:    { icon: 'fa-solid fa-money-check-dollar', label: 'Payroll',         description: 'Salary structures, payroll runs, payslips',   border: 'border-danger',    color: 'text-danger' },
 };
 
 /**
@@ -85,6 +85,17 @@ export function canAccessApp(appAccess, appKey) {
 }
 
 /**
+ * Check if the user is an admin for a given app key.
+ * @param {string[]} adminAppAccess - from AuthContext
+ * @param {string} appKey - 'stock' | 'sale' | 'hr' | etc.
+ * @returns {boolean}
+ */
+export function isAppAdmin(adminAppAccess, appKey) {
+    if (!adminAppAccess || !appKey) return false;
+    return Array.isArray(adminAppAccess) && adminAppAccess.includes(appKey);
+}
+
+/**
  * Build navigation cross-links for the current user.
  * @param {string[]} appAccess
  * @param {string} currentApp - the app key we're currently in
@@ -115,3 +126,23 @@ export function getCrossAppLinks(appAccess, currentApp) {
     }
     return links;
 }
+
+//// Silently show a "Delete All" button only to admins
+//<PermissionCheck showIf="admin">
+//    <button onClick={deleteAll}>Delete All Records</button>
+//</PermissionCheck>
+
+//// Block the entire page for non-admins with a message
+//<PermissionCheck adminOnly>
+//    <AdminDashboard />
+//</PermissionCheck>
+
+//// Combine admin check with permission check
+//<PermissionCheck showIf="admin" required="api::sale.sale.delete">
+//    <button>Force Delete Sale</button>
+//</PermissionCheck>
+
+//// Check admin for a specific app (not the current one)
+//<PermissionCheck showIf="admin" appKey="stock">
+//    <button>Manage Stock Settings</button>
+//</PermissionCheck>

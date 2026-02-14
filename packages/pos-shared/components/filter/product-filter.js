@@ -1,5 +1,7 @@
 // components/filter/product-filter.js
 import SearchBar from "../SearchBar";
+import SearchableSelect from "../SearchableSelect";
+
 export function ProductFilter({
     brands,
     categories,
@@ -16,83 +18,56 @@ export function ProductFilter({
     onTermChange,
     onSearchTextChange
 }) {
+    const brandOptions = brands.map((b) => ({ value: b.documentId, label: b.name }));
+    const categoryOptions = categories.map((c) => ({ value: c.documentId, label: c.name }));
+    const supplierOptions = suppliers.map((s) => ({ value: s.documentId, label: s.name }));
+    const termOptions = termTypes.flatMap((tt) =>
+        (tt.terms || []).map((t) => ({ value: t.documentId, label: `${tt.name} - ${t.name}` }))
+    );
 
     return (
 
-        <div className="grid grid-cols-5 gap-3 mb-4 items-center">
-            <SearchBar value={searchText} onChange={onSearchTextChange} />
-
-            {/* Brand */}
-
-            <select
-                className="border p-2 rounded"
-                value={selectedBrand}
-                onChange={(e) => onBrandChange(e.target.value)}
-            >
-                <option value="">All Brands</option>
-                {brands.map((b) => (
-                    <option key={b.documentId} value={b.documentId}>
-                        {b.name}
-                    </option>
-                ))}
-            </select>
-
-            {/* Category */}
-            <select
-                className="border p-2 rounded"
-                value={selectedCategory}
-                onChange={(e) => onCategoryChange(e.target.value)}
-            >
-                <option value="">All Categories</option>
-                {categories.map((c) => (
-                    <option key={c.documentId} value={c.documentId}>
-                        {c.name}
-                    </option>
-                ))}
-            </select>
-
-            {/* Supplier */}
-            <select
-                className="border p-2 rounded"
-                value={selectedSupplier}
-                onChange={(e) => onSupplierChange(e.target.value)}
-            >
-                <option value="">All Suppliers</option>
-                {suppliers.map((s) => (
-                    <option key={s.documentId} value={s.documentId}>
-                        {s.name}
-                    </option>
-                ))}
-            </select>
-
-            {/* Term / Term-Type */}
-            <select
-                className="border p-2 rounded"
-                value={selectedTerm}
-                onChange={(e) => onTermChange(e.target.value)}
-            >
-                <option value="">All Terms</option>
-                {termTypes.map((tt) =>
-                    tt.terms?.map((t) => (
-                        <option key={t.documentId} value={t.documentId}>
-                            {tt.name} - {t.name}
-                        </option>
-                    ))
-                )}
-            </select>
-
-            {/* <select
-                className="border p-2 rounded"
-                value={stockStatus}
-                onChange={(e) => setStockStatus(e.target.value)}
-            >
-
-                <option value="">Any</option>
-                <option value="inStock">In Stock</option>
-                <option value="outofStock">Out Of Stock</option>
-               
-            </select> */}
-
+        <div className="row">
+            <div className="col-12">
+                <SearchBar value={searchText} onChange={onSearchTextChange} />
+            </div>
+            <div className="col-3">
+                {/* Brand */}
+                <SearchableSelect
+                    value={selectedBrand}
+                    onChange={onBrandChange}
+                    options={brandOptions}
+                    placeholder="All Brands"
+                />
+            </div>
+            <div className="col-3">
+                {/* Category */}
+                <SearchableSelect
+                    value={selectedCategory}
+                    onChange={onCategoryChange}
+                    options={categoryOptions}
+                    placeholder="All Categories"
+                />
+            </div>
+            <div className="col-3">
+                {/* Supplier */}
+                <SearchableSelect
+                    value={selectedSupplier}
+                    onChange={onSupplierChange}
+                    options={supplierOptions}
+                    placeholder="All Suppliers"
+                />
+            </div>
+            <div className="col-3">
+                {/* Term / Term-Type */}
+                <SearchableSelect
+                    value={selectedTerm}
+                    onChange={onTermChange}
+                    options={termOptions}
+                    placeholder="All Terms"
+                />
+            </div>
         </div>
+
     );
 }

@@ -15,9 +15,28 @@ import { API_URL, IMAGE_URL } from './api-url-resolver';
 export { API_URL, IMAGE_URL };
 
 
+// ------------------ App Name Header ------------------
+let _appName = '';
+
+/**
+ * Set the app name sent as X-App-Name header on every API request.
+ * Call this once from each app's _app.js or layout, e.g. setAppName('stock').
+ */
+export function setAppName(name) {
+    _appName = (name || '').trim().toLowerCase();
+}
+
+/** Return the current app name. */
+export function getAppName() {
+    return _appName;
+}
+
 // ------------------ Base Helper ------------------
 function authHeaders(jwt) {
-    return jwt ? { Authorization: `Bearer ${jwt}` } : {};
+    const headers = {};
+    if (jwt) headers.Authorization = `Bearer ${jwt}`;
+    if (_appName) headers['X-App-Name'] = _appName;
+    return headers;
 }
 
 async function get(path, data = {}, jwt) {

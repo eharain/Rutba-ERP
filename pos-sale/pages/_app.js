@@ -2,6 +2,9 @@ import { useEffect } from "react";
 import { AuthProvider } from "@rutba/pos-shared/context/AuthContext";
 import { CartProvider } from "@rutba/pos-shared/context/CartContext";
 import { UtilProvider } from "@rutba/pos-shared/context/UtilContext";
+import { setAppName } from "@rutba/pos-shared/lib/api";
+
+setAppName('sale');
 
 import 'bootstrap/dist/css/bootstrap.min.css';
 import '@fortawesome/fontawesome-free/css/all.min.css';

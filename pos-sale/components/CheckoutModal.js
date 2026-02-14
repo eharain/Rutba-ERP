@@ -133,7 +133,7 @@ const CheckoutModal = ({ isOpen, onClose, total, onComplete, loading }) => {
                                         onClick={() => handleRemovePayment(index)}
                                         disabled={loading || payments.length === 1}
                                     >
-                                        Remove
+                                        <i className="fas fa-times me-1"></i>Remove
                                     </button>
                                 </div>
                                 <div className="input-group mb-2">
@@ -152,7 +152,7 @@ const CheckoutModal = ({ isOpen, onClose, total, onComplete, loading }) => {
                                         onClick={() => handleExactAmount(index)}
                                         disabled={loading}
                                     >
-                                        Exact
+                                        <i className="fas fa-equals me-1"></i>Exact
                                     </button>
                                 </div>
                                 {payment.payment_method !== 'Cash' && (
@@ -170,7 +170,7 @@ const CheckoutModal = ({ isOpen, onClose, total, onComplete, loading }) => {
 
                         <div className="d-grid mb-2">
                             <button className="btn btn-outline-primary" type="button" onClick={handleAddPayment} disabled={loading}>
-                                Add Payment Method
+                                <i className="fas fa-plus me-1"></i>Add Payment Method
                             </button>
                         </div>
 
@@ -195,9 +195,9 @@ const CheckoutModal = ({ isOpen, onClose, total, onComplete, loading }) => {
                         )}
                     </div>
                     <div className="modal-footer">
-                        <button type="button" className="btn btn-secondary" onClick={onClose} disabled={loading}>Cancel</button>
+                        <button type="button" className="btn btn-secondary" onClick={onClose} disabled={loading}><i className="fas fa-times me-1"></i>Cancel</button>
                         <button type="button" className="btn btn-success" onClick={handlePay} disabled={loading || payments.length === 0 || totalPaid < total}>
-                            {loading ? 'Processing...' : 'Pay'}
+                            {loading ? (<><span className="spinner-border spinner-border-sm me-1"></span>Processing...</>) : (<><i className="fas fa-money-bill-wave me-1"></i>Pay</>)}
                         </button>
                     </div>
                 </div>

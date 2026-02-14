@@ -166,7 +166,7 @@ export default function CustomerSelect({ value, onChange, disabled }) {
                     disabled={disabled || !query || query.trim() === ''}
                     onClick={() => createCustomerFromQuery(query)}
                 >
-                    Add
+                    <i className="fas fa-user-plus me-1"></i>Add
                 </button>
             </div>
             {mode === 'search' && (
@@ -196,7 +196,7 @@ export default function CustomerSelect({ value, onChange, disabled }) {
                                         setMode('form');
                                     }}
                                 >
-                                    Edit
+                                    <i className="fas fa-edit me-1"></i>Edit
                                 </button>
                             </div>
                         ))}

@@ -21,6 +21,7 @@ async function fetchPermissions(jwt) {
         return {
             role: data?.role || null,
             appAccess: data?.appAccess || [],
+            adminAppAccess: data?.adminAppAccess || [],
             permissions: data?.permissions || [],
         };
     } catch (err) {
@@ -47,6 +48,7 @@ export function AuthProvider({ children }) {
     const [currentJwt, setJwt] = useState(null);
     const [currentRole, setRole] = useState(null);
     const [currentAppAccess, setAppAccess] = useState([]);
+    const [currentAdminAppAccess, setAdminAppAccess] = useState([]);
     const [currentPermissions, setPermissions] = useState([]);
     const [loading, setLoading] = useState(true);
 
@@ -56,6 +58,7 @@ export function AuthProvider({ children }) {
         const user = storage.getJSON("user");
         const role = storage.getItem("role");
         const appAccessStored = storage.getJSON("appAccess") || [];
+        const adminAppAccessStored = storage.getJSON("adminAppAccess") || [];
         const permsStored = storage.getJSON("permissions") || [];
 
         if (jwt && user) {
@@ -63,6 +66,7 @@ export function AuthProvider({ children }) {
             setJwt(jwt);
             setRole(role);
             setAppAccess(appAccessStored);
+            setAdminAppAccess(adminAppAccessStored);
             setPermissions(permsStored);
         }
         setLoading(false);
@@ -79,21 +83,24 @@ export function AuthProvider({ children }) {
         const me = await fetchPermissions(jwt);
         const meRole = me?.role || null;
         const meAppAccess = me?.appAccess || [];
+        const meAdminAppAccess = me?.adminAppAccess || [];
         const mePermissions = me?.permissions || [];
 
         storage.setItem("jwt", jwt);
         storage.setJSON("user", user);
         storage.setItem("role", meRole);
         storage.setJSON("appAccess", meAppAccess);
+        storage.setJSON("adminAppAccess", meAdminAppAccess);
         storage.setJSON("permissions", mePermissions);
 
         setCurrentUser(user);
         setJwt(jwt);
         setRole(meRole);
         setAppAccess(meAppAccess);
+        setAdminAppAccess(meAdminAppAccess);
         setPermissions(mePermissions);
 
-        return { user, jwt, role: meRole, appAccess: meAppAccess, permissions: mePermissions };
+        return { user, jwt, role: meRole, appAccess: meAppAccess, adminAppAccess: meAdminAppAccess, permissions: mePermissions };
     }, []);
 
     /**
@@ -108,21 +115,24 @@ export function AuthProvider({ children }) {
         const me = await fetchPermissions(token);
         const meRole = me?.role || null;
         const meAppAccess = me?.appAccess || [];
+        const meAdminAppAccess = me?.adminAppAccess || [];
         const mePermissions = me?.permissions || [];
 
         storage.setItem("jwt", token);
         storage.setJSON("user", user);
         storage.setItem("role", meRole);
         storage.setJSON("appAccess", meAppAccess);
+        storage.setJSON("adminAppAccess", meAdminAppAccess);
         storage.setJSON("permissions", mePermissions);
 
         setCurrentUser(user);
         setJwt(token);
         setRole(meRole);
         setAppAccess(meAppAccess);
+        setAdminAppAccess(meAdminAppAccess);
         setPermissions(mePermissions);
 
-        return { user, jwt: token, role: meRole, appAccess: meAppAccess, permissions: mePermissions };
+        return { user, jwt: token, role: meRole, appAccess: meAppAccess, adminAppAccess: meAdminAppAccess, permissions: mePermissions };
     }, []);
 
     /**
@@ -133,12 +143,14 @@ export function AuthProvider({ children }) {
         setJwt(null);
         setRole(null);
         setAppAccess([]);
+        setAdminAppAccess([]);
         setPermissions([]);
 
         storage.removeItem("user");
         storage.removeItem("jwt");
         storage.removeItem("role");
         storage.removeItem("appAccess");
+        storage.removeItem("adminAppAccess");
         storage.removeItem("permissions");
     }, []);
 
@@ -147,12 +159,13 @@ export function AuthProvider({ children }) {
         jwt: currentJwt,
         role: currentRole,
         appAccess: currentAppAccess,
+        adminAppAccess: currentAdminAppAccess,
         permissions: currentPermissions,
         loading,
         login,
         loginWithToken,
         logout
-    }), [currentUser, currentJwt, currentRole, currentAppAccess, currentPermissions, loading, login, loginWithToken, logout]);
+    }), [currentUser, currentJwt, currentRole, currentAppAccess, currentAdminAppAccess, currentPermissions, loading, login, loginWithToken, logout]);
 
     return (
         <AuthContext.Provider value={contextValue}>

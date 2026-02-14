@@ -66,7 +66,7 @@ export async function fetchEnumsValues(name, field) {
 }
 
 
-export async function fetchProducts(filters, page, rowsPerPage) {
+export async function fetchProducts(filters, page, rowsPerPage, sort) {
     const { brands, categories, suppliers, terms, stockStatus, searchText } = filters;
 
 
@@ -86,6 +86,11 @@ export async function fetchProducts(filters, page, rowsPerPage) {
             });
         }
     }
+
+    if (sort) {
+        url += `&sort=${encodeURIComponent(sort)}`;
+    }
+
     console.log('products search url', url);
     const res = await authApi.get(url);
     return res;

@@ -239,7 +239,7 @@ export default function CashRegisterPage() {
                                                 </div>
                                             </div>
                                             <button className="btn btn-success" type="submit" disabled={loading || !!activeRegister}>
-                                                Start Day
+                                                                            <i className="fas fa-cash-register me-1"></i>Start Day
                                             </button>
                                         </form>
                                     </div>
@@ -276,7 +276,7 @@ export default function CashRegisterPage() {
                                                 )}
                                             </div>
                                             <button className="btn btn-primary" type="submit" disabled={loading || paymentsLoading || !activeRegister || closingCash === ""}>
-                                                Close Day
+                                                                            <i className="fas fa-door-closed me-1"></i>Close Day
                                             </button>
                                         </form>
                                     </div>

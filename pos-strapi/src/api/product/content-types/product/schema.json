@@ -135,6 +135,14 @@
     "is_variant": {
       "type": "boolean",
       "default": false
+    },
+    "is_returnable": {
+      "type": "boolean",
+      "default": true
+    },
+    "is_exchangeable": {
+      "type": "boolean",
+      "default": true
     }
   }
 }

@@ -26,6 +26,7 @@ export default function ProductEditPage() {
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
     const [activeTab, setActiveTab] = useState('basic');
+    const [dirty, setDirty] = useState(false);
 
     async function fetchAllRecords(endpoint) {
         let allRecords = [];
@@ -109,6 +110,7 @@ export default function ProductEditPage() {
             product[field] = files;
         }
         setProduct({ ...product });
+        setDirty(true);
     };
 
     const handleKeywordsChange = (e) => {
@@ -164,6 +166,60 @@ export default function ProductEditPage() {
         }
     };
 
+    const doSave = async () => {
+        setSubmitting(true);
+        setError('');
+        setSuccess('');
+        try {
+            const payload = {
+                ...product,
+                ...relationConnects({
+                    categories: product.categories,
+                    brands: product.brands,
+                    suppliers: product.suppliers,
+                    terms: product.terms,
+                    parent: product.parent,
+                }),
+                logo: product.logo?.id ? product.logo.id : null,
+                gallery: product.gallery?.map(g => g.id) ?? null,
+            };
+            delete payload.createdAt;
+            delete payload.updatedAt;
+            delete payload.publishedAt;
+            delete payload.id;
+            delete payload.documentId;
+            delete payload.items;
+            delete payload.purchase_items;
+            delete payload.owners;
+            delete payload.branches;
+            delete payload.variants;
+
+            const response = await saveProduct(documentId, payload);
+            if (response.data?.documentId) {
+                setSuccess('Product saved successfully!');
+                setDirty(false);
+                return true;
+            } else {
+                setError('Failed to save product');
+                return false;
+            }
+        } catch (err) {
+            setError('An error occurred while saving the product');
+            console.error('Error saving product:', err);
+            return false;
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    const saveAndNavigate = async (href) => {
+        if (dirty) {
+            const saved = await doSave();
+            if (!saved) return;
+        }
+        router.push(href);
+    };
+
     const isEdit = documentId && documentId !== 'new';
 
     const categoryOptions = categories.map(c => ({ label: c.name ?? '', value: c }));
@@ -197,16 +253,36 @@ export default function ProductEditPage() {
         <ProtectedRoute>
             <Layout>
                 <div className="container-fluid p-4" style={{ maxWidth: 1100 }}>
-                    {/* Header */}
-                    <div className="d-flex justify-content-between align-items-center mb-3">
-                        <h2 className="mb-0">
-                            <i className={`fas ${isEdit ? 'fa-edit' : 'fa-plus-circle'} me-2`} />
-                            {isEdit ? 'Edit Product' : 'Create New Product'}
-                        </h2>
-                        <button type="button" className="btn btn-outline-secondary" onClick={() => router.push('/products')}>
-                            <i className="fas fa-arrow-left me-1" /> Back to Products
+                    {/* Page navigation */}
+                    <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
+                        <span className="btn btn-primary btn-sm">
+                            <i className="fas fa-edit me-1" /> Edit
+                        </span>
+                        {isEdit && (
+                            <>
+                                <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => saveAndNavigate(`/${documentId}/product-stock-items`)} disabled={submitting}>
+                                    <i className="fas fa-boxes me-1" /> Stock Control
+                                </button>
+                                <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => saveAndNavigate(`/${documentId}/product-variants`)} disabled={submitting}>
+                                    <i className="fas fa-layer-group me-1" /> Variants
+                                </button>
+                                <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => saveAndNavigate(`/stock-items?product=${documentId}`)} disabled={submitting}>
+                                    <i className="fas fa-barcode me-1" /> Stock Items
+                                </button>
+                                <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => saveAndNavigate(`/${documentId}/product-relations`)} disabled={submitting}>
+                                    <i className="fas fa-compress-arrows-alt me-1" /> Relations &amp; Merge
+                                </button>
+                            </>
+                        )}
+                        <button type="button" className="btn btn-outline-dark btn-sm ms-auto" onClick={() => router.push('/products')}>
+                            <i className="fas fa-arrow-left me-1" /> Products
                         </button>
                     </div>
+
+                    <h2 className="mb-3">
+                        <i className={`fas ${isEdit ? 'fa-edit' : 'fa-plus-circle'} me-2`} />
+                        {isEdit ? 'Edit Product' : 'Create New Product'}
+                    </h2>
 
                     {/* Alerts */}
                     {error && (
@@ -323,6 +399,36 @@ export default function ProductEditPage() {
                                                     onChange={handleChange}
                                                 />
                                                 <label className="form-check-label" htmlFor="is_variant">Is a variant</label>
+                                            </div>
+                                        </div>
+                                        <div className="col-md-6">
+                                            <div className="form-check mt-4">
+                                                <input
+                                                    className="form-check-input"
+                                                    type="checkbox"
+                                                    name="is_returnable"
+                                                    id="is_returnable"
+                                                    checked={product.is_returnable ?? true}
+                                                    onChange={handleChange}
+                                                />
+                                                <label className="form-check-label" htmlFor="is_returnable">
+                                                    <i className="fas fa-undo me-1 text-muted"></i>Returnable
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div className="col-md-6">
+                                            <div className="form-check mt-4">
+                                                <input
+                                                    className="form-check-input"
+                                                    type="checkbox"
+                                                    name="is_exchangeable"
+                                                    id="is_exchangeable"
+                                                    checked={product.is_exchangeable ?? true}
+                                                    onChange={handleChange}
+                                                />
+                                                <label className="form-check-label" htmlFor="is_exchangeable">
+                                                    <i className="fas fa-exchange-alt me-1 text-muted"></i>Exchangeable
+                                                </label>
                                             </div>
                                         </div>
                                     </div>
@@ -609,19 +715,6 @@ export default function ProductEditPage() {
                             <button type="button" className="btn btn-outline-secondary" onClick={() => router.push('/products')}>
                                 Cancel
                             </button>
-                            {isEdit && (
-                                <>
-                                    <button type="button" className="btn btn-outline-info ms-auto" onClick={() => router.push(`/${documentId}/product-variants`)}>
-                                        <i className="fas fa-fighter-jet me-1" /> Variants
-                                    </button>
-                                    <button type="button" className="btn btn-outline-info" onClick={() => router.push(`/stock-items?product=${documentId}`)}>
-                                        <i className="fas fa-boxes me-1" /> Stock Items
-                                    </button>
-                                    <button type="button" className="btn btn-outline-warning" onClick={() => router.push(`/${documentId}/product-stock-items?product=${documentId}`)}>
-                                        <i className="fas fa-boxes me-1" /> Stock Control
-                                    </button>
-                                </>
-                            )}
                         </div>
                     </form>
                 </div>

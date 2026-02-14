@@ -616,6 +616,10 @@ export interface ApiAppAccessAppAccess extends Struct.CollectionTypeSchema {
     draftAndPublish: false;
   };
   attributes: {
+    admin_users: Schema.Attribute.Relation<
+      'manyToMany',
+      'plugin::users-permissions.user'
+    >;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -1512,6 +1516,9 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
     description: Schema.Attribute.RichText;
     gallery: Schema.Attribute.Media<'images' | 'videos' | 'audios', true>;
     is_active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    is_exchangeable: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<true>;
+    is_returnable: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
     is_variant: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     items: Schema.Attribute.Relation<'oneToMany', 'api::stock-item.stock-item'>;
     keywords: Schema.Attribute.JSON;
@@ -2658,6 +2665,10 @@ export interface PluginUsersPermissionsUser
     draftAndPublish: false;
   };
   attributes: {
+    admin_app_accesses: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::app-access.app-access'
+    >;
     app_accesses: Schema.Attribute.Relation<
       'manyToMany',
       'api::app-access.app-access'

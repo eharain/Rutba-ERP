@@ -15,17 +15,19 @@ export function TableBody({ children }) {
 export function TableRow({ children }) {
     return <tr>{children}</tr>;
 }
-export function TableCell({ children, align, colSpan, title }) {
+export function TableCell({ children, align, colSpan, title, onClick, style }) {
     return (
         <td
             title={title}
             colSpan={colSpan}
+            onClick={onClick}
             style={{
                 border: "1px solid Black",
                 color: "gray",
                 padding: "8px",
                 textAlign: align || "left",
-                wordWrap: 'break-word'
+                wordWrap: 'break-word',
+                ...style,
             }}
         >
             {children}

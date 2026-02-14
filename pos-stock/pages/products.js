@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { Table, TableHead, TableRow, TableCell, TableBody, CircularProgress, TablePagination } from "@rutba/pos-shared/components/Table";
@@ -11,6 +11,20 @@ import { fetchProducts } from "@rutba/pos-shared/lib/pos";
 import StrapiImage from "@rutba/pos-shared/components/StrapiImage";
 import { ProductFilter } from "@rutba/pos-shared/components/filter/product-filter";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
+
+function SortableHeader({ label, field, sortField, sortOrder, onSort, align }) {
+    const isActive = sortField === field;
+    const arrow = isActive ? (sortOrder === 'asc' ? ' ▲' : ' ▼') : '';
+    return (
+        <TableCell
+            align={align}
+            onClick={() => onSort(field)}
+            style={{ cursor: 'pointer', userSelect: 'none' }}
+        >
+            {label}{arrow}
+        </TableCell>
+    );
+}
 
 export default function Products() {
     const router = useRouter();
@@ -32,10 +46,26 @@ export default function Products() {
     const [stockStatus, setStockStatus] = useState(false);
     const [searchText, setSearchText] = useState("");
     const [filtersInitialized, setFiltersInitialized] = useState(false);
+    const [sortField, setSortField] = useState('id');
+    const [sortOrder, setSortOrder] = useState('desc');
+
+    const sortString = `${sortField}:${sortOrder}`;
+
+    const handleSort = useCallback((field) => {
+        setSortField((prev) => {
+            if (prev === field) {
+                setSortOrder((o) => (o === 'asc' ? 'desc' : 'asc'));
+            } else {
+                setSortOrder('asc');
+            }
+            return field;
+        });
+        setPage(0);
+    }, []);
     async function loadProductsData() {
         setLoading(true);
         // Fetch purchases for reports
-        const { data, meta } = await fetchProducts(filters, page + 1, rowsPerPage);
+        const { data, meta } = await fetchProducts(filters, page + 1, rowsPerPage, sortString);
 
         setProducts(data);
         setTotal(meta.pagination.total);
@@ -45,7 +75,7 @@ export default function Products() {
     useEffect(() => {
         if (!filtersInitialized) return;
         loadProductsData();
-    }, [page, rowsPerPage, filters, filtersInitialized]);
+    }, [page, rowsPerPage, filters, filtersInitialized, sortString]);
 
     useEffect(() => {
         Promise.all([
@@ -173,37 +203,39 @@ export default function Products() {
                             <Table>
                                 <TableHead>
                                     <TableRow>
-                                        <TableCell>id</TableCell>
-                                        <TableCell>Product Name</TableCell>
+                                        <SortableHeader label="id" field="id" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />
+                                        <SortableHeader label="Product Name" field="name" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />
                                         <TableCell>Logo</TableCell>
-                                        <TableCell>Barcode</TableCell>
-                                        <TableCell>SKU</TableCell>
+                                        <SortableHeader label="Barcode" field="barcode" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />
+                                        <SortableHeader label="SKU" field="sku" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />
                                         <TableCell>Suppliers</TableCell>
-                                        <TableCell align="right">Offer Price</TableCell>
-                                        <TableCell align="right">Selling Price</TableCell>
-                                        <TableCell align="right">Stock Quantity</TableCell>
-                                        <TableCell>Status</TableCell>
-                                        <TableCell>Edit</TableCell>
+                                        <SortableHeader label="Offer Price" field="offer_price" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} align="right" />
+                                        <SortableHeader label="Selling Price" field="selling_price" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} align="right" />
+                                        <SortableHeader label="Stock Quantity" field="stock_quantity" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} align="right" />
+                                        <SortableHeader label="Status" field="status" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />
+                                        <TableCell>Actions</TableCell>
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
                                     {loading ? (
                                         <TableRow>
-                                            <TableCell colSpan={6} align="center">
+                                            <TableCell colSpan={11} align="center">
                                                 <CircularProgress size={24} />
                                             </TableCell>
                                         </TableRow>
                                     ) : products.length === 0 ? (
                                         <TableRow>
-                                            <TableCell colSpan={6} align="center">
-                                                No purchases found.
+                                            <TableCell colSpan={11} align="center">
+                                                No products found.
                                             </TableCell>
                                         </TableRow>
                                     ) : (
                                         products.map((product) => (
                                             <TableRow key={product.id}>
                                                 <TableCell title={product.documentId}>{product.id}</TableCell>
-                                                <TableCell>{product.name}</TableCell>
+                                                <TableCell>
+                                                    <Link href={`/${product.documentId ?? product.id}/product-edit`}>{product.name}</Link>
+                                                </TableCell>
                                                 <TableCell><StrapiImage media={product.logo} format="thumbnail" ></StrapiImage> </TableCell>
                                                 <TableCell>{product.barcode}</TableCell>
                                                 <TableCell>{product.sku}</TableCell>
@@ -214,14 +246,23 @@ export default function Products() {
                                                 <TableCell>{product.status}</TableCell>
 
                                                 <TableCell>
-                                                    <Link href={`/${product.documentId ?? product.id}/product-edit`}> <i className="fas fa-edit"></i> Edit</Link>
-                                                    <br />
-                                                    <Link href={`/${product.documentId ?? product.id}/product-stock-items`}> <i className="fas fa-edit"></i> Edit & Items</Link>
-                                                    <br />
-                                                    <Link href={`/${product.documentId ?? product.id}/product-variants`}><i className="fas fa-fighter-jet"></i> Variants</Link>
-                                                    <br />
-                                                    <Link href={`/stock-items?product=${product.documentId ?? product.id}`}><i className="fas fa-boxes"></i> Stock Items</Link>
-
+                                                    <div className="d-flex gap-1">
+                                                        <Link href={`/${product.documentId ?? product.id}/product-edit`} className="btn btn-sm btn-outline-primary" title="Edit">
+                                                            <i className="fas fa-edit"></i>
+                                                        </Link>
+                                                        <Link href={`/${product.documentId ?? product.id}/product-stock-items`} className="btn btn-sm btn-outline-info" title="Stock Control">
+                                                            <i className="fas fa-boxes"></i>
+                                                        </Link>
+                                                        <Link href={`/${product.documentId ?? product.id}/product-variants`} className="btn btn-sm btn-outline-warning" title="Variants">
+                                                            <i className="fas fa-layer-group"></i>
+                                                        </Link>
+                                                        <Link href={`/stock-items?product=${product.documentId ?? product.id}`} className="btn btn-sm btn-outline-dark" title="Stock Items">
+                                                            <i className="fas fa-barcode"></i>
+                                                        </Link>
+                                                        <Link href={`/${product.documentId ?? product.id}/product-relations`} className="btn btn-sm btn-outline-danger" title="Relations & Merge">
+                                                            <i className="fas fa-compress-arrows-alt"></i>
+                                                        </Link>
+                                                    </div>
                                                 </TableCell>
                                             </TableRow>
                                         ))
