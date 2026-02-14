@@ -42,19 +42,18 @@ export default function FormCheckoutShippingInformation() {
     defaultValues: formShippingInformation,
   });
 
-  const { mutate: orderCheckout, isLoading } = useMutation(
-    checkoutItem,
-    {
-      onSuccess: (response) => {
+  const { mutate: orderCheckout, isPending: isLoading } = useMutation({
+    mutationFn: checkoutItem,
+    onSuccess: (response) => {
         const phoneNumber = "+923245303530";
         const orderId = response?.order_id || "New Order";
         const total = response?.total || 0;
-        
+
         const message = `Hello! I just placed an order (ID: ${orderId}).\nTotal Amount: Rs. ${total}.\nPlease confirm my order.`;
         const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
-  
+
         clearCart();
-  
+
         window.open(whatsappUrl, "_blank");
         router.push("/");
       },

@@ -82,3 +82,5 @@ export default function PaymentSuccess() {
     </LayoutMain>
   );
 }
+
+export async function getServerSideProps() { return { props: {} }; }

@@ -11,6 +11,15 @@ REPO_URL="https://github.com/eharain/Rutba-POS.git"
 
 DESK_SERVICE="rutba_pos_desk.service"
 STRAPI_SERVICE="rutba_pos_strapi.service"
+AUTH_SERVICE="rutba_pos_auth.service"
+STOCK_SERVICE="rutba_pos_stock.service"
+SALE_SERVICE="rutba_pos_sale.service"
+WEB_SERVICE="rutba_web.service"
+WEB_USER_SERVICE="rutba_web_user.service"
+CRM_SERVICE="rutba_crm.service"
+HR_SERVICE="rutba_hr.service"
+ACCOUNTS_SERVICE="rutba_accounts.service"
+PAYROLL_SERVICE="rutba_payroll.service"
 
 BRANCH="master"
 
@@ -79,6 +88,15 @@ log "⚠ New version detected. Starting deploy..."
 log "Stopping services..."
 sudo systemctl stop $DESK_SERVICE || true
 sudo systemctl stop $STRAPI_SERVICE || true
+sudo systemctl stop $AUTH_SERVICE || true
+sudo systemctl stop $STOCK_SERVICE || true
+sudo systemctl stop $SALE_SERVICE || true
+sudo systemctl stop $WEB_SERVICE || true
+sudo systemctl stop $WEB_USER_SERVICE || true
+sudo systemctl stop $CRM_SERVICE || true
+sudo systemctl stop $HR_SERVICE || true
+sudo systemctl stop $ACCOUNTS_SERVICE || true
+sudo systemctl stop $PAYROLL_SERVICE || true
 
 ###########################################
 # PULL LATEST
@@ -90,22 +108,28 @@ run "git checkout $BRANCH"
 run "git pull origin $BRANCH"
 
 ###########################################
-# BUILD DESK
+# INSTALL DEPENDENCIES
 ###########################################
 
-log "Building POS Desk..."
-cd $APP_DIR/pos-desk
+log "Installing monorepo dependencies..."
+cd $APP_DIR
 run "npm install"
-run "npm run build"
 
 ###########################################
 # BUILD STRAPI
 ###########################################
 
-log "Building POS Strapi..."
+log "Building Strapi..."
 cd $APP_DIR/pos-strapi
-run "npm install"
 run "npm run build"
+
+###########################################
+# BUILD ALL NEXT.JS APPS
+###########################################
+
+log "Building all Next.js apps..."
+cd $APP_DIR
+run "npm run build:all"
 
 ###########################################
 # START SERVICES
@@ -114,6 +138,15 @@ run "npm run build"
 log "Starting services..."
 sudo systemctl daemon-reload
 sudo systemctl start $STRAPI_SERVICE
+sudo systemctl start $AUTH_SERVICE
+sudo systemctl start $STOCK_SERVICE
+sudo systemctl start $SALE_SERVICE
+sudo systemctl start $WEB_SERVICE
+sudo systemctl start $WEB_USER_SERVICE
+sudo systemctl start $CRM_SERVICE
+sudo systemctl start $HR_SERVICE
+sudo systemctl start $ACCOUNTS_SERVICE
+sudo systemctl start $PAYROLL_SERVICE
 sudo systemctl start $DESK_SERVICE
 
 ###########################################
@@ -122,6 +155,14 @@ sudo systemctl start $DESK_SERVICE
 
 log "Service Status:"
 sudo systemctl status $STRAPI_SERVICE --no-pager
-sudo systemctl status $DESK_SERVICE --no-pager
+sudo systemctl status $AUTH_SERVICE --no-pager
+sudo systemctl status $STOCK_SERVICE --no-pager
+sudo systemctl status $SALE_SERVICE --no-pager
+sudo systemctl status $WEB_SERVICE --no-pager
+sudo systemctl status $WEB_USER_SERVICE --no-pager
+sudo systemctl status $CRM_SERVICE --no-pager
+sudo systemctl status $HR_SERVICE --no-pager
+sudo systemctl status $ACCOUNTS_SERVICE --no-pager
+sudo systemctl status $PAYROLL_SERVICE --no-pager
 
 log "========== DEPLOY COMPLETE =========="

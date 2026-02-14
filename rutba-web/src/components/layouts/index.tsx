@@ -1,7 +1,7 @@
 import Footer from "./footer";
 import Header from "./header";
 
-export default function LayoutMain({ children }: { children: JSX.Element }) {
+export default function LayoutMain({ children }: { children: React.JSX.Element }) {
   return (
     <>
       <Header></Header>

@@ -34,3 +34,5 @@ export default function Home() {
     </LayoutMain>
   );
 }
+
+export async function getServerSideProps() { return { props: {} }; }

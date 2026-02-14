@@ -52,10 +52,11 @@ export default function FormCheckoutShippingService({
   // get shipping rates based on the address and parcel size
   const {
     mutate: mutateShippingRate,
-    isLoading,
+    isPending: isLoading,
     isError,
     error,
-  } = useMutation(getShippingRate, {
+  } = useMutation({
+    mutationFn: getShippingRate,
     onSuccess: (data) => {
       setShippingRate(data);
     },
@@ -65,8 +66,9 @@ export default function FormCheckoutShippingService({
   });
 
   // hit api checkout and redirect to stripe url after success
-  const { mutate: mutateCheckoutItem, isLoading: loadingCheckout } =
-    useMutation(checkoutItem, {
+  const { mutate: mutateCheckoutItem, isPending: loadingCheckout } =
+    useMutation({
+      mutationFn: checkoutItem as (data: any) => Promise<any>,
       onSuccess: (data) => {
         window.location.href = data.url;
       },
@@ -124,7 +126,7 @@ export default function FormCheckoutShippingService({
   /**
    * Renders a list of shipping rates.
    *
-   * @return {JSX.Element} The rendered shipping rate list.
+   * @return {React.JSX.Element} The rendered shipping rate list.
    */
   const ShippingRateList = () => {
     if (isLoading) {
@@ -225,7 +227,7 @@ export default function FormCheckoutShippingService({
               <p className="text-sm">Address</p>
               <div>
                 <div className="font-bold text-sm flex items-center justify-end">
-                  {formShippingInformation.street_address}
+                  {formShippingInformation.address}
                   <Map className="h-3"></Map>
                 </div>
                 <div className="flex flex-col">

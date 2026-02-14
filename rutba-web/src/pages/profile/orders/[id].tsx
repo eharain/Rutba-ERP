@@ -72,3 +72,5 @@ export default function Transaction() {
     </ProfileLayout>
   );
 }
+
+export async function getServerSideProps() { return { props: {} }; }

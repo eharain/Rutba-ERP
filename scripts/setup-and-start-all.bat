@@ -4,10 +4,10 @@ SETLOCAL ENABLEDELAYEDEXPANSION
 REM Check Node.js installation
 where node >nul 2>nul
 IF ERRORLEVEL 1 (
-    echo Node.js is not installed. Please install Node.js and rerun this script.
-    exit /b 1
+	echo Node.js is not installed. Please install Node.js and rerun this script.
+	exit /b 1
 ) ELSE (
-    echo Node.js is installed.
+	echo Node.js is installed.
 )
 
 REM Prompt for pos-strapi .env variables
@@ -32,7 +32,7 @@ if "!DATABASE_USERNAME!"=="" set DATABASE_USERNAME=!DATABASE_USERNAME_DEFAULT!
 set /p DATABASE_PASSWORD="Enter DATABASE_PASSWORD [!DATABASE_PASSWORD_DEFAULT!]: "
 if "!DATABASE_PASSWORD!"=="" set DATABASE_PASSWORD=!DATABASE_PASSWORD_DEFAULT!
 
-REM Generate secure keys for pos-strapi using Node.js (multiple set lines)
+REM Generate secure keys for pos-strapi using Node.js
 set "APP_KEYS="
 for /f "delims=" %%A in ('node -e "const crypto=require('crypto'); console.log(crypto.randomBytes(64).toString('hex'));"') do set "APP_KEYS=%%A"
 
@@ -53,57 +53,89 @@ for /f "delims=" %%A in ('node -e "const crypto=require('crypto'); console.log(c
 
 REM Setup .env for pos-strapi
 IF NOT EXIST "..\pos-strapi\.env" (
-    echo Creating .env for pos-strapi...
-    (
-        echo DATABASE_CLIENT=!DATABASE_CLIENT!
-        echo DATABASE_HOST=!DATABASE_HOST!
-        echo DATABASE_PORT=!DATABASE_PORT!
-        echo DATABASE_NAME=!DATABASE_NAME!
-        echo DATABASE_USERNAME=!DATABASE_USERNAME!
-        echo DATABASE_PASSWORD=!DATABASE_PASSWORD!
-        echo APP_KEYS=!APP_KEYS!
+	echo Creating .env for pos-strapi...
+	(
+		echo DATABASE_CLIENT=!DATABASE_CLIENT!
+		echo DATABASE_HOST=!DATABASE_HOST!
+		echo DATABASE_PORT=!DATABASE_PORT!
+		echo DATABASE_NAME=!DATABASE_NAME!
+		echo DATABASE_USERNAME=!DATABASE_USERNAME!
+		echo DATABASE_PASSWORD=!DATABASE_PASSWORD!
+		echo APP_KEYS=!APP_KEYS!
 		echo JWT_SECRET=!JWT_SECRET!
 		echo API_TOKEN_SALT=!API_TOKEN_SALT!
 		echo ADMIN_JWT_SECRET=!ADMIN_JWT_SECRET!
 		echo TRANSFER_TOKEN_SALT=!TRANSFER_TOKEN_SALT!
 		echo ENCRYPTION_KEY=!ENCRYPTION_KEY!
-    ) > "..\pos-strapi\.env"
+	) > "..\pos-strapi\.env"
 ) ELSE (
-    echo .env for pos-strapi already exists.
+	echo .env for pos-strapi already exists.
 )
 
-REM Prompt for pos-desk .env.local variable
+REM Prompt for API URL (used by front-end apps)
 set "NEXT_PUBLIC_API_URL=http://localhost:1337"
 set /p NEXT_PUBLIC_API_URL="Enter NEXT_PUBLIC_API_URL [!NEXT_PUBLIC_API_URL!]: "
 if "!NEXT_PUBLIC_API_URL!"=="" (
-    set "NEXT_PUBLIC_API_URL=!NEXT_PUBLIC_API_URL!"
+	set "NEXT_PUBLIC_API_URL=!NEXT_PUBLIC_API_URL!"
 )
 
 set "NEXT_PUBLIC_API_URL=!NEXT_PUBLIC_API_URL!/api"
 
-REM Setup .env for pos-desk (Next.js)
-IF NOT EXIST "..\pos-desk\.env.local" (
-    echo Creating .env.local for pos-desk...
-    (
-        echo NEXT_PUBLIC_API_URL=!NEXT_PUBLIC_API_URL!
-    ) > "..\pos-desk\.env.local"
-) ELSE (
-    echo .env.local for pos-desk already exists.
-)
-
-REM Install dependencies and start Strapi
-echo Setting up pos-strapi...
-cd ..\pos-strapi
+REM Install all workspace dependencies from root
+echo Installing monorepo dependencies...
+cd /d "%~dp0.."
 call npm install
-call forever start -c "npm run start" .
-cd ..\scripts
 
-REM Install dependencies and start Next.js
-echo Setting up pos-desk...
-cd ..\pos-desk
-call npm install
-start cmd /k "npm run dev"
-cd ..\scripts
+REM Start Strapi
+echo Starting Strapi API (port 1337)...
+cd /d "%~dp0..\pos-strapi"
+start "Strapi API" cmd /k "npm run develop"
 
-echo Both projects are running. Strapi on port 1337, Next.js on port 3000.
+timeout /t 3 /nobreak >nul
+
+REM Start all Next.js apps
+cd /d "%~dp0.."
+
+echo Starting Rutba Web (port 3000)...
+start "Rutba Web" cmd /k "cd /d "%~dp0..\rutba-web" && npm run dev"
+
+echo Starting Auth Portal (port 3003)...
+start "Auth Portal" cmd /k "npm run dev --workspace=pos-auth"
+
+echo Starting Stock Management (port 3001)...
+start "Stock Management" cmd /k "npm run dev --workspace=pos-stock"
+
+echo Starting Point of Sale (port 3002)...
+start "Point of Sale" cmd /k "npm run dev --workspace=pos-sale"
+
+echo Starting Web User (port 3004)...
+start "Web User" cmd /k "npm run dev --workspace=rutba-web-user"
+
+echo Starting CRM (port 3005)...
+start "CRM" cmd /k "npm run dev --workspace=rutba-crm"
+
+echo Starting HR (port 3006)...
+start "HR" cmd /k "npm run dev --workspace=rutba-hr"
+
+echo Starting Accounts (port 3007)...
+start "Accounts" cmd /k "npm run dev --workspace=rutba-accounts"
+
+echo Starting Payroll (port 3008)...
+start "Payroll" cmd /k "npm run dev --workspace=rutba-payroll"
+
+echo.
+echo ============================================
+echo   All services started!
+echo   Strapi API    : http://localhost:1337
+echo   Rutba Web     : http://localhost:3000
+echo   Stock Mgmt    : http://localhost:3001
+echo   Point of Sale : http://localhost:3002
+echo   Auth Portal   : http://localhost:3003
+echo   Web User      : http://localhost:3004
+echo   CRM           : http://localhost:3005
+echo   HR            : http://localhost:3006
+echo   Accounts      : http://localhost:3007
+echo   Payroll       : http://localhost:3008
+echo ============================================
+
 ENDLOCAL

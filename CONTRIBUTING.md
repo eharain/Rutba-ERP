@@ -2,6 +2,17 @@
 
 Thank you for your interest in contributing to Rutba POS! We welcome contributions from the community to help make this project better.
 
+## Project Structure
+
+Rutba POS is an **npm workspaces monorepo** containing multiple Next.js 15 apps and a Strapi 5 backend. Before contributing, please review the [root README](README.md) for the full workspace layout and port assignments.
+
+Key directories:
+- `packages/pos-shared/` — shared library (components, context, utilities)
+- `pos-auth/`, `pos-stock/`, `pos-sale/` — core POS apps
+- `rutba-web/` — customer-facing storefront (TypeScript, Tailwind CSS)
+- `rutba-crm/`, `rutba-hr/`, `rutba-accounts/`, `rutba-payroll/` — business management apps
+- `pos-strapi/` — Strapi 5 API backend
+
 ## How to Contribute
 
 ### 1. Fork the Repository
