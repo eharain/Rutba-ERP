@@ -18,7 +18,7 @@ import SaleApi from '@rutba/pos-shared/lib/saleApi';
 
 export default function SalePage() {
     const router = useRouter();
-    const { id } = router.query;
+    const { documentId } = router.query;
     const { currency } = useUtil();
 
     // Single source of truth
@@ -35,9 +35,9 @@ export default function SalePage() {
     =============================== */
 
     useEffect(() => {
-        if (!id) return;
+        if (!documentId) return;
         // If creating a new sale (route uses 'new'), initialize an empty model instead of fetching
-        if (id === 'new') {
+        if (documentId === 'new') {
             const model = new SaleModel({ id: 'new' });
 
             model.documentId = null;
@@ -47,12 +47,12 @@ export default function SalePage() {
             loadSale();
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [id]);
+    }, [documentId]);
 
     const loadSale = async () => {
         setLoading(true);
         try {
-            const model = await SaleApi.loadSale(id);
+            const model = await SaleApi.loadSale(documentId);
             setPaid(model.isPaid);
             setSaleModel(model);
             setIsDirty(false);
@@ -99,8 +99,13 @@ export default function SalePage() {
         try {
             setPaid(saleModel.isPaid);
 
+            const isNew = !saleModel.documentId;
             await SaleApi.saveSale(saleModel,param);
-            // alert('Sale completed successfully');
+            // After first save, redirect to the real URL so loadSale works
+            if (isNew && saleModel.documentId) {
+                router.replace(`/${saleModel.documentId}/sale`);
+                return;
+            }
             await loadSale();
             setIsDirty(false);
         } catch (err) {
@@ -146,7 +151,7 @@ export default function SalePage() {
             })
         );
 
-        const saleIdParam = id && id !== 'new' ? `&saleId=${id}` : '';
+        const saleIdParam = documentId && documentId !== 'new' ? `&saleId=${documentId}` : '';
         window.open(`/print-invoice?key=${storageKey}${saleIdParam}`, '_blank', 'width=1000,height=800');
     };
 

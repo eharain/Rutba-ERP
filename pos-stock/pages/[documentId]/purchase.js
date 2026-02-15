@@ -5,12 +5,12 @@ import { fetchPurchaseByIdDocumentIdOrPO, fetchEnumsValues, savePurchaseItem } f
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import Layout from "../../components/Layout";
 import PurchaseItemsList from "../../components/lists/purchase-items-list";
-import { generateNextDocumentId } from "@rutba/pos-shared/lib/utils";
+import { generateNextDocumentId, generateNextPONumber, getUser } from "@rutba/pos-shared/lib/utils";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
 
 export default function PurchasePage() {
     const router = useRouter();
-    const { id } = router.query;
+    const { documentId } = router.query;
     const [purchase, setPurchase] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -20,13 +20,28 @@ export default function PurchasePage() {
     const {currency} = useUtil();
 
     useEffect(() => {
-        if (!id) return;
+        if (!documentId) return;
+
+        if (documentId === 'new') {
+            const newPurchase = {
+                orderId: generateNextPONumber(),
+                order_date: new Date().toISOString(),
+                total: 0,
+                status: 'Draft',
+                items: [],
+            };
+            setPurchase(newPurchase);
+            setCurrentStatus('Draft');
+            setEditItems([]);
+            setLoading(false);
+            return;
+        }
 
         const loadData = async () => {
             setLoading(true);
             try {
                 const [purchaseData] = await Promise.all([
-                    fetchPurchaseByIdDocumentIdOrPO(id),
+                    fetchPurchaseByIdDocumentIdOrPO(documentId),
                 ]);
 
                 setPurchase(purchaseData);
@@ -47,7 +62,7 @@ export default function PurchasePage() {
         };
 
         loadData();
-    }, [id]);
+    }, [documentId]);
 
     const handleEdit = (documentId) => {
         setEditingDocumentId(documentId);
@@ -72,13 +87,33 @@ export default function PurchasePage() {
         }
     };
 
+    async function ensurePurchaseCreated() {
+        if (purchase.documentId) return purchase;
+        const user = getUser();
+        const res = await authApi.post('/purchases', {
+            data: {
+                orderId: purchase.orderId,
+                order_date: purchase.order_date,
+                total: 0,
+                status: 'Draft',
+                owners: { connect: [user.documentId] },
+            }
+        });
+        const created = res?.data ?? res;
+        const updatedPurchase = { ...purchase, ...created };
+        setPurchase(updatedPurchase);
+        router.replace(`/${created.documentId}/purchase`);
+        return updatedPurchase;
+    }
+
     async function saveItemdData(newItemData) {
+        const currentPurchase = await ensurePurchaseCreated();
         const bundle_units = newItemData.product?.bundle_units ?? 1
         const unit_price = Number(newItemData.price) / bundle_units;
 
         const data = {
             product: newItemData.product,
-            purchase: purchase,
+            purchase: currentPurchase,
             quantity: Number(newItemData.quantity),
             price: Number(newItemData.price),
             unit_price,

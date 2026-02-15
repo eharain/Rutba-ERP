@@ -1,7 +1,7 @@
 import { authApi } from './api';
 import { fetchSaleByIdOrInvoice, searchStockItems } from './pos';
 import SaleModel from '../domain/sale/SaleModel';
-import { getCashRegister, prepareForPut } from "../lib/utils";
+import { getCashRegister, getUser, prepareForPut } from "../lib/utils";
 
 export default class SaleApi {
 
@@ -67,13 +67,17 @@ export default class SaleApi {
         const payloadNoItems = { ...payload };
 
         let documentId = saleModel.documentId ?? saleModel.id;
-        //const isNew = !existingId || existingId === 'new' || existingId === 'undefined';
 
         let saleResponse;
 
         // CREATE
-        if (!documentId) {
-            const res = await authApi.post('/sales', { data: payloadNoItems });
+        if (!documentId || documentId === 'new') {
+            const user = getUser();
+            const createPayload = {
+                ...payloadNoItems,
+                owners: { connect: [user.documentId] },
+            };
+            const res = await authApi.post('/sales', { data: createPayload });
             const created = res?.data ?? res;
 
             saleModel.id = created.id;

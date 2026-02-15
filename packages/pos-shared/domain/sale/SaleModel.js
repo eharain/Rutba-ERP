@@ -193,6 +193,8 @@ export default class SaleModel {
 
     toPayload() {
         return {
+            invoice_no: this.invoice_no,
+            sale_date: this.sale_date instanceof Date ? this.sale_date.toISOString() : this.sale_date,
             subtotal: this.subtotal,
             discount: this.discountTotal,
             tax: this.tax,
