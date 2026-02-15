@@ -199,6 +199,9 @@ const STOCK_LINE_PATTERNS = [
 export function parseStockLine(input) {
     const text = input.trim();
 
+    // -----------------------------------------
+    // 1️⃣ Try strict structured parsing first
+    // -----------------------------------------
     for (const regex of STOCK_LINE_PATTERNS) {
         const match = text.match(regex);
         if (!match) continue;
@@ -213,9 +216,56 @@ export function parseStockLine(input) {
         };
     }
 
-    // No match at all
+    // -----------------------------------------
+    // 2️⃣ Fallback parsing (Flexible name)
+    // -----------------------------------------
+
+    // Find first number that:
+    // - has space before
+    // - has space after OR is end of string
+    const priceMatch = text.match(/(?<=\s)(\d+(?:\.\d+)?)(?=\s|$)/);
+
+    if (priceMatch) {
+        const price = Number(priceMatch[1]);
+
+        const priceIndex = priceMatch.index;
+        const priceLength = priceMatch[1].length;
+
+        // Everything before price is name (allow special chars)
+        const name = text.substring(0, priceIndex).trim();
+
+        // Everything after price
+        const remaining = text
+            .substring(priceIndex + priceLength)
+            .trim();
+
+        let quantity = 1;
+        let discount = 0;
+
+        // Try extracting qty and discount from remaining
+        const parts = remaining.split(/\s+/);
+
+        if (parts[0] && /^\d+$/.test(parts[0])) {
+            quantity = Number(parts[0]);
+        }
+
+        if (parts[1] && /^\d+%?$/.test(parts[1])) {
+            discount = Number(parts[1].replace('%', ''));
+        }
+
+        return {
+            name,
+            price,
+            quantity,
+            discount
+        };
+    }
+
+    // -----------------------------------------
+    // 3️⃣ Absolute fallback
+    // -----------------------------------------
     return {
-        name: '',
+        name: text,
         price: 0,
         quantity: 1,
         discount: 0
