@@ -169,27 +169,25 @@ export default function SalePage() {
         <Layout>
             <ProtectedRoute>
                 <PermissionCheck required="api::sale.sale.find">
-                    <div className="container">
+                    <div className="container-fluid px-3 py-2">
 
-                        <div className="row w-100">
-
-                            <div className="col-5 mb-2">
-                                <div>
-                                    <h3 className="mb-0" style={{ minHeight: '50px' }}>Invoice #{saleModel.invoice_no} {saleModel.isPaid && <span className="badge bg-success ms-2">Paid</span>}</h3>
-                                </div>
-                            </div>
-
-                            <div className="col-7 mb-2 ">
+                        {/* ── Header row ── */}
+                        <div className="d-flex align-items-center justify-content-between mb-2 border-bottom pb-2">
+                            <h4 className="mb-0">
+                                <i className="fas fa-file-invoice me-2 text-muted"></i>
+                                Invoice #{saleModel.invoice_no}
+                                {saleModel.isPaid && <span className="badge bg-success ms-2 align-middle">Paid</span>}
+                            </h4>
+                            <div style={{ minWidth: 320 }}>
                                 <CustomerSelect
                                     value={saleModel.customer}
                                     onChange={handleCustomerChange}
                                     disabled={saleModel.isPaid}
                                 />
                             </div>
-
-
                         </div>
-                        {/* Add Items */}
+
+                        {/* ── Add Items ── */}
                         <SalesItemsForm
                             disabled={saleModel.isPaid}
                             onAddItem={(stockItem) => {
@@ -204,7 +202,7 @@ export default function SalePage() {
                             }}
                         />
 
-                        {/* Items List */}
+                        {/* ── Items List ── */}
                         <SalesItemsList
                             items={saleModel.items}
                             disabled={saleModel.isPaid}
@@ -220,26 +218,28 @@ export default function SalePage() {
                             }}
                         />
 
-                        {/* Exchange / Return Credit */}
-                        <ExchangeReturnSection
-                            saleModel={saleModel}
-                            disabled={saleModel.isPaid}
-                            onUpdate={() => {
-                                forceUpdate();
-                                setIsDirty(true);
-                            }}
-                        />
+                        {/* ── Bottom section: Totals + Actions ── */}
+                        {saleModel.items.length > 0 && (
+                            <div className="row g-3 mt-1">
+                                {/* Exchange / Return — left side, subtle */}
+                                <div className="col-lg-7">
+                                    <ExchangeReturnSection
+                                        saleModel={saleModel}
+                                        disabled={saleModel.isPaid}
+                                        onUpdate={() => {
+                                            forceUpdate();
+                                            setIsDirty(true);
+                                        }}
+                                    />
+                                </div>
 
-                        <div className="row g-2 mt-2">
-                            <div className="col-lg-4 ms-lg-auto">
-                                {/* Totals summary */}
-                                {saleModel.items.length > 0 && (
-                                    <div className="p-3 bg-dark text-white rounded">
+                                {/* Totals + buttons — right side */}
+                                <div className="col-lg-5">
+                                    <div className="p-3 bg-dark text-white rounded mb-2">
                                         <div className="d-flex justify-content-between">
                                             <span>Subtotal</span>
                                             <span>{currency}{saleModel.subtotal.toFixed(2)}</span>
                                         </div>
-
                                         <div className="d-flex justify-content-between text-danger">
                                             <span>Discount</span>
                                             <span>-{currency}{saleModel.discountTotal.toFixed(2)}</span>
@@ -256,8 +256,7 @@ export default function SalePage() {
                                                 <span>-{currency}{saleModel.exchangeReturnTotal.toFixed(2)}</span>
                                             </div>
                                         )}
-                                        <hr />
-
+                                        <hr className="my-2" />
                                         <div className="d-flex justify-content-between fw-bold fs-5">
                                             <span>Total</span>
                                             <span>{currency}{saleModel.total.toFixed(2)}</span>
@@ -269,15 +268,12 @@ export default function SalePage() {
                                             </div>
                                         )}
                                     </div>
-                                )}
-                            </div>
 
-                        </div>
-                        <div className="row g-2 mt-2">
-                            <div className="col-lg-4 ms-lg-auto">
-                                <SaleButtons saleModel={saleModel} handlePrint={handlePrint} handleSave={handleSave} setShowCheckout={setShowCheckout} isDirty={isDirty}></SaleButtons>
+                                    <SaleButtons saleModel={saleModel} handlePrint={handlePrint} handleSave={handleSave} setShowCheckout={setShowCheckout} isDirty={isDirty} />
+                                </div>
                             </div>
-                        </div>
+                        )}
+
                         {/* Checkout Modal */}
                         <CheckoutModal
                             isOpen={showCheckout && !saleModel.isPaid}
@@ -303,16 +299,16 @@ export default function SalePage() {
 function SaleButtons({ handlePrint, handleSave, saleModel, setShowCheckout, isDirty }) {
     const itemsCount = saleModel.items.length;
     return (
-        <div className="d-grid gap-2">
+        <div className="d-flex gap-2">
             <button
-                className="btn btn-secondary"
+                className="btn btn-outline-secondary flex-fill"
                 onClick={handlePrint}
                 disabled={itemsCount === 0}
             >
                 <i className="fas fa-print me-1" />Print
             </button>
             <button
-                className="btn btn-success"
+                className="btn btn-success flex-fill"
                 onClick={() => handleSave(true)}
                 disabled={itemsCount === 0 || saleModel.isPaid || !isDirty}
             >
@@ -320,7 +316,7 @@ function SaleButtons({ handlePrint, handleSave, saleModel, setShowCheckout, isDi
             </button>
             <PermissionCheck has="api::payment.payment.create">
                 <button
-                    className="btn btn-success"
+                    className="btn btn-success flex-fill"
                     onClick={() => setShowCheckout(true)}
                     disabled={itemsCount === 0 || saleModel.isPaid}
                 >

@@ -40,7 +40,7 @@ const BulkPrintPreview = ({ storageKey, title, onClose }) => {
                 onClick={() => setShowControls(s => !s)}
                 style={{ top: '20px', right: '20px', zIndex: 1100, borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             >
-                ?
+                <i className="fas fa-cog"></i>
             </button>
 
             {/* Quick print when controls hidden */}
@@ -52,7 +52,7 @@ const BulkPrintPreview = ({ storageKey, title, onClose }) => {
                     onClick={handlePrint}
                     style={{ top: '20px', right: '70px', zIndex: 1100, borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                 >
-                    ??
+                    <i className="fas fa-print"></i>
                 </button>
             )}
 
@@ -94,7 +94,7 @@ const BulkPrintPreview = ({ storageKey, title, onClose }) => {
                             {/* Stacked buttons: print and close */}
                             <div className="d-grid gap-2 mt-2">
                                 <button onClick={handlePrint} className="btn btn-sm btn-success w-100">
-                                    ??? Print Now
+                                    <i className="fas fa-print me-1"></i> Print Now
                                 </button>
                                 <button onClick={handleClose} className="btn btn-sm btn-secondary w-100">
                                     Close

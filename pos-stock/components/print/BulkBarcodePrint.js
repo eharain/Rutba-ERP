@@ -33,7 +33,7 @@ const BulkBarcodePrint = ({
 
     function displayPrice(item) {
         const priceVal = item?.selling_price ?? item?.offer_price;
-        return priceVal ? `${currency ?? ''} ${Math.round(parseFloat(priceVal))}` : '';
+        return priceVal ? `${currency || 'Rs'} ${Math.round(parseFloat(priceVal))}` : '';
     }
 
     // determine if label is "small" (< 1.5 inches in either dimension)
@@ -90,18 +90,17 @@ const BulkBarcodePrint = ({
         sheets.push(items.slice(i, i + labelsPerSheet));
     }
 
-    function printRates(item,codeValue) {
+    function printRates(item, codeValue) {
         return (
-            <div className="col-sm-5">
-                <div className="price ">
+            <>
+                <div className="price">
                     {displayPrice(item)}
-                </div >
+                </div>
                 <div className="code-text">
                     {codeValue}
                 </div>
-            </div >
-        )
-
+            </>
+        );
     }
 
     return (
@@ -127,18 +126,17 @@ const BulkBarcodePrint = ({
                                     </div>
                                 </div>
 
-                                {/* Use Bootstrap row/cols for the main layout */}
-                                <div className="row ">
-                                    {smallLabel ? ("") :
-                                        (<div className="col-sm-5">{printRates(item, codeValue)}</div>)}
-                                                                       
+                                {/* Price/code on left, QR/barcode on right */}
+                                <div className="row align-items-center">
+                                    {!smallLabel && (
+                                        <div className="col-7">
+                                            {printRates(item, codeValue)}
+                                        </div>
+                                    )}
+
                                     {codeValue ? (
-                                        <div className={smallLabel ? "col-12" : "col-7"}>
-
-
+                                        <div className={smallLabel ? "col-12 text-center" : "col-5 text-end"}>
                                             {smallLabel ? (
-                                                // render linear barcode for small labels
-                                                // Ensure start/stop characters are included (Code39 uses '*')
                                                 <Barcode
                                                     value={valueWithStartStop}
                                                     format="CODE39"
@@ -149,22 +147,18 @@ const BulkBarcodePrint = ({
                                                     margin={0}
                                                 />
                                             ) : (
-                                                // render QR for larger labels
                                                 <QRCodeSVG
                                                     value={codeValue}
                                                     level="M"
                                                     fgColor="#000"
                                                     bgColor="#fff"
-                                                    size={64}
+                                                    size={72}
                                                 />
                                             )}
-
                                         </div>
-
                                     ) : (
                                         <div className="text-muted small">No Code</div>
                                     )}
-
                                 </div>
                             </div>
                         );

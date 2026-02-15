@@ -97,9 +97,13 @@ export function isAppAdmin(adminAppAccess, appKey) {
 
 /**
  * Build navigation cross-links for the current user.
+ * Shows all recognised apps (except the current one) so the Switch App
+ * dropdown is consistent across every app.  Apps the user does NOT have
+ * access to are still listed but marked with `disabled: true` so the UI
+ * can grey them out or hide them as needed.
  * @param {string[]} appAccess
  * @param {string} currentApp - the app key we're currently in
- * @returns {{ label: string, href: string, key: string }[]}
+ * @returns {{ label: string, href: string, key: string, disabled: boolean }[]}
  */
 export function getCrossAppLinks(appAccess, currentApp) {
     const links = [];
@@ -115,12 +119,13 @@ export function getCrossAppLinks(appAccess, currentApp) {
         payroll:    '💰 Payroll',
     };
 
-    for (const appKey of allowed) {
-        if (appKey !== currentApp) {
+    for (const appKey of VALID_APP_KEYS) {
+        if (appKey !== currentApp && APP_URLS[appKey]) {
             links.push({
                 key: appKey,
                 label: labels[appKey] || appKey,
                 href: APP_URLS[appKey],
+                disabled: !allowed.includes(appKey),
             });
         }
     }
