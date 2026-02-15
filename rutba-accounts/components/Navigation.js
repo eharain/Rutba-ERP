@@ -36,7 +36,12 @@ export default function Navigation() {
                             </a>
                             <ul className="dropdown-menu" aria-labelledby="crossAppMenu">
                                 {crossLinks.map(link => (
-                                    <li key={link.key}><a className="dropdown-item" href={link.href}>{link.label}</a></li>
+                                    <li key={link.key}>
+                                        {link.disabled
+                                            ? <span className="dropdown-item disabled text-muted">{link.label}</span>
+                                            : <a className="dropdown-item" href={link.href}>{link.label}</a>
+                                        }
+                                    </li>
                                 ))}
                             </ul>
                         </li>

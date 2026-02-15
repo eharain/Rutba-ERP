@@ -117,70 +117,81 @@ const CheckoutModal = ({ isOpen, onClose, total, exchangeReturnCredit = 0, onCom
     if (!isOpen) return null;
 
     return (
-        <div className="modal show d-block  " tabIndex="-1" role="dialog" onClick={onClose}>
-            <div className="modal-dialog modal-sm modal-dialog-centered" role="document" onClick={(e) => e.stopPropagation()}>
-                <div className="modal-content border border-primary rounded-2">
-                    <div className="modal-header">
-                        <h5 className="modal-title">Payment</h5>
-                        <button type="button" className="btn-close" aria-label="Close" onClick={onClose} disabled={loading}></button>
+        <div className="modal show d-block" tabIndex="-1" role="dialog" onClick={onClose} style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+            <div className="modal-dialog modal-dialog-centered" role="document" onClick={(e) => e.stopPropagation()}>
+                <div className="modal-content">
+                    <div className="modal-header bg-dark text-white">
+                        <h5 className="modal-title"><i className="fas fa-cash-register me-2"></i>Payment</h5>
+                        <button type="button" className="btn-close btn-close-white" aria-label="Close" onClick={onClose} disabled={loading}></button>
                     </div>
                     <div className="modal-body">
-                        <div className="d-flex justify-content-between mb-3">
-                            <div>Total Amount:</div>
-                            <div className="fw-bold">{currency}{total.toFixed(2)}</div>
+                        {/* Total banner */}
+                        <div className="bg-light rounded p-3 mb-3 text-center">
+                            <div className="text-muted small">Amount Due</div>
+                            <div className="fw-bold fs-3">{currency}{total.toFixed(2)}</div>
                         </div>
 
+                        {/* Payment rows */}
                         {payments.map((payment, index) => (
                             <div key={payment.id} className={`border rounded p-2 mb-2 ${payment._locked ? 'bg-light' : ''}`}>
-                                <div className="d-flex gap-2 mb-2">
-                                    <select
-                                        className="form-select"
-                                        value={payment.payment_method}
-                                        onChange={(e) => handleMethodChange(index, e.target.value)}
-                                        disabled={loading || payment._locked}
-                                    >
-                                        <option value="Cash">Cash</option>
-                                        <option value="Card">Card</option>
-                                        <option value="Bank">Bank</option>
-                                        <option value="Mobile Wallet">Mobile Wallet</option>
-                                        {payment.payment_method === 'Exchange Return' && (
-                                            <option value="Exchange Return">Exchange Return</option>
-                                        )}
-                                    </select>
-                                    <button
-                                        type="button"
-                                        className="btn btn-outline-danger"
-                                        onClick={() => handleRemovePayment(index)}
-                                        disabled={loading || payments.length === 1 || payment._locked}
-                                    >
-                                        <i className="fas fa-times me-1"></i>Remove
-                                    </button>
-                                </div>
-                                <div className="input-group mb-2">
-                                    <input
-                                        type="text"
-                                        className="form-control text-end"
-                                        value={payment.amount}
-                                        onChange={(e) => handleAmountChange(index, e.target.value)}
-                                        placeholder="0.00"
-                                        autoFocus={index === 0 && !payment._locked}
-                                        disabled={loading || payment._locked}
-                                    />
-                                    {!payment._locked && (
-                                        <button
-                                            className="btn btn-secondary"
-                                            type="button"
-                                            onClick={() => handleExactAmount(index)}
-                                            disabled={loading}
+                                <div className="row g-2 align-items-center">
+                                    <div className="col">
+                                        <select
+                                            className="form-select form-select-sm"
+                                            value={payment.payment_method}
+                                            onChange={(e) => handleMethodChange(index, e.target.value)}
+                                            disabled={loading || payment._locked}
                                         >
-                                            <i className="fas fa-equals me-1"></i>Exact
+                                            <option value="Cash">Cash</option>
+                                            <option value="Card">Card</option>
+                                            <option value="Bank">Bank</option>
+                                            <option value="Mobile Wallet">Mobile Wallet</option>
+                                            {payment.payment_method === 'Exchange Return' && (
+                                                <option value="Exchange Return">Exchange Return</option>
+                                            )}
+                                        </select>
+                                    </div>
+                                    <div className="col">
+                                        <div className="input-group input-group-sm">
+                                            <span className="input-group-text">{currency}</span>
+                                            <input
+                                                type="text"
+                                                className="form-control text-end"
+                                                value={payment.amount}
+                                                onChange={(e) => handleAmountChange(index, e.target.value)}
+                                                placeholder="0.00"
+                                                autoFocus={index === 0 && !payment._locked}
+                                                disabled={loading || payment._locked}
+                                            />
+                                            {!payment._locked && (
+                                                <button
+                                                    className="btn btn-outline-secondary"
+                                                    type="button"
+                                                    onClick={() => handleExactAmount(index)}
+                                                    disabled={loading}
+                                                    title="Fill exact remaining"
+                                                >
+                                                    <i className="fas fa-equals"></i>
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className="col-auto">
+                                        <button
+                                            type="button"
+                                            className="btn btn-sm btn-outline-danger"
+                                            onClick={() => handleRemovePayment(index)}
+                                            disabled={loading || payments.length === 1 || payment._locked}
+                                            title="Remove"
+                                        >
+                                            <i className="fas fa-times"></i>
                                         </button>
-                                    )}
+                                    </div>
                                 </div>
                                 {payment.payment_method !== 'Cash' && payment.payment_method !== 'Exchange Return' && (
                                     <input
                                         type="text"
-                                        className="form-control"
+                                        className="form-control form-control-sm mt-2"
                                         value={payment.transaction_no}
                                         onChange={(e) => handleTransactionChange(index, e.target.value)}
                                         placeholder="Transaction No. (optional)"
@@ -190,36 +201,37 @@ const CheckoutModal = ({ isOpen, onClose, total, exchangeReturnCredit = 0, onCom
                             </div>
                         ))}
 
-                        <div className="d-grid mb-2">
-                            <button className="btn btn-outline-primary" type="button" onClick={handleAddPayment} disabled={loading}>
-                                <i className="fas fa-plus me-1"></i>Add Payment Method
-                            </button>
-                        </div>
+                        <button className="btn btn-sm btn-outline-primary w-100 mb-3" type="button" onClick={handleAddPayment} disabled={loading}>
+                            <i className="fas fa-plus me-1"></i>Add Payment Method
+                        </button>
 
-                        <div className="d-flex justify-content-between mb-2">
-                            <div>Paid:</div>
-                            <div className="fw-bold">{currency}{totalPaid.toFixed(2)}</div>
-                        </div>
-                        <div className="d-flex justify-content-between mb-2">
-                            <div>Remaining:</div>
-                            <div className="fw-bold">{currency}{remaining.toFixed(2)}</div>
-                        </div>
-
-                        {change > 0 && (
-                            <div className="alert alert-success d-flex justify-content-between align-items-center py-2 mb-2" role="alert">
-                                <div>Change to Return:</div>
-                                <div className="fw-bold">{currency}{change.toFixed(2)}</div>
+                        {/* Summary */}
+                        <div className="border-top pt-2">
+                            <div className="d-flex justify-content-between mb-1">
+                                <span className="text-muted">Paid</span>
+                                <span className="fw-bold">{currency}{totalPaid.toFixed(2)}</span>
                             </div>
-                        )}
-
-                        {totalPaid < total && totalPaid > 0 && (
-                            <div className="text-danger text-center small">Insufficient payment</div>
-                        )}
+                            {remaining > 0 && (
+                                <div className="d-flex justify-content-between mb-1 text-danger">
+                                    <span>Remaining</span>
+                                    <span className="fw-bold">{currency}{remaining.toFixed(2)}</span>
+                                </div>
+                            )}
+                            {change > 0 && (
+                                <div className="d-flex justify-content-between align-items-center bg-success bg-opacity-10 rounded p-2">
+                                    <span className="text-success"><i className="fas fa-coins me-1"></i>Change</span>
+                                    <span className="fw-bold text-success fs-5">{currency}{change.toFixed(2)}</span>
+                                </div>
+                            )}
+                            {totalPaid < total && totalPaid > 0 && (
+                                <div className="text-danger text-center small mt-1">Insufficient payment</div>
+                            )}
+                        </div>
                     </div>
                     <div className="modal-footer">
-                        <button type="button" className="btn btn-secondary" onClick={onClose} disabled={loading}><i className="fas fa-times me-1"></i>Cancel</button>
-                        <button type="button" className="btn btn-success" onClick={handlePay} disabled={loading || payments.length === 0 || totalPaid < total}>
-                            {loading ? (<><span className="spinner-border spinner-border-sm me-1"></span>Processing...</>) : (<><i className="fas fa-money-bill-wave me-1"></i>Pay</>)}
+                        <button type="button" className="btn btn-outline-secondary" onClick={onClose} disabled={loading}>Cancel</button>
+                        <button type="button" className="btn btn-success px-4" onClick={handlePay} disabled={loading || payments.length === 0 || totalPaid < total}>
+                            {loading ? (<><span className="spinner-border spinner-border-sm me-1"></span>Processing...</>) : (<><i className="fas fa-check me-1"></i>Confirm Payment</>)}
                         </button>
                     </div>
                 </div>

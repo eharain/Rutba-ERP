@@ -128,16 +128,16 @@ export default function ExchangeReturnSection({ saleModel, onUpdate, disabled = 
     if (disabled) return null;
 
     return (
-        <div className="card mt-3 border-warning">
-            <div className="card-header bg-warning bg-opacity-25 d-flex justify-content-between align-items-center">
-                <span><i className="fas fa-exchange-alt me-2"></i>Exchange / Return Credit</span>
+        <div className="border rounded">
+            <div className="px-3 py-2 bg-light d-flex justify-content-between align-items-center border-bottom">
+                <span className="small text-muted"><i className="fas fa-exchange-alt me-1"></i>Exchange / Return Credit</span>
                 {originalSale && (
-                    <button className="btn btn-sm btn-outline-secondary" onClick={clearAll}>
-                        <i className="fas fa-times me-1"></i>Clear
+                    <button className="btn btn-sm btn-outline-secondary py-0 px-1" onClick={clearAll}>
+                        <i className="fas fa-times"></i>
                     </button>
                 )}
             </div>
-            <div className="card-body">
+            <div className="p-2">
                 {/* Scan input */}
                 <div className="row g-2 align-items-end mb-2">
                     <div className="col">
