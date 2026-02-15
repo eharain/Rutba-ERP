@@ -17,7 +17,8 @@
         "Cash",
         "Card",
         "Bank",
-        "Mobile Wallet"
+        "Mobile Wallet",
+        "Exchange Return"
       ]
     },
     "amount": {

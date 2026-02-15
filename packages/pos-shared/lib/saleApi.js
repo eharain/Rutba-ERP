@@ -95,6 +95,11 @@ export default class SaleApi {
         // SALE ITEMS + STOCK
         await this.saveSaleItems(documentId, saleModel.items, { paid });
 
+        // EXCHANGE RETURN (create sale-return + update stock items)
+        if (paid && saleModel.exchangeReturn?.returnItems?.length > 0) {
+            await this.saveExchangeReturn(documentId, saleModel.exchangeReturn);
+        }
+
         return saleResponse;
     }
 
@@ -261,6 +266,69 @@ export default class SaleApi {
         }
 
         return results;
+    }
+
+    /* =====================================================
+       EXCHANGE RETURN
+    ===================================================== */
+
+    static async saveExchangeReturn(newSaleDocId, exchangeReturn) {
+        const { sale: originalSale, returnItems } = exchangeReturn;
+        if (!returnItems?.length) return;
+
+        const originalSaleDocId = originalSale.documentId || originalSale.id;
+        const returnNo = 'EXC-' + Date.now().toString(36).toUpperCase();
+        const returnTotal = returnItems.reduce((sum, r) => sum + (r.price || 0), 0);
+
+        // 1) Create sale-return header linked to original and new sale
+        const retRes = await authApi.post('/sale-returns', {
+            data: {
+                return_no: returnNo,
+                return_date: new Date().toISOString(),
+                total_refund: returnTotal,
+                type: 'Exchange',
+                sale: { connect: [originalSaleDocId] },
+                exchange_sale: { connect: [newSaleDocId] },
+            }
+        });
+        const saleReturn = retRes?.data ?? retRes;
+        const saleReturnDocId = saleReturn.documentId || saleReturn.id;
+
+        // 2) Group return items by original sale-item
+        const bySaleItem = {};
+        for (const ri of returnItems) {
+            if (!bySaleItem[ri.saleItemDocId]) bySaleItem[ri.saleItemDocId] = [];
+            bySaleItem[ri.saleItemDocId].push(ri);
+        }
+
+        // 3) Create sale-return-items and update stock item statuses
+        for (const [saleItemDocId, items] of Object.entries(bySaleItem)) {
+            const quantity = items.length;
+            const price = items[0].price;
+            const total = items.reduce((s, i) => s + i.price, 0);
+            const productDocId = items[0].productDocId;
+
+            const returnItemRes = await authApi.post('/sale-return-items', {
+                data: {
+                    quantity,
+                    price,
+                    total,
+                    sale_return: { connect: [saleReturnDocId] },
+                    ...(productDocId ? { product: { connect: [productDocId] } } : {})
+                }
+            });
+            const returnItem = returnItemRes?.data ?? returnItemRes;
+            const returnItemDocId = returnItem.documentId || returnItem.id;
+
+            for (const ri of items) {
+                await authApi.put(`/stock-items/${ri.stockItemDocId}`, {
+                    data: {
+                        status: ri.status,
+                        ...(returnItemDocId ? { sale_return_item: { connect: [returnItemDocId] } } : {})
+                    }
+                });
+            }
+        }
     }
 
     /* =====================================================

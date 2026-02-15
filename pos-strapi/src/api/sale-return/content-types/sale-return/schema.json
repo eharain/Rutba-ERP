@@ -22,6 +22,16 @@
     "total_refund": {
       "type": "decimal"
     },
+    "type": {
+      "type": "enumeration",
+      "enum": ["Return", "Exchange"],
+      "default": "Return"
+    },
+    "exchange_sale": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::sale.sale"
+    },
     "sale": {
       "type": "relation",
       "relation": "manyToOne",

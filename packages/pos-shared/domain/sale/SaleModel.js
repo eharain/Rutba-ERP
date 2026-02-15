@@ -25,6 +25,9 @@ export default class SaleModel {
         //  payments?.forEach(p => this.addPayment(p));
         this.customer = customer;
         this.items = items?.map(item => new SaleItem(item)) || [];
+
+        // Exchange return: items returned from a previous sale applied as credit
+        this.exchangeReturn = null; // { sale, returnItems: [...] }
     }
 
     /* ===============================
@@ -81,6 +84,24 @@ export default class SaleModel {
     removePayment(index) {
         this.payments.splice(index, 1);
     }
+
+    /* ===============================
+       Exchange Return
+    =============================== */
+
+    setExchangeReturn(originalSale, returnItems) {
+        this.exchangeReturn = { sale: originalSale, returnItems };
+    }
+
+    clearExchangeReturn() {
+        this.exchangeReturn = null;
+    }
+
+    get exchangeReturnTotal() {
+        if (!this.exchangeReturn?.returnItems?.length) return 0;
+        return this.exchangeReturn.returnItems.reduce((sum, r) => sum + (r.price || 0), 0);
+    }
+
     /* ===============================
        Items
     =============================== */

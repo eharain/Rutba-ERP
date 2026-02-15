@@ -160,6 +160,7 @@ export default function SalesReturnsPage() {
                     return_no: returnNo,
                     return_date: new Date().toISOString(),
                     total_refund: totalRefund,
+                    type: "Return",
                     sale: { connect: [saleDocId] },
                     ...(branch ? { branches: { connect: [getEntryId(branch)] } } : {})
                 }
@@ -522,6 +523,7 @@ export default function SalesReturnsPage() {
                                             <thead className="table-light">
                                                 <tr>
                                                     <th>Return No</th>
+                                                    <th>Type</th>
                                                     <th>Date</th>
                                                     <th>Sale Invoice</th>
                                                     <th>Items</th>
@@ -532,6 +534,11 @@ export default function SalesReturnsPage() {
                                                 {recentReturns.map(ret => (
                                                     <tr key={getEntryId(ret)}>
                                                         <td><strong>{ret.return_no || "-"}</strong></td>
+                                                        <td>
+                                                            <span className={`badge ${ret.type === "Exchange" ? "bg-info" : "bg-secondary"}`}>
+                                                                {ret.type || "Return"}
+                                                            </span>
+                                                        </td>
                                                         <td>{ret.return_date ? new Date(ret.return_date).toLocaleString() : "-"}</td>
                                                         <td>{ret.sale?.invoice_no || "-"}</td>
                                                         <td>{ret.items?.length || 0}</td>

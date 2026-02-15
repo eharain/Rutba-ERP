@@ -1444,7 +1444,7 @@ export interface ApiPaymentPayment extends Struct.CollectionTypeSchema {
       Schema.Attribute.Private;
     payment_date: Schema.Attribute.DateTime;
     payment_method: Schema.Attribute.Enumeration<
-      ['Cash', 'Card', 'Bank', 'Mobile Wallet']
+      ['Cash', 'Card', 'Bank', 'Mobile Wallet', 'Exchange Return']
     >;
     publishedAt: Schema.Attribute.DateTime;
     sale: Schema.Attribute.Relation<'manyToOne', 'api::sale.sale'>;
@@ -1847,6 +1847,7 @@ export interface ApiSaleReturnSaleReturn extends Struct.CollectionTypeSchema {
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    exchange_sale: Schema.Attribute.Relation<'oneToOne', 'api::sale.sale'>;
     items: Schema.Attribute.Relation<
       'oneToMany',
       'api::sale-return-item.sale-return-item'
@@ -1866,6 +1867,8 @@ export interface ApiSaleReturnSaleReturn extends Struct.CollectionTypeSchema {
     return_no: Schema.Attribute.String & Schema.Attribute.Required;
     sale: Schema.Attribute.Relation<'manyToOne', 'api::sale.sale'>;
     total_refund: Schema.Attribute.Decimal;
+    type: Schema.Attribute.Enumeration<['Return', 'Exchange']> &
+      Schema.Attribute.DefaultTo<'Return'>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
