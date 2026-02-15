@@ -9,6 +9,7 @@ import CustomerSelect from '../../components/CustomerSelect';
 import SalesItemsForm from '../../components/form/sales-items-form';
 import SalesItemsList from '../../components/lists/sales-items-list';
 import CheckoutModal from '../../components/CheckoutModal';
+import ExchangeReturnSection from '../../components/ExchangeReturnSection';
 
 import { useUtil } from '@rutba/pos-shared/context/UtilContext';
 
@@ -131,6 +132,8 @@ export default function SalePage() {
                     invoice_no: saleModel.invoice_no,
                     sale_date: saleModel.sale_date,
                     payment_status: saleModel.payment_status,
+                    payments: saleModel.payments,
+                    exchangeReturn: saleModel.exchangeReturn,
                     totals: {
                         subtotal: saleModel.subtotal,
                         discount: saleModel.discountTotal,
@@ -212,6 +215,16 @@ export default function SalePage() {
                             }}
                         />
 
+                        {/* Exchange / Return Credit */}
+                        <ExchangeReturnSection
+                            saleModel={saleModel}
+                            disabled={saleModel.isPaid}
+                            onUpdate={() => {
+                                forceUpdate();
+                                setIsDirty(true);
+                            }}
+                        />
+
                         <div className="row g-2 mt-2">
                             <div className="col-lg-4 ms-lg-auto">
                                 {/* Totals summary */}
@@ -232,12 +245,24 @@ export default function SalePage() {
                                                 <span>{currency}{saleModel.tax.toFixed(2)}</span>
                                             </div>
                                         )}
+                                        {saleModel.exchangeReturnTotal > 0 && (
+                                            <div className="d-flex justify-content-between text-warning">
+                                                <span>Exchange Return Credit</span>
+                                                <span>-{currency}{saleModel.exchangeReturnTotal.toFixed(2)}</span>
+                                            </div>
+                                        )}
                                         <hr />
 
                                         <div className="d-flex justify-content-between fw-bold fs-5">
                                             <span>Total</span>
                                             <span>{currency}{saleModel.total.toFixed(2)}</span>
                                         </div>
+                                        {saleModel.exchangeReturnTotal > 0 && (
+                                            <div className="d-flex justify-content-between fw-bold text-warning">
+                                                <span>Amount Due</span>
+                                                <span>{currency}{Math.max(0, saleModel.total - saleModel.exchangeReturnTotal).toFixed(2)}</span>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </div>
@@ -253,6 +278,7 @@ export default function SalePage() {
                             isOpen={showCheckout && !saleModel.isPaid}
                             onClose={() => setShowCheckout(false)}
                             total={saleModel.total}
+                            exchangeReturnCredit={saleModel.exchangeReturnTotal}
                             onComplete={handleCheckoutComplete}
                             loading={loading}
                         />

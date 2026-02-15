@@ -21,6 +21,10 @@ const SaleInvoice = ({ sale, items, totals}) => {
     };
 
     const payments = Array.isArray(sale?.payments) ? sale.payments : [];
+    const exchangeReturn = sale?.exchangeReturn || null;
+    const exchangeReturnTotal = exchangeReturn?.returnItems?.length
+        ? exchangeReturn.returnItems.reduce((s, r) => s + (Number(r.price) || 0), 0)
+        : 0;
     const paid = payments.length > 0
         ? payments.reduce((s, p) => s + (Number(p.amount) || 0), 0)
         : (Number(sale?.paid) || (sale?.payment_status === 'Paid' ? safeTotals.total : 0));
@@ -136,6 +140,27 @@ const SaleInvoice = ({ sale, items, totals}) => {
                 </tbody>
             </table>
 
+            {/* Returned Items (Exchange) */}
+            {exchangeReturn?.returnItems?.length > 0 && (
+                <div style={{ borderTop: '1px dashed #555', paddingTop: '5px', marginBottom: '5px' }}>
+                    <div className="fw-bold small text-start mb-1">Returned Items (from #{exchangeReturn.sale?.invoice_no || 'N/A'}):</div>
+                    <table className="w-100" style={{ fontSize: '10px' }}>
+                        <tbody>
+                            {exchangeReturn.returnItems.map((ri, idx) => (
+                                <tr key={idx}>
+                                    <td className="text-start">{ri.productName || 'Item'}</td>
+                                    <td className="text-end">-{currency}{Number(ri.price || 0).toFixed(2)}</td>
+                                </tr>
+                            ))}
+                            <tr className="fw-bold" style={{ borderTop: '1px dotted #999' }}>
+                                <td className="text-start">Return Credit:</td>
+                                <td className="text-end">-{currency}{exchangeReturnTotal.toFixed(2)}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            )}
+
             <div className="totals-section" style={{ borderTop: '1px dashed #555', paddingTop: '5px', fontSize: '11px' }}>
                 <table className="totals-table w-100" style={{ borderCollapse: 'collapse', fontSize: '11px' }}>
                     <tbody>
@@ -159,28 +184,37 @@ const SaleInvoice = ({ sale, items, totals}) => {
                             <td className="text-start">Total:</td>
                             <td className="text-end">{currency}{safeTotals.total.toFixed(2)}</td>
                         </tr>
+                        {payments.length > 0 && (
+                            <>
+                                <tr>
+                                    <td colSpan="2" className="text-start fw-bold pt-1" style={{ borderTop: '1px dotted #999' }}>Payments:</td>
+                                </tr>
+                                {payments.map((p, i) => (
+                                    <tr key={i}>
+                                        <td className="text-start small ps-1">
+                                            {p.payment_method || 'Payment'}
+                                            {p.transaction_no ? ` (${p.transaction_no})` : ''}
+                                        </td>
+                                        <td className="text-end small">
+                                            {currency}{Number(p.amount || 0).toFixed(2)}
+                                            {p.change > 0 ? ` (Chg: ${currency}${Number(p.change).toFixed(2)})` : ''}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </>
+                        )}
                         {isPaid && (
                             <>
                                 <tr>
                                     <td className="text-start">Paid:</td>
                                     <td className="text-end">{currency}{paid.toFixed(2)}</td>
                                 </tr>
-                                {payments.length > 0 && (
+                                {changeGiven > 0 && (
                                     <tr>
-                                        <td className="text-start">Payments:</td>
-                                        <td className="text-end small">
-                                            {payments.map((p, i) => (
-                                                <div key={i} style={{ textAlign: 'right' }}>
-                                                    {p.payment_method || 'Payment'} {p.transaction_no ? `(${p.transaction_no})` : ''}: {currency}{Number(p.amount || 0).toFixed(2)}{p.change ? ` (Change: ${currency}${Number(p.change).toFixed(2)})` : ''}
-                                                </div>
-                                            ))}
-                                        </td>
+                                        <td className="text-start">Change:</td>
+                                        <td className="text-end">{currency}{changeGiven.toFixed(2)}</td>
                                     </tr>
                                 )}
-                                <tr>
-                                    <td className="text-start">Change:</td>
-                                    <td className="text-end">{currency}{changeGiven.toFixed(2)}</td>
-                                </tr>
                             </>
                         )}
                     </tbody>

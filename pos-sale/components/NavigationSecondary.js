@@ -11,6 +11,9 @@ export default function NavigationSecondary() {
                 <li className="nav-item">
                     <Link className="btn btn-sm btn-outline-warning" href="/new/return"><i className="fas fa-undo me-1"></i>Return</Link>
                 </li>
+                <li className="nav-item">
+                    <Link className="btn btn-sm btn-outline-info" href="/new/sale"><i className="fas fa-exchange-alt me-1"></i>Exchange</Link>
+                </li>
             </ul>
         </nav>
     );

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useUtil } from '@rutba/pos-shared/context/UtilContext';
 
-const CheckoutModal = ({ isOpen, onClose, total, onComplete, loading }) => {
+const CheckoutModal = ({ isOpen, onClose, total, exchangeReturnCredit = 0, onComplete, loading }) => {
     const { currency } = useUtil();
     const [payments, setPayments] = useState([]);
     function validOrDefult(value, def) {
@@ -14,9 +14,26 @@ const CheckoutModal = ({ isOpen, onClose, total, onComplete, loading }) => {
     }
     useEffect(() => {
         if (isOpen) {
-            setPayments([
-                { id: Date.now(), payment_method: 'Cash', amount: '', transaction_no: '' }
-            ]);
+            const initial = [];
+            if (exchangeReturnCredit > 0) {
+                initial.push({
+                    id: Date.now() - 1,
+                    payment_method: 'Exchange Return',
+                    amount: exchangeReturnCredit.toFixed(2),
+                    transaction_no: '',
+                    _locked: true
+                });
+            }
+            const remaining = Math.max(total - exchangeReturnCredit, 0);
+            if (remaining > 0 || initial.length === 0) {
+                initial.push({
+                    id: Date.now(),
+                    payment_method: 'Cash',
+                    amount: remaining > 0 ? '' : '0',
+                    transaction_no: ''
+                });
+            }
+            setPayments(initial);
         }
     }, [isOpen]);
 
@@ -114,24 +131,27 @@ const CheckoutModal = ({ isOpen, onClose, total, onComplete, loading }) => {
                         </div>
 
                         {payments.map((payment, index) => (
-                            <div key={payment.id} className="border rounded p-2 mb-2">
+                            <div key={payment.id} className={`border rounded p-2 mb-2 ${payment._locked ? 'bg-light' : ''}`}>
                                 <div className="d-flex gap-2 mb-2">
                                     <select
                                         className="form-select"
                                         value={payment.payment_method}
                                         onChange={(e) => handleMethodChange(index, e.target.value)}
-                                        disabled={loading}
+                                        disabled={loading || payment._locked}
                                     >
                                         <option value="Cash">Cash</option>
                                         <option value="Card">Card</option>
                                         <option value="Bank">Bank</option>
                                         <option value="Mobile Wallet">Mobile Wallet</option>
+                                        {payment.payment_method === 'Exchange Return' && (
+                                            <option value="Exchange Return">Exchange Return</option>
+                                        )}
                                     </select>
                                     <button
                                         type="button"
                                         className="btn btn-outline-danger"
                                         onClick={() => handleRemovePayment(index)}
-                                        disabled={loading || payments.length === 1}
+                                        disabled={loading || payments.length === 1 || payment._locked}
                                     >
                                         <i className="fas fa-times me-1"></i>Remove
                                     </button>
@@ -143,19 +163,21 @@ const CheckoutModal = ({ isOpen, onClose, total, onComplete, loading }) => {
                                         value={payment.amount}
                                         onChange={(e) => handleAmountChange(index, e.target.value)}
                                         placeholder="0.00"
-                                        autoFocus={index === 0}
-                                        disabled={loading}
+                                        autoFocus={index === 0 && !payment._locked}
+                                        disabled={loading || payment._locked}
                                     />
-                                    <button
-                                        className="btn btn-secondary"
-                                        type="button"
-                                        onClick={() => handleExactAmount(index)}
-                                        disabled={loading}
-                                    >
-                                        <i className="fas fa-equals me-1"></i>Exact
-                                    </button>
+                                    {!payment._locked && (
+                                        <button
+                                            className="btn btn-secondary"
+                                            type="button"
+                                            onClick={() => handleExactAmount(index)}
+                                            disabled={loading}
+                                        >
+                                            <i className="fas fa-equals me-1"></i>Exact
+                                        </button>
+                                    )}
                                 </div>
-                                {payment.payment_method !== 'Cash' && (
+                                {payment.payment_method !== 'Cash' && payment.payment_method !== 'Exchange Return' && (
                                     <input
                                         type="text"
                                         className="form-control"
