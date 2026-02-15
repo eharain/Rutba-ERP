@@ -8,18 +8,18 @@ import Link from "next/link";
 
 export default function ContactDetail() {
     const router = useRouter();
-    const { id } = router.query;
+    const { documentId } = router.query;
     const { jwt } = useAuth();
     const [contact, setContact] = useState(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        if (!jwt || !id) return;
-        authApi.get(`/crm-contacts/${id}?populate=*`, {}, jwt)
+        if (!jwt || !documentId) return;
+        authApi.get(`/crm-contacts/${documentId}?populate=*`, {}, jwt)
             .then((res) => setContact(res.data || res))
             .catch((err) => console.error("Failed to load contact", err))
             .finally(() => setLoading(false));
-    }, [jwt, id]);
+    }, [jwt, documentId]);
 
     return (
         <ProtectedRoute>

@@ -8,18 +8,18 @@ import Link from "next/link";
 
 export default function LeadDetail() {
     const router = useRouter();
-    const { id } = router.query;
+    const { documentId } = router.query;
     const { jwt } = useAuth();
     const [lead, setLead] = useState(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        if (!jwt || !id) return;
-        authApi.get(`/crm-leads/${id}?populate=*`, {}, jwt)
+        if (!jwt || !documentId) return;
+        authApi.get(`/crm-leads/${documentId}?populate=*`, {}, jwt)
             .then((res) => setLead(res.data || res))
             .catch((err) => console.error("Failed to load lead", err))
             .finally(() => setLoading(false));
-    }, [jwt, id]);
+    }, [jwt, documentId]);
 
     return (
         <ProtectedRoute>

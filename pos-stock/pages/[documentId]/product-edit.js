@@ -11,7 +11,7 @@ import { MultiSelect } from 'primereact/multiselect';
 
 export default function ProductEditPage() {
     const router = useRouter();
-    const { id: documentId } = router.query;
+    const { documentId } = router.query;
     const { currency } = useUtil();
 
     const [productId, setProductId] = useState(null);
@@ -198,6 +198,9 @@ export default function ProductEditPage() {
             if (response.data?.documentId) {
                 setSuccess('Product saved successfully!');
                 setDirty(false);
+                if (documentId === 'new') {
+                    setTimeout(() => router.push(`/${response.data.documentId}/product-edit`), 1500);
+                }
                 return true;
             } else {
                 setError('Failed to save product');

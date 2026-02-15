@@ -8,18 +8,18 @@ import Link from "next/link";
 
 export default function OrderDetail() {
     const router = useRouter();
-    const { id } = router.query;
+    const { documentId } = router.query;
     const { jwt } = useAuth();
     const [order, setOrder] = useState(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        if (!jwt || !id) return;
-        authApi.get(`/web-orders/${id}?populate=*`, {}, jwt)
+        if (!jwt || !documentId) return;
+        authApi.get(`/web-orders/${documentId}?populate=*`, {}, jwt)
             .then((res) => setOrder(res.data || res))
             .catch((err) => console.error("Failed to load order", err))
             .finally(() => setLoading(false));
-    }, [jwt, id]);
+    }, [jwt, documentId]);
 
     return (
         <ProtectedRoute>

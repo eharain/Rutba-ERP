@@ -10,7 +10,7 @@ import StrapiImage from '@rutba/pos-shared/components/StrapiImage';
 
 export default function ProductRelationsPage() {
     const router = useRouter();
-    const { id: documentId } = router.query;
+    const { documentId } = router.query;
     const { currency } = useUtil();
 
     const [product, setProduct] = useState(null);

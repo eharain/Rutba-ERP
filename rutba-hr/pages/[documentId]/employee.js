@@ -8,18 +8,18 @@ import Link from "next/link";
 
 export default function EmployeeDetail() {
     const router = useRouter();
-    const { id } = router.query;
+    const { documentId } = router.query;
     const { jwt } = useAuth();
     const [employee, setEmployee] = useState(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        if (!jwt || !id) return;
-        authApi.get(`/hr-employees/${id}?populate=*`, {}, jwt)
+        if (!jwt || !documentId) return;
+        authApi.get(`/hr-employees/${documentId}?populate=*`, {}, jwt)
             .then((res) => setEmployee(res.data || res))
             .catch((err) => console.error("Failed to load employee", err))
             .finally(() => setLoading(false));
-    }, [jwt, id]);
+    }, [jwt, documentId]);
 
     return (
         <ProtectedRoute>

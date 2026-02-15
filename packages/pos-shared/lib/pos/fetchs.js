@@ -41,7 +41,7 @@ export async function fetchSaleByIdOrInvoice(id) {
             $or: [{ invoice_no: id }, { id }, { documentId: id }]
         },
         populate: {
-          payments:true,  customer: true, items: { populate: { "product": true, items: { populate: ['product'] } },} }
+          payments:true,  customer: true, items: { populate: { "product": true, items: { populate: ['product'] } },}, sale_returns: true }
     });
     let data = res?.data ?? res;
     return Array.isArray(data) ? data[0] : data;

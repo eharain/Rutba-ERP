@@ -9,7 +9,7 @@ export default function NavigationSecondary() {
                     <Link className="btn btn-sm btn-outline-success" href="/new/sale"><i className="fas fa-plus me-1"></i>Sale</Link>
                 </li>
                 <li className="nav-item">
-                    <Link className="btn btn-sm btn-outline-warning" href="/new/return"><i className="fas fa-undo me-1"></i>Return</Link>
+                    <Link className="btn btn-sm btn-outline-warning" href="/new/sale-return"><i className="fas fa-undo me-1"></i>Return</Link>
                 </li>
                 <li className="nav-item">
                     <Link className="btn btn-sm btn-outline-info" href="/new/sale"><i className="fas fa-exchange-alt me-1"></i>Exchange</Link>

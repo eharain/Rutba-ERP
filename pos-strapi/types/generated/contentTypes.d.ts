@@ -1908,7 +1908,15 @@ export interface ApiSaleSale extends Struct.CollectionTypeSchema {
       Schema.Attribute.DefaultTo<'Unpaid'>;
     payments: Schema.Attribute.Relation<'oneToMany', 'api::payment.payment'>;
     publishedAt: Schema.Attribute.DateTime;
+    return_status: Schema.Attribute.Enumeration<
+      ['None', 'Returned', 'PartiallyReturned']
+    > &
+      Schema.Attribute.DefaultTo<'None'>;
     sale_date: Schema.Attribute.DateTime & Schema.Attribute.Required;
+    sale_returns: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::sale-return.sale-return'
+    >;
     subtotal: Schema.Attribute.Decimal;
     tax: Schema.Attribute.Decimal;
     total: Schema.Attribute.Decimal & Schema.Attribute.Required;
