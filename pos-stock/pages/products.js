@@ -52,16 +52,14 @@ export default function Products() {
     const sortString = `${sortField}:${sortOrder}`;
 
     const handleSort = useCallback((field) => {
-        setSortField((prev) => {
-            if (prev === field) {
-                setSortOrder((o) => (o === 'asc' ? 'desc' : 'asc'));
-            } else {
-                setSortOrder('asc');
-            }
-            return field;
-        });
+        if (sortField === field) {
+            setSortOrder((o) => (o === 'asc' ? 'desc' : 'asc'));
+        } else {
+            setSortField(field);
+            setSortOrder('asc');
+        }
         setPage(0);
-    }, []);
+    }, [sortField]);
     async function loadProductsData() {
         setLoading(true);
         // Fetch purchases for reports
