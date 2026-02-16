@@ -15,7 +15,7 @@ import { MultiSelect } from 'primereact/multiselect';
 
 export default function EditProduct() {
     const router = useRouter();
-    const { id: documentId } = router.query;
+    const {  documentId } = router.query;
     const { currency } = useUtil();
 
     const [productId, setProductId] = useState([]);

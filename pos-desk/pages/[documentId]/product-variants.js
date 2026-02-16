@@ -7,7 +7,7 @@ import { saveProduct } from '../../lib/pos/save';
 
 export default function ProductVariantsPage() {
     const router = useRouter();
-    const { id: documentId } = router.query;
+    const {  documentId } = router.query;
 
     const [selectedProduct, setSelectedProduct] = useState(null);
     const [variants, setVariants] = useState([]);

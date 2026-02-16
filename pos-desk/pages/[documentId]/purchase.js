@@ -10,7 +10,7 @@ import { useUtil } from "../../context/UtilContext";
 
 export default function PurchasePage() {
     const router = useRouter();
-    const { id } = router.query;
+    const { documentId } = router.query;
     const [purchase, setPurchase] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -20,13 +20,13 @@ export default function PurchasePage() {
     const {currency} = useUtil();
 
     useEffect(() => {
-        if (!id) return;
+        if (!documentId) return;
 
         const loadData = async () => {
             setLoading(true);
             try {
                 const [purchaseData] = await Promise.all([
-                    fetchPurchaseByIdDocumentIdOrPO(id),
+                    fetchPurchaseByIdDocumentIdOrPO(documentId),
                 ]);
 
                 setPurchase(purchaseData);
@@ -47,7 +47,7 @@ export default function PurchasePage() {
         };
 
         loadData();
-    }, [id]);
+    }, [documentId]);
 
     const handleEdit = (documentId) => {
         setEditingDocumentId(documentId);

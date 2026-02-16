@@ -12,20 +12,20 @@ import { useUtil } from '../../context/UtilContext';
 
 export default function PurchaseViewPage() {
     const router = useRouter();
-    const { id } = router.query;
+    const { documentId } = router.query;
 
     const [purchase, setPurchase] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const {currency} = useUtil();
     useEffect(() => {
-        if (id) loadPurchaseData();
-    }, [id]);
+        if (documentId) loadPurchaseData();
+    }, [documentId]);
 
     const loadPurchaseData = async () => {
         setLoading(true);
         try {
-            const purchaseData = await fetchPurchaseByIdDocumentIdOrPO(id);
+            const purchaseData = await fetchPurchaseByIdDocumentIdOrPO(documentId);
             if (!purchaseData) {
                 setError('Purchase not found');
             } else {
@@ -54,11 +54,11 @@ export default function PurchaseViewPage() {
     };
 
     const handleEdit = () => {
-        router.push(`/${id}/purchase`);
+        router.push(`/${documentId}/purchase`);
     };
 
     const handleReceive = () => {
-        router.push(`/${id}/receive`);
+        router.push(`/${documentId}/receive`);
     };
 
     const handleBack = () => {
