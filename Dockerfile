@@ -32,6 +32,7 @@ COPY package.json package-lock.json ./
 
 # Copy every workspace's package.json so npm can resolve them
 COPY packages/pos-shared/package.json  packages/pos-shared/
+COPY pos-strapi/package.json           pos-strapi/
 COPY pos-auth/package.json             pos-auth/
 COPY pos-stock/package.json            pos-stock/
 COPY pos-sale/package.json             pos-sale/
@@ -60,13 +61,15 @@ RUN npm run build
 
 FROM base AS strapi
 WORKDIR /app
-COPY --from=strapi-build /app/pos-strapi ./pos-strapi
-COPY --from=deps /app/node_modules      ./node_modules
+COPY --from=strapi-build /app/pos-strapi   ./pos-strapi
+COPY --from=deps /app/node_modules         ./node_modules
+# Strapi may import shared code at runtime; copy the shared package
+COPY --from=strapi-build /app/packages     ./packages
 
 ENV NODE_ENV=production
 EXPOSE 1337
 WORKDIR /app/pos-strapi
-CMD ["npm", "run", "start"]
+CMD ["npx", "strapi", "start"]
 
 # ============================================================
 #  NEXT.JS APP BUILDER  (shared build stage)
@@ -79,17 +82,34 @@ CMD ["npm", "run", "start"]
 # accounts, payroll) follow the exact same pattern.
 # ============================================================
 
-# --- Helper: set output: 'standalone' at build time via env ---
-# Next.js 15 reads NEXT_PRIVATE_STANDALONE or next.config.js
-# We inject it via the build-time env so we don't have to
-# patch every next.config.js.
+# --- NEXT_PUBLIC_* vars are inlined at build time by Next.js ---
+# They MUST be available as ENV during `next build`.  We
+# declare them as ARGs (no defaults) so every value is
+# sourced from the .env file via docker-compose `build.args`.
 
 # ----------------------------------------------------------
 #  pos-auth  (port 3003)
 # ----------------------------------------------------------
 FROM source AS auth-build
 WORKDIR /app
-ENV NEXT_PRIVATE_STANDALONE=true
+ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_AUTH_URL
+ARG NEXT_PUBLIC_STOCK_URL
+ARG NEXT_PUBLIC_SALE_URL
+ARG NEXT_PUBLIC_WEB_USER_URL
+ARG NEXT_PUBLIC_CRM_URL
+ARG NEXT_PUBLIC_HR_URL
+ARG NEXT_PUBLIC_ACCOUNTS_URL
+ARG NEXT_PUBLIC_PAYROLL_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
+    NEXT_PUBLIC_AUTH_URL=$NEXT_PUBLIC_AUTH_URL \
+    NEXT_PUBLIC_STOCK_URL=$NEXT_PUBLIC_STOCK_URL \
+    NEXT_PUBLIC_SALE_URL=$NEXT_PUBLIC_SALE_URL \
+    NEXT_PUBLIC_WEB_USER_URL=$NEXT_PUBLIC_WEB_USER_URL \
+    NEXT_PUBLIC_CRM_URL=$NEXT_PUBLIC_CRM_URL \
+    NEXT_PUBLIC_HR_URL=$NEXT_PUBLIC_HR_URL \
+    NEXT_PUBLIC_ACCOUNTS_URL=$NEXT_PUBLIC_ACCOUNTS_URL \
+    NEXT_PUBLIC_PAYROLL_URL=$NEXT_PUBLIC_PAYROLL_URL
 RUN mkdir -p pos-auth/public && npm run build --workspace=pos-auth
 
 FROM base AS auth
@@ -106,7 +126,22 @@ CMD ["node", "pos-auth/server.js"]
 # ----------------------------------------------------------
 FROM source AS stock-build
 WORKDIR /app
-ENV NEXT_PRIVATE_STANDALONE=true
+ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_AUTH_URL
+ARG NEXT_PUBLIC_STOCK_URL
+ARG NEXT_PUBLIC_SALE_URL
+ARG NEXT_PUBLIC_CRM_URL
+ARG NEXT_PUBLIC_HR_URL
+ARG NEXT_PUBLIC_ACCOUNTS_URL
+ARG NEXT_PUBLIC_PAYROLL_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
+    NEXT_PUBLIC_AUTH_URL=$NEXT_PUBLIC_AUTH_URL \
+    NEXT_PUBLIC_STOCK_URL=$NEXT_PUBLIC_STOCK_URL \
+    NEXT_PUBLIC_SALE_URL=$NEXT_PUBLIC_SALE_URL \
+    NEXT_PUBLIC_CRM_URL=$NEXT_PUBLIC_CRM_URL \
+    NEXT_PUBLIC_HR_URL=$NEXT_PUBLIC_HR_URL \
+    NEXT_PUBLIC_ACCOUNTS_URL=$NEXT_PUBLIC_ACCOUNTS_URL \
+    NEXT_PUBLIC_PAYROLL_URL=$NEXT_PUBLIC_PAYROLL_URL
 RUN mkdir -p pos-stock/public && npm run build --workspace=pos-stock
 
 FROM base AS stock
@@ -123,7 +158,22 @@ CMD ["node", "pos-stock/server.js"]
 # ----------------------------------------------------------
 FROM source AS sale-build
 WORKDIR /app
-ENV NEXT_PRIVATE_STANDALONE=true
+ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_AUTH_URL
+ARG NEXT_PUBLIC_STOCK_URL
+ARG NEXT_PUBLIC_SALE_URL
+ARG NEXT_PUBLIC_CRM_URL
+ARG NEXT_PUBLIC_HR_URL
+ARG NEXT_PUBLIC_ACCOUNTS_URL
+ARG NEXT_PUBLIC_PAYROLL_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
+    NEXT_PUBLIC_AUTH_URL=$NEXT_PUBLIC_AUTH_URL \
+    NEXT_PUBLIC_STOCK_URL=$NEXT_PUBLIC_STOCK_URL \
+    NEXT_PUBLIC_SALE_URL=$NEXT_PUBLIC_SALE_URL \
+    NEXT_PUBLIC_CRM_URL=$NEXT_PUBLIC_CRM_URL \
+    NEXT_PUBLIC_HR_URL=$NEXT_PUBLIC_HR_URL \
+    NEXT_PUBLIC_ACCOUNTS_URL=$NEXT_PUBLIC_ACCOUNTS_URL \
+    NEXT_PUBLIC_PAYROLL_URL=$NEXT_PUBLIC_PAYROLL_URL
 RUN mkdir -p pos-sale/public && npm run build --workspace=pos-sale
 
 FROM base AS sale
@@ -140,7 +190,24 @@ CMD ["node", "pos-sale/server.js"]
 # ----------------------------------------------------------
 FROM source AS web-build
 WORKDIR /app
-ENV NEXT_PRIVATE_STANDALONE=true
+ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_IMAGE_URL
+ARG NEXT_PUBLIC_IMAGE_HOST_PROTOCOL
+ARG NEXT_PUBLIC_IMAGE_HOST_NAME
+ARG NEXT_PUBLIC_IMAGE_HOST_PORT
+ARG NEXTAUTH_SECRET
+ARG NEXTAUTH_URL
+ARG GOOGLE_CLIENT_KEY
+ARG GOOGLE_SECRET_KEY
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
+    NEXT_PUBLIC_IMAGE_URL=$NEXT_PUBLIC_IMAGE_URL \
+    NEXT_PUBLIC_IMAGE_HOST_PROTOCOL=$NEXT_PUBLIC_IMAGE_HOST_PROTOCOL \
+    NEXT_PUBLIC_IMAGE_HOST_NAME=$NEXT_PUBLIC_IMAGE_HOST_NAME \
+    NEXT_PUBLIC_IMAGE_HOST_PORT=$NEXT_PUBLIC_IMAGE_HOST_PORT \
+    NEXTAUTH_SECRET=$NEXTAUTH_SECRET \
+    NEXTAUTH_URL=$NEXTAUTH_URL \
+    GOOGLE_CLIENT_KEY=$GOOGLE_CLIENT_KEY \
+    GOOGLE_SECRET_KEY=$GOOGLE_SECRET_KEY
 RUN mkdir -p rutba-web/public && npm run build --workspace=rutba-web
 
 FROM base AS web
@@ -157,7 +224,12 @@ CMD ["node", "rutba-web/server.js"]
 # ----------------------------------------------------------
 FROM source AS web-user-build
 WORKDIR /app
-ENV NEXT_PRIVATE_STANDALONE=true
+ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_AUTH_URL
+ARG NEXT_PUBLIC_WEB_USER_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
+    NEXT_PUBLIC_AUTH_URL=$NEXT_PUBLIC_AUTH_URL \
+    NEXT_PUBLIC_WEB_USER_URL=$NEXT_PUBLIC_WEB_USER_URL
 RUN mkdir -p rutba-web-user/public && npm run build --workspace=rutba-web-user
 
 FROM base AS web-user
@@ -174,7 +246,12 @@ CMD ["node", "rutba-web-user/server.js"]
 # ----------------------------------------------------------
 FROM source AS crm-build
 WORKDIR /app
-ENV NEXT_PRIVATE_STANDALONE=true
+ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_AUTH_URL
+ARG NEXT_PUBLIC_CRM_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
+    NEXT_PUBLIC_AUTH_URL=$NEXT_PUBLIC_AUTH_URL \
+    NEXT_PUBLIC_CRM_URL=$NEXT_PUBLIC_CRM_URL
 RUN mkdir -p rutba-crm/public && npm run build --workspace=rutba-crm
 
 FROM base AS crm
@@ -191,7 +268,12 @@ CMD ["node", "rutba-crm/server.js"]
 # ----------------------------------------------------------
 FROM source AS hr-build
 WORKDIR /app
-ENV NEXT_PRIVATE_STANDALONE=true
+ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_AUTH_URL
+ARG NEXT_PUBLIC_HR_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
+    NEXT_PUBLIC_AUTH_URL=$NEXT_PUBLIC_AUTH_URL \
+    NEXT_PUBLIC_HR_URL=$NEXT_PUBLIC_HR_URL
 RUN mkdir -p rutba-hr/public && npm run build --workspace=rutba-hr
 
 FROM base AS hr
@@ -208,7 +290,12 @@ CMD ["node", "rutba-hr/server.js"]
 # ----------------------------------------------------------
 FROM source AS accounts-build
 WORKDIR /app
-ENV NEXT_PRIVATE_STANDALONE=true
+ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_AUTH_URL
+ARG NEXT_PUBLIC_ACCOUNTS_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
+    NEXT_PUBLIC_AUTH_URL=$NEXT_PUBLIC_AUTH_URL \
+    NEXT_PUBLIC_ACCOUNTS_URL=$NEXT_PUBLIC_ACCOUNTS_URL
 RUN mkdir -p rutba-accounts/public && npm run build --workspace=rutba-accounts
 
 FROM base AS accounts
@@ -225,7 +312,12 @@ CMD ["node", "rutba-accounts/server.js"]
 # ----------------------------------------------------------
 FROM source AS payroll-build
 WORKDIR /app
-ENV NEXT_PRIVATE_STANDALONE=true
+ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_AUTH_URL
+ARG NEXT_PUBLIC_PAYROLL_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
+    NEXT_PUBLIC_AUTH_URL=$NEXT_PUBLIC_AUTH_URL \
+    NEXT_PUBLIC_PAYROLL_URL=$NEXT_PUBLIC_PAYROLL_URL
 RUN mkdir -p rutba-payroll/public && npm run build --workspace=rutba-payroll
 
 FROM base AS payroll

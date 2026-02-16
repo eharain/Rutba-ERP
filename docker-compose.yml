@@ -23,16 +23,16 @@ services:
     image: mysql:8.0
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rutba_root_pass}
-      MYSQL_DATABASE: ${DATABASE_NAME:-rutba_pos}
-      MYSQL_USER: ${DATABASE_USERNAME:-rutba_user}
-      MYSQL_PASSWORD: ${DATABASE_PASSWORD:-rutba_pass}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DATABASE_NAME}
+      MYSQL_USER: ${DATABASE_USERNAME}
+      MYSQL_PASSWORD: ${DATABASE_PASSWORD}
     ports:
       - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-rutba_root_pass}"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -56,9 +56,9 @@ services:
       DATABASE_CLIENT: mysql
       DATABASE_HOST: mysql
       DATABASE_PORT: 3306
-      DATABASE_NAME: ${DATABASE_NAME:-rutba_pos}
-      DATABASE_USERNAME: ${DATABASE_USERNAME:-rutba_user}
-      DATABASE_PASSWORD: ${DATABASE_PASSWORD:-rutba_pass}
+      DATABASE_NAME: ${DATABASE_NAME}
+      DATABASE_USERNAME: ${DATABASE_USERNAME}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
       DATABASE_SSL: "false"
       APP_KEYS: ${APP_KEYS}
       API_TOKEN_SALT: ${API_TOKEN_SALT}
@@ -77,6 +77,16 @@ services:
     build:
       context: .
       target: auth
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        NEXT_PUBLIC_AUTH_URL: ${NEXT_PUBLIC_AUTH_URL}
+        NEXT_PUBLIC_STOCK_URL: ${NEXT_PUBLIC_STOCK_URL}
+        NEXT_PUBLIC_SALE_URL: ${NEXT_PUBLIC_SALE_URL}
+        NEXT_PUBLIC_WEB_USER_URL: ${NEXT_PUBLIC_WEB_USER_URL}
+        NEXT_PUBLIC_CRM_URL: ${NEXT_PUBLIC_CRM_URL}
+        NEXT_PUBLIC_HR_URL: ${NEXT_PUBLIC_HR_URL}
+        NEXT_PUBLIC_ACCOUNTS_URL: ${NEXT_PUBLIC_ACCOUNTS_URL}
+        NEXT_PUBLIC_PAYROLL_URL: ${NEXT_PUBLIC_PAYROLL_URL}
     restart: unless-stopped
     depends_on:
       - strapi
@@ -85,15 +95,6 @@ services:
     environment:
       PORT: 3003
       HOSTNAME: 0.0.0.0
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:1337/api}
-      NEXT_PUBLIC_AUTH_URL: ${NEXT_PUBLIC_AUTH_URL:-http://localhost:3003}
-      NEXT_PUBLIC_STOCK_URL: ${NEXT_PUBLIC_STOCK_URL:-http://localhost:3001}
-      NEXT_PUBLIC_SALE_URL: ${NEXT_PUBLIC_SALE_URL:-http://localhost:3002}
-      NEXT_PUBLIC_WEB_USER_URL: ${NEXT_PUBLIC_WEB_USER_URL:-http://localhost:3004}
-      NEXT_PUBLIC_CRM_URL: ${NEXT_PUBLIC_CRM_URL:-http://localhost:3005}
-      NEXT_PUBLIC_HR_URL: ${NEXT_PUBLIC_HR_URL:-http://localhost:3006}
-      NEXT_PUBLIC_ACCOUNTS_URL: ${NEXT_PUBLIC_ACCOUNTS_URL:-http://localhost:3007}
-      NEXT_PUBLIC_PAYROLL_URL: ${NEXT_PUBLIC_PAYROLL_URL:-http://localhost:3008}
 
   # --------------------------------------------------------
   # Stock Management  (port 3001)
@@ -102,6 +103,15 @@ services:
     build:
       context: .
       target: stock
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        NEXT_PUBLIC_AUTH_URL: ${NEXT_PUBLIC_AUTH_URL}
+        NEXT_PUBLIC_STOCK_URL: ${NEXT_PUBLIC_STOCK_URL}
+        NEXT_PUBLIC_SALE_URL: ${NEXT_PUBLIC_SALE_URL}
+        NEXT_PUBLIC_CRM_URL: ${NEXT_PUBLIC_CRM_URL}
+        NEXT_PUBLIC_HR_URL: ${NEXT_PUBLIC_HR_URL}
+        NEXT_PUBLIC_ACCOUNTS_URL: ${NEXT_PUBLIC_ACCOUNTS_URL}
+        NEXT_PUBLIC_PAYROLL_URL: ${NEXT_PUBLIC_PAYROLL_URL}
     restart: unless-stopped
     depends_on:
       - strapi
@@ -110,14 +120,6 @@ services:
     environment:
       PORT: 3001
       HOSTNAME: 0.0.0.0
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:1337/api}
-      NEXT_PUBLIC_AUTH_URL: ${NEXT_PUBLIC_AUTH_URL:-http://localhost:3003}
-      NEXT_PUBLIC_STOCK_URL: ${NEXT_PUBLIC_STOCK_URL:-http://localhost:3001}
-      NEXT_PUBLIC_SALE_URL: ${NEXT_PUBLIC_SALE_URL:-http://localhost:3002}
-      NEXT_PUBLIC_CRM_URL: ${NEXT_PUBLIC_CRM_URL:-http://localhost:3005}
-      NEXT_PUBLIC_HR_URL: ${NEXT_PUBLIC_HR_URL:-http://localhost:3006}
-      NEXT_PUBLIC_ACCOUNTS_URL: ${NEXT_PUBLIC_ACCOUNTS_URL:-http://localhost:3007}
-      NEXT_PUBLIC_PAYROLL_URL: ${NEXT_PUBLIC_PAYROLL_URL:-http://localhost:3008}
 
   # --------------------------------------------------------
   # Point of Sale  (port 3002)
@@ -126,6 +128,15 @@ services:
     build:
       context: .
       target: sale
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        NEXT_PUBLIC_AUTH_URL: ${NEXT_PUBLIC_AUTH_URL}
+        NEXT_PUBLIC_STOCK_URL: ${NEXT_PUBLIC_STOCK_URL}
+        NEXT_PUBLIC_SALE_URL: ${NEXT_PUBLIC_SALE_URL}
+        NEXT_PUBLIC_CRM_URL: ${NEXT_PUBLIC_CRM_URL}
+        NEXT_PUBLIC_HR_URL: ${NEXT_PUBLIC_HR_URL}
+        NEXT_PUBLIC_ACCOUNTS_URL: ${NEXT_PUBLIC_ACCOUNTS_URL}
+        NEXT_PUBLIC_PAYROLL_URL: ${NEXT_PUBLIC_PAYROLL_URL}
     restart: unless-stopped
     depends_on:
       - strapi
@@ -134,14 +145,6 @@ services:
     environment:
       PORT: 3002
       HOSTNAME: 0.0.0.0
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:1337/api}
-      NEXT_PUBLIC_AUTH_URL: ${NEXT_PUBLIC_AUTH_URL:-http://localhost:3003}
-      NEXT_PUBLIC_STOCK_URL: ${NEXT_PUBLIC_STOCK_URL:-http://localhost:3001}
-      NEXT_PUBLIC_SALE_URL: ${NEXT_PUBLIC_SALE_URL:-http://localhost:3002}
-      NEXT_PUBLIC_CRM_URL: ${NEXT_PUBLIC_CRM_URL:-http://localhost:3005}
-      NEXT_PUBLIC_HR_URL: ${NEXT_PUBLIC_HR_URL:-http://localhost:3006}
-      NEXT_PUBLIC_ACCOUNTS_URL: ${NEXT_PUBLIC_ACCOUNTS_URL:-http://localhost:3007}
-      NEXT_PUBLIC_PAYROLL_URL: ${NEXT_PUBLIC_PAYROLL_URL:-http://localhost:3008}
 
   # --------------------------------------------------------
   # Public Website  (port 3000)
@@ -150,6 +153,16 @@ services:
     build:
       context: .
       target: web
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        NEXT_PUBLIC_IMAGE_URL: ${NEXT_PUBLIC_IMAGE_URL}
+        NEXT_PUBLIC_IMAGE_HOST_PROTOCOL: ${NEXT_PUBLIC_IMAGE_HOST_PROTOCOL}
+        NEXT_PUBLIC_IMAGE_HOST_NAME: ${NEXT_PUBLIC_IMAGE_HOST_NAME}
+        NEXT_PUBLIC_IMAGE_HOST_PORT: ${NEXT_PUBLIC_IMAGE_HOST_PORT}
+        NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+        NEXTAUTH_URL: ${NEXTAUTH_URL}
+        GOOGLE_CLIENT_KEY: ${GOOGLE_CLIENT_KEY}
+        GOOGLE_SECRET_KEY: ${GOOGLE_SECRET_KEY}
     restart: unless-stopped
     depends_on:
       - strapi
@@ -158,15 +171,10 @@ services:
     environment:
       PORT: 3000
       HOSTNAME: 0.0.0.0
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:1337/api/}
-      NEXT_PUBLIC_IMAGE_URL: ${NEXT_PUBLIC_IMAGE_URL:-http://localhost:1337}
-      NEXT_PUBLIC_IMAGE_HOST_PROTOCOL: ${NEXT_PUBLIC_IMAGE_HOST_PROTOCOL:-http}
-      NEXT_PUBLIC_IMAGE_HOST_NAME: ${NEXT_PUBLIC_IMAGE_HOST_NAME:-localhost}
-      NEXT_PUBLIC_IMAGE_HOST_PORT: ${NEXT_PUBLIC_IMAGE_HOST_PORT:-1337}
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
-      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
-      GOOGLE_CLIENT_KEY: ${GOOGLE_CLIENT_KEY:-}
-      GOOGLE_SECRET_KEY: ${GOOGLE_SECRET_KEY:-}
+      NEXTAUTH_URL: ${NEXTAUTH_URL}
+      GOOGLE_CLIENT_KEY: ${GOOGLE_CLIENT_KEY}
+      GOOGLE_SECRET_KEY: ${GOOGLE_SECRET_KEY}
 
   # --------------------------------------------------------
   # My Orders / Web User  (port 3004)
@@ -175,6 +183,10 @@ services:
     build:
       context: .
       target: web-user
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        NEXT_PUBLIC_AUTH_URL: ${NEXT_PUBLIC_AUTH_URL}
+        NEXT_PUBLIC_WEB_USER_URL: ${NEXT_PUBLIC_WEB_USER_URL}
     restart: unless-stopped
     depends_on:
       - strapi
@@ -183,9 +195,6 @@ services:
     environment:
       PORT: 3004
       HOSTNAME: 0.0.0.0
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:1337/api}
-      NEXT_PUBLIC_AUTH_URL: ${NEXT_PUBLIC_AUTH_URL:-http://localhost:3003}
-      NEXT_PUBLIC_WEB_USER_URL: ${NEXT_PUBLIC_WEB_USER_URL:-http://localhost:3004}
 
   # --------------------------------------------------------
   # CRM  (port 3005)
@@ -194,6 +203,10 @@ services:
     build:
       context: .
       target: crm
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        NEXT_PUBLIC_AUTH_URL: ${NEXT_PUBLIC_AUTH_URL}
+        NEXT_PUBLIC_CRM_URL: ${NEXT_PUBLIC_CRM_URL}
     restart: unless-stopped
     depends_on:
       - strapi
@@ -202,9 +215,6 @@ services:
     environment:
       PORT: 3005
       HOSTNAME: 0.0.0.0
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:1337/api}
-      NEXT_PUBLIC_AUTH_URL: ${NEXT_PUBLIC_AUTH_URL:-http://localhost:3003}
-      NEXT_PUBLIC_CRM_URL: ${NEXT_PUBLIC_CRM_URL:-http://localhost:3005}
 
   # --------------------------------------------------------
   # HR  (port 3006)
@@ -213,6 +223,10 @@ services:
     build:
       context: .
       target: hr
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        NEXT_PUBLIC_AUTH_URL: ${NEXT_PUBLIC_AUTH_URL}
+        NEXT_PUBLIC_HR_URL: ${NEXT_PUBLIC_HR_URL}
     restart: unless-stopped
     depends_on:
       - strapi
@@ -221,9 +235,6 @@ services:
     environment:
       PORT: 3006
       HOSTNAME: 0.0.0.0
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:1337/api}
-      NEXT_PUBLIC_AUTH_URL: ${NEXT_PUBLIC_AUTH_URL:-http://localhost:3003}
-      NEXT_PUBLIC_HR_URL: ${NEXT_PUBLIC_HR_URL:-http://localhost:3006}
 
   # --------------------------------------------------------
   # Accounts  (port 3007)
@@ -232,6 +243,10 @@ services:
     build:
       context: .
       target: accounts
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        NEXT_PUBLIC_AUTH_URL: ${NEXT_PUBLIC_AUTH_URL}
+        NEXT_PUBLIC_ACCOUNTS_URL: ${NEXT_PUBLIC_ACCOUNTS_URL}
     restart: unless-stopped
     depends_on:
       - strapi
@@ -240,9 +255,6 @@ services:
     environment:
       PORT: 3007
       HOSTNAME: 0.0.0.0
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:1337/api}
-      NEXT_PUBLIC_AUTH_URL: ${NEXT_PUBLIC_AUTH_URL:-http://localhost:3003}
-      NEXT_PUBLIC_ACCOUNTS_URL: ${NEXT_PUBLIC_ACCOUNTS_URL:-http://localhost:3007}
 
   # --------------------------------------------------------
   # Payroll  (port 3008)
@@ -251,6 +263,10 @@ services:
     build:
       context: .
       target: payroll
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        NEXT_PUBLIC_AUTH_URL: ${NEXT_PUBLIC_AUTH_URL}
+        NEXT_PUBLIC_PAYROLL_URL: ${NEXT_PUBLIC_PAYROLL_URL}
     restart: unless-stopped
     depends_on:
       - strapi
@@ -259,9 +275,6 @@ services:
     environment:
       PORT: 3008
       HOSTNAME: 0.0.0.0
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:1337/api}
-      NEXT_PUBLIC_AUTH_URL: ${NEXT_PUBLIC_AUTH_URL:-http://localhost:3003}
-      NEXT_PUBLIC_PAYROLL_URL: ${NEXT_PUBLIC_PAYROLL_URL:-http://localhost:3008}
 
 volumes:
   mysql_data:
