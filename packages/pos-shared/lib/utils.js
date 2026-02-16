@@ -71,7 +71,7 @@ export function generateNextInvoiceNumber() {
     const user = getUser();
     const loc = getLocation();
     if (!loc || !loc.branch || !loc.desk || !user) {
-        throw new Error("Branch, desk, or user not set");
+        return null;
     }
     return (loc?.desk?.invoice_prefix ?? 'I') + '' + generateNextDocumentId();
 }

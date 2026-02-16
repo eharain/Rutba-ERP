@@ -7,7 +7,7 @@ export default class SaleModel {
     constructor({
         id = null,
         documentId = null,
-        invoice_no = generateNextInvoiceNumber(),
+        invoice_no = null,
         sale_date = new Date(),
         payment_status = "Unpaid",
 
@@ -18,7 +18,7 @@ export default class SaleModel {
     }) {
         this.id = id;
         this.documentId = documentId;
-        this.invoice_no = invoice_no;
+        this.invoice_no = invoice_no || generateNextInvoiceNumber();
         this.sale_date = Date.parse(sale_date) > new Date(1, 1, 2025).getTime() ? new Date(sale_date) : new Date();
         this.payment_status = payment_status || 'Unpaid';
         this.payments = payments || [];
