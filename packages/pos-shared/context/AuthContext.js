@@ -1,7 +1,7 @@
 'use client'
 import { createContext, useContext, useState, useEffect, useMemo, useCallback } from "react";
 import { storage } from "../lib/storage";
-import { api } from "../lib/api";
+import { api, getAppName } from "../lib/api";
 import axios from "axios";
 import { API_URL } from "../lib/api-url-resolver";
 
@@ -13,9 +13,12 @@ const AuthContext = createContext();
  */
 async function fetchPermissions(jwt) {
     try {
+        const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}` };
+        const appName = getAppName();
+        if (appName) headers['X-Rutba-App'] = appName;
         const res = await axios.post(`${API_URL}/me/permissions`,
             { time: Date.now() },
-            { headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}` } }
+            { headers }
         );
         const data = res.data;
         return {

@@ -199,4 +199,42 @@ for (const entry of ENTRIES) {
   permissionsByKey[entry.key] = entry.permissions;
 }
 
-module.exports = { ENTRIES, permissionsByKey };
+// ─── Plugin permissions ─────────────────────────────────────
+//   PLUGIN_PERMISSIONS     — full list seeded to every Strapi
+//                            role so the endpoints are reachable.
+//   CLIENT_PLUGIN_PERMISSIONS — subset returned to the front-end
+//                            via /me/permissions (no server-only
+//                            actions like forgotPassword).
+
+const PLUGIN_PERMISSIONS = [
+  'plugin::users-permissions.auth.callback',
+  'plugin::users-permissions.auth.connect',
+  'plugin::users-permissions.auth.forgotPassword',
+  'plugin::users-permissions.auth.resetPassword',
+  'plugin::users-permissions.auth.changePassword',
+  'plugin::users-permissions.auth.emailConfirmation',
+  'plugin::users-permissions.user.me',
+  'plugin::users-permissions.user.update',
+  'plugin::users-permissions.me.mePermissions',
+  'plugin::users-permissions.me.stockItemsSearch',
+  'plugin::upload.content-api.find',
+  'plugin::upload.content-api.findOne',
+  'plugin::upload.content-api.upload',
+  'plugin::upload.content-api.destroy',
+];
+
+const CLIENT_PLUGIN_PERMISSIONS = [
+  'plugin::users-permissions.auth.callback',
+  'plugin::users-permissions.auth.connect',
+  'plugin::users-permissions.auth.changePassword',
+  'plugin::users-permissions.user.me',
+  'plugin::users-permissions.user.update',
+  'plugin::users-permissions.me.mePermissions',
+  'plugin::users-permissions.me.stockItemsSearch',
+  'plugin::upload.content-api.find',
+  'plugin::upload.content-api.findOne',
+  'plugin::upload.content-api.upload',
+  'plugin::upload.content-api.destroy',
+];
+
+module.exports = { ENTRIES, permissionsByKey, PLUGIN_PERMISSIONS, CLIENT_PLUGIN_PERMISSIONS };

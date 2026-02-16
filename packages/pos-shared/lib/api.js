@@ -17,9 +17,10 @@ export { API_URL, IMAGE_URL };
 
 // ------------------ App Name Header ------------------
 let _appName = '';
+let _adminMode = false;
 
 /**
- * Set the app name sent as X-App-Name header on every API request.
+ * Set the app name sent as X-Rutba-App header on every API request.
  * Call this once from each app's _app.js or layout, e.g. setAppName('stock').
  */
 export function setAppName(name) {
@@ -31,11 +32,27 @@ export function getAppName() {
     return _appName;
 }
 
+/**
+ * Toggle admin elevation mode.
+ * When enabled, the X-Rutba-App-Admin header is sent with every request,
+ * asking the server to bypass owner scoping for users who have
+ * admin_app_accesses for this app.
+ */
+export function setAdminMode(enabled) {
+    _adminMode = !!enabled;
+}
+
+/** Return whether admin elevation is currently active. */
+export function getAdminMode() {
+    return _adminMode;
+}
+
 // ------------------ Base Helper ------------------
 function authHeaders(jwt) {
     const headers = {};
     if (jwt) headers.Authorization = `Bearer ${jwt}`;
-    if (_appName) headers['X-App-Name'] = _appName;
+    if (_appName) headers['X-Rutba-App'] = _appName;
+    if (_adminMode && _appName) headers['X-Rutba-App-Admin'] = _appName;
     return headers;
 }
 
