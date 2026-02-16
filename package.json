@@ -2,6 +2,7 @@
   "private": true,
   "workspaces": [
     "packages/*",
+    "pos-strapi",
     "pos-desk",
     "pos-stock",
     "pos-sale",
@@ -25,6 +26,7 @@
     "dev:hr": "npm run dev --workspace=rutba-hr",
     "dev:accounts": "npm run dev --workspace=rutba-accounts",
     "dev:payroll": "npm run dev --workspace=rutba-payroll",
+    "build:strapi": "npm run build --workspace=rutba-strapi-pos",
     "build:auth": "npm run build --workspace=pos-auth",
     "build:stock": "npm run build --workspace=pos-stock",
     "build:sale": "npm run build --workspace=pos-sale",
