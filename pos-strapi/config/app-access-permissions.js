@@ -13,14 +13,16 @@
  *     map to enforce fine-grained access at request time.
  *
  * ─── Action shorthand ───────────────────────────────────────────
- *   READ   = ['find', 'findOne']
- *   WRITE  = ['find', 'findOne', 'create', 'update', 'delete']
- *   NO_DEL = ['find', 'findOne', 'create', 'update']
+ *   READ     = ['find', 'findOne']
+ *   WRITE    = ['find', 'findOne', 'create', 'update', 'delete']
+ *   NO_DEL   = ['find', 'findOne', 'create', 'update']
+ *   CASH_REG = WRITE + ['open', 'close', 'active', 'expire']
  */
 
-const READ   = ['find', 'findOne'];
-const WRITE  = ['find', 'findOne', 'create', 'update', 'delete'];
-const NO_DEL = ['find', 'findOne', 'create', 'update'];
+const READ     = ['find', 'findOne'];
+const WRITE    = ['find', 'findOne', 'create', 'update', 'delete'];
+const NO_DEL   = ['find', 'findOne', 'create', 'update'];
+const CASH_REG = ['find', 'findOne', 'create', 'update', 'delete', 'open', 'close', 'active', 'expire'];
 
 // ─── Entries ────────────────────────────────────────────────
 
@@ -63,7 +65,7 @@ const ENTRIES = [
       { uid: 'api::sale-return.sale-return',                       actions: WRITE },
       { uid: 'api::sale-return-item.sale-return-item',             actions: WRITE },
       { uid: 'api::payment.payment',                               actions: WRITE },
-      { uid: 'api::cash-register.cash-register',                   actions: WRITE },
+      { uid: 'api::cash-register.cash-register',                   actions: CASH_REG },
       { uid: 'api::cash-register-transaction.cash-register-transaction', actions: WRITE },
       { uid: 'api::customer.customer',                             actions: WRITE },
       { uid: 'api::order.order',                                   actions: WRITE },
@@ -95,6 +97,8 @@ const ENTRIES = [
       { uid: 'api::sale.sale',                                     actions: READ },
       { uid: 'api::sale-item.sale-item',                           actions: READ },
       { uid: 'api::payment.payment',                               actions: READ },
+      { uid: 'api::cash-register.cash-register',                   actions: [...READ, 'active'] },
+      { uid: 'api::cash-register-transaction.cash-register-transaction', actions: READ },
       { uid: 'api::customer.customer',                             actions: READ },
       // shared / read
       { uid: 'api::branch.branch',                                 actions: READ },
@@ -102,7 +106,7 @@ const ENTRIES = [
     ],
   },
 
-  // ── Delivery ──────────────────────────────────────────────
+  // ── Delivery
   {
     key: 'delivery',
     name: 'Delivery',
@@ -141,6 +145,8 @@ const ENTRIES = [
       { uid: 'api::brand.brand',                                   actions: WRITE },
       { uid: 'api::sale.sale',                                     actions: WRITE },
       { uid: 'api::sale-item.sale-item',                           actions: WRITE },
+      { uid: 'api::cash-register.cash-register',                   actions: CASH_REG },
+      { uid: 'api::cash-register-transaction.cash-register-transaction', actions: WRITE },
       { uid: 'api::hr-employee.hr-employee',                       actions: WRITE },
       { uid: 'api::hr-department.hr-department',                   actions: WRITE },
     ],

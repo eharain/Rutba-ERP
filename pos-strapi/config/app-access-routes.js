@@ -38,8 +38,8 @@ module.exports = {
   'api::sale-return.sale-return':            'sale',
   'api::sale-return-item.sale-return-item':  'sale',
   'api::payment.payment':                    { find: ['sale', 'accounts'], create: ['sale'], update: ['sale'], delete: ['sale', 'auth'] },
-  'api::cash-register.cash-register':        'sale',
-  'api::cash-register-transaction.cash-register-transaction': 'sale',
+  'api::cash-register.cash-register':        { find: ['sale', 'accounts'], create: ['sale'], update: ['sale'], delete: ['sale', 'auth'] },
+  'api::cash-register-transaction.cash-register-transaction': { find: ['sale', 'accounts'], create: ['sale'], update: ['sale'], delete: ['sale', 'auth'] },
   'api::customer.customer':                  ['sale', 'crm', 'accounts'],
   'api::order.order':                        ['sale', 'web-user'],
 
