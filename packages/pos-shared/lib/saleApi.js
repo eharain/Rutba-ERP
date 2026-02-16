@@ -1,7 +1,7 @@
 import { authApi } from './api';
 import { fetchSaleByIdOrInvoice, searchStockItems } from './pos';
 import SaleModel from '../domain/sale/SaleModel';
-import { getCashRegister, getUser, prepareForPut } from "../lib/utils";
+import { getCashRegister, prepareForPut } from "../lib/utils";
 
 export default class SaleApi {
 
@@ -72,12 +72,10 @@ export default class SaleApi {
 
         // CREATE
         if (!documentId || documentId === 'new') {
-            const user = getUser();
             const activeRegister = getCashRegister();
             const activeRegisterId = activeRegister?.documentId ?? activeRegister?.id;
             const createPayload = {
                 ...payloadNoItems,
-                owners: { connect: [user.documentId] },
                 ...(activeRegisterId ? { cash_register: { connect: [activeRegisterId] } } : {}),
             };
             const res = await authApi.post('/sales', { data: createPayload });

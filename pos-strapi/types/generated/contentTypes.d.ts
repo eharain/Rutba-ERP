@@ -839,7 +839,7 @@ export interface ApiCashRegisterCashRegister
     sales: Schema.Attribute.Relation<'oneToMany', 'api::sale.sale'>;
     short_cash: Schema.Attribute.Decimal;
     status: Schema.Attribute.Enumeration<
-      ['Active', 'Closed', 'Expired', 'Cancelled']
+      ['Open', 'Active', 'Closed', 'Expired', 'Cancelled']
     > &
       Schema.Attribute.DefaultTo<'Active'>;
     transactions: Schema.Attribute.Relation<
