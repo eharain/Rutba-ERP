@@ -36,7 +36,8 @@ module.exports = ({ env }) => [
       headers: [
         'Content-Type',
         'Authorization',
-        'X-App-Name',
+        'X-Rutba-App',
+        'X-Rutba-App-Admin',
         'Origin',
         'Accept',
       ],

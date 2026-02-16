@@ -1,41 +1,64 @@
 'use strict';
 const { createCoreController } = require('@strapi/strapi').factories;
+const { permissionsByKey, CLIENT_PLUGIN_PERMISSIONS } = require('../../../../config/app-access-permissions');
 
 module.exports = createCoreController('plugin::users-permissions.me', ({ strapi }) => ({
     mePermissions: async (ctx) => {
         try {
-
             const user = ctx.state.user;
             if (!user) {
                 return ctx.unauthorized("You must be logged in");
             }
 
-            // Fetch the user's app_accesses and admin_app_accesses relations
             const fullUser = await strapi.query("plugin::users-permissions.user").findOne({
                 where: { id: user.id },
                 populate: {
+                    role: { select: ['type', 'name'] },
                     app_accesses: { select: ['key'] },
                     admin_app_accesses: { select: ['key'] },
                 },
             });
 
-            const permissions = await strapi.query("plugin::users-permissions.permission").findMany({
-                where: { role: { id: user.role.id } },
-                populate: false,
-                select: ['action'],
-            });
-
+            const roleType = fullUser?.role?.type;
             const appAccess = (fullUser?.app_accesses || []).map(a => a.key);
             const adminAppAccess = (fullUser?.admin_app_accesses || []).map(a => a.key);
             const isAdmin = appAccess.includes('auth');
 
+            let permissions = [];
+
+            if (roleType === 'rutba_app_user') {
+                // Filter permissions to only those granted by the X-Rutba-App app-access
+                const appName = (ctx.request.headers['x-rutba-app'] || '').trim().toLowerCase();
+
+                if (appName) {
+                    const defs = permissionsByKey[appName];
+                    if (defs) {
+                        for (const def of defs) {
+                            for (const action of def.actions) {
+                                permissions.push(`${def.uid}.${action}`);
+                            }
+                        }
+                    }
+                }
+
+                permissions = [...new Set([...permissions, ...CLIENT_PLUGIN_PERMISSIONS])].sort();
+            } else {
+                // Non-rutba_app_user: return their full role permissions
+                const rolePerms = await strapi.query("plugin::users-permissions.permission").findMany({
+                    where: { role: { id: user.role.id } },
+                    populate: false,
+                    select: ['action'],
+                });
+                permissions = [...new Set([...rolePerms.map(p => p.action), ...CLIENT_PLUGIN_PERMISSIONS])].sort();
+            }
+
             const data = {
-                role: user.role.name,
+                role: fullUser.role.name,
                 appAccess,
                 adminAppAccess,
-                permissions: permissions.map(p => p.action),
+                permissions,
                 isAdmin,
-            }
+            };
             ctx.send(data);
         } catch (err) {
             ctx.internalServerError("Error fetching permissions");

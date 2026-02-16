@@ -3,6 +3,7 @@ import { useRouter } from "next/router";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { getBranch } from "@rutba/pos-shared/lib/utils";
 import { getCrossAppLinks, APP_URLS } from "@rutba/pos-shared/lib/roles";
+import AdminModeToggle from "@rutba/pos-shared/components/AdminModeToggle";
 import { useEffect } from "react";
 
 export default function Navigation() {
@@ -68,6 +69,7 @@ export default function Navigation() {
                 </ul>
 
                 <div className="d-flex align-items-center">
+                    <AdminModeToggle />
                     {user ? (
                         <>
                             <span className="me-3">Hello, {user.username || user.email}</span>
