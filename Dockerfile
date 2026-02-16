@@ -62,8 +62,6 @@ FROM base AS strapi
 WORKDIR /app
 COPY --from=strapi-build /app/pos-strapi ./pos-strapi
 COPY --from=deps /app/node_modules      ./node_modules
-# Strapi needs its own node_modules too
-COPY --from=deps /app/pos-strapi/node_modules ./pos-strapi/node_modules 2>/dev/null || true
 
 ENV NODE_ENV=production
 EXPOSE 1337
@@ -92,14 +90,14 @@ CMD ["npm", "run", "start"]
 FROM source AS auth-build
 WORKDIR /app
 ENV NEXT_PRIVATE_STANDALONE=true
-RUN npm run build --workspace=pos-auth
+RUN mkdir -p pos-auth/public && npm run build --workspace=pos-auth
 
 FROM base AS auth
 WORKDIR /app
 ENV NODE_ENV=production PORT=3003
 COPY --from=auth-build /app/pos-auth/.next/standalone ./
 COPY --from=auth-build /app/pos-auth/.next/static     ./pos-auth/.next/static
-COPY --from=auth-build /app/pos-auth/public            ./pos-auth/public 2>/dev/null || true
+COPY --from=auth-build /app/pos-auth/public            ./pos-auth/public
 EXPOSE 3003
 CMD ["node", "pos-auth/server.js"]
 
@@ -109,14 +107,14 @@ CMD ["node", "pos-auth/server.js"]
 FROM source AS stock-build
 WORKDIR /app
 ENV NEXT_PRIVATE_STANDALONE=true
-RUN npm run build --workspace=pos-stock
+RUN mkdir -p pos-stock/public && npm run build --workspace=pos-stock
 
 FROM base AS stock
 WORKDIR /app
 ENV NODE_ENV=production PORT=3001
 COPY --from=stock-build /app/pos-stock/.next/standalone ./
 COPY --from=stock-build /app/pos-stock/.next/static     ./pos-stock/.next/static
-COPY --from=stock-build /app/pos-stock/public            ./pos-stock/public 2>/dev/null || true
+COPY --from=stock-build /app/pos-stock/public            ./pos-stock/public
 EXPOSE 3001
 CMD ["node", "pos-stock/server.js"]
 
@@ -126,14 +124,14 @@ CMD ["node", "pos-stock/server.js"]
 FROM source AS sale-build
 WORKDIR /app
 ENV NEXT_PRIVATE_STANDALONE=true
-RUN npm run build --workspace=pos-sale
+RUN mkdir -p pos-sale/public && npm run build --workspace=pos-sale
 
 FROM base AS sale
 WORKDIR /app
 ENV NODE_ENV=production PORT=3002
 COPY --from=sale-build /app/pos-sale/.next/standalone ./
 COPY --from=sale-build /app/pos-sale/.next/static     ./pos-sale/.next/static
-COPY --from=sale-build /app/pos-sale/public            ./pos-sale/public 2>/dev/null || true
+COPY --from=sale-build /app/pos-sale/public            ./pos-sale/public
 EXPOSE 3002
 CMD ["node", "pos-sale/server.js"]
 
@@ -143,14 +141,14 @@ CMD ["node", "pos-sale/server.js"]
 FROM source AS web-build
 WORKDIR /app
 ENV NEXT_PRIVATE_STANDALONE=true
-RUN npm run build --workspace=rutba-web
+RUN mkdir -p rutba-web/public && npm run build --workspace=rutba-web
 
 FROM base AS web
 WORKDIR /app
 ENV NODE_ENV=production PORT=3000
 COPY --from=web-build /app/rutba-web/.next/standalone ./
 COPY --from=web-build /app/rutba-web/.next/static     ./rutba-web/.next/static
-COPY --from=web-build /app/rutba-web/public            ./rutba-web/public 2>/dev/null || true
+COPY --from=web-build /app/rutba-web/public            ./rutba-web/public
 EXPOSE 3000
 CMD ["node", "rutba-web/server.js"]
 
@@ -160,14 +158,14 @@ CMD ["node", "rutba-web/server.js"]
 FROM source AS web-user-build
 WORKDIR /app
 ENV NEXT_PRIVATE_STANDALONE=true
-RUN npm run build --workspace=rutba-web-user
+RUN mkdir -p rutba-web-user/public && npm run build --workspace=rutba-web-user
 
 FROM base AS web-user
 WORKDIR /app
 ENV NODE_ENV=production PORT=3004
 COPY --from=web-user-build /app/rutba-web-user/.next/standalone ./
 COPY --from=web-user-build /app/rutba-web-user/.next/static     ./rutba-web-user/.next/static
-COPY --from=web-user-build /app/rutba-web-user/public            ./rutba-web-user/public 2>/dev/null || true
+COPY --from=web-user-build /app/rutba-web-user/public            ./rutba-web-user/public
 EXPOSE 3004
 CMD ["node", "rutba-web-user/server.js"]
 
@@ -177,14 +175,14 @@ CMD ["node", "rutba-web-user/server.js"]
 FROM source AS crm-build
 WORKDIR /app
 ENV NEXT_PRIVATE_STANDALONE=true
-RUN npm run build --workspace=rutba-crm
+RUN mkdir -p rutba-crm/public && npm run build --workspace=rutba-crm
 
 FROM base AS crm
 WORKDIR /app
 ENV NODE_ENV=production PORT=3005
 COPY --from=crm-build /app/rutba-crm/.next/standalone ./
 COPY --from=crm-build /app/rutba-crm/.next/static     ./rutba-crm/.next/static
-COPY --from=crm-build /app/rutba-crm/public            ./rutba-crm/public 2>/dev/null || true
+COPY --from=crm-build /app/rutba-crm/public            ./rutba-crm/public
 EXPOSE 3005
 CMD ["node", "rutba-crm/server.js"]
 
@@ -194,14 +192,14 @@ CMD ["node", "rutba-crm/server.js"]
 FROM source AS hr-build
 WORKDIR /app
 ENV NEXT_PRIVATE_STANDALONE=true
-RUN npm run build --workspace=rutba-hr
+RUN mkdir -p rutba-hr/public && npm run build --workspace=rutba-hr
 
 FROM base AS hr
 WORKDIR /app
 ENV NODE_ENV=production PORT=3006
 COPY --from=hr-build /app/rutba-hr/.next/standalone ./
 COPY --from=hr-build /app/rutba-hr/.next/static     ./rutba-hr/.next/static
-COPY --from=hr-build /app/rutba-hr/public            ./rutba-hr/public 2>/dev/null || true
+COPY --from=hr-build /app/rutba-hr/public            ./rutba-hr/public
 EXPOSE 3006
 CMD ["node", "rutba-hr/server.js"]
 
@@ -211,14 +209,14 @@ CMD ["node", "rutba-hr/server.js"]
 FROM source AS accounts-build
 WORKDIR /app
 ENV NEXT_PRIVATE_STANDALONE=true
-RUN npm run build --workspace=rutba-accounts
+RUN mkdir -p rutba-accounts/public && npm run build --workspace=rutba-accounts
 
 FROM base AS accounts
 WORKDIR /app
 ENV NODE_ENV=production PORT=3007
 COPY --from=accounts-build /app/rutba-accounts/.next/standalone ./
 COPY --from=accounts-build /app/rutba-accounts/.next/static     ./rutba-accounts/.next/static
-COPY --from=accounts-build /app/rutba-accounts/public            ./rutba-accounts/public 2>/dev/null || true
+COPY --from=accounts-build /app/rutba-accounts/public            ./rutba-accounts/public
 EXPOSE 3007
 CMD ["node", "rutba-accounts/server.js"]
 
@@ -228,13 +226,13 @@ CMD ["node", "rutba-accounts/server.js"]
 FROM source AS payroll-build
 WORKDIR /app
 ENV NEXT_PRIVATE_STANDALONE=true
-RUN npm run build --workspace=rutba-payroll
+RUN mkdir -p rutba-payroll/public && npm run build --workspace=rutba-payroll
 
 FROM base AS payroll
 WORKDIR /app
 ENV NODE_ENV=production PORT=3008
 COPY --from=payroll-build /app/rutba-payroll/.next/standalone ./
 COPY --from=payroll-build /app/rutba-payroll/.next/static     ./rutba-payroll/.next/static
-COPY --from=payroll-build /app/rutba-payroll/public            ./rutba-payroll/public 2>/dev/null || true
+COPY --from=payroll-build /app/rutba-payroll/public            ./rutba-payroll/public
 EXPOSE 3008
 CMD ["node", "rutba-payroll/server.js"]
