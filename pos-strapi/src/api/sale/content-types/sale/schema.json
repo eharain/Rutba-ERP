@@ -65,6 +65,12 @@
       "target": "api::payment.payment",
       "mappedBy": "sale"
     },
+    "cash_register": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::cash-register.cash-register",
+      "inversedBy": "sales"
+    },
     "owners": {
       "type": "relation",
       "relation": "manyToMany",

@@ -10,6 +10,7 @@ import SalesItemsForm from '../../components/form/sales-items-form';
 import SalesItemsList from '../../components/lists/sales-items-list';
 import CheckoutModal from '../../components/CheckoutModal';
 import ExchangeReturnSection from '../../components/ExchangeReturnSection';
+import CashRegisterGuard from '../../components/CashRegisterGuard';
 
 import { useUtil } from '@rutba/pos-shared/context/UtilContext';
 
@@ -169,6 +170,7 @@ export default function SalePage() {
         <Layout>
             <ProtectedRoute>
                 <PermissionCheck required="api::sale.sale.find">
+                    <CashRegisterGuard>
                     <div className="container-fluid px-3 py-2">
 
                         {/* ── Header row ── */}
@@ -284,6 +286,7 @@ export default function SalePage() {
                             loading={loading}
                         />
                     </div>
+                    </CashRegisterGuard>
                 </PermissionCheck>
             </ProtectedRoute>
         </Layout>

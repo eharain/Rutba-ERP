@@ -12,9 +12,19 @@
   "pluginOptions": {},
   "attributes": {
     "opening_cash": {
-      "type": "decimal"
+      "type": "decimal",
+      "default": 0
     },
     "closing_cash": {
+      "type": "decimal"
+    },
+    "expected_cash": {
+      "type": "decimal"
+    },
+    "counted_cash": {
+      "type": "decimal"
+    },
+    "difference": {
       "type": "decimal"
     },
     "short_cash": {
@@ -29,10 +39,15 @@
     "status": {
       "type": "enumeration",
       "enum": [
-        "Open",
-        "Closed"
+        "Active",
+        "Closed",
+        "Expired",
+        "Cancelled"
       ],
-      "default": "Open"
+      "default": "Active"
+    },
+    "notes": {
+      "type": "text"
     },
     "desk_id": {
       "type": "integer"
@@ -77,6 +92,18 @@
       "type": "relation",
       "relation": "oneToMany",
       "target": "api::payment.payment",
+      "mappedBy": "cash_register"
+    },
+    "sales": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::sale.sale",
+      "mappedBy": "cash_register"
+    },
+    "transactions": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::cash-register-transaction.cash-register-transaction",
       "mappedBy": "cash_register"
     },
     "owners": {

@@ -64,6 +64,7 @@ const ENTRIES = [
       { uid: 'api::sale-return-item.sale-return-item',             actions: WRITE },
       { uid: 'api::payment.payment',                               actions: WRITE },
       { uid: 'api::cash-register.cash-register',                   actions: WRITE },
+      { uid: 'api::cash-register-transaction.cash-register-transaction', actions: WRITE },
       { uid: 'api::customer.customer',                             actions: WRITE },
       { uid: 'api::order.order',                                   actions: WRITE },
       // cross-app read-only
