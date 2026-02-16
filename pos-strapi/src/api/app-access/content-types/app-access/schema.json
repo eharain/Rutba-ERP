@@ -24,6 +24,10 @@
     "description": {
       "type": "text"
     },
+    "permissions": {
+      "type": "json",
+      "required": false
+    },
     "users": {
       "type": "relation",
       "relation": "manyToMany",

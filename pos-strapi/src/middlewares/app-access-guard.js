@@ -3,13 +3,17 @@
 /**
  * app-access-guard
  *
- * Global Strapi middleware that enforces two rules:
+ * Global Strapi middleware that enforces three rules:
  *
  *  1. APP-ACCESS GATE — checks the user's `app_accesses` keys
  *     against config/app-access-routes.js to decide whether the
  *     user may call this content-type action at all.
  *
- *  2. OWNER SCOPING — for content-types that have an `owners`
+ *  2. PERMISSION CHECK — verifies the user's combined app-access
+ *     permissions (from config/app-access-permissions.js) grant
+ *     the specific content-type + action being requested.
+ *
+ *  3. OWNER SCOPING — for content-types that have an `owners`
  *     relation, automatically:
  *       • connects the current user as an owner on create
  *       • filters find/findOne so users only see own records
@@ -25,6 +29,7 @@
  */
 
 const routeMap = require('../../config/app-access-routes');
+const { permissionsByKey } = require('../../config/app-access-permissions');
 
 // ───────────────────── helpers ──────────────────────────────
 
@@ -65,6 +70,27 @@ function normaliseAction(action) {
 /** Quick set-intersection check */
 function hasAny(userKeys, requiredKeys) {
     return requiredKeys.some(k => userKeys.includes(k));
+}
+
+/**
+ * Check whether any of the user's app-access keys grant the
+ * permission for the given content-type UID + action.
+ *
+ * Returns true if at least one of the user's keys includes a
+ * permission entry whose uid matches AND whose actions include
+ * the normalised action name.
+ */
+function hasPermissionViaAppAccess(userKeys, uid, action) {
+    for (const key of userKeys) {
+        const defs = permissionsByKey[key];
+        if (!defs) continue;
+        for (const def of defs) {
+            if (def.uid === uid && def.actions.includes(action)) {
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 // ───────────────────── middleware ────────────────────────────
@@ -137,7 +163,32 @@ module.exports = (config, { strapi }) => {
             );
         }
 
-        // ── 2.  OWNER SCOPING ───────────────────────────────────
+        // ── 2.  PERMISSION CHECK ────────────────────────────────
+        //    Verify the user's app-access keys collectively grant
+        //    the specific content-type + action permission defined
+        //    in config/app-access-permissions.js.
+        //    Maps the normalised action back to the Strapi action
+        //    name used in the permissions config.
+        const permAction = action === 'find' ? parts[2] : action;
+        // For 'find' actions, check both 'find' and 'findOne'
+        if (!isGlobalAdmin) {
+            const hasFind = hasPermissionViaAppAccess(userKeys, uid, 'find');
+            const hasFindOne = hasPermissionViaAppAccess(userKeys, uid, 'findOne');
+            const hasExact = hasPermissionViaAppAccess(userKeys, uid, action);
+
+            if (action === 'find' && !hasFind && !hasFindOne) {
+                return ctx.forbidden(
+                    `Your app-access permissions do not allow reading this resource.`
+                );
+            }
+            if (action !== 'find' && !hasExact) {
+                return ctx.forbidden(
+                    `Your app-access permissions do not allow "${action}" on this resource.`
+                );
+            }
+        }
+
+        // ── 3.  OWNER SCOPING ───────────────────────────────────
         //    Only applies to content-types that have an `owners`
         //    manyToMany relation to the user entity.
         const model = strapi.contentTypes[uid];

@@ -8,19 +8,19 @@ import { fetchPurchaseByIdDocumentIdOrPO } from '../../lib/pos';
 
 export default function PurchaseReceivePage() {
     const router = useRouter();
-    const { id } = router.query;
+    const { documentId } = router.query;
     const [purchase, setPurchase] = useState(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        if (id) {
+        if (documentId) {
             loadPurchase();
         }
-    }, [id]);
+    }, [documentId]);
 
     const loadPurchase = async () => {
         try {
-            const purchaseData = await fetchPurchaseByIdDocumentIdOrPO(id);
+            const purchaseData = await fetchPurchaseByIdDocumentIdOrPO(documentId);
             setPurchase(purchaseData);
         } catch (error) {
             console.error('Error loading purchase:', error);

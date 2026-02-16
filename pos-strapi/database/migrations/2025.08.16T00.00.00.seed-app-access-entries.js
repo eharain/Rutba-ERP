@@ -6,23 +6,32 @@
  * Strapi 5 runs migration files from database/migrations/ in
  * alphabetical order via umzug.  The `up` function receives a
  * Knex instance (wrapped in a transaction).
+ *
+ * Entry metadata AND permissions live together in
+ * config/app-access-permissions.js — this migration simply
+ * applies them to the database.
  */
 
-const ENTRIES = [
-    { key: 'stock', name: 'Stock Management', description: 'Products, purchases, inventory, suppliers, brands & categories' },
-    { key: 'sale', name: 'Point of Sale', description: 'Sales, cart, returns, cash register & reports' },
-    { key: 'accounts', name: 'Accounting', description: 'Manage accounts and reports' },
-    { key: 'delivery', name: 'Delivery', description: 'Delivery Managment' },
-    { key: 'crm', name: 'Custmer Releation Management', description: 'Custmer Releation Management' },
-    { key: 'auth', name: 'User Management', description: 'Manage users, roles and app access assignments' },
-    { key: 'web-user', name: 'My Orders', description: 'Track web orders, manage orders and request returns' },
-    { key: 'hr', name: 'Human Resources', description: 'Employees, departments, attendance and leave management' },
-    { key: 'payroll', name: 'Payroll', description: 'Salary structures, payroll runs and payslips' },
+const { ENTRIES } = require('../../config/app-access-permissions');
 
-];
+/**
+ * Build the list of Strapi permission action strings for an entry.
+ */
+function buildPermissionActions(entry) {
+    if (!entry.permissions) return null;
+    const actions = new Set();
+    for (const def of entry.permissions) {
+        for (const action of def.actions) {
+            actions.add(`${def.uid}.${action}`);
+        }
+    }
+    return JSON.stringify([...actions].sort());
+}
 
 async function up(knex) {
     for (const entry of ENTRIES) {
+        const permJson = buildPermissionActions(entry);
+
         // Check if the entry already exists (idempotent)
         const existing = await knex('app_accesses')
             .where('key', entry.key)
@@ -34,10 +43,21 @@ async function up(knex) {
                 key: entry.key,
                 name: entry.name,
                 description: entry.description,
+                permissions: permJson,
                 created_at: new Date(),
                 updated_at: new Date(),
                 published_at: new Date(),
             });
+        } else {
+            // Update name, description and permissions on existing entries
+            await knex('app_accesses')
+                .where('key', entry.key)
+                .update({
+                    name: entry.name,
+                    description: entry.description,
+                    permissions: permJson,
+                    updated_at: new Date(),
+                });
         }
     }
 }

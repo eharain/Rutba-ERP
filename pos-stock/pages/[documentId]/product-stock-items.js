@@ -40,6 +40,7 @@ export default function EditProduct() {
     const [applyStatus, setApplyStatus] = useState('');
     const [stockItemsTotal, setStockItemsTotal] = useState(0);
     const [showStockSection, setShowStockSection] = useState(false);
+    const [showAddSection, setShowAddSection] = useState(false);
 
     // Add new stock items in bulk
     const [addQty, setAddQty] = useState(1);
@@ -810,158 +811,6 @@ export default function EditProduct() {
                         </div>
                     </form>
 
-    
-                    {/* ====== ADD STOCK ITEMS SECTION ====== */}
-                    {documentId && documentId !== 'new' && (
-                        <div style={{ marginTop: '30px', background: '#f0f8ff', padding: '20px', borderRadius: '8px', border: '1px solid #b8daff' }}>
-                            <h3 style={{ marginBottom: '16px', color: 'black' }}>
-                                <i className="fas fa-plus-circle" style={{ marginRight: '8px' }} />
-                                Add Stock Items
-                            </h3>
-                            <div style={{ marginBottom: '10px', padding: '8px 12px', background: '#e9ecef', borderRadius: '4px', fontSize: '13px', color: 'black' }}>
-                                <strong>Values copied from product:</strong>
-                                <span style={{ marginLeft: '12px' }}>Name: <em>{product.name || '—'}</em></span>
-                                <span style={{ marginLeft: '12px' }}>Selling: <em>{currency}{parseFloat(product.selling_price || 0).toFixed(2)}</em></span>
-                                <span style={{ marginLeft: '12px' }}>Offer: <em>{currency}{parseFloat(product.offer_price || 0).toFixed(2)}</em></span>
-                                <span style={{ marginLeft: '12px' }}>Cost: <em>{currency}{parseFloat(product.cost_price || 0).toFixed(2)}</em></span>
-                            </div>
-
-                            {/* --- Method 1: Bulk add new items --- */}
-                            <div style={{ background: '#fff', padding: '16px', borderRadius: '6px', border: '1px solid #dee2e6', marginBottom: '16px' }}>
-                                <h5 style={{ marginBottom: '12px', color: 'black' }}>
-                                    <i className="fas fa-layer-group" style={{ marginRight: '6px', color: '#007bff' }} />
-                                    Create New Items in Bulk
-                                </h5>
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'flex-end' }}>
-                                    <div>
-                                        <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: 'bold', color: 'black' }}>Quantity</label>
-                                        <input
-                                            type="number"
-                                            min="1"
-                                            max="500"
-                                            value={addQty}
-                                            onChange={(e) => setAddQty(Math.max(1, parseInt(e.target.value) || 1))}
-                                            style={{ width: '80px', padding: '6px 10px', border: '1px solid #ccc', borderRadius: '4px' }}
-                                        />
-                                    </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                        <input
-                                            type="checkbox"
-                                            id="autoBarcode"
-                                            checked={autoBarcode}
-                                            onChange={(e) => setAutoBarcode(e.target.checked)}
-                                        />
-                                        <label htmlFor="autoBarcode" style={{ fontSize: '13px', color: 'black', cursor: 'pointer' }}>
-                                            Generate incremental barcodes
-                                            {product.barcode ? ` (${product.barcode}-0001, …)` : ' (no product barcode set)'}
-                                        </label>
-                                    </div>
-                                    <button
-                                        type="button"
-                                        onClick={handleAddNewItems}
-                                        disabled={addingItems}
-                                        style={{
-                                            padding: '8px 16px',
-                                            background: addingItems ? '#aaa' : '#007bff',
-                                            color: 'white',
-                                            border: 'none',
-                                            borderRadius: '4px',
-                                            cursor: addingItems ? 'not-allowed' : 'pointer',
-                                            fontWeight: 'bold'
-                                        }}
-                                    >
-                                        {addingItems ? 'Creating...' : `Create ${addQty} Item(s)`}
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* --- Method 2: Scan barcode to create new item --- */}
-                            <div style={{ background: '#fff', padding: '16px', borderRadius: '6px', border: '1px solid #dee2e6', marginBottom: '16px' }}>
-                                <h5 style={{ marginBottom: '12px', color: 'black' }}>
-                                    <i className="fas fa-barcode" style={{ marginRight: '6px', color: '#28a745' }} />
-                                    Scan Barcode → Create New Item
-                                </h5>
-                                <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end' }}>
-                                    <div style={{ flex: 1 }}>
-                                        <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: 'bold', color: 'black' }}>Scan or type barcode</label>
-                                        <input
-                                            ref={scanInputRef}
-                                            type="text"
-                                            value={scanBarcode}
-                                            onChange={(e) => setScanBarcode(e.target.value)}
-                                            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleScanBarcodeAdd(); } }}
-                                            style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', fontFamily: 'monospace' }}
-                                            placeholder="Scan barcode here..."
-                                            autoComplete="off"
-                                        />
-                                    </div>
-                                    <button
-                                        type="button"
-                                        onClick={handleScanBarcodeAdd}
-                                        disabled={scanAdding || !scanBarcode.trim()}
-                                        style={{
-                                            padding: '8px 16px',
-                                            background: scanAdding || !scanBarcode.trim() ? '#aaa' : '#28a745',
-                                            color: 'white',
-                                            border: 'none',
-                                            borderRadius: '4px',
-                                            cursor: scanAdding || !scanBarcode.trim() ? 'not-allowed' : 'pointer',
-                                            fontWeight: 'bold',
-                                            whiteSpace: 'nowrap'
-                                        }}
-                                    >
-                                        {scanAdding ? 'Adding...' : 'Add Item'}
-                                    </button>
-                                </div>
-                                <div style={{ marginTop: '6px', fontSize: '12px', color: '#666' }}>
-                                    Creates a new stock item with the scanned barcode. Checks for duplicates. Press Enter to add.
-                                </div>
-                            </div>
-
-                            {/* --- Method 3: Scan barcode to attach existing item --- */}
-                            <div style={{ background: '#fff', padding: '16px', borderRadius: '6px', border: '1px solid #dee2e6' }}>
-                                <h5 style={{ marginBottom: '12px', color: 'black' }}>
-                                    <i className="fas fa-link" style={{ marginRight: '6px', color: '#fd7e14' }} />
-                                    Scan Barcode → Attach Existing Item
-                                </h5>
-                                <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end' }}>
-                                    <div style={{ flex: 1 }}>
-                                        <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: 'bold', color: 'black' }}>Scan or type barcode of existing item</label>
-                                        <input
-                                            ref={attachInputRef}
-                                            type="text"
-                                            value={attachBarcode}
-                                            onChange={(e) => setAttachBarcode(e.target.value)}
-                                            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAttachByBarcode(); } }}
-                                            style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', fontFamily: 'monospace' }}
-                                            placeholder="Scan existing item barcode..."
-                                            autoComplete="off"
-                                        />
-                                    </div>
-                                    <button
-                                        type="button"
-                                        onClick={handleAttachByBarcode}
-                                        disabled={attachLoading || !attachBarcode.trim()}
-                                        style={{
-                                            padding: '8px 16px',
-                                            background: attachLoading || !attachBarcode.trim() ? '#aaa' : '#fd7e14',
-                                            color: 'white',
-                                            border: 'none',
-                                            borderRadius: '4px',
-                                            cursor: attachLoading || !attachBarcode.trim() ? 'not-allowed' : 'pointer',
-                                            fontWeight: 'bold',
-                                            whiteSpace: 'nowrap'
-                                        }}
-                                    >
-                                        {attachLoading ? 'Searching...' : 'Attach Item'}
-                                    </button>
-                                </div>
-                                <div style={{ marginTop: '6px', fontSize: '12px', color: '#666' }}>
-                                    Finds an existing stock item by barcode and re-assigns it to this product. Updates name and pricing. Press Enter to attach.
-                                </div>
-                            </div>
-                        </div>
-                    )}
 
                     {/* Stock Items Section - only for existing products */}
                     {documentId && documentId !== 'new' && (
@@ -1166,6 +1015,176 @@ export default function EditProduct() {
                                     )}
 
 
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* ====== ADD STOCK ITEMS SECTION ====== */}
+                    {documentId && documentId !== 'new' && (
+                        <div style={{ marginTop: '30px' }}>
+                            <button
+                                type="button"
+                                onClick={() => setShowAddSection(!showAddSection)}
+                                style={{
+                                    background: 'none',
+                                    border: '1px solid #b8daff',
+                                    borderRadius: '4px',
+                                    padding: '10px 16px',
+                                    cursor: 'pointer',
+                                    fontWeight: 'bold',
+                                    width: '100%',
+                                    textAlign: 'left',
+                                    fontSize: '16px'
+                                }}
+                            >
+                                {showAddSection ? '▼' : '▶'} <i className="fas fa-plus-circle" style={{ marginRight: '8px' }} />Add Stock Items
+                            </button>
+
+                            {showAddSection && (
+                                <div style={{ background: '#f0f8ff', padding: '20px', borderRadius: '0 0 8px 8px', border: '1px solid #b8daff', borderTop: 'none' }}>
+                                    <div style={{ marginBottom: '10px', padding: '8px 12px', background: '#e9ecef', borderRadius: '4px', fontSize: '13px', color: 'black' }}>
+                                        <strong>Values copied from product:</strong>
+                                        <span style={{ marginLeft: '12px' }}>Name: <em>{product.name || '—'}</em></span>
+                                        <span style={{ marginLeft: '12px' }}>Selling: <em>{currency}{parseFloat(product.selling_price || 0).toFixed(2)}</em></span>
+                                        <span style={{ marginLeft: '12px' }}>Offer: <em>{currency}{parseFloat(product.offer_price || 0).toFixed(2)}</em></span>
+                                        <span style={{ marginLeft: '12px' }}>Cost: <em>{currency}{parseFloat(product.cost_price || 0).toFixed(2)}</em></span>
+                                    </div>
+
+                                    {/* --- Method 1: Bulk add new items --- */}
+                                    <div style={{ background: '#fff', padding: '16px', borderRadius: '6px', border: '1px solid #dee2e6', marginBottom: '16px' }}>
+                                        <h5 style={{ marginBottom: '12px', color: 'black' }}>
+                                            <i className="fas fa-layer-group" style={{ marginRight: '6px', color: '#007bff' }} />
+                                            Create New Items in Bulk
+                                        </h5>
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'flex-end' }}>
+                                            <div>
+                                                <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: 'bold', color: 'black' }}>Quantity</label>
+                                                <input
+                                                    type="number"
+                                                    min="1"
+                                                    max="500"
+                                                    value={addQty}
+                                                    onChange={(e) => setAddQty(Math.max(1, parseInt(e.target.value) || 1))}
+                                                    style={{ width: '80px', padding: '6px 10px', border: '1px solid #ccc', borderRadius: '4px' }}
+                                                />
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                <input
+                                                    type="checkbox"
+                                                    id="autoBarcode"
+                                                    checked={autoBarcode}
+                                                    onChange={(e) => setAutoBarcode(e.target.checked)}
+                                                />
+                                                <label htmlFor="autoBarcode" style={{ fontSize: '13px', color: 'black', cursor: 'pointer' }}>
+                                                    Generate incremental barcodes
+                                                    {product.barcode ? ` (${product.barcode}-0001, …)` : ' (no product barcode set)'}
+                                                </label>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={handleAddNewItems}
+                                                disabled={addingItems}
+                                                style={{
+                                                    padding: '8px 16px',
+                                                    background: addingItems ? '#aaa' : '#007bff',
+                                                    color: 'white',
+                                                    border: 'none',
+                                                    borderRadius: '4px',
+                                                    cursor: addingItems ? 'not-allowed' : 'pointer',
+                                                    fontWeight: 'bold'
+                                                }}
+                                            >
+                                                {addingItems ? 'Creating...' : `Create ${addQty} Item(s)`}
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* --- Method 2: Scan barcode to create new item --- */}
+                                    <div style={{ background: '#fff', padding: '16px', borderRadius: '6px', border: '1px solid #dee2e6', marginBottom: '16px' }}>
+                                        <h5 style={{ marginBottom: '12px', color: 'black' }}>
+                                            <i className="fas fa-barcode" style={{ marginRight: '6px', color: '#28a745' }} />
+                                            Scan Barcode → Create New Item
+                                        </h5>
+                                        <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end' }}>
+                                            <div style={{ flex: 1 }}>
+                                                <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: 'bold', color: 'black' }}>Scan or type barcode</label>
+                                                <input
+                                                    ref={scanInputRef}
+                                                    type="text"
+                                                    value={scanBarcode}
+                                                    onChange={(e) => setScanBarcode(e.target.value)}
+                                                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleScanBarcodeAdd(); } }}
+                                                    style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', fontFamily: 'monospace' }}
+                                                    placeholder="Scan barcode here..."
+                                                    autoComplete="off"
+                                                />
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={handleScanBarcodeAdd}
+                                                disabled={scanAdding || !scanBarcode.trim()}
+                                                style={{
+                                                    padding: '8px 16px',
+                                                    background: scanAdding || !scanBarcode.trim() ? '#aaa' : '#28a745',
+                                                    color: 'white',
+                                                    border: 'none',
+                                                    borderRadius: '4px',
+                                                    cursor: scanAdding || !scanBarcode.trim() ? 'not-allowed' : 'pointer',
+                                                    fontWeight: 'bold',
+                                                    whiteSpace: 'nowrap'
+                                                }}
+                                            >
+                                                {scanAdding ? 'Adding...' : 'Add Item'}
+                                            </button>
+                                        </div>
+                                        <div style={{ marginTop: '6px', fontSize: '12px', color: '#666' }}>
+                                            Creates a new stock item with the scanned barcode. Checks for duplicates. Press Enter to add.
+                                        </div>
+                                    </div>
+
+                                    {/* --- Method 3: Scan barcode to attach existing item --- */}
+                                    <div style={{ background: '#fff', padding: '16px', borderRadius: '6px', border: '1px solid #dee2e6' }}>
+                                        <h5 style={{ marginBottom: '12px', color: 'black' }}>
+                                            <i className="fas fa-link" style={{ marginRight: '6px', color: '#fd7e14' }} />
+                                            Scan Barcode → Attach Existing Item
+                                        </h5>
+                                        <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end' }}>
+                                            <div style={{ flex: 1 }}>
+                                                <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: 'bold', color: 'black' }}>Scan or type barcode of existing item</label>
+                                                <input
+                                                    ref={attachInputRef}
+                                                    type="text"
+                                                    value={attachBarcode}
+                                                    onChange={(e) => setAttachBarcode(e.target.value)}
+                                                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAttachByBarcode(); } }}
+                                                    style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', fontFamily: 'monospace' }}
+                                                    placeholder="Scan existing item barcode..."
+                                                    autoComplete="off"
+                                                />
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={handleAttachByBarcode}
+                                                disabled={attachLoading || !attachBarcode.trim()}
+                                                style={{
+                                                    padding: '8px 16px',
+                                                    background: attachLoading || !attachBarcode.trim() ? '#aaa' : '#fd7e14',
+                                                    color: 'white',
+                                                    border: 'none',
+                                                    borderRadius: '4px',
+                                                    cursor: attachLoading || !attachBarcode.trim() ? 'not-allowed' : 'pointer',
+                                                    fontWeight: 'bold',
+                                                    whiteSpace: 'nowrap'
+                                                }}
+                                            >
+                                                {attachLoading ? 'Searching...' : 'Attach Item'}
+                                            </button>
+                                        </div>
+                                        <div style={{ marginTop: '6px', fontSize: '12px', color: '#666' }}>
+                                            Finds an existing stock item by barcode and re-assigns it to this product. Updates name and pricing. Press Enter to attach.
+                                        </div>
+                                    </div>
                                 </div>
                             )}
                         </div>
