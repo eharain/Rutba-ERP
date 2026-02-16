@@ -43,6 +43,27 @@
       "target": "api::sale-return-item.sale-return-item",
       "mappedBy": "sale_return"
     },
+    "payments": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::payment.payment",
+      "mappedBy": "sale_return"
+    },
+    "cash_register": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::cash-register.cash-register"
+    },
+    "refund_method": {
+      "type": "enumeration",
+      "enum": ["Cash", "Card", "Bank", "Mobile Wallet", "Exchange Return", "Store Credit"],
+      "default": "Cash"
+    },
+    "refund_status": {
+      "type": "enumeration",
+      "enum": ["Pending", "Refunded", "Credited"],
+      "default": "Pending"
+    },
     "owners": {
       "type": "relation",
       "relation": "manyToMany",

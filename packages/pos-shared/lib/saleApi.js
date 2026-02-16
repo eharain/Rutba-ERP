@@ -1,7 +1,7 @@
 import { authApi } from './api';
 import { fetchSaleByIdOrInvoice, searchStockItems } from './pos';
 import SaleModel from '../domain/sale/SaleModel';
-import { getCashRegister, prepareForPut } from "../lib/utils";
+import { getCashRegister, getUser, prepareForPut } from "../lib/utils";
 
 export default class SaleApi {
 
@@ -284,6 +284,8 @@ export default class SaleApi {
         const originalSaleDocId = originalSale.documentId || originalSale.id;
         const returnNo = 'EXC-' + Date.now().toString(36).toUpperCase();
         const returnTotal = returnItems.reduce((sum, r) => sum + (r.price || 0), 0);
+        const activeRegister = getCashRegister();
+        const registerDocId = activeRegister?.documentId || activeRegister?.id;
 
         // 1) Create sale-return header linked to original and new sale
         const retRes = await authApi.post('/sale-returns', {
@@ -292,8 +294,11 @@ export default class SaleApi {
                 return_date: new Date().toISOString(),
                 total_refund: returnTotal,
                 type: 'Exchange',
+                refund_method: 'Exchange Return',
+                refund_status: 'Credited',
                 sale: { connect: [originalSaleDocId] },
                 exchange_sale: { connect: [newSaleDocId] },
+                ...(registerDocId ? { cash_register: { connect: [registerDocId] } } : {}),
             }
         });
         const saleReturn = retRes?.data ?? retRes;
@@ -333,6 +338,34 @@ export default class SaleApi {
                     }
                 });
             }
+        }
+
+        // 4) Create payout payment linked to the return, original sale, and cash register
+        await authApi.post('/payments', {
+            data: {
+                payment_method: 'Exchange Return',
+                amount: -returnTotal,
+                payment_date: new Date().toISOString(),
+                transaction_no: returnNo,
+                sale: { connect: [originalSaleDocId] },
+                sale_return: { connect: [saleReturnDocId] },
+                ...(registerDocId ? { cash_register: { connect: [registerDocId] } } : {}),
+            }
+        });
+
+        // 5) Record refund transaction on the active cash register
+        if (registerDocId) {
+            const user = getUser();
+            await authApi.post('/cash-register-transactions', {
+                data: {
+                    type: 'Refund',
+                    amount: returnTotal,
+                    description: `Exchange ${returnNo} — credit applied to new sale`,
+                    transaction_date: new Date().toISOString(),
+                    performed_by: user?.email || user?.username || '',
+                    cash_register: { connect: [registerDocId] },
+                }
+            });
         }
     }
 

@@ -1509,6 +1509,10 @@ export interface ApiPaymentPayment extends Struct.CollectionTypeSchema {
     >;
     publishedAt: Schema.Attribute.DateTime;
     sale: Schema.Attribute.Relation<'manyToOne', 'api::sale.sale'>;
+    sale_return: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::sale-return.sale-return'
+    >;
     transaction_no: Schema.Attribute.String;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
@@ -1905,6 +1909,10 @@ export interface ApiSaleReturnSaleReturn extends Struct.CollectionTypeSchema {
   };
   attributes: {
     branches: Schema.Attribute.Relation<'manyToMany', 'api::branch.branch'>;
+    cash_register: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::cash-register.cash-register'
+    >;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -1923,7 +1931,23 @@ export interface ApiSaleReturnSaleReturn extends Struct.CollectionTypeSchema {
       'manyToMany',
       'plugin::users-permissions.user'
     >;
+    payments: Schema.Attribute.Relation<'oneToMany', 'api::payment.payment'>;
     publishedAt: Schema.Attribute.DateTime;
+    refund_method: Schema.Attribute.Enumeration<
+      [
+        'Cash',
+        'Card',
+        'Bank',
+        'Mobile Wallet',
+        'Exchange Return',
+        'Store Credit',
+      ]
+    > &
+      Schema.Attribute.DefaultTo<'Cash'>;
+    refund_status: Schema.Attribute.Enumeration<
+      ['Pending', 'Refunded', 'Credited']
+    > &
+      Schema.Attribute.DefaultTo<'Pending'>;
     return_date: Schema.Attribute.DateTime & Schema.Attribute.Required;
     return_no: Schema.Attribute.String & Schema.Attribute.Required;
     sale: Schema.Attribute.Relation<'manyToOne', 'api::sale.sale'>;

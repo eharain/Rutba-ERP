@@ -41,10 +41,30 @@ export async function fetchSaleByIdOrInvoice(id) {
             $or: [{ invoice_no: id }, { id }, { documentId: id }]
         },
         populate: {
-          payments:true,  customer: true, items: { populate: { "product": true, items: { populate: ['product'] } },}, sale_returns: true }
+          payments:true,  customer: true, items: { populate: { "product": true, items: { populate: ['product'] } },}, sale_returns: { populate: { items: { populate: ['product'] } } } }
     });
     let data = res?.data ?? res;
-    return Array.isArray(data) ? data[0] : data;
+    const sale = Array.isArray(data) ? data[0] : data;
+
+    // Load exchange returns linked to this sale via exchange_sale
+    if (sale) {
+        const saleDocId = sale.documentId || sale.id;
+        try {
+            const excRes = await authApi.get("/sale-returns/", {
+                filters: { exchange_sale: { documentId: { $eq: saleDocId } } },
+                populate: { items: { populate: ['product'] }, sale: { populate: { items: { populate: { product: true, items: { populate: ['product'] } } } } } }
+            });
+            const excData = excRes?.data ?? excRes;
+            const excReturns = Array.isArray(excData) ? excData : excData ? [excData] : [];
+            if (excReturns.length > 0) {
+                sale._exchangeReturns = excReturns;
+            }
+        } catch (err) {
+            console.error('Failed to load exchange returns', err);
+        }
+    }
+
+    return sale;
 }
 
 export async function fetchPurchaseByIdDocumentIdOrPO(id) {
