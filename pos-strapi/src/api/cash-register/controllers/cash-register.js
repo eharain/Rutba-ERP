@@ -31,7 +31,7 @@ module.exports = createCoreController('api::cash-register.cash-register', ({ str
     const registers = await strapi.documents('api::cash-register.cash-register').findMany({
       filters: {
         desk_id: { $eq: Number(desk_id) },
-        status: { $eq: 'Active' },
+        status: { $in: ['Active', 'Open'] },
       },
       sort: [{ opened_at: 'desc' }],
       limit: 1,
@@ -61,9 +61,9 @@ module.exports = createCoreController('api::cash-register.cash-register', ({ str
 
     if (!desk_id) return ctx.badRequest('desk_id is required');
 
-    // Expire any stale active registers for this desk
+    // Expire any stale active/open registers for this desk
     const existing = await strapi.documents('api::cash-register.cash-register').findMany({
-      filters: { desk_id: { $eq: Number(desk_id) }, status: { $eq: 'Active' } },
+      filters: { desk_id: { $eq: Number(desk_id) }, status: { $in: ['Active', 'Open'] } },
       limit: 10,
     });
 
@@ -104,7 +104,7 @@ module.exports = createCoreController('api::cash-register.cash-register', ({ str
     const { counted_cash, closing_cash, notes,
             closed_by, closed_by_id, closed_by_user: closedUserConnect } = ctx.request.body?.data ?? {};
 
-    const register = await strapi.documents('api::cash-register.cash-register').findFirst({
+    const register = await strapi.documents('api::cash-register.cash-register').findOne({
       documentId: id,
       populate: ['payments', 'transactions'],
     });
@@ -166,12 +166,12 @@ module.exports = createCoreController('api::cash-register.cash-register', ({ str
   /* ── PUT /cash-registers/:id/expire ────────────────────────── */
   async expire(ctx) {
     const { id } = ctx.params;
-    const register = await strapi.documents('api::cash-register.cash-register').findFirst({
+    const register = await strapi.documents('api::cash-register.cash-register').findOne({
       documentId: id,
     });
 
     if (!register) return ctx.notFound('Register not found');
-    if (register.status !== 'Active') return ctx.badRequest('Only active registers can be expired');
+    if (register.status !== 'Active' && register.status !== 'Open') return ctx.badRequest('Only active registers can be expired');
 
     const updated = await strapi.documents('api::cash-register.cash-register').update({
       documentId: id,

@@ -39,6 +39,7 @@
     "status": {
       "type": "enumeration",
       "enum": [
+        "Open",
         "Active",
         "Closed",
         "Expired",

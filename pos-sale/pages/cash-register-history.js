@@ -6,7 +6,7 @@ import { authApi } from "@rutba/pos-shared/lib/api";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
 import { Table, TableHead, TableRow, TableCell, TableBody, TablePagination } from "@rutba/pos-shared/components/Table";
 
-const STATUS_OPTIONS = ["Active", "Closed", "Expired", "Cancelled"];
+const STATUS_OPTIONS = ["Active", "Open", "Closed", "Expired", "Cancelled"];
 
 export default function CashRegisterHistoryPage() {
     const { currency } = useUtil();
@@ -74,6 +74,7 @@ export default function CashRegisterHistoryPage() {
     const statusBadge = (status) => {
         const cls = {
             Active: 'bg-success',
+            Open: 'bg-success',
             Closed: 'bg-secondary',
             Expired: 'bg-warning text-dark',
             Cancelled: 'bg-danger'

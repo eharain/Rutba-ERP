@@ -130,7 +130,7 @@ export default function CashRegisterDetailPage() {
     const fmt = (v) => `${currency}${Number(v || 0).toFixed(2)}`;
 
     const statusBadge = (status) => {
-        const cls = { Active: 'bg-success', Closed: 'bg-secondary', Expired: 'bg-warning text-dark', Cancelled: 'bg-danger' }[status] || 'bg-light';
+        const cls = { Active: 'bg-success', Open: 'bg-success', Closed: 'bg-secondary', Expired: 'bg-warning text-dark', Cancelled: 'bg-danger' }[status] || 'bg-light';
         return <span className={`badge ${cls}`}>{status}</span>;
     };
 

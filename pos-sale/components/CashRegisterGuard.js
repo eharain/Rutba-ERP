@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useUtil } from '@rutba/pos-shared/context/UtilContext';
 import { authApi } from '@rutba/pos-shared/lib/api';
 
@@ -34,6 +34,11 @@ export default function CashRegisterGuard({ children }) {
     const [error, setError] = useState(null);
     const [warningHours, setWarningHours] = useState(null);
 
+    // Keep a stable ref to setCashRegister so the callback identity
+    // does not change when UtilContext re-renders (avoids infinite loop).
+    const setCashRegisterRef = useRef(setCashRegister);
+    setCashRegisterRef.current = setCashRegister;
+
     const checkRegister = useCallback(async () => {
         if (!desk?.id) {
             setStatus('no-desk');
@@ -46,25 +51,25 @@ export default function CashRegisterGuard({ children }) {
 
             if (res?.meta?.expired) {
                 setExpiredRegister(res.meta.expired);
-                setCashRegister(null);
+                setCashRegisterRef.current(null);
                 setStatus('expired');
                 return;
             }
 
             if (!register) {
-                setCashRegister(null);
+                setCashRegisterRef.current(null);
                 setStatus('no-register');
                 return;
             }
 
             if (isExpired(register)) {
                 setExpiredRegister(register);
-                setCashRegister(null);
+                setCashRegisterRef.current(null);
                 setStatus('expired');
                 return;
             }
 
-            setCashRegister(register);
+            setCashRegisterRef.current(register);
             const hrs = hoursOpen(register);
             if (hrs >= 18) {
                 setWarningHours(Math.round(hrs));
@@ -76,7 +81,7 @@ export default function CashRegisterGuard({ children }) {
             console.error('CashRegisterGuard: check failed', err);
             setStatus('no-register');
         }
-    }, [desk?.id, setCashRegister]);
+    }, [desk?.id]);
 
     useEffect(() => {
         checkRegister();
