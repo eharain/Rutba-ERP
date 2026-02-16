@@ -69,9 +69,7 @@ export default function PurchaseViewPage() {
         return (
             <ProtectedRoute>
                 <Layout>
-                    <div style={{ padding: '40px', textAlign: 'center' }}>
-                        <div>Loading purchase details...</div>
-                    </div>
+                    <div className="state-message">Loading purchase details...</div>
                 </Layout>
             </ProtectedRoute>
         );
@@ -81,21 +79,11 @@ export default function PurchaseViewPage() {
         return (
             <ProtectedRoute>
                 <Layout>
-                    <div style={{ padding: '40px', textAlign: 'center' }}>
-                        <div style={{ color: 'red', marginBottom: '20px' }}>
+                    <div className="state-message">
+                        <div className="state-message--error mb-3">
                             {error || 'Purchase not found'}
                         </div>
-                        <button
-                            onClick={handleBack}
-                            style={{
-                                padding: '10px 20px',
-                                background: '#007bff',
-                                color: 'grey',
-                                border: 'none',
-                                borderRadius: '4px',
-                                cursor: 'pointer'
-                            }}
-                        >
+                        <button onClick={handleBack} className="btn btn-primary">
                             Back to Purchases
                         </button>
                     </div>
@@ -110,36 +98,15 @@ export default function PurchaseViewPage() {
         <ProtectedRoute>
             <Layout>
                 <PermissionCheck required="api::purchase.purchase.find">
-                    <div style={{ padding: '20px' }}>
+                    <div className="page-content">
                         {/* Header Actions */}
-                        <div style={{ marginBottom: '20px' }}>
-                            <button
-                                onClick={handleBack}
-                                style={{
-                                    padding: '8px 16px',
-                                    background: 'transparent',
-                                    color: '#007bff',
-                                    border: '1px solid #007bff',
-                                    borderRadius: '4px',
-                                    cursor: 'pointer',
-                                    marginRight: '10px'
-                                }}
-                            >
-                                ? Back to Purchases
+                        <div className="action-row">
+                            <button onClick={handleBack} className="btn btn-outline-primary me-2">
+                                ← Back to Purchases
                             </button>
 
                             {purchase.status !== 'Received' && purchase.status !== 'Cancelled' && (
-                                <button
-                                    onClick={handleReceive}
-                                    style={{
-                                        padding: '8px 16px',
-                                        background: '#28a745',
-                                        color: 'grey',
-                                        border: 'none',
-                                        borderRadius: '4px',
-                                        cursor: 'pointer'
-                                    }}
-                                >
+                                <button onClick={handleReceive} className="btn btn-success">
                                     Receive Items
                                 </button>
                             )}

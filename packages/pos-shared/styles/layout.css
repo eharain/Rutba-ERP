@@ -1,2 +1,80 @@
 /* Layout helpers */
+
+/* Full-width header/footer wrapper */
+.layout-header,
+.layout-footer {
+    width: 100%;
+    background-color: inherit;
+}
+
+/* Content container - wider for better use of screen space */
+.layout-container {
+    width: 100%;
+    max-width: 1600px;
+    margin: 0 auto;
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+}
+
+/* Main content area */
+.layout-main {
+    width: 100%;
+    max-width: 1600px;
+    margin: 0 auto;
+    padding: 1rem 1.5rem;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Page Content Utilities
+   Use these classes instead of inline styles for consistency
+   ───────────────────────────────────────────────────────────── */
+
+/* Standard page wrapper - use as default for all page content */
+.page-content {
+    padding: 1.25rem;
+}
+
+/* Narrower content for forms and focused content (max 900px) */
+.content-narrow {
+    max-width: 900px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Medium width content (max 1200px) */
+.content-medium {
+    max-width: 1200px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Section spacing */
+.section-spacing {
+    margin-bottom: 1.25rem;
+}
+
+/* Card/panel style box */
+.content-card {
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 0.375rem;
+    border: 1px solid #dee2e6;
+}
+
+/* Loading/error/empty state wrapper */
+.state-message {
+    padding: 2.5rem;
+    text-align: center;
+}
+
+.state-message--error {
+    color: #dc3545;
+}
+
+/* Action button row */
+.action-row {
+    margin-bottom: 1.25rem;
+}
+
+/* Legacy container class - kept for backward compatibility */
 .container { width: 100%; max-width: 1280px; margin: 0 auto; padding: 1rem; }

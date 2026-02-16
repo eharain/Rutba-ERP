@@ -199,7 +199,7 @@ export default function PurchasePage() {
     if (loading) return (
         <ProtectedRoute>
             <Layout>
-                <div style={{ padding: '20px', textAlign: 'center' }}>Loading purchase...</div>
+                <div className="state-message">Loading purchase...</div>
             </Layout>
         </ProtectedRoute>
     );
@@ -207,7 +207,7 @@ export default function PurchasePage() {
     if (error) return (
         <ProtectedRoute>
             <Layout>
-                <div style={{ padding: '20px', color: 'red' }}>Error: {error}</div>
+                <div className="state-message state-message--error">Error: {error}</div>
             </Layout>
         </ProtectedRoute>
     );
@@ -215,7 +215,7 @@ export default function PurchasePage() {
     if (!purchase) return (
         <ProtectedRoute>
             <Layout>
-                <div style={{ padding: '20px' }}>No purchase found.</div>
+                <div className="state-message">No purchase found.</div>
             </Layout>
         </ProtectedRoute>
     );
@@ -223,32 +223,21 @@ export default function PurchasePage() {
     return (
         <ProtectedRoute>
             <Layout>
-                <div style={{ padding: '20px' }}>
+                <div className="page-content">
                     {/* Back to Purchases List */}
-                    <div style={{ marginBottom: '20px' }}>
+                    <div className="action-row">
                         <button
                             onClick={() => router.push('/purchases')}
-                            style={{
-                                padding: '8px 16px',
-                                background: 'transparent',
-                                color: '#007bff',
-                                border: '1px solid #007bff',
-                                borderRadius: '4px',
-                                cursor: 'pointer'
-                            }}
+                            className="btn btn-outline-primary"
                         >
-                            ? Back to Purchases
+                            ← Back to Purchases
                         </button>
                     </div>
 
                     <h1>Purchase #{purchase.orderId || purchase.documentId}</h1>
 
                     {/* Purchase Header Info */}
-                    <div style={{
-                        marginBottom: '20px',
-                        padding: '15px',
-                        background: 'grey',
-                        borderRadius: '4px',
+                    <div className="content-card section-spacing" style={{
                         display: 'grid',
                         gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
                         gap: '10px'
@@ -261,12 +250,7 @@ export default function PurchasePage() {
                             <select
                                 value={currentStatus}
                                 onChange={(e) => handleStatusChange(e.target.value)}
-                                style={{
-                                    marginLeft: '8px',
-                                    padding: '4px 8px',
-                                    borderRadius: '4px',
-                                    border: '1px solid #ccc'
-                                }}
+                                className="form-select form-select-sm d-inline-block w-auto ms-2"
                             >
                                 <option value="Draft">Draft</option>
                                 <option value="Submitted">Submitted</option>
@@ -291,17 +275,10 @@ export default function PurchasePage() {
 
                     {/* Add New Item Button */}
                     {!editingDocumentId && (
-                        <div style={{ marginTop: '20px' }}>
+                        <div className="mt-3">
                             <button
                                 onClick={handleAddNewItem}
-                                style={{
-                                    padding: '8px 16px',
-                                    background: '#28a745',
-                                    color: 'black',
-                                    border: 'none',
-                                    borderRadius: '4px',
-                                    cursor: 'pointer'
-                                }}
+                                className="btn btn-success"
                             >
                                 + Add New Item
                             </button>
