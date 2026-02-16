@@ -15,6 +15,7 @@
   ],
   "scripts": {
     "dev:desk": "npm run dev --workspace=pos-desk",
+    "dev:strapi": "npm run develop --workspace=rutba-strapi-pos",
     "dev:auth": "npm run dev --workspace=pos-auth",
     "dev:stock": "npm run dev --workspace=pos-stock",
     "dev:sale": "npm run dev --workspace=pos-sale",
