@@ -118,29 +118,10 @@ const PrintInvoicePage = () => {
 
     if (error || !sale) {
         return (
-            <div style={{
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'center',
-                alignItems: 'center',
-                height: '100vh',
-                padding: '20px',
-                textAlign: 'center'
-            }}>
+            <div className="d-flex flex-column justify-content-center align-items-center vh-100 p-4 text-center">
                 <h2>{error || 'Invoice not found'}</h2>
                 <p>Unable to load invoice data. Please go back and try again.</p>
-                <button
-                    onClick={handleClose}
-                    style={{
-                        padding: '10px 20px',
-                        background: '#007bff',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: 'pointer',
-                        marginTop: '20px'
-                    }}
-                >
+                <button onClick={handleClose} className="btn btn-primary mt-3">
                     Close Window
                 </button>
             </div>
