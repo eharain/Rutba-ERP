@@ -36,6 +36,9 @@ export default function Navigation() {
                         <Link className="nav-link" href="/cash-register">Cash Register</Link>
                     </li>
                     <li className="nav-item">
+                        <Link className="nav-link" href="/cash-register-history">Register History</Link>
+                    </li>
+                    <li className="nav-item">
                         <Link className="nav-link" href="/reports">Reports</Link>
                     </li>
                     {crossLinks.length > 0 && (

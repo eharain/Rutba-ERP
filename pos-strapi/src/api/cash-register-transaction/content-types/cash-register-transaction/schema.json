@@ -1,0 +1,56 @@
+{
+  "kind": "collectionType",
+  "collectionName": "cash_register_transactions",
+  "info": {
+    "singularName": "cash-register-transaction",
+    "pluralName": "cash-register-transactions",
+    "displayName": "Cash Register Transaction",
+    "description": "Tracks cash drops, expenses, manual adjustments and other register events"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "type": {
+      "type": "enumeration",
+      "enum": [
+        "CashDrop",
+        "Expense",
+        "Adjustment",
+        "Refund"
+      ],
+      "required": true
+    },
+    "amount": {
+      "type": "decimal",
+      "required": true
+    },
+    "description": {
+      "type": "text"
+    },
+    "transaction_date": {
+      "type": "datetime",
+      "required": true
+    },
+    "performed_by": {
+      "type": "string"
+    },
+    "performed_by_user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "cash_register": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::cash-register.cash-register",
+      "inversedBy": "transactions"
+    },
+    "owners": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

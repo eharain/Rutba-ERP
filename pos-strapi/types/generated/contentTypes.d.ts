@@ -735,6 +735,55 @@ export interface ApiBrandBrand extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiCashRegisterTransactionCashRegisterTransaction
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'cash_register_transactions';
+  info: {
+    description: 'Tracks cash drops, expenses, manual adjustments and other register events';
+    displayName: 'Cash Register Transaction';
+    pluralName: 'cash-register-transactions';
+    singularName: 'cash-register-transaction';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    amount: Schema.Attribute.Decimal & Schema.Attribute.Required;
+    cash_register: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::cash-register.cash-register'
+    >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    description: Schema.Attribute.Text;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::cash-register-transaction.cash-register-transaction'
+    > &
+      Schema.Attribute.Private;
+    owners: Schema.Attribute.Relation<
+      'manyToMany',
+      'plugin::users-permissions.user'
+    >;
+    performed_by: Schema.Attribute.String;
+    performed_by_user: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    transaction_date: Schema.Attribute.DateTime & Schema.Attribute.Required;
+    type: Schema.Attribute.Enumeration<
+      ['CashDrop', 'Expense', 'Adjustment', 'Refund']
+    > &
+      Schema.Attribute.Required;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiCashRegisterCashRegister
   extends Struct.CollectionTypeSchema {
   collectionName: 'cash_registers';
@@ -758,17 +807,21 @@ export interface ApiCashRegisterCashRegister
       'plugin::users-permissions.user'
     >;
     closing_cash: Schema.Attribute.Decimal;
+    counted_cash: Schema.Attribute.Decimal;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     desk_id: Schema.Attribute.Integer;
     desk_name: Schema.Attribute.String;
+    difference: Schema.Attribute.Decimal;
+    expected_cash: Schema.Attribute.Decimal;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
       'api::cash-register.cash-register'
     > &
       Schema.Attribute.Private;
+    notes: Schema.Attribute.Text;
     opened_at: Schema.Attribute.DateTime;
     opened_by: Schema.Attribute.String;
     opened_by_id: Schema.Attribute.Integer;
@@ -776,16 +829,23 @@ export interface ApiCashRegisterCashRegister
       'manyToOne',
       'plugin::users-permissions.user'
     >;
-    opening_cash: Schema.Attribute.Decimal;
+    opening_cash: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
     owners: Schema.Attribute.Relation<
       'manyToMany',
       'plugin::users-permissions.user'
     >;
     payments: Schema.Attribute.Relation<'oneToMany', 'api::payment.payment'>;
     publishedAt: Schema.Attribute.DateTime;
+    sales: Schema.Attribute.Relation<'oneToMany', 'api::sale.sale'>;
     short_cash: Schema.Attribute.Decimal;
-    status: Schema.Attribute.Enumeration<['Open', 'Closed']> &
-      Schema.Attribute.DefaultTo<'Open'>;
+    status: Schema.Attribute.Enumeration<
+      ['Active', 'Closed', 'Expired', 'Cancelled']
+    > &
+      Schema.Attribute.DefaultTo<'Active'>;
+    transactions: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::cash-register-transaction.cash-register-transaction'
+    >;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -1888,6 +1948,10 @@ export interface ApiSaleSale extends Struct.CollectionTypeSchema {
   };
   attributes: {
     branches: Schema.Attribute.Relation<'manyToMany', 'api::branch.branch'>;
+    cash_register: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::cash-register.cash-register'
+    >;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -2751,6 +2815,7 @@ declare module '@strapi/strapi' {
       'api::app-access.app-access': ApiAppAccessAppAccess;
       'api::branch.branch': ApiBranchBranch;
       'api::brand.brand': ApiBrandBrand;
+      'api::cash-register-transaction.cash-register-transaction': ApiCashRegisterTransactionCashRegisterTransaction;
       'api::cash-register.cash-register': ApiCashRegisterCashRegister;
       'api::category.category': ApiCategoryCategory;
       'api::crm-activity.crm-activity': ApiCrmActivityCrmActivity;
