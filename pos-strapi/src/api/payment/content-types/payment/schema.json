@@ -41,6 +41,12 @@
       "target": "api::sale.sale",
       "inversedBy": "payments"
     },
+    "sale_return": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::sale-return.sale-return",
+      "inversedBy": "payments"
+    },
     "branches": {
       "type": "relation",
       "relation": "manyToMany",

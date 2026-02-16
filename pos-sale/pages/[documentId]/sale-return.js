@@ -2,9 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import Layout from "../../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
+import CashRegisterGuard from "../../components/CashRegisterGuard";
 import { authApi } from "@rutba/pos-shared/lib/api";
 import { fetchSaleByIdOrInvoice } from "@rutba/pos-shared/lib/pos";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
+import { getCashRegister } from "@rutba/pos-shared/lib/utils";
 import Link from "next/link";
 import SaleReturnReceipt from "../../components/print/SaleReturnReceipt";
 
@@ -42,7 +44,9 @@ function SaleReturnDetail({ documentId }) {
             const res = await authApi.get(`/sale-returns/${documentId}`, {
                 populate: {
                     sale: { populate: { customer: true } },
-                    items: { populate: { product: true, items: true } }
+                    items: { populate: { product: true, items: true } },
+                    payments: true,
+                    cash_register: true
                 }
             });
             const data = res?.data ?? res;
@@ -132,6 +136,23 @@ function SaleReturnDetail({ documentId }) {
                                     <div className="fw-bold fs-5 text-danger">{currency}{totalRefund.toFixed(2)}</div>
                                 </div>
                             </div>
+                            <hr />
+                            <div className="row">
+                                <div className="col-md-4">
+                                    <div className="small text-muted">Refund Method</div>
+                                    <div>{saleReturn.refund_method || "N/A"}</div>
+                                </div>
+                                <div className="col-md-4">
+                                    <div className="small text-muted">Refund Status</div>
+                                    <span className={`badge ${saleReturn.refund_status === "Refunded" ? "bg-success" : saleReturn.refund_status === "Credited" ? "bg-info" : "bg-warning text-dark"}`}>
+                                        {saleReturn.refund_status || "Pending"}
+                                    </span>
+                                </div>
+                                <div className="col-md-4">
+                                    <div className="small text-muted">Cash Register</div>
+                                    <div>{saleReturn.cash_register ? `Desk ${saleReturn.cash_register.desk_name || saleReturn.cash_register.desk_id || ""}` : "N/A"}</div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -184,7 +205,7 @@ function SaleReturnDetail({ documentId }) {
 // ── Create view for a new sale return ──
 function NewSaleReturn() {
     const router = useRouter();
-    const { currency, branch } = useUtil();
+    const { currency, branch, user } = useUtil();
     const scanInputRef = useRef(null);
 
     const [scanValue, setScanValue] = useState("");
@@ -195,6 +216,7 @@ function NewSaleReturn() {
     const [returnItems, setReturnItems] = useState([]);
     const [processing, setProcessing] = useState(false);
     const [returnResult, setReturnResult] = useState(null);
+    const [refundMethod, setRefundMethod] = useState("Cash");
 
     useEffect(() => {
         if (scanInputRef.current) scanInputRef.current.focus();
@@ -300,24 +322,28 @@ function NewSaleReturn() {
     async function processReturn() {
         if (returnItems.length === 0) return alert("Select items to return");
         if (!sale) return;
-        if (!confirm(`Process return for ${returnItems.length} item(s)?`)) return;
+        if (!confirm(`Process return for ${returnItems.length} item(s)?\nRefund method: ${refundMethod}\nTotal: ${currency}${totalRefund.toFixed(2)}`)) return;
 
         setProcessing(true);
         setReturnResult(null);
         try {
             const saleDocId = getEntryId(sale);
-            const totalRefund = returnItems.reduce((sum, r) => sum + r.price, 0);
-
+            const totalRefundAmt = returnItems.reduce((sum, r) => sum + r.price, 0);
             const returnNo = "RET-" + Date.now().toString(36).toUpperCase();
+            const activeRegister = getCashRegister();
+            const registerDocId = activeRegister?.documentId || activeRegister?.id;
 
             // 1) Create sale-return header
             const retRes = await authApi.post("/sale-returns", {
                 data: {
                     return_no: returnNo,
                     return_date: new Date().toISOString(),
-                    total_refund: totalRefund,
+                    total_refund: totalRefundAmt,
                     type: "Return",
+                    refund_method: refundMethod,
+                    refund_status: "Refunded",
                     sale: { connect: [saleDocId] },
+                    ...(registerDocId ? { cash_register: { connect: [registerDocId] } } : {}),
                     ...(branch ? { branches: { connect: [getEntryId(branch)] } } : {})
                 }
             });
@@ -370,7 +396,34 @@ function NewSaleReturn() {
                 }
             }
 
-            // 5) Mark the sale as returned
+            // 5) Create payout payment linked to the sale return and cash register
+            await authApi.post("/payments", {
+                data: {
+                    payment_method: refundMethod,
+                    amount: -totalRefundAmt,
+                    payment_date: new Date().toISOString(),
+                    transaction_no: returnNo,
+                    sale: { connect: [saleDocId] },
+                    sale_return: { connect: [saleReturnDocId] },
+                    ...(registerDocId ? { cash_register: { connect: [registerDocId] } } : {}),
+                }
+            });
+
+            // 6) Record refund transaction on the active cash register
+            if (registerDocId) {
+                await authApi.post("/cash-register-transactions", {
+                    data: {
+                        type: "Refund",
+                        amount: totalRefundAmt,
+                        description: `Return ${returnNo} — ${refundMethod} refund`,
+                        transaction_date: new Date().toISOString(),
+                        performed_by: user?.email || user?.username || "",
+                        cash_register: { connect: [registerDocId] },
+                    }
+                });
+            }
+
+            // 7) Mark the sale as returned
             await authApi.put(`/sales/${saleDocId}`, {
                 data: {
                     return_status: "Returned"
@@ -379,7 +432,7 @@ function NewSaleReturn() {
 
             setReturnResult({
                 success: true,
-                message: `Return ${returnNo} created — ${returnItems.length} item(s), refund ${currency}${totalRefund.toFixed(2)}`,
+                message: `Return ${returnNo} created — ${returnItems.length} item(s), refund ${currency}${totalRefundAmt.toFixed(2)} via ${refundMethod}`,
                 saleReturnDocId
             });
             setReturnItems([]);
@@ -671,6 +724,20 @@ function NewSaleReturn() {
                                             <span>Total Refund:</span>
                                             <span>{currency}{totalRefund.toFixed(2)}</span>
                                         </div>
+                                        <div className="mb-3">
+                                            <label className="form-label small fw-bold">Refund Method</label>
+                                            <select
+                                                className="form-select form-select-sm"
+                                                value={refundMethod}
+                                                onChange={e => setRefundMethod(e.target.value)}
+                                            >
+                                                <option value="Cash">Cash</option>
+                                                <option value="Card">Card</option>
+                                                <option value="Bank">Bank Transfer</option>
+                                                <option value="Mobile Wallet">Mobile Wallet</option>
+                                                <option value="Store Credit">Store Credit</option>
+                                            </select>
+                                        </div>
                                         <button
                                             className="btn btn-danger w-100"
                                             onClick={processReturn}
@@ -698,7 +765,7 @@ export default function SaleReturnDetailPage() {
     return (
         <ProtectedRoute>
             <Layout>
-                {isNew ? <NewSaleReturn /> : <SaleReturnDetail documentId={documentId} />}
+                {isNew ? <CashRegisterGuard><NewSaleReturn /></CashRegisterGuard> : <SaleReturnDetail documentId={documentId} />}
             </Layout>
         </ProtectedRoute>
     );

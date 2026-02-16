@@ -97,6 +97,7 @@ const SaleReturnReceipt = ({ saleReturn, onClose }) => {
                     <div><strong>Original Invoice:</strong> {saleInvoice}</div>
                     <div><strong>Customer:</strong> {customerName}</div>
                     <div><strong>Type:</strong> {saleReturn?.type || 'Return'}</div>
+                    <div><strong>Refund Via:</strong> {saleReturn?.refund_method || 'Cash'}</div>
                 </div>
 
                 {/* Items */}
@@ -126,6 +127,14 @@ const SaleReturnReceipt = ({ saleReturn, onClose }) => {
                             <tr className="fw-bold" style={{ fontSize: '14px', borderTop: '1px solid #555', paddingTop: '5px' }}>
                                 <td className="text-start">Total Refund:</td>
                                 <td className="text-end">{currency}{totalRefund.toFixed(2)}</td>
+                            </tr>
+                            <tr>
+                                <td className="text-start">Refund Method:</td>
+                                <td className="text-end">{saleReturn?.refund_method || 'Cash'}</td>
+                            </tr>
+                            <tr>
+                                <td className="text-start">Status:</td>
+                                <td className="text-end">{saleReturn?.refund_status || 'Refunded'}</td>
                             </tr>
                         </tbody>
                     </table>

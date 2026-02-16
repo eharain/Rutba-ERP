@@ -36,7 +36,27 @@ export default class SaleModel {
 
     static fromApi(sale) {
         const model = new SaleModel(sale);
-        // keep both id and documentId for compatibility with API helpers
+
+        // Hydrate exchange return from API data if present
+        if (sale._exchangeReturns?.length > 0) {
+            const excReturn = sale._exchangeReturns[0];
+            const originalSale = excReturn.sale;
+            const returnItems = (excReturn.items || []).map(ri => ({
+                productName: ri.product?.name || 'N/A',
+                price: Number(ri.price || 0),
+                quantity: ri.quantity || 1,
+                total: Number(ri.total || ri.price || 0),
+            }));
+            if (originalSale && returnItems.length > 0) {
+                model.exchangeReturn = {
+                    sale: originalSale,
+                    returnItems,
+                    returnNo: excReturn.return_no,
+                    totalRefund: Number(excReturn.total_refund || 0),
+                };
+            }
+        }
+
         return model;
     }
 

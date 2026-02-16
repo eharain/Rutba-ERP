@@ -52,27 +52,29 @@ export default function SalesReturnsPage() {
 
                     <Table>
                         <TableHead>
-                            <TableRow>
+                             <TableRow>
                                 <TableCell>Return No</TableCell>
                                 <TableCell>Type</TableCell>
                                 <TableCell>Date</TableCell>
                                 <TableCell>Sale Invoice</TableCell>
                                 <TableCell>Items</TableCell>
+                                <TableCell>Refund Method</TableCell>
                                 <TableCell align="right">Refund</TableCell>
+                                <TableCell>Status</TableCell>
                                 <TableCell>View</TableCell>
                             </TableRow>
                         </TableHead>
                         <TableBody>
                             {loading && (
                                 <TableRow>
-                                    <TableCell colSpan={7} className="text-center">
+                                    <TableCell colSpan={9} className="text-center">
                                         <span className="spinner-border spinner-border-sm me-1"></span>Loading...
                                     </TableCell>
                                 </TableRow>
                             )}
                             {!loading && returns.length === 0 && (
                                 <TableRow>
-                                    <TableCell colSpan={7} className="text-center text-muted">No returns found.</TableCell>
+                                    <TableCell colSpan={9} className="text-center text-muted">No returns found.</TableCell>
                                 </TableRow>
                             )}
                             {returns.map(ret => (
@@ -86,7 +88,13 @@ export default function SalesReturnsPage() {
                                     <TableCell>{ret.return_date ? new Date(ret.return_date).toLocaleString() : "-"}</TableCell>
                                     <TableCell>{ret.sale?.invoice_no || "-"}</TableCell>
                                     <TableCell>{ret.items?.length || 0}</TableCell>
+                                    <TableCell>{ret.refund_method || "—"}</TableCell>
                                     <TableCell align="right">{currency}{Number(ret.total_refund || 0).toFixed(2)}</TableCell>
+                                    <TableCell>
+                                        <span className={`badge ${ret.refund_status === "Refunded" ? "bg-success" : ret.refund_status === "Credited" ? "bg-info" : "bg-warning text-dark"}`}>
+                                            {ret.refund_status || "Pending"}
+                                        </span>
+                                    </TableCell>
                                     <TableCell>
                                         <Link href={`/${getEntryId(ret)}/sale-return`} style={{ textDecoration: "none" }}>
                                             <i className="fas fa-eye me-1"></i>View

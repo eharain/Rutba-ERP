@@ -125,7 +125,41 @@ export default function ExchangeReturnSection({ saleModel, onUpdate, disabled = 
     const returnTotal = returnItems.reduce((sum, r) => sum + r.price, 0);
     const saleItems = originalSale?.items || [];
 
-    if (disabled) return null;
+    // For paid/disabled sales, show read-only summary of saved exchange return
+    if (disabled) {
+        const saved = saleModel.exchangeReturn;
+        if (!saved || !saved.returnItems?.length) return null;
+        const savedTotal = saved.totalRefund ?? saved.returnItems.reduce((s, r) => s + (r.price || 0), 0);
+        return (
+            <div className="border rounded">
+                <div className="px-3 py-2 bg-light border-bottom">
+                    <span className="small text-muted"><i className="fas fa-exchange-alt me-1"></i>Exchange Return Applied</span>
+                </div>
+                <div className="p-2">
+                    <div className="small text-muted mb-2">
+                        {saved.returnNo && <>Return <strong>#{saved.returnNo}</strong> — </>}
+                        From Invoice <strong>#{saved.sale?.invoice_no || '?'}</strong>
+                    </div>
+                    <table className="table table-sm small mb-2">
+                        <thead><tr><th>Product</th><th className="text-end">Qty</th><th className="text-end">Price</th></tr></thead>
+                        <tbody>
+                            {saved.returnItems.map((ri, i) => (
+                                <tr key={i}>
+                                    <td>{ri.productName || ri.product?.name || 'N/A'}</td>
+                                    <td className="text-end">{ri.quantity || 1}</td>
+                                    <td className="text-end">{currency}{Number(ri.price || 0).toFixed(2)}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                    <div className="alert alert-success py-2 mb-0 d-flex justify-content-between align-items-center">
+                        <span><i className="fas fa-undo me-1"></i>{saved.returnItems.length} item(s) returned</span>
+                        <span className="fw-bold">Credit: {currency}{savedTotal.toFixed(2)}</span>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="border rounded">

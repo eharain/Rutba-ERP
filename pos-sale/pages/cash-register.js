@@ -246,7 +246,6 @@ export default function CashRegisterPage() {
                     description: txnDesc,
                     transaction_date: new Date().toISOString(),
                     performed_by: user?.username || user?.email || "",
-                    ...(userId ? { performed_by_user: { connect: [userId] } } : {}),
                     cash_register: { connect: [registerId] }
                 }
             });
