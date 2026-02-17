@@ -126,6 +126,22 @@ export default class SaleItem {
         this.discount = this.row_discount;
     }
 
+    static CreateDynamiStockItem(name, price) {
+
+        const item = {
+            name, selling_price: price,
+            get cost_price() {
+                item.selling_price * 0.75
+            },
+            get offer_price() {
+                item.selling_price * 0.85
+            },
+            more: []
+        }
+        return item;
+    }
+
+
     setQuantity(qty) {
         const netQty = Math.max(1, qty);
         if (qty < 1) {
@@ -138,6 +154,9 @@ export default class SaleItem {
         }
 
         let stockItemWithMore = this.first();
+        if (!stockItemWithMore) {
+            this.items.push({ selling_price: 0, cost_price: 0, offer_price: 0, more: [] });
+        }
         if (!Array.isArray(stockItemWithMore?.more)) {
             stockItemWithMore.more = [];
         }
@@ -148,7 +167,7 @@ export default class SaleItem {
         if (netQty < currentQty) {
             const removeCount = currentQty - netQty;
 
-            for (let i = 0; i < removeCount; i++) {
+            for (let i = 0; i < removeCount && this.items.length > 1; i++) {
                 const removed = this.items.pop();
                 if (removed) pool.push(removed);
             }
@@ -194,7 +213,6 @@ export default class SaleItem {
             return 0;
         }
         return this.items.reduce((sum, item) => { return sum + (item[field] || 0); }, 0)
-
     }
 
     /* ---------------- Pricing ---------------- */
@@ -212,7 +230,9 @@ export default class SaleItem {
     }
 
     get row_discount() {
-        const dp = this.sumBy('selling_price');
+        const dps = this.sumBy('selling_price');
+        const dpc = this.sumBy('cost_price');
+        const dp = Math.max(dps, dpc);
         return dp * (this.discount_percentage / 100);
     }
     get subtotal() {

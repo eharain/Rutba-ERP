@@ -156,9 +156,9 @@ export default class SaleModel {
 
         let items = [];
         for (let i = 0; i < (quantity ?? 1); i++) {
-            items.push({ name, selling_price: price, cost_price: price * 0.75, offer_price: price * 0.85, more: [...items] });
+            items.push(SaleItem.CreateDynamiStockItem(name, price));
         }
-
+        
         this.items.push(new SaleItem({ discount_percentage: discount, quantity, price, items }));
     }
 
