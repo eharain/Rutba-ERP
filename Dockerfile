@@ -44,7 +44,7 @@ COPY rutba-hr/package.json             rutba-hr/
 COPY rutba-accounts/package.json       rutba-accounts/
 COPY rutba-payroll/package.json        rutba-payroll/
 
-RUN npm ci --ignore-scripts
+RUN npm ci
 
 # ----------------------------------------------------------
 # 2.  Source — copy all source code on top of deps
@@ -57,6 +57,7 @@ COPY . .
 # ============================================================
 FROM source AS strapi-build
 WORKDIR /app/pos-strapi
+RUB npm install
 RUN npm run build
 
 FROM base AS strapi
