@@ -2,6 +2,7 @@ import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 import SaleInvoicePrint from '../components/print/SaleInvoicePrint';
 import { fetchSaleByIdOrInvoice } from '@rutba/pos-shared/lib/pos';
+import SaleModel from '@rutba/pos-shared/domain/sale/SaleModel';
 const PrintInvoicePage = () => {
     const router = useRouter();
     const [sale, setSale] = useState(null);
@@ -34,15 +35,21 @@ const PrintInvoicePage = () => {
 
                 if (saleId) {
                     // Load from API using sale ID
-                    saleData = await fetchSaleByIdOrInvoice(saleId);
-                    itemsData = saleData.items || [];
+                    const rawSale = await fetchSaleByIdOrInvoice(saleId);
+                    // Hydrate via SaleModel so exchangeReturn is populated
+                    const model = SaleModel.fromApi(rawSale);
+                    saleData = {
+                        ...rawSale,
+                        exchangeReturn: model.exchangeReturn
+                    };
+                    itemsData = rawSale.items || [];
 
                     // Use totals as persisted on the sale record
                     totalsData = {
-                        subtotal: Number(saleData.subtotal) || 0,
-                        discount: Number(saleData.discount) || 0,
-                        tax: Number(saleData.tax) || 0,
-                        total: Number(saleData.total) || 0
+                        subtotal: Number(rawSale.subtotal) || 0,
+                        discount: Number(rawSale.discount) || 0,
+                        tax: Number(rawSale.tax) || 0,
+                        total: Number(rawSale.total) || 0
                     };
                 } else if (storageKey) {
                     // Load from localStorage

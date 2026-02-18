@@ -73,7 +73,7 @@ const ENTRIES = [
       { uid: 'api::product.product',                               actions: READ },
       { uid: 'api::category.category',                             actions: READ },
       { uid: 'api::brand.brand',                                   actions: READ },
-      { uid: 'api::stock-item.stock-item',                         actions: READ },
+      { uid: 'api::stock-item.stock-item',                         actions: [...READ, 'update'] },
       // shared / read
       { uid: 'api::branch.branch',                                 actions: READ },
       { uid: 'api::currency.currency',                             actions: READ },

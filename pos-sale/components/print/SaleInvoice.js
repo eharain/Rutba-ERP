@@ -22,9 +22,10 @@ const SaleInvoice = ({ sale, items, totals}) => {
 
     const payments = Array.isArray(sale?.payments) ? sale.payments : [];
     const exchangeReturn = sale?.exchangeReturn || null;
-    const exchangeReturnTotal = exchangeReturn?.returnItems?.length
-        ? exchangeReturn.returnItems.reduce((s, r) => s + (Number(r.price) || 0), 0)
-        : 0;
+    const exchangeReturnTotal = exchangeReturn?.totalRefund
+        ?? (exchangeReturn?.returnItems?.length
+            ? exchangeReturn.returnItems.reduce((s, r) => s + Number(r.total ?? r.price ?? 0), 0)
+            : 0);
     const paid = payments.length > 0
         ? payments.reduce((s, p) => s + (Number(p.amount) || 0), 0)
         : (Number(sale?.paid) || (sale?.payment_status === 'Paid' ? safeTotals.total : 0));
@@ -40,6 +41,8 @@ const SaleInvoice = ({ sale, items, totals}) => {
 
     const paperWidth = invoicePrintSettings?.paperWidth || '80mm';
     const fontSize = invoicePrintSettings?.fontSize || 11;
+    const itemsFontSize = invoicePrintSettings?.itemsFontSize ?? fontSize;
+    const fontFamily = invoicePrintSettings?.fontFamily || 'sans-serif';
     const showTax = invoicePrintSettings?.showTax ?? true;
     const showBranch = invoicePrintSettings?.showBranch ?? true;
     const showCustomer = invoicePrintSettings?.showCustomer ?? true;
@@ -62,7 +65,7 @@ const SaleInvoice = ({ sale, items, totals}) => {
     };
 
     return (
-        <div className="sale-invoice-container" style={{ fontFamily: "'Courier New', monospace", width: paperWidth, margin: '20px auto', padding: '10px', textAlign: 'center', fontSize: `${fontSize}px` }}>
+        <div className="sale-invoice-container" style={{ fontFamily: fontFamily, width: paperWidth, margin: '20px auto', padding: '10px', textAlign: 'center', fontSize: `${fontSize}px`, lineHeight: 1.3, WebkitFontSmoothing: 'none', color: '#000' }}>
             <style jsx global>{`
                 @media print {
                     body * {
@@ -79,8 +82,20 @@ const SaleInvoice = ({ sale, items, totals}) => {
                         top: 0;
                         width: 100%;
                         margin: 0;
-                        padding: 0;
+                        padding: 2px;
                         background: white !important;
+                        color: #000 !important;
+                        -webkit-print-color-adjust: exact;
+                        print-color-adjust: exact;
+                    }
+
+                    .sale-invoice-container table {
+                        border-collapse: collapse;
+                    }
+
+                    .sale-invoice-container td,
+                    .sale-invoice-container th {
+                        padding: 1px 0;
                     }
 
                     @page {
@@ -112,12 +127,12 @@ const SaleInvoice = ({ sale, items, totals}) => {
                 )}
             </div>
 
-            <table className="items-table w-100 table-borderless" style={{ fontSize: '10px', marginBottom: '10px' }}>
+            <table className="items-table w-100" style={{ fontSize: `${itemsFontSize}px`, marginBottom: '6px', borderCollapse: 'collapse' }}>
                 <thead>
-                    <tr>
-                        <th className="col-qty text-center" style={{ width: '15%' }}>Qty</th>
-                        <th className="col-item text-start" style={{ width: '60%' }}>Item</th>
-                        <th className="col-price text-end" style={{ width: '25%' }}>Amt</th>
+                    <tr style={{ borderBottom: '1px solid #000' }}>
+                        <th className="text-center" style={{ width: '12%', padding: '2px 0', fontWeight: 'bold' }}>Qty</th>
+                        <th className="text-start" style={{ width: '58%', padding: '2px 0', fontWeight: 'bold' }}>Item</th>
+                        <th className="text-end" style={{ width: '30%', padding: '2px 0', fontWeight: 'bold' }}>Amt</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -126,12 +141,12 @@ const SaleInvoice = ({ sale, items, totals}) => {
                         const rowDiscount = Number(item.discount) || 0;
                         const rowTotal = rowSubtotal - rowDiscount;
                         return (
-                            <tr key={index}>
-                                <td className="col-qty text-center">{item.quantity}</td>
-                                <td className="col-item text-start">
+                            <tr key={index} style={{ borderBottom: '1px dotted #ccc' }}>
+                                <td className="text-center" style={{ padding: '2px 0', verticalAlign: 'top' }}>{item.quantity}</td>
+                                <td className="text-start" style={{ padding: '2px 2px', verticalAlign: 'top', wordBreak: 'break-word', maxWidth: 0 }}>
                                     {item?.items?.[0]?.name || item.product?.name || 'Item'}
                                 </td>
-                                <td className="col-price text-end">
+                                <td className="text-end" style={{ padding: '2px 0', verticalAlign: 'top', whiteSpace: 'nowrap' }}>
                                     {Math.round(rowTotal)}
                                 </td>
                             </tr>
@@ -142,60 +157,60 @@ const SaleInvoice = ({ sale, items, totals}) => {
 
             {/* Returned Items (Exchange) */}
             {exchangeReturn?.returnItems?.length > 0 && (
-                <div style={{ borderTop: '1px dashed #555', paddingTop: '5px', marginBottom: '5px' }}>
-                    <div className="fw-bold small text-start mb-1">Returned Items (from #{exchangeReturn.sale?.invoice_no || 'N/A'}):</div>
-                    <table className="w-100" style={{ fontSize: '10px' }}>
+                <div style={{ borderTop: '1px dashed #555', paddingTop: '4px', marginBottom: '4px' }}>
+                    <div className="fw-bold text-start mb-1" style={{ fontSize: `${itemsFontSize}px` }}>Returned Items (from #{exchangeReturn.sale?.invoice_no || 'N/A'}):</div>
+                    <table className="w-100" style={{ fontSize: `${itemsFontSize}px`, borderCollapse: 'collapse' }}>
                         <tbody>
                             {exchangeReturn.returnItems.map((ri, idx) => (
                                 <tr key={idx}>
-                                    <td className="text-start">{ri.productName || 'Item'}</td>
-                                    <td className="text-end">-{currency}{Number(ri.price || 0).toFixed(2)}</td>
+                                    <td className="text-start" style={{ padding: '1px 0' }}>{ri.productName || 'Item'}</td>
+                                    <td className="text-end" style={{ padding: '1px 0', whiteSpace: 'nowrap' }}>-{currency}{Number(ri.price || 0).toFixed(2)}</td>
                                 </tr>
                             ))}
                             <tr className="fw-bold" style={{ borderTop: '1px dotted #999' }}>
-                                <td className="text-start">Return Credit:</td>
-                                <td className="text-end">-{currency}{exchangeReturnTotal.toFixed(2)}</td>
+                                <td className="text-start" style={{ padding: '2px 0' }}>Return Credit:</td>
+                                <td className="text-end" style={{ padding: '2px 0', whiteSpace: 'nowrap' }}>-{currency}{exchangeReturnTotal.toFixed(2)}</td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
             )}
 
-            <div className="totals-section" style={{ borderTop: '1px dashed #555', paddingTop: '5px', fontSize: '11px' }}>
-                <table className="totals-table w-100" style={{ borderCollapse: 'collapse', fontSize: '11px' }}>
+            <div className="totals-section" style={{ borderTop: '1px dashed #555', paddingTop: '4px', fontSize: `${fontSize}px` }}>
+                <table className="totals-table w-100" style={{ borderCollapse: 'collapse', fontSize: `${fontSize}px` }}>
                     <tbody>
                         <tr>
-                            <td className="text-start" style={{ width: '50%' }}>Subtotal:</td>
-                            <td className="text-end" style={{ width: '50%' }}>{currency}{safeTotals.subtotal.toFixed(2)}</td>
+                            <td className="text-start" style={{ width: '50%', padding: '1px 0' }}>Subtotal:</td>
+                            <td className="text-end" style={{ width: '50%', padding: '1px 0' }}>{currency}{safeTotals.subtotal.toFixed(2)}</td>
                         </tr>
                         {showTax && (
                             <tr>
-                                <td className="text-start">Tax:</td>
-                                <td className="text-end">{currency}{safeTotals.tax.toFixed(2)}</td>
+                                <td className="text-start" style={{ padding: '1px 0' }}>Tax:</td>
+                                <td className="text-end" style={{ padding: '1px 0' }}>{currency}{safeTotals.tax.toFixed(2)}</td>
                             </tr>
                         )}
                         {safeTotals.discount > 0 && (
                             <tr>
-                                <td className="text-start">Disc:</td>
-                                <td className="text-end">-{currency}{safeTotals.discount.toFixed(2)}</td>
+                                <td className="text-start" style={{ padding: '1px 0' }}>Disc:</td>
+                                <td className="text-end" style={{ padding: '1px 0' }}>-{currency}{safeTotals.discount.toFixed(2)}</td>
                             </tr>
                         )}
-                        <tr className="total-row fw-bold" style={{ fontSize: '14px', borderTop: '1px solid #555', paddingTop: '5px', marginTop: '5px' }}>
-                            <td className="text-start">Total:</td>
-                            <td className="text-end">{currency}{safeTotals.total.toFixed(2)}</td>
+                        <tr className="fw-bold" style={{ fontSize: `${fontSize + 3}px`, borderTop: '1px solid #555' }}>
+                            <td className="text-start" style={{ padding: '3px 0' }}>Total:</td>
+                            <td className="text-end" style={{ padding: '3px 0' }}>{currency}{safeTotals.total.toFixed(2)}</td>
                         </tr>
                         {payments.length > 0 && (
                             <>
                                 <tr>
-                                    <td colSpan="2" className="text-start fw-bold pt-1" style={{ borderTop: '1px dotted #999' }}>Payments:</td>
+                                    <td colSpan="2" className="text-start fw-bold" style={{ borderTop: '1px dotted #999', padding: '2px 0 1px' }}>Payments:</td>
                                 </tr>
                                 {payments.map((p, i) => (
                                     <tr key={i}>
-                                        <td className="text-start small ps-1">
+                                        <td className="text-start" style={{ padding: '1px 0 1px 4px', fontSize: `${fontSize - 1}px` }}>
                                             {p.payment_method || 'Payment'}
                                             {p.transaction_no ? ` (${p.transaction_no})` : ''}
                                         </td>
-                                        <td className="text-end small">
+                                        <td className="text-end" style={{ padding: '1px 0', fontSize: `${fontSize - 1}px` }}>
                                             {currency}{Number(p.amount || 0).toFixed(2)}
                                             {p.change > 0 ? ` (Chg: ${currency}${Number(p.change).toFixed(2)})` : ''}
                                         </td>
@@ -206,13 +221,13 @@ const SaleInvoice = ({ sale, items, totals}) => {
                         {isPaid && (
                             <>
                                 <tr>
-                                    <td className="text-start">Paid:</td>
-                                    <td className="text-end">{currency}{paid.toFixed(2)}</td>
+                                    <td className="text-start" style={{ padding: '1px 0' }}>Paid:</td>
+                                    <td className="text-end" style={{ padding: '1px 0' }}>{currency}{paid.toFixed(2)}</td>
                                 </tr>
                                 {changeGiven > 0 && (
                                     <tr>
-                                        <td className="text-start">Change:</td>
-                                        <td className="text-end">{currency}{changeGiven.toFixed(2)}</td>
+                                        <td className="text-start" style={{ padding: '1px 0' }}>Change:</td>
+                                        <td className="text-end" style={{ padding: '1px 0' }}>{currency}{changeGiven.toFixed(2)}</td>
                                     </tr>
                                 )}
                             </>

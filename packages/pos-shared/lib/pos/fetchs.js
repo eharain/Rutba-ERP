@@ -41,26 +41,41 @@ export async function fetchSaleByIdOrInvoice(id) {
             $or: [{ invoice_no: id }, { id }, { documentId: id }]
         },
         populate: {
-          payments:true,  customer: true, items: { populate: { "product": true, items: { populate: ['product'] } },}, sale_returns: { populate: { items: { populate: ['product'] } } } }
+            payments: true,
+            customer: true,
+            items: { populate: { product: true, items: { populate: ['product'] } } },
+            sale_returns: { populate: { items: { populate: ['product'] } } },
+            exchange_return: { populate: { items: { populate: ['product'] }, sale: true } }
+        }
     });
     let data = res?.data ?? res;
     const sale = Array.isArray(data) ? data[0] : data;
 
-    // Load exchange returns linked to this sale via exchange_sale
+    // Hydrate _exchangeReturns from the populated exchange_return relation
     if (sale) {
-        const saleDocId = sale.documentId || sale.id;
-        try {
-            const excRes = await authApi.get("/sale-returns/", {
-                filters: { exchange_sale: { documentId: { $eq: saleDocId } } },
-                populate: { items: { populate: ['product'] }, sale: { populate: { items: { populate: { product: true, items: { populate: ['product'] } } } } } }
-            });
-            const excData = excRes?.data ?? excRes;
-            const excReturns = Array.isArray(excData) ? excData : excData ? [excData] : [];
-            if (excReturns.length > 0) {
-                sale._exchangeReturns = excReturns;
+        if (sale.exchange_return) {
+            sale._exchangeReturns = [sale.exchange_return];
+        }
+
+        // Fallback: if exchange_return wasn't populated, try a separate query
+        if (!sale._exchangeReturns?.length) {
+            const saleDocId = sale.documentId || sale.id;
+            try {
+                const excRes = await authApi.get("/sale-returns/", {
+                    filters: {
+                        type: { $eq: 'Exchange' },
+                        exchange_sale: saleDocId
+                    },
+                    populate: { items: { populate: ['product'] }, sale: true }
+                });
+                const excData = excRes?.data ?? excRes;
+                const excReturns = Array.isArray(excData) ? excData : excData ? [excData] : [];
+                if (excReturns.length > 0) {
+                    sale._exchangeReturns = excReturns;
+                }
+            } catch (err) {
+                console.error('Failed to load exchange returns', err);
             }
-        } catch (err) {
-            console.error('Failed to load exchange returns', err);
         }
     }
 

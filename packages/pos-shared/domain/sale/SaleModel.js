@@ -119,7 +119,12 @@ export default class SaleModel {
 
     get exchangeReturnTotal() {
         if (!this.exchangeReturn?.returnItems?.length) return 0;
-        return this.exchangeReturn.returnItems.reduce((sum, r) => sum + (r.price || 0), 0);
+        return this.exchangeReturn.returnItems.reduce((sum, r) => {
+            // When loaded from API, items are grouped with quantity & total.
+            // When set from UI, each entry is a single stock item (total absent).
+            if (r.total != null) return sum + Number(r.total);
+            return sum + (r.price || 0);
+        }, 0);
     }
 
     /* ===============================
