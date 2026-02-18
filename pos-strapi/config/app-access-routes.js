@@ -29,7 +29,7 @@ module.exports = {
   'api::purchase-item.purchase-item':        'stock',
   'api::purchase-return.purchase-return':    'stock',
   'api::purchase-return-item.purchase-return-item': 'stock',
-  'api::stock-item.stock-item':              { find: ['stock', 'sale'], create: ['stock'], update: ['stock'], delete: ['stock'] },
+  'api::stock-item.stock-item':              { find: ['stock', 'sale'], create: ['stock'], update: ['stock', 'sale'], delete: ['stock'] },
   'api::stock-input.stock-input':            'stock',
 
   // ── Point of Sale ─────────────────────────────────────────

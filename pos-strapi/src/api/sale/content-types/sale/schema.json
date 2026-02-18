@@ -92,6 +92,12 @@
       "relation": "oneToMany",
       "target": "api::sale-return.sale-return",
       "mappedBy": "sale"
+    },
+    "exchange_return": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::sale-return.sale-return",
+      "mappedBy": "exchange_sale"
     }
   }
 }

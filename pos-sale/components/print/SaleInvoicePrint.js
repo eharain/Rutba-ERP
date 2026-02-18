@@ -9,6 +9,8 @@ const SaleInvoicePrint = ({ sale, items, totals, onClose  }) => {
     const [localSettings, setLocalSettings] = useState(invoicePrintSettings ?? {
         paperWidth: '80mm',
         fontSize: 20,
+        itemsFontSize: 11,
+        fontFamily: 'sans-serif',
         showTax: true,
         showCustomer: true,
         showBranch: true,
@@ -110,6 +112,34 @@ const SaleInvoicePrint = ({ sale, items, totals, onClose  }) => {
                         value={localSettings.fontSize}
                         onChange={(e) => setLocalSettings({ ...localSettings, fontSize: Number(e.target.value) })}
                     />
+                </div>
+
+                <div className="w-100 mb-2">
+                    <label className="form-label text-white small mb-1">Items Font Size</label>
+                    <input
+                        type="number"
+                        min="7"
+                        max="16"
+                        className="form-control form-control-sm"
+                        value={localSettings.itemsFontSize ?? localSettings.fontSize}
+                        onChange={(e) => setLocalSettings({ ...localSettings, itemsFontSize: Number(e.target.value) })}
+                    />
+                </div>
+
+                <div className="w-100 mb-2">
+                    <label className="form-label text-white small mb-1">Font</label>
+                    <select
+                        className="form-select form-select-sm"
+                        value={localSettings.fontFamily || 'sans-serif'}
+                        onChange={(e) => setLocalSettings({ ...localSettings, fontFamily: e.target.value })}
+                    >
+                        <option value="sans-serif">Sans-serif (clean)</option>
+                        <option value="monospace">Monospace (receipt)</option>
+                        <option value="'Segoe UI', Tahoma, sans-serif">Segoe UI</option>
+                        <option value="Arial, Helvetica, sans-serif">Arial</option>
+                        <option value="Verdana, Geneva, sans-serif">Verdana</option>
+                        <option value="'Courier New', monospace">Courier New</option>
+                    </select>
                 </div>
 
                 <div className="w-100 mb-2 text-white">

@@ -30,7 +30,8 @@
     "exchange_sale": {
       "type": "relation",
       "relation": "oneToOne",
-      "target": "api::sale.sale"
+      "target": "api::sale.sale",
+      "inversedBy": "exchange_return"
     },
     "sale": {
       "type": "relation",

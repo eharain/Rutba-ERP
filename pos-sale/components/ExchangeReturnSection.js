@@ -13,13 +13,30 @@ export default function ExchangeReturnSection({ saleModel, onUpdate, disabled = 
     const scanInputRef = useRef(null);
 
     const [scanValue, setScanValue] = useState('');
-    const [originalSale, setOriginalSale] = useState(null);
+    const [originalSale, setOriginalSale] = useState(() => saleModel.exchangeReturn?.sale || null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
-    const [returnItems, setReturnItems] = useState([]);
+    const [returnItems, setReturnItems] = useState(() => saleModel.exchangeReturn?.returnItems || []);
+    const initialized = useRef(false);
+    const prevModelRef = useRef(saleModel);
 
-    // Sync returnItems to saleModel
+    // Re-sync local state when saleModel is replaced (e.g. after reload)
     useEffect(() => {
+        if (prevModelRef.current === saleModel) return;
+        prevModelRef.current = saleModel;
+        const exr = saleModel.exchangeReturn;
+        setOriginalSale(exr?.sale || null);
+        setReturnItems(exr?.returnItems || []);
+        initialized.current = true; // already in sync, skip next sync effect
+    }, [saleModel]);
+
+    // Sync returnItems to saleModel (skip the initial mount to preserve hydrated data)
+    useEffect(() => {
+        if (!initialized.current) {
+            initialized.current = true;
+            return;
+        }
+        if (disabled) return;
         if (originalSale && returnItems.length > 0) {
             saleModel.setExchangeReturn(originalSale, returnItems);
         } else {
@@ -129,7 +146,7 @@ export default function ExchangeReturnSection({ saleModel, onUpdate, disabled = 
     if (disabled) {
         const saved = saleModel.exchangeReturn;
         if (!saved || !saved.returnItems?.length) return null;
-        const savedTotal = saved.totalRefund ?? saved.returnItems.reduce((s, r) => s + (r.price || 0), 0);
+        const savedTotal = saved.totalRefund ?? saved.returnItems.reduce((s, r) => s + Number(r.total ?? r.price ?? 0), 0);
         return (
             <div className="border rounded">
                 <div className="px-3 py-2 bg-light border-bottom">

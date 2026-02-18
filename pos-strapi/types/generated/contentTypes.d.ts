@@ -1982,6 +1982,10 @@ export interface ApiSaleSale extends Struct.CollectionTypeSchema {
     customer: Schema.Attribute.Relation<'manyToOne', 'api::customer.customer'>;
     discount: Schema.Attribute.Decimal;
     employee: Schema.Attribute.Relation<'manyToOne', 'api::employee.employee'>;
+    exchange_return: Schema.Attribute.Relation<
+      'oneToOne',
+      'api::sale-return.sale-return'
+    >;
     invoice_no: Schema.Attribute.String & Schema.Attribute.Required;
     items: Schema.Attribute.Relation<'oneToMany', 'api::sale-item.sale-item'>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
