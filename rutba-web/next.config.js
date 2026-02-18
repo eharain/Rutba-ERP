@@ -7,7 +7,7 @@ const nextConfig = {
 	  {
 		protocol: process.env.NEXT_PUBLIC_IMAGE_HOST_PROTOCOL || 'http',
 		hostname: process.env.NEXT_PUBLIC_IMAGE_HOST_NAME || 'localhost',
-		port: process.env.NEXT_PUBLIC_IMAGE_HOST_PORT || '1337',
+		port: process.env.NEXT_PUBLIC_IMAGE_HOST_PORT || '4010',
 		pathname: "/**",
 	  },
 	],

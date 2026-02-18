@@ -68,7 +68,7 @@ COPY --from=deps /app/node_modules         ./node_modules
 COPY --from=strapi-build /app/packages     ./packages
 
 ENV NODE_ENV=production
-EXPOSE 1337
+EXPOSE 4010
 WORKDIR /app/pos-strapi
 CMD ["npx", "strapi", "start"]
 
@@ -89,7 +89,7 @@ CMD ["npx", "strapi", "start"]
 # sourced from the .env file via docker-compose `build.args`.
 
 # ----------------------------------------------------------
-#  pos-auth  (port 3003)
+#  pos-auth  (port 4003)
 # ----------------------------------------------------------
 FROM source AS auth-build
 WORKDIR /app
@@ -115,15 +115,16 @@ RUN mkdir -p pos-auth/public && npm run build --workspace=pos-auth
 
 FROM base AS auth
 WORKDIR /app
-ENV NODE_ENV=production PORT=3003
+ARG APP_PORT=4003
+ENV NODE_ENV=production PORT=$APP_PORT
 COPY --from=auth-build /app/pos-auth/.next/standalone ./
 COPY --from=auth-build /app/pos-auth/.next/static     ./pos-auth/.next/static
 COPY --from=auth-build /app/pos-auth/public            ./pos-auth/public
-EXPOSE 3003
+EXPOSE $APP_PORT
 CMD ["node", "pos-auth/server.js"]
 
 # ----------------------------------------------------------
-#  pos-stock  (port 3001)
+#  pos-stock  (port 4001)
 # ----------------------------------------------------------
 FROM source AS stock-build
 WORKDIR /app
@@ -147,15 +148,16 @@ RUN mkdir -p pos-stock/public && npm run build --workspace=pos-stock
 
 FROM base AS stock
 WORKDIR /app
-ENV NODE_ENV=production PORT=3001
+ARG APP_PORT=4001
+ENV NODE_ENV=production PORT=$APP_PORT
 COPY --from=stock-build /app/pos-stock/.next/standalone ./
 COPY --from=stock-build /app/pos-stock/.next/static     ./pos-stock/.next/static
 COPY --from=stock-build /app/pos-stock/public            ./pos-stock/public
-EXPOSE 3001
+EXPOSE $APP_PORT
 CMD ["node", "pos-stock/server.js"]
 
 # ----------------------------------------------------------
-#  pos-sale  (port 3002)
+#  pos-sale  (port 4002)
 # ----------------------------------------------------------
 FROM source AS sale-build
 WORKDIR /app
@@ -179,15 +181,16 @@ RUN mkdir -p pos-sale/public && npm run build --workspace=pos-sale
 
 FROM base AS sale
 WORKDIR /app
-ENV NODE_ENV=production PORT=3002
+ARG APP_PORT=4002
+ENV NODE_ENV=production PORT=$APP_PORT
 COPY --from=sale-build /app/pos-sale/.next/standalone ./
 COPY --from=sale-build /app/pos-sale/.next/static     ./pos-sale/.next/static
 COPY --from=sale-build /app/pos-sale/public            ./pos-sale/public
-EXPOSE 3002
+EXPOSE $APP_PORT
 CMD ["node", "pos-sale/server.js"]
 
 # ----------------------------------------------------------
-#  rutba-web  (port 3000)
+#  rutba-web  (port 4000)
 # ----------------------------------------------------------
 FROM source AS web-build
 WORKDIR /app
@@ -213,15 +216,16 @@ RUN mkdir -p rutba-web/public && npm run build --workspace=rutba-web
 
 FROM base AS web
 WORKDIR /app
-ENV NODE_ENV=production PORT=3000
+ARG APP_PORT=4000
+ENV NODE_ENV=production PORT=$APP_PORT
 COPY --from=web-build /app/rutba-web/.next/standalone ./
 COPY --from=web-build /app/rutba-web/.next/static     ./rutba-web/.next/static
 COPY --from=web-build /app/rutba-web/public            ./rutba-web/public
-EXPOSE 3000
+EXPOSE $APP_PORT
 CMD ["node", "rutba-web/server.js"]
 
 # ----------------------------------------------------------
-#  rutba-web-user  (port 3004)
+#  rutba-web-user  (port 4004)
 # ----------------------------------------------------------
 FROM source AS web-user-build
 WORKDIR /app
@@ -235,15 +239,16 @@ RUN mkdir -p rutba-web-user/public && npm run build --workspace=rutba-web-user
 
 FROM base AS web-user
 WORKDIR /app
-ENV NODE_ENV=production PORT=3004
+ARG APP_PORT=4004
+ENV NODE_ENV=production PORT=$APP_PORT
 COPY --from=web-user-build /app/rutba-web-user/.next/standalone ./
 COPY --from=web-user-build /app/rutba-web-user/.next/static     ./rutba-web-user/.next/static
 COPY --from=web-user-build /app/rutba-web-user/public            ./rutba-web-user/public
-EXPOSE 3004
+EXPOSE $APP_PORT
 CMD ["node", "rutba-web-user/server.js"]
 
 # ----------------------------------------------------------
-#  rutba-crm  (port 3005)
+#  rutba-crm  (port 4005)
 # ----------------------------------------------------------
 FROM source AS crm-build
 WORKDIR /app
@@ -257,15 +262,16 @@ RUN mkdir -p rutba-crm/public && npm run build --workspace=rutba-crm
 
 FROM base AS crm
 WORKDIR /app
-ENV NODE_ENV=production PORT=3005
+ARG APP_PORT=4005
+ENV NODE_ENV=production PORT=$APP_PORT
 COPY --from=crm-build /app/rutba-crm/.next/standalone ./
 COPY --from=crm-build /app/rutba-crm/.next/static     ./rutba-crm/.next/static
 COPY --from=crm-build /app/rutba-crm/public            ./rutba-crm/public
-EXPOSE 3005
+EXPOSE $APP_PORT
 CMD ["node", "rutba-crm/server.js"]
 
 # ----------------------------------------------------------
-#  rutba-hr  (port 3006)
+#  rutba-hr  (port 4006)
 # ----------------------------------------------------------
 FROM source AS hr-build
 WORKDIR /app
@@ -279,15 +285,16 @@ RUN mkdir -p rutba-hr/public && npm run build --workspace=rutba-hr
 
 FROM base AS hr
 WORKDIR /app
-ENV NODE_ENV=production PORT=3006
+ARG APP_PORT=4006
+ENV NODE_ENV=production PORT=$APP_PORT
 COPY --from=hr-build /app/rutba-hr/.next/standalone ./
 COPY --from=hr-build /app/rutba-hr/.next/static     ./rutba-hr/.next/static
 COPY --from=hr-build /app/rutba-hr/public            ./rutba-hr/public
-EXPOSE 3006
+EXPOSE $APP_PORT
 CMD ["node", "rutba-hr/server.js"]
 
 # ----------------------------------------------------------
-#  rutba-accounts  (port 3007)
+#  rutba-accounts  (port 4007)
 # ----------------------------------------------------------
 FROM source AS accounts-build
 WORKDIR /app
@@ -301,15 +308,16 @@ RUN mkdir -p rutba-accounts/public && npm run build --workspace=rutba-accounts
 
 FROM base AS accounts
 WORKDIR /app
-ENV NODE_ENV=production PORT=3007
+ARG APP_PORT=4007
+ENV NODE_ENV=production PORT=$APP_PORT
 COPY --from=accounts-build /app/rutba-accounts/.next/standalone ./
 COPY --from=accounts-build /app/rutba-accounts/.next/static     ./rutba-accounts/.next/static
 COPY --from=accounts-build /app/rutba-accounts/public            ./rutba-accounts/public
-EXPOSE 3007
+EXPOSE $APP_PORT
 CMD ["node", "rutba-accounts/server.js"]
 
 # ----------------------------------------------------------
-#  rutba-payroll  (port 3008)
+#  rutba-payroll  (port 4008)
 # ----------------------------------------------------------
 FROM source AS payroll-build
 WORKDIR /app
@@ -323,9 +331,10 @@ RUN mkdir -p rutba-payroll/public && npm run build --workspace=rutba-payroll
 
 FROM base AS payroll
 WORKDIR /app
-ENV NODE_ENV=production PORT=3008
+ARG APP_PORT=4008
+ENV NODE_ENV=production PORT=$APP_PORT
 COPY --from=payroll-build /app/rutba-payroll/.next/standalone ./
 COPY --from=payroll-build /app/rutba-payroll/.next/static     ./rutba-payroll/.next/static
 COPY --from=payroll-build /app/rutba-payroll/public            ./rutba-payroll/public
-EXPOSE 3008
+EXPOSE $APP_PORT
 CMD ["node", "rutba-payroll/server.js"]

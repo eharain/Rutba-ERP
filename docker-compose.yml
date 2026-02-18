@@ -5,7 +5,12 @@
 # Quick start:
 #   1. Copy .env.example to .env and fill in secrets
 #   2. docker compose up -d --build
-#   3. Open http://localhost:3003 (Auth Portal) to get started
+#   3. Open http://localhost:${PORT_AUTH} (Auth Portal) to get started
+#
+# Port assignment — all ports derive from BASE_PORT (default 3000):
+#   web=BASE+0  stock=+1  sale=+2  auth=+3
+#   web-user=+4  crm=+5  hr=+6  accounts=+7  payroll=+8
+# Set PORT_* vars in .env to override.
 #
 # To rebuild a single service:
 #   docker compose up -d --build strapi
@@ -38,7 +43,7 @@ services:
       retries: 5
 
   # --------------------------------------------------------
-  # Strapi API  (port 1337)
+  # Strapi API  (port 4010)
   # --------------------------------------------------------
   strapi:
     build:
@@ -49,10 +54,10 @@ services:
       mysql:
         condition: service_healthy
     ports:
-      - "1337:1337"
+      - "4010:4010"
     environment:
       HOST: 0.0.0.0
-      PORT: 1337
+      PORT: 4010
       DATABASE_CLIENT: mysql
       DATABASE_HOST: mysql
       DATABASE_PORT: 3306
@@ -71,13 +76,14 @@ services:
       - strapi_uploads:/app/pos-strapi/public/uploads
 
   # --------------------------------------------------------
-  # Auth Portal  (port 3003)
+  # Auth Portal  (port ${PORT_AUTH:-4003})
   # --------------------------------------------------------
   auth:
     build:
       context: .
       target: auth
       args:
+        APP_PORT: ${PORT_AUTH:-4003}
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
         NEXT_PUBLIC_AUTH_URL: ${NEXT_PUBLIC_AUTH_URL}
         NEXT_PUBLIC_STOCK_URL: ${NEXT_PUBLIC_STOCK_URL}
@@ -91,19 +97,20 @@ services:
     depends_on:
       - strapi
     ports:
-      - "3003:3003"
+      - "${PORT_AUTH:-4003}:${PORT_AUTH:-4003}"
     environment:
-      PORT: 3003
+      PORT: ${PORT_AUTH:-4003}
       HOSTNAME: 0.0.0.0
 
   # --------------------------------------------------------
-  # Stock Management  (port 3001)
+  # Stock Management  (port ${PORT_STOCK:-4001})
   # --------------------------------------------------------
   stock:
     build:
       context: .
       target: stock
       args:
+        APP_PORT: ${PORT_STOCK:-4001}
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
         NEXT_PUBLIC_AUTH_URL: ${NEXT_PUBLIC_AUTH_URL}
         NEXT_PUBLIC_STOCK_URL: ${NEXT_PUBLIC_STOCK_URL}
@@ -116,19 +123,20 @@ services:
     depends_on:
       - strapi
     ports:
-      - "3001:3001"
+      - "${PORT_STOCK:-4001}:${PORT_STOCK:-4001}"
     environment:
-      PORT: 3001
+      PORT: ${PORT_STOCK:-4001}
       HOSTNAME: 0.0.0.0
 
   # --------------------------------------------------------
-  # Point of Sale  (port 3002)
+  # Point of Sale  (port ${PORT_SALE:-4002})
   # --------------------------------------------------------
   sale:
     build:
       context: .
       target: sale
       args:
+        APP_PORT: ${PORT_SALE:-4002}
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
         NEXT_PUBLIC_AUTH_URL: ${NEXT_PUBLIC_AUTH_URL}
         NEXT_PUBLIC_STOCK_URL: ${NEXT_PUBLIC_STOCK_URL}
@@ -141,19 +149,20 @@ services:
     depends_on:
       - strapi
     ports:
-      - "3002:3002"
+      - "${PORT_SALE:-4002}:${PORT_SALE:-4002}"
     environment:
-      PORT: 3002
+      PORT: ${PORT_SALE:-4002}
       HOSTNAME: 0.0.0.0
 
   # --------------------------------------------------------
-  # Public Website  (port 3000)
+  # Public Website  (port ${PORT_WEB:-4000})
   # --------------------------------------------------------
   web:
     build:
       context: .
       target: web
       args:
+        APP_PORT: ${PORT_WEB:-4000}
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
         NEXT_PUBLIC_IMAGE_URL: ${NEXT_PUBLIC_IMAGE_URL}
         NEXT_PUBLIC_IMAGE_HOST_PROTOCOL: ${NEXT_PUBLIC_IMAGE_HOST_PROTOCOL}
@@ -167,9 +176,9 @@ services:
     depends_on:
       - strapi
     ports:
-      - "3000:3000"
+      - "${PORT_WEB:-4000}:${PORT_WEB:-4000}"
     environment:
-      PORT: 3000
+      PORT: ${PORT_WEB:-4000}
       HOSTNAME: 0.0.0.0
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
       NEXTAUTH_URL: ${NEXTAUTH_URL}
@@ -177,13 +186,14 @@ services:
       GOOGLE_SECRET_KEY: ${GOOGLE_SECRET_KEY}
 
   # --------------------------------------------------------
-  # My Orders / Web User  (port 3004)
+  # My Orders / Web User  (port ${PORT_WEB_USER:-4004})
   # --------------------------------------------------------
   web-user:
     build:
       context: .
       target: web-user
       args:
+        APP_PORT: ${PORT_WEB_USER:-4004}
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
         NEXT_PUBLIC_AUTH_URL: ${NEXT_PUBLIC_AUTH_URL}
         NEXT_PUBLIC_WEB_USER_URL: ${NEXT_PUBLIC_WEB_USER_URL}
@@ -191,19 +201,20 @@ services:
     depends_on:
       - strapi
     ports:
-      - "3004:3004"
+      - "${PORT_WEB_USER:-4004}:${PORT_WEB_USER:-4004}"
     environment:
-      PORT: 3004
+      PORT: ${PORT_WEB_USER:-4004}
       HOSTNAME: 0.0.0.0
 
   # --------------------------------------------------------
-  # CRM  (port 3005)
+  # CRM  (port ${PORT_CRM:-4005})
   # --------------------------------------------------------
   crm:
     build:
       context: .
       target: crm
       args:
+        APP_PORT: ${PORT_CRM:-4005}
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
         NEXT_PUBLIC_AUTH_URL: ${NEXT_PUBLIC_AUTH_URL}
         NEXT_PUBLIC_CRM_URL: ${NEXT_PUBLIC_CRM_URL}
@@ -211,19 +222,20 @@ services:
     depends_on:
       - strapi
     ports:
-      - "3005:3005"
+      - "${PORT_CRM:-4005}:${PORT_CRM:-4005}"
     environment:
-      PORT: 3005
+      PORT: ${PORT_CRM:-4005}
       HOSTNAME: 0.0.0.0
 
   # --------------------------------------------------------
-  # HR  (port 3006)
+  # HR  (port ${PORT_HR:-4006})
   # --------------------------------------------------------
   hr:
     build:
       context: .
       target: hr
       args:
+        APP_PORT: ${PORT_HR:-4006}
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
         NEXT_PUBLIC_AUTH_URL: ${NEXT_PUBLIC_AUTH_URL}
         NEXT_PUBLIC_HR_URL: ${NEXT_PUBLIC_HR_URL}
@@ -231,19 +243,20 @@ services:
     depends_on:
       - strapi
     ports:
-      - "3006:3006"
+      - "${PORT_HR:-4006}:${PORT_HR:-4006}"
     environment:
-      PORT: 3006
+      PORT: ${PORT_HR:-4006}
       HOSTNAME: 0.0.0.0
 
   # --------------------------------------------------------
-  # Accounts  (port 3007)
+  # Accounts  (port ${PORT_ACCOUNTS:-4007})
   # --------------------------------------------------------
   accounts:
     build:
       context: .
       target: accounts
       args:
+        APP_PORT: ${PORT_ACCOUNTS:-4007}
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
         NEXT_PUBLIC_AUTH_URL: ${NEXT_PUBLIC_AUTH_URL}
         NEXT_PUBLIC_ACCOUNTS_URL: ${NEXT_PUBLIC_ACCOUNTS_URL}
@@ -251,19 +264,20 @@ services:
     depends_on:
       - strapi
     ports:
-      - "3007:3007"
+      - "${PORT_ACCOUNTS:-4007}:${PORT_ACCOUNTS:-4007}"
     environment:
-      PORT: 3007
+      PORT: ${PORT_ACCOUNTS:-4007}
       HOSTNAME: 0.0.0.0
 
   # --------------------------------------------------------
-  # Payroll  (port 3008)
+  # Payroll  (port ${PORT_PAYROLL:-4008})
   # --------------------------------------------------------
   payroll:
     build:
       context: .
       target: payroll
       args:
+        APP_PORT: ${PORT_PAYROLL:-4008}
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
         NEXT_PUBLIC_AUTH_URL: ${NEXT_PUBLIC_AUTH_URL}
         NEXT_PUBLIC_PAYROLL_URL: ${NEXT_PUBLIC_PAYROLL_URL}
@@ -271,9 +285,9 @@ services:
     depends_on:
       - strapi
     ports:
-      - "3008:3008"
+      - "${PORT_PAYROLL:-4008}:${PORT_PAYROLL:-4008}"
     environment:
-      PORT: 3008
+      PORT: ${PORT_PAYROLL:-4008}
       HOSTNAME: 0.0.0.0
 
 volumes:
