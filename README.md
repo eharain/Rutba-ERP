@@ -71,15 +71,15 @@ cp pos-strapi/.env.example pos-strapi/.env
 cd pos-strapi && npm run develop
 
 # 5. In separate terminals, start any app:
-npm run dev:auth       # Auth Portal   → http://localhost:3003
-npm run dev:stock      # Stock Mgmt    → http://localhost:3001
-npm run dev:sale       # Point of Sale → http://localhost:3002
-npm run dev:web        # Public Website→ http://localhost:3000
-npm run dev:web-user   # My Orders     → http://localhost:3004
-npm run dev:crm        # CRM           → http://localhost:3005
-npm run dev:hr         # HR            → http://localhost:3006
-npm run dev:accounts   # Accounts      → http://localhost:3007
-npm run dev:payroll    # Payroll       → http://localhost:3008
+npm run dev:auth       # Auth Portal   → http://localhost:4003
+npm run dev:stock      # Stock Mgmt    → http://localhost:4001
+npm run dev:sale       # Point of Sale → http://localhost:4002
+npm run dev:web        # Public Website→ http://localhost:4000
+npm run dev:web-user   # My Orders     → http://localhost:4004
+npm run dev:crm        # CRM           → http://localhost:4005
+npm run dev:hr         # HR            → http://localhost:4006
+npm run dev:accounts   # Accounts      → http://localhost:4007
+npm run dev:payroll    # Payroll       → http://localhost:4008
 ```
 
 Or use the convenience batch files:
@@ -118,15 +118,15 @@ docker compose down
 |---|---|
 | MySQL | `localhost:3306` |
 | Strapi API | http://localhost:1337 |
-| Public Website | http://localhost:3000 |
-| Stock Management | http://localhost:3001 |
-| Point of Sale | http://localhost:3002 |
-| Auth Portal | http://localhost:3003 |
-| My Orders | http://localhost:3004 |
-| CRM | http://localhost:3005 |
-| HR | http://localhost:3006 |
-| Accounts | http://localhost:3007 |
-| Payroll | http://localhost:3008 |
+| Public Website | http://localhost:4000 |
+| Stock Management | http://localhost:4001 |
+| Point of Sale | http://localhost:4002 |
+| Auth Portal | http://localhost:4003 |
+| My Orders | http://localhost:4004 |
+| CRM | http://localhost:4005 |
+| HR | http://localhost:4006 |
+| Accounts | http://localhost:4007 |
+| Payroll | http://localhost:4008 |
 
 ## Scripts Directory
 

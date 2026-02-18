@@ -13,14 +13,14 @@
 
 /** Base URLs for each app — read from env or fall back to localhost defaults */
 export const APP_URLS = { 
-    auth:      process.env.NEXT_PUBLIC_AUTH_URL      || 'http://localhost:3003',
-    stock:     process.env.NEXT_PUBLIC_STOCK_URL     || 'http://localhost:3001',
-    sale:      process.env.NEXT_PUBLIC_SALE_URL      || 'http://localhost:3002',
-    'web-user': process.env.NEXT_PUBLIC_WEB_USER_URL || 'http://localhost:3004',
-    crm:       process.env.NEXT_PUBLIC_CRM_URL       || 'http://localhost:3005',
-    hr:        process.env.NEXT_PUBLIC_HR_URL        || 'http://localhost:3006',
-    accounts:  process.env.NEXT_PUBLIC_ACCOUNTS_URL  || 'http://localhost:3007',
-    payroll:   process.env.NEXT_PUBLIC_PAYROLL_URL   || 'http://localhost:3008',
+    auth:      process.env.NEXT_PUBLIC_AUTH_URL      || 'http://localhost:4003',
+    stock:     process.env.NEXT_PUBLIC_STOCK_URL     || 'http://localhost:4001',
+    sale:      process.env.NEXT_PUBLIC_SALE_URL      || 'http://localhost:4002',
+    'web-user': process.env.NEXT_PUBLIC_WEB_USER_URL || 'http://localhost:4004',
+    crm:       process.env.NEXT_PUBLIC_CRM_URL       || 'http://localhost:4005',
+    hr:        process.env.NEXT_PUBLIC_HR_URL        || 'http://localhost:4006',
+    accounts:  process.env.NEXT_PUBLIC_ACCOUNTS_URL  || 'http://localhost:4007',
+    payroll:   process.env.NEXT_PUBLIC_PAYROLL_URL   || 'http://localhost:4008',
 };
 
 /** All recognised app keys */

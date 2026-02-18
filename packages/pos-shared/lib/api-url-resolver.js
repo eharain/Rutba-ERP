@@ -7,7 +7,7 @@
 // INTERNAL GLOBAL STATE
 // ================================
 
-let API_URL_INTERNAL =  process.env.NEXT_PUBLIC_API_URL || "http://localhost:1337/api";
+let API_URL_INTERNAL =  process.env.NEXT_PUBLIC_API_URL || "http://localhost:4010/api";
 
 let IMAGE_URL_INTERNAL =
   API_URL_INTERNAL.replace(/\/api$/, '');

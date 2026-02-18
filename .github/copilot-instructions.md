@@ -5,20 +5,20 @@
 | Directory | Purpose | Port |
 |---|---|---|
 | `packages/pos-shared/` | Shared library consumed by all front-end apps — contains `lib/`, `context/`, `components/`, `domain/`, `styles/` | — |
-| `pos-auth/` | **Auth Portal** Next.js app (login, role-based dashboard, central authentication) | 3003 |
-| `pos-stock/` | **Stock Management** Next.js app (products, purchases, stock items, suppliers, brands, categories) | 3001 |
-| `pos-sale/` | **Point of Sale** Next.js app (sales, cart, returns, cash register, reports) | 3002 |
-| `rutba-web/` | **Public Website** Next.js 15 app (TypeScript, Tailwind CSS — customer-facing store) | 3000 |
-| `rutba-web-user/` | **My Orders** Next.js app (customer order tracking, returns, account) | 3004 |
-| `rutba-crm/` | **CRM** Next.js app (contacts, leads, activities) | 3005 |
-| `rutba-hr/` | **Human Resources** Next.js app (employees, departments, attendance, leave) | 3006 |
-| `rutba-accounts/` | **Accounting** Next.js app (chart of accounts, journal entries, invoices, expenses) | 3007 |
-| `rutba-payroll/` | **Payroll** Next.js app (salary structures, payroll runs, payslips) | 3008 |
-| `pos-desk/` | Legacy combined app (kept for reference, not actively developed) | 3000 |
+| `pos-auth/` | **Auth Portal** Next.js app (login, role-based dashboard, central authentication) | 4003 |
+| `pos-stock/` | **Stock Management** Next.js app (products, purchases, stock items, suppliers, brands, categories) | 4001 |
+| `pos-sale/` | **Point of Sale** Next.js app (sales, cart, returns, cash register, reports) | 4002 |
+| `rutba-web/` | **Public Website** Next.js 15 app (TypeScript, Tailwind CSS — customer-facing store) | 4000 |
+| `rutba-web-user/` | **My Orders** Next.js app (customer order tracking, returns, account) | 4004 |
+| `rutba-crm/` | **CRM** Next.js app (contacts, leads, activities) | 4005 |
+| `rutba-hr/` | **Human Resources** Next.js app (employees, departments, attendance, leave) | 4006 |
+| `rutba-accounts/` | **Accounting** Next.js app (chart of accounts, journal entries, invoices, expenses) | 4007 |
+| `rutba-payroll/` | **Payroll** Next.js app (salary structures, payroll runs, payslips) | 4008 |
+| `pos-desk/` | Legacy combined app (kept for reference, not actively developed) | 4000 |
 | `pos-strapi/` | Strapi 5.x API provider — schemas and components in `pos-strapi/src/` | 1337 |
 
 ## Authentication & Roles
-- All login flows go through `pos-auth` (port 3003). **Do not** add login pages to `pos-stock` or `pos-sale`.
+- All login flows go through `pos-auth` (port 4003). **Do not** add login pages to `pos-stock` or `pos-sale`.
 - Authentication uses an **OAuth-like flow** — no cookies. Each app stores auth data in its **own localStorage** only.
 - **OAuth flow:**
   1. `ProtectedRoute` on a client app (stock/sale) detects no JWT → redirects to `pos-auth/authorize?redirect_uri=<origin>/auth/callback&state=<path>`

@@ -29,8 +29,8 @@ function generateRemotePatterns(urls) {
 }
 
 const urls = [
-    "http://localhost:1338/uploads/abc.jpg",
-    "http://127.0.0.1:1338/uploads/xyz.png",
+    "http://localhost:4010/uploads/abc.jpg",
+    "http://127.0.0.1:4010/uploads/xyz.png",
     process.env.NEXT_PUBLIC_API_URL,
 ];
 
