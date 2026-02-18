@@ -57,7 +57,7 @@ COPY . .
 # ============================================================
 FROM source AS strapi-build
 WORKDIR /app/pos-strapi
-RUB npm install
+RUN npm install
 RUN npm run build
 
 FROM base AS strapi
