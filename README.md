@@ -1,4 +1,4 @@
-# Rutba POS — Modular Business Management Platform
+# Rutba ERP — Modular Business Management Platform
 
 An open-source, modular business management system built as an **npm workspaces monorepo**. Each domain (stock, sales, CRM, HR, accounting, payroll) lives in its own Next.js 15 app, sharing authentication and UI through a common library. Strapi 5 provides the headless API backend.
 
