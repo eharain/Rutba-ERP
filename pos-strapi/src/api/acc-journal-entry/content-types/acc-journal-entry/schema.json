@@ -1,0 +1,39 @@
+{
+  "kind": "collectionType",
+  "collectionName": "acc_journal_entries",
+  "info": {
+    "singularName": "acc-journal-entry",
+    "pluralName": "acc-journal-entries",
+    "displayName": "Journal Entry",
+    "description": "Double-entry bookkeeping journal entries"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "date": {
+      "type": "date",
+      "required": true
+    },
+    "reference": {
+      "type": "string"
+    },
+    "description": {
+      "type": "text"
+    },
+    "debit": {
+      "type": "decimal",
+      "required": true
+    },
+    "credit": {
+      "type": "decimal",
+      "required": true
+    },
+    "account": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::acc-account.acc-account"
+    }
+  }
+}

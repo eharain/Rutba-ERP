@@ -1,0 +1,55 @@
+{
+  "kind": "collectionType",
+  "collectionName": "acc_invoices",
+  "info": {
+    "singularName": "acc-invoice",
+    "pluralName": "acc-invoices",
+    "displayName": "Invoice",
+    "description": "Customer invoices for accounts receivable"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "invoice_number": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "date": {
+      "type": "date",
+      "required": true
+    },
+    "due_date": {
+      "type": "date"
+    },
+    "customer_name": {
+      "type": "string"
+    },
+    "amount": {
+      "type": "decimal",
+      "required": true
+    },
+    "tax": {
+      "type": "decimal"
+    },
+    "total": {
+      "type": "decimal"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "Draft",
+        "Sent",
+        "Paid",
+        "Overdue",
+        "Cancelled"
+      ],
+      "default": "Draft"
+    },
+    "notes": {
+      "type": "text"
+    }
+  }
+}

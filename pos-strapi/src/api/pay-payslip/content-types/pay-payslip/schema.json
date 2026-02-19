@@ -1,0 +1,47 @@
+{
+  "kind": "collectionType",
+  "collectionName": "pay_payslips",
+  "info": {
+    "singularName": "pay-payslip",
+    "pluralName": "pay-payslips",
+    "displayName": "Payslip",
+    "description": "Individual employee payslips per payroll run"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "period": {
+      "type": "string"
+    },
+    "gross": {
+      "type": "decimal"
+    },
+    "deductions": {
+      "type": "decimal"
+    },
+    "net_pay": {
+      "type": "decimal"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "Pending",
+        "Paid"
+      ],
+      "default": "Pending"
+    },
+    "employee": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-employee.hr-employee"
+    },
+    "payroll_run": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::pay-payroll-run.pay-payroll-run",
+      "inversedBy": "payslips"
+    }
+  }
+}

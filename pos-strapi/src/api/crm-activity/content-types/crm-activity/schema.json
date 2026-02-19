@@ -1,0 +1,44 @@
+{
+  "kind": "collectionType",
+  "collectionName": "crm_activities",
+  "info": {
+    "singularName": "crm-activity",
+    "pluralName": "crm-activities",
+    "displayName": "CRM Activity",
+    "description": "Interaction logs — calls, emails, meetings, notes"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "subject": {
+      "type": "string",
+      "required": true
+    },
+    "type": {
+      "type": "enumeration",
+      "enum": [
+        "Call",
+        "Email",
+        "Meeting",
+        "Note",
+        "Follow-up"
+      ],
+      "default": "Note"
+    },
+    "date": {
+      "type": "datetime",
+      "required": true
+    },
+    "description": {
+      "type": "text"
+    },
+    "contact": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-contact.crm-contact",
+      "inversedBy": "activities"
+    }
+  }
+}

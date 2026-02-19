@@ -1,0 +1,83 @@
+{
+  "kind": "collectionType",
+  "collectionName": "cash_registers",
+  "info": {
+    "singularName": "cash-register",
+    "pluralName": "cash-registers",
+    "displayName": "Cash Register"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "opening_cash": {
+      "type": "decimal"
+    },
+    "closing_cash": {
+      "type": "decimal"
+    },
+    "short_cash": {
+      "type": "decimal"
+    },
+    "opened_at": {
+      "type": "datetime"
+    },
+    "closed_at": {
+      "type": "datetime"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "Open",
+        "Closed"
+      ],
+      "default": "Open"
+    },
+    "desk_id": {
+      "type": "integer"
+    },
+    "desk_name": {
+      "type": "string"
+    },
+    "branch_id": {
+      "type": "string"
+    },
+    "branch_name": {
+      "type": "string"
+    },
+    "opened_by": {
+      "type": "string"
+    },
+    "opened_by_id": {
+      "type": "integer"
+    },
+    "opened_by_user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "closed_by": {
+      "type": "string"
+    },
+    "closed_by_id": {
+      "type": "integer"
+    },
+    "closed_by_user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "branch": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::branch.branch"
+    },
+    "payments": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::payment.payment",
+      "mappedBy": "cash_register"
+    }
+  }
+}

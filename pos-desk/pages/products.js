@@ -45,20 +45,21 @@ export default function Products() {
     }
 
     useEffect(() => {
+        if (!filtersInitialized) return;
         loadProductsData();
-    }, [page, rowsPerPage, filters]);
+    }, [page, rowsPerPage, filters, filtersInitialized]);
 
     useEffect(() => {
         Promise.all([
-            authApi.fetch("/brands"),
-            authApi.fetch("/categories"),
-            authApi.fetch("/suppliers"),
-            authApi.fetch("/term-types", { populate: ["terms"] }),
+            authApi.getAll("/brands"),
+            authApi.getAll("/categories"),
+            authApi.getAll("/suppliers"),
+            authApi.getAll("/term-types", { populate: ["terms"] }),
         ]).then(([b, c, s, t]) => {
-            setBrands(b?.data || []);
-            setCategories(c?.data || []);
-            setSuppliers(s?.data || []);
-            setTermTypes(t?.data || []);
+            setBrands(b?.data || b || []);
+            setCategories(c?.data || c || []);
+            setSuppliers(s?.data || s || []);
+            setTermTypes(t?.data || t || []);
         });
     }, []);
 
@@ -93,6 +94,8 @@ export default function Products() {
     }, [router.isReady, router.query, filtersInitialized]);
 
     useEffect(() => {
+        if (!filtersInitialized) return;
+
         const updatedFilters = {
             brands: [selectedBrand],
             categories: [selectedCategory],
@@ -101,6 +104,16 @@ export default function Products() {
             stockStatus,
             searchText
         };
+
+        // Sync current filter state to URL query params (shallow to avoid full reload)
+        const query = {};
+        if (selectedBrand) query.brands = selectedBrand;
+        if (selectedCategory) query.categories = selectedCategory;
+        if (selectedSupplier) query.suppliers = selectedSupplier;
+        if (selectedTerm) query.terms = selectedTerm;
+        if (searchText) query.searchText = searchText;
+        if (stockStatus) query.stockStatus = stockStatus;
+        router.replace({ pathname: router.pathname, query }, undefined, { shallow: true });
 
         for (const [key, value] of Object.entries(updatedFilters)) {
             if (Array.isArray(value)) {
@@ -113,7 +126,7 @@ export default function Products() {
 
         setFilters(updatedFilters);
         setPage(0);
-    }, [selectedBrand, selectedCategory, selectedSupplier, selectedTerm, stockStatus, searchText]);
+    }, [selectedBrand, selectedCategory, selectedSupplier, selectedTerm, stockStatus, searchText, filtersInitialized]);
 
 
 
@@ -134,7 +147,7 @@ export default function Products() {
                     <div style={{ padding: 10 }}>
                         <h1>Products</h1>
                         <div>
-                          
+
                             <ProductFilter
                                 brands={brands}
                                 categories={categories}
@@ -203,7 +216,9 @@ export default function Products() {
                                                 <TableCell>{product.status}</TableCell>
 
                                                 <TableCell>
-                                                    <Link href={`/${product.documentId ?? product.id}/product`}> <i className="fas fa-edit"></i> Edit</Link>
+                                                    <Link href={`/${product.documentId ?? product.id}/product-edit`}> <i className="fas fa-edit"></i> Edit</Link>
+                                                    <br />
+                                                    <Link href={`/${product.documentId ?? product.id}/product-stock-items`}> <i className="fas fa-edit"></i> Edit & Items</Link>
                                                     <br />
                                                     <Link href={`/${product.documentId ?? product.id}/product-variants`}><i className="fas fa-fighter-jet"></i> Variants</Link>
                                                     <br />

@@ -13,8 +13,9 @@ module.exports = {
    * An asynchronous bootstrap function that runs before
    * your application gets started.
    *
-   * This gives you an opportunity to set up your data model,
-   * run jobs, or perform some special logic.
+   * Standard app-access entries (stock, sale) are seeded via a
+   * database migration in database/migrations/.
+   * Add new app-access entries there when creating new apps.
    */
   bootstrap(/*{ strapi }*/) {},
 };

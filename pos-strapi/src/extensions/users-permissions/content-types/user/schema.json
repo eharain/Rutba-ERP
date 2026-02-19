@@ -105,6 +105,12 @@
       "relation": "manyToMany",
       "target": "api::purchase-return.purchase-return",
       "inversedBy": "users"
+    },
+    "app_accesses": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::app-access.app-access",
+      "inversedBy": "users"
     }
   }
 }

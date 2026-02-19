@@ -1,0 +1,55 @@
+{
+  "kind": "collectionType",
+  "collectionName": "hr_leave_requests",
+  "info": {
+    "singularName": "hr-leave-request",
+    "pluralName": "hr-leave-requests",
+    "displayName": "HR Leave Request",
+    "description": "Employee leave and time-off requests"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "leave_type": {
+      "type": "enumeration",
+      "enum": [
+        "Annual",
+        "Sick",
+        "Casual",
+        "Maternity",
+        "Paternity",
+        "Unpaid",
+        "Other"
+      ],
+      "required": true
+    },
+    "start_date": {
+      "type": "date",
+      "required": true
+    },
+    "end_date": {
+      "type": "date",
+      "required": true
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "Pending",
+        "Approved",
+        "Rejected"
+      ],
+      "default": "Pending"
+    },
+    "reason": {
+      "type": "text"
+    },
+    "employee": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-employee.hr-employee",
+      "inversedBy": "leave_requests"
+    }
+  }
+}

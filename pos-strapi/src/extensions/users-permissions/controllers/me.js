@@ -10,14 +10,23 @@ module.exports = createCoreController('plugin::users-permissions.me', ({ strapi 
                 return ctx.unauthorized("You must be logged in");
             }
 
+            // Fetch the user's app_accesses relation
+            const fullUser = await strapi.query("plugin::users-permissions.user").findOne({
+                where: { id: user.id },
+                populate: { app_accesses: { select: ['key'] } },
+            });
+
             const permissions = await strapi.query("plugin::users-permissions.permission").findMany({
                 where: { role: { id: user.role.id } },
                 populate: false,
                 select: ['action'],
             });
 
+            const appAccess = (fullUser?.app_accesses || []).map(a => a.key);
+
             const data = {
                 role: user.role.name,
+                appAccess,
                 permissions: permissions.map(p => p.action)
             }
             ctx.send(data);

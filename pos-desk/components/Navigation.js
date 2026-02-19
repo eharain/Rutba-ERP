@@ -31,6 +31,9 @@ export default function Navigation() {
                             <li><Link className="dropdown-item" href="/purchases">Purchases</Link></li>
                             <li><Link className="dropdown-item" href="/purchase-returns">Purchase Returns</Link></li>
                             <li><Link className="dropdown-item" href="/term-types">Term Types</Link></li>
+                            <li><Link className="dropdown-item" href="/categories">Categories</Link></li>
+                            <li><Link className="dropdown-item" href="/brands">Brands</Link></li>
+                            <li><Link className="dropdown-item" href="/suppliers">Suppliers</Link></li>
                         </ul>
                     </li>
                     <li className="nav-item dropdown">
@@ -39,7 +42,8 @@ export default function Navigation() {
                         </a>
                         <ul className="dropdown-menu" aria-labelledby="salesMenu">
                             <li><Link className="dropdown-item" href="/sales">Sales</Link></li>
-                            <li><Link className="dropdown-item" href="/sale-returns">Sale Returns</Link></li>
+                            <li><Link className="dropdown-item" href="/sales-returns">Sale Returns</Link></li>
+                            <li><Link className="dropdown-item" href="/cash-register">Cash Register</Link></li>
                             <li><Link className="dropdown-item" href="/reports">Reports</Link></li>
                         </ul>
                     </li>

@@ -11,3 +11,11 @@ node
 /pos-strapi/src/api/utils/controllers/validator.js
 /pos-strapi/types/generated/*
 /pos-strapi/src/.vs
+/data
+/pos-strapi/package-lock.json
+/pos-desk/package-lock.json
+.next
+/node_modules
+node_modules
+.package-lock.json
+package-lock.json

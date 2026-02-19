@@ -1,0 +1,48 @@
+{
+  "kind": "collectionType",
+  "collectionName": "pay_payroll_runs",
+  "info": {
+    "singularName": "pay-payroll-run",
+    "pluralName": "pay-payroll-runs",
+    "displayName": "Payroll Run",
+    "description": "Monthly or periodic payroll processing batches"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "period_start": {
+      "type": "date",
+      "required": true
+    },
+    "period_end": {
+      "type": "date",
+      "required": true
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "Draft",
+        "Processed",
+        "Cancelled"
+      ],
+      "default": "Draft"
+    },
+    "total_gross": {
+      "type": "decimal"
+    },
+    "total_deductions": {
+      "type": "decimal"
+    },
+    "total_net": {
+      "type": "decimal"
+    },
+    "payslips": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::pay-payslip.pay-payslip",
+      "mappedBy": "payroll_run"
+    }
+  }
+}

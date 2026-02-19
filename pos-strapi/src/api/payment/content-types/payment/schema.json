@@ -45,6 +45,12 @@
       "relation": "manyToMany",
       "target": "api::branch.branch",
       "mappedBy": "payments"
+    },
+    "cash_register": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::cash-register.cash-register",
+      "inversedBy": "payments"
     }
   }
 }

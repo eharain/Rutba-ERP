@@ -1,0 +1,67 @@
+{
+  "kind": "collectionType",
+  "collectionName": "crm_leads",
+  "info": {
+    "singularName": "crm-lead",
+    "pluralName": "crm-leads",
+    "displayName": "CRM Lead",
+    "description": "Sales leads and opportunities"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "email": {
+      "type": "string"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "company": {
+      "type": "string"
+    },
+    "source": {
+      "type": "enumeration",
+      "enum": [
+        "Website",
+        "Referral",
+        "Social Media",
+        "Cold Call",
+        "Advertisement",
+        "Other"
+      ]
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "New",
+        "Contacted",
+        "Qualified",
+        "Negotiation",
+        "Won",
+        "Lost"
+      ],
+      "default": "New"
+    },
+    "value": {
+      "type": "decimal"
+    },
+    "assigned_to": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "text"
+    },
+    "contact": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-contact.crm-contact",
+      "inversedBy": "leads"
+    }
+  }
+}
