@@ -72,11 +72,17 @@ async function resolveApiUrl(apiUrl, options = {}) {
     testPath = '',
   } = options;
 
-  if (!apiUrl || typeof window === 'undefined') {
+  if (!apiUrl) {
+    return apiUrl;
+  }
+
+  // Server-side (SSR / Node.js): prefer the original (localhost) URL directly
+  if (typeof window === 'undefined') {
     return apiUrl;
   }
 
   const candidates = new Set();
+  const localhostNames = ['localhost', '127.0.0.1', '0.0.0.0'];
 
   try {
     const inputUrl = new URL(apiUrl);
@@ -85,21 +91,28 @@ async function resolveApiUrl(apiUrl, options = {}) {
     const port = inputUrl.port;
     const path = inputUrl.pathname.replace(/\/$/, '');
     const browserHost = window.location.hostname;
+    const isBrowserLocal = localhostNames.includes(browserHost);
 
-    // 1️⃣ Original
-    candidates.add(inputUrl.origin + path);
-
-    // 2️⃣ Browser host + same port
-    if (port) {
-      candidates.add(`${protocol}//${browserHost}:${port}${path}`);
+    // 1️⃣ Browser host + API port (the host/IP the user is actually browsing from)
+    if (!isBrowserLocal) {
+      if (port) {
+        candidates.add(`${protocol}//${browserHost}:${port}${path}`);
+      } else {
+        candidates.add(`${protocol}//${browserHost}${path}`);
+      }
     }
 
-    // 3️⃣ Localhost variations
-    const isLocal = ['localhost', '127.0.0.1', '0.0.0.0']
-      .includes(inputUrl.hostname);
+    // 2️⃣ Original URL from env
+    candidates.add(inputUrl.origin + path);
 
-    if (isLocal) {
-      ['localhost', '127.0.0.1', '0.0.0.0'].forEach(host => {
+    // 3️⃣ Browser origin fallback (browser host + browser port)
+    candidates.add(window.location.origin + path);
+
+    // 4️⃣ Localhost variations (lowest priority in browser)
+    const isConfigLocal = localhostNames.includes(inputUrl.hostname);
+
+    if (isConfigLocal) {
+      localhostNames.forEach(host => {
         if (port) {
           candidates.add(`${protocol}//${host}:${port}${path}`);
         } else {
@@ -107,9 +120,6 @@ async function resolveApiUrl(apiUrl, options = {}) {
         }
       });
     }
-
-    // 4️⃣ Browser origin fallback
-    candidates.add(window.location.origin + path);
 
   } catch {
     return apiUrl;

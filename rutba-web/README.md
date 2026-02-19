@@ -19,6 +19,14 @@ Customer-facing e-commerce storefront built with **Next.js 15**, **React 19**, a
 - Order tracking and order history
 - Responsive mobile-first design
 
+## Credits
+
+The initial e-commerce boilerplate for this app was adapted from the open source project by Jung Rama:
+
+- GitHub: https://github.com/JungRama/strapi-ecommerce-nextjs
+
+This implementation has been repurposed and developed further on new foundations to fit the Rutba POS architecture.
+
 ## Getting Started
 
 ```bash
@@ -35,11 +43,11 @@ Copy `.env.example` to `.env` and configure:
 NEXTAUTH_SECRET=<your-secret>
 GOOGLE_CLIENT_KEY=<google-oauth-client-id>
 GOOGLE_SECRET_KEY=<google-oauth-secret>
-NEXT_PUBLIC_API_URL=http://localhost:1337/api/
-NEXT_PUBLIC_IMAGE_URL=http://localhost:1337
+NEXT_PUBLIC_API_URL=http://localhost:4010/api/
+NEXT_PUBLIC_IMAGE_URL=http://localhost:4010
 NEXT_PUBLIC_IMAGE_HOST_PROTOCOL=http
 NEXT_PUBLIC_IMAGE_HOST_NAME=localhost
-NEXT_PUBLIC_IMAGE_HOST_PORT=1337
+NEXT_PUBLIC_IMAGE_HOST_PORT=4010
 ```
 
 ## Build
