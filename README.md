@@ -138,6 +138,7 @@ docker compose down
 | `scripts/run_strapi_and_pos.bat` | Quick start Strapi + all Next.js apps — Windows |
 | `scripts/run_strapi_and_pos_custom_node.bat` | Same using local Node.js binary |
 | `scripts/start-pos-strapi-forever.sh` | Start Strapi with `forever` (production) |
+| `scripts/setup-systemd-services.sh` | Create & enable systemd unit files for all services (run once with `sudo`) |
 | `scripts/rutba_deploy_master.sh` | CI/CD deploy script (pull, build, restart systemd services) |
 
 ## Strapi Content Types
