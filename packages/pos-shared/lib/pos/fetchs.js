@@ -9,8 +9,13 @@ export async function fetchEntities(entities, page, rowsPerPage = 100) {
         sort: ["id:desc"], populate: ['logo'], pagination: { page, pageSize: rowsPerPage }
     },);
 }
-export async function fetchSales(page, rowsPerPage = 200) {
-    return await authApi.fetch("/sales", { sort: ['createdAt:desc'], pagination: { page, pageSize: rowsPerPage } },);
+export async function fetchSales(page, rowsPerPage = 200, { sort, filters } = {}) {
+    return await authApi.fetch("/sales", {
+        sort: sort || ['createdAt:desc'],
+        filters: filters || undefined,
+        pagination: { page, pageSize: rowsPerPage },
+        populate: { customer: true, employee: true, cash_register: true },
+    });
 }
 
 export async function fetchReturns(page, rowsPerPage = 100) {
