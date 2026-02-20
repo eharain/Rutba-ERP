@@ -44,6 +44,7 @@ COPY rutba-crm/package.json            rutba-crm/
 COPY rutba-hr/package.json             rutba-hr/
 COPY rutba-accounts/package.json       rutba-accounts/
 COPY rutba-payroll/package.json        rutba-payroll/
+COPY rutba-cms/package.json            rutba-cms/
 
 RUN npm ci
 
@@ -89,6 +90,7 @@ ARG NEXT_PUBLIC_CRM_URL
 ARG NEXT_PUBLIC_HR_URL
 ARG NEXT_PUBLIC_ACCOUNTS_URL
 ARG NEXT_PUBLIC_PAYROLL_URL
+ARG NEXT_PUBLIC_CMS_URL
 ARG NEXT_PUBLIC_IMAGE_HOST_PROTOCOL
 ARG NEXT_PUBLIC_IMAGE_HOST_NAME
 ARG NEXT_PUBLIC_IMAGE_HOST_PORT
@@ -108,7 +110,8 @@ ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
     NEXT_PUBLIC_HR_URL=$NEXT_PUBLIC_HR_URL \
     NEXT_PUBLIC_ACCOUNTS_URL=$NEXT_PUBLIC_ACCOUNTS_URL \
     NEXT_PUBLIC_PAYROLL_URL=$NEXT_PUBLIC_PAYROLL_URL \
-    NEXT_PUBLIC_IMAGE_HOST_PROTOCOL=$NEXT_PUBLIC_IMAGE_HOST_PROTOCOL \
+    NEXT_PUBLIC_CMS_URL=$NEXT_PUBLIC_CMS_URL \
+    NEXT_PUBLIC_IMAGE_HOST_PROTOCOL=$NEXT_PUBLIC_IMAGE_HOST_PROTOCOL
     NEXT_PUBLIC_IMAGE_HOST_NAME=$NEXT_PUBLIC_IMAGE_HOST_NAME \
     NEXT_PUBLIC_IMAGE_HOST_PORT=$NEXT_PUBLIC_IMAGE_HOST_PORT \
     NEXTAUTH_SECRET=$WEB_NEXTAUTH_SECRET \
@@ -247,3 +250,17 @@ COPY --from=payroll-build /app/rutba-payroll/.next/standalone ./
 COPY --from=payroll-build /app/rutba-payroll/.next/static     ./rutba-payroll/.next/static
 COPY --from=payroll-build /app/rutba-payroll/public            ./rutba-payroll/public
 CMD ["node", "rutba-payroll/server.js"]
+
+# ----------------------------------------------------------
+#  rutba-cms
+# ----------------------------------------------------------
+FROM build-env AS cms-build
+RUN mkdir -p rutba-cms/public && npm run build --workspace=rutba-cms
+
+FROM base AS cms
+WORKDIR /app
+ENV NODE_ENV=production HOSTNAME=0.0.0.0
+COPY --from=cms-build /app/rutba-cms/.next/standalone ./
+COPY --from=cms-build /app/rutba-cms/.next/static     ./rutba-cms/.next/static
+COPY --from=cms-build /app/rutba-cms/public            ./rutba-cms/public
+CMD ["node", "rutba-cms/server.js"]

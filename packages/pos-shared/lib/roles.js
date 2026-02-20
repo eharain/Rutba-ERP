@@ -21,10 +21,11 @@ export const APP_URLS = {
     hr:        process.env.NEXT_PUBLIC_HR_URL        || 'http://localhost:4006',
     accounts:  process.env.NEXT_PUBLIC_ACCOUNTS_URL  || 'http://localhost:4007',
     payroll:   process.env.NEXT_PUBLIC_PAYROLL_URL   || 'http://localhost:4008',
+    cms:       process.env.NEXT_PUBLIC_CMS_URL       || 'http://localhost:4009',
 };
 
 /** All recognised app keys */
-const VALID_APP_KEYS = ['stock', 'sale', 'auth', 'web-user', 'crm', 'hr', 'accounts', 'payroll'];
+const VALID_APP_KEYS = ['stock', 'sale', 'auth', 'web-user', 'crm', 'hr', 'accounts', 'payroll', 'cms'];
 
 /**
  * Metadata for each app — icon (FontAwesome class), display label,
@@ -40,6 +41,7 @@ export const APP_META = {
     hr:         { icon: 'fa-solid fa-users',            label: 'Human Resources',   description: 'Employees, departments, attendance, leave',   border: 'border-secondary', color: 'text-secondary' },
     accounts:   { icon: 'fa-solid fa-chart-line',       label: 'Accounts',          description: 'Chart of accounts, journals, invoices',       border: 'border-dark',      color: 'text-dark' },
     payroll:    { icon: 'fa-solid fa-money-check-dollar', label: 'Payroll',         description: 'Salary structures, payroll runs, payslips',   border: 'border-danger',    color: 'text-danger' },
+    cms:        { icon: 'fa-solid fa-pen-nib',            label: 'Content Management', description: 'Website content, pages, banners',             border: 'border-purple',    color: 'text-purple' },
 };
 
 /**
@@ -117,6 +119,7 @@ export function getCrossAppLinks(appAccess, currentApp) {
         hr:         '👥 HR',
         accounts:   '📊 Accounts',
         payroll:    '💰 Payroll',
+        cms:        '✏️ Content Management',
     };
 
     for (const appKey of VALID_APP_KEYS) {

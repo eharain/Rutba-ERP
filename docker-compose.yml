@@ -91,6 +91,7 @@ services:
         NEXT_PUBLIC_HR_URL: ${NEXT_PUBLIC_HR_URL}
         NEXT_PUBLIC_ACCOUNTS_URL: ${NEXT_PUBLIC_ACCOUNTS_URL}
         NEXT_PUBLIC_PAYROLL_URL: ${NEXT_PUBLIC_PAYROLL_URL}
+        NEXT_PUBLIC_CMS_URL: ${NEXT_PUBLIC_CMS_URL}
         NEXT_PUBLIC_IMAGE_HOST_PROTOCOL: ${NEXT_PUBLIC_IMAGE_HOST_PROTOCOL}
         NEXT_PUBLIC_IMAGE_HOST_NAME: ${NEXT_PUBLIC_IMAGE_HOST_NAME}
         NEXT_PUBLIC_IMAGE_HOST_PORT: ${NEXT_PUBLIC_IMAGE_HOST_PORT}
@@ -245,6 +246,23 @@ services:
       - "${PORT_PAYROLL}:${PORT_PAYROLL}"
     environment:
       PORT: ${PORT_PAYROLL}
+      HOSTNAME: 0.0.0.0
+
+  # --------------------------------------------------------
+  # CMS
+  # --------------------------------------------------------
+  cms:
+    build:
+      context: .
+      target: cms
+      args: *global-build-args
+    restart: unless-stopped
+    depends_on:
+      - strapi
+    ports:
+      - "${PORT_CMS}:${PORT_CMS}"
+    environment:
+      PORT: ${PORT_CMS}
       HOSTNAME: 0.0.0.0
 
 volumes:

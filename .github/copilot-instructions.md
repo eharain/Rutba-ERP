@@ -14,6 +14,7 @@
 | `rutba-hr/` | **Human Resources** Next.js app (employees, departments, attendance, leave) | 4006 |
 | `rutba-accounts/` | **Accounting** Next.js app (chart of accounts, journal entries, invoices, expenses) | 4007 |
 | `rutba-payroll/` | **Payroll** Next.js app (salary structures, payroll runs, payslips) | 4008 |
+| `rutba-cms/` | **Content Management** Next.js app (website content, products, categories, brands, banners, pages) | 4009 |
 | `pos-desk/` | Legacy combined app (kept for reference, not actively developed) | 4000 |
 | `pos-strapi/` | Strapi 5.x API provider — schemas and components in `pos-strapi/src/` | 1337 |
 
@@ -38,7 +39,7 @@
   3. **Owner scoping** — for content-types that have an `owners` relation, the middleware auto-assigns `owners` on create, filters `find` queries to own records, and blocks update/delete on records owned by others. Users with `"auth"` bypass owner scoping.
 - **Adding a new content-type to the guard:** add an entry to `config/app-access-routes.js` mapping the UID to the app-access key(s). Add an `owners` relation (manyToMany to `plugin::users-permissions.user`) to the schema if the data should be ownership-scoped. The ownership relation on Strapi content-types must always be named `owners` (plural, manyToMany to `plugin::users-permissions.user`). Never use singular `owner` or the old `users` field name. The user schema has no inverse relations to entities — only `role` and `app_accesses` remain.
 - **`owners` is always manyToMany** (never manyToOne) so multiple users can share ownership of a record. The old `users` relation has been removed — use `owners` everywhere. 
-- Standard app-access keys: `"stock"` (Stock Management), `"sale"` (Point of Sale), `"auth"` (User Management — required to access user/access admin pages in `pos-auth`), `"web-user"` (My Orders), `"crm"` (CRM), `"hr"` (Human Resources), `"accounts"` (Accounting), `"payroll"` (Payroll).
+- Standard app-access keys: `"stock"` (Stock Management), `"sale"` (Point of Sale), `"auth"` (User Management — required to access user/access admin pages in `pos-auth`), `"web-user"` (My Orders), `"crm"` (CRM), `"hr"` (Human Resources), `"accounts"` (Accounting), `"payroll"` (Payroll), `"cms"` (Content Management).
 - `POST /me/permissions` returns `{ role, appAccess, adminAppAccess, permissions[], isAdmin }` where `appAccess` is an array of keys like `["stock", "sale", "auth", "crm", "hr", "accounts", "payroll"]` and `adminAppAccess` is an array of keys for which the user has admin privileges (bypasses owner scoping).
 - App-access utilities live in `packages/pos-shared/lib/roles.js` — `getAllowedApps(appAccess)`, `getHomeUrl(appAccess)`, `canAccessApp(appAccess, appKey)`, `isAppAdmin(adminAppAccess, appKey)`, `getCrossAppLinks(appAccess, currentApp)`, and `APP_META` (icon/label/description for each app).
 - Every front-end app calls `setAppName('<key>')` (from `@rutba/pos-shared/lib/api`) at module level in `_app.js`. This sets the `X-App-Name` header on all API requests so the middleware can identify which app the request originates from.
@@ -78,6 +79,7 @@
 - **HR concern** → add to `rutba-hr/pages/`.
 - **Accounting concern** → add to `rutba-accounts/pages/`.
 - **Payroll concern** → add to `rutba-payroll/pages/`.
+- **Content management concern** → add to `rutba-cms/pages/`.
 - **Customer-facing store** → add to `rutba-web/src/pages/`.
 - **Customer order tracking** → add to `rutba-web-user/pages/`.
 - Import shared components and libs from `@rutba/pos-shared/...`; create app-specific components (Layout, Navigation) locally.

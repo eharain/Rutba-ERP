@@ -168,6 +168,12 @@ write_service "rutba_payroll" \
     "${APP_DIR}" \
     "${NODE_BIN} ${APP_DIR}/scripts/load-env.js -- ${NPM_BIN} run start --workspace=rutba-payroll"
 
+# ── CMS ──────────────────────────────────
+write_service "rutba_cms" \
+    "Rutba POS — Content Management (rutba-cms)" \
+    "${APP_DIR}" \
+    "${NODE_BIN} ${APP_DIR}/scripts/load-env.js -- ${NPM_BIN} run start --workspace=rutba-cms"
+
 # ── Legacy Desk (optional) ──────────────
 write_service "rutba_pos_desk" \
     "Rutba POS — Legacy Desk (pos-desk)" \
@@ -192,6 +198,7 @@ SERVICES=(
     rutba_hr
     rutba_accounts
     rutba_payroll
+    rutba_cms
     rutba_pos_desk
 )
 

@@ -42,6 +42,15 @@ export default function Footer() {
 
                 <li>
                   <Link
+                    href="/pages"
+                    className="text-gray-700 transition hover:opacity-75"
+                  >
+                    Pages
+                  </Link>
+                </li>
+
+                <li>
+                  <Link
                     href="/login"
                     className="text-gray-700 transition hover:opacity-75"
                   >

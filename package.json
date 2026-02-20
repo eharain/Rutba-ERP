@@ -11,7 +11,8 @@
     "rutba-crm",
     "rutba-hr",
     "rutba-accounts",
-    "rutba-payroll"
+    "rutba-payroll",
+    "rutba-cms"
   ],
   "scripts": {
     "dev:desk": "node scripts/load-env.js -- npm run dev --workspace=pos-desk",
@@ -25,6 +26,7 @@
     "dev:hr": "node scripts/load-env.js -- npm run dev --workspace=rutba-hr",
     "dev:accounts": "node scripts/load-env.js -- npm run dev --workspace=rutba-accounts",
     "dev:payroll": "node scripts/load-env.js -- npm run dev --workspace=rutba-payroll",
+    "dev:cms": "node scripts/load-env.js -- npm run dev --workspace=rutba-cms",
     "build:strapi": "node scripts/load-env.js -- npm --prefix pos-strapi run build",
     "build:auth": "node scripts/load-env.js -- npm run build --workspace=pos-auth",
     "build:stock": "node scripts/load-env.js -- npm run build --workspace=pos-stock",
@@ -35,7 +37,8 @@
     "build:hr": "node scripts/load-env.js -- npm run build --workspace=rutba-hr",
     "build:accounts": "node scripts/load-env.js -- npm run build --workspace=rutba-accounts",
     "build:payroll": "node scripts/load-env.js -- npm run build --workspace=rutba-payroll",
-    "build:all": "npm run build:auth && npm run build:stock && npm run build:sale && npm run build:web && npm run build:web-user && npm run build:crm && npm run build:hr && npm run build:accounts && npm run build:payroll",
+    "build:cms": "node scripts/load-env.js -- npm run build --workspace=rutba-cms",
+    "build:all": "npm run build:auth && npm run build:stock && npm run build:sale && npm run build:web && npm run build:web-user && npm run build:crm && npm run build:hr && npm run build:accounts && npm run build:payroll && npm run build:cms",
     "docker:env": "node scripts/generate-docker-env.js"
   },
   "dependencies": {

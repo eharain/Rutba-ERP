@@ -891,6 +891,55 @@ export interface ApiCategoryCategory extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiCmsPageCmsPage extends Struct.CollectionTypeSchema {
+  collectionName: 'cms_pages';
+  info: {
+    description: 'Static pages and blog posts for the public website';
+    displayName: 'CMS Page';
+    pluralName: 'cms-pages';
+    singularName: 'cms-page';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    content: Schema.Attribute.RichText;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    excerpt: Schema.Attribute.Text;
+    featured_image: Schema.Attribute.Media<'images'>;
+    gallery: Schema.Attribute.Media<'images' | 'videos', true>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::cms-page.cms-page'
+    > &
+      Schema.Attribute.Private;
+    owners: Schema.Attribute.Relation<
+      'manyToMany',
+      'plugin::users-permissions.user'
+    >;
+    page_type: Schema.Attribute.Enumeration<['page', 'blog', 'announcement']> &
+      Schema.Attribute.DefaultTo<'page'>;
+    product_groups: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::product-group.product-group'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    related_pages: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::cms-page.cms-page'
+    >;
+    slug: Schema.Attribute.UID<'title'> & Schema.Attribute.Required;
+    sort_order: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    title: Schema.Attribute.String & Schema.Attribute.Required;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiCrmActivityCrmActivity extends Struct.CollectionTypeSchema {
   collectionName: 'crm_activities';
   info: {
@@ -2846,6 +2895,7 @@ declare module '@strapi/strapi' {
       'api::cash-register-transaction.cash-register-transaction': ApiCashRegisterTransactionCashRegisterTransaction;
       'api::cash-register.cash-register': ApiCashRegisterCashRegister;
       'api::category.category': ApiCategoryCategory;
+      'api::cms-page.cms-page': ApiCmsPageCmsPage;
       'api::crm-activity.crm-activity': ApiCrmActivityCrmActivity;
       'api::crm-contact.crm-contact': ApiCrmContactCrmContact;
       'api::crm-lead.crm-lead': ApiCrmLeadCrmLead;

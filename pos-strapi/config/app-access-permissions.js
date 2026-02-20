@@ -197,6 +197,23 @@ const ENTRIES = [
       { uid: 'api::employee.employee',                             actions: READ },
     ],
   },
+
+  // ── CMS (Content Management) ──────────────────────────────
+  {
+    key: 'cms',
+    name: 'Content Management',
+    description: 'Manage website content — products, categories, brands, pages & banners',
+    permissions: [
+      { uid: 'api::cms-page.cms-page',                             actions: WRITE },
+      { uid: 'api::product.product',                               actions: WRITE },
+      { uid: 'api::product-group.product-group',                   actions: WRITE },
+      { uid: 'api::category.category',                             actions: WRITE },
+      { uid: 'api::brand.brand',                                   actions: WRITE },
+      // cross-app read-only
+      { uid: 'api::order.order',                                   actions: READ },
+      { uid: 'api::customer.customer',                             actions: READ },
+    ],
+  },
 ];
 
 // ─── Derived: key → permissions[] map for the middleware ─────

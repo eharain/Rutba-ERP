@@ -64,6 +64,9 @@ npm run dev:accounts &
 echo "Starting Payroll..."
 npm run dev:payroll &
 
+echo "Starting CMS..."
+npm run dev:cms &
+
 echo ""
 echo "============================================"
 echo "  All services started!"

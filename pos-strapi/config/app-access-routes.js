@@ -20,10 +20,10 @@
 module.exports = {
 
   // ── Stock Management ──────────────────────────────────────
-  'api::product.product':                    { find: ['stock', 'sale'], create: ['stock'], update: ['stock'], delete: ['stock', 'auth'] },
-  'api::product-group.product-group':        'stock',
-  'api::category.category':                  { find: ['stock', 'sale'], create: ['stock'], update: ['stock'], delete: ['stock', 'auth'] },
-  'api::brand.brand':                        { find: ['stock', 'sale'], create: ['stock'], update: ['stock'], delete: ['stock', 'auth'] },
+  'api::product.product':                    { find: ['stock', 'sale', 'cms'], create: ['stock', 'cms'], update: ['stock', 'cms'], delete: ['stock', 'auth'] },
+  'api::product-group.product-group':        { find: ['stock', 'cms'], create: ['stock', 'cms'], update: ['stock', 'cms'], delete: ['stock', 'cms', 'auth'] },
+  'api::category.category':                  { find: ['stock', 'sale', 'cms'], create: ['stock', 'cms'], update: ['stock', 'cms'], delete: ['stock', 'auth'] },
+  'api::brand.brand':                        { find: ['stock', 'sale', 'cms'], create: ['stock', 'cms'], update: ['stock', 'cms'], delete: ['stock', 'auth'] },
   'api::supplier.supplier':                  'stock',
   'api::purchase.purchase':                  'stock',
   'api::purchase-item.purchase-item':        'stock',
@@ -41,7 +41,7 @@ module.exports = {
   'api::cash-register.cash-register':        { find: ['sale', 'accounts'], create: ['sale'], update: ['sale'], delete: ['sale', 'auth'] },
   'api::cash-register-transaction.cash-register-transaction': { find: ['sale', 'accounts'], create: ['sale'], update: ['sale'], delete: ['sale', 'auth'] },
   'api::customer.customer':                  ['sale', 'crm', 'accounts'],
-  'api::order.order':                        ['sale', 'web-user'],
+  'api::order.order':                        ['sale', 'web-user', 'cms'],
 
   // ── CRM ───────────────────────────────────────────────────
   'api::crm-contact.crm-contact':            'crm',
@@ -64,6 +64,9 @@ module.exports = {
   'api::pay-salary-structure.pay-salary-structure': 'payroll',
   'api::pay-payroll-run.pay-payroll-run':           'payroll',
   'api::pay-payslip.pay-payslip':                   'payroll',
+
+  // ── CMS (Content Management) ──────────────────────────────
+  'api::cms-page.cms-page':                  'cms',
 
   // ── Shared / system ───────────────────────────────────────
   'api::branch.branch':                      ['stock', 'sale', 'hr', 'accounts'],

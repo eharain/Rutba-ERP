@@ -20,6 +20,7 @@ CRM_SERVICE="rutba_crm.service"
 HR_SERVICE="rutba_hr.service"
 ACCOUNTS_SERVICE="rutba_accounts.service"
 PAYROLL_SERVICE="rutba_payroll.service"
+CMS_SERVICE="rutba_cms.service"
 
 BRANCH="master"
 
@@ -97,6 +98,7 @@ sudo systemctl stop $CRM_SERVICE || true
 sudo systemctl stop $HR_SERVICE || true
 sudo systemctl stop $ACCOUNTS_SERVICE || true
 sudo systemctl stop $PAYROLL_SERVICE || true
+sudo systemctl stop $CMS_SERVICE || true
 
 ###########################################
 # PULL LATEST
@@ -147,6 +149,7 @@ sudo systemctl start $CRM_SERVICE
 sudo systemctl start $HR_SERVICE
 sudo systemctl start $ACCOUNTS_SERVICE
 sudo systemctl start $PAYROLL_SERVICE
+sudo systemctl start $CMS_SERVICE
 sudo systemctl start $DESK_SERVICE
 
 ###########################################
@@ -164,5 +167,6 @@ sudo systemctl status $CRM_SERVICE --no-pager
 sudo systemctl status $HR_SERVICE --no-pager
 sudo systemctl status $ACCOUNTS_SERVICE --no-pager
 sudo systemctl status $PAYROLL_SERVICE --no-pager
+sudo systemctl status $CMS_SERVICE --no-pager
 
 log "========== DEPLOY COMPLETE =========="
