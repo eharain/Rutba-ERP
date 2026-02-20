@@ -9,12 +9,12 @@ export async function fetchEntities(entities, page, rowsPerPage = 100) {
         sort: ["id:desc"], populate: ['logo'], pagination: { page, pageSize: rowsPerPage }
     },);
 }
-export async function fetchSales(page, rowsPerPage = 200, { sort, filters } = {}) {
+export async function fetchSales(page, rowsPerPage = 200, { sort, filters, populate } = {}) {
     return await authApi.fetch("/sales", {
         sort: sort || ['createdAt:desc'],
         filters: filters || undefined,
         pagination: { page, pageSize: rowsPerPage },
-        populate: { customer: true, employee: true, cash_register: true },
+        populate: populate || { customer: true, employee: true, cash_register: true },
     });
 }
 
