@@ -35,7 +35,8 @@
     "build:hr": "node scripts/load-env.js -- npm run build --workspace=rutba-hr",
     "build:accounts": "node scripts/load-env.js -- npm run build --workspace=rutba-accounts",
     "build:payroll": "node scripts/load-env.js -- npm run build --workspace=rutba-payroll",
-    "build:all": "npm run build:auth && npm run build:stock && npm run build:sale && npm run build:web && npm run build:web-user && npm run build:crm && npm run build:hr && npm run build:accounts && npm run build:payroll"
+    "build:all": "npm run build:auth && npm run build:stock && npm run build:sale && npm run build:web && npm run build:web-user && npm run build:crm && npm run build:hr && npm run build:accounts && npm run build:payroll",
+    "docker:env": "node scripts/generate-docker-env.js"
   },
   "dependencies": {
     "marked": "^17.0.1"

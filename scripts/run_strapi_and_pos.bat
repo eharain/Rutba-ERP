@@ -2,6 +2,7 @@
 SETLOCAL ENABLEDELAYEDEXPANSION
 
 SET "SCRIPT_DIR=%~dp0"
+cd /d "%SCRIPT_DIR%.."
 
 REM Check Node.js installation
 where node >nul 2>nul
@@ -12,42 +13,42 @@ IF ERRORLEVEL 1 (
     echo Node.js is installed.
 )
 
-REM Run pos-strapi
-echo Starting Strapi API (port 1337)...
-cd /d "%SCRIPT_DIR%..\pos-strapi"
-start "Strapi API" cmd /k "npm run develop"
+echo Starting Strapi API...
+start "Strapi API" cmd /k "npm run dev:strapi"
 
 timeout /t 3 /nobreak >nul
 
-REM Run all Next.js apps via workspace scripts
-cd /d "%SCRIPT_DIR%.."
+echo Starting Rutba Web...
+start "Rutba Web" cmd /k "npm run dev:web"
 
-echo Starting Rutba Web (port 4000)...
-start "Rutba Web" cmd /k "cd /d "%SCRIPT_DIR%..\rutba-web" && npm run dev"
+echo Starting Auth Portal...
+start "Auth Portal" cmd /k "npm run dev:auth"
 
-echo Starting Auth Portal (port 4003)...
-start "Auth Portal" cmd /k "npm run dev --workspace=pos-auth"
+echo Starting Stock Management...
+start "Stock Management" cmd /k "npm run dev:stock"
 
-echo Starting Stock Management (port 4001)...
-start "Stock Management" cmd /k "npm run dev --workspace=pos-stock"
+echo Starting Point of Sale...
+start "Point of Sale" cmd /k "npm run dev:sale"
 
-echo Starting Point of Sale (port 4002)...
-start "Point of Sale" cmd /k "npm run dev --workspace=pos-sale"
+echo Starting Web User...
+start "Web User" cmd /k "npm run dev:web-user"
 
-echo Starting Web User (port 4004)...
-start "Web User" cmd /k "npm run dev --workspace=rutba-web-user"
+echo Starting CRM...
+start "CRM" cmd /k "npm run dev:crm"
 
-echo Starting CRM (port 4005)...
-start "CRM" cmd /k "npm run dev --workspace=rutba-crm"
+echo Starting HR...
+start "HR" cmd /k "npm run dev:hr"
 
-echo Starting HR (port 4006)...
-start "HR" cmd /k "npm run dev --workspace=rutba-hr"
+echo Starting Accounts...
+start "Accounts" cmd /k "npm run dev:accounts"
 
-echo Starting Accounts (port 4007)...
-start "Accounts" cmd /k "npm run dev --workspace=rutba-accounts"
+echo Starting Payroll...
+start "Payroll" cmd /k "npm run dev:payroll"
 
-echo Starting Payroll (port 4008)...
-start "Payroll" cmd /k "npm run dev --workspace=rutba-payroll"
+echo.
+echo All services started. Ports configured via .env.development.
+
+ENDLOCAL
 
 echo.
 echo All services started:

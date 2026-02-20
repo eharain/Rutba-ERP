@@ -1,22 +1,17 @@
 # ============================================================
-# Rutba POS — Docker Compose (Production)
+# Rutba POS — Docker Compose
 # ============================================================
 #
-# Quick start:
-#   1. Copy .env.example to .env and fill in secrets
-#   2. docker compose up -d --build
-#   3. Open http://localhost:${PORT_AUTH} (Auth Portal) to get started
+# Pre-requisite:
+#   node scripts/generate-docker-env.js
 #
-# Port assignment — all ports derive from BASE_PORT (default 3000):
-#   web=BASE+0  stock=+1  sale=+2  auth=+3
-#   web-user=+4  crm=+5  hr=+6  accounts=+7  payroll=+8
-# Set PORT_* vars in .env to override.
+# Start:
+#   docker compose --env-file .env.docker up -d --build
 #
-# To rebuild a single service:
-#   docker compose up -d --build strapi
-#   docker compose up -d --build auth
+# Rebuild one service:
+#   docker compose --env-file .env.docker up -d --build strapi
 #
-# To view logs:
+# Logs:
 #   docker compose logs -f strapi auth stock
 # ============================================================
 
@@ -28,23 +23,23 @@ services:
     image: mysql:8.0
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${DATABASE_NAME}
-      MYSQL_USER: ${DATABASE_USERNAME}
-      MYSQL_PASSWORD: ${DATABASE_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${STRAPI_MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${STRAPI_DATABASE_NAME}
+      MYSQL_USER: ${STRAPI_DATABASE_USERNAME}
+      MYSQL_PASSWORD: ${STRAPI_DATABASE_PASSWORD}
     ports:
-      - "3306:3306"
+      - "${STRAPI_DATABASE_PORT:-3306}:3306"
     volumes:
       - mysql_data:/var/lib/mysql
       - ./docker/mysql/init:/docker-entrypoint-initdb.d
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${STRAPI_MYSQL_ROOT_PASSWORD}"]
       interval: 10s
       timeout: 5s
       retries: 5
 
   # --------------------------------------------------------
-  # Strapi API  (port 4010)
+  # Strapi API
   # --------------------------------------------------------
   strapi:
     build:
@@ -55,240 +50,201 @@ services:
       mysql:
         condition: service_healthy
     ports:
-      - "4010:4010"
+      - "${PORT_STRAPI}:${PORT_STRAPI}"
     environment:
-      HOST: 0.0.0.0
-      PORT: 4010
-      DATABASE_CLIENT: mysql
+      HOST: ${STRAPI_HOST}
+      PORT: ${PORT_STRAPI}
+      DATABASE_CLIENT: ${STRAPI_DATABASE_CLIENT}
       DATABASE_HOST: mysql
       DATABASE_PORT: 3306
-      DATABASE_NAME: ${DATABASE_NAME}
-      DATABASE_USERNAME: ${DATABASE_USERNAME}
-      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+      DATABASE_NAME: ${STRAPI_DATABASE_NAME}
+      DATABASE_USERNAME: ${STRAPI_DATABASE_USERNAME}
+      DATABASE_PASSWORD: ${STRAPI_DATABASE_PASSWORD}
       DATABASE_SSL: "false"
-      APP_KEYS: ${APP_KEYS}
-      API_TOKEN_SALT: ${API_TOKEN_SALT}
-      ADMIN_JWT_SECRET: ${ADMIN_JWT_SECRET}
-      TRANSFER_TOKEN_SALT: ${TRANSFER_TOKEN_SALT}
-      JWT_SECRET: ${JWT_SECRET}
-      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      APP_KEYS: ${STRAPI_APP_KEYS}
+      API_TOKEN_SALT: ${STRAPI_API_TOKEN_SALT}
+      ADMIN_JWT_SECRET: ${STRAPI_ADMIN_JWT_SECRET}
+      TRANSFER_TOKEN_SALT: ${STRAPI_TRANSFER_TOKEN_SALT}
+      JWT_SECRET: ${STRAPI_JWT_SECRET}
+      ENCRYPTION_KEY: ${STRAPI_ENCRYPTION_KEY}
+      CORS_ORIGINS: ${CORS_ORIGINS}
       NODE_ENV: production
     volumes:
       - strapi_uploads:/app/pos-strapi/public/uploads
 
   # --------------------------------------------------------
-  # Auth Portal  (port ${PORT_AUTH:-4003})
+  # Auth Portal
   # --------------------------------------------------------
   auth:
     build:
       context: .
       target: auth
-      args:
-        APP_PORT: ${PORT_AUTH:-4003}
+      args: &global-build-args
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        NEXT_PUBLIC_IMAGE_URL: ${NEXT_PUBLIC_IMAGE_URL}
         NEXT_PUBLIC_AUTH_URL: ${NEXT_PUBLIC_AUTH_URL}
         NEXT_PUBLIC_STOCK_URL: ${NEXT_PUBLIC_STOCK_URL}
         NEXT_PUBLIC_SALE_URL: ${NEXT_PUBLIC_SALE_URL}
+        NEXT_PUBLIC_WEB_URL: ${NEXT_PUBLIC_WEB_URL}
         NEXT_PUBLIC_WEB_USER_URL: ${NEXT_PUBLIC_WEB_USER_URL}
         NEXT_PUBLIC_CRM_URL: ${NEXT_PUBLIC_CRM_URL}
         NEXT_PUBLIC_HR_URL: ${NEXT_PUBLIC_HR_URL}
         NEXT_PUBLIC_ACCOUNTS_URL: ${NEXT_PUBLIC_ACCOUNTS_URL}
         NEXT_PUBLIC_PAYROLL_URL: ${NEXT_PUBLIC_PAYROLL_URL}
+        NEXT_PUBLIC_IMAGE_HOST_PROTOCOL: ${NEXT_PUBLIC_IMAGE_HOST_PROTOCOL}
+        NEXT_PUBLIC_IMAGE_HOST_NAME: ${NEXT_PUBLIC_IMAGE_HOST_NAME}
+        NEXT_PUBLIC_IMAGE_HOST_PORT: ${NEXT_PUBLIC_IMAGE_HOST_PORT}
+        WEB_NEXTAUTH_SECRET: ${WEB_NEXTAUTH_SECRET}
+        WEB_NEXTAUTH_URL: ${WEB_NEXTAUTH_URL}
+        WEB_GOOGLE_CLIENT_KEY: ${WEB_GOOGLE_CLIENT_KEY}
+        WEB_GOOGLE_SECRET_KEY: ${WEB_GOOGLE_SECRET_KEY}
     restart: unless-stopped
     depends_on:
       - strapi
     ports:
-      - "${PORT_AUTH:-4003}:${PORT_AUTH:-4003}"
+      - "${PORT_AUTH}:${PORT_AUTH}"
     environment:
-      PORT: ${PORT_AUTH:-4003}
+      PORT: ${PORT_AUTH}
       HOSTNAME: 0.0.0.0
 
   # --------------------------------------------------------
-  # Stock Management  (port ${PORT_STOCK:-4001})
+  # Stock Management
   # --------------------------------------------------------
   stock:
     build:
       context: .
       target: stock
-      args:
-        APP_PORT: ${PORT_STOCK:-4001}
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
-        NEXT_PUBLIC_AUTH_URL: ${NEXT_PUBLIC_AUTH_URL}
-        NEXT_PUBLIC_STOCK_URL: ${NEXT_PUBLIC_STOCK_URL}
-        NEXT_PUBLIC_SALE_URL: ${NEXT_PUBLIC_SALE_URL}
-        NEXT_PUBLIC_CRM_URL: ${NEXT_PUBLIC_CRM_URL}
-        NEXT_PUBLIC_HR_URL: ${NEXT_PUBLIC_HR_URL}
-        NEXT_PUBLIC_ACCOUNTS_URL: ${NEXT_PUBLIC_ACCOUNTS_URL}
-        NEXT_PUBLIC_PAYROLL_URL: ${NEXT_PUBLIC_PAYROLL_URL}
+      args: *global-build-args
     restart: unless-stopped
     depends_on:
       - strapi
     ports:
-      - "${PORT_STOCK:-4001}:${PORT_STOCK:-4001}"
+      - "${PORT_STOCK}:${PORT_STOCK}"
     environment:
-      PORT: ${PORT_STOCK:-4001}
+      PORT: ${PORT_STOCK}
       HOSTNAME: 0.0.0.0
 
   # --------------------------------------------------------
-  # Point of Sale  (port ${PORT_SALE:-4002})
+  # Point of Sale
   # --------------------------------------------------------
   sale:
     build:
       context: .
       target: sale
-      args:
-        APP_PORT: ${PORT_SALE:-4002}
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
-        NEXT_PUBLIC_AUTH_URL: ${NEXT_PUBLIC_AUTH_URL}
-        NEXT_PUBLIC_STOCK_URL: ${NEXT_PUBLIC_STOCK_URL}
-        NEXT_PUBLIC_SALE_URL: ${NEXT_PUBLIC_SALE_URL}
-        NEXT_PUBLIC_CRM_URL: ${NEXT_PUBLIC_CRM_URL}
-        NEXT_PUBLIC_HR_URL: ${NEXT_PUBLIC_HR_URL}
-        NEXT_PUBLIC_ACCOUNTS_URL: ${NEXT_PUBLIC_ACCOUNTS_URL}
-        NEXT_PUBLIC_PAYROLL_URL: ${NEXT_PUBLIC_PAYROLL_URL}
+      args: *global-build-args
     restart: unless-stopped
     depends_on:
       - strapi
     ports:
-      - "${PORT_SALE:-4002}:${PORT_SALE:-4002}"
+      - "${PORT_SALE}:${PORT_SALE}"
     environment:
-      PORT: ${PORT_SALE:-4002}
+      PORT: ${PORT_SALE}
       HOSTNAME: 0.0.0.0
 
   # --------------------------------------------------------
-  # Public Website  (port ${PORT_WEB:-4000})
+  # Public Website
   # --------------------------------------------------------
   web:
     build:
       context: .
       target: web
-      args:
-        APP_PORT: ${PORT_WEB:-4000}
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
-        NEXT_PUBLIC_IMAGE_URL: ${NEXT_PUBLIC_IMAGE_URL}
-        NEXT_PUBLIC_IMAGE_HOST_PROTOCOL: ${NEXT_PUBLIC_IMAGE_HOST_PROTOCOL}
-        NEXT_PUBLIC_IMAGE_HOST_NAME: ${NEXT_PUBLIC_IMAGE_HOST_NAME}
-        NEXT_PUBLIC_IMAGE_HOST_PORT: ${NEXT_PUBLIC_IMAGE_HOST_PORT}
-        NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
-        NEXTAUTH_URL: ${NEXTAUTH_URL}
-        GOOGLE_CLIENT_KEY: ${GOOGLE_CLIENT_KEY}
-        GOOGLE_SECRET_KEY: ${GOOGLE_SECRET_KEY}
+      args: *global-build-args
     restart: unless-stopped
     depends_on:
       - strapi
     ports:
-      - "${PORT_WEB:-4000}:${PORT_WEB:-4000}"
+      - "${PORT_WEB}:${PORT_WEB}"
     environment:
-      PORT: ${PORT_WEB:-4000}
+      PORT: ${PORT_WEB}
       HOSTNAME: 0.0.0.0
-      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
-      NEXTAUTH_URL: ${NEXTAUTH_URL}
-      GOOGLE_CLIENT_KEY: ${GOOGLE_CLIENT_KEY}
-      GOOGLE_SECRET_KEY: ${GOOGLE_SECRET_KEY}
+      NEXTAUTH_SECRET: ${WEB_NEXTAUTH_SECRET}
+      NEXTAUTH_URL: ${WEB_NEXTAUTH_URL}
+      GOOGLE_CLIENT_KEY: ${WEB_GOOGLE_CLIENT_KEY}
+      GOOGLE_SECRET_KEY: ${WEB_GOOGLE_SECRET_KEY}
 
   # --------------------------------------------------------
-  # My Orders / Web User  (port ${PORT_WEB_USER:-4004})
+  # My Orders / Web User
   # --------------------------------------------------------
   web-user:
     build:
       context: .
       target: web-user
-      args:
-        APP_PORT: ${PORT_WEB_USER:-4004}
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
-        NEXT_PUBLIC_AUTH_URL: ${NEXT_PUBLIC_AUTH_URL}
-        NEXT_PUBLIC_WEB_USER_URL: ${NEXT_PUBLIC_WEB_USER_URL}
+      args: *global-build-args
     restart: unless-stopped
     depends_on:
       - strapi
     ports:
-      - "${PORT_WEB_USER:-4004}:${PORT_WEB_USER:-4004}"
+      - "${PORT_WEB_USER}:${PORT_WEB_USER}"
     environment:
-      PORT: ${PORT_WEB_USER:-4004}
+      PORT: ${PORT_WEB_USER}
       HOSTNAME: 0.0.0.0
 
   # --------------------------------------------------------
-  # CRM  (port ${PORT_CRM:-4005})
+  # CRM
   # --------------------------------------------------------
   crm:
     build:
       context: .
       target: crm
-      args:
-        APP_PORT: ${PORT_CRM:-4005}
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
-        NEXT_PUBLIC_AUTH_URL: ${NEXT_PUBLIC_AUTH_URL}
-        NEXT_PUBLIC_CRM_URL: ${NEXT_PUBLIC_CRM_URL}
+      args: *global-build-args
     restart: unless-stopped
     depends_on:
       - strapi
     ports:
-      - "${PORT_CRM:-4005}:${PORT_CRM:-4005}"
+      - "${PORT_CRM}:${PORT_CRM}"
     environment:
-      PORT: ${PORT_CRM:-4005}
+      PORT: ${PORT_CRM}
       HOSTNAME: 0.0.0.0
 
   # --------------------------------------------------------
-  # HR  (port ${PORT_HR:-4006})
+  # HR
   # --------------------------------------------------------
   hr:
     build:
       context: .
       target: hr
-      args:
-        APP_PORT: ${PORT_HR:-4006}
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
-        NEXT_PUBLIC_AUTH_URL: ${NEXT_PUBLIC_AUTH_URL}
-        NEXT_PUBLIC_HR_URL: ${NEXT_PUBLIC_HR_URL}
+      args: *global-build-args
     restart: unless-stopped
     depends_on:
       - strapi
     ports:
-      - "${PORT_HR:-4006}:${PORT_HR:-4006}"
+      - "${PORT_HR}:${PORT_HR}"
     environment:
-      PORT: ${PORT_HR:-4006}
+      PORT: ${PORT_HR}
       HOSTNAME: 0.0.0.0
 
   # --------------------------------------------------------
-  # Accounts  (port ${PORT_ACCOUNTS:-4007})
+  # Accounts
   # --------------------------------------------------------
   accounts:
     build:
       context: .
       target: accounts
-      args:
-        APP_PORT: ${PORT_ACCOUNTS:-4007}
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
-        NEXT_PUBLIC_AUTH_URL: ${NEXT_PUBLIC_AUTH_URL}
-        NEXT_PUBLIC_ACCOUNTS_URL: ${NEXT_PUBLIC_ACCOUNTS_URL}
+      args: *global-build-args
     restart: unless-stopped
     depends_on:
       - strapi
     ports:
-      - "${PORT_ACCOUNTS:-4007}:${PORT_ACCOUNTS:-4007}"
+      - "${PORT_ACCOUNTS}:${PORT_ACCOUNTS}"
     environment:
-      PORT: ${PORT_ACCOUNTS:-4007}
+      PORT: ${PORT_ACCOUNTS}
       HOSTNAME: 0.0.0.0
 
   # --------------------------------------------------------
-  # Payroll  (port ${PORT_PAYROLL:-4008})
+  # Payroll
   # --------------------------------------------------------
   payroll:
     build:
       context: .
       target: payroll
-      args:
-        APP_PORT: ${PORT_PAYROLL:-4008}
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
-        NEXT_PUBLIC_AUTH_URL: ${NEXT_PUBLIC_AUTH_URL}
-        NEXT_PUBLIC_PAYROLL_URL: ${NEXT_PUBLIC_PAYROLL_URL}
+      args: *global-build-args
     restart: unless-stopped
     depends_on:
       - strapi
     ports:
-      - "${PORT_PAYROLL:-4008}:${PORT_PAYROLL:-4008}"
+      - "${PORT_PAYROLL}:${PORT_PAYROLL}"
     environment:
-      PORT: ${PORT_PAYROLL:-4008}
+      PORT: ${PORT_PAYROLL}
       HOSTNAME: 0.0.0.0
 
 volumes:

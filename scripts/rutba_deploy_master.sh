@@ -120,8 +120,8 @@ run "npm install"
 ###########################################
 
 log "Building Strapi..."
-cd $APP_DIR/pos-strapi
-run "npm run build"
+cd $APP_DIR
+run "npm run build:strapi"
 
 ###########################################
 # BUILD ALL NEXT.JS APPS
