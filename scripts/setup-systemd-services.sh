@@ -42,22 +42,16 @@ log() {
     echo "$(date '+%Y-%m-%d %H:%M:%S')  $1"
 }
 
-# write_service <unit-name> <description> <working-dir> <exec-start> [env-file]
+# write_service <unit-name> <description> <working-dir> <exec-start>
 write_service() {
     local UNIT_NAME="$1"
     local DESCRIPTION="$2"
     local WORK_DIR="$3"
     local EXEC_START="$4"
-    local ENV_FILE="$5"
 
     local FILE="${SYSTEMD_DIR}/${UNIT_NAME}.service"
 
     log "Creating ${FILE} ..."
-
-    local ENV_LINE=""
-    if [ -n "$ENV_FILE" ] && [ -f "$ENV_FILE" ]; then
-        ENV_LINE="EnvironmentFile=${ENV_FILE}"
-    fi
 
     cat > "$FILE" <<EOF
 [Unit]
@@ -70,7 +64,6 @@ User=${RUN_USER}
 Group=${RUN_GROUP}
 WorkingDirectory=${WORK_DIR}
 ExecStart=${EXEC_START}
-${ENV_LINE}
 Restart=on-failure
 RestartSec=10
 StandardOutput=journal
@@ -118,79 +111,68 @@ log "User:    ${RUN_USER}"
 # ── Strapi API ───────────────────────────
 write_service "rutba_pos_strapi" \
     "Rutba POS — Strapi API" \
-    "${APP_DIR}/pos-strapi" \
-    "${NPM_BIN} run start" \
-    "${APP_DIR}/pos-strapi/.env"
+    "${APP_DIR}" \
+    "${NODE_BIN} ${APP_DIR}/scripts/load-env.js -- ${NPM_BIN} --prefix pos-strapi run start"
 
 # ── Auth Portal ──────────────────────────
 write_service "rutba_pos_auth" \
     "Rutba POS — Auth Portal (pos-auth)" \
     "${APP_DIR}" \
-    "${NPM_BIN} run start --workspace=pos-auth" \
-    "${APP_DIR}/pos-auth/.env"
+    "${NODE_BIN} ${APP_DIR}/scripts/load-env.js -- ${NPM_BIN} run start --workspace=pos-auth"
 
 # ── Stock Management ─────────────────────
 write_service "rutba_pos_stock" \
     "Rutba POS — Stock Management (pos-stock)" \
     "${APP_DIR}" \
-    "${NPM_BIN} run start --workspace=pos-stock" \
-    "${APP_DIR}/pos-stock/.env"
+    "${NODE_BIN} ${APP_DIR}/scripts/load-env.js -- ${NPM_BIN} run start --workspace=pos-stock"
 
 # ── Point of Sale ────────────────────────
 write_service "rutba_pos_sale" \
     "Rutba POS — Point of Sale (pos-sale)" \
     "${APP_DIR}" \
-    "${NPM_BIN} run start --workspace=pos-sale" \
-    "${APP_DIR}/pos-sale/.env"
+    "${NODE_BIN} ${APP_DIR}/scripts/load-env.js -- ${NPM_BIN} run start --workspace=pos-sale"
 
 # ── Public Website ───────────────────────
 write_service "rutba_web" \
     "Rutba POS — Public Website (rutba-web)" \
     "${APP_DIR}" \
-    "${NPM_BIN} run start --workspace=rutba-web" \
-    "${APP_DIR}/rutba-web/.env"
+    "${NODE_BIN} ${APP_DIR}/scripts/load-env.js -- ${NPM_BIN} run start --workspace=rutba-web"
 
 # ── My Orders / Web User ────────────────
 write_service "rutba_web_user" \
     "Rutba POS — My Orders (rutba-web-user)" \
     "${APP_DIR}" \
-    "${NPM_BIN} run start --workspace=rutba-web-user" \
-    "${APP_DIR}/rutba-web-user/.env"
+    "${NODE_BIN} ${APP_DIR}/scripts/load-env.js -- ${NPM_BIN} run start --workspace=rutba-web-user"
 
 # ── CRM ──────────────────────────────────
 write_service "rutba_crm" \
     "Rutba POS — CRM (rutba-crm)" \
     "${APP_DIR}" \
-    "${NPM_BIN} run start --workspace=rutba-crm" \
-    "${APP_DIR}/rutba-crm/.env"
+    "${NODE_BIN} ${APP_DIR}/scripts/load-env.js -- ${NPM_BIN} run start --workspace=rutba-crm"
 
 # ── HR ───────────────────────────────────
 write_service "rutba_hr" \
     "Rutba POS — Human Resources (rutba-hr)" \
     "${APP_DIR}" \
-    "${NPM_BIN} run start --workspace=rutba-hr" \
-    "${APP_DIR}/rutba-hr/.env"
+    "${NODE_BIN} ${APP_DIR}/scripts/load-env.js -- ${NPM_BIN} run start --workspace=rutba-hr"
 
 # ── Accounting ───────────────────────────
 write_service "rutba_accounts" \
     "Rutba POS — Accounting (rutba-accounts)" \
     "${APP_DIR}" \
-    "${NPM_BIN} run start --workspace=rutba-accounts" \
-    "${APP_DIR}/rutba-accounts/.env"
+    "${NODE_BIN} ${APP_DIR}/scripts/load-env.js -- ${NPM_BIN} run start --workspace=rutba-accounts"
 
 # ── Payroll ──────────────────────────────
 write_service "rutba_payroll" \
     "Rutba POS — Payroll (rutba-payroll)" \
     "${APP_DIR}" \
-    "${NPM_BIN} run start --workspace=rutba-payroll" \
-    "${APP_DIR}/rutba-payroll/.env"
+    "${NODE_BIN} ${APP_DIR}/scripts/load-env.js -- ${NPM_BIN} run start --workspace=rutba-payroll"
 
 # ── Legacy Desk (optional) ──────────────
 write_service "rutba_pos_desk" \
     "Rutba POS — Legacy Desk (pos-desk)" \
     "${APP_DIR}" \
-    "${NPM_BIN} run start --workspace=pos-desk" \
-    "${APP_DIR}/pos-desk/.env"
+    "${NODE_BIN} ${APP_DIR}/scripts/load-env.js -- ${NPM_BIN} run start --workspace=pos-desk"
 
 ###########################################
 # RELOAD & ENABLE

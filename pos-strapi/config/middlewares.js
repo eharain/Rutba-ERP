@@ -1,55 +1,37 @@
-module.exports = ({ env }) => [
-  'strapi::logger',
-  'strapi::errors',
-  'strapi::security',
-  {
-    name: 'strapi::cors',
-    config: {
-      origin: [
-        env('NEXT_PUBLIC_AUTH_URL', 'http://localhost:4003'),
-        env('NEXT_PUBLIC_STOCK_URL', 'http://localhost:4001'),
-        env('NEXT_PUBLIC_SALE_URL', 'http://localhost:4002'),
-        env('NEXT_PUBLIC_WEB_USER_URL', 'http://localhost:4004'),
-        env('NEXT_PUBLIC_CRM_URL', 'http://localhost:4005'),
-        env('NEXT_PUBLIC_HR_URL', 'http://localhost:4006'),
-        env('NEXT_PUBLIC_ACCOUNTS_URL', 'http://localhost:4007'),
-        env('NEXT_PUBLIC_PAYROLL_URL', 'http://localhost:4008'),
-        'http://localhost:4000',
-        'http://localhost:4001',
-        'http://localhost:4002',
-        'http://localhost:4003',
-        'http://localhost:4004',
-        'http://localhost:4005',
-        'http://localhost:4006',
-        'http://localhost:4007',
-        'http://localhost:4008',
-        'http://127.0.0.1:4000',
-        'http://127.0.0.1:4001',
-        'http://127.0.0.1:4002',
-        'http://127.0.0.1:4003',
-        'http://127.0.0.1:4004',
-        'http://127.0.0.1:4005',
-        'http://127.0.0.1:4006',
-        'http://127.0.0.1:4007',
-        'http://127.0.0.1:4008',
-      ],
-      headers: [
-        'Content-Type',
-        'Authorization',
-        'X-Rutba-App',
-        'X-Rutba-App-Admin',
-        'Origin',
-        'Accept',
-      ],
-      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'],
-      keepHeaderOnError: true,
+module.exports = ({ env }) => {
+  // CORS_ORIGINS is auto-computed by scripts/load-env.js from every
+  // URL value found in the active .env.<ENVIRONMENT> file.
+  const corsOrigins = env('CORS_ORIGINS', '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  return [
+    'strapi::logger',
+    'strapi::errors',
+    'strapi::security',
+    {
+      name: 'strapi::cors',
+      config: {
+        origin: corsOrigins,
+        headers: [
+          'Content-Type',
+          'Authorization',
+          'X-Rutba-App',
+          'X-Rutba-App-Admin',
+          'Origin',
+          'Accept',
+        ],
+        methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'],
+        keepHeaderOnError: true,
+      },
     },
-  },
-  'strapi::poweredBy',
-  'strapi::query',
-  'strapi::body',
-  'strapi::session',
-  'strapi::favicon',
-  'strapi::public',
-  'global::app-access-guard',
-];
+    'strapi::poweredBy',
+    'strapi::query',
+    'strapi::body',
+    'strapi::session',
+    'strapi::favicon',
+    'strapi::public',
+    'global::app-access-guard',
+  ];
+};

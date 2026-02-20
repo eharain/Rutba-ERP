@@ -12,6 +12,6 @@ module.exports = ({ env }) => ({
         // silly, debug, info, warn, or error.
     },
     dirs:  {
-        public:env('STRAPI_PUBLIC_DIR','./public')
+        public:env('PUBLIC_DIR','./public')
     }
 });

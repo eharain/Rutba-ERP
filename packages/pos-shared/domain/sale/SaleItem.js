@@ -229,12 +229,61 @@ export default class SaleItem {
         return dp - dp * (this.discount_percentage / 100);
     }
 
+    /**
+     * row_discount
+     * ------------
+     * Calculates the discount amount for the current row based on the configured
+     * discount percentage, while enforcing a strict business rule:
+     *
+     * BUSINESS RULE
+     * The final selling total must NEVER go below the total cost price.
+     * → This prevents selling at a loss due to discounts.
+     *
+     * WHAT WAS WRONG WITH THE PREVIOUS VERSION
+     * The earlier implementation used:
+     *
+     *     const dp = Math.max(dps, dpc);
+     *
+     * and then calculated discount from `dp`.
+     *
+     * Problem:
+     * - It sometimes used COST price as the discount base if cost > selling.
+     * - Discounts must always be calculated from SELLING price, not whichever is larger.
+     * - That logic could produce incorrect discount values and even allow unintended
+     *   discount behaviour when data was inconsistent.
+     *
+     * Correct approach:
+     * - Always calculate requested discount from selling price.
+     * - Then cap it so it never exceeds profit margin (sp − cp).
+     *
+     * LOGIC FLOW
+     * 1. Calculate total selling price (sp)
+     * 2. Calculate total cost price (cp)
+     * 3. Calculate requested percentage discount
+     * 4. Calculate maximum allowed discount (profit margin = sp − cp)
+     * 5. Return the smaller of:
+     *      - requested discount
+     *      - max allowed discount
+     * 6. Ensure result is never negative
+     *
+     * EDGE CASES HANDLED
+     * - If discount % is very high → discount is capped at profit margin
+     * - If cost >= selling → discount becomes 0 (cannot discount into loss)
+     * - If any values are negative or invalid → result is forced ≥ 0
+     *
+     * RETURNS
+     * Discount amount (number ≥ 0)
+     */
     get row_discount() {
-        const dps = this.sumBy('selling_price');
-        const dpc = this.sumBy('cost_price');
-        const dp = Math.max(dps, dpc);
-        return dp * (this.discount_percentage / 100);
+        const sp = this.sumBy('selling_price');
+        const cp = this.sumBy('cost_price');
+
+        const discount = sp * (this.discount_percentage / 100);
+        const maxDiscount = sp - cp;
+
+        return Math.max(0, Math.min(discount, maxDiscount));
     }
+        
     get subtotal() {
         if (this.items?.length == 0) return 0;
         let sum = this.sumBy('selling_price');
