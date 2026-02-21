@@ -52,7 +52,13 @@ async function syncPermissionsToRole(knex, roleId, roleName, requiredActions, st
     for (const action of requiredActions) {
         if (!existingActions.has(action)) {
             const [insertedId] = await knex('up_permissions')
-                .insert({ action, created_at: new Date(), updated_at: new Date() })
+                .insert({
+                    document_id: String(hashCode(action)),
+                    action,
+                    created_at: new Date(),
+                    updated_at: new Date(),
+                    published_at: new Date(),
+                })
                 .returning('id');
 
             const permId = typeof insertedId === 'object' ? insertedId.id : insertedId;
