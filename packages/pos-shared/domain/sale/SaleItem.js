@@ -279,9 +279,11 @@ export default class SaleItem {
         const cp = this.sumBy('cost_price');
 
         const discount = sp * (this.discount_percentage / 100);
-        const maxDiscount = sp - cp;
 
-        return Math.max(0, Math.min(discount, maxDiscount));
+        return discount;
+        //const maxDiscount = sp - cp;
+
+        //return Math.max(0, Math.min(discount, maxDiscount));
     }
         
     get subtotal() {
