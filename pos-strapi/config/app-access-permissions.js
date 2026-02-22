@@ -23,6 +23,7 @@ const READ     = ['find', 'findOne'];
 const WRITE    = ['find', 'findOne', 'create', 'update', 'delete'];
 const NO_DEL   = ['find', 'findOne', 'create', 'update'];
 const CASH_REG = ['find', 'findOne', 'create', 'update', 'delete', 'open', 'close', 'active', 'expire'];
+const STOCK_INPUT = ['find', 'findOne', 'create', 'update', 'delete', 'bulk', 'process'];
 
 // ─── Entries ────────────────────────────────────────────────
 
@@ -44,7 +45,7 @@ const ENTRIES = [
       { uid: 'api::purchase-return.purchase-return',               actions: WRITE },
       { uid: 'api::purchase-return-item.purchase-return-item',     actions: WRITE },
       { uid: 'api::stock-item.stock-item',                         actions: WRITE },
-      { uid: 'api::stock-input.stock-input',                       actions: WRITE },
+      { uid: 'api::stock-input.stock-input',                       actions: STOCK_INPUT },
       // shared / read
       { uid: 'api::branch.branch',                                 actions: READ },
       { uid: 'api::currency.currency',                             actions: READ },

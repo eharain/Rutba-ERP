@@ -11,7 +11,8 @@ module.exports = createCoreController('api::stock-input.stock-input', ({ strapi 
    * Body: { rows: [ { productName, quantity, ... }, ... ] }
    */
   async bulk(ctx) {
-    const { rows } = ctx.request.body || {};
+    const body = ctx.request.body?.data ?? ctx.request.body ?? {};
+    const { rows } = body;
     if (!Array.isArray(rows) || rows.length === 0) {
       return ctx.badRequest('rows array is required');
     }
@@ -41,7 +42,7 @@ module.exports = createCoreController('api::stock-input.stock-input', ({ strapi 
             supplierCode: row.supplierCode || null,
             importName: row.importName || 'bulk-ui',
             keywords: row.keywords || [],
-            process: true,
+            process: row.process === true,
             processed: false,
           },
         });
@@ -61,15 +62,27 @@ module.exports = createCoreController('api::stock-input.stock-input', ({ strapi 
    * If omitted, processes all records where process=true & processed=false.
    */
   async process(ctx) {
-    const { documentIds } = ctx.request.body || {};
+    const body = ctx.request.body?.data ?? ctx.request.body ?? {};
+    const { documentIds } = body;
+    const hasExplicitIds = Array.isArray(documentIds) && documentIds.length > 0;
+
+    // When explicit IDs are given, mark them process=true first
+    if (hasExplicitIds) {
+      for (const docId of documentIds) {
+        await strapi.documents('api::stock-input.stock-input').update({
+          documentId: docId,
+          data: { process: true },
+        }).catch(() => {});
+      }
+    }
 
     // Build filters
-    const filters = { process: true, processed: false };
-    if (Array.isArray(documentIds) && documentIds.length > 0) {
+    const filters = { processed: false, process: true };
+    if (hasExplicitIds) {
       filters.documentId = { $in: documentIds };
     }
 
-    // Fetch unprocessed stock-inputs
+    // Fetch stock-inputs to process
     const inputs = await strapi.documents('api::stock-input.stock-input').findMany({
       filters,
       limit: 500,
@@ -156,13 +169,19 @@ module.exports = createCoreController('api::stock-input.stock-input', ({ strapi 
           });
           cache.products.push(productObj);
         } else {
-          // Connect relations if new
-          if (Object.keys(connects).length > 0) {
-            await strapi.documents('api::product.product').update({
-              documentId: productObj.documentId,
-              data: connects,
-            });
-          }
+          // Increment stock_quantity and connect new relations
+          const addQty = Number(si.quantity) || 0;
+          const currentQty = Number(productObj.stock_quantity) || 0;
+          productObj = await strapi.documents('api::product.product').update({
+            documentId: productObj.documentId,
+            data: {
+              stock_quantity: currentQty + addQty,
+              ...connects,
+            },
+          });
+          // Update cache with fresh data
+          const idx = cache.products.findIndex((p) => p.documentId === productObj.documentId);
+          if (idx >= 0) cache.products[idx] = productObj;
         }
 
         // 5. Ensure purchase order
