@@ -22,7 +22,7 @@ export default function Products() {
             const params = {
                 sort: ["createdAt:desc"],
                 pagination: { page, pageSize: 25 },
-                populate: ["logo", "categories", "brands"],
+                populate: ["logo", "categories", "brands", { purchase_items: { populate: ["purchase"] } }],
             };
             if (search.trim()) {
                 params.filters = { name: { $containsi: search.trim() } };
@@ -75,7 +75,8 @@ export default function Products() {
                                     <th>Price</th>
                                     <th>Stock</th>
                                     <th>Categories</th>
-                                    <th>Brands</th>
+                                     <th>Brands</th>
+                                    <th>Purchase #</th>
                                     <th>Published</th>
                                     <th></th>
                                 </tr>
@@ -100,6 +101,7 @@ export default function Products() {
                                         <td>{p.stock_quantity ?? "—"}</td>
                                         <td>{(p.categories || []).map(c => c.name).join(", ") || "—"}</td>
                                         <td>{(p.brands || []).map(b => b.name).join(", ") || "—"}</td>
+                                        <td>{(p.purchase_items || []).map(pi => pi.purchase?.orderId).filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(", ") || "—"}</td>
                                         <td>
                                             {p.publishedAt
                                                 ? <span className="badge bg-success">Published</span>

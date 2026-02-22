@@ -107,7 +107,7 @@ export async function fetchEnumsValues(name, field) {
 
 
 export async function fetchProducts(filters, page, rowsPerPage, sort) {
-    const { brands, categories, suppliers, terms, stockStatus, searchText } = filters;
+    const { brands, categories, suppliers, terms, purchases, stockStatus, searchText } = filters;
 
 
 
@@ -121,9 +121,15 @@ export async function fetchProducts(filters, page, rowsPerPage, sort) {
             continue;
         }
         if (Array.isArray(values) && values.length > 0) {
-            values.forEach((val, index) => {
-                url += `&filters[${field}][documentId][$in][${index}]=${val}`;
-            });
+            if (field === 'purchases') {
+                values.forEach((val, index) => {
+                    url += `&filters[purchase_items][purchase][documentId][$in][${index}]=${val}`;
+                });
+            } else {
+                values.forEach((val, index) => {
+                    url += `&filters[${field}][documentId][$in][${index}]=${val}`;
+                });
+            }
         }
     }
 

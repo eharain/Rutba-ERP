@@ -11,17 +11,23 @@ export const buildQueries = (searchText, page = 1, rowsPerPage = 5) => {
                     { barcode: { $eq: searchText } },
                     { sku: { $eq: searchText } },
                     { suppliers: { $or: [{ name: { $containsi: searchText } }, { phone: { $containsi: searchText } }] } },
+                    { purchase_items: { purchase: { orderId: { $containsi: searchText } } } },
                 ]
             },
             query: {
-                populate: [
-                    'categories',
-                    'brands',
-                    'suppliers',
-                    'logo',
-                    'gallery',
-                    'items'
-                ],
+                populate: {
+                    categories: true,
+                    brands: true,
+                    suppliers: true,
+                    logo: true,
+                    gallery: true,
+                    items: true,
+                    purchase_items: {
+                        populate: {
+                            purchase: true
+                        }
+                    }
+                },
                 pagination: { page, pageSize: rowsPerPage }
             }
         },
