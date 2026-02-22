@@ -38,6 +38,9 @@ export default function Navigation() {
                     <li className="nav-item">
                         <Link className="nav-link text-warning" href="/orphan-stock-items">Orphan Stock Items</Link>
                     </li>
+                    <li className="nav-item">
+                        <Link className="nav-link" href="/bulk-stock-inputs">Bulk Stock Inputs</Link>
+                    </li>
                     <li className="nav-item dropdown">
                         <a className="nav-link dropdown-toggle" href="#" id="catalogMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             Catalog
