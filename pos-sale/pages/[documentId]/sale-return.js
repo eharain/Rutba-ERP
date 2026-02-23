@@ -16,6 +16,13 @@ function getEntryId(entry) {
     return entry?.documentId || entry?.id;
 }
 
+function getEffectiveUnitPrice(saleItem, stockItem) {
+    if (saleItem.total && saleItem.quantity) {
+        return Number(saleItem.total) / Number(saleItem.quantity);
+    }
+    return Number(saleItem.price) || Number(stockItem?.selling_price) || 0;
+}
+
 // ── Detail view for an existing sale return ──
 function SaleReturnDetail({ documentId }) {
     const router = useRouter();
@@ -273,7 +280,7 @@ function NewSaleReturn() {
                 productName: saleItem.product?.name || stockItem.name || "N/A",
                 sku: stockItem.sku || saleItem.product?.sku || "",
                 barcode: stockItem.barcode || "",
-                price: Number(saleItem.price) || Number(stockItem.selling_price) || 0,
+                price: getEffectiveUnitPrice(saleItem, stockItem),
                 status: "Returned"
             }];
         });
@@ -311,7 +318,7 @@ function NewSaleReturn() {
                         productName: saleItem.product?.name || si.name || "N/A",
                         sku: si.sku || saleItem.product?.sku || "",
                         barcode: si.barcode || "",
-                        price: Number(saleItem.price) || Number(si.selling_price) || 0,
+                        price: getEffectiveUnitPrice(saleItem, si),
                         status: "Returned"
                     }));
                 return [...prev, ...newEntries];
