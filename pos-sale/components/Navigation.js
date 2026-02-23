@@ -2,7 +2,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { getBranch } from "@rutba/pos-shared/lib/utils";
-import { getCrossAppLinks, APP_URLS } from "@rutba/pos-shared/lib/roles";
+import { APP_URLS } from "@rutba/pos-shared/lib/roles";
 import AdminModeToggle from "@rutba/pos-shared/components/AdminModeToggle";
 import { useEffect } from "react";
 
@@ -15,8 +15,6 @@ export default function Navigation() {
             setCompanyName(getBranch()?.companyName);
         } catch (e) { }
     }, []);
-
-    const crossLinks = getCrossAppLinks(appAccess, 'sale');
 
     return (
         <nav className="navbar navbar-expand-lg navbar-dark bg-dark px-3 text-white">
@@ -41,24 +39,7 @@ export default function Navigation() {
                     <li className="nav-item">
                         <Link className="nav-link" href="/reports">Reports</Link>
                     </li>
-                    {crossLinks.length > 0 && (
-                        <li className="nav-item dropdown">
-                            <a className="nav-link dropdown-toggle" href="#" id="crossAppMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                Switch App
-                            </a>
-                            <ul className="dropdown-menu" aria-labelledby="crossAppMenu">
-                                {crossLinks.map(link => (
-                                    <li key={link.key}>
-                                        {link.disabled
-                                            ? <span className="dropdown-item disabled text-muted">{link.label}</span>
-                                            : <a className="dropdown-item" href={link.href}>{link.label}</a>
-                                        }
-                                    </li>
-                                ))}
-                            </ul>
-                        </li>
-                    )}
-                </ul>
+                    </ul>
 
                 <div className="d-flex align-items-center">
                     <AdminModeToggle />

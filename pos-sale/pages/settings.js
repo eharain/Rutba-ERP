@@ -49,27 +49,29 @@ export default function SettingsPage() {
                                 </p>
                                 <ul className="space-y-2">
                                     {ibranch.desks.map((idesk) => {
-                                        const isSelected = desk?.id === idesk.id && branch?.id === ibranch.id;
+                                            const isSelected = desk?.id === idesk.id && branch?.id === ibranch.id;
 
-                                        return (
-                                            <li key={idesk.id}>
-                                                <button
-                                                    className={`flex justify-between items-center px-4 py-2 rounded border w-full text-left transition 
-                                                    ${isSelected
-                                                            ? "bg-blue-500 text-grey border-blue-600 font-semibold"
-                                                            : "bg-grey-100 hover:bg-grey-200 border-grey-300"
-                                                        }`}
-                                                    onClick={() => handleDeskSelect(ibranch, idesk)}
-                                                >
-                                                    {isSelected && (
-                                                        <span className="ml-2 font-bold">?</span>
-                                                    )}
-                                                    <span>{idesk.name}</span>
-
-                                                </button>
-                                            </li>
-                                        );
-                                    })}
+                                            return (
+                                                <li key={idesk.id}>
+                                                    <button
+                                                        className={`flex justify-between items-center px-4 py-2 rounded border w-full text-left transition 
+                                                        ${isSelected
+                                                                ? "bg-blue-500 text-grey border-blue-600 font-semibold"
+                                                                : "bg-grey-100 hover:bg-grey-200 border-grey-300"
+                                                            }`}
+                                                        onClick={() => handleDeskSelect(ibranch, idesk)}
+                                                    >
+                                                        {isSelected && (
+                                                            <span className="ml-2 font-bold">?</span>
+                                                        )}
+                                                        <span>{idesk.name}</span>
+                                                        {idesk.has_cash_register !== false
+                                                            ? <span className="badge bg-success ms-2">Cash Register</span>
+                                                            : <span className="badge bg-secondary ms-2">No Register</span>}
+                                                    </button>
+                                                </li>
+                                            );
+                                        })}
                                 </ul>
                             </div>
                         ))}

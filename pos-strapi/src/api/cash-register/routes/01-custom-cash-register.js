@@ -3,6 +3,10 @@
 /**
  * Custom cash-register routes for open/close/active/expire actions.
  * These are loaded alongside the core CRUD routes.
+ *
+ * auth: false → bypasses Strapi's built-in role-permission check
+ * for custom actions.  Authentication is enforced manually inside
+ * each controller method (ctx.state.user must be present).
  */
 
 module.exports = {
@@ -12,7 +16,7 @@ module.exports = {
       path: '/cash-registers/active',
       handler: 'cash-register.active',
       config: {
-        policies: [],
+        auth: false,
       },
     },
     {
@@ -20,7 +24,7 @@ module.exports = {
       path: '/cash-registers/open',
       handler: 'cash-register.open',
       config: {
-        policies: [],
+        auth: false,
       },
     },
     {
@@ -28,7 +32,7 @@ module.exports = {
       path: '/cash-registers/:id/close',
       handler: 'cash-register.close',
       config: {
-        policies: [],
+        auth: false,
       },
     },
     {
@@ -36,7 +40,7 @@ module.exports = {
       path: '/cash-registers/:id/expire',
       handler: 'cash-register.expire',
       config: {
-        policies: [],
+        auth: false,
       },
     },
   ],
