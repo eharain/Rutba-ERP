@@ -8,6 +8,7 @@ export default function Layout({ children, fullWidth }) {
             navigation={<Navigation />} 
             navigationSecondary={<NavigationSecondary />}
             fullWidth={fullWidth}
+            currentApp="payroll"
         >
             {children}
         </BaseLayout>

@@ -1,11 +1,10 @@
 import Link from "next/link";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { getCrossAppLinks, canAccessApp, APP_URLS } from "@rutba/pos-shared/lib/roles";
+import { canAccessApp, APP_URLS } from "@rutba/pos-shared/lib/roles";
 import AdminModeToggle from "@rutba/pos-shared/components/AdminModeToggle";
 
 export default function Navigation() {
     const { user, appAccess, logout } = useAuth();
-    const crossLinks = getCrossAppLinks(appAccess, 'auth');
     const hasAuthAccess = canAccessApp(appAccess, 'auth');
 
     return (
@@ -26,24 +25,7 @@ export default function Navigation() {
                             </li>
                         </>
                     )}
-                    {crossLinks.length > 0 && (
-                        <li className="nav-item dropdown">
-                            <a className="nav-link dropdown-toggle" href="#" id="crossAppMenu" role="button" data-bs-toggle="dropdown">
-                                Switch App
-                            </a>
-                            <ul className="dropdown-menu" aria-labelledby="crossAppMenu">
-                                {crossLinks.map(link => (
-                                    <li key={link.key}>
-                                        {link.disabled
-                                            ? <span className="dropdown-item disabled text-muted">{link.label}</span>
-                                            : <a className="dropdown-item" href={link.href}>{link.label}</a>
-                                        }
-                                    </li>
-                                ))}
-                            </ul>
-                        </li>
-                    )}
-                </ul>
+                    </ul>
                 <div className="d-flex align-items-center">
                     <AdminModeToggle />
                     {user ? (

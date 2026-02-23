@@ -14,6 +14,10 @@
     },
     "invoice_prefix": {
       "type": "string"
+    },
+    "has_cash_register": {
+      "type": "boolean",
+      "default": true
     }
   },
   "config": {}

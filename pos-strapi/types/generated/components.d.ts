@@ -55,6 +55,8 @@ export interface PosSalesDesks extends Struct.ComponentSchema {
     icon: 'paperPlane';
   };
   attributes: {
+    has_cash_register: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<true>;
     invoice_prefix: Schema.Attribute.String;
     name: Schema.Attribute.String;
     note: Schema.Attribute.String;

@@ -32,10 +32,10 @@ export default function CashRegisterPage() {
     const [txnLoading, setTxnLoading] = useState(false);
 
     useEffect(() => {
-        if (!desk?.id) return;
+        if (!desk?.id && !user?.id) return;
         loadActiveRegister();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [desk?.id]);
+    }, [desk?.id, user?.id]);
 
     useEffect(() => {
         if (!activeRegister) {
@@ -107,7 +107,12 @@ export default function CashRegisterPage() {
         setLoading(true);
         setError(null);
         try {
-            const res = await authApi.get(`/cash-registers/active?desk_id=${desk?.id}`);
+            const userId = user?.documentId ?? user?.id;
+            const params = new URLSearchParams();
+            if (desk?.id) params.set('desk_id', desk.id);
+            if (userId) params.set('user_id', userId);
+
+            const res = await authApi.get(`/cash-registers/active?${params.toString()}`);
             const register = res?.data ?? null;
 
             if (res?.meta?.expired) {
@@ -315,6 +320,16 @@ export default function CashRegisterPage() {
                     ) : (
                         /* ── Active Register Dashboard ──────────── */
                         <>
+                            {/* Cross-desk notice */}
+                            {activeRegister && desk?.id && activeRegister.desk_id && Number(activeRegister.desk_id) !== Number(desk.id) && (
+                                <div className="alert alert-info py-2 d-flex align-items-center mb-2">
+                                    <i className="fas fa-exchange-alt me-2"></i>
+                                    <span>
+                                        This register was opened on <strong>{activeRegister.desk_name || `Desk ${activeRegister.desk_id}`}</strong>.
+                                        You are currently on <strong>{desk.name || `Desk ${desk.id}`}</strong>.
+                                    </span>
+                                </div>
+                            )}
                             {/* Status bar */}
                             <div className="alert alert-info py-2 d-flex align-items-center mb-3">
                                 <i className="fas fa-check-circle me-2"></i>

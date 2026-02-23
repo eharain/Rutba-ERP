@@ -10,7 +10,7 @@ import SalesItemsForm from '../../components/form/sales-items-form';
 import SalesItemsList from '../../components/lists/sales-items-list';
 import CheckoutModal from '../../components/CheckoutModal';
 import ExchangeReturnSection from '../../components/ExchangeReturnSection';
-import CashRegisterGuard from '../../components/CashRegisterGuard';
+import CashRegisterGuard, { useCashRegister } from '../../components/CashRegisterGuard';
 
 import { useUtil } from '@rutba/pos-shared/context/UtilContext';
 
@@ -301,6 +301,25 @@ export default function SalePage() {
 
 function SaleButtons({ handlePrint, handleSave, saleModel, setShowCheckout, isDirty }) {
     const itemsCount = saleModel.items.length;
+    const { canCheckout, deskHasCashRegister, registerStatus, openRegisterModal } = useCashRegister();
+
+    const handleCheckoutClick = () => {
+        if (!deskHasCashRegister) return;
+        // If desk has register but none is active, prompt to open one
+        if (!canCheckout) {
+            openRegisterModal();
+            return;
+        }
+        setShowCheckout(true);
+    };
+
+    let checkoutTooltip = '';
+    if (!deskHasCashRegister) {
+        checkoutTooltip = 'This desk is not set up for payments. Save the sale and complete checkout from a payment desk.';
+    } else if (registerStatus === 'no-register' || registerStatus === 'expired') {
+        checkoutTooltip = 'Open a cash register first to accept payments.';
+    }
+
     return (
         <div className="d-flex gap-2">
             <button
@@ -319,11 +338,13 @@ function SaleButtons({ handlePrint, handleSave, saleModel, setShowCheckout, isDi
             </button>
             <PermissionCheck has="api::payment.payment.create">
                 <button
-                    className="btn btn-success flex-fill"
-                    onClick={() => setShowCheckout(true)}
-                    disabled={itemsCount === 0 || saleModel.isPaid}
+                    className={`btn flex-fill ${canCheckout ? 'btn-success' : 'btn-outline-secondary'}`}
+                    onClick={handleCheckoutClick}
+                    disabled={itemsCount === 0 || saleModel.isPaid || (!deskHasCashRegister)}
+                    title={checkoutTooltip}
                 >
-                    <i className={`fas ${saleModel.isPaid ? 'fa-check-circle' : 'fa-cash-register'} me-1`} />{saleModel.isPaid ? 'Paid' : 'Checkout'}
+                    <i className={`fas ${saleModel.isPaid ? 'fa-check-circle' : 'fa-cash-register'} me-1`} />
+                    {saleModel.isPaid ? 'Paid' : !deskHasCashRegister ? 'No Payment Desk' : !canCheckout ? 'Open Register' : 'Checkout'}
                 </button>
             </PermissionCheck>
         </div>)

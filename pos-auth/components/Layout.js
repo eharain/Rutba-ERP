@@ -6,6 +6,7 @@ export default function Layout({ children, fullWidth }) {
         <BaseLayout 
             navigation={<Navigation />}
             fullWidth={fullWidth}
+            currentApp="auth"
         >
             {children}
         </BaseLayout>

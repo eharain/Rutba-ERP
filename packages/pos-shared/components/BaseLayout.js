@@ -11,12 +11,14 @@ import FooterInfo from "./FooterInfo";
  * @param {React.ReactNode} navigation - Primary navigation component
  * @param {React.ReactNode} navigationSecondary - Secondary navigation component (optional)
  * @param {boolean} fullWidth - If true, main content spans full width without max-width constraint
+ * @param {string} currentApp - App key (e.g. 'sale') passed to footer AppSwitcher
  */
 export default function BaseLayout({ 
     children, 
     navigation, 
     navigationSecondary,
-    fullWidth = false 
+    fullWidth = false,
+    currentApp = ''
 }) {
     const [minHeight, setMinHeight] = useState(0);
 
@@ -45,8 +47,8 @@ export default function BaseLayout({
             </main>
 
             <footer className="layout-footer border-top mt-auto">
-                <div className="layout-container py-3">
-                    <FooterInfo />
+                <div className="layout-container">
+                    <FooterInfo currentApp={currentApp} />
                 </div>
             </footer>
         </div>

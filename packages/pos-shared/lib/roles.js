@@ -34,6 +34,7 @@ const VALID_APP_KEYS = ['stock', 'sale', 'auth', 'web-user', 'crm', 'hr', 'accou
  * a consistent catalogue of apps.
  */
 export const APP_META = {
+    auth:       { icon: 'fa-solid fa-shield-halved',    label: 'User Management',   description: 'Users, roles, app access',                   border: 'border-dark',      color: 'text-light' },
     stock:      { icon: 'fa-solid fa-boxes-stacked',    label: 'Stock Management',  description: 'Products, purchases, inventory',             border: 'border-primary',   color: 'text-primary' },
     sale:       { icon: 'fa-solid fa-cash-register',    label: 'Point of Sale',     description: 'Sales, cart, returns, reports',               border: 'border-success',   color: 'text-success' },
     'web-user': { icon: 'fa-solid fa-bag-shopping',     label: 'My Orders',         description: 'Track orders, manage returns',                border: 'border-info',      color: 'text-info' },
@@ -99,38 +100,29 @@ export function isAppAdmin(adminAppAccess, appKey) {
 
 /**
  * Build navigation cross-links for the current user.
- * Shows all recognised apps (except the current one) so the Switch App
- * dropdown is consistent across every app.  Apps the user does NOT have
- * access to are still listed but marked with `disabled: true` so the UI
- * can grey them out or hide them as needed.
+ * Only includes apps the user actually has access to (excludes
+ * the current app).
  * @param {string[]} appAccess
  * @param {string} currentApp - the app key we're currently in
- * @returns {{ label: string, href: string, key: string, disabled: boolean }[]}
+ * @returns {{ label: string, href: string, key: string, icon: string }[]}
  */
 export function getCrossAppLinks(appAccess, currentApp) {
     const links = [];
     const allowed = getAllowedApps(appAccess);
-    const labels = {
-        auth:       '🔐 User Management',
-        stock:      '📦 Stock Management',
-        sale:       '🛒 Point of Sale',
-        'web-user': '🛍️ My Orders',
-        crm:        '🤝 CRM',
-        hr:         '👥 HR',
-        accounts:   '📊 Accounts',
-        payroll:    '💰 Payroll',
-        cms:        '✏️ Content Management',
-    };
 
     for (const appKey of VALID_APP_KEYS) {
-        if (appKey !== currentApp && APP_URLS[appKey]) {
-            links.push({
-                key: appKey,
-                label: labels[appKey] || appKey,
-                href: APP_URLS[appKey],
-                disabled: !allowed.includes(appKey),
-            });
-        }
+        if (appKey === currentApp) continue;
+        if (!allowed.includes(appKey)) continue;
+        if (!APP_URLS[appKey]) continue;
+
+        const meta = APP_META[appKey] || {};
+        links.push({
+            key: appKey,
+            label: meta.label || appKey,
+            href: APP_URLS[appKey],
+            icon: meta.icon || 'fa-solid fa-cube',
+            color: meta.color || 'text-secondary',
+        });
     }
     return links;
 }
