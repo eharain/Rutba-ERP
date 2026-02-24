@@ -22,7 +22,6 @@ module.exports = createCoreController('plugin::users-permissions.me', ({ strapi 
             const roleType = fullUser?.role?.type;
             const appAccess = (fullUser?.app_accesses || []).map(a => a.key);
             const adminAppAccess = (fullUser?.admin_app_accesses || []).map(a => a.key);
-            const isAdmin = appAccess.includes('auth');
 
             let permissions = [];
 
@@ -57,7 +56,6 @@ module.exports = createCoreController('plugin::users-permissions.me', ({ strapi 
                 appAccess,
                 adminAppAccess,
                 permissions,
-                isAdmin,
             };
             ctx.send(data);
         } catch (err) {

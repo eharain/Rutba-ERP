@@ -1,7 +1,7 @@
-'use client'
+﻿'use client'
 import { createContext, useContext, useState, useEffect, useMemo, useCallback } from "react";
 import { storage } from "../lib/storage";
-import { api, getAppName } from "../lib/api";
+import { api, getAppName, refreshAccessToken } from "../lib/api";
 import axios from "axios";
 import { API_URL } from "../lib/api-url-resolver";
 
@@ -9,7 +9,6 @@ const AuthContext = createContext();
 
 /**
  * Fetch role, appAccess and permissions from the API using the given JWT.
- * Works cross-origin because it uses the JWT directly (no cookies / localStorage).
  */
 async function fetchPermissions(jwt) {
     try {
@@ -41,9 +40,30 @@ async function fetchMe(jwt) {
         });
         return res.data;
     } catch (err) {
-        console.error('Failed to fetch user profile', err);
         return null;
     }
+}
+
+/** Persist all auth fields to localStorage. */
+function persistAuth({ jwt, refreshToken, user, role, appAccess, adminAppAccess, permissions }) {
+    storage.setItem("jwt", jwt);
+    if (refreshToken) storage.setItem("refreshToken", refreshToken);
+    storage.setJSON("user", user);
+    storage.setItem("role", role);
+    storage.setJSON("appAccess", appAccess);
+    storage.setJSON("adminAppAccess", adminAppAccess);
+    storage.setJSON("permissions", permissions);
+}
+
+/** Clear all auth fields from localStorage. */
+function clearAuth() {
+    storage.removeItem("jwt");
+    storage.removeItem("refreshToken");
+    storage.removeItem("user");
+    storage.removeItem("role");
+    storage.removeItem("appAccess");
+    storage.removeItem("adminAppAccess");
+    storage.removeItem("permissions");
 }
 
 export function AuthProvider({ children }) {
@@ -55,106 +75,148 @@ export function AuthProvider({ children }) {
     const [currentPermissions, setPermissions] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    // Bootstrap from this app's localStorage
-    useEffect(() => {
-        const jwt = storage.getItem("jwt");
-        const user = storage.getJSON("user");
-        const role = storage.getItem("role");
-        const appAccessStored = storage.getJSON("appAccess") || [];
-        const adminAppAccessStored = storage.getJSON("adminAppAccess") || [];
-        const permsStored = storage.getJSON("permissions") || [];
-
-        if (jwt && user) {
-            setCurrentUser(user);
-            setJwt(jwt);
-            setRole(role);
-            setAppAccess(appAccessStored);
-            setAdminAppAccess(adminAppAccessStored);
-            setPermissions(permsStored);
-        }
-        setLoading(false);
-    }, []);
-
-    /**
-     * Login with credentials (used only in pos-auth's login page).
-     */
-    const login = useCallback(async (identifier, password) => {
-        const authRes = await api.post('/auth/local', { identifier, password });
-        const { user, jwt } = authRes;
-
-
-        const me = await fetchPermissions(jwt);
-        const meRole = me?.role || null;
-        const meAppAccess = me?.appAccess || [];
-        const meAdminAppAccess = me?.adminAppAccess || [];
-        const mePermissions = me?.permissions || [];
-
-        storage.setItem("jwt", jwt);
-        storage.setJSON("user", user);
-        storage.setItem("role", meRole);
-        storage.setJSON("appAccess", meAppAccess);
-        storage.setJSON("adminAppAccess", meAdminAppAccess);
-        storage.setJSON("permissions", mePermissions);
-
+    /** Apply auth data to React state. */
+    const applyAuth = useCallback(({ jwt, user, role, appAccess, adminAppAccess, permissions }) => {
         setCurrentUser(user);
         setJwt(jwt);
-        setRole(meRole);
-        setAppAccess(meAppAccess);
-        setAdminAppAccess(meAdminAppAccess);
-        setPermissions(mePermissions);
-
-        return { user, jwt, role: meRole, appAccess: meAppAccess, adminAppAccess: meAdminAppAccess, permissions: mePermissions };
+        setRole(role);
+        setAppAccess(appAccess);
+        setAdminAppAccess(adminAppAccess);
+        setPermissions(permissions);
     }, []);
 
-    /**
-     * Login with a JWT token received from the OAuth callback.
-     * Fetches the user profile and permissions from the API.
-     */
-    const loginWithToken = useCallback(async (token) => {
-        const user = await fetchMe(token);
-        if (!user) throw new Error('Invalid token');
-
-
-        const me = await fetchPermissions(token);
-        const meRole = me?.role || null;
-        const meAppAccess = me?.appAccess || [];
-        const meAdminAppAccess = me?.adminAppAccess || [];
-        const mePermissions = me?.permissions || [];
-
-        storage.setItem("jwt", token);
-        storage.setJSON("user", user);
-        storage.setItem("role", meRole);
-        storage.setJSON("appAccess", meAppAccess);
-        storage.setJSON("adminAppAccess", meAdminAppAccess);
-        storage.setJSON("permissions", mePermissions);
-
-        setCurrentUser(user);
-        setJwt(token);
-        setRole(meRole);
-        setAppAccess(meAppAccess);
-        setAdminAppAccess(meAdminAppAccess);
-        setPermissions(mePermissions);
-
-        return { user, jwt: token, role: meRole, appAccess: meAppAccess, adminAppAccess: meAdminAppAccess, permissions: mePermissions };
-    }, []);
-
-    /**
-     * Clear all auth state from this app.
-     */
-    const logout = useCallback(() => {
+    /** Reset all React auth state. */
+    const resetState = useCallback(() => {
         setCurrentUser(null);
         setJwt(null);
         setRole(null);
         setAppAccess([]);
         setAdminAppAccess([]);
         setPermissions([]);
+    }, []);
 
-        storage.removeItem("user");
-        storage.removeItem("jwt");
-        storage.removeItem("role");
-        storage.removeItem("appAccess");
-        storage.removeItem("adminAppAccess");
-        storage.removeItem("permissions");
+    // Bootstrap: hydrate from localStorage, then revalidate the session
+    useEffect(() => {
+        (async () => {
+            const jwt = storage.getItem("jwt");
+            const user = storage.getJSON("user");
+
+            if (!jwt || !user) {
+                setLoading(false);
+                return;
+            }
+
+            // Show cached data immediately so the UI does not flash empty
+            setCurrentUser(user);
+            setJwt(jwt);
+            setRole(storage.getItem("role"));
+            setAppAccess(storage.getJSON("appAccess") || []);
+            setAdminAppAccess(storage.getJSON("adminAppAccess") || []);
+            setPermissions(storage.getJSON("permissions") || []);
+
+            // Revalidate: check if the JWT is still valid
+            let validJwt = jwt;
+            let freshUser = await fetchMe(jwt);
+
+            if (!freshUser) {
+                // JWT expired — try refreshing
+                const newJwt = await refreshAccessToken();
+                if (newJwt) {
+                    validJwt = newJwt;
+                    freshUser = await fetchMe(newJwt);
+                }
+            }
+
+            if (!freshUser) {
+                // Both JWT and refresh token are invalid — clear session
+                clearAuth();
+                resetState();
+                setLoading(false);
+                return;
+            }
+
+            // Re-fetch permissions with the valid JWT
+            const me = await fetchPermissions(validJwt);
+            const authData = {
+                jwt: validJwt,
+                user: freshUser,
+                role: me?.role || storage.getItem("role"),
+                appAccess: me?.appAccess || [],
+                adminAppAccess: me?.adminAppAccess || [],
+                permissions: me?.permissions || [],
+            };
+
+            persistAuth(authData);
+            applyAuth(authData);
+            setLoading(false);
+        })();
+    }, []);
+
+    /**
+     * Login with credentials (used only in pos-auth's login page).
+     * Strapi refresh-mode returns { jwt, refreshToken, user }.
+     */
+    const login = useCallback(async (identifier, password) => {
+        const authRes = await api.post('/auth/local', { identifier, password });
+        const { user, jwt, refreshToken } = authRes;
+
+        const me = await fetchPermissions(jwt);
+        const authData = {
+            jwt,
+            refreshToken,
+            user,
+            role: me?.role || null,
+            appAccess: me?.appAccess || [],
+            adminAppAccess: me?.adminAppAccess || [],
+            permissions: me?.permissions || [],
+        };
+
+        persistAuth(authData);
+        applyAuth(authData);
+
+        return authData;
+    }, []);
+
+    /**
+     * Login with a JWT + optional refreshToken received from the OAuth callback.
+     * Fetches the user profile and permissions from the API.
+     */
+    const loginWithToken = useCallback(async (token, refreshToken) => {
+        const user = await fetchMe(token);
+        if (!user) throw new Error('Invalid token');
+
+        const me = await fetchPermissions(token);
+        const authData = {
+            jwt: token,
+            refreshToken,
+            user,
+            role: me?.role || null,
+            appAccess: me?.appAccess || [],
+            adminAppAccess: me?.adminAppAccess || [],
+            permissions: me?.permissions || [],
+        };
+
+        persistAuth(authData);
+        applyAuth(authData);
+
+        return authData;
+    }, []);
+
+    /**
+     * Clear all auth state from this app.
+     * Calls the Strapi logout endpoint to invalidate the refresh token server-side.
+     */
+    const logout = useCallback(() => {
+        const jwt = storage.getItem("jwt");
+        if (jwt) {
+            // Fire-and-forget — don't block the UI on server logout
+            axios.post(`${API_URL}/auth/logout`, {}, {
+                headers: { Authorization: `Bearer ${jwt}` },
+            }).catch(() => {});
+        }
+
+        clearAuth();
+        resetState();
     }, []);
 
     const contextValue = useMemo(() => ({

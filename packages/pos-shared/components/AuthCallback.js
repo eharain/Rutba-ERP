@@ -7,7 +7,7 @@ import { APP_URLS } from "../lib/roles";
  * Shared OAuth callback handler.
  *
  * Expects query params:
- *   ?token=<JWT>&state=<original_path>
+ *   ?token=<JWT>&refreshToken=<RT>&state=<original_path>
  *
  * Stores the token via AuthContext.loginWithToken(), then
  * redirects to the original page the user wanted.
@@ -20,14 +20,14 @@ export default function AuthCallback() {
     useEffect(() => {
         if (!router.isReady) return;
 
-        const { token, state } = router.query;
+        const { token, refreshToken, state } = router.query;
 
         if (!token) {
             window.location.href = `${APP_URLS.auth}/login`;
             return;
         }
 
-        loginWithToken(token)
+        loginWithToken(token, refreshToken || null)
             .then(() => {
                 // Replace callback URL in history so back-button doesn't re-trigger
                 router.replace(state || "/");
