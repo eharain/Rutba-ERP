@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/router";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
+import { storage } from "@rutba/pos-shared/lib/storage";
 
 /**
  * OAuth-like authorize endpoint.
@@ -10,7 +11,7 @@ import { useAuth } from "@rutba/pos-shared/context/AuthContext";
  *   state         — opaque value forwarded back (original path the user wanted)
  *
  * If the user is already logged in (JWT in pos-auth's localStorage),
- * redirect immediately to redirect_uri?token=JWT&state=...
+ * redirect immediately to redirect_uri?token=JWT&refreshToken=...&state=...
  *
  * If not logged in, redirect to /login with the same params so the user
  * can authenticate first, then come back here.
@@ -34,6 +35,8 @@ export default function Authorize() {
             // User is logged in — send them back with the token
             const url = new URL(redirect_uri);
             url.searchParams.set("token", jwt);
+            const rt = storage.getItem("refreshToken");
+            if (rt) url.searchParams.set("refreshToken", rt);
             if (state) url.searchParams.set("state", state);
             window.location.href = url.toString();
         } else {

@@ -14,11 +14,25 @@ function buildPermissionActions(permDefs) {
     return [...actions].sort();
 }
 
+/**
+ * Build the set of Strapi role-permission actions for rutba_app_user.
+ *
+ * We grant full CRUD (find, findOne, create, update, delete) for every
+ * UID that appears in any app-access entry, PLUS any custom actions
+ * (open, close, bulk, process, …).  Strapi's own role-permission system
+ * is therefore a wide gate; the real fine-grained check happens in the
+ * app-access-guard middleware.
+ */
 function buildAllPermissionActions() {
+    const BASE_CRUD = ['find', 'findOne', 'create', 'update', 'delete'];
     const all = new Set();
     for (const entry of ENTRIES) {
         if (!entry.permissions) continue;
         for (const def of entry.permissions) {
+            for (const action of BASE_CRUD) {
+                all.add(`${def.uid}.${action}`);
+            }
+            // also include any custom actions beyond CRUD
             for (const action of def.actions) {
                 all.add(`${def.uid}.${action}`);
             }

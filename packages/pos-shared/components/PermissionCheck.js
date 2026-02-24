@@ -24,8 +24,7 @@ export function PermissionCheck({ required, has, showIf, adminOnly, appKey, chil
 
     // ── admin helpers ───────────────────────────────────────
     const effectiveAppKey = appKey || getAppName();
-    const userIsGlobalAdmin = (appAccess || []).includes('auth');
-    const userIsAdmin = userIsGlobalAdmin || isAppAdmin(adminAppAccess, effectiveAppKey);
+    const userIsAdmin = isAppAdmin(adminAppAccess, effectiveAppKey);
 
     // ── showIf="admin" — silent hide ────────────────────────
     if (showIf === 'admin') {

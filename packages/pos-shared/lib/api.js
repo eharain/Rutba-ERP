@@ -19,6 +19,9 @@ export { API_URL, IMAGE_URL };
 let _appName = '';
 let _adminMode = false;
 
+// Hydrate admin mode from localStorage on module load (client-side only)
+try { _adminMode = localStorage.getItem('adminMode') === '1'; } catch (_) {}
+
 /**
  * Set the app name sent as X-Rutba-App header on every API request.
  * Call this once from each app's _app.js or layout, e.g. setAppName('stock').
@@ -37,9 +40,12 @@ export function getAppName() {
  * When enabled, the X-Rutba-App-Admin header is sent with every request,
  * asking the server to bypass owner scoping for users who have
  * admin_app_accesses for this app.
+ *
+ * The value is persisted in localStorage so it survives page refreshes.
  */
 export function setAdminMode(enabled) {
     _adminMode = !!enabled;
+    try { localStorage.setItem('adminMode', _adminMode ? '1' : '0'); } catch (_) {}
 }
 
 /** Return whether admin elevation is currently active. */
@@ -54,6 +60,34 @@ function authHeaders(jwt) {
     if (_appName) headers['X-Rutba-App'] = _appName;
     if (_adminMode && _appName) headers['X-Rutba-App-Admin'] = _appName;
     return headers;
+}
+
+// -- Token Refresh --
+let _refreshPromise = null;
+
+export async function refreshAccessToken() {
+    if (_refreshPromise) return _refreshPromise;
+    _refreshPromise = (async () => {
+        try {
+            const refreshToken = storage.getItem('refreshToken');
+            if (!refreshToken) return null;
+            const res = await axios.post(`${API_URL}/auth/refresh`, { refreshToken }, {
+                headers: { 'Content-Type': 'application/json' },
+            });
+            const newJwt = res.data?.jwt;
+            const newRefresh = res.data?.refreshToken;
+            if (!newJwt) return null;
+            storage.setItem('jwt', newJwt);
+            if (newRefresh) storage.setItem('refreshToken', newRefresh);
+            return newJwt;
+        } catch (err) {
+            console.warn('Token refresh failed', err?.response?.status || err.message);
+            return null;
+        } finally {
+            _refreshPromise = null;
+        }
+    })();
+    return _refreshPromise;
 }
 
 async function get(path, data = {}, jwt) {
@@ -226,19 +260,30 @@ export const api = {
 };
 
 // ------------------ Auth API (uses localStorage JWT) ------------------
+// On 401, automatically attempts a token refresh and retries once.
+async function authCall(fn, ...args) {
+    const jwt = storage.getItem('jwt');
+    try {
+        return await fn(...args, jwt);
+    } catch (err) {
+        if (err?.response?.status !== 401) throw err;
+        const newJwt = await refreshAccessToken();
+        if (!newJwt) throw err;
+        return await fn(...args, newJwt);
+    }
+}
+
 export const authApi = {
-    fetch: async (path, data) => await get(path, data, storage.getItem("jwt")),
-    fetchWithPagination: async (path, data) => await getWithPagination(path, data, storage.getItem("jwt")),
-    get: async (path, data) => await get(path, data, storage.getItem("jwt")),
-    getAll: async (path, params) => await getAll(path, params, storage.getItem("jwt")),
-    post: async (path, data) => await post(path, data, storage.getItem("jwt")),
-    put: async (path, data) => await put(path, data, storage.getItem("jwt")),
-    del: async (path) => await del(path, storage.getItem("jwt")),
-    uploadFile: async (file, ref, field, refId, info) => await uploadFile(file, ref, field, refId, info, storage.getItem("jwt")),
-    deleteFile: async (fileId) => await deleteFile(fileId, storage.getItem("jwt")),
+    fetch: (path, data) => authCall(get, path, data),
+    fetchWithPagination: (path, data) => authCall(getWithPagination, path, data),
+    get: (path, data) => authCall(get, path, data),
+    getAll: (path, params) => authCall(getAll, path, params),
+    post: (path, data) => authCall(post, path, data),
+    put: (path, data) => authCall(put, path, data),
+    del: (path) => authCall(del, path),
+    uploadFile: (file, ref, field, refId, info) => authCall(uploadFile, file, ref, field, refId, info),
+    deleteFile: (fileId) => authCall(deleteFile, fileId),
 };
-
-
 
 export const authAPI = authApi;
 
