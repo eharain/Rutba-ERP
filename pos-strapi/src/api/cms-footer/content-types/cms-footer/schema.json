@@ -1,0 +1,48 @@
+{
+  "kind": "collectionType",
+  "collectionName": "cms_footers",
+  "info": {
+    "singularName": "cms-footer",
+    "pluralName": "cms-footers",
+    "displayName": "CMS Footer",
+    "description": "Footer configuration with contact info, hours, social links and pinned pages"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "slug": {
+      "type": "uid",
+      "targetField": "name",
+      "required": true
+    },
+    "phone": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string"
+    },
+    "address": {
+      "type": "text"
+    },
+    "opening_hours": {
+      "type": "json"
+    },
+    "social_links": {
+      "type": "json"
+    },
+    "pinned_pages": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::cms-page.cms-page"
+    },
+    "copyright_text": {
+      "type": "string"
+    }
+  }
+}

@@ -4,6 +4,7 @@ import Link from "next/link";
 import Head from "next/head";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation, Pagination, Autoplay } from "swiper/modules";
+import { marked } from "marked";
 
 import "swiper/css";
 import "swiper/css/navigation";
@@ -13,6 +14,7 @@ import { IMAGE_URL } from "@/static/const";
 import { CmsPageDetailInterface } from "@/types/api/cms-page";
 import { ProductInterface } from "@/types/api/product";
 import { BrandInterface } from "@/types/api/brand";
+import { CategoryInterface } from "@/types/api/category";
 
 export default function CmsPageContent({
   page,
@@ -22,6 +24,9 @@ export default function CmsPageContent({
   const heroGroups = page.hero_product_groups ?? [];
   const heroProducts = heroGroups.flatMap((g) => g.products ?? []);
   const brandGroups = [...(page.brand_groups ?? [])].sort(
+    (a, b) => a.sort_order - b.sort_order
+  );
+  const categoryGroups = [...(page.category_groups ?? [])].sort(
     (a, b) => a.sort_order - b.sort_order
   );
   const productGroups = page.product_groups ?? [];
@@ -99,6 +104,18 @@ export default function CmsPageContent({
         ) : null
       )}
 
+      {/* Category Groups */}
+      {categoryGroups.map((group) =>
+        group.categories && group.categories.length > 0 ? (
+          <div key={"cg-" + group.id} className="my-20">
+            <div className="container-fluid">
+              <h2 className="text-3xl font-bold mb-7">{group.name}</h2>
+              <CategorySwiper categories={group.categories} />
+            </div>
+          </div>
+        ) : null
+      )}
+
       {/* Product Groups */}
       {productGroups.map((group) =>
         group.products && group.products.length > 0 ? (
@@ -116,7 +133,7 @@ export default function CmsPageContent({
         <div className="container mx-auto my-12 px-4">
           <div
             className="prose prose-slate max-w-none"
-            dangerouslySetInnerHTML={{ __html: page.content }}
+            dangerouslySetInnerHTML={{ __html: marked.parse(page.content) as string }}
           />
         </div>
       )}
@@ -211,6 +228,41 @@ function BrandSwiper({ brands }: { brands: BrandInterface[] }) {
         <SwiperSlide key={"brand-" + item.id}>
           <Link
             href={{ pathname: "/product", query: { brand: item.slug } }}
+          >
+            <div className="bg-slate-100 px-3 w-full py-3 flex items-center justify-center flex-col rounded-md border border-transparent hover:shadow-sm hover:border-slate-300">
+              {item.logo && (
+                <NextImage
+                  src={IMAGE_URL + (item.logo.url ?? "")}
+                  height={50}
+                  width={50}
+                  alt={item.name}
+                />
+              )}
+              <p>{item.name}</p>
+            </div>
+          </Link>
+        </SwiperSlide>
+      ))}
+    </Swiper>
+  );
+}
+
+/* ── Category Swiper ── */
+function CategorySwiper({ categories }: { categories: CategoryInterface[] }) {
+  return (
+    <Swiper
+      spaceBetween={5}
+      grabCursor={true}
+      slidesPerView={3}
+      breakpoints={{
+        "620": { slidesPerView: 5 },
+        "1024": { slidesPerView: 9 },
+      }}
+    >
+      {categories.map((item) => (
+        <SwiperSlide key={"cat-" + item.id}>
+          <Link
+            href={{ pathname: "/product", query: { category: item.slug } }}
           >
             <div className="bg-slate-100 px-3 w-full py-3 flex items-center justify-center flex-col rounded-md border border-transparent hover:shadow-sm hover:border-slate-300">
               {item.logo && (

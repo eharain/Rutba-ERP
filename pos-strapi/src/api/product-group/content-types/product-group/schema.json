@@ -16,15 +16,24 @@
       "type": "string",
       "required": true
     },
+    "title": {
+      "type": "string"
+    },
     "slug": {
       "type": "uid",
       "targetField": "name",
       "required": true
     },
+    "excerpt": {
+      "type": "text"
+    },
+    "content": {
+      "type": "richtext"
+    },
     "gallery": {
       "type": "media",
       "multiple": false,
-      "required": true,
+      "required": false,
       "allowedTypes": [
         "images"
       ]

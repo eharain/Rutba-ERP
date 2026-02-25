@@ -5,6 +5,7 @@ import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { authApi, StraipImageUrl } from "@rutba/pos-shared/lib/api";
 import Link from "next/link";
+import { useToast } from "../../components/Toast";
 
 export default function CategoryDetail() {
     const router = useRouter();
@@ -13,6 +14,7 @@ export default function CategoryDetail() {
     const [category, setCategory] = useState(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const { toast, ToastContainer } = useToast();
     const isNew = documentId === "new";
 
     const [name, setName] = useState("");
@@ -48,11 +50,11 @@ export default function CategoryDetail() {
                 await authApi.put(`/categories/${documentId}`, {
                     data: { name, summary, description },
                 });
-                alert("Category updated!");
+                toast("Category updated!", "success");
             }
         } catch (err) {
             console.error("Failed to save category", err);
-            alert("Failed to save.");
+            toast("Failed to save.", "danger");
         } finally {
             setSaving(false);
         }
@@ -61,6 +63,7 @@ export default function CategoryDetail() {
     return (
         <ProtectedRoute>
             <Layout>
+                <ToastContainer />
                 <div className="d-flex align-items-center mb-3">
                     <Link className="btn btn-sm btn-outline-secondary me-3" href="/categories">
                         <i className="fas fa-arrow-left"></i> Back

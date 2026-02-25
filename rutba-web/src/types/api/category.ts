@@ -1,3 +1,5 @@
+import { ImageInterface } from "./image";
+
 export interface CategoryInterface {
   id: number;
   name: string;
@@ -5,4 +7,5 @@ export interface CategoryInterface {
   short_description: string;
   createdAt: string;
   updatedAt: string;
+  logo?: ImageInterface;
 }

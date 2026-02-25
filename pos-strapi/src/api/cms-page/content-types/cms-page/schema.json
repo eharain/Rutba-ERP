@@ -79,6 +79,16 @@
       "type": "relation",
       "relation": "manyToMany",
       "target": "api::brand-group.brand-group"
+    },
+    "category_groups": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::category-group.category-group"
+    },
+    "footer": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::cms-footer.cms-footer"
     }
   }
 }

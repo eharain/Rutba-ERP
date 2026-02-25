@@ -884,6 +884,42 @@ export interface ApiCashRegisterCashRegister
   };
 }
 
+export interface ApiCategoryGroupCategoryGroup
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'category_groups';
+  info: {
+    description: 'Groups of categories for display on CMS pages';
+    displayName: 'Category Group';
+    pluralName: 'category-groups';
+    singularName: 'category-group';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    categories: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::category.category'
+    >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::category-group.category-group'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    publishedAt: Schema.Attribute.DateTime;
+    slug: Schema.Attribute.UID<'name'> & Schema.Attribute.Required;
+    sort_order: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiCategoryCategory extends Struct.CollectionTypeSchema {
   collectionName: 'categories';
   info: {
@@ -923,6 +959,46 @@ export interface ApiCategoryCategory extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiCmsFooterCmsFooter extends Struct.CollectionTypeSchema {
+  collectionName: 'cms_footers';
+  info: {
+    description: 'Footer configuration with contact info, hours, social links and pinned pages';
+    displayName: 'CMS Footer';
+    pluralName: 'cms-footers';
+    singularName: 'cms-footer';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    address: Schema.Attribute.Text;
+    copyright_text: Schema.Attribute.String;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    email: Schema.Attribute.String;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::cms-footer.cms-footer'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    opening_hours: Schema.Attribute.JSON;
+    phone: Schema.Attribute.String;
+    pinned_pages: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::cms-page.cms-page'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    slug: Schema.Attribute.UID<'name'> & Schema.Attribute.Required;
+    social_links: Schema.Attribute.JSON;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiCmsPageCmsPage extends Struct.CollectionTypeSchema {
   collectionName: 'cms_pages';
   info: {
@@ -939,12 +1015,20 @@ export interface ApiCmsPageCmsPage extends Struct.CollectionTypeSchema {
       'manyToMany',
       'api::brand-group.brand-group'
     >;
+    category_groups: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::category-group.category-group'
+    >;
     content: Schema.Attribute.RichText;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     excerpt: Schema.Attribute.Text;
     featured_image: Schema.Attribute.Media<'images'>;
+    footer: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::cms-footer.cms-footer'
+    >;
     gallery: Schema.Attribute.Media<'images' | 'videos', true>;
     hero_product_groups: Schema.Attribute.Relation<
       'manyToMany',
@@ -1622,11 +1706,13 @@ export interface ApiProductGroupProductGroup
     draftAndPublish: true;
   };
   attributes: {
+    content: Schema.Attribute.RichText;
     cover_image: Schema.Attribute.Media<'images'>;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
-    gallery: Schema.Attribute.Media<'images'> & Schema.Attribute.Required;
+    excerpt: Schema.Attribute.Text;
+    gallery: Schema.Attribute.Media<'images'>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
@@ -1637,6 +1723,7 @@ export interface ApiProductGroupProductGroup
     products: Schema.Attribute.Relation<'manyToMany', 'api::product.product'>;
     publishedAt: Schema.Attribute.DateTime;
     slug: Schema.Attribute.UID<'name'> & Schema.Attribute.Required;
+    title: Schema.Attribute.String;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -2935,7 +3022,9 @@ declare module '@strapi/strapi' {
       'api::brand.brand': ApiBrandBrand;
       'api::cash-register-transaction.cash-register-transaction': ApiCashRegisterTransactionCashRegisterTransaction;
       'api::cash-register.cash-register': ApiCashRegisterCashRegister;
+      'api::category-group.category-group': ApiCategoryGroupCategoryGroup;
       'api::category.category': ApiCategoryCategory;
+      'api::cms-footer.cms-footer': ApiCmsFooterCmsFooter;
       'api::cms-page.cms-page': ApiCmsPageCmsPage;
       'api::crm-activity.crm-activity': ApiCrmActivityCrmActivity;
       'api::crm-contact.crm-contact': ApiCrmContactCrmContact;

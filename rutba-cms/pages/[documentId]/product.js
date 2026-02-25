@@ -6,6 +6,7 @@ import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { authApi, StraipImageUrl } from "@rutba/pos-shared/lib/api";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
 import Link from "next/link";
+import { useToast } from "../../components/Toast";
 
 export default function ProductDetail() {
     const router = useRouter();
@@ -15,6 +16,7 @@ export default function ProductDetail() {
     const [product, setProduct] = useState(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const { toast, ToastContainer } = useToast();
 
     // Editable fields
     const [name, setName] = useState("");
@@ -51,10 +53,10 @@ export default function ProductDetail() {
                     is_active: isActive,
                 },
             });
-            alert("Product updated successfully!");
+            toast("Product updated!", "success");
         } catch (err) {
             console.error("Failed to update product", err);
-            alert("Failed to save changes.");
+            toast("Failed to save changes.", "danger");
         } finally {
             setSaving(false);
         }
@@ -63,11 +65,15 @@ export default function ProductDetail() {
     return (
         <ProtectedRoute>
             <Layout>
+                <ToastContainer />
                 <div className="d-flex align-items-center mb-3">
                     <Link className="btn btn-sm btn-outline-secondary me-3" href="/products">
                         <i className="fas fa-arrow-left"></i> Back
                     </Link>
                     <h2 className="mb-0">Edit Product</h2>
+                    <button className="btn btn-sm btn-primary ms-auto" onClick={handleSave} disabled={saving}>
+                        {saving ? "Saving…" : "Save Changes"}
+                    </button>
                 </div>
 
                 {loading && <p>Loading...</p>}
@@ -105,9 +111,6 @@ export default function ProductDetail() {
                                             </div>
                                         </div>
                                     </div>
-                                    <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
-                                        {saving ? "Saving…" : "Save Changes"}
-                                    </button>
                                 </div>
                             </div>
                         </div>

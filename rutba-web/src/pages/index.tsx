@@ -51,7 +51,7 @@ export default function Home() {
   }
 
   return (
-    <LayoutMain>
+    <LayoutMain footer={page.footer}>
       <CmsPageContent page={page} />
     </LayoutMain>
   );
