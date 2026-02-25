@@ -29,6 +29,7 @@ export default function useCmsPagesService() {
           "hero_product_groups.products.variants",
           "hero_product_groups.cover_image",
           "brand_groups.brands.logo",
+          "category_groups.categories.logo",
           "product_groups.products.gallery",
           "product_groups.products.logo",
           "product_groups.products.brands",
@@ -36,6 +37,7 @@ export default function useCmsPagesService() {
           "product_groups.products.variants",
           "product_groups.cover_image",
           "related_pages.featured_image",
+          "footer.pinned_pages",
         ],
       },
     });

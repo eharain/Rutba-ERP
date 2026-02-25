@@ -1,6 +1,26 @@
 import Link from "next/link";
+import { CmsFooterInterface } from "@/types/api/cms-page";
 
-export default function Footer() {
+interface FooterProps {
+  footer?: CmsFooterInterface;
+}
+
+export default function Footer({ footer }: FooterProps) {
+  const phone = footer?.phone || "+923245303530";
+  const openingHours = footer?.opening_hours || [
+    { day: "Monday to Thursday", hours: "11am - 9pm" },
+    { day: "Friday", hours: "Closed" },
+    { day: "Saturday and Sunday", hours: "11am - 9pm" },
+  ];
+  const socialLinks = footer?.social_links || [
+    { platform: "Facebook", url: "https://www.facebook.com/profile.php?id=61587364924242" },
+    { platform: "Instagram", url: "https://www.instagram.com/rutba.pakistan" },
+    { platform: "TikTok", url: "https://www.tiktok.com/@rutbapk" },
+    { platform: "Youtube", url: "https://www.youtube.com/@rutba-pk" },
+  ];
+  const pinnedPages = footer?.pinned_pages || [];
+  const copyrightText = footer?.copyright_text || `© ${new Date().getFullYear()}. Rutba.pk`;
+
   return (
     <footer className="bg-slate-100 lg:grid lg:grid-cols-5">
       <div className="px-4 py-16 sm:px-6 lg:col-span-5 lg:px-8">
@@ -12,17 +32,29 @@ export default function Footer() {
               </span>
 
               <a
-                href="#"
+                href={`tel:${phone}`}
                 className="block text-2xl font-medium text-gray-900 hover:opacity-75 sm:text-3xl"
               >
-                +923245303530
+                {phone}
               </a>
             </p>
 
+            {footer?.email && (
+              <p className="mt-2">
+                <a href={`mailto:${footer.email}`} className="text-sm text-gray-700 hover:opacity-75">
+                  {footer.email}
+                </a>
+              </p>
+            )}
+
+            {footer?.address && (
+              <p className="mt-2 text-sm text-gray-700">{footer.address}</p>
+            )}
+
             <ul className="mt-8 space-y-1 text-sm text-gray-700">
-            <li>Monday to Thursday: 11am - 9pm</li>
-            <li>Friday: Closed</li>
-            <li>Saturday and Sunday: 11am - 9pm</li>
+              {openingHours.map((h, i) => (
+                <li key={i}>{h.day}: {h.hours}</li>
+              ))}
             </ul>
           </div>
 
@@ -39,6 +71,17 @@ export default function Footer() {
                     Explore Products
                   </Link>
                 </li>
+
+                {pinnedPages.map((pp) => (
+                  <li key={pp.documentId}>
+                    <Link
+                      href={`/pages/${pp.slug}`}
+                      className="text-gray-700 transition hover:opacity-75"
+                    >
+                      {pp.title}
+                    </Link>
+                  </li>
+                ))}
 
                 <li>
                   <Link
@@ -73,41 +116,18 @@ export default function Footer() {
               <p className="font-medium text-gray-900">Social Media</p>
 
               <ul className="mt-6 space-y-4 text-sm">
-                <li>
-                  <a
-                    href="https://www.facebook.com/profile.php?id=61587364924242"
-                    className="text-gray-700 transition hover:opacity-75"
-                  >
-                    Facebook
-                  </a>
-                </li>
-
-                <li>
-                  <a
-                    href="https://www.instagram.com/rutba.pakistan"
-                    className="text-gray-700 transition hover:opacity-75"
-                  >
-                    Instagram
-                  </a>
-                </li>
-
-                <li>
-                  <a
-                    href="https://www.tiktok.com/@rutbapk"
-                    className="text-gray-700 transition hover:opacity-75"
-                  >
-                    TikTok
-                  </a>
-                </li>
-
-                <li>
-                  <a
-                    href="https://www.youtube.com/@rutba-pk"
-                    className="text-gray-700 transition hover:opacity-75"
-                  >
-                    Youtube
-                  </a>
-                </li>
+                {socialLinks.map((s, i) => (
+                  <li key={i}>
+                    <a
+                      href={s.url}
+                      className="text-gray-700 transition hover:opacity-75"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {s.platform}
+                    </a>
+                  </li>
+                ))}
               </ul>
             </div>
           </div>
@@ -115,37 +135,8 @@ export default function Footer() {
 
         <div className="mt-12 border-t border-gray-100 pt-12">
           <div className="sm:flex sm:items-center sm:justify-between">
-            {/* <ul className="flex flex-wrap gap-4 text-xs">
-              <li>
-                <a
-                  href="#"
-                  className="text-gray-500 transition hover:opacity-75"
-                >
-                  Terms & Conditions
-                </a>
-              </li>
-
-              <li>
-                <a
-                  href="#"
-                  className="text-gray-500 transition hover:opacity-75"
-                >
-                  Privacy Policy
-                </a>
-              </li>
-
-              <li>
-                <a
-                  href="#"
-                  className="text-gray-500 transition hover:opacity-75"
-                >
-                  Cookies
-                </a>
-              </li>
-            </ul> */}
-
             <p className="mt-8 text-xs text-gray-500 sm:mt-0">
-              &copy; {new Date().getFullYear()}. Rutba.pk
+              {copyrightText}
             </p>
           </div>
         </div>

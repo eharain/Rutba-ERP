@@ -56,7 +56,7 @@ export default function CmsPageDetail() {
   }
 
   return (
-    <LayoutMain>
+    <LayoutMain footer={page.footer}>
       <CmsPageContent page={page} />
     </LayoutMain>
   );

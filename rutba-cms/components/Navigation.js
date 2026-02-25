@@ -33,7 +33,13 @@ export default function Navigation() {
                         <Link className="nav-link" href="/brand-groups">Brand Groups</Link>
                     </li>
                     <li className="nav-item">
+                        <Link className="nav-link" href="/category-groups">Category Groups</Link>
+                    </li>
+                    <li className="nav-item">
                         <Link className="nav-link" href="/pages">Pages</Link>
+                    </li>
+                    <li className="nav-item">
+                        <Link className="nav-link" href="/footers">Footers</Link>
                     </li>
                     <li className="nav-item">
                         <Link className="nav-link" href="/orders">Orders</Link>

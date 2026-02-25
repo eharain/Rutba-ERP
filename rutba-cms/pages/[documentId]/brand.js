@@ -5,6 +5,7 @@ import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { authApi, StraipImageUrl } from "@rutba/pos-shared/lib/api";
 import Link from "next/link";
+import { useToast } from "../../components/Toast";
 
 export default function BrandDetail() {
     const router = useRouter();
@@ -13,6 +14,7 @@ export default function BrandDetail() {
     const [brand, setBrand] = useState(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const { toast, ToastContainer } = useToast();
     const isNew = documentId === "new";
 
     const [name, setName] = useState("");
@@ -44,11 +46,11 @@ export default function BrandDetail() {
                 await authApi.put(`/brands/${documentId}`, {
                     data: { name },
                 });
-                alert("Brand updated!");
+                toast("Brand updated!", "success");
             }
         } catch (err) {
             console.error("Failed to save brand", err);
-            alert("Failed to save.");
+            toast("Failed to save.", "danger");
         } finally {
             setSaving(false);
         }
@@ -57,6 +59,7 @@ export default function BrandDetail() {
     return (
         <ProtectedRoute>
             <Layout>
+                <ToastContainer />
                 <div className="d-flex align-items-center mb-3">
                     <Link className="btn btn-sm btn-outline-secondary me-3" href="/brands">
                         <i className="fas fa-arrow-left"></i> Back

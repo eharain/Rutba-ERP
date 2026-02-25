@@ -4,7 +4,9 @@ import Layout from "../../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { authApi, StraipImageUrl } from "@rutba/pos-shared/lib/api";
+import MarkdownEditor from "@rutba/pos-shared/components/MarkdownEditor";
 import Link from "next/link";
+import { useToast } from "../../components/Toast";
 
 const PAGE_TYPES = ["page", "blog", "announcement"];
 
@@ -17,6 +19,7 @@ export default function CmsPageDetail() {
     const [page, setPage] = useState(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const { toast, ToastContainer } = useToast();
 
     const [title, setTitle] = useState("");
     const [slug, setSlug] = useState("");
@@ -27,17 +30,21 @@ export default function CmsPageDetail() {
 
     const [selectedHeroGroupIds, setSelectedHeroGroupIds] = useState([]);
     const [selectedBrandGroupIds, setSelectedBrandGroupIds] = useState([]);
+    const [selectedCategoryGroupIds, setSelectedCategoryGroupIds] = useState([]);
     const [selectedGroupIds, setSelectedGroupIds] = useState([]);
     const [selectedRelatedIds, setSelectedRelatedIds] = useState([]);
+    const [footerId, setFooterId] = useState("");
 
     const [allGroups, setAllGroups] = useState([]);
     const [allBrandGroups, setAllBrandGroups] = useState([]);
+    const [allCategoryGroups, setAllCategoryGroups] = useState([]);
     const [allPages, setAllPages] = useState([]);
+    const [allFooters, setAllFooters] = useState([]);
 
     useEffect(() => {
         if (!jwt || !documentId || isNew) { setLoading(false); return; }
         authApi.get(`/cms-pages/${documentId}`, {
-            populate: ["featured_image", "gallery", "hero_product_groups", "brand_groups", "product_groups", "related_pages"],
+            populate: ["featured_image", "gallery", "hero_product_groups", "brand_groups", "category_groups", "product_groups", "related_pages", "footer"],
         })
             .then(res => {
                 const p = res.data || res;
@@ -50,8 +57,10 @@ export default function CmsPageDetail() {
                 setSortOrder(p.sort_order ?? 0);
                 setSelectedHeroGroupIds((p.hero_product_groups || []).map(g => g.documentId));
                 setSelectedBrandGroupIds((p.brand_groups || []).map(bg => bg.documentId));
+                setSelectedCategoryGroupIds((p.category_groups || []).map(cg => cg.documentId));
                 setSelectedGroupIds((p.product_groups || []).map(g => g.documentId));
                 setSelectedRelatedIds((p.related_pages || []).map(rp => rp.documentId));
+                setFooterId(p.footer?.documentId || "");
             })
             .catch(err => console.error("Failed to load page", err))
             .finally(() => setLoading(false));
@@ -60,14 +69,18 @@ export default function CmsPageDetail() {
     const loadPickers = useCallback(async () => {
         if (!jwt) return;
         try {
-            const [groupsRes, brandGroupsRes, pagesRes] = await Promise.all([
+            const [groupsRes, brandGroupsRes, categoryGroupsRes, pagesRes, footersRes] = await Promise.all([
                 authApi.get("/product-groups", { pagination: { pageSize: 100 }, sort: ["name:asc"] }),
                 authApi.get("/brand-groups", { pagination: { pageSize: 100 }, sort: ["sort_order:asc", "name:asc"] }),
+                authApi.get("/category-groups", { pagination: { pageSize: 100 }, sort: ["sort_order:asc", "name:asc"] }),
                 authApi.get("/cms-pages", { pagination: { pageSize: 100 }, sort: ["title:asc"] }),
+                authApi.get("/cms-footers", { pagination: { pageSize: 100 }, sort: ["name:asc"] }),
             ]);
             setAllGroups(groupsRes.data || []);
             setAllBrandGroups(brandGroupsRes.data || []);
+            setAllCategoryGroups(categoryGroupsRes.data || []);
             setAllPages((pagesRes.data || []).filter(p => p.documentId !== documentId));
+            setAllFooters(footersRes.data || []);
         } catch (err) {
             console.error("Failed to load picker data", err);
         }
@@ -77,6 +90,12 @@ export default function CmsPageDetail() {
 
     const toggleBrandGroup = (docId) => {
         setSelectedBrandGroupIds(prev =>
+            prev.includes(docId) ? prev.filter(id => id !== docId) : [...prev, docId]
+        );
+    };
+
+    const toggleCategoryGroup = (docId) => {
+        setSelectedCategoryGroupIds(prev =>
             prev.includes(docId) ? prev.filter(id => id !== docId) : [...prev, docId]
         );
     };
@@ -105,8 +124,10 @@ export default function CmsPageDetail() {
                     sort_order: sortOrder,
                     hero_product_groups: { set: selectedHeroGroupIds },
                     brand_groups: { set: selectedBrandGroupIds },
+                    category_groups: { set: selectedCategoryGroupIds },
                     product_groups: { set: selectedGroupIds },
                     related_pages: { set: selectedRelatedIds },
+                    footer: footerId || null,
                 },
             };
             if (isNew) {
@@ -116,11 +137,11 @@ export default function CmsPageDetail() {
                 router.push(`/${created.documentId}/cms-page`);
             } else {
                 await authApi.put(`/cms-pages/${documentId}`, payload);
-                alert("Page updated!");
+                toast("Page updated!", "success");
             }
         } catch (err) {
             console.error("Failed to save page", err);
-            alert("Failed to save.");
+            toast("Failed to save.", "danger");
         } finally {
             setSaving(false);
         }
@@ -133,23 +154,29 @@ export default function CmsPageDetail() {
             router.push("/pages");
         } catch (err) {
             console.error("Failed to delete page", err);
-            alert("Failed to delete.");
+            toast("Failed to delete.", "danger");
         }
     };
 
     return (
         <ProtectedRoute>
             <Layout>
+                <ToastContainer />
                 <div className="d-flex align-items-center mb-3">
                     <Link className="btn btn-sm btn-outline-secondary me-3" href="/pages">
                         <i className="fas fa-arrow-left"></i> Back
                     </Link>
                     <h2 className="mb-0">{isNew ? "New Page" : "Edit Page"}</h2>
-                    {!isNew && (
-                        <button className="btn btn-sm btn-outline-danger ms-auto" onClick={handleDelete}>
-                            <i className="fas fa-trash me-1"></i>Delete
+                    <div className="ms-auto d-flex gap-2">
+                        {!isNew && (
+                            <button className="btn btn-sm btn-outline-danger" onClick={handleDelete}>
+                                <i className="fas fa-trash me-1"></i>Delete
+                            </button>
+                        )}
+                        <button className="btn btn-sm btn-primary" onClick={handleSave} disabled={saving}>
+                            {saving ? "Saving..." : isNew ? "Create Page" : "Save Changes"}
                         </button>
-                    )}
+                    </div>
                 </div>
 
                 {loading && <p>Loading...</p>}
@@ -180,11 +207,8 @@ export default function CmsPageDetail() {
                                     </div>
                                     <div className="mb-3">
                                         <label className="form-label">Content</label>
-                                        <textarea className="form-control" rows={12} value={content} onChange={e => setContent(e.target.value)} />
+                                        <MarkdownEditor value={content} onChange={e => setContent(e.target.value)} name="content" rows={12} />
                                     </div>
-                                    <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
-                                        {saving ? "Saving..." : isNew ? "Create Page" : "Save Changes"}
-                                    </button>
                                 </div>
                             </div>
 
@@ -232,6 +256,32 @@ export default function CmsPageDetail() {
                                                 return (
                                                     <button key={bg.documentId} type="button" className={`btn btn-sm ${selected ? "btn-warning" : "btn-outline-secondary"}`} onClick={() => toggleBrandGroup(bg.documentId)}>
                                                         {selected && <i className="fas fa-check me-1"></i>}{bg.name}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Category Groups */}
+                            <div className="card mb-3">
+                                <div className="card-header d-flex align-items-center">
+                                    <i className="fas fa-folder me-2"></i>
+                                    <strong>Category Groups</strong>
+                                    <span className="badge bg-primary ms-2">{selectedCategoryGroupIds.length}</span>
+                                </div>
+                                <div className="card-body">
+                                    <p className="text-muted small mb-2">Select category groups to display. Each group renders as a section using the group name as the heading.</p>
+                                    {allCategoryGroups.length === 0 ? (
+                                        <p className="text-muted small">No category groups available. <Link href="/new/category-group">Create one</Link>.</p>
+                                    ) : (
+                                        <div className="d-flex flex-wrap gap-2">
+                                            {allCategoryGroups.map(cg => {
+                                                const selected = selectedCategoryGroupIds.includes(cg.documentId);
+                                                return (
+                                                    <button key={cg.documentId} type="button" className={`btn btn-sm ${selected ? "btn-primary" : "btn-outline-secondary"}`} onClick={() => toggleCategoryGroup(cg.documentId)}>
+                                                        {selected && <i className="fas fa-check me-1"></i>}{cg.name}
                                                     </button>
                                                 );
                                             })}
@@ -316,9 +366,21 @@ export default function CmsPageDetail() {
                                         </div>
                                     )}
                                     {!isNew && page?.publishedAt && <span className="badge bg-success">Published</span>}
-                                    {!isNew && !page?.publishedAt && <span className="badge bg-secondary">Draft</span>}
-                                </div>
-                            </div>
+                                                    {!isNew && !page?.publishedAt && <span className="badge bg-secondary">Draft</span>}
+                                                </div>
+                                            </div>
+                                            <div className="card mb-3">
+                                                <div className="card-header"><i className="fas fa-shoe-prints me-2"></i>Footer</div>
+                                                <div className="card-body">
+                                                    <select className="form-select" value={footerId} onChange={e => setFooterId(e.target.value)}>
+                                                        <option value="">-- No footer --</option>
+                                                        {allFooters.map(f => (
+                                                            <option key={f.documentId} value={f.documentId}>{f.name}</option>
+                                                        ))}
+                                                    </select>
+                                                    <div className="form-text">Attach a footer to display contact, social links and pinned pages.</div>
+                                                </div>
+                                            </div>
                             {!isNew && page?.featured_image?.url && (
                                 <div className="card mb-3">
                                     <div className="card-header">Featured Image</div>
