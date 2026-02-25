@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
+import * as XLSX from 'xlsx';
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { authApi } from "@rutba/pos-shared/lib/api";
@@ -22,6 +23,14 @@ export default function TermTypesPage() {
     const [mergeSearch, setMergeSearch] = useState("");
     const [mergeSelection, setMergeSelection] = useState(new Set());
     const [isMergeOpen, setIsMergeOpen] = useState(false);
+
+    // Bulk import state
+    const fileInputRef = useRef(null);
+    const [importRows, setImportRows] = useState([]);
+    const [importFileName, setImportFileName] = useState('');
+    const [importParsing, setImportParsing] = useState(false);
+    const [importCreating, setImportCreating] = useState(false);
+    const [importLog, setImportLog] = useState([]);
 
     useEffect(() => {
         loadData();
@@ -268,6 +277,134 @@ export default function TermTypesPage() {
         }
     }
 
+    function parseImportFile(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const wb = XLSX.read(e.target.result, { type: 'array' });
+                    const ws = wb.Sheets[wb.SheetNames[0]];
+                    const jsonRows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+                    if (!jsonRows || jsonRows.length === 0) return resolve([]);
+                    const nameKeys = ['name', 'Name', 'NAME', 'term', 'Term', 'TERM', 'title', 'Title', 'TITLE'];
+                    const slugKeys = ['slug', 'Slug', 'SLUG', 'code', 'Code', 'CODE'];
+                    function findCol(row, keys) {
+                        for (const k of keys) {
+                            if (Object.prototype.hasOwnProperty.call(row, k) && row[k] !== '') return String(row[k]).trim();
+                        }
+                        return '';
+                    }
+                    const mapped = jsonRows.map((row, i) => {
+                        const name = findCol(row, nameKeys);
+                        const slug = findCol(row, slugKeys);
+                        return { name, slug, _key: Date.now() + i, _selected: true, _status: '' };
+                    }).filter(r => r.name);
+                    resolve(mapped);
+                } catch (err) { reject(err); }
+            };
+            reader.onerror = () => reject(new Error('Failed to read file'));
+            reader.readAsArrayBuffer(file);
+        });
+    }
+
+    async function handleImportFile(e) {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setImportParsing(true);
+        setImportLog([]);
+        try {
+            const rows = await parseImportFile(file);
+            if (rows.length === 0) {
+                setImportLog([{ type: 'warning', text: 'No rows with a name column found in the file.' }]);
+                setImportRows([]);
+            } else {
+                setImportRows(rows);
+                setImportLog([{ type: 'info', text: `Parsed ${rows.length} term(s) from "${file.name}"` }]);
+            }
+            setImportFileName(file.name);
+        } catch (err) {
+            console.error('Import parse error', err);
+            setImportLog([{ type: 'danger', text: 'Failed to parse file: ' + (err.message || 'Unknown error') }]);
+            setImportRows([]);
+        } finally {
+            setImportParsing(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+    }
+
+    function toggleImportRow(index) {
+        setImportRows(prev => prev.map((r, i) => i === index ? { ...r, _selected: !r._selected } : r));
+    }
+
+    function toggleAllImportRows() {
+        const allSelected = importRows.every(r => r._selected);
+        setImportRows(prev => prev.map(r => ({ ...r, _selected: !allSelected })));
+    }
+
+    function updateImportRow(index, field, value) {
+        setImportRows(prev => prev.map((r, i) => i === index ? { ...r, [field]: value } : r));
+    }
+
+    function removeImportRow(index) {
+        setImportRows(prev => prev.filter((_, i) => i !== index));
+    }
+
+    function clearImport() {
+        setImportRows([]);
+        setImportFileName('');
+        setImportLog([]);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+
+    async function handleBulkCreateTerms() {
+        if (!selectedTermTypeId) return alert('Select a term type first');
+        const selected = importRows.filter(r => r._selected && r.name.trim());
+        if (selected.length === 0) return alert('No terms selected for import');
+        if (!confirm(`Create ${selected.length} term(s) and assign to "${selectedTermType?.name || 'selected term type'}"?`)) return;
+        setImportCreating(true);
+        const log = [];
+        let created = 0;
+        let skipped = 0;
+        const existingNames = new Set((assignedTerms || []).map(t => (t.name || '').toLowerCase().trim()));
+        try {
+            for (let i = 0; i < importRows.length; i++) {
+                const row = importRows[i];
+                if (!row._selected || !row.name.trim()) continue;
+                const trimmedName = row.name.trim();
+                if (existingNames.has(trimmedName.toLowerCase())) {
+                    setImportRows(prev => prev.map((r, idx) => idx === i ? { ...r, _status: 'duplicate' } : r));
+                    log.push({ type: 'warning', text: `Skipped "${trimmedName}" (already exists)` });
+                    skipped++;
+                    continue;
+                }
+                try {
+                    const payload = {
+                        name: trimmedName,
+                        slug: row.slug.trim() || undefined,
+                        term_types: { connect: [selectedTermTypeId] }
+                    };
+                    await authApi.post('/terms', { data: payload });
+                    existingNames.add(trimmedName.toLowerCase());
+                    setImportRows(prev => prev.map((r, idx) => idx === i ? { ...r, _status: 'created' } : r));
+                    created++;
+                } catch (err) {
+                    console.error(`Failed to create term "${trimmedName}"`, err);
+                    setImportRows(prev => prev.map((r, idx) => idx === i ? { ...r, _status: 'error' } : r));
+                    log.push({ type: 'danger', text: `Failed: "${trimmedName}" — ${err.message || 'Error'}` });
+                }
+            }
+            log.unshift({ type: 'success', text: `Import complete: ${created} created, ${skipped} skipped` });
+            setImportLog(log);
+            await loadData();
+        } catch (err) {
+            console.error('Bulk create failed', err);
+            log.unshift({ type: 'danger', text: 'Bulk create failed: ' + (err.message || 'Unknown error') });
+            setImportLog(log);
+        } finally {
+            setImportCreating(false);
+        }
+    }
+
     const selectedTermType = termTypes.find((type) => getEntryId(type) === selectedTermTypeId);
     const assignedTerms = selectedTermType?.terms || [];
     const assignedIds = useMemo(
@@ -474,6 +611,99 @@ export default function TermTypesPage() {
                                             Create Term
                                         </button>
                                     </form>
+                                </div>
+                            </div>
+
+                            <div className="card mb-3">
+                                <div className="card-body">
+                                    <h5 className="card-title">
+                                        <i className="fas fa-file-import me-2" />
+                                        Bulk Import Terms
+                                    </h5>
+                                    <p className="text-muted small mb-2">
+                                        Upload a CSV or Excel file with <strong>name</strong> and optional <strong>slug</strong> columns to create multiple terms at once.
+                                    </p>
+                                    <div className="mb-2">
+                                        <input
+                                            ref={fileInputRef}
+                                            type="file"
+                                            className="form-control form-control-sm"
+                                            accept=".csv,.xlsx,.xls"
+                                            onChange={handleImportFile}
+                                            disabled={importParsing || importCreating}
+                                        />
+                                    </div>
+                                    {importParsing && <div className="text-muted small mb-2"><i className="fas fa-spinner fa-spin me-1" />Parsing file...</div>}
+                                    {importLog.map((log, i) => (
+                                        <div key={i} className={`alert alert-${log.type} py-1 px-2 small mb-1`}>{log.text}</div>
+                                    ))}
+                                    {importRows.length > 0 && (
+                                        <>
+                                            <div className="d-flex justify-content-between align-items-center mb-2 mt-2">
+                                                <span className="small fw-bold">{importRows.filter(r => r._selected).length} of {importRows.length} selected</span>
+                                                <div className="d-flex gap-1">
+                                                    <button type="button" className="btn btn-outline-secondary btn-sm" onClick={toggleAllImportRows} disabled={importCreating}>
+                                                        {importRows.every(r => r._selected) ? 'Unselect All' : 'Select All'}
+                                                    </button>
+                                                    <button type="button" className="btn btn-outline-danger btn-sm" onClick={clearImport} disabled={importCreating}>
+                                                        Clear
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                                                <table className="table table-sm table-bordered align-middle mb-0">
+                                                    <thead className="table-light" style={{ position: 'sticky', top: 0 }}>
+                                                        <tr>
+                                                            <th style={{ width: '30px' }}>
+                                                                <input type="checkbox" className="form-check-input" checked={importRows.every(r => r._selected)} onChange={toggleAllImportRows} disabled={importCreating} />
+                                                            </th>
+                                                            <th>Name</th>
+                                                            <th>Slug</th>
+                                                            <th style={{ width: '60px' }}>Status</th>
+                                                            <th style={{ width: '30px' }}></th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {importRows.map((row, i) => (
+                                                            <tr key={row._key} className={row._status === 'created' ? 'table-success' : row._status === 'error' ? 'table-danger' : row._status === 'duplicate' ? 'table-warning' : ''}>
+                                                                <td>
+                                                                    <input type="checkbox" className="form-check-input" checked={row._selected} onChange={() => toggleImportRow(i)} disabled={importCreating || row._status === 'created'} />
+                                                                </td>
+                                                                <td>
+                                                                    <input className="form-control form-control-sm" value={row.name} onChange={(e) => updateImportRow(i, 'name', e.target.value)} disabled={importCreating || row._status === 'created'} />
+                                                                </td>
+                                                                <td>
+                                                                    <input className="form-control form-control-sm" value={row.slug} onChange={(e) => updateImportRow(i, 'slug', e.target.value)} placeholder="auto" disabled={importCreating || row._status === 'created'} />
+                                                                </td>
+                                                                <td className="text-center">
+                                                                    {row._status === 'created' && <span className="badge bg-success"><i className="fas fa-check" /></span>}
+                                                                    {row._status === 'error' && <span className="badge bg-danger"><i className="fas fa-times" /></span>}
+                                                                    {row._status === 'duplicate' && <span className="badge bg-warning text-dark">Dup</span>}
+                                                                    {!row._status && <span className="text-muted">—</span>}
+                                                                </td>
+                                                                <td>
+                                                                    <button type="button" className="btn btn-sm btn-outline-danger p-0 px-1" onClick={() => removeImportRow(i)} disabled={importCreating} title="Remove row">
+                                                                        <i className="fas fa-times" />
+                                                                    </button>
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                className="btn btn-success btn-sm mt-2 w-100"
+                                                onClick={handleBulkCreateTerms}
+                                                disabled={!selectedTermTypeId || importCreating || importRows.filter(r => r._selected && r.name.trim()).length === 0}
+                                            >
+                                                {importCreating
+                                                    ? <><i className="fas fa-spinner fa-spin me-1" />Creating...</>
+                                                    : <><i className="fas fa-upload me-1" />Create {importRows.filter(r => r._selected && r.name.trim()).length} Term(s) into "{selectedTermType?.name || '...'}"
+                                                    </>}
+                                            </button>
+                                        </>
+                                    )}
                                 </div>
                             </div>
 

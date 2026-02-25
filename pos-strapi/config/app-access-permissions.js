@@ -208,6 +208,7 @@ const ENTRIES = [
       { uid: 'api::cms-page.cms-page',                             actions: WRITE },
       { uid: 'api::product.product',                               actions: WRITE },
       { uid: 'api::product-group.product-group',                   actions: WRITE },
+      { uid: 'api::brand-group.brand-group',                       actions: WRITE },
       { uid: 'api::category.category',                             actions: WRITE },
       { uid: 'api::brand.brand',                                   actions: WRITE },
       // cross-app read-only
@@ -262,4 +263,30 @@ const CLIENT_PLUGIN_PERMISSIONS = [
   'plugin::upload.content-api.destroy',
 ];
 
-module.exports = { ENTRIES, permissionsByKey, PLUGIN_PERMISSIONS, CLIENT_PLUGIN_PERMISSIONS };
+// ─── Public (unauthenticated) content-API permissions ───────
+//   These are synced to Strapi's built-in "Public" role so
+//   the web storefront can read products, brands, pages, etc.
+//   without an auth token.
+
+const PUBLIC_PERMISSIONS = [
+  'api::product.product.find',
+  'api::product.product.findOne',
+  'api::product-group.product-group.find',
+  'api::product-group.product-group.findOne',
+  'api::category.category.find',
+  'api::category.category.findOne',
+  'api::brand.brand.find',
+  'api::brand.brand.findOne',
+  'api::brand-group.brand-group.find',
+  'api::brand-group.brand-group.findOne',
+  'api::cms-page.cms-page.find',
+  'api::cms-page.cms-page.findOne',
+  'api::order.order.find',
+  'api::order.order.findOne',
+  'api::order.order.create',
+  'api::customer.customer.find',
+  'api::customer.customer.findOne',
+  'api::customer.customer.create',
+];
+
+module.exports = { ENTRIES, permissionsByKey, PLUGIN_PERMISSIONS, CLIENT_PLUGIN_PERMISSIONS, PUBLIC_PERMISSIONS };
