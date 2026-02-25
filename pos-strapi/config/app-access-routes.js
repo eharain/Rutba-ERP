@@ -67,6 +67,7 @@ module.exports = {
 
   // ── CMS (Content Management) ──────────────────────────────
   'api::cms-page.cms-page':                  'cms',
+  'api::brand-group.brand-group':            'cms',
 
   // ── Shared / system ───────────────────────────────────────
   'api::branch.branch':                      ['stock', 'sale', 'hr', 'accounts'],

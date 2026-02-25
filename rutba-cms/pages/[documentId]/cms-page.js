@@ -25,16 +25,19 @@ export default function CmsPageDetail() {
     const [pageType, setPageType] = useState("page");
     const [sortOrder, setSortOrder] = useState(0);
 
+    const [selectedHeroGroupIds, setSelectedHeroGroupIds] = useState([]);
+    const [selectedBrandGroupIds, setSelectedBrandGroupIds] = useState([]);
     const [selectedGroupIds, setSelectedGroupIds] = useState([]);
     const [selectedRelatedIds, setSelectedRelatedIds] = useState([]);
 
     const [allGroups, setAllGroups] = useState([]);
+    const [allBrandGroups, setAllBrandGroups] = useState([]);
     const [allPages, setAllPages] = useState([]);
 
     useEffect(() => {
         if (!jwt || !documentId || isNew) { setLoading(false); return; }
         authApi.get(`/cms-pages/${documentId}`, {
-            populate: ["featured_image", "gallery", "product_groups", "related_pages"],
+            populate: ["featured_image", "gallery", "hero_product_groups", "brand_groups", "product_groups", "related_pages"],
         })
             .then(res => {
                 const p = res.data || res;
@@ -45,6 +48,8 @@ export default function CmsPageDetail() {
                 setExcerpt(p.excerpt || "");
                 setPageType(p.page_type || "page");
                 setSortOrder(p.sort_order ?? 0);
+                setSelectedHeroGroupIds((p.hero_product_groups || []).map(g => g.documentId));
+                setSelectedBrandGroupIds((p.brand_groups || []).map(bg => bg.documentId));
                 setSelectedGroupIds((p.product_groups || []).map(g => g.documentId));
                 setSelectedRelatedIds((p.related_pages || []).map(rp => rp.documentId));
             })
@@ -55,11 +60,13 @@ export default function CmsPageDetail() {
     const loadPickers = useCallback(async () => {
         if (!jwt) return;
         try {
-            const [groupsRes, pagesRes] = await Promise.all([
+            const [groupsRes, brandGroupsRes, pagesRes] = await Promise.all([
                 authApi.get("/product-groups", { pagination: { pageSize: 100 }, sort: ["name:asc"] }),
+                authApi.get("/brand-groups", { pagination: { pageSize: 100 }, sort: ["sort_order:asc", "name:asc"] }),
                 authApi.get("/cms-pages", { pagination: { pageSize: 100 }, sort: ["title:asc"] }),
             ]);
             setAllGroups(groupsRes.data || []);
+            setAllBrandGroups(brandGroupsRes.data || []);
             setAllPages((pagesRes.data || []).filter(p => p.documentId !== documentId));
         } catch (err) {
             console.error("Failed to load picker data", err);
@@ -67,6 +74,12 @@ export default function CmsPageDetail() {
     }, [jwt, documentId]);
 
     useEffect(() => { loadPickers(); }, [loadPickers]);
+
+    const toggleBrandGroup = (docId) => {
+        setSelectedBrandGroupIds(prev =>
+            prev.includes(docId) ? prev.filter(id => id !== docId) : [...prev, docId]
+        );
+    };
 
     const toggleGroup = (docId) => {
         setSelectedGroupIds(prev =>
@@ -90,6 +103,8 @@ export default function CmsPageDetail() {
                     excerpt,
                     page_type: pageType,
                     sort_order: sortOrder,
+                    hero_product_groups: { set: selectedHeroGroupIds },
+                    brand_groups: { set: selectedBrandGroupIds },
                     product_groups: { set: selectedGroupIds },
                     related_pages: { set: selectedRelatedIds },
                 },
@@ -156,6 +171,7 @@ export default function CmsPageDetail() {
                                         <div className="mb-3">
                                             <label className="form-label">Slug</label>
                                             <input type="text" className="form-control" value={slug} onChange={e => setSlug(e.target.value)} placeholder="auto-generated from title" />
+                                            <div className="form-text">Use <code>index</code> for the home page.</div>
                                         </div>
                                     )}
                                     <div className="mb-3">
@@ -172,6 +188,59 @@ export default function CmsPageDetail() {
                                 </div>
                             </div>
 
+                            {/* Hero Product Groups */}
+                            <div className="card mb-3">
+                                <div className="card-header d-flex align-items-center">
+                                    <i className="fas fa-image me-2"></i>
+                                    <strong>Hero Slider</strong>
+                                    <span className="badge bg-primary ms-2">{selectedHeroGroupIds.length}</span>
+                                </div>
+                                <div className="card-body">
+                                    <p className="text-muted small mb-2">Select product groups whose products will appear as the full-width hero banner slider.</p>
+                                    {allGroups.length === 0 ? (
+                                        <p className="text-muted small">No product groups available.</p>
+                                    ) : (
+                                        <div className="d-flex flex-wrap gap-2">
+                                            {allGroups.map(g => {
+                                                const selected = selectedHeroGroupIds.includes(g.documentId);
+                                                return (
+                                                    <button key={g.documentId} type="button" className={`btn btn-sm ${selected ? "btn-danger" : "btn-outline-secondary"}`} onClick={() => setSelectedHeroGroupIds(prev => prev.includes(g.documentId) ? prev.filter(id => id !== g.documentId) : [...prev, g.documentId])}>
+                                                        {selected && <i className="fas fa-check me-1"></i>}{g.name}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Brand Groups */}
+                            <div className="card mb-3">
+                                <div className="card-header d-flex align-items-center">
+                                    <i className="fas fa-tags me-2"></i>
+                                    <strong>Brand Groups</strong>
+                                    <span className="badge bg-primary ms-2">{selectedBrandGroupIds.length}</span>
+                                </div>
+                                <div className="card-body">
+                                    <p className="text-muted small mb-2">Select brand groups to display. Each group renders as a section using the group name as the heading.</p>
+                                    {allBrandGroups.length === 0 ? (
+                                        <p className="text-muted small">No brand groups available. <Link href="/new/brand-group">Create one</Link>.</p>
+                                    ) : (
+                                        <div className="d-flex flex-wrap gap-2">
+                                            {allBrandGroups.map(bg => {
+                                                const selected = selectedBrandGroupIds.includes(bg.documentId);
+                                                return (
+                                                    <button key={bg.documentId} type="button" className={`btn btn-sm ${selected ? "btn-warning" : "btn-outline-secondary"}`} onClick={() => toggleBrandGroup(bg.documentId)}>
+                                                        {selected && <i className="fas fa-check me-1"></i>}{bg.name}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Product Groups */}
                             <div className="card mb-3">
                                 <div className="card-header d-flex align-items-center">
                                     <i className="fas fa-layer-group me-2"></i>
@@ -179,7 +248,7 @@ export default function CmsPageDetail() {
                                     <span className="badge bg-primary ms-2">{selectedGroupIds.length}</span>
                                 </div>
                                 <div className="card-body">
-                                    <p className="text-muted small mb-2">Select product groups to display alongside this page on the website.</p>
+                                    <p className="text-muted small mb-2">Select product groups to display. Each group renders as a section using the group name as the heading.</p>
                                     {allGroups.length === 0 ? (
                                         <p className="text-muted small">No product groups available.</p>
                                     ) : (
@@ -197,6 +266,7 @@ export default function CmsPageDetail() {
                                 </div>
                             </div>
 
+                            {/* Related Pages */}
                             <div className="card mb-3">
                                 <div className="card-header d-flex align-items-center">
                                     <i className="fas fa-link me-2"></i>

@@ -4,6 +4,7 @@ import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { getBranch } from "@rutba/pos-shared/lib/utils";
 import { APP_URLS } from "@rutba/pos-shared/lib/roles";
 import AdminModeToggle from "@rutba/pos-shared/components/AdminModeToggle";
+import NavAppSwitcher from "@rutba/pos-shared/components/NavAppSwitcher";
 import { useEffect } from "react";
 
 export default function Navigation() {
@@ -42,6 +43,7 @@ export default function Navigation() {
                     </ul>
 
                 <div className="d-flex align-items-center">
+                    <NavAppSwitcher currentApp="sale" />
                     <AdminModeToggle />
                     {user ? (
                         <>

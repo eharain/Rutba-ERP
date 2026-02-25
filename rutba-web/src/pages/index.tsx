@@ -1,38 +1,62 @@
 import LayoutMain from "@/components/layouts";
-import BrandList from "@/components/brands";
-import HeroSlider from "@/components/home/hero-slider";
-import FeaturedSneakers from "@/components/home/featured-sneakers";
-// import CollectionList from "@/components/home/collection-list";
+import CmsPageContent from "@/components/cms/cms-page-content";
+import { useQuery } from "@tanstack/react-query";
+import useCmsPagesService from "@/services/cms-pages";
+import { SkeletonBanner } from "@/components/skeleton";
+import { ErrorCard } from "@/components/errors/error-card";
 
 export default function Home() {
+  const { getCmsPageBySlug } = useCmsPagesService();
+
+  const {
+    data: page,
+    isLoading,
+    isError,
+    error,
+  } = useQuery({
+    queryKey: ["cms-page", "index"],
+    queryFn: () => getCmsPageBySlug("index"),
+    staleTime: 60_000,
+  });
+
+  if (isLoading) {
+    return (
+      <LayoutMain>
+        <SkeletonBanner />
+      </LayoutMain>
+    );
+  }
+
+  if (isError) {
+    return (
+      <LayoutMain>
+        <div className="container mx-auto my-20">
+          <ErrorCard message={(error as Error).message} />
+        </div>
+      </LayoutMain>
+    );
+  }
+
+  if (!page) {
+    return (
+      <LayoutMain>
+        <div className="container mx-auto my-20 text-center">
+          <p className="text-slate-500">
+            Create a CMS page with slug <code>index</code> to configure this
+            page.
+          </p>
+        </div>
+      </LayoutMain>
+    );
+  }
+
   return (
     <LayoutMain>
-      <>
-        <HeroSlider></HeroSlider>
-
-        <div className="my-20">
-          <div className="container-fluid">
-            <h2 className="text-3xl font-bold mb-7">Explore Brands</h2>
-            <BrandList></BrandList>
-          </div>
-        </div>
-
-        <div className="my-20">
-          <div className="container-fluid">
-            <h2 className="text-3xl font-bold mb-7">Featured Products</h2>
-            <FeaturedSneakers></FeaturedSneakers>
-          </div>
-        </div>
-
-        {/* <div className="my-20">
-          <div className="container-fluid">
-            <h2 className="text-3xl font-bold mb-7">Collections</h2>
-            <CollectionList></CollectionList>
-          </div>
-        </div>   */}
-      </>
+      <CmsPageContent page={page} />
     </LayoutMain>
   );
 }
 
-export async function getServerSideProps() { return { props: {} }; }
+export async function getServerSideProps() {
+  return { props: {} };
+}

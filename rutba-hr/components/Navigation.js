@@ -3,6 +3,7 @@ import { useRouter } from "next/router";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { APP_URLS } from "@rutba/pos-shared/lib/roles";
 import AdminModeToggle from "@rutba/pos-shared/components/AdminModeToggle";
+import NavAppSwitcher from "@rutba/pos-shared/components/NavAppSwitcher";
 
 export default function Navigation() {
     const { user, appAccess } = useAuth();
@@ -31,6 +32,7 @@ export default function Navigation() {
                     </ul>
 
                 <div className="d-flex align-items-center">
+                    <NavAppSwitcher currentApp="hr" />
                     <AdminModeToggle />
                     {user ? (
                         <>

@@ -703,6 +703,38 @@ export interface ApiBranchBranch extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiBrandGroupBrandGroup extends Struct.CollectionTypeSchema {
+  collectionName: 'brand_groups';
+  info: {
+    description: 'Groups of brands for display on CMS pages';
+    displayName: 'Brand Group';
+    pluralName: 'brand-groups';
+    singularName: 'brand-group';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    brands: Schema.Attribute.Relation<'manyToMany', 'api::brand.brand'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::brand-group.brand-group'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    publishedAt: Schema.Attribute.DateTime;
+    slug: Schema.Attribute.UID<'name'> & Schema.Attribute.Required;
+    sort_order: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiBrandBrand extends Struct.CollectionTypeSchema {
   collectionName: 'brands';
   info: {
@@ -903,6 +935,10 @@ export interface ApiCmsPageCmsPage extends Struct.CollectionTypeSchema {
     draftAndPublish: true;
   };
   attributes: {
+    brand_groups: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::brand-group.brand-group'
+    >;
     content: Schema.Attribute.RichText;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
@@ -910,6 +946,10 @@ export interface ApiCmsPageCmsPage extends Struct.CollectionTypeSchema {
     excerpt: Schema.Attribute.Text;
     featured_image: Schema.Attribute.Media<'images'>;
     gallery: Schema.Attribute.Media<'images' | 'videos', true>;
+    hero_product_groups: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::product-group.product-group'
+    >;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
@@ -2891,6 +2931,7 @@ declare module '@strapi/strapi' {
       'api::acc-journal-entry.acc-journal-entry': ApiAccJournalEntryAccJournalEntry;
       'api::app-access.app-access': ApiAppAccessAppAccess;
       'api::branch.branch': ApiBranchBranch;
+      'api::brand-group.brand-group': ApiBrandGroupBrandGroup;
       'api::brand.brand': ApiBrandBrand;
       'api::cash-register-transaction.cash-register-transaction': ApiCashRegisterTransactionCashRegisterTransaction;
       'api::cash-register.cash-register': ApiCashRegisterCashRegister;

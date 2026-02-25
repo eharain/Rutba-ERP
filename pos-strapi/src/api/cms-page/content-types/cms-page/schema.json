@@ -1,4 +1,4 @@
-{
+﻿{
   "kind": "collectionType",
   "collectionName": "cms_pages",
   "info": {
@@ -69,6 +69,16 @@
       "type": "relation",
       "relation": "manyToMany",
       "target": "plugin::users-permissions.user"
+    },
+    "hero_product_groups": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::product-group.product-group"
+    },
+    "brand_groups": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::brand-group.brand-group"
     }
   }
 }

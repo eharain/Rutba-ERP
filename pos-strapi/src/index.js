@@ -1,6 +1,6 @@
 'use strict';
 
-const { ENTRIES, PLUGIN_PERMISSIONS } = require('../config/app-access-permissions');
+const { ENTRIES, PLUGIN_PERMISSIONS, PUBLIC_PERMISSIONS } = require('../config/app-access-permissions');
 
 // ── helpers ─────────────────────────────────────────────────
 
@@ -191,7 +191,10 @@ module.exports = {
         const allRoles = await knex('up_roles').select('id', 'name', 'type');
         for (const otherRole of allRoles) {
             if (otherRole.type === ROLE_TYPE) continue; // already handled above
-            await syncPermissionsToRole(knex, otherRole.id, otherRole.name, PLUGIN_PERMISSIONS, strapi);
+            const permsForRole = otherRole.type === 'public'
+                ? [...new Set([...PLUGIN_PERMISSIONS, ...PUBLIC_PERMISSIONS])].sort()
+                : PLUGIN_PERMISSIONS;
+            await syncPermissionsToRole(knex, otherRole.id, otherRole.name, permsForRole, strapi);
         }
     },
 };
