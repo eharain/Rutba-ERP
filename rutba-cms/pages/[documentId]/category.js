@@ -24,7 +24,7 @@ export default function CategoryDetail() {
 
     useEffect(() => {
         if (!jwt || !documentId || isNew) { setLoading(false); return; }
-        authApi.get(`/categories/${documentId}`, { populate: ["logo", "gallery", "parent"] })
+        authApi.get(`/categories/${documentId}`, { status: 'draft', populate: ["logo", "gallery", "parent"] })
             .then(res => {
                 const c = res.data || res;
                 setCategory(c);
@@ -47,7 +47,7 @@ export default function CategoryDetail() {
                 const created = res.data || res;
                 router.push(`/${created.documentId}/category`);
             } else {
-                await authApi.put(`/categories/${documentId}`, {
+                await authApi.put(`/categories/${documentId}?status=draft`, {
                     data: { name, summary, description },
                 });
                 toast("Category updated!", "success");

@@ -14,12 +14,17 @@ export default function BrandGroups() {
         if (!jwt) return;
         setLoading(true);
         try {
-            const res = await authApi.get("/brand-groups", {
-                sort: ["sort_order:asc", "createdAt:desc"],
-                populate: ["brands"],
-                pagination: { pageSize: 50 },
-            });
-            setGroups(res.data || []);
+            const [draftRes, pubRes] = await Promise.all([
+                authApi.get("/brand-groups", {
+                    status: 'draft',
+                    sort: ["sort_order:asc", "createdAt:desc"],
+                    populate: ["brands"],
+                    pagination: { pageSize: 50 },
+                }),
+                authApi.get("/brand-groups", { status: 'published', fields: ["documentId"], pagination: { pageSize: 200 } }),
+            ]);
+            const pubIds = new Set((pubRes.data || []).map(g => g.documentId));
+            setGroups((draftRes.data || []).map(g => ({ ...g, _isPublished: pubIds.has(g.documentId) })));
         } catch (err) {
             console.error("Failed to load brand groups", err);
         } finally {
@@ -70,7 +75,7 @@ export default function BrandGroups() {
                                         <td><span className="badge bg-primary">{(g.brands || []).length}</span></td>
                                         <td>{g.sort_order}</td>
                                         <td>
-                                            {g.publishedAt
+                                            {g._isPublished
                                                 ? <span className="badge bg-success">Published</span>
                                                 : <span className="badge bg-secondary">Draft</span>
                                             }

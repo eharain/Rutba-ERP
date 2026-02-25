@@ -17,6 +17,7 @@ export default function Login() {
     const [message, setMessage] = useState("");
     const [errorMessage, setErrorMessage] = useState("");
     const [busyLoading, setBusyLoading] = useState(false);
+    const [rememberMe, setRememberMe] = useState(false);
 
     // If already logged in, complete the OAuth flow or go to dashboard
     useEffect(() => {
@@ -49,7 +50,7 @@ export default function Login() {
         setBusyLoading(true);
         setErrorMessage("");
         try {
-            await login(identifier, password);
+            await login(identifier, password, rememberMe);
             // The useEffect above will handle the redirect once user/jwt are set
         } catch (e) {
             setErrorMessage("Login failed " + (e.message ?? ""));
@@ -121,6 +122,10 @@ export default function Login() {
                                     <div className="mb-3">
                                         <label className="form-label">Password</label>
                                         <input className="form-control" placeholder="Enter password" type="password" value={password} onChange={e => setPassword(e.target.value)} />
+                                    </div>
+                                    <div className="mb-3 form-check">
+                                        <input className="form-check-input" type="checkbox" id="rememberMe" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)} />
+                                        <label className="form-check-label" htmlFor="rememberMe">Remember me</label>
                                     </div>
                                     <button className="btn btn-primary w-100" type="submit" disabled={busyLoading}>
                                         {busyLoading ? "Signing in..." : "Sign in"}

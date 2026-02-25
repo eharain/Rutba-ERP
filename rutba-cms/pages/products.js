@@ -20,16 +20,26 @@ export default function Products() {
         setLoading(true);
         try {
             const params = {
+                status: 'draft',
                 sort: ["createdAt:desc"],
                 pagination: { page, pageSize: 25 },
-                populate: ["logo", "categories", "brands", { purchase_items: { populate: ["purchase"] } }],
+                populate: {
+                    logo: true,
+                    categories: true,
+                    brands: true,
+                    purchase_items: { populate: ["purchase"] },
+                },
             };
             if (search.trim()) {
                 params.filters = { name: { $containsi: search.trim() } };
             }
-            const res = await authApi.get("/products", params);
-            setProducts(res.data || []);
-            setPageCount(res.meta?.pagination?.pageCount ?? 1);
+            const [draftRes, pubRes] = await Promise.all([
+                authApi.get("/products", params),
+                authApi.get("/products", { status: 'published', fields: ["documentId"], pagination: { pageSize: 500 } }),
+            ]);
+            const pubIds = new Set((pubRes.data || []).map(p => p.documentId));
+            setProducts((draftRes.data || []).map(p => ({ ...p, _isPublished: pubIds.has(p.documentId) })));
+            setPageCount(draftRes.meta?.pagination?.pageCount ?? 1);
         } catch (err) {
             console.error("Failed to load products", err);
         } finally {
@@ -103,7 +113,7 @@ export default function Products() {
                                         <td>{(p.brands || []).map(b => b.name).join(", ") || "—"}</td>
                                         <td>{(p.purchase_items || []).map(pi => pi.purchase?.orderId).filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(", ") || "—"}</td>
                                         <td>
-                                            {p.publishedAt
+                                            {p._isPublished
                                                 ? <span className="badge bg-success">Published</span>
                                                 : <span className="badge bg-secondary">Draft</span>
                                             }

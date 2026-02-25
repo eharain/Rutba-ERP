@@ -31,6 +31,7 @@ export default function CmsFooterDetail() {
     const isNew = documentId === "new";
 
     const [footer, setFooter] = useState(null);
+    const [isPublished, setIsPublished] = useState(false);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const { toast, ToastContainer } = useToast();
@@ -48,10 +49,14 @@ export default function CmsFooterDetail() {
 
     useEffect(() => {
         if (!jwt || !documentId || isNew) { setLoading(false); return; }
-        authApi.get(`/cms-footers/${documentId}`, { populate: ["pinned_pages"] })
-            .then(res => {
-                const f = res.data || res;
+        Promise.all([
+            authApi.get(`/cms-footers/${documentId}`, { status: 'draft', populate: ["pinned_pages"] }),
+            authApi.get(`/cms-footers/${documentId}`, { status: 'published', fields: ["documentId"] }).catch(() => ({ data: null })),
+        ])
+            .then(([draftRes, pubRes]) => {
+                const f = draftRes.data || draftRes;
                 setFooter(f);
+                setIsPublished(!!(pubRes.data));
                 setName(f.name || "");
                 setSlug(f.slug || "");
                 setPhone(f.phone || "");
@@ -69,7 +74,7 @@ export default function CmsFooterDetail() {
     const loadPages = useCallback(async () => {
         if (!jwt) return;
         try {
-            const res = await authApi.get("/cms-pages", { pagination: { pageSize: 100 }, sort: ["title:asc"] });
+            const res = await authApi.get("/cms-pages", { status: 'draft', pagination: { pageSize: 100 }, sort: ["title:asc"] });
             setAllPages(res.data || []);
         } catch (err) {
             console.error("Failed to load pages", err);
@@ -121,12 +126,53 @@ export default function CmsFooterDetail() {
                 const created = res.data || res;
                 router.push(`/${created.documentId}/cms-footer`);
             } else {
-                await authApi.put(`/cms-footers/${documentId}`, payload);
-                toast("Footer updated!", "success");
+                await authApi.put(`/cms-footers/${documentId}?status=draft`, payload);
+                toast("Draft saved!", "success");
             }
         } catch (err) {
             console.error("Failed to save footer", err);
             toast("Failed to save.", "danger");
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handlePublish = async () => {
+        setSaving(true);
+        try {
+            const payload = {
+                data: {
+                    name,
+                    phone,
+                    email,
+                    address,
+                    copyright_text: copyrightText,
+                    opening_hours: openingHours,
+                    social_links: socialLinks.filter(s => s.platform && s.url),
+                    pinned_pages: { set: selectedPageIds },
+                },
+            };
+            await authApi.put(`/cms-footers/${documentId}?status=draft`, payload);
+            await authApi.post(`/cms-footers/${documentId}/publish`, {});
+            setIsPublished(true);
+            toast("Footer saved & published!", "success");
+        } catch (err) {
+            console.error("Failed to publish footer", err);
+            toast("Failed to publish.", "danger");
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleUnpublish = async () => {
+        setSaving(true);
+        try {
+            await authApi.post(`/cms-footers/${documentId}/unpublish`, {});
+            setIsPublished(false);
+            toast("Footer unpublished.", "success");
+        } catch (err) {
+            console.error("Failed to unpublish footer", err);
+            toast("Failed to unpublish.", "danger");
         } finally {
             setSaving(false);
         }
@@ -152,15 +198,27 @@ export default function CmsFooterDetail() {
                         <i className="fas fa-arrow-left"></i> Back
                     </Link>
                     <h2 className="mb-0">{isNew ? "New Footer" : "Edit Footer"}</h2>
+                    {!isNew && isPublished && <span className="badge bg-success ms-2 align-self-center">Published</span>}
+                    {!isNew && footer && !isPublished && <span className="badge bg-secondary ms-2 align-self-center">Draft</span>}
                     <div className="ms-auto d-flex gap-2">
                         {!isNew && (
                             <button className="btn btn-sm btn-outline-danger" onClick={handleDelete}>
                                 <i className="fas fa-trash me-1"></i>Delete
                             </button>
                         )}
+                        {!isNew && isPublished && (
+                            <button className="btn btn-sm btn-outline-secondary" onClick={handleUnpublish} disabled={saving}>
+                                <i className="fas fa-eye-slash me-1"></i>Unpublish
+                            </button>
+                        )}
                         <button className="btn btn-sm btn-primary" onClick={handleSave} disabled={saving}>
-                            {saving ? "Saving…" : isNew ? "Create Footer" : "Save Changes"}
+                            {saving ? "Saving…" : isNew ? "Create Footer" : "Save Draft"}
                         </button>
+                        {!isNew && (
+                            <button className="btn btn-sm btn-success" onClick={handlePublish} disabled={saving}>
+                                <i className="fas fa-upload me-1"></i>{saving ? "Publishing…" : "Save & Publish"}
+                            </button>
+                        )}
                     </div>
                 </div>
 
@@ -292,8 +350,8 @@ export default function CmsFooterDetail() {
                                             <code className="d-block">{footer.slug}</code>
                                         </div>
                                     )}
-                                    {!isNew && footer?.publishedAt && <span className="badge bg-success">Published</span>}
-                                    {!isNew && !footer?.publishedAt && <span className="badge bg-secondary">Draft</span>}
+                                    {!isNew && isPublished && <span className="badge bg-success">Published</span>}
+                                    {!isNew && footer && !isPublished && <span className="badge bg-secondary">Draft</span>}
                                 </div>
                             </div>
                         </div>

@@ -14,11 +14,16 @@ export default function Footers() {
         if (!jwt) return;
         setLoading(true);
         try {
-            const res = await authApi.get("/cms-footers", {
-                sort: ["createdAt:desc"],
-                pagination: { pageSize: 50 },
-            });
-            setFooters(res.data || []);
+            const [draftRes, pubRes] = await Promise.all([
+                authApi.get("/cms-footers", {
+                    status: 'draft',
+                    sort: ["createdAt:desc"],
+                    pagination: { pageSize: 50 },
+                }),
+                authApi.get("/cms-footers", { status: 'published', fields: ["documentId"], pagination: { pageSize: 200 } }),
+            ]);
+            const pubIds = new Set((pubRes.data || []).map(f => f.documentId));
+            setFooters((draftRes.data || []).map(f => ({ ...f, _isPublished: pubIds.has(f.documentId) })));
         } catch (err) {
             console.error("Failed to load footers", err);
         } finally {
@@ -64,7 +69,7 @@ export default function Footers() {
                                         <td><code>{f.slug}</code></td>
                                         <td>{f.phone || "—"}</td>
                                         <td>
-                                            {f.publishedAt
+                                            {f._isPublished
                                                 ? <span className="badge bg-success">Published</span>
                                                 : <span className="badge bg-secondary">Draft</span>
                                             }
