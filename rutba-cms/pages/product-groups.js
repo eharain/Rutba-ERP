@@ -14,12 +14,17 @@ export default function ProductGroups() {
         if (!jwt) return;
         setLoading(true);
         try {
-            const res = await authApi.get("/product-groups", {
-                sort: ["createdAt:desc"],
-                populate: ["gallery", "cover_image", "products"],
-                pagination: { pageSize: 50 },
-            });
-            setGroups(res.data || []);
+            const [draftRes, pubRes] = await Promise.all([
+                authApi.get("/product-groups", {
+                    status: 'draft',
+                    sort: ["createdAt:desc"],
+                    populate: ["gallery", "cover_image", "products"],
+                    pagination: { pageSize: 50 },
+                }),
+                authApi.get("/product-groups", { status: 'published', fields: ["documentId"], pagination: { pageSize: 200 } }),
+            ]);
+            const pubIds = new Set((pubRes.data || []).map(g => g.documentId));
+            setGroups((draftRes.data || []).map(g => ({ ...g, _isPublished: pubIds.has(g.documentId) })));
         } catch (err) {
             console.error("Failed to load product groups", err);
         } finally {
@@ -78,7 +83,7 @@ export default function ProductGroups() {
                                         <td><code>{g.slug}</code></td>
                                         <td><span className="badge bg-primary">{(g.products || []).length}</span></td>
                                         <td>
-                                            {g.publishedAt
+                                            {g._isPublished
                                                 ? <span className="badge bg-success">Published</span>
                                                 : <span className="badge bg-secondary">Draft</span>
                                             }

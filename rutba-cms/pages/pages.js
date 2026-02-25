@@ -28,6 +28,7 @@ export default function Pages() {
         setLoading(true);
         try {
             const params = {
+                status: 'draft',
                 sort: ["sort_order:asc", "createdAt:desc"],
                 populate: ["featured_image"],
                 pagination: { pageSize: 50 },
@@ -37,8 +38,12 @@ export default function Pages() {
             if (typeFilter) filters.page_type = { $eq: typeFilter };
             if (Object.keys(filters).length > 0) params.filters = filters;
 
-            const res = await authApi.get("/cms-pages", params);
-            setPages(res.data || []);
+            const [draftRes, pubRes] = await Promise.all([
+                authApi.get("/cms-pages", params),
+                authApi.get("/cms-pages", { status: 'published', fields: ["documentId"], pagination: { pageSize: 200 } }),
+            ]);
+            const pubIds = new Set((pubRes.data || []).map(p => p.documentId));
+            setPages((draftRes.data || []).map(p => ({ ...p, _isPublished: pubIds.has(p.documentId) })));
         } catch (err) {
             console.error("Failed to load pages", err);
         } finally {
@@ -103,7 +108,7 @@ export default function Pages() {
                                         <td><span className={`badge ${getTypeBadgeClass(p.page_type)}`}>{p.page_type}</span></td>
                                         <td>{p.sort_order}</td>
                                         <td>
-                                            {p.publishedAt
+                                            {p._isPublished
                                                 ? <span className="badge bg-success">Published</span>
                                                 : <span className="badge bg-secondary">Draft</span>
                                             }

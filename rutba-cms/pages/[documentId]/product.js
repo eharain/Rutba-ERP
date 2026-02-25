@@ -27,7 +27,7 @@ export default function ProductDetail() {
 
     useEffect(() => {
         if (!jwt || !documentId) return;
-        authApi.get(`/products/${documentId}`, { populate: ["logo", "gallery", "categories", "brands"] })
+        authApi.get(`/products/${documentId}`, { status: 'draft', populate: ["logo", "gallery", "categories", "brands"] })
             .then(res => {
                 const p = res.data || res;
                 setProduct(p);
@@ -44,7 +44,7 @@ export default function ProductDetail() {
     const handleSave = async () => {
         setSaving(true);
         try {
-            await authApi.put(`/products/${documentId}`, {
+            await authApi.put(`/products/${documentId}?status=draft`, {
                 data: {
                     name,
                     description,

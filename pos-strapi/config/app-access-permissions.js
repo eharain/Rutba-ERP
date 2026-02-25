@@ -24,6 +24,7 @@ const WRITE    = ['find', 'findOne', 'create', 'update', 'delete'];
 const NO_DEL   = ['find', 'findOne', 'create', 'update'];
 const CASH_REG = ['find', 'findOne', 'create', 'update', 'delete', 'open', 'close', 'active', 'expire'];
 const STOCK_INPUT = ['find', 'findOne', 'create', 'update', 'delete', 'bulk', 'process'];
+const CMS_WRITE  = ['find', 'findOne', 'create', 'update', 'delete', 'publish', 'unpublish'];
 
 // ─── Entries ────────────────────────────────────────────────
 
@@ -205,12 +206,12 @@ const ENTRIES = [
     name: 'Content Management',
     description: 'Manage website content — products, categories, brands, pages & banners',
     permissions: [
-      { uid: 'api::cms-page.cms-page',                             actions: WRITE },
+      { uid: 'api::cms-page.cms-page',                             actions: CMS_WRITE },
       { uid: 'api::product.product',                               actions: WRITE },
-      { uid: 'api::product-group.product-group',                   actions: WRITE },
-      { uid: 'api::brand-group.brand-group',                       actions: WRITE },
-      { uid: 'api::category-group.category-group',                 actions: WRITE },
-      { uid: 'api::cms-footer.cms-footer',                         actions: WRITE },
+      { uid: 'api::product-group.product-group',                   actions: CMS_WRITE },
+      { uid: 'api::brand-group.brand-group',                       actions: CMS_WRITE },
+      { uid: 'api::category-group.category-group',                 actions: CMS_WRITE },
+      { uid: 'api::cms-footer.cms-footer',                         actions: CMS_WRITE },
       { uid: 'api::category.category',                             actions: WRITE },
       { uid: 'api::brand.brand',                                   actions: WRITE },
       // cross-app read-only

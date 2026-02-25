@@ -55,15 +55,19 @@ function persistAuth({ jwt, refreshToken, user, role, appAccess, adminAppAccess,
     storage.setJSON("permissions", permissions);
 }
 
-/** Clear all auth fields from localStorage. */
+/** Clear all auth fields from localStorage/sessionStorage. */
 function clearAuth() {
-    storage.removeItem("jwt");
-    storage.removeItem("refreshToken");
-    storage.removeItem("user");
-    storage.removeItem("role");
-    storage.removeItem("appAccess");
-    storage.removeItem("adminAppAccess");
-    storage.removeItem("permissions");
+    const AUTH_KEYS = ['jwt', 'refreshToken', 'user', 'role', 'appAccess', 'adminAppAccess', 'permissions'];
+    // Clean both stores so stale tokens from before the remember-me
+    // migration are removed regardless of which store is active.
+    try {
+        AUTH_KEYS.forEach(key => {
+            localStorage.removeItem(key);
+            sessionStorage.removeItem(key);
+        });
+        localStorage.removeItem('__rememberMe');
+        sessionStorage.removeItem('__rememberMe');
+    } catch (_) {}
 }
 
 export function AuthProvider({ children }) {
@@ -155,8 +159,13 @@ export function AuthProvider({ children }) {
     /**
      * Login with credentials (used only in pos-auth's login page).
      * Strapi refresh-mode returns { jwt, refreshToken, user }.
+     * @param {string} identifier
+     * @param {string} password
+     * @param {boolean} [rememberMe=false] — when true, session survives browser restart
      */
-    const login = useCallback(async (identifier, password) => {
+    const login = useCallback(async (identifier, password, rememberMe = false) => {
+        storage.setRememberMe(rememberMe);
+
         const authRes = await api.post('/auth/local', { identifier, password });
         const { user, jwt, refreshToken } = authRes;
 

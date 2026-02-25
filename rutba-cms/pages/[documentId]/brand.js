@@ -22,7 +22,7 @@ export default function BrandDetail() {
 
     useEffect(() => {
         if (!jwt || !documentId || isNew) { setLoading(false); return; }
-        authApi.get(`/brands/${documentId}`, { populate: ["logo", "gallery"] })
+        authApi.get(`/brands/${documentId}`, { status: 'draft', populate: ["logo", "gallery"] })
             .then(res => {
                 const b = res.data || res;
                 setBrand(b);
@@ -43,7 +43,7 @@ export default function BrandDetail() {
                 const created = res.data || res;
                 router.push(`/${created.documentId}/brand`);
             } else {
-                await authApi.put(`/brands/${documentId}`, {
+                await authApi.put(`/brands/${documentId}?status=draft`, {
                     data: { name },
                 });
                 toast("Brand updated!", "success");

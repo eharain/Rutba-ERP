@@ -14,6 +14,7 @@ export default function CategoryGroupDetail() {
     const isNew = documentId === "new";
 
     const [group, setGroup] = useState(null);
+    const [isPublished, setIsPublished] = useState(false);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const { toast, ToastContainer } = useToast();
@@ -26,10 +27,14 @@ export default function CategoryGroupDetail() {
 
     useEffect(() => {
         if (!jwt || !documentId || isNew) { setLoading(false); return; }
-        authApi.get(`/category-groups/${documentId}`, { populate: ["categories"] })
-            .then(res => {
-                const g = res.data || res;
+        Promise.all([
+            authApi.get(`/category-groups/${documentId}`, { status: 'draft', populate: ["categories"] }),
+            authApi.get(`/category-groups/${documentId}`, { status: 'published', fields: ["documentId"] }).catch(() => ({ data: null })),
+        ])
+            .then(([draftRes, pubRes]) => {
+                const g = draftRes.data || draftRes;
                 setGroup(g);
+                setIsPublished(!!(pubRes.data));
                 setName(g.name || "");
                 setSlug(g.slug || "");
                 setSortOrder(g.sort_order ?? 0);
@@ -42,7 +47,7 @@ export default function CategoryGroupDetail() {
     const loadCategories = useCallback(async () => {
         if (!jwt) return;
         try {
-            const res = await authApi.get("/categories", { pagination: { pageSize: 200 }, sort: ["name:asc"] });
+            const res = await authApi.get("/categories", { status: 'draft', pagination: { pageSize: 200 }, sort: ["name:asc"] });
             setAllCategories(res.data || []);
         } catch (err) {
             console.error("Failed to load categories", err);
@@ -73,12 +78,48 @@ export default function CategoryGroupDetail() {
                 const created = res.data || res;
                 router.push(`/${created.documentId}/category-group`);
             } else {
-                await authApi.put(`/category-groups/${documentId}`, payload);
-                toast("Category group updated!", "success");
+                await authApi.put(`/category-groups/${documentId}?status=draft`, payload);
+                toast("Draft saved!", "success");
             }
         } catch (err) {
             console.error("Failed to save category group", err);
             toast("Failed to save.", "danger");
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handlePublish = async () => {
+        setSaving(true);
+        try {
+            const payload = {
+                data: {
+                    name,
+                    sort_order: sortOrder,
+                    categories: { set: selectedCategoryIds },
+                },
+            };
+            await authApi.put(`/category-groups/${documentId}?status=draft`, payload);
+            await authApi.post(`/category-groups/${documentId}/publish`, {});
+            setIsPublished(true);
+            toast("Category group saved & published!", "success");
+        } catch (err) {
+            console.error("Failed to publish category group", err);
+            toast("Failed to publish.", "danger");
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleUnpublish = async () => {
+        setSaving(true);
+        try {
+            await authApi.post(`/category-groups/${documentId}/unpublish`, {});
+            setIsPublished(false);
+            toast("Category group unpublished.", "success");
+        } catch (err) {
+            console.error("Failed to unpublish category group", err);
+            toast("Failed to unpublish.", "danger");
         } finally {
             setSaving(false);
         }
@@ -104,15 +145,27 @@ export default function CategoryGroupDetail() {
                         <i className="fas fa-arrow-left"></i> Back
                     </Link>
                     <h2 className="mb-0">{isNew ? "New Category Group" : "Edit Category Group"}</h2>
+                    {!isNew && isPublished && <span className="badge bg-success ms-2 align-self-center">Published</span>}
+                    {!isNew && group && !isPublished && <span className="badge bg-secondary ms-2 align-self-center">Draft</span>}
                     <div className="ms-auto d-flex gap-2">
                         {!isNew && (
                             <button className="btn btn-sm btn-outline-danger" onClick={handleDelete}>
                                 <i className="fas fa-trash me-1"></i>Delete
                             </button>
                         )}
+                        {!isNew && isPublished && (
+                            <button className="btn btn-sm btn-outline-secondary" onClick={handleUnpublish} disabled={saving}>
+                                <i className="fas fa-eye-slash me-1"></i>Unpublish
+                            </button>
+                        )}
                         <button className="btn btn-sm btn-primary" onClick={handleSave} disabled={saving}>
-                            {saving ? "Saving…" : isNew ? "Create Category Group" : "Save Changes"}
+                            {saving ? "Saving…" : isNew ? "Create Category Group" : "Save Draft"}
                         </button>
+                        {!isNew && (
+                            <button className="btn btn-sm btn-success" onClick={handlePublish} disabled={saving}>
+                                <i className="fas fa-upload me-1"></i>{saving ? "Publishing…" : "Save & Publish"}
+                            </button>
+                        )}
                     </div>
                 </div>
 
@@ -178,8 +231,8 @@ export default function CategoryGroupDetail() {
                                             <code className="d-block">{group.slug}</code>
                                         </div>
                                     )}
-                                    {!isNew && group?.publishedAt && <span className="badge bg-success">Published</span>}
-                                    {!isNew && !group?.publishedAt && <span className="badge bg-secondary">Draft</span>}
+                                    {!isNew && isPublished && <span className="badge bg-success">Published</span>}
+                                    {!isNew && group && !isPublished && <span className="badge bg-secondary">Draft</span>}
                                 </div>
                             </div>
                         </div>

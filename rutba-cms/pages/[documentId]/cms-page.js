@@ -17,6 +17,7 @@ export default function CmsPageDetail() {
     const isNew = documentId === "new";
 
     const [page, setPage] = useState(null);
+    const [isPublished, setIsPublished] = useState(false);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const { toast, ToastContainer } = useToast();
@@ -43,12 +44,17 @@ export default function CmsPageDetail() {
 
     useEffect(() => {
         if (!jwt || !documentId || isNew) { setLoading(false); return; }
-        authApi.get(`/cms-pages/${documentId}`, {
-            populate: ["featured_image", "gallery", "hero_product_groups", "brand_groups", "category_groups", "product_groups", "related_pages", "footer"],
-        })
-            .then(res => {
-                const p = res.data || res;
+        Promise.all([
+            authApi.get(`/cms-pages/${documentId}`, {
+                status: 'draft',
+                populate: ["featured_image", "gallery", "hero_product_groups", "brand_groups", "category_groups", "product_groups", "related_pages", "footer"],
+            }),
+            authApi.get(`/cms-pages/${documentId}`, { status: 'published', fields: ["documentId"] }).catch(() => ({ data: null })),
+        ])
+            .then(([draftRes, pubRes]) => {
+                const p = draftRes.data || draftRes;
                 setPage(p);
+                setIsPublished(!!(pubRes.data));
                 setTitle(p.title || "");
                 setSlug(p.slug || "");
                 setContent(p.content || "");
@@ -70,11 +76,11 @@ export default function CmsPageDetail() {
         if (!jwt) return;
         try {
             const [groupsRes, brandGroupsRes, categoryGroupsRes, pagesRes, footersRes] = await Promise.all([
-                authApi.get("/product-groups", { pagination: { pageSize: 100 }, sort: ["name:asc"] }),
-                authApi.get("/brand-groups", { pagination: { pageSize: 100 }, sort: ["sort_order:asc", "name:asc"] }),
-                authApi.get("/category-groups", { pagination: { pageSize: 100 }, sort: ["sort_order:asc", "name:asc"] }),
-                authApi.get("/cms-pages", { pagination: { pageSize: 100 }, sort: ["title:asc"] }),
-                authApi.get("/cms-footers", { pagination: { pageSize: 100 }, sort: ["name:asc"] }),
+                authApi.get("/product-groups", { status: 'draft', pagination: { pageSize: 100 }, sort: ["name:asc"] }),
+                authApi.get("/brand-groups", { status: 'draft', pagination: { pageSize: 100 }, sort: ["sort_order:asc", "name:asc"] }),
+                authApi.get("/category-groups", { status: 'draft', pagination: { pageSize: 100 }, sort: ["sort_order:asc", "name:asc"] }),
+                authApi.get("/cms-pages", { status: 'draft', pagination: { pageSize: 100 }, sort: ["title:asc"] }),
+                authApi.get("/cms-footers", { status: 'draft', pagination: { pageSize: 100 }, sort: ["name:asc"] }),
             ]);
             setAllGroups(groupsRes.data || []);
             setAllBrandGroups(brandGroupsRes.data || []);
@@ -136,12 +142,57 @@ export default function CmsPageDetail() {
                 const created = res.data || res;
                 router.push(`/${created.documentId}/cms-page`);
             } else {
-                await authApi.put(`/cms-pages/${documentId}`, payload);
-                toast("Page updated!", "success");
+                await authApi.put(`/cms-pages/${documentId}?status=draft`, payload);
+                toast("Draft saved!", "success");
             }
         } catch (err) {
             console.error("Failed to save page", err);
             toast("Failed to save.", "danger");
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handlePublish = async () => {
+        setSaving(true);
+        try {
+            // Save draft first, then publish
+            const payload = {
+                data: {
+                    title,
+                    content,
+                    excerpt,
+                    page_type: pageType,
+                    sort_order: sortOrder,
+                    hero_product_groups: { set: selectedHeroGroupIds },
+                    brand_groups: { set: selectedBrandGroupIds },
+                    category_groups: { set: selectedCategoryGroupIds },
+                    product_groups: { set: selectedGroupIds },
+                    related_pages: { set: selectedRelatedIds },
+                    footer: footerId || null,
+                },
+            };
+            await authApi.put(`/cms-pages/${documentId}?status=draft`, payload);
+            await authApi.post(`/cms-pages/${documentId}/publish`, {});
+            setIsPublished(true);
+            toast("Page saved & published!", "success");
+        } catch (err) {
+            console.error("Failed to publish page", err);
+            toast("Failed to publish.", "danger");
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleUnpublish = async () => {
+        setSaving(true);
+        try {
+            await authApi.post(`/cms-pages/${documentId}/unpublish`, {});
+            setIsPublished(false);
+            toast("Page unpublished.", "success");
+        } catch (err) {
+            console.error("Failed to unpublish page", err);
+            toast("Failed to unpublish.", "danger");
         } finally {
             setSaving(false);
         }
@@ -167,15 +218,27 @@ export default function CmsPageDetail() {
                         <i className="fas fa-arrow-left"></i> Back
                     </Link>
                     <h2 className="mb-0">{isNew ? "New Page" : "Edit Page"}</h2>
+                    {!isNew && isPublished && <span className="badge bg-success ms-2 align-self-center">Published</span>}
+                    {!isNew && page && !isPublished && <span className="badge bg-secondary ms-2 align-self-center">Draft</span>}
                     <div className="ms-auto d-flex gap-2">
                         {!isNew && (
                             <button className="btn btn-sm btn-outline-danger" onClick={handleDelete}>
                                 <i className="fas fa-trash me-1"></i>Delete
                             </button>
                         )}
+                        {!isNew && isPublished && (
+                            <button className="btn btn-sm btn-outline-secondary" onClick={handleUnpublish} disabled={saving}>
+                                <i className="fas fa-eye-slash me-1"></i>Unpublish
+                            </button>
+                        )}
                         <button className="btn btn-sm btn-primary" onClick={handleSave} disabled={saving}>
-                            {saving ? "Saving..." : isNew ? "Create Page" : "Save Changes"}
+                            {saving ? "Saving..." : isNew ? "Create Page" : "Save Draft"}
                         </button>
+                        {!isNew && (
+                            <button className="btn btn-sm btn-success" onClick={handlePublish} disabled={saving}>
+                                <i className="fas fa-upload me-1"></i>{saving ? "Publishing..." : "Save & Publish"}
+                            </button>
+                        )}
                     </div>
                 </div>
 
@@ -365,8 +428,8 @@ export default function CmsPageDetail() {
                                             <code className="d-block">{page.slug}</code>
                                         </div>
                                     )}
-                                    {!isNew && page?.publishedAt && <span className="badge bg-success">Published</span>}
-                                                    {!isNew && !page?.publishedAt && <span className="badge bg-secondary">Draft</span>}
+                                    {!isNew && isPublished && <span className="badge bg-success">Published</span>}
+                                    {!isNew && page && !isPublished && <span className="badge bg-secondary">Draft</span>}
                                                 </div>
                                             </div>
                                             <div className="card mb-3">
