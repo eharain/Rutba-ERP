@@ -75,6 +75,20 @@
       "relation": "manyToMany",
       "target": "api::branch.branch",
       "mappedBy": "sale_returns"
+    },
+    "desk_id": {
+      "type": "integer"
+    },
+    "desk_name": {
+      "type": "string"
+    },
+    "returned_by": {
+      "type": "string"
+    },
+    "returned_by_user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
     }
   }
 }

@@ -1,7 +1,7 @@
 import { authApi } from './api';
 import { fetchSaleByIdOrInvoice, searchStockItems } from './pos';
 import SaleModel from '../domain/sale/SaleModel';
-import { getCashRegister, getUser, prepareForPut } from "../lib/utils";
+import { getCashRegister, getBranchDesk, getUser, prepareForPut } from "../lib/utils";
 
 export default class SaleApi {
 
@@ -286,6 +286,9 @@ export default class SaleApi {
         const returnTotal = returnItems.reduce((sum, r) => sum + (r.price || 0), 0);
         const activeRegister = getCashRegister();
         const registerDocId = activeRegister?.documentId || activeRegister?.id;
+        const user = getUser();
+        const desk = getBranchDesk();
+        const userId = user?.documentId ?? user?.id;
 
         // 1) Create sale-return header linked to original and new sale
         const retRes = await authApi.post('/sale-returns', {
@@ -296,9 +299,13 @@ export default class SaleApi {
                 type: 'Exchange',
                 refund_method: 'Exchange Return',
                 refund_status: 'Credited',
+                desk_id: desk?.id ?? null,
+                desk_name: desk?.name || '',
+                returned_by: user?.username || user?.email || '',
                 sale: { connect: [originalSaleDocId] },
                 exchange_sale: { connect: [newSaleDocId] },
                 ...(registerDocId ? { cash_register: { connect: [registerDocId] } } : {}),
+                ...(userId ? { returned_by_user: { connect: [userId] } } : {}),
             }
         });
         const saleReturn = retRes?.data ?? retRes;
@@ -355,7 +362,6 @@ export default class SaleApi {
 
         // 5) Record refund transaction on the active cash register
         if (registerDocId) {
-            const user = getUser();
             await authApi.post('/cash-register-transactions', {
                 data: {
                     type: 'Refund',

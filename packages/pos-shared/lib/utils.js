@@ -4,12 +4,20 @@ export function brachTaxRate() {
     return getBranch()?.tax_rate ?? 0;
 }
 export function getBranch() {
-    const branch = storage.getJSON("branch");
-    return branch;
+    try {
+        const raw = localStorage.getItem("branch");
+        return raw ? JSON.parse(raw) : null;
+    } catch (_) {
+        return storage.getJSON("branch");
+    }
 }
 export function getBranchDesk() {
-    const desk = storage.getJSON("branch-desk");
-    return desk;
+    try {
+        const raw = localStorage.getItem("branch-desk");
+        return raw ? JSON.parse(raw) : null;
+    } catch (_) {
+        return storage.getJSON("branch-desk");
+    }
 }
 
 export function getCashRegister() {
@@ -21,9 +29,11 @@ export function getUser() {
     return storedUser ?? null;
 }
 export function setBranch(branch) {
+    try { localStorage.setItem("branch", JSON.stringify(branch)); } catch (_) {}
     storage.setJSON("branch", branch);
 }
 export function setBranchDesk(desk) {
+    try { localStorage.setItem("branch-desk", JSON.stringify(desk)); } catch (_) {}
     storage.setJSON("branch-desk", desk);
 }
 

@@ -14,5 +14,11 @@ module.exports = {
       handler: 'cms-footer.unpublish',
       config: { auth: false },
     },
+    {
+      method: 'POST',
+      path: '/cms-footers/:id/discard-draft',
+      handler: 'cms-footer.discardDraft',
+      config: { auth: false },
+    },
   ],
 };

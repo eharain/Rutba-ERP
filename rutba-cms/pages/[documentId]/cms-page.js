@@ -198,6 +198,50 @@ export default function CmsPageDetail() {
         }
     };
 
+    const handleDiscardDraft = async () => {
+        if (!confirm("Save current draft and load the published version into the editor?")) return;
+        setSaving(true);
+        try {
+            // Save current form state as draft so nothing is lost
+            await authApi.put(`/cms-pages/${documentId}?status=draft`, {
+                data: {
+                    title, content, excerpt,
+                    page_type: pageType, sort_order: sortOrder,
+                    hero_product_groups: { set: selectedHeroGroupIds },
+                    brand_groups: { set: selectedBrandGroupIds },
+                    category_groups: { set: selectedCategoryGroupIds },
+                    product_groups: { set: selectedGroupIds },
+                    related_pages: { set: selectedRelatedIds },
+                    footer: footerId || null,
+                },
+            });
+            // Load the published version into the form
+            const res = await authApi.get(`/cms-pages/${documentId}`, {
+                status: 'published',
+                populate: ["featured_image", "gallery", "hero_product_groups", "brand_groups", "category_groups", "product_groups", "related_pages", "footer"],
+            });
+            const p = res.data || res;
+            if (!p) { toast("No published version found.", "warning"); return; }
+            setTitle(p.title || "");
+            setContent(p.content || "");
+            setExcerpt(p.excerpt || "");
+            setPageType(p.page_type || "page");
+            setSortOrder(p.sort_order ?? 0);
+            setSelectedHeroGroupIds((p.hero_product_groups || []).map(g => g.documentId));
+            setSelectedBrandGroupIds((p.brand_groups || []).map(bg => bg.documentId));
+            setSelectedCategoryGroupIds((p.category_groups || []).map(cg => cg.documentId));
+            setSelectedGroupIds((p.product_groups || []).map(g => g.documentId));
+            setSelectedRelatedIds((p.related_pages || []).map(rp => rp.documentId));
+            setFooterId(p.footer?.documentId || "");
+            toast("Draft saved. Showing published version — click Save Draft to overwrite.", "success");
+        } catch (err) {
+            console.error("Failed to load published version", err);
+            toast("Failed to load published version.", "danger");
+        } finally {
+            setSaving(false);
+        }
+    };
+
     const handleDelete = async () => {
         if (!confirm("Are you sure you want to delete this page?")) return;
         try {
@@ -229,6 +273,11 @@ export default function CmsPageDetail() {
                         {!isNew && isPublished && (
                             <button className="btn btn-sm btn-outline-secondary" onClick={handleUnpublish} disabled={saving}>
                                 <i className="fas fa-eye-slash me-1"></i>Unpublish
+                            </button>
+                        )}
+                        {!isNew && isPublished && (
+                            <button className="btn btn-sm btn-outline-warning" onClick={handleDiscardDraft} disabled={saving}>
+                                <i className="fas fa-undo me-1"></i>Load Published
                             </button>
                         )}
                         <button className="btn btn-sm btn-primary" onClick={handleSave} disabled={saving}>

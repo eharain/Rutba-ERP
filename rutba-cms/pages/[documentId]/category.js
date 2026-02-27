@@ -4,6 +4,7 @@ import Layout from "../../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { authApi, StraipImageUrl } from "@rutba/pos-shared/lib/api";
+import FileView from "@rutba/pos-shared/components/FileView";
 import Link from "next/link";
 import { useToast } from "../../components/Toast";
 
@@ -110,12 +111,27 @@ export default function CategoryDetail() {
                             <div className="col-md-4">
                                 <div className="card mb-3">
                                     <div className="card-header">Logo</div>
-                                    <div className="card-body text-center">
-                                        {category.logo?.url ? (
-                                            <img src={StraipImageUrl(category.logo)} alt={category.name} style={{ maxWidth: "100%", maxHeight: 150, objectFit: "contain" }} />
-                                        ) : (
-                                            <span className="text-muted">No logo</span>
-                                        )}
+                                    <div className="card-body">
+                                        <FileView
+                                            single={category.logo}
+                                            refName="category"
+                                            refId={category.id}
+                                            field="logo"
+                                            name={name}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="card mb-3">
+                                    <div className="card-header">Gallery</div>
+                                    <div className="card-body">
+                                        <FileView
+                                            gallery={category.gallery || []}
+                                            multiple
+                                            refName="category"
+                                            refId={category.id}
+                                            field="gallery"
+                                            name={name}
+                                        />
                                     </div>
                                 </div>
                             </div>

@@ -178,6 +178,40 @@ export default function CmsFooterDetail() {
         }
     };
 
+    const handleDiscardDraft = async () => {
+        if (!confirm("Save current draft and load the published version into the editor?")) return;
+        setSaving(true);
+        try {
+            await authApi.put(`/cms-footers/${documentId}?status=draft`, {
+                data: {
+                    name, phone, email, address,
+                    copyright_text: copyrightText,
+                    opening_hours: openingHours,
+                    social_links: socialLinks.filter(s => s.platform && s.url),
+                    pinned_pages: { set: selectedPageIds },
+                },
+            });
+            const res = await authApi.get(`/cms-footers/${documentId}`, { status: 'published', populate: ["pinned_pages"] });
+            const f = res.data || res;
+            if (!f) { toast("No published version found.", "warning"); return; }
+            setName(f.name || "");
+            setSlug(f.slug || "");
+            setPhone(f.phone || "");
+            setEmail(f.email || "");
+            setAddress(f.address || "");
+            setCopyrightText(f.copyright_text || "");
+            setOpeningHours(f.opening_hours || DEFAULT_HOURS);
+            setSocialLinks(f.social_links || DEFAULT_SOCIALS);
+            setSelectedPageIds((f.pinned_pages || []).map(p => p.documentId));
+            toast("Draft saved. Showing published version — click Save Draft to overwrite.", "success");
+        } catch (err) {
+            console.error("Failed to load published version", err);
+            toast("Failed to load published version.", "danger");
+        } finally {
+            setSaving(false);
+        }
+    };
+
     const handleDelete = async () => {
         if (!confirm("Are you sure you want to delete this footer?")) return;
         try {
@@ -209,6 +243,11 @@ export default function CmsFooterDetail() {
                         {!isNew && isPublished && (
                             <button className="btn btn-sm btn-outline-secondary" onClick={handleUnpublish} disabled={saving}>
                                 <i className="fas fa-eye-slash me-1"></i>Unpublish
+                            </button>
+                        )}
+                        {!isNew && isPublished && (
+                            <button className="btn btn-sm btn-outline-warning" onClick={handleDiscardDraft} disabled={saving}>
+                                <i className="fas fa-undo me-1"></i>Load Published
                             </button>
                         )}
                         <button className="btn btn-sm btn-primary" onClick={handleSave} disabled={saving}>

@@ -56,7 +56,7 @@ const PrintInvoicePage = () => {
                     const storedData = JSON.parse(localStorage.getItem(storageKey) || '{}');
                     saleData = storedData.sale || null;
                     itemsData = storedData.items || [];
-                    totalsData = storedData.totals || {
+                    totalsData = storedData.totals || saleData?.totals || {
                         subtotal: 0,
                         discount: 0,
                         tax: 0,
@@ -85,11 +85,6 @@ const PrintInvoicePage = () => {
                 setError('Failed to load invoice data');
             } finally {
                 setLoading(false);
-            }
-            const urlParams = new URLSearchParams(window.location.search);
-            const storageKey = urlParams.get('key');
-            if (storageKey) {
-                localStorage.removeItem(storageKey);
             }
         };
 

@@ -20,7 +20,7 @@ import SaleApi from '@rutba/pos-shared/lib/saleApi';
 export default function SalePage() {
     const router = useRouter();
     const { documentId } = router.query;
-    const { currency } = useUtil();
+    const { currency, generateNextInvoiceNumber, ensureBranchDesk } = useUtil();
 
     // Single source of truth
     const [saleModel, setSaleModel] = useState(null);
@@ -91,13 +91,25 @@ export default function SalePage() {
         const paymentsList = Array.isArray(payments) ? payments : [payments];
         paymentsList.forEach((payment) => saleModel.addPayment(payment));
         setLoading(true);
-        await doSave({ paid: true });
+        try {
+            await doSave({ paid: true });
+        } catch {
+            // doSave already shows an alert
+        }
         setShowCheckout(false);
     };
 
     const doSave = async (param) => {
         setLoading(true);
         try {
+            // Ensure invoice number is set before saving (storage may not have been ready at construction)
+            if (!saleModel.invoice_no) {
+                saleModel.invoice_no = generateNextInvoiceNumber();
+            }
+            if (!saleModel.invoice_no) {
+                ensureBranchDesk();
+                return;
+            }
             setPaid(saleModel.isPaid);
 
             const isNew = !saleModel.documentId;
@@ -112,6 +124,7 @@ export default function SalePage() {
         } catch (err) {
             console.error('Save failed', err);
             alert('Save failed');
+            throw err;
         } finally {
             setLoading(false);
         }
@@ -123,10 +136,23 @@ export default function SalePage() {
     =============================== */
 
     const handleSave = async () => {
-        await doSave({ paid : false });
+        try {
+            await doSave({ paid : false });
+        } catch {
+            // doSave already shows an alert
+        }
     }
-    const handlePrint = () => {
+    const handlePrint = async () => {
         if (saleModel.items.length === 0) return;
+
+        // Save before printing so the invoice reflects the latest data
+        if (isDirty) {
+            try {
+                await doSave({ paid: false });
+            } catch {
+                return; // doSave already shows an alert on failure
+            }
+        }
 
         const storageKey = `print_invoice_${Date.now()}`;
 
@@ -140,14 +166,14 @@ export default function SalePage() {
                     payment_status: saleModel.payment_status,
                     payments: saleModel.payments,
                     exchangeReturn: saleModel.exchangeReturn,
-                    totals: {
-                        subtotal: saleModel.subtotal,
-                        discount: saleModel.discountTotal,
-                        tax: saleModel.tax,
-                        total: saleModel.total
-                    }
                 },
                 items: saleModel.items.map(i => i.toJSON()),
+                totals: {
+                    subtotal: saleModel.subtotal,
+                    discount: saleModel.discountTotal,
+                    tax: saleModel.tax,
+                    total: saleModel.total
+                },
                 timestamp: Date.now()
             })
         );

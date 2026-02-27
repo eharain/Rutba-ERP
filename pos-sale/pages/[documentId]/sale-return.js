@@ -53,7 +53,8 @@ function SaleReturnDetail({ documentId }) {
                     sale: { populate: { customer: true } },
                     items: { populate: { product: true, items: true } },
                     payments: true,
-                    cash_register: true
+                    cash_register: true,
+                    returned_by_user: true
                 }
             });
             const data = res?.data ?? res;
@@ -145,19 +146,23 @@ function SaleReturnDetail({ documentId }) {
                             </div>
                             <hr />
                             <div className="row">
-                                <div className="col-md-4">
+                                <div className="col-md-3">
                                     <div className="small text-muted">Refund Method</div>
                                     <div>{saleReturn.refund_method || "N/A"}</div>
                                 </div>
-                                <div className="col-md-4">
+                                <div className="col-md-3">
                                     <div className="small text-muted">Refund Status</div>
                                     <span className={`badge ${saleReturn.refund_status === "Refunded" ? "bg-success" : saleReturn.refund_status === "Credited" ? "bg-info" : "bg-warning text-dark"}`}>
                                         {saleReturn.refund_status || "Pending"}
                                     </span>
                                 </div>
-                                <div className="col-md-4">
-                                    <div className="small text-muted">Cash Register</div>
-                                    <div>{saleReturn.cash_register ? `Desk ${saleReturn.cash_register.desk_name || saleReturn.cash_register.desk_id || ""}` : "N/A"}</div>
+                                <div className="col-md-3">
+                                    <div className="small text-muted">Return Desk</div>
+                                    <div>{saleReturn.desk_name || (saleReturn.cash_register ? `Desk ${saleReturn.cash_register.desk_name || saleReturn.cash_register.desk_id || ""}` : "N/A")}</div>
+                                </div>
+                                <div className="col-md-3">
+                                    <div className="small text-muted">Returned By</div>
+                                    <div>{saleReturn.returned_by || saleReturn.returned_by_user?.username || "N/A"}</div>
                                 </div>
                             </div>
                         </div>
@@ -212,7 +217,7 @@ function SaleReturnDetail({ documentId }) {
 // ── Create view for a new sale return ──
 function NewSaleReturn() {
     const router = useRouter();
-    const { currency, branch, user } = useUtil();
+    const { currency, branch, desk, user } = useUtil();
     const scanInputRef = useRef(null);
 
     const [scanValue, setScanValue] = useState("");
@@ -339,6 +344,7 @@ function NewSaleReturn() {
             const returnNo = "RET-" + Date.now().toString(36).toUpperCase();
             const activeRegister = getCashRegister();
             const registerDocId = activeRegister?.documentId || activeRegister?.id;
+            const userId = user?.documentId ?? user?.id;
 
             // 1) Create sale-return header
             const retRes = await authApi.post("/sale-returns", {
@@ -349,9 +355,13 @@ function NewSaleReturn() {
                     type: "Return",
                     refund_method: refundMethod,
                     refund_status: "Refunded",
+                    desk_id: desk?.id ?? null,
+                    desk_name: desk?.name || "",
+                    returned_by: user?.username || user?.email || "",
                     sale: { connect: [saleDocId] },
                     ...(registerDocId ? { cash_register: { connect: [registerDocId] } } : {}),
-                    ...(branch ? { branches: { connect: [getEntryId(branch)] } } : {})
+                    ...(branch ? { branches: { connect: [getEntryId(branch)] } } : {}),
+                    ...(userId ? { returned_by_user: { connect: [userId] } } : {})
                 }
             });
             const saleReturn = retRes?.data ?? retRes;
@@ -464,6 +474,36 @@ function NewSaleReturn() {
 
     const saleItems = sale?.items || [];
     const totalRefund = returnItems.reduce((sum, r) => sum + r.price, 0);
+
+    // Guard: desk must be configured to accept sale returns
+    if (!desk || desk.has_sale_returns === false) {
+        return (
+            <div className="p-3">
+                <div className="d-flex justify-content-between align-items-center mb-3">
+                    <h1 className="mb-0">New Sale Return</h1>
+                    <button className="btn btn-outline-secondary" onClick={() => router.push("/sales-returns")}>
+                        <i className="fas fa-arrow-left me-1"></i>Back to Returns
+                    </button>
+                </div>
+                <div className="row justify-content-center">
+                    <div className="col-md-6 col-lg-5">
+                        <div className="card shadow">
+                            <div className="card-body p-4 text-center">
+                                <i className="fas fa-ban fa-3x text-muted mb-3"></i>
+                                <h5>Sale Returns Not Enabled</h5>
+                                <p className="text-muted mb-0">
+                                    {desk
+                                        ? <>This desk (<strong>{desk.name}</strong>) is not configured to accept sale returns. Please switch to a desk with sale returns enabled or ask an administrator to enable it.</>
+                                        : <>No desk selected. Please select a branch and desk in Settings first.</>
+                                    }
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="p-3">

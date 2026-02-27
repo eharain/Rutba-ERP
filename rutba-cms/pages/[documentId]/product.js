@@ -4,6 +4,7 @@ import Layout from "../../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { authApi, StraipImageUrl } from "@rutba/pos-shared/lib/api";
+import FileView from "@rutba/pos-shared/components/FileView";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
 import Link from "next/link";
 import { useToast } from "../../components/Toast";
@@ -117,25 +118,27 @@ export default function ProductDetail() {
                         <div className="col-md-4">
                             <div className="card mb-3">
                                 <div className="card-header">Logo</div>
-                                <div className="card-body text-center">
-                                    {product.logo?.url ? (
-                                        <img src={StraipImageUrl(product.logo)} alt={product.name} style={{ maxWidth: "100%", maxHeight: 200, objectFit: "contain" }} />
-                                    ) : (
-                                        <span className="text-muted">No logo</span>
-                                    )}
+                                <div className="card-body">
+                                    <FileView
+                                        single={product.logo}
+                                        refName="product"
+                                        refId={product.id}
+                                        field="logo"
+                                        name={name}
+                                    />
                                 </div>
                             </div>
                             <div className="card mb-3">
-                                <div className="card-header">Gallery ({(product.gallery || []).length} images)</div>
+                                <div className="card-header">Gallery</div>
                                 <div className="card-body">
-                                    <div className="d-flex flex-wrap gap-2">
-                                        {(product.gallery || []).map((img, i) => (
-                                            <img key={i} src={StraipImageUrl(img)} alt="" style={{ width: 80, height: 80, objectFit: "cover", borderRadius: 4 }} />
-                                        ))}
-                                        {(!product.gallery || product.gallery.length === 0) && (
-                                            <span className="text-muted">No images</span>
-                                        )}
-                                    </div>
+                                    <FileView
+                                        gallery={product.gallery || []}
+                                        multiple
+                                        refName="product"
+                                        refId={product.id}
+                                        field="gallery"
+                                        name={name}
+                                    />
                                 </div>
                             </div>
                             <div className="card mb-3">

@@ -14,4 +14,9 @@ module.exports = createCoreController('api::cms-footer.cms-footer', ({ strapi })
     const result = await strapi.documents('api::cms-footer.cms-footer').unpublish({ documentId: ctx.params.id });
     return ctx.send(result);
   },
+  async discardDraft(ctx) {
+    if (!await ensureUser(ctx, strapi)) return;
+    const result = await strapi.documents('api::cms-footer.cms-footer').discardDraft({ documentId: ctx.params.id });
+    return ctx.send(result);
+  },
 }));
