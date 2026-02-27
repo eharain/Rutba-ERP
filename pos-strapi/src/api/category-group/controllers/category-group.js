@@ -14,4 +14,9 @@ module.exports = createCoreController('api::category-group.category-group', ({ s
     const result = await strapi.documents('api::category-group.category-group').unpublish({ documentId: ctx.params.id });
     return ctx.send(result);
   },
+  async discardDraft(ctx) {
+    if (!await ensureUser(ctx, strapi)) return;
+    const result = await strapi.documents('api::category-group.category-group').discardDraft({ documentId: ctx.params.id });
+    return ctx.send(result);
+  },
 }));

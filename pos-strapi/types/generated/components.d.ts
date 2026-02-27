@@ -57,6 +57,8 @@ export interface PosSalesDesks extends Struct.ComponentSchema {
   attributes: {
     has_cash_register: Schema.Attribute.Boolean &
       Schema.Attribute.DefaultTo<true>;
+    has_sale_returns: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<false>;
     invoice_prefix: Schema.Attribute.String;
     name: Schema.Attribute.String;
     note: Schema.Attribute.String;

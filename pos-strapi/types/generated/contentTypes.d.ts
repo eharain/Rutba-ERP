@@ -2092,6 +2092,8 @@ export interface ApiSaleReturnSaleReturn extends Struct.CollectionTypeSchema {
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    desk_id: Schema.Attribute.Integer;
+    desk_name: Schema.Attribute.String;
     exchange_sale: Schema.Attribute.Relation<'oneToOne', 'api::sale.sale'>;
     items: Schema.Attribute.Relation<
       'oneToMany',
@@ -2126,6 +2128,11 @@ export interface ApiSaleReturnSaleReturn extends Struct.CollectionTypeSchema {
       Schema.Attribute.DefaultTo<'Pending'>;
     return_date: Schema.Attribute.DateTime & Schema.Attribute.Required;
     return_no: Schema.Attribute.String & Schema.Attribute.Required;
+    returned_by: Schema.Attribute.String;
+    returned_by_user: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
     sale: Schema.Attribute.Relation<'manyToOne', 'api::sale.sale'>;
     total_refund: Schema.Attribute.Decimal;
     type: Schema.Attribute.Enumeration<['Return', 'Exchange']> &

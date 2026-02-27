@@ -13,7 +13,7 @@ function hoursOpen(register) {
 }
 
 export default function CashRegisterPage() {
-    const { branch, desk, user, currency, setCashRegister } = useUtil();
+    const { branch, desk, user, currency, setCashRegister, ensureBranchDesk } = useUtil();
     const [activeRegister, setActiveRegister] = useState(null);
     const [openingCash, setOpeningCash] = useState("");
     const [closingCash, setClosingCash] = useState("");
@@ -57,8 +57,12 @@ export default function CashRegisterPage() {
             switch (payment.payment_method) {
                 case "Cash":
                     summary.cash += amount;
-                    summary.cashReceived += Number(payment.cash_received || amount);
-                    summary.cashChange += Number(payment.change || 0);
+                    // Only count positive (sale) payments toward cashReceived/cashChange;
+                    // refund payments (negative amount) are tracked via Refund transactions.
+                    if (amount >= 0) {
+                        summary.cashReceived += Number(payment.cash_received || amount);
+                        summary.cashChange += Number(payment.change || 0);
+                    }
                     break;
                 case "Card": summary.card += amount; break;
                 case "Bank": summary.bank += amount; break;
@@ -291,7 +295,20 @@ export default function CashRegisterPage() {
                     {error && <div className="alert alert-danger">{error}</div>}
 
                     {!branch || !desk ? (
-                        <div className="alert alert-warning">Select a branch and desk in <a href="/settings">Settings</a> first.</div>
+                        <div className="row justify-content-center">
+                            <div className="col-md-6 col-lg-5">
+                                <div className="card shadow">
+                                    <div className="card-body p-4 text-center">
+                                        <i className="fas fa-store fa-3x text-muted mb-3"></i>
+                                        <h5>No Branch &amp; Desk Selected</h5>
+                                        <p className="text-muted mb-3">Select a branch and desk to start using the cash register.</p>
+                                        <button className="btn btn-primary" onClick={() => ensureBranchDesk()}>
+                                            <i className="fas fa-cog me-2"></i>Select Branch &amp; Desk
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     ) : !activeRegister ? (
                         /* ── Open Register Card ─────────────────── */
                         <div className="row justify-content-center">

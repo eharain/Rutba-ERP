@@ -14,4 +14,9 @@ module.exports = createCoreController('api::brand-group.brand-group', ({ strapi 
     const result = await strapi.documents('api::brand-group.brand-group').unpublish({ documentId: ctx.params.id });
     return ctx.send(result);
   },
+  async discardDraft(ctx) {
+    if (!await ensureUser(ctx, strapi)) return;
+    const result = await strapi.documents('api::brand-group.brand-group').discardDraft({ documentId: ctx.params.id });
+    return ctx.send(result);
+  },
 }));

@@ -1,7 +1,9 @@
 import { useEffect } from "react";
+import { useRouter } from "next/router";
 import { AuthProvider } from "@rutba/pos-shared/context/AuthContext";
 import { CartProvider } from "@rutba/pos-shared/context/CartContext";
-import { UtilProvider } from "@rutba/pos-shared/context/UtilContext";
+import { UtilProvider, useUtil } from "@rutba/pos-shared/context/UtilContext";
+import BranchDeskModal from "@rutba/pos-shared/components/BranchDeskModal";
 import { setAppName } from "@rutba/pos-shared/lib/api";
 
 setAppName('sale');
@@ -24,6 +26,43 @@ const geistMono = Geist_Mono({
     subsets: ["latin"],
 });
 
+function BranchDeskGuard({ children }) {
+    const { branch, desk, setBranch, setBranchDesk, setCurrency, showBranchDeskModal, setShowBranchDeskModal, hydrated } = useUtil();
+    const router = useRouter();
+
+    // Skip the guard entirely on print/popup pages
+    const isPrintPage = router.pathname.startsWith('/print');
+
+    // Auto-show when branch or desk is missing — only after storage has been loaded
+    useEffect(() => {
+        if (!isPrintPage && hydrated && (!branch || !desk)) {
+            setShowBranchDeskModal(true);
+        }
+    }, [isPrintPage, hydrated, branch, desk, setShowBranchDeskModal]);
+
+    if (isPrintPage) return children;
+
+    const handleSelect = (newBranch, newDesk) => {
+        setBranch(newBranch);
+        setBranchDesk(newDesk);
+        const currencySymbol = newDesk.currency?.symbol ?? newBranch.currency?.symbol ?? 'Rs';
+        setCurrency(currencySymbol);
+        setShowBranchDeskModal(false);
+    };
+
+    return (
+        <>
+            {children}
+            <BranchDeskModal
+                isOpen={showBranchDeskModal}
+                onSelect={handleSelect}
+                currentBranch={branch}
+                currentDesk={desk}
+            />
+        </>
+    );
+}
+
 export default function App({ Component, pageProps }) {
     useEffect(() => {
         import("bootstrap/dist/js/bootstrap.bundle.min.js");
@@ -34,7 +73,9 @@ export default function App({ Component, pageProps }) {
             <AuthProvider>
                 <CartProvider>
                     <UtilProvider>
-                        <Component {...pageProps} />
+                        <BranchDeskGuard>
+                            <Component {...pageProps} />
+                        </BranchDeskGuard>
                     </UtilProvider>
                 </CartProvider>
             </AuthProvider>

@@ -217,6 +217,10 @@ export default class SaleModel {
     =============================== */
 
     toPayload() {
+        // Retry from storage if invoice number was not set at construction time
+        if (!this.invoice_no) {
+            this.invoice_no = generateNextInvoiceNumber();
+        }
         return {
             invoice_no: this.invoice_no,
             sale_date: this.sale_date instanceof Date ? this.sale_date.toISOString() : this.sale_date,

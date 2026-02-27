@@ -18,6 +18,10 @@
     "has_cash_register": {
       "type": "boolean",
       "default": true
+    },
+    "has_sale_returns": {
+      "type": "boolean",
+      "default": false
     }
   },
   "config": {}

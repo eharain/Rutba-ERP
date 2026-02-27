@@ -4,6 +4,7 @@ import Layout from "../../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { authApi, StraipImageUrl } from "@rutba/pos-shared/lib/api";
+import FileView from "@rutba/pos-shared/components/FileView";
 import Link from "next/link";
 import { useToast } from "../../components/Toast";
 
@@ -98,26 +99,29 @@ export default function BrandDetail() {
                             <div className="col-md-4">
                                 <div className="card mb-3">
                                     <div className="card-header">Logo</div>
-                                    <div className="card-body text-center">
-                                        {brand.logo?.url ? (
-                                            <img src={StraipImageUrl(brand.logo)} alt={brand.name} style={{ maxWidth: "100%", maxHeight: 150, objectFit: "contain" }} />
-                                        ) : (
-                                            <span className="text-muted">No logo</span>
-                                        )}
+                                    <div className="card-body">
+                                        <FileView
+                                            single={brand.logo}
+                                            refName="brand"
+                                            refId={brand.id}
+                                            field="logo"
+                                            name={name}
+                                        />
                                     </div>
                                 </div>
-                                {brand.gallery && brand.gallery.length > 0 && (
-                                    <div className="card mb-3">
-                                        <div className="card-header">Gallery ({brand.gallery.length} images)</div>
-                                        <div className="card-body">
-                                            <div className="d-flex flex-wrap gap-2">
-                                                {brand.gallery.map((img, i) => (
-                                                    <img key={i} src={StraipImageUrl(img)} alt="" style={{ width: 80, height: 80, objectFit: "cover", borderRadius: 4 }} />
-                                                ))}
-                                            </div>
-                                        </div>
+                                <div className="card mb-3">
+                                    <div className="card-header">Gallery</div>
+                                    <div className="card-body">
+                                        <FileView
+                                            gallery={brand.gallery || []}
+                                            multiple
+                                            refName="brand"
+                                            refId={brand.id}
+                                            field="gallery"
+                                            name={name}
+                                        />
                                     </div>
-                                )}
+                                </div>
                             </div>
                         )}
                     </div>

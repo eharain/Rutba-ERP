@@ -22,15 +22,14 @@ function FileView({ onFileChange = function (field, files, multiple) { }, single
         if (selected.length === 0) return;
 
         if (multiple) {
-            // show local previews immediately
-            let current = [galleryFiles ?? []].map((f) => { return { ...f } })
-            setGalleryFiles([]);
+            const current = (galleryFiles ?? []).map((f) => ({ ...f }));
 
             if (autoUpload && refName && refId && field) {
                 setUploading(true);
                 try {
                     const uploaded = await uploadToStrapiFiles(selected, refName, field, refId, { name, alt: name, caption: name });
-                    const all = [current, uploaded].flat(3).filter(f => f);
+                    const newFiles = Array.isArray(uploaded) ? uploaded : [uploaded];
+                    const all = [...current, ...newFiles].filter(f => f);
                     setGalleryFiles(all);
                     onFileChange(field, all, multiple);
                 } catch (err) {

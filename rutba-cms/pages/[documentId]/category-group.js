@@ -125,6 +125,29 @@ export default function CategoryGroupDetail() {
         }
     };
 
+    const handleDiscardDraft = async () => {
+        if (!confirm("Save current draft and load the published version into the editor?")) return;
+        setSaving(true);
+        try {
+            await authApi.put(`/category-groups/${documentId}?status=draft`, {
+                data: { name, sort_order: sortOrder, categories: { set: selectedCategoryIds } },
+            });
+            const res = await authApi.get(`/category-groups/${documentId}`, { status: 'published', populate: ["categories"] });
+            const g = res.data || res;
+            if (!g) { toast("No published version found.", "warning"); return; }
+            setName(g.name || "");
+            setSlug(g.slug || "");
+            setSortOrder(g.sort_order ?? 0);
+            setSelectedCategoryIds((g.categories || []).map(c => c.documentId));
+            toast("Draft saved. Showing published version — click Save Draft to overwrite.", "success");
+        } catch (err) {
+            console.error("Failed to load published version", err);
+            toast("Failed to load published version.", "danger");
+        } finally {
+            setSaving(false);
+        }
+    };
+
     const handleDelete = async () => {
         if (!confirm("Are you sure you want to delete this category group?")) return;
         try {
@@ -156,6 +179,11 @@ export default function CategoryGroupDetail() {
                         {!isNew && isPublished && (
                             <button className="btn btn-sm btn-outline-secondary" onClick={handleUnpublish} disabled={saving}>
                                 <i className="fas fa-eye-slash me-1"></i>Unpublish
+                            </button>
+                        )}
+                        {!isNew && isPublished && (
+                            <button className="btn btn-sm btn-outline-warning" onClick={handleDiscardDraft} disabled={saving}>
+                                <i className="fas fa-undo me-1"></i>Load Published
                             </button>
                         )}
                         <button className="btn btn-sm btn-primary" onClick={handleSave} disabled={saving}>

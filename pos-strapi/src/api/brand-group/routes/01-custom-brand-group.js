@@ -14,5 +14,11 @@ module.exports = {
       handler: 'brand-group.unpublish',
       config: { auth: false },
     },
+    {
+      method: 'POST',
+      path: '/brand-groups/:id/discard-draft',
+      handler: 'brand-group.discardDraft',
+      config: { auth: false },
+    },
   ],
 };

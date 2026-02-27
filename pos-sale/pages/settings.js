@@ -15,10 +15,6 @@ export default function SettingsPage() {
                 setSelectedBranch(branch);
                 setSelectedDesk(desk)
                 setCurrency(currency);
-                //const savedBranch = utils.branch//.getItem("branch");
-                //const savedDesk = utils.getItem("branch-desk");
-                //if (savedBranch) setSelectedBranch(JSON.parse(savedBranch));
-                //if (savedDesk) setSelectedDesk(JSON.parse(savedDesk));
             } catch (error) {
                 console.error("Failed to fetch branches:", error);
             }
@@ -36,47 +32,49 @@ export default function SettingsPage() {
 
     return (
             <Layout>
-                <div className="p-6">
-                    <h1 className="text-xl font-bold mb-4">Settings</h1>
+                <div className="p-3">
+                    <h4 className="mb-3"><i className="fas fa-cog me-2"></i>Settings</h4>
 
-                    <div className="space-y-6">
-                        <h2>Please select the Branch and Desk for this POS</h2>
-                        {branches.map((ibranch) => (
-                            <div key={ibranch.id} className="border rounded-lg p-4">
-                                <h3 className="text-lg font-semibold mb-1">{ibranch.name}</h3>
-                                <p className="text-sm text-gray-500 mb-3">
-                                    Select a desk below to set your default POS branch and desk.
-                                </p>
-                                <ul className="space-y-2">
+                    <p className="text-muted">Select the branch and desk for this POS terminal.</p>
+                    {branches.map((ibranch) => (
+                        <div key={ibranch.id} className="card mb-3">
+                            <div className="card-header py-2">
+                                <strong>{ibranch.name}</strong>
+                            </div>
+                            <div className="card-body py-2">
+                                <div className="row g-2">
                                     {ibranch.desks.map((idesk) => {
                                             const isSelected = desk?.id === idesk.id && branch?.id === ibranch.id;
 
                                             return (
-                                                <li key={idesk.id}>
+                                                <div key={idesk.id} className="col-sm-6 col-md-4">
                                                     <button
-                                                        className={`flex justify-between items-center px-4 py-2 rounded border w-full text-left transition 
-                                                        ${isSelected
-                                                                ? "bg-blue-500 text-grey border-blue-600 font-semibold"
-                                                                : "bg-grey-100 hover:bg-grey-200 border-grey-300"
-                                                            }`}
+                                                        className={`btn w-100 text-start ${isSelected ? 'btn-primary' : 'btn-outline-secondary'}`}
                                                         onClick={() => handleDeskSelect(ibranch, idesk)}
                                                     >
-                                                        {isSelected && (
-                                                            <span className="ml-2 font-bold">?</span>
+                                                        <i className={`fas fa-desktop me-2 ${isSelected ? '' : 'text-muted'}`}></i>
+                                                        {idesk.name}
+                                                        {idesk.has_cash_register !== false && (
+                                                            <span className={`badge ms-2 ${isSelected ? 'bg-light text-primary' : 'bg-success'}`}>
+                                                                <i className="fas fa-cash-register me-1"></i>Register
+                                                            </span>
                                                         )}
-                                                        <span>{idesk.name}</span>
-                                                        {idesk.has_cash_register !== false
-                                                            ? <span className="badge bg-success ms-2">Cash Register</span>
-                                                            : <span className="badge bg-secondary ms-2">No Register</span>}
+                                                        {idesk.has_sale_returns && (
+                                                            <span className={`badge ms-2 ${isSelected ? 'bg-light text-primary' : 'bg-info'}`}>
+                                                                <i className="fas fa-undo me-1"></i>Returns
+                                                            </span>
+                                                        )}
+                                                        {isSelected && (
+                                                            <i className="fas fa-check-circle ms-2"></i>
+                                                        )}
                                                     </button>
-                                                </li>
+                                                </div>
                                             );
                                         })}
-                                </ul>
+                                </div>
                             </div>
-                        ))}
-
-                    </div>
+                        </div>
+                    ))}
                 </div>
             </Layout>
     );

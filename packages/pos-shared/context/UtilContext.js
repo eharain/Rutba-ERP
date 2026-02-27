@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useMemo, useState, useEffect } from "react";
+import React, { createContext, useContext, useMemo, useState, useEffect, useCallback } from "react";
 import { storage } from "../lib/storage";
 
 const UtilContext = createContext(null);
@@ -12,6 +12,8 @@ export function UtilProvider({ children }) {
     const [labelSize, setLabelSizeState] = useState('2.4x1.5'); // in inches
     const [printMode, setPrintModeState] = useState('thermal');
     const [cashRegister, setCashRegisterState] = useState(null);
+    const [showBranchDeskModal, setShowBranchDeskModal] = useState(false);
+    const [hydrated, setHydrated] = useState(false);
 
     // New: invoice print settings persisted under 'invoice-print-settings'
     const [invoicePrintSettings, setInvoicePrintSettingsState] = useState({
@@ -29,8 +31,11 @@ export function UtilProvider({ children }) {
     // Load values from storage once on mount
     useEffect(() => {
         try {
-            setBranchState(storage.getJSON("branch") ?? null);
-            setDeskState(storage.getJSON("branch-desk") ?? null);
+            // Branch and desk are loaded from localStorage directly (persistent across sessions)
+            const storedBranch = localStorage.getItem("branch");
+            const storedDesk = localStorage.getItem("branch-desk");
+            setBranchState(storedBranch ? JSON.parse(storedBranch) : null);
+            setDeskState(storedDesk ? JSON.parse(storedDesk) : null);
             setUserState(storage.getJSON("user") ?? null);
             setCurrencyState(storage.getJSON("currency") ?? null);
             setLabelSizeState(storage.getJSON("label-size") ?? '2.4x1.5');
@@ -45,6 +50,8 @@ export function UtilProvider({ children }) {
             });
         } catch (err) {
             console.error('UtilProvider: failed to load from storage', err);
+        } finally {
+            setHydrated(true);
         }
     }, []); // run once
 
@@ -71,7 +78,7 @@ export function UtilProvider({ children }) {
     function setBranch(newBranch) {
         setBranchState(newBranch);
         try {
-            storage.setJSON("branch", newBranch);
+            localStorage.setItem("branch", JSON.stringify(newBranch));
         } catch (err) {
             console.error('Failed to persist branch', err);
         }
@@ -79,7 +86,7 @@ export function UtilProvider({ children }) {
     function setBranchDesk(newDesk) {
         setDeskState(newDesk);
         try {
-            storage.setJSON("branch-desk", newDesk);
+            localStorage.setItem("branch-desk", JSON.stringify(newDesk));
         } catch (err) {
             console.error('Failed to persist branch-desk', err);
         }
@@ -149,7 +156,7 @@ export function UtilProvider({ children }) {
     }
     function generateNextPONumber() {
         if (!branch || !desk || !user) {
-            throw new Error("Branch, desk, or user not set");
+            return null;
         }
         return (branch.po_prefix ?? 'PO') +
             '-' +
@@ -159,9 +166,17 @@ export function UtilProvider({ children }) {
                 padHex(Date.now(), 6, RandomNon22Char())
             );
     }
+    const ensureBranchDesk = useCallback(() => {
+        if (!branch || !desk) {
+            setShowBranchDeskModal(true);
+            return false;
+        }
+        return true;
+    }, [branch, desk]);
+
     function generateNextInvoiceNumber() {
         if (!branch || !desk || !user) {
-            throw new Error("Branch, desk, or user not set");
+            return null;
         }
         return (desk?.invoice_prefix ?? 'INV') +
             '-' +
@@ -199,8 +214,12 @@ export function UtilProvider({ children }) {
         cashRegister,
         setCashRegister,
         invoicePrintSettings,
-        setInvoicePrintSettings
-    }), [branch, desk, user, labelSize, currency, printMode, cashRegister, invoicePrintSettings]);
+        setInvoicePrintSettings,
+        ensureBranchDesk,
+        showBranchDeskModal,
+        setShowBranchDeskModal,
+        hydrated
+    }), [branch, desk, user, labelSize, currency, printMode, cashRegister, invoicePrintSettings, ensureBranchDesk, showBranchDeskModal, hydrated]);
 
     return (
         <UtilContext.Provider value={value}>

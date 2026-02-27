@@ -14,5 +14,11 @@ module.exports = {
       handler: 'product-group.unpublish',
       config: { auth: false },
     },
+    {
+      method: 'POST',
+      path: '/product-groups/:id/discard-draft',
+      handler: 'product-group.discardDraft',
+      config: { auth: false },
+    },
   ],
 };
