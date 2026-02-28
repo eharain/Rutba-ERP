@@ -26,8 +26,8 @@ After the first deploy, your server will have:
 ├── rutba_builds/                   # ← versioned builds + master env files
 │   ├── .env                        #    ENVIRONMENT=production  (master copy)
 │   ├── .env.production             #    all config: DB creds, ports, secrets  (master copy)
-│   ├── build_20250101_120000_master/
-│   ├── build_20250115_093000_master/
+│   ├── build_20250101_120000_main/
+│   ├── build_20250115_093000_main/
 │   └── ...
 │
 ├── rutba_active -> rutba_builds/build_...  # ← symlink to the running build
@@ -154,7 +154,7 @@ sudo bash scripts/rutba_deploy.sh
 
 The script will:
 
-1. Ask which branch to deploy (`master` or `dev`)
+1. Ask which branch to deploy (`main` or `dev`)
 2. Clone the repo into `~/rutba_builds/build_<timestamp>_<branch>/`
 3. If `~/rutba_builds/.env` doesn't exist, create it from the sample template and pause for you to edit
 4. Copy `.env` files from `~/rutba_builds/` root into the build
@@ -267,7 +267,7 @@ If systemd service files get deleted or corrupted, regenerate them without a ful
 sudo bash ~/rutba_active/scripts/setup-systemd-services.sh
 
 # Or specify a build directory explicitly
-sudo bash ~/rutba_active/scripts/setup-systemd-services.sh /home/rutba-nvr/rutba_builds/build_20250101_120000_master
+sudo bash ~/rutba_active/scripts/setup-systemd-services.sh /home/rutba-nvr/rutba_builds/build_20250101_120000_main
 ```
 
 ---
