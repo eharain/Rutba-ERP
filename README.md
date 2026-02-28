@@ -58,7 +58,7 @@ An open-source, modular business management system built as an **npm workspaces 
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/eharain/Rutba-POS.git
+git clone https://github.com/eharain/Rutba-ERP.git
 cd Rutba-POS
 
 # 2. Install all dependencies (monorepo-wide)
@@ -137,9 +137,12 @@ docker compose down
 | `scripts/setup-and-start-all_custom_node.bat` | Same setup using a local Node.js binary |
 | `scripts/run_strapi_and_pos.bat` | Quick start Strapi + all Next.js apps — Windows |
 | `scripts/run_strapi_and_pos_custom_node.bat` | Same using local Node.js binary |
-| `scripts/start-pos-strapi-forever.sh` | Start Strapi with `forever` (production) |
+| `scripts/rutba_deploy.sh` | Production deploy script — clone, build, swap systemd services |
+| `scripts/rutba_rollback.sh` | Rollback to a previous build (instant, no rebuild) |
 | `scripts/setup-systemd-services.sh` | Create & enable systemd unit files for all services (run once with `sudo`) |
-| `scripts/rutba_deploy_master.sh` | CI/CD deploy script (pull, build, restart systemd services) |
+| `scripts/load-env.js` | Centralized env loader — reads `.env.<ENVIRONMENT>`, injects per-app vars |
+
+> **📖 Full deployment guide:** [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
 
 ## Strapi Content Types
 
