@@ -64,13 +64,14 @@ module.exports = {
     }
 
     // 4. Mark sale paid
+    const paymentStatus = paid >= sale.total ? 'Paid' : paid > 0 ? 'Partial' : 'Unpaid';
     await strapi.entityService.update(
       'api::sale.sale',
       sale.id,
       {
         data: {
-          payment_status:
-            paid >= sale.total ? 'Paid' : paid > 0 ? 'Partial' : 'Unpaid',
+          payment_status: paymentStatus,
+          ...(paymentStatus === 'Paid' ? { status: 'Completed' } : {}),
         },
       }
     );

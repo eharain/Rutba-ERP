@@ -5,7 +5,8 @@ import PermissionCheck from "@rutba/pos-shared/components/PermissionCheck";
 import { fetchSales } from "@rutba/pos-shared/lib/pos";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { isAppAdmin } from "@rutba/pos-shared/lib/roles";
-import { getBranches } from "@rutba/pos-shared/lib/api";
+import { getBranches, getAdminMode } from "@rutba/pos-shared/lib/api";
+import SaleApi from "@rutba/pos-shared/lib/saleApi";
 import Link from "next/link";
 import { Table, TableHead, TableRow, TableCell, TableBody, CircularProgress, TablePagination } from "@rutba/pos-shared/components/Table";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
@@ -21,6 +22,7 @@ const COLUMNS = [
     { key: "employee", label: "Employee", relation: true },
     { key: "total", label: "Total", align: "right" },
     { key: "payment_status", label: "Payment" },
+    { key: "status", label: "Status" },
     { key: "return_status", label: "Return" },
 ];
 
@@ -51,10 +53,13 @@ export default function Sales() {
     const [sales, setSales] = useState([]);
     const { jwt, adminAppAccess } = useAuth();
     const admin = isAppAdmin(adminAppAccess, "sale");
+    const elevated = admin && getAdminMode();
     const [page, setPage] = useState(0);
     const [rowsPerPage, setRowsPerPage] = useState(10);
     const [total, setTotal] = useState(0);
     const [loading, setLoading] = useState(false);
+    const [cancellingId, setCancellingId] = useState(null);
+    const [refreshKey, setRefreshKey] = useState(0);
     const { currency } = useUtil();
 
     // Filters
@@ -139,7 +144,7 @@ export default function Sales() {
             }
         })();
         return () => { cancelled = true; };
-    }, [jwt, page, rowsPerPage, sortField, sortOrder, buildFilters, populate]);
+    }, [jwt, page, rowsPerPage, sortField, sortOrder, buildFilters, populate, refreshKey]);
 
     const handleChangePage = (_, newPage) => setPage(newPage);
 
@@ -171,6 +176,23 @@ export default function Sales() {
     };
 
     const hasFilters = paymentStatus || returnStatus || customerSearch || dateFrom || dateTo || ownerSearch || branchFilter || deskSearch;
+
+    const handleCancelSale = async (sale) => {
+        const label = sale.invoice_no || sale.documentId;
+        if (!window.confirm(`Are you sure you want to cancel sale ${label}?\n\nThis will restore stock to InStock and reverse any payments on the register.`)) {
+            return;
+        }
+        setCancellingId(sale.documentId);
+        try {
+            await SaleApi.cancelSale(sale.documentId);
+            setRefreshKey(k => k + 1);
+        } catch (err) {
+            console.error('Cancel failed', err);
+            alert('Failed to cancel sale. ' + (err?.response?.data?.error?.message || 'See console for details.'));
+        } finally {
+            setCancellingId(null);
+        }
+    };
 
     const sortIcon = (field) => {
         if (sortField !== field) return <i className="fas fa-sort ms-1" style={{ opacity: 0.3 }}></i>;
@@ -294,12 +316,32 @@ export default function Sales() {
                                                     <span className={`badge ${getPaymentBadgeClass(s.payment_status)}`}>{s.payment_status}</span>
                                                 </TableCell>
                                                 <TableCell>
+                                                    {s.status === 'Cancelled'
+                                                        ? <span className="badge bg-danger">Cancelled</span>
+                                                        : <span className="badge bg-light text-muted">{s.status || 'Draft'}</span>
+                                                    }
+                                                </TableCell>
+                                                <TableCell>
                                                     <span className={`badge ${getReturnBadgeClass(s.return_status)}`}>{s.return_status || "None"}</span>
                                                 </TableCell>
                                                 <TableCell>
-                                                    <Link href={`/${s.documentId}/sale`} className="btn btn-sm btn-outline-primary" style={{ textDecoration: "none" }}>
-                                                        <i className="fas fa-edit me-1"></i>Edit
-                                                    </Link>
+                                                    <div className="d-flex gap-1">
+                                                        <Link href={`/${s.documentId}/sale`} className="btn btn-sm btn-outline-primary" style={{ textDecoration: "none" }}>
+                                                            <i className="fas fa-edit me-1"></i>Edit
+                                                        </Link>
+                                                        {elevated && s.payment_status !== 'Paid' && s.status !== 'Cancelled' && (
+                                                            <button
+                                                                className="btn btn-sm btn-outline-danger"
+                                                                onClick={() => handleCancelSale(s)}
+                                                                disabled={cancellingId === s.documentId}
+                                                            >
+                                                                {cancellingId === s.documentId
+                                                                    ? <><span className="spinner-border spinner-border-sm me-1"></span>Cancelling…</>
+                                                                    : <><i className="fas fa-ban me-1"></i>Cancel</>
+                                                                }
+                                                            </button>
+                                                        )}
+                                                    </div>
                                                 </TableCell>
                                             </TableRow>
                                         ))

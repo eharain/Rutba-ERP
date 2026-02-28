@@ -10,6 +10,10 @@ export default class SaleModel {
         invoice_no = null,
         sale_date = new Date(),
         payment_status = "Unpaid",
+        status = "Draft",
+        canceled_at = null,
+        canceled_by = null,
+        notes = "",
 
         customer,
         items = [],
@@ -21,6 +25,10 @@ export default class SaleModel {
         this.invoice_no = invoice_no || generateNextInvoiceNumber();
         this.sale_date = Date.parse(sale_date) > new Date(1, 1, 2025).getTime() ? new Date(sale_date) : new Date();
         this.payment_status = payment_status || 'Unpaid';
+        this.status = status || 'Draft';
+        this.canceled_at = canceled_at;
+        this.canceled_by = canceled_by;
+        this.notes = notes || '';
         this.payments = payments || [];
         //  payments?.forEach(p => this.addPayment(p));
         this.customer = customer;
@@ -94,6 +102,14 @@ export default class SaleModel {
     get isPaid() {
         this.updatePaymentStatus()
         return this.payment_status == 'Paid'
+    }
+
+    get isCanceled() {
+        return this.status === 'Cancelled';
+    }
+
+    get isEditable() {
+        return !this.isPaid && !this.isCanceled;
     }
 
 
@@ -229,6 +245,7 @@ export default class SaleModel {
             tax: this.tax,
             total: this.total,
             payment_status: this.payment_status,
+            notes: this.notes || '',
         };
     }
 }

@@ -30,6 +30,7 @@ export default function SalePage() {
 
     const [loading, setLoading] = useState(false);
     const [showCheckout, setShowCheckout] = useState(false);
+    const [notesSaving, setNotesSaving] = useState(false);
 
     /* ===============================
        Load existing sale
@@ -142,6 +143,20 @@ export default function SalePage() {
             // doSave already shows an alert
         }
     }
+
+    const handleSaveNotes = async () => {
+        if (!saleModel?.documentId) return;
+        setNotesSaving(true);
+        try {
+            await SaleApi.saveNotes(saleModel.documentId, saleModel.notes);
+        } catch (err) {
+            console.error('Failed to save notes', err);
+            alert('Failed to save notes.');
+        } finally {
+            setNotesSaving(false);
+        }
+    };
+
     const handlePrint = async () => {
         if (saleModel.items.length === 0) return;
 
@@ -205,19 +220,20 @@ export default function SalePage() {
                                 <i className="fas fa-file-invoice me-2 text-muted"></i>
                                 Invoice #{saleModel.invoice_no}
                                 {saleModel.isPaid && <span className="badge bg-success ms-2 align-middle">Paid</span>}
+                                {saleModel.isCanceled && <span className="badge bg-danger ms-2 align-middle">Cancelled</span>}
                             </h4>
                             <div style={{ minWidth: 320 }}>
                                 <CustomerSelect
                                     value={saleModel.customer}
                                     onChange={handleCustomerChange}
-                                    disabled={saleModel.isPaid}
+                                    disabled={!saleModel.isEditable}
                                 />
                             </div>
                         </div>
 
                         {/* ── Add Items ── */}
                         <SalesItemsForm
-                            disabled={saleModel.isPaid}
+                            disabled={!saleModel.isEditable}
                             onAddItem={(stockItem) => {
                                 saleModel.addStockItem(stockItem);
                                 forceUpdate();
@@ -233,7 +249,7 @@ export default function SalePage() {
                         {/* ── Items List ── */}
                         <SalesItemsList
                             items={saleModel.items}
-                            disabled={saleModel.isPaid}
+                            disabled={!saleModel.isEditable}
                             onUpdate={(index, updater) => {
                                 saleModel.updateItem(index, updater);
                                 forceUpdate();
@@ -253,7 +269,7 @@ export default function SalePage() {
                                 <div className="col-lg-7">
                                     <ExchangeReturnSection
                                         saleModel={saleModel}
-                                        disabled={saleModel.isPaid}
+                                        disabled={!saleModel.isEditable}
                                         onUpdate={() => {
                                             forceUpdate();
                                             setIsDirty(true);
@@ -304,13 +320,45 @@ export default function SalePage() {
 
                         {/* Checkout Modal */}
                         <CheckoutModal
-                            isOpen={showCheckout && !saleModel.isPaid}
+                            isOpen={showCheckout && saleModel.isEditable}
                             onClose={() => setShowCheckout(false)}
                             total={saleModel.total}
                             exchangeReturnCredit={saleModel.exchangeReturnTotal}
                             onComplete={handleCheckoutComplete}
                             loading={loading}
                         />
+
+                        {/* ── Notes ── */}
+                        {saleModel.documentId && (
+                            <div className="mt-3">
+                                <label className="form-label small text-muted mb-1">
+                                    <i className="fas fa-sticky-note me-1"></i>Notes
+                                </label>
+                                <div className="d-flex gap-2">
+                                    <textarea
+                                        className="form-control form-control-sm"
+                                        rows={2}
+                                        placeholder="Add notes to this sale…"
+                                        value={saleModel.notes}
+                                        onChange={(e) => {
+                                            saleModel.notes = e.target.value;
+                                            forceUpdate();
+                                        }}
+                                    />
+                                    <button
+                                        className="btn btn-sm btn-outline-primary align-self-end"
+                                        onClick={handleSaveNotes}
+                                        disabled={notesSaving}
+                                        style={{ whiteSpace: 'nowrap' }}
+                                    >
+                                        {notesSaving
+                                            ? <><span className="spinner-border spinner-border-sm me-1"></span>Saving…</>
+                                            : <><i className="fas fa-save me-1"></i>Save Notes</>
+                                        }
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                     </CashRegisterGuard>
                 </PermissionCheck>
@@ -358,7 +406,7 @@ function SaleButtons({ handlePrint, handleSave, saleModel, setShowCheckout, isDi
             <button
                 className="btn btn-success flex-fill"
                 onClick={() => handleSave(true)}
-                disabled={itemsCount === 0 || saleModel.isPaid || !isDirty}
+                disabled={itemsCount === 0 || !saleModel.isEditable || !isDirty}
             >
                 <i className="fas fa-save me-1" />Save
             </button>
@@ -366,11 +414,11 @@ function SaleButtons({ handlePrint, handleSave, saleModel, setShowCheckout, isDi
                 <button
                     className={`btn flex-fill ${canCheckout ? 'btn-success' : 'btn-outline-secondary'}`}
                     onClick={handleCheckoutClick}
-                    disabled={itemsCount === 0 || saleModel.isPaid || (!deskHasCashRegister)}
+                    disabled={itemsCount === 0 || !saleModel.isEditable || (!deskHasCashRegister)}
                     title={checkoutTooltip}
                 >
-                    <i className={`fas ${saleModel.isPaid ? 'fa-check-circle' : 'fa-cash-register'} me-1`} />
-                    {saleModel.isPaid ? 'Paid' : !deskHasCashRegister ? 'No Payment Desk' : !canCheckout ? 'Open Register' : 'Checkout'}
+                    <i className={`fas ${saleModel.isPaid ? 'fa-check-circle' : saleModel.isCanceled ? 'fa-ban' : 'fa-cash-register'} me-1`} />
+                    {saleModel.isPaid ? 'Paid' : saleModel.isCanceled ? 'Cancelled' : !deskHasCashRegister ? 'No Payment Desk' : !canCheckout ? 'Open Register' : 'Checkout'}
                 </button>
             </PermissionCheck>
         </div>)

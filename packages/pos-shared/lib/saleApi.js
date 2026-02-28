@@ -54,6 +54,20 @@ export default class SaleApi {
     }
 
     /* =====================================================
+       CANCEL SALE (admin only)
+    ===================================================== */
+
+    static async cancelSale(documentId) {
+        const res = await authApi.put(`/sales/${documentId}/cancel`);
+        return res?.data ?? res;
+    }
+
+    static async saveNotes(documentId, notes) {
+        const res = await authApi.put(`/sales/${documentId}`, { data: { notes: notes || '' } });
+        return res?.data ?? res;
+    }
+
+    /* =====================================================
        SALE SAVE (CREATE / UPDATE)
     ===================================================== */
 
@@ -61,7 +75,7 @@ export default class SaleApi {
 
         const payload = {
             ...saleModel.toPayload(),
-            ...(paid ? { payment_status: 'Paid' } : {})
+            ...(paid ? { payment_status: 'Paid', status: 'Completed' } : {})
         };
 
         const payloadNoItems = { ...payload };

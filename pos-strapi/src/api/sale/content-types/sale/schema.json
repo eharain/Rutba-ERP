@@ -82,6 +82,20 @@
       "target": "api::branch.branch",
       "mappedBy": "sales"
     },
+    "status": {
+      "type": "enumeration",
+      "enum": ["Draft", "Completed", "Cancelled"],
+      "default": "Draft"
+    },
+    "canceled_at": {
+      "type": "datetime"
+    },
+    "canceled_by": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "text"
+    },
     "return_status": {
       "type": "enumeration",
       "enum": ["None", "Returned", "PartiallyReturned"],

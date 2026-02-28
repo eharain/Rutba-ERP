@@ -33,6 +33,8 @@ function SaleReturnDetail({ documentId }) {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [showPrint, setShowPrint] = useState(false);
+    const [notes, setNotes] = useState("");
+    const [notesSaving, setNotesSaving] = useState(false);
 
     useEffect(() => {
         if (!documentId) return;
@@ -63,12 +65,25 @@ function SaleReturnDetail({ documentId }) {
                 setError("Sale return not found.");
             } else {
                 setSaleReturn(data);
+                setNotes(data.notes || "");
             }
         } catch (err) {
             console.error("Failed to load sale return", err);
             setError("Failed to load sale return.");
         } finally {
             setLoading(false);
+        }
+    }
+
+    async function handleSaveNotes() {
+        setNotesSaving(true);
+        try {
+            await authApi.put(`/sale-returns/${documentId}`, { data: { notes: notes || '' } });
+        } catch (err) {
+            console.error("Failed to save notes", err);
+            alert("Failed to save notes.");
+        } finally {
+            setNotesSaving(false);
         }
     }
 
@@ -207,6 +222,33 @@ function SaleReturnDetail({ documentId }) {
                                     </table>
                                 </div>
                             )}
+                        </div>
+                    </div>
+
+                    {/* Notes */}
+                    <div className="mt-3">
+                        <label className="form-label small text-muted mb-1">
+                            <i className="fas fa-sticky-note me-1"></i>Notes
+                        </label>
+                        <div className="d-flex gap-2">
+                            <textarea
+                                className="form-control form-control-sm"
+                                rows={2}
+                                placeholder="Add notes to this return…"
+                                value={notes}
+                                onChange={(e) => setNotes(e.target.value)}
+                            />
+                            <button
+                                className="btn btn-sm btn-outline-primary align-self-end"
+                                onClick={handleSaveNotes}
+                                disabled={notesSaving}
+                                style={{ whiteSpace: 'nowrap' }}
+                            >
+                                {notesSaving
+                                    ? <><span className="spinner-border spinner-border-sm me-1"></span>Saving…</>
+                                    : <><i className="fas fa-save me-1"></i>Save Notes</>
+                                }
+                            </button>
                         </div>
                     </div>
                 </>
