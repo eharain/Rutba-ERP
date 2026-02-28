@@ -1,7 +1,7 @@
 import { authApi } from './api';
 import { fetchSaleByIdOrInvoice, searchStockItems } from './pos';
 import SaleModel from '../domain/sale/SaleModel';
-import { getCashRegister, getBranchDesk, getUser, prepareForPut } from "../lib/utils";
+import { getCashRegister, getBranch, getBranchDesk, getUser, prepareForPut } from "../lib/utils";
 
 export default class SaleApi {
 
@@ -101,7 +101,9 @@ export default class SaleApi {
         await this.saveSaleItems(documentId, saleModel.items, { paid });
 
         // EXCHANGE RETURN (create sale-return + update stock items)
-        if (paid && saleModel.exchangeReturn?.returnItems?.length > 0) {
+        // Save whenever return items exist and haven't been persisted yet (no returnNo).
+        // Once saved, the return stays linked regardless of payment status.
+        if (saleModel.exchangeReturn?.returnItems?.length > 0 && !saleModel.exchangeReturn.returnNo) {
             await this.saveExchangeReturn(documentId, saleModel.exchangeReturn);
         }
 
@@ -281,16 +283,26 @@ export default class SaleApi {
         const { sale: originalSale, returnItems } = exchangeReturn;
         if (!returnItems?.length) return;
 
+        // Already persisted — nothing to do
+        if (exchangeReturn.returnNo) return;
+
         const originalSaleDocId = originalSale.documentId || originalSale.id;
+        if (!originalSaleDocId) throw new Error('Exchange return: original sale has no documentId');
+
         const returnNo = 'EXC-' + Date.now().toString(36).toUpperCase();
-        const returnTotal = returnItems.reduce((sum, r) => sum + (r.price || 0), 0);
+        const returnTotal = returnItems.reduce((sum, r) => sum + (r.refundPrice ?? r.price ?? 0), 0);
         const activeRegister = getCashRegister();
         const registerDocId = activeRegister?.documentId || activeRegister?.id;
         const user = getUser();
         const desk = getBranchDesk();
+        const branch = getBranch();
+        const branchDocId = branch?.documentId || branch?.id;
         const userId = user?.documentId ?? user?.id;
 
-        // 1) Create sale-return header linked to original and new sale
+        // 1) Create sale-return header linked to the original sale
+        //    NOTE: `branches` on sale-return is mappedBy (inverse side) —
+        //    Strapi v5 rejects connect on the inverse side, so we link
+        //    from the owning side (branch) in step 1b.
         const retRes = await authApi.post('/sale-returns', {
             data: {
                 return_no: returnNo,
@@ -303,13 +315,25 @@ export default class SaleApi {
                 desk_name: desk?.name || '',
                 returned_by: user?.username || user?.email || '',
                 sale: { connect: [originalSaleDocId] },
-                exchange_sale: { connect: [newSaleDocId] },
                 ...(registerDocId ? { cash_register: { connect: [registerDocId] } } : {}),
-                ...(userId ? { returned_by_user: { connect: [userId] } } : {}),
             }
         });
         const saleReturn = retRes?.data ?? retRes;
         const saleReturnDocId = saleReturn.documentId || saleReturn.id;
+
+        // 1b) Link exchange_sale and branch from the owning side via PUT
+        if (saleReturnDocId) {
+            const updates = {};
+            if (newSaleDocId) updates.exchange_sale = { connect: [newSaleDocId] };
+            if (Object.keys(updates).length > 0) {
+                await authApi.put(`/sale-returns/${saleReturnDocId}`, { data: updates });
+            }
+            if (branchDocId) {
+                await authApi.put(`/branches/${branchDocId}`, {
+                    data: { sale_returns: { connect: [saleReturnDocId] } }
+                });
+            }
+        }
 
         // 2) Group return items by original sale-item
         const bySaleItem = {};
@@ -321,8 +345,8 @@ export default class SaleApi {
         // 3) Create sale-return-items and update stock item statuses
         for (const [saleItemDocId, items] of Object.entries(bySaleItem)) {
             const quantity = items.length;
-            const price = items[0].price;
-            const total = items.reduce((s, i) => s + i.price, 0);
+            const price = items[0].refundPrice ?? items[0].price;
+            const total = items.reduce((s, i) => s + (i.refundPrice ?? i.price), 0);
             const productDocId = items[0].productDocId;
 
             const returnItemRes = await authApi.post('/sale-return-items', {
@@ -373,6 +397,10 @@ export default class SaleApi {
                 }
             });
         }
+
+        // 6) Mark the exchange return as persisted so subsequent saves skip it
+        exchangeReturn.returnNo = returnNo;
+        exchangeReturn.totalRefund = returnTotal;
     }
 
     /* =====================================================

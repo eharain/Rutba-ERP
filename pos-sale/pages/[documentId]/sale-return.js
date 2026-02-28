@@ -11,6 +11,7 @@ import Link from "next/link";
 import SaleReturnReceipt from "../../components/print/SaleReturnReceipt";
 
 const RETURN_STATUSES = ["Returned", "ReturnedDamaged", "Damaged", "InStock"];
+const DAMAGED_STATUSES = ["Damaged", "ReturnedDamaged"];
 
 function getEntryId(entry) {
     return entry?.documentId || entry?.id;
@@ -276,6 +277,7 @@ function NewSaleReturn() {
             if (exists) {
                 return prev.filter(r => r.stockItemDocId !== stockDocId);
             }
+            const unitPrice = getEffectiveUnitPrice(saleItem, stockItem);
             return [...prev, {
                 saleItemDocId: getEntryId(saleItem),
                 saleItemId: saleItem.id,
@@ -285,7 +287,8 @@ function NewSaleReturn() {
                 productName: saleItem.product?.name || stockItem.name || "N/A",
                 sku: stockItem.sku || saleItem.product?.sku || "",
                 barcode: stockItem.barcode || "",
-                price: getEffectiveUnitPrice(saleItem, stockItem),
+                price: unitPrice,
+                refundPrice: unitPrice,
                 status: "Returned"
             }];
         });
@@ -293,7 +296,20 @@ function NewSaleReturn() {
 
     function setItemReturnStatus(stockDocId, status) {
         setReturnItems(prev =>
-            prev.map(r => r.stockItemDocId === stockDocId ? { ...r, status } : r)
+            prev.map(r => {
+                if (r.stockItemDocId !== stockDocId) return r;
+                // Reset refundPrice to original sale price when switching away from damaged
+                const refundPrice = DAMAGED_STATUSES.includes(status) ? r.refundPrice : r.price;
+                return { ...r, status, refundPrice };
+            })
+        );
+    }
+
+    function setItemRefundPrice(stockDocId, value) {
+        const num = value === "" ? 0 : Number(value);
+        if (isNaN(num) || num < 0) return;
+        setReturnItems(prev =>
+            prev.map(r => r.stockItemDocId === stockDocId ? { ...r, refundPrice: num } : r)
         );
     }
 
@@ -314,18 +330,22 @@ function NewSaleReturn() {
                 const existing = new Set(prev.map(r => r.stockItemDocId));
                 const newEntries = eligibleItems
                     .filter(si => !existing.has(getEntryId(si)))
-                    .map(si => ({
-                        saleItemDocId: getEntryId(saleItem),
-                        saleItemId: saleItem.id,
-                        stockItemDocId: getEntryId(si),
-                        stockItemId: si.id,
-                        productDocId: getEntryId(saleItem.product),
-                        productName: saleItem.product?.name || si.name || "N/A",
-                        sku: si.sku || saleItem.product?.sku || "",
-                        barcode: si.barcode || "",
-                        price: getEffectiveUnitPrice(saleItem, si),
-                        status: "Returned"
-                    }));
+                    .map(si => {
+                        const unitPrice = getEffectiveUnitPrice(saleItem, si);
+                        return {
+                            saleItemDocId: getEntryId(saleItem),
+                            saleItemId: saleItem.id,
+                            stockItemDocId: getEntryId(si),
+                            stockItemId: si.id,
+                            productDocId: getEntryId(saleItem.product),
+                            productName: saleItem.product?.name || si.name || "N/A",
+                            sku: si.sku || saleItem.product?.sku || "",
+                            barcode: si.barcode || "",
+                            price: unitPrice,
+                            refundPrice: unitPrice,
+                            status: "Returned"
+                        };
+                    });
                 return [...prev, ...newEntries];
             });
         }
@@ -334,13 +354,16 @@ function NewSaleReturn() {
     async function processReturn() {
         if (returnItems.length === 0) return alert("Select items to return");
         if (!sale) return;
-        if (!confirm(`Process return for ${returnItems.length} item(s)?\nRefund method: ${refundMethod}\nTotal: ${currency}${totalRefund.toFixed(2)}`)) return;
+        const hasDamagedWithCustomPrice = returnItems.some(r => DAMAGED_STATUSES.includes(r.status) && r.refundPrice !== r.price);
+        const confirmMsg = `Process return for ${returnItems.length} item(s)?\nRefund method: ${refundMethod}\nTotal: ${currency}${totalRefund.toFixed(2)}` +
+            (hasDamagedWithCustomPrice ? `\n\n⚠ Some damaged items have negotiated refund prices different from the sale price.` : '');
+        if (!confirm(confirmMsg)) return;
 
         setProcessing(true);
         setReturnResult(null);
         try {
             const saleDocId = getEntryId(sale);
-            const totalRefundAmt = returnItems.reduce((sum, r) => sum + r.price, 0);
+            const totalRefundAmt = returnItems.reduce((sum, r) => sum + (r.refundPrice ?? r.price), 0);
             const returnNo = "RET-" + Date.now().toString(36).toUpperCase();
             const activeRegister = getCashRegister();
             const registerDocId = activeRegister?.documentId || activeRegister?.id;
@@ -359,9 +382,7 @@ function NewSaleReturn() {
                     desk_name: desk?.name || "",
                     returned_by: user?.username || user?.email || "",
                     sale: { connect: [saleDocId] },
-                    ...(registerDocId ? { cash_register: { connect: [registerDocId] } } : {}),
-                    ...(branch ? { branches: { connect: [getEntryId(branch)] } } : {}),
-                    ...(userId ? { returned_by_user: { connect: [userId] } } : {})
+                    ...(registerDocId ? { cash_register: { connect: [registerDocId] } } : {})
                 }
             });
             const saleReturn = retRes?.data ?? retRes;
@@ -370,6 +391,16 @@ function NewSaleReturn() {
             if (!saleReturnDocId) {
                 setReturnResult({ success: false, message: "Failed to create return header." });
                 return;
+            }
+
+            // 1b) Link branch from the owning side (branches is mappedBy on sale-return)
+            if (branch) {
+                const branchDocId = getEntryId(branch);
+                if (branchDocId) {
+                    await authApi.put(`/branches/${branchDocId}`, {
+                        data: { sale_returns: { connect: [saleReturnDocId] } }
+                    });
+                }
             }
 
             // 2) Group return items by sale item
@@ -384,8 +415,8 @@ function NewSaleReturn() {
             // 3) For each sale item group, create a sale-return-item and update stock items
             for (const [saleItemDocId, items] of Object.entries(bySaleItem)) {
                 const quantity = items.length;
-                const price = items[0].price;
-                const total = items.reduce((s, i) => s + i.price, 0);
+                const price = items[0].refundPrice ?? items[0].price;
+                const total = items.reduce((s, i) => s + (i.refundPrice ?? i.price), 0);
                 const productDocId = items[0].productDocId;
 
                 const returnItemRes = await authApi.post("/sale-return-items", {
@@ -473,7 +504,7 @@ function NewSaleReturn() {
     }
 
     const saleItems = sale?.items || [];
-    const totalRefund = returnItems.reduce((sum, r) => sum + r.price, 0);
+    const totalRefund = returnItems.reduce((sum, r) => sum + (r.refundPrice ?? r.price), 0);
 
     // Guard: desk must be configured to accept sale returns
     if (!desk || desk.has_sale_returns === false) {
@@ -662,6 +693,7 @@ function NewSaleReturn() {
                                                                 <th>Barcode</th>
                                                                 <th>Current Status</th>
                                                                 <th>Return As</th>
+                                                                <th className="text-end">Refund Price</th>
                                                             </tr>
                                                         </thead>
                                                         <tbody>
@@ -704,6 +736,28 @@ function NewSaleReturn() {
                                                                                         <option key={s} value={s}>{s}</option>
                                                                                     ))}
                                                                                 </select>
+                                                                            ) : (
+                                                                                <span className="text-muted small">—</span>
+                                                                            )}
+                                                                        </td>
+                                                                        <td className="text-end">
+                                                                            {selected ? (
+                                                                                DAMAGED_STATUSES.includes(selected.status) ? (
+                                                                                    <div className="d-flex align-items-center gap-1 justify-content-end">
+                                                                                        <span className="text-muted small text-decoration-line-through">{currency}{selected.price.toFixed(2)}</span>
+                                                                                        <input
+                                                                                            type="number"
+                                                                                            className="form-control form-control-sm text-end"
+                                                                                            style={{ width: 90 }}
+                                                                                            value={selected.refundPrice}
+                                                                                            min="0"
+                                                                                            step="0.01"
+                                                                                            onChange={e => setItemRefundPrice(siDocId, e.target.value)}
+                                                                                        />
+                                                                                    </div>
+                                                                                ) : (
+                                                                                    <span className="small">{currency}{selected.price.toFixed(2)}</span>
+                                                                                )
                                                                             ) : (
                                                                                 <span className="text-muted small">—</span>
                                                                             )}
@@ -756,7 +810,14 @@ function NewSaleReturn() {
                                                         </span>
                                                     </div>
                                                     <div className="text-end">
-                                                        <div className="small">{currency}{ri.price.toFixed(2)}</div>
+                                                        {DAMAGED_STATUSES.includes(ri.status) && ri.refundPrice !== ri.price ? (
+                                                            <>
+                                                                <div className="small text-muted text-decoration-line-through">{currency}{ri.price.toFixed(2)}</div>
+                                                                <div className="small fw-bold text-warning">{currency}{ri.refundPrice.toFixed(2)}</div>
+                                                            </>
+                                                        ) : (
+                                                            <div className="small">{currency}{(ri.refundPrice ?? ri.price).toFixed(2)}</div>
+                                                        )}
                                                         <button
                                                             className="btn btn-sm btn-outline-danger mt-1"
                                                             onClick={() => setReturnItems(prev => prev.filter(r => r.stockItemDocId !== ri.stockItemDocId))}
