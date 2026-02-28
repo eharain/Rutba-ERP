@@ -121,9 +121,9 @@ export default class SaleModel {
         if (!this.exchangeReturn?.returnItems?.length) return 0;
         return this.exchangeReturn.returnItems.reduce((sum, r) => {
             // When loaded from API, items are grouped with quantity & total.
-            // When set from UI, each entry is a single stock item (total absent).
+            // When set from UI, each entry is a single stock item with refundPrice (may differ for damaged).
             if (r.total != null) return sum + Number(r.total);
-            return sum + (r.price || 0);
+            return sum + (r.refundPrice ?? r.price ?? 0);
         }, 0);
     }
 

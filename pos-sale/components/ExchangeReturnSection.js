@@ -3,6 +3,7 @@ import { useUtil } from '@rutba/pos-shared/context/UtilContext';
 import { fetchSaleByIdOrInvoice } from '@rutba/pos-shared/lib/pos';
 
 const RETURN_STATUSES = ['Returned', 'ReturnedDamaged', 'Damaged', 'InStock'];
+const DAMAGED_STATUSES = ['Damaged', 'ReturnedDamaged'];
 
 function getEntryId(entry) {
     return entry?.documentId || entry?.id;
@@ -44,6 +45,8 @@ export default function ExchangeReturnSection({ saleModel, onUpdate, disabled = 
             return;
         }
         if (disabled) return;
+        // Don't overwrite a persisted exchange return
+        if (saleModel.exchangeReturn?.returnNo) return;
         if (originalSale && returnItems.length > 0) {
             saleModel.setExchangeReturn(originalSale, returnItems);
         } else {
@@ -84,6 +87,7 @@ export default function ExchangeReturnSection({ saleModel, onUpdate, disabled = 
         setReturnItems(prev => {
             const exists = prev.find(r => r.stockItemDocId === stockDocId);
             if (exists) return prev.filter(r => r.stockItemDocId !== stockDocId);
+            const unitPrice = getEffectiveUnitPrice(saleItem, stockItem);
             return [...prev, {
                 saleItemDocId: getEntryId(saleItem),
                 saleItemId: saleItem.id,
@@ -93,7 +97,8 @@ export default function ExchangeReturnSection({ saleModel, onUpdate, disabled = 
                 productName: saleItem.product?.name || stockItem.name || 'N/A',
                 sku: stockItem.sku || saleItem.product?.sku || '',
                 barcode: stockItem.barcode || '',
-                price: getEffectiveUnitPrice(saleItem, stockItem),
+                price: unitPrice,
+                refundPrice: unitPrice,
                 status: 'Returned'
             }];
         });
@@ -116,18 +121,22 @@ export default function ExchangeReturnSection({ saleModel, onUpdate, disabled = 
                 const existing = new Set(prev.map(r => r.stockItemDocId));
                 const newEntries = eligibleItems
                     .filter(si => !existing.has(getEntryId(si)))
-                    .map(si => ({
-                        saleItemDocId: getEntryId(saleItem),
-                        saleItemId: saleItem.id,
-                        stockItemDocId: getEntryId(si),
-                        stockItemId: si.id,
-                        productDocId: getEntryId(saleItem.product),
-                        productName: saleItem.product?.name || si.name || 'N/A',
-                        sku: si.sku || saleItem.product?.sku || '',
-                        barcode: si.barcode || '',
-                        price: getEffectiveUnitPrice(saleItem, si),
-                        status: 'Returned'
-                    }));
+                    .map(si => {
+                        const unitPrice = getEffectiveUnitPrice(saleItem, si);
+                        return {
+                            saleItemDocId: getEntryId(saleItem),
+                            saleItemId: saleItem.id,
+                            stockItemDocId: getEntryId(si),
+                            stockItemId: si.id,
+                            productDocId: getEntryId(saleItem.product),
+                            productName: saleItem.product?.name || si.name || 'N/A',
+                            sku: si.sku || saleItem.product?.sku || '',
+                            barcode: si.barcode || '',
+                            price: unitPrice,
+                            refundPrice: unitPrice,
+                            status: 'Returned'
+                        };
+                    });
                 return [...prev, ...newEntries];
             });
         }
@@ -135,7 +144,19 @@ export default function ExchangeReturnSection({ saleModel, onUpdate, disabled = 
 
     function setItemReturnStatus(stockDocId, status) {
         setReturnItems(prev =>
-            prev.map(r => r.stockItemDocId === stockDocId ? { ...r, status } : r)
+            prev.map(r => {
+                if (r.stockItemDocId !== stockDocId) return r;
+                const refundPrice = DAMAGED_STATUSES.includes(status) ? r.refundPrice : r.price;
+                return { ...r, status, refundPrice };
+            })
+        );
+    }
+
+    function setItemRefundPrice(stockDocId, value) {
+        const num = value === '' ? 0 : Number(value);
+        if (isNaN(num) || num < 0) return;
+        setReturnItems(prev =>
+            prev.map(r => r.stockItemDocId === stockDocId ? { ...r, refundPrice: num } : r)
         );
     }
 
@@ -146,11 +167,12 @@ export default function ExchangeReturnSection({ saleModel, onUpdate, disabled = 
         setScanValue('');
     }
 
-    const returnTotal = returnItems.reduce((sum, r) => sum + r.price, 0);
+    const returnTotal = returnItems.reduce((sum, r) => sum + (r.refundPrice ?? r.price), 0);
     const saleItems = originalSale?.items || [];
 
-    // For paid/disabled sales, show read-only summary of saved exchange return
-    if (disabled) {
+    // For paid/disabled sales or already-persisted exchange returns, show read-only summary
+    const alreadySaved = !!saleModel.exchangeReturn?.returnNo;
+    if (disabled || alreadySaved) {
         const saved = saleModel.exchangeReturn;
         if (!saved || !saved.returnItems?.length) return null;
         const savedTotal = saved.totalRefund ?? saved.returnItems.reduce((s, r) => s + Number(r.total ?? r.price ?? 0), 0);
@@ -285,14 +307,33 @@ export default function ExchangeReturnSection({ saleModel, onUpdate, disabled = 
                                                     <code>{si.sku || si.barcode || '-'}</code>
                                                     <span className={`badge ${isSold ? 'bg-secondary' : 'bg-info'}`}>{si.status}</span>
                                                     {selected && (
-                                                        <select
-                                                            className="form-select form-select-sm ms-auto"
-                                                            value={selected.status}
-                                                            onChange={e => setItemReturnStatus(siDocId, e.target.value)}
-                                                            style={{ width: 140 }}
-                                                        >
-                                                            {RETURN_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-                                                        </select>
+                                                        <>
+                                                            <select
+                                                                className="form-select form-select-sm ms-auto"
+                                                                value={selected.status}
+                                                                onChange={e => setItemReturnStatus(siDocId, e.target.value)}
+                                                                style={{ width: 140 }}
+                                                            >
+                                                                {RETURN_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                                                            </select>
+                                                            {DAMAGED_STATUSES.includes(selected.status) ? (
+                                                                <div className="d-flex align-items-center gap-1" style={{ minWidth: 100 }}>
+                                                                    <span className="text-muted small text-decoration-line-through">{currency}{selected.price.toFixed(2)}</span>
+                                                                    <input
+                                                                        type="number"
+                                                                        className="form-control form-control-sm text-end"
+                                                                        style={{ width: 80 }}
+                                                                        value={selected.refundPrice}
+                                                                        min="0"
+                                                                        step="0.01"
+                                                                        onChange={e => setItemRefundPrice(siDocId, e.target.value)}
+                                                                        title="Negotiated refund price"
+                                                                    />
+                                                                </div>
+                                                            ) : (
+                                                                <span className="small text-muted" style={{ minWidth: 60 }}>{currency}{selected.price.toFixed(2)}</span>
+                                                            )}
+                                                        </>
                                                     )}
                                                 </div>
                                             );
