@@ -19,7 +19,7 @@ set -euo pipefail
 # build automatically.
 #
 # Flow:
-#   1. Ask which branch to pull (master / dev)
+#   1. Ask which branch to pull (main / dev)
 #   2. Clone the repo into BUILDS_DIR/build_<timestamp>_<branch>
 #   3. Copy .env files from BUILDS_DIR root into the new build
 #   4. Install npm packages & build everything
