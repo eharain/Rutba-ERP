@@ -85,6 +85,9 @@
     "returned_by": {
       "type": "string"
     },
+    "notes": {
+      "type": "text"
+    },
     "returned_by_user": {
       "type": "relation",
       "relation": "manyToOne",

@@ -2105,6 +2105,7 @@ export interface ApiSaleReturnSaleReturn extends Struct.CollectionTypeSchema {
       'api::sale-return.sale-return'
     > &
       Schema.Attribute.Private;
+    notes: Schema.Attribute.Text;
     owners: Schema.Attribute.Relation<
       'manyToMany',
       'plugin::users-permissions.user'
@@ -2155,6 +2156,8 @@ export interface ApiSaleSale extends Struct.CollectionTypeSchema {
   };
   attributes: {
     branches: Schema.Attribute.Relation<'manyToMany', 'api::branch.branch'>;
+    canceled_at: Schema.Attribute.DateTime;
+    canceled_by: Schema.Attribute.String;
     cash_register: Schema.Attribute.Relation<
       'manyToOne',
       'api::cash-register.cash-register'
@@ -2174,6 +2177,7 @@ export interface ApiSaleSale extends Struct.CollectionTypeSchema {
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<'oneToMany', 'api::sale.sale'> &
       Schema.Attribute.Private;
+    notes: Schema.Attribute.Text;
     owners: Schema.Attribute.Relation<
       'manyToMany',
       'plugin::users-permissions.user'
@@ -2193,6 +2197,8 @@ export interface ApiSaleSale extends Struct.CollectionTypeSchema {
       'oneToMany',
       'api::sale-return.sale-return'
     >;
+    status: Schema.Attribute.Enumeration<['Draft', 'Completed', 'Cancelled']> &
+      Schema.Attribute.DefaultTo<'Draft'>;
     subtotal: Schema.Attribute.Decimal;
     tax: Schema.Attribute.Decimal;
     total: Schema.Attribute.Decimal & Schema.Attribute.Required;
