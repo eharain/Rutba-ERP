@@ -145,6 +145,7 @@ RUTBA_WEB__NEXTAUTH_URL=http://your-server:4000
 
 ```bash
 # Clone the repo (just to get the scripts — the deploy script will clone into builds/)
+rm -rf ~/Rutba-ERP-scripts
 git clone https://github.com/eharain/Rutba-ERP.git ~/Rutba-ERP-scripts
 cd ~/Rutba-ERP-scripts
 
