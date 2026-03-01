@@ -8,7 +8,7 @@ export function UtilProvider({ children }) {
     const [branch, setBranchState] = useState(null);
     const [desk, setDeskState] = useState(null);
     const [user, setUserState] = useState(null);
-    const [currency, setCurrencyState] = useState(null);
+    const [currency, setCurrencyState] = useState('Rs');
     const [labelSize, setLabelSizeState] = useState('2.4x1.5'); // in inches
     const [printMode, setPrintModeState] = useState('thermal');
     const [cashRegister, setCashRegisterState] = useState(null);
@@ -37,7 +37,7 @@ export function UtilProvider({ children }) {
             setBranchState(storedBranch ? JSON.parse(storedBranch) : null);
             setDeskState(storedDesk ? JSON.parse(storedDesk) : null);
             setUserState(storage.getJSON("user") ?? null);
-            setCurrencyState(storage.getJSON("currency") ?? null);
+            setCurrencyState(storage.getJSON("currency") ?? 'Rs');
             setLabelSizeState(storage.getJSON("label-size") ?? '2.4x1.5');
             setPrintModeState(storage.getJSON("print-mode") ?? 'thermal');
             setCashRegisterState(storage.getJSON("cash-register") ?? null);
