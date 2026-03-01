@@ -62,6 +62,9 @@ export default function Sales() {
     const [refreshKey, setRefreshKey] = useState(0);
     const { currency } = useUtil();
 
+    // Multi-select for combined receipt
+    const [selectedIds, setSelectedIds] = useState(new Set());
+
     // Filters
     const [paymentStatus, setPaymentStatus] = useState("");
     const [returnStatus, setReturnStatus] = useState("");
@@ -177,6 +180,27 @@ export default function Sales() {
 
     const hasFilters = paymentStatus || returnStatus || customerSearch || dateFrom || dateTo || ownerSearch || branchFilter || deskSearch;
 
+    const toggleSelect = (docId) => {
+        setSelectedIds(prev => {
+            const next = new Set(prev);
+            if (next.has(docId)) next.delete(docId); else next.add(docId);
+            return next;
+        });
+    };
+
+    const toggleSelectAll = () => {
+        if (selectedIds.size === sales.length) {
+            setSelectedIds(new Set());
+        } else {
+            setSelectedIds(new Set(sales.map(s => s.documentId)));
+        }
+    };
+
+    const handlePrintCombined = () => {
+        const ids = Array.from(selectedIds).join(',');
+        window.open(`/print-combined-invoice?saleIds=${encodeURIComponent(ids)}`, '_blank');
+    };
+
     const handleCancelSale = async (sale) => {
         const label = sale.invoice_no || sale.documentId;
         if (!window.confirm(`Are you sure you want to cancel sale ${label}?\n\nThis will restore stock to InStock and reverse any payments on the register.`)) {
@@ -201,7 +225,7 @@ export default function Sales() {
             : <i className="fas fa-sort-down ms-1"></i>;
     };
 
-    const colCount = COLUMNS.length + 1;
+    const colCount = COLUMNS.length + 2;
 
     return (
         <ProtectedRoute>
@@ -210,10 +234,17 @@ export default function Sales() {
                     <div className="mb-3">
                         <div className="d-flex align-items-center justify-content-between mb-3">
                             <h2 className="mb-0">Sales</h2>
-                            <span className="text-muted small">
-                                {total} record{total !== 1 ? "s" : ""}
-                                {!admin && <span className="ms-2 badge bg-secondary">Last 24 hours</span>}
-                            </span>
+                            <div className="d-flex align-items-center gap-2">
+                                {selectedIds.size >= 2 && (
+                                    <button className="btn btn-sm btn-outline-info" onClick={handlePrintCombined}>
+                                        <i className="fas fa-print me-1"></i>Print Combined Receipt ({selectedIds.size})
+                                    </button>
+                                )}
+                                <span className="text-muted small">
+                                    {total} record{total !== 1 ? "s" : ""}
+                                    {!admin && <span className="ms-2 badge bg-secondary">Last 24 hours</span>}
+                                </span>
+                            </div>
                         </div>
 
                         {/* Filters */}
@@ -277,6 +308,9 @@ export default function Sales() {
                             <Table>
                                 <TableHead>
                                     <TableRow>
+                                        <TableCell style={{ width: '30px' }}>
+                                            <input type="checkbox" checked={sales.length > 0 && selectedIds.size === sales.length} onChange={toggleSelectAll} title="Select all" />
+                                        </TableCell>
                                         {COLUMNS.map(col => (
                                             <TableCell
                                                 key={col.key}
@@ -306,6 +340,9 @@ export default function Sales() {
                                     ) : (
                                         sales.map(s => (
                                             <TableRow key={s.id}>
+                                                <TableCell>
+                                                    <input type="checkbox" checked={selectedIds.has(s.documentId)} onChange={() => toggleSelect(s.documentId)} />
+                                                </TableCell>
                                                 <TableCell>{s.id}</TableCell>
                                                 <TableCell>{s.invoice_no}</TableCell>
                                                 <TableCell style={{ whiteSpace: "nowrap" }}>{new Date(s.sale_date).toLocaleDateString()}</TableCell>
