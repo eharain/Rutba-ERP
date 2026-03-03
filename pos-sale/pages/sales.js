@@ -62,6 +62,9 @@ export default function Sales() {
     const [refreshKey, setRefreshKey] = useState(0);
     const { currency } = useUtil();
 
+    // Toggle total column visibility (hidden by default)
+    const [showTotal, setShowTotal] = useState(false);
+
     // Multi-select for combined receipt
     const [selectedIds, setSelectedIds] = useState(new Set());
 
@@ -225,7 +228,8 @@ export default function Sales() {
             : <i className="fas fa-sort-down ms-1"></i>;
     };
 
-    const colCount = COLUMNS.length + 2;
+    const visibleColumns = showTotal ? COLUMNS : COLUMNS.filter(c => c.key !== 'total');
+    const colCount = visibleColumns.length + 2;
 
     return (
         <ProtectedRoute>
@@ -240,6 +244,13 @@ export default function Sales() {
                                         <i className="fas fa-print me-1"></i>Print Combined Receipt ({selectedIds.size})
                                     </button>
                                 )}
+                                <button
+                                    className="btn btn-sm btn-outline-secondary"
+                                    onClick={() => setShowTotal(v => !v)}
+                                    title={showTotal ? 'Hide totals' : 'Show totals'}
+                                >
+                                    <i className={`fas ${showTotal ? 'fa-eye-slash' : 'fa-eye'} me-1`}></i>{showTotal ? 'Hide' : 'Show'} Totals
+                                </button>
                                 <span className="text-muted small">
                                     {total} record{total !== 1 ? "s" : ""}
                                     {!admin && <span className="ms-2 badge bg-secondary">Last 24 hours</span>}
@@ -311,7 +322,7 @@ export default function Sales() {
                                         <TableCell style={{ width: '30px' }}>
                                             <input type="checkbox" checked={sales.length > 0 && selectedIds.size === sales.length} onChange={toggleSelectAll} title="Select all" />
                                         </TableCell>
-                                        {COLUMNS.map(col => (
+                                        {visibleColumns.map(col => (
                                             <TableCell
                                                 key={col.key}
                                                 align={col.align}
@@ -348,7 +359,7 @@ export default function Sales() {
                                                 <TableCell style={{ whiteSpace: "nowrap" }}>{new Date(s.sale_date).toLocaleDateString()}</TableCell>
                                                 <TableCell>{s?.customer?.name || "—"}</TableCell>
                                                 <TableCell>{s?.employee?.name || "—"}</TableCell>
-                                                <TableCell align="right">{currency}{parseFloat(s.total || 0).toFixed(2)}</TableCell>
+                                                {showTotal && <TableCell align="right">{currency}{parseFloat(s.total || 0).toFixed(2)}</TableCell>}
                                                 <TableCell>
                                                     <span className={`badge ${getPaymentBadgeClass(s.payment_status)}`}>{s.payment_status}</span>
                                                 </TableCell>

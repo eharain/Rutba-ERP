@@ -89,6 +89,7 @@ export default function SalePage() {
     =============================== */
 
     const handleCheckoutComplete = async (payments) => {
+        if (loading) return;
         const paymentsList = Array.isArray(payments) ? payments : [payments];
         paymentsList.forEach((payment) => saleModel.addPayment(payment));
         setLoading(true);
