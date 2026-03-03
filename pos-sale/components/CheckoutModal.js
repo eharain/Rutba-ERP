@@ -4,6 +4,7 @@ import { useUtil } from '@rutba/pos-shared/context/UtilContext';
 const CheckoutModal = ({ isOpen, onClose, total, exchangeReturnCredit = 0, onComplete, loading }) => {
     const { currency } = useUtil();
     const [payments, setPayments] = useState([]);
+    const [submitting, setSubmitting] = useState(false);
     function validOrDefult(value, def) {
 
         const val = parseFloat(value);
@@ -14,6 +15,7 @@ const CheckoutModal = ({ isOpen, onClose, total, exchangeReturnCredit = 0, onCom
     }
     useEffect(() => {
         if (isOpen) {
+            setSubmitting(false);
             const initial = [];
             if (exchangeReturnCredit > 0) {
                 initial.push({
@@ -76,6 +78,7 @@ const CheckoutModal = ({ isOpen, onClose, total, exchangeReturnCredit = 0, onCom
     };
 
     const handlePay = () => {
+        if (submitting) return;
         if (totalPaid < total) {
             alert(`Insufficient payment. Total is ${currency}${total.toFixed(2)}, but only ${currency}${totalPaid.toFixed(2)} received.`);
             return;
@@ -111,6 +114,7 @@ const CheckoutModal = ({ isOpen, onClose, total, exchangeReturnCredit = 0, onCom
             return payload;
         });
 
+        setSubmitting(true);
         onComplete(paymentsPayload);
     };
 
@@ -230,7 +234,7 @@ const CheckoutModal = ({ isOpen, onClose, total, exchangeReturnCredit = 0, onCom
                     </div>
                     <div className="modal-footer">
                         <button type="button" className="btn btn-outline-secondary" onClick={onClose} disabled={loading}>Cancel</button>
-                        <button type="button" className="btn btn-success px-4" onClick={handlePay} disabled={loading || payments.length === 0 || totalPaid < total}>
+                        <button type="button" className="btn btn-success px-4" onClick={handlePay} disabled={submitting || loading || payments.length === 0 || totalPaid < total}>
                             {loading ? (<><span className="spinner-border spinner-border-sm me-1"></span>Processing...</>) : (<><i className="fas fa-check me-1"></i>Confirm Payment</>)}
                         </button>
                     </div>
