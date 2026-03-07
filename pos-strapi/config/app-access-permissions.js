@@ -26,6 +26,13 @@ const CASH_REG = ['find', 'findOne', 'create', 'update', 'delete', 'open', 'clos
 const STOCK_INPUT = ['find', 'findOne', 'create', 'update', 'delete', 'bulk', 'process'];
 const CMS_WRITE  = ['find', 'findOne', 'create', 'update', 'delete', 'publish', 'unpublish'];
 
+/**
+ * Default time (in seconds) the session-expired dialog stays open
+ * before auto-redirecting to the login page.  Override per-app
+ * with the `sessionTimeout` property on each entry below.
+ */
+const DEFAULT_SESSION_TIMEOUT = 60;
+
 // ─── Entries ────────────────────────────────────────────────
 
 const ENTRIES = [
@@ -35,6 +42,7 @@ const ENTRIES = [
     key: 'stock',
     name: 'Stock Management',
     description: 'Products, purchases, inventory, suppliers, brands & categories',
+    sessionTimeout: 120,
     permissions: [
       { uid: 'api::product.product',                               actions: WRITE },
       { uid: 'api::product-group.product-group',                   actions: WRITE },
@@ -61,6 +69,7 @@ const ENTRIES = [
     key: 'sale',
     name: 'Point of Sale',
     description: 'Sales, cart, returns, cash register & reports',
+    sessionTimeout: 300,
     permissions: [
       { uid: 'api::sale.sale',                                     actions: WRITE },
       { uid: 'api::sale-item.sale-item',                           actions: WRITE },
@@ -82,14 +91,17 @@ const ENTRIES = [
       { uid: 'api::employee.employee',                             actions: READ },
       { uid: 'api::term.term',                                     actions: READ },
       { uid: 'api::term-type.term-type',                           actions: READ },
+      // CRM lead capture from sales
+      { uid: 'api::crm-lead.crm-lead',                              actions: [...READ, 'create'] },
     ],
   },
 
-  // ── Accounting ────────────────────────────────────────────
+  // ── Accounting
   {
     key: 'accounts',
     name: 'Accounting',
     description: 'Manage accounts and reports',
+    sessionTimeout: 120,
     permissions: [
       { uid: 'api::acc-account.acc-account',                       actions: WRITE },
       { uid: 'api::acc-journal-entry.acc-journal-entry',           actions: WRITE },
@@ -124,6 +136,7 @@ const ENTRIES = [
     key: 'crm',
     name: 'Customer Relation Management',
     description: 'Customer Relation Management',
+    sessionTimeout: 120,
     permissions: [
       { uid: 'api::crm-contact.crm-contact',                      actions: WRITE },
       { uid: 'api::crm-lead.crm-lead',                            actions: WRITE },
@@ -172,6 +185,7 @@ const ENTRIES = [
     key: 'hr',
     name: 'Human Resources',
     description: 'Employees, departments, attendance and leave management',
+    sessionTimeout: 120,
     permissions: [
       { uid: 'api::hr-employee.hr-employee',                       actions: WRITE },
       { uid: 'api::hr-department.hr-department',                   actions: WRITE },
@@ -188,6 +202,7 @@ const ENTRIES = [
     key: 'payroll',
     name: 'Payroll',
     description: 'Salary structures, payroll runs and payslips',
+    sessionTimeout: 120,
     permissions: [
       { uid: 'api::pay-salary-structure.pay-salary-structure',     actions: WRITE },
       { uid: 'api::pay-payroll-run.pay-payroll-run',               actions: WRITE },
@@ -205,6 +220,7 @@ const ENTRIES = [
     key: 'cms',
     name: 'Content Management',
     description: 'Manage website content — products, categories, brands, pages & banners',
+    sessionTimeout: 120,
     permissions: [
       { uid: 'api::cms-page.cms-page',                             actions: CMS_WRITE },
       { uid: 'api::product.product',                               actions: WRITE },
@@ -226,6 +242,15 @@ const ENTRIES = [
 const permissionsByKey = {};
 for (const entry of ENTRIES) {
   permissionsByKey[entry.key] = entry.permissions;
+}
+
+// ─── Derived: key → app settings (sessionTimeout, etc.) ─────
+
+const settingsByKey = {};
+for (const entry of ENTRIES) {
+  settingsByKey[entry.key] = {
+    sessionTimeout: entry.sessionTimeout ?? DEFAULT_SESSION_TIMEOUT,
+  };
 }
 
 // ─── Plugin permissions ─────────────────────────────────────
@@ -294,6 +319,8 @@ const PUBLIC_PERMISSIONS = [
   'api::customer.customer.find',
   'api::customer.customer.findOne',
   'api::customer.customer.create',
+  // Public lead capture from the web storefront
+  'api::crm-lead.crm-lead.create',
 ];
 
-module.exports = { ENTRIES, permissionsByKey, PLUGIN_PERMISSIONS, CLIENT_PLUGIN_PERMISSIONS, PUBLIC_PERMISSIONS };
+module.exports = { ENTRIES, permissionsByKey, settingsByKey, DEFAULT_SESSION_TIMEOUT, PLUGIN_PERMISSIONS, CLIENT_PLUGIN_PERMISSIONS, PUBLIC_PERMISSIONS };

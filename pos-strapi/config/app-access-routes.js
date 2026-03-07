@@ -45,7 +45,7 @@ module.exports = {
 
   // ── CRM ───────────────────────────────────────────────────
   'api::crm-contact.crm-contact':            'crm',
-  'api::crm-lead.crm-lead':                  'crm',
+  'api::crm-lead.crm-lead':                  { find: ['crm', 'sale'], findOne: ['crm', 'sale'], create: ['crm', 'sale'], update: ['crm'], delete: ['crm', 'auth'] },
   'api::crm-activity.crm-activity':          'crm',
 
   // ── HR ────────────────────────────────────────────────────

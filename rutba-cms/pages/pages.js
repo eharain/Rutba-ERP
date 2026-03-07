@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import * as XLSX from "xlsx";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
@@ -6,6 +7,51 @@ import { authApi } from "@rutba/pos-shared/lib/api";
 import Link from "next/link";
 
 const PAGE_TYPES = ["page", "blog", "announcement"];
+
+const PAGE_EXPORT_COLUMNS = ["slug", "title", "excerpt", "content", "page_type", "sort_order"];
+
+function exportPagesToExcel(pages) {
+    const rows = pages.map(p => ({
+        slug: p.slug || "",
+        title: p.title || "",
+        excerpt: p.excerpt || "",
+        content: p.content || "",
+        page_type: p.page_type || "page",
+        sort_order: p.sort_order ?? 0,
+    }));
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(rows, { header: PAGE_EXPORT_COLUMNS });
+    ws["!cols"] = [
+        { wch: 22 }, { wch: 45 }, { wch: 80 }, { wch: 120 }, { wch: 14 }, { wch: 12 },
+    ];
+    XLSX.utils.book_append_sheet(wb, ws, "CMS Pages");
+    XLSX.writeFile(wb, `cms-pages-${new Date().toISOString().slice(0, 10)}.xlsx`);
+}
+
+function parsePageExcel(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const wb = XLSX.read(e.target.result, { type: "array" });
+                const ws = wb.Sheets[wb.SheetNames[0]];
+                const jsonRows = XLSX.utils.sheet_to_json(ws, { defval: "" });
+                if (!jsonRows || jsonRows.length === 0) return resolve([]);
+                const mapped = jsonRows.map((row) => ({
+                    slug: String(row.slug || row.Slug || "").trim(),
+                    title: String(row.title || row.Title || "").trim(),
+                    excerpt: String(row.excerpt || row.Excerpt || "").trim(),
+                    content: String(row.content || row.Content || "").trim(),
+                    page_type: String(row.page_type || row["Page Type"] || "page").trim(),
+                    sort_order: parseInt(row.sort_order ?? row["Sort Order"] ?? 0, 10) || 0,
+                })).filter(r => r.slug && r.title);
+                resolve(mapped);
+            } catch (err) { reject(err); }
+        };
+        reader.onerror = () => reject(new Error("Failed to read file"));
+        reader.readAsArrayBuffer(file);
+    });
+}
 
 function getTypeBadgeClass(type) {
     switch (type) {
@@ -22,6 +68,9 @@ export default function Pages() {
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
     const [typeFilter, setTypeFilter] = useState("");
+    const [importing, setImporting] = useState(false);
+    const [importLog, setImportLog] = useState([]);
+    const importRef = useRef(null);
 
     const load = useCallback(async () => {
         if (!jwt) return;
@@ -53,15 +102,85 @@ export default function Pages() {
 
     useEffect(() => { load(); }, [load]);
 
+    async function handleImport(e) {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setImporting(true);
+        setImportLog([]);
+        try {
+            const rows = await parsePageExcel(file);
+            if (rows.length === 0) {
+                setImportLog([{ type: "warning", text: "No valid rows found. Ensure columns: slug, title" }]);
+                return;
+            }
+            const log = [];
+            for (const row of rows) {
+                try {
+                    const existing = await authApi.get("/cms-pages", {
+                        status: "draft",
+                        filters: { slug: { $eq: row.slug } },
+                        fields: ["documentId"],
+                        pagination: { pageSize: 1 },
+                    });
+                    const doc = existing.data?.[0];
+                    if (doc) {
+                        await authApi.put(`/cms-pages/${doc.documentId}`, { data: row });
+                        log.push({ type: "success", text: `Updated: ${row.slug}` });
+                    } else {
+                        await authApi.post("/cms-pages", { data: row });
+                        log.push({ type: "success", text: `Created: ${row.slug}` });
+                    }
+                } catch (err) {
+                    log.push({ type: "danger", text: `Failed: ${row.slug} – ${err.message || "Unknown error"}` });
+                }
+            }
+            setImportLog(log);
+            await load();
+        } catch (err) {
+            setImportLog([{ type: "danger", text: "Failed to parse file: " + (err.message || "Unknown error") }]);
+        } finally {
+            setImporting(false);
+            if (importRef.current) importRef.current.value = "";
+        }
+    }
+
     return (
         <ProtectedRoute>
             <Layout>
                 <div className="d-flex align-items-center justify-content-between mb-3">
                     <h2 className="mb-0">Pages</h2>
-                    <Link className="btn btn-primary btn-sm" href="/new/cms-page">
-                        <i className="fas fa-plus me-1"></i>New Page
-                    </Link>
+                    <div className="d-flex gap-2">
+                        <button
+                            className="btn btn-outline-success btn-sm"
+                            disabled={pages.length === 0}
+                            onClick={() => exportPagesToExcel(pages)}
+                        >
+                            <i className="fas fa-file-excel me-1"></i>Export Excel
+                        </button>
+                        <label className={`btn btn-outline-info btn-sm mb-0${importing ? " disabled" : ""}`}>
+                            <i className="fas fa-upload me-1"></i>{importing ? "Importing…" : "Import Excel"}
+                            <input
+                                ref={importRef}
+                                type="file"
+                                accept=".xlsx,.xls,.csv"
+                                className="d-none"
+                                disabled={importing}
+                                onChange={handleImport}
+                            />
+                        </label>
+                        <Link className="btn btn-primary btn-sm" href="/new/cms-page">
+                            <i className="fas fa-plus me-1"></i>New Page
+                        </Link>
+                    </div>
                 </div>
+
+                {importLog.length > 0 && (
+                    <div className="mb-3">
+                        {importLog.map((l, i) => (
+                            <div key={i} className={`alert alert-${l.type} py-1 px-2 mb-1 small`}>{l.text}</div>
+                        ))}
+                    </div>
+                )}
 
                 <div className="row g-2 mb-3">
                     <div className="col-md-4">

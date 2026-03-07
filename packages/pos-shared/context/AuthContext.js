@@ -1,7 +1,7 @@
 ﻿'use client'
 import { createContext, useContext, useState, useEffect, useMemo, useCallback } from "react";
 import { storage } from "../lib/storage";
-import { api, getAppName, refreshAccessToken } from "../lib/api";
+import { api, getAppName, refreshAccessToken, onSessionExpired } from "../lib/api";
 import axios from "axios";
 import { API_URL } from "../lib/api-url-resolver";
 
@@ -25,6 +25,7 @@ async function fetchPermissions(jwt) {
             appAccess: data?.appAccess || [],
             adminAppAccess: data?.adminAppAccess || [],
             permissions: data?.permissions || [],
+            sessionTimeout: data?.sessionTimeout || 60,
         };
     } catch (err) {
         console.error('Failed to fetch permissions', err);
@@ -45,7 +46,7 @@ async function fetchMe(jwt) {
 }
 
 /** Persist all auth fields to localStorage. */
-function persistAuth({ jwt, refreshToken, user, role, appAccess, adminAppAccess, permissions }) {
+function persistAuth({ jwt, refreshToken, user, role, appAccess, adminAppAccess, permissions, sessionTimeout }) {
     storage.setItem("jwt", jwt);
     if (refreshToken) storage.setItem("refreshToken", refreshToken);
     storage.setJSON("user", user);
@@ -53,11 +54,12 @@ function persistAuth({ jwt, refreshToken, user, role, appAccess, adminAppAccess,
     storage.setJSON("appAccess", appAccess);
     storage.setJSON("adminAppAccess", adminAppAccess);
     storage.setJSON("permissions", permissions);
+    if (sessionTimeout) storage.setItem("sessionTimeout", String(sessionTimeout));
 }
 
 /** Clear all auth fields from localStorage/sessionStorage. */
 function clearAuth() {
-    const AUTH_KEYS = ['jwt', 'refreshToken', 'user', 'role', 'appAccess', 'adminAppAccess', 'permissions'];
+    const AUTH_KEYS = ['jwt', 'refreshToken', 'user', 'role', 'appAccess', 'adminAppAccess', 'permissions', 'sessionTimeout'];
     // Clean both stores so stale tokens from before the remember-me
     // migration are removed regardless of which store is active.
     try {
@@ -78,15 +80,24 @@ export function AuthProvider({ children }) {
     const [currentAdminAppAccess, setAdminAppAccess] = useState([]);
     const [currentPermissions, setPermissions] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [sessionExpired, setSessionExpired] = useState(false);
+    const [currentSessionTimeout, setSessionTimeout] = useState(60);
+
+    // Subscribe to session-expired events fired by the API layer (authCall)
+    useEffect(() => {
+        return onSessionExpired(() => setSessionExpired(true));
+    }, []);
 
     /** Apply auth data to React state. */
-    const applyAuth = useCallback(({ jwt, user, role, appAccess, adminAppAccess, permissions }) => {
+    const applyAuth = useCallback(({ jwt, user, role, appAccess, adminAppAccess, permissions, sessionTimeout }) => {
         setCurrentUser(user);
         setJwt(jwt);
         setRole(role);
         setAppAccess(appAccess);
         setAdminAppAccess(adminAppAccess);
         setPermissions(permissions);
+        if (sessionTimeout) setSessionTimeout(sessionTimeout);
+        setSessionExpired(false);
     }, []);
 
     /** Reset all React auth state. */
@@ -117,6 +128,7 @@ export function AuthProvider({ children }) {
             setAppAccess(storage.getJSON("appAccess") || []);
             setAdminAppAccess(storage.getJSON("adminAppAccess") || []);
             setPermissions(storage.getJSON("permissions") || []);
+            setSessionTimeout(parseInt(storage.getItem("sessionTimeout"), 10) || 60);
 
             // Revalidate: check if the JWT is still valid
             let validJwt = jwt;
@@ -132,9 +144,12 @@ export function AuthProvider({ children }) {
             }
 
             if (!freshUser) {
-                // Both JWT and refresh token are invalid — clear session
+                // Both JWT and refresh token are invalid.
+                // Clear storage tokens but keep stale user in React state
+                // so the page stays visible and a re-login dialog can appear.
                 clearAuth();
-                resetState();
+                setJwt(null);
+                setSessionExpired(true);
                 setLoading(false);
                 return;
             }
@@ -148,6 +163,7 @@ export function AuthProvider({ children }) {
                 appAccess: me?.appAccess || [],
                 adminAppAccess: me?.adminAppAccess || [],
                 permissions: me?.permissions || [],
+                sessionTimeout: me?.sessionTimeout || 60,
             };
 
             persistAuth(authData);
@@ -178,6 +194,7 @@ export function AuthProvider({ children }) {
             appAccess: me?.appAccess || [],
             adminAppAccess: me?.adminAppAccess || [],
             permissions: me?.permissions || [],
+            sessionTimeout: me?.sessionTimeout || 60,
         };
 
         persistAuth(authData);
@@ -203,6 +220,7 @@ export function AuthProvider({ children }) {
             appAccess: me?.appAccess || [],
             adminAppAccess: me?.adminAppAccess || [],
             permissions: me?.permissions || [],
+            sessionTimeout: me?.sessionTimeout || 60,
         };
 
         persistAuth(authData);
@@ -236,10 +254,12 @@ export function AuthProvider({ children }) {
         adminAppAccess: currentAdminAppAccess,
         permissions: currentPermissions,
         loading,
+        sessionExpired,
+        sessionTimeout: currentSessionTimeout,
         login,
         loginWithToken,
         logout
-    }), [currentUser, currentJwt, currentRole, currentAppAccess, currentAdminAppAccess, currentPermissions, loading, login, loginWithToken, logout]);
+    }), [currentUser, currentJwt, currentRole, currentAppAccess, currentAdminAppAccess, currentPermissions, loading, sessionExpired, currentSessionTimeout, login, loginWithToken, logout]);
 
     return (
         <AuthContext.Provider value={contextValue}>

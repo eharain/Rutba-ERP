@@ -106,13 +106,17 @@ async function syncPermissionsToRole(knex, roleId, roleName, requiredActions, st
 }
 
 // ── bootstrap ───────────────────────────────────────────────
+const rutbaCmsSeed = require("../database/migrations/20260306-rutba-cms-seed");
 
 module.exports = {
     register(/*{ strapi }*/) { },
 
     async bootstrap({ strapi }) {
+        if (process.env.RUTBA_CMS_SEED === 'true') {
+            await rutbaCmsSeed.up({ strapi });
+        }
+        
         const knex = strapi.db.connection;
-
         // ─── a.1  Ensure the "Rutba App User" role ────────────────
         const ROLE_NAME = 'Rutba App User';
         const ROLE_TYPE = 'rutba_app_user';

@@ -62,6 +62,19 @@ function authHeaders(jwt) {
     return headers;
 }
 
+// -- Session Expired Event --
+const _sessionExpiredListeners = new Set();
+
+/** Register a listener called when a 401 cannot be recovered by token refresh. */
+export function onSessionExpired(listener) {
+    _sessionExpiredListeners.add(listener);
+    return () => _sessionExpiredListeners.delete(listener);
+}
+
+function emitSessionExpired() {
+    _sessionExpiredListeners.forEach(fn => { try { fn(); } catch (_) {} });
+}
+
 // -- Token Refresh --
 let _refreshPromise = null;
 
@@ -268,7 +281,10 @@ async function authCall(fn, ...args) {
     } catch (err) {
         if (err?.response?.status !== 401) throw err;
         const newJwt = await refreshAccessToken();
-        if (!newJwt) throw err;
+        if (!newJwt) {
+            emitSessionExpired();
+            throw err;
+        }
         return await fn(...args, newJwt);
     }
 }
