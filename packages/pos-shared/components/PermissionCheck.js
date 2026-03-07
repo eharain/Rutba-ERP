@@ -20,7 +20,10 @@ import dynamic from 'next/dynamic';
  */
 export function PermissionCheck({ required, has, showIf, adminOnly, appKey, children }) {
 
-    const { permissions, appAccess, adminAppAccess } = useAuth();
+    const { permissions, appAccess, adminAppAccess, loading } = useAuth();
+
+    // ── wait for auth context to finish loading ─────────────
+    if (loading) return null;
 
     // ── admin helpers ───────────────────────────────────────
     const effectiveAppKey = appKey || getAppName();
@@ -46,6 +49,9 @@ export function PermissionCheck({ required, has, showIf, adminOnly, appKey, chil
         // If no other checks, just render children
         if (!required && !has) return children;
     }
+
+    // ── admin bypass — app admins skip granular permission checks
+    if (userIsAdmin) return children;
 
     // ── permission checks ───────────────────────────────────
     function findMissing(requiredString) {

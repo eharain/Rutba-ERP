@@ -63,6 +63,11 @@
       "target": "api::crm-contact.crm-contact",
       "inversedBy": "leads"
     },
+    "customer": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::customer.customer"
+    },
     "owners": {
       "type": "relation",
       "relation": "manyToMany",

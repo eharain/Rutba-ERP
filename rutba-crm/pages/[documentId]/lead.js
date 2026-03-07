@@ -5,6 +5,7 @@ import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { authApi } from "@rutba/pos-shared/lib/api";
 import Link from "next/link";
+import LeadForm from "../../components/form/LeadForm";
 
 export default function LeadDetail() {
     const router = useRouter();
@@ -12,13 +13,19 @@ export default function LeadDetail() {
     const { jwt } = useAuth();
     const [lead, setLead] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [editing, setEditing] = useState(false);
 
-    useEffect(() => {
+    const loadLead = () => {
         if (!jwt || !documentId) return;
+        setLoading(true);
         authApi.get(`/crm-leads/${documentId}?populate=*`, {}, jwt)
             .then((res) => setLead(res.data || res))
             .catch((err) => console.error("Failed to load lead", err))
             .finally(() => setLoading(false));
+    };
+
+    useEffect(() => {
+        loadLead();
     }, [jwt, documentId]);
 
     return (
@@ -29,6 +36,11 @@ export default function LeadDetail() {
                         <i className="fas fa-arrow-left"></i> Back
                     </Link>
                     <h2 className="mb-0">Lead Details</h2>
+                    {!loading && lead && !editing && (
+                        <button className="btn btn-sm btn-outline-primary ms-auto" onClick={() => setEditing(true)}>
+                            <i className="fas fa-edit me-1"></i>Edit
+                        </button>
+                    )}
                 </div>
 
                 {loading && <p>Loading...</p>}
@@ -38,6 +50,24 @@ export default function LeadDetail() {
                 )}
 
                 {!loading && lead && (
+                    editing ? (
+                        <div className="card">
+                            <div className="card-header d-flex justify-content-between align-items-center">
+                                <strong>Edit Lead</strong>
+                                <button className="btn-close" onClick={() => setEditing(false)}></button>
+                            </div>
+                            <div className="card-body">
+                                <LeadForm
+                                    lead={lead}
+                                    onSaved={(updated) => {
+                                        setEditing(false);
+                                        loadLead();
+                                    }}
+                                    onCancel={() => setEditing(false)}
+                                />
+                            </div>
+                        </div>
+                    ) : (
                     <div className="row">
                         <div className="col-md-8">
                             <div className="card">
@@ -60,7 +90,20 @@ export default function LeadDetail() {
                                 </div>
                             </div>
                         </div>
+                        {lead.customer && (
+                            <div className="col-md-4">
+                                <div className="card">
+                                    <div className="card-header"><strong>Linked Customer</strong></div>
+                                    <div className="card-body">
+                                        <p><strong>Name:</strong> {lead.customer.name || "—"}</p>
+                                        <p><strong>Email:</strong> {lead.customer.email || "—"}</p>
+                                        <p><strong>Phone:</strong> {lead.customer.phone || "—"}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
+                    )
                 )}
             </Layout>
         </ProtectedRoute>
