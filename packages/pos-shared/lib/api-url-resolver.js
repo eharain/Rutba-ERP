@@ -7,7 +7,7 @@
 // INTERNAL GLOBAL STATE
 // ================================
 
-let API_URL_INTERNAL =  process.env.NEXT_PUBLIC_API_URL || "http://localhost:4010/api";
+let API_URL_INTERNAL =  (process.env.NEXT_PUBLIC_API_URL || "http://localhost:4010/api").replace(/\/+$/, '');
 
 let IMAGE_URL_INTERNAL =
   API_URL_INTERNAL.replace(/\/api$/, '');
@@ -45,8 +45,8 @@ export async function initApiConfig(options = {}) {
     const resolved = await resolveApiUrl(API_URL_INTERNAL, options);
 
     if (resolved) {
-      API_URL_INTERNAL = resolved;
-      IMAGE_URL_INTERNAL = resolved.replace(/\/api$/, '');
+      API_URL_INTERNAL = resolved.replace(/\/+$/, '');
+      IMAGE_URL_INTERNAL = API_URL_INTERNAL.replace(/\/api$/, '');
 
       API_URL = API_URL_INTERNAL;
       IMAGE_URL = IMAGE_URL_INTERNAL;

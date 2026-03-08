@@ -670,6 +670,7 @@ export interface ApiBranchBranch extends Struct.CollectionTypeSchema {
       'images' | 'files' | 'videos' | 'audios',
       true
     >;
+    instagram: Schema.Attribute.String;
     items: Schema.Attribute.Relation<'oneToMany', 'api::stock-item.stock-item'>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
@@ -694,12 +695,15 @@ export interface ApiBranchBranch extends Struct.CollectionTypeSchema {
     >;
     sales: Schema.Attribute.Relation<'manyToMany', 'api::sale.sale'>;
     tax_rate: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    tiktok: Schema.Attribute.String;
     town: Schema.Attribute.String;
+    twitter: Schema.Attribute.String;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     watsapp: Schema.Attribute.String;
     web: Schema.Attribute.String;
+    youtube: Schema.Attribute.String;
   };
 }
 
@@ -807,7 +811,7 @@ export interface ApiCashRegisterTransactionCashRegisterTransaction
     publishedAt: Schema.Attribute.DateTime;
     transaction_date: Schema.Attribute.DateTime & Schema.Attribute.Required;
     type: Schema.Attribute.Enumeration<
-      ['CashDrop', 'Expense', 'Adjustment', 'Refund']
+      ['CashDrop', 'CashTopUp', 'Expense', 'Adjustment', 'Refund']
     > &
       Schema.Attribute.Required;
     updatedAt: Schema.Attribute.DateTime;

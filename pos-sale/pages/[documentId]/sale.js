@@ -12,6 +12,7 @@ import CheckoutModal from '../../components/CheckoutModal';
 import ExchangeReturnSection from '../../components/ExchangeReturnSection';
 import CashRegisterGuard, { useCashRegister } from '../../components/CashRegisterGuard';
 import AddLeadModal from '../../components/AddLeadModal';
+import CashDrawTopUpModal from '../../components/CashDrawTopUpModal';
 
 import { useUtil } from '@rutba/pos-shared/context/UtilContext';
 
@@ -33,6 +34,7 @@ export default function SalePage() {
     const [showCheckout, setShowCheckout] = useState(false);
     const [notesSaving, setNotesSaving] = useState(false);
     const [showLeadModal, setShowLeadModal] = useState(false);
+    const [showCashDrawModal, setShowCashDrawModal] = useState(false);
 
     /* ===============================
        Load existing sale
@@ -241,6 +243,13 @@ export default function SalePage() {
                                     <i className="fas fa-bullhorn me-1"></i>Lead
                                 </button>
                             )}
+                            <button
+                                className="btn btn-sm btn-outline-warning ms-2"
+                                title="Cash Draw / Top-Up"
+                                onClick={() => setShowCashDrawModal(true)}
+                            >
+                                <i className="fas fa-coins"></i>
+                            </button>
                         </div>
 
                         {/* ── Add Items ── */}
@@ -377,6 +386,13 @@ export default function SalePage() {
                             isOpen={showLeadModal}
                             onClose={() => setShowLeadModal(false)}
                             customer={saleModel.customer}
+                        />
+
+                        {/* ── Cash Draw / Top-Up Modal ── */}
+                        <CashDrawTopUpModal
+                            isOpen={showCashDrawModal}
+                            onClose={() => setShowCashDrawModal(false)}
+                            saleRegister={saleModel.cashRegister}
                         />
                     </div>
                     </CashRegisterGuard>

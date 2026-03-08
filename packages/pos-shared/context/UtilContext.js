@@ -21,7 +21,8 @@ export function UtilProvider({ children }) {
         fontSize: 11,                // base font size in px
         showTax: true,               // whether to show tax row
         showBranch: true,            // whether to show branch information
-        branchFields: ['name', 'companyName', 'web'] // which branch fields to show
+        branchFields: ['name', 'companyName', 'web'], // which branch fields to show
+        socialFields: [] // which social/contact fields to show on receipts
     });
 
     function getLabelSize() {
@@ -46,7 +47,8 @@ export function UtilProvider({ children }) {
                 fontSize: 11,
                 showTax: true,
                 showBranch: true,
-                branchFields: ['name', 'companyName', 'web']
+                branchFields: ['name', 'companyName', 'web'],
+                socialFields: []
             });
         } catch (err) {
             console.error('UtilProvider: failed to load from storage', err);
