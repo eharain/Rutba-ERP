@@ -14,7 +14,8 @@ const SaleInvoicePrint = ({ sale, items, totals, onClose  }) => {
         showTax: true,
         showCustomer: true,
         showBranch: true,
-        branchFields: ['name', 'companyName', 'web']
+        branchFields: ['name', 'companyName', 'web'],
+        socialFields: []
     });
 
     useEffect(() => {
@@ -39,6 +40,12 @@ const SaleInvoicePrint = ({ sale, items, totals, onClose  }) => {
         const next = new Set(localSettings.branchFields || []);
         if (next.has(field)) next.delete(field); else next.add(field);
         setLocalSettings({ ...localSettings, branchFields: Array.from(next) });
+    }
+
+    function toggleSocialField(field) {
+        const next = new Set(localSettings.socialFields || []);
+        if (next.has(field)) next.delete(field); else next.add(field);
+        setLocalSettings({ ...localSettings, socialFields: Array.from(next) });
     }
 
     const [showControls, setShowControls] = useState(false);
@@ -190,6 +197,38 @@ const SaleInvoicePrint = ({ sale, items, totals, onClose  }) => {
                     <div className="form-check text-white">
                         <input className="form-check-input" type="checkbox" id="bf-web" checked={(localSettings.branchFields || []).includes('web')} onChange={() => toggleBranchField('web')} />
                         <label className="form-check-label small" htmlFor="bf-web">Website</label>
+                    </div>
+                </div>
+
+                <div className="w-100 mt-2" style={{ maxHeight: '180px', overflowY: 'auto' }}>
+                    <div className="small text-white mb-1">Social / Contact on Receipt</div>
+                    <div className="form-check text-white">
+                        <input className="form-check-input" type="checkbox" id="sf-email" checked={(localSettings.socialFields || []).includes('email')} onChange={() => toggleSocialField('email')} />
+                        <label className="form-check-label small" htmlFor="sf-email">Email</label>
+                    </div>
+                    <div className="form-check text-white">
+                        <input className="form-check-input" type="checkbox" id="sf-phone" checked={(localSettings.socialFields || []).includes('phone')} onChange={() => toggleSocialField('phone')} />
+                        <label className="form-check-label small" htmlFor="sf-phone">Phone</label>
+                    </div>
+                    <div className="form-check text-white">
+                        <input className="form-check-input" type="checkbox" id="sf-watsapp" checked={(localSettings.socialFields || []).includes('watsapp')} onChange={() => toggleSocialField('watsapp')} />
+                        <label className="form-check-label small" htmlFor="sf-watsapp">WhatsApp</label>
+                    </div>
+                    <div className="form-check text-white">
+                        <input className="form-check-input" type="checkbox" id="sf-youtube" checked={(localSettings.socialFields || []).includes('youtube')} onChange={() => toggleSocialField('youtube')} />
+                        <label className="form-check-label small" htmlFor="sf-youtube">YouTube</label>
+                    </div>
+                    <div className="form-check text-white">
+                        <input className="form-check-input" type="checkbox" id="sf-tiktok" checked={(localSettings.socialFields || []).includes('tiktok')} onChange={() => toggleSocialField('tiktok')} />
+                        <label className="form-check-label small" htmlFor="sf-tiktok">TikTok</label>
+                    </div>
+                    <div className="form-check text-white">
+                        <input className="form-check-input" type="checkbox" id="sf-instagram" checked={(localSettings.socialFields || []).includes('instagram')} onChange={() => toggleSocialField('instagram')} />
+                        <label className="form-check-label small" htmlFor="sf-instagram">Instagram</label>
+                    </div>
+                    <div className="form-check text-white">
+                        <input className="form-check-input" type="checkbox" id="sf-twitter" checked={(localSettings.socialFields || []).includes('twitter')} onChange={() => toggleSocialField('twitter')} />
+                        <label className="form-check-label small" htmlFor="sf-twitter">Twitter / X</label>
                     </div>
                 </div>
 

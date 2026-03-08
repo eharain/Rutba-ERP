@@ -76,11 +76,12 @@ export default function CashRegisterPage() {
 
     /* ── Transaction totals ──────────────────────────────── */
     const txnTotals = useMemo(() => {
-        const t = { cashDrops: 0, expenses: 0, refunds: 0, adjustments: 0 };
+        const t = { cashDrops: 0, topups: 0, expenses: 0, refunds: 0, adjustments: 0 };
         for (const tx of registerTransactions) {
             const amt = Number(tx.amount || 0);
             switch (tx.type) {
                 case "CashDrop": t.cashDrops += amt; break;
+                case "CashTopUp": t.topups += amt; break;
                 case "Expense": t.expenses += amt; break;
                 case "Refund": t.refunds += amt; break;
                 case "Adjustment": t.adjustments += amt; break;
@@ -96,6 +97,7 @@ export default function CashRegisterPage() {
             - txnTotals.refunds
             - txnTotals.expenses
             - txnTotals.cashDrops
+            + txnTotals.topups
             + txnTotals.adjustments,
         [openingCashValue, paymentSummary.cashNet, txnTotals]
     );
@@ -386,6 +388,14 @@ export default function CashRegisterPage() {
                                     </div>
                                 </div>
                                 <div className="col-6 col-lg-2">
+                                    <div className="card text-center h-100">
+                                        <div className="card-body py-2">
+                                            <div className="text-muted small">Top-Ups</div>
+                                            <div className="fw-bold text-info">{fmt(txnTotals.topups)}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="col-6 col-lg-2">
                                     <div className="card text-center h-100 border-primary">
                                         <div className="card-body py-2">
                                             <div className="text-muted small">Expected Cash</div>
@@ -456,6 +466,7 @@ export default function CashRegisterPage() {
                                                     <div className="col">
                                                         <select className="form-select form-select-sm" value={txnType} onChange={(e) => setTxnType(e.target.value)}>
                                                             <option value="CashDrop">Cash Drop</option>
+                                                            <option value="CashTopUp">Cash Top-Up</option>
                                                             <option value="Expense">Expense</option>
                                                             <option value="Refund">Refund</option>
                                                             <option value="Adjustment">Adjustment</option>
@@ -484,7 +495,7 @@ export default function CashRegisterPage() {
                                                             {registerTransactions.map((tx) => (
                                                                 <tr key={tx.documentId ?? tx.id}>
                                                                     <td className="small">{new Date(tx.transaction_date).toLocaleTimeString()}</td>
-                                                                    <td><span className={`badge ${tx.type === 'Adjustment' ? 'bg-info' : 'bg-secondary'}`}>{tx.type}</span></td>
+                                                                    <td><span className={`badge ${tx.type === 'CashTopUp' ? 'bg-success' : tx.type === 'Adjustment' ? 'bg-info' : 'bg-secondary'}`}>{tx.type === 'CashTopUp' ? 'Top-Up' : tx.type}</span></td>
                                                                     <td className="text-end">{fmt(tx.amount)}</td>
                                                                     <td className="small text-muted">{tx.description || ''}</td>
                                                                 </tr>

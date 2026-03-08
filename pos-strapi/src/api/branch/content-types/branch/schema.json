@@ -107,6 +107,18 @@
         "audios"
       ]
     },
+    "youtube": {
+      "type": "string"
+    },
+    "tiktok": {
+      "type": "string"
+    },
+    "instagram": {
+      "type": "string"
+    },
+    "twitter": {
+      "type": "string"
+    },
     "currency": {
       "type": "relation",
       "target": "api::currency.currency",

@@ -36,6 +36,9 @@ export default class SaleModel {
 
         // Exchange return: items returned from a previous sale applied as credit
         this.exchangeReturn = null; // { sale, returnItems: [...] }
+
+        // Cash register this sale was recorded against (populated from API)
+        this.cashRegister = null;
     }
 
     /* ===============================
@@ -44,6 +47,11 @@ export default class SaleModel {
 
     static fromApi(sale) {
         const model = new SaleModel(sale);
+
+        // Preserve the cash register relation from the API
+        if (sale.cash_register) {
+            model.cashRegister = sale.cash_register;
+        }
 
         // Hydrate exchange return from API data if present
         if (sale._exchangeReturns?.length > 0) {

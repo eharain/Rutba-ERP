@@ -17,6 +17,7 @@ const SaleReturnReceipt = ({ saleReturn, onClose }) => {
     const fontSize = invoicePrintSettings?.fontSize || 11;
     const showBranch = invoicePrintSettings?.showBranch ?? true;
     const branchFields = invoicePrintSettings?.branchFields ?? ['name', 'companyName', 'web'];
+    const socialFields = invoicePrintSettings?.socialFields ?? [];
 
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -145,6 +146,18 @@ const SaleReturnReceipt = ({ saleReturn, onClose }) => {
                     <div className="small">{returnNo}</div>
                     <div className="small mt-2 text-muted">Thank you</div>
                 </div>
+
+                {socialFields.length > 0 && branch && (
+                    <div className="social-links mt-1" style={{ fontSize: `${fontSize - 1}px`, lineHeight: 1.4, borderTop: '1px dashed #555', paddingTop: '4px' }}>
+                        {socialFields.includes('email') && branch.email && <div>✉ {branch.email}</div>}
+                        {socialFields.includes('phone') && branch.phone && <div>☎ {branch.phone}</div>}
+                        {socialFields.includes('watsapp') && branch.watsapp && <div>💬 {branch.watsapp}</div>}
+                        {socialFields.includes('youtube') && branch.youtube && <div>▶ {branch.youtube}</div>}
+                        {socialFields.includes('tiktok') && branch.tiktok && <div>♪ {branch.tiktok}</div>}
+                        {socialFields.includes('instagram') && branch.instagram && <div>📷 {branch.instagram}</div>}
+                        {socialFields.includes('twitter') && branch.twitter && <div>𝕏 {branch.twitter}</div>}
+                    </div>
+                )}
             </div>
         </div>
     );

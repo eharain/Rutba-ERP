@@ -16,6 +16,7 @@
       "type": "enumeration",
       "enum": [
         "CashDrop",
+        "CashTopUp",
         "Expense",
         "Adjustment",
         "Refund"

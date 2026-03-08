@@ -48,6 +48,7 @@ export async function fetchSaleByIdOrInvoice(id) {
         populate: {
             payments: true,
             customer: true,
+            cash_register: { fields: ['id', 'documentId', 'desk_id', 'desk_name', 'branch_name', 'opened_by', 'opened_at', 'status'] },
             items: { populate: { product: true, items: { populate: ['product'] } } },
             sale_returns: { populate: { items: { populate: ['product'] } } },
             exchange_return: { populate: { items: { populate: ['product'] }, sale: true } }
