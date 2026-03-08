@@ -112,6 +112,20 @@ log_warn() { local m="$(date '+%Y-%m-%d %H:%M:%S') : ⚠ $1";    echo -e "${YELL
 log_err()  { local m="$(date '+%Y-%m-%d %H:%M:%S') : ❌ $1";    echo -e "${RED}${m}${NC}";    echo "$m" >> "$LOG_FILE" 2>/dev/null || true; }
 abort()    { log_err "$1"; exit 1; }
 
+# Extract a human-readable date from a build directory name.
+# build_20250115_143022_main → "2025-01-15 14:30:22"
+format_build_date() {
+    local name
+    name=$(basename "$1")
+    local ts
+    ts=$(echo "$name" | sed -n 's/^build_\([0-9]\{8\}_[0-9]\{6\}\)_.*/\1/p')
+    if [ -n "$ts" ]; then
+        echo "${ts:0:4}-${ts:4:2}-${ts:6:2} ${ts:9:2}:${ts:11:2}:${ts:13:2}"
+    else
+        stat -c '%y' "$1" 2>/dev/null | cut -d'.' -f1 || echo "unknown"
+    fi
+}
+
 # Resolve the directory the ACTIVE_LINK symlink currently points to.
 # Returns empty string if no active build yet.
 get_active_build_dir() {
@@ -559,24 +573,42 @@ for b in "${ALL_BUILDS[@]}"; do
     KEEP=$((KEEP + 1))
     if [ "$KEEP" -gt "$MAX_BUILDS" ] && [ "$b" != "$BUILD_DIR" ]; then
         rm -rf "$b"
-        log "  Removed $(basename "$b")"
+        log "  Removed $(basename "$b") ($(format_build_date "$b"))"
     fi
 done
+
+# Re-read remaining builds for the summary
+mapfile -t REMAINING_BUILDS < <(
+    find "$BUILDS_DIR" -maxdepth 1 -type d -name "build_*" | sort -r
+)
 
 ###########################################
 # DONE
 ###########################################
 
+DEPLOY_DATE=$(format_build_date "$BUILD_DIR")
+
 echo ""
 echo "============================================"
 echo -e "  ${GREEN}✅ Deployment Complete!${NC}"
 echo "============================================"
+echo "  Date:    ${DEPLOY_DATE}"
 echo "  Branch:  ${BRANCH}"
 echo "  Commit:  ${COMMIT_HASH}"
-echo "  Build:   ${BUILD_DIR}"
+echo "  Build:   $(basename "$BUILD_DIR")"
 echo "  Active:  ${ACTIVE_LINK} → ${BUILD_DIR}"
 echo "  Env:     ${BUILDS_DIR}/.env*"
 echo "============================================"
+echo ""
+echo "  Available builds:"
+for b in "${REMAINING_BUILDS[@]}"; do
+    local_date=$(format_build_date "$b")
+    local_marker=""
+    if [ "$b" = "$BUILD_DIR" ]; then
+        local_marker=" ${GREEN}← active${NC}"
+    fi
+    echo -e "    $(basename "$b")  ${CYAN}${local_date}${NC}${local_marker}"
+done
 echo ""
 echo "  View logs:"
 echo "    sudo journalctl -fu rutba_pos_strapi"
