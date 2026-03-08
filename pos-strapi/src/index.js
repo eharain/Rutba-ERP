@@ -106,13 +106,13 @@ async function syncPermissionsToRole(knex, roleId, roleName, requiredActions, st
 }
 
 // ── bootstrap ───────────────────────────────────────────────
-const rutbaCmsSeed = require("../database/migrations/20260306-rutba-cms-seed");
 
 module.exports = {
     register(/*{ strapi }*/) { },
 
     async bootstrap({ strapi }) {
         if (process.env.RUTBA_CMS_SEED === 'true') {
+            const rutbaCmsSeed = require("../database/migrations/20260306-rutba-cms-seed");
             await rutbaCmsSeed.up({ strapi });
         }
         
