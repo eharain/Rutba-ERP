@@ -93,6 +93,34 @@ log_warn() { local m="$(date '+%Y-%m-%d %H:%M:%S') : ⚠ $1";    echo -e "${YELL
 log_err()  { local m="$(date '+%Y-%m-%d %H:%M:%S') : ❌ $1";    echo -e "${RED}${m}${NC}";    echo "$m" >> "$LOG_FILE" 2>/dev/null || true; }
 abort()    { log_err "$1"; exit 1; }
 
+# Extract a human-readable date from a build directory name.
+# build_20250115_143022_main → "2025-01-15 14:30:22"
+format_build_date() {
+    local name
+    name=$(basename "$1")
+    local ts
+    ts=$(echo "$name" | sed -n 's/^build_\([0-9]\{8\}_[0-9]\{6\}\)_.*/\1/p')
+    if [ -n "$ts" ]; then
+        echo "${ts:0:4}-${ts:4:2}-${ts:6:2} ${ts:9:2}:${ts:11:2}:${ts:13:2}"
+    else
+        stat -c '%y' "$1" 2>/dev/null | cut -d'.' -f1 || echo "unknown"
+    fi
+}
+
+# Extract a human-readable date from a DB dump filename.
+# rutba_erp_20250115_143022.sql → "2025-01-15 14:30:22"
+format_dump_date() {
+    local name
+    name=$(basename "$1" .sql)
+    # The timestamp is the last 15 chars: YYYYMMDD_HHMMSS
+    local ts="${name: -15}"
+    if [[ "$ts" =~ ^[0-9]{8}_[0-9]{6}$ ]]; then
+        echo "${ts:0:4}-${ts:4:2}-${ts:6:2} ${ts:9:2}:${ts:11:2}:${ts:13:2}"
+    else
+        stat -c '%y' "$1" 2>/dev/null | cut -d'.' -f1 || echo "unknown"
+    fi
+}
+
 get_active_build_dir() {
     if [ -L "$ACTIVE_LINK" ]; then
         readlink -f "$ACTIVE_LINK"
@@ -281,6 +309,7 @@ echo "============================================"
 if [ -n "$CURRENT_ACTIVE" ]; then
     echo ""
     echo -e "  Currently active: ${CYAN}$(basename "$CURRENT_ACTIVE")${NC}"
+    echo -e "  Deployed on:      ${CYAN}$(format_build_date "$CURRENT_ACTIVE")${NC}"
 fi
 
 ###########################################
@@ -302,6 +331,7 @@ echo ""
 for i in "${!AVAILABLE_BUILDS[@]}"; do
     build_dir="${AVAILABLE_BUILDS[$i]}"
     build_name=$(basename "$build_dir")
+    build_date=$(format_build_date "$build_dir")
 
     marker=""
     if [ "$build_dir" = "$CURRENT_ACTIVE" ]; then
@@ -315,7 +345,7 @@ for i in "${!AVAILABLE_BUILDS[@]}"; do
 
     dir_size=$(du -sh "$build_dir" 2>/dev/null | cut -f1)
 
-    echo -e "    ${CYAN}$((i + 1)))${NC} ${build_name}  [${dir_size}]  ${commit_info}${marker}"
+    echo -e "    ${CYAN}$((i + 1)))${NC} ${build_name}  ${CYAN}${build_date}${NC}  [${dir_size}]  ${commit_info}${marker}"
 done
 
 echo ""
@@ -351,8 +381,9 @@ if [ ${#AVAILABLE_DUMPS[@]} -gt 0 ]; then
 
     for i in "${!AVAILABLE_DUMPS[@]}"; do
         dump_name=$(basename "${AVAILABLE_DUMPS[$i]}")
+        dump_date=$(format_dump_date "${AVAILABLE_DUMPS[$i]}")
         dump_size=$(du -sh "${AVAILABLE_DUMPS[$i]}" 2>/dev/null | cut -f1)
-        echo -e "    ${CYAN}$((i + 1)))${NC} ${dump_name}  [${dump_size}]"
+        echo -e "    ${CYAN}$((i + 1)))${NC} ${dump_name}  ${CYAN}${dump_date}${NC}  [${dump_size}]"
     done
 
     echo -e "    ${CYAN}0)${NC} Skip database restore"
@@ -377,10 +408,14 @@ echo ""
 echo "============================================"
 echo "  Rollback Summary"
 echo "============================================"
-echo "  From:     $(basename "${CURRENT_ACTIVE:-<none>}")"
-echo "  To:       $(basename "$SELECTED_BUILD")"
+if [ -n "$CURRENT_ACTIVE" ]; then
+    echo "  From:     $(basename "${CURRENT_ACTIVE}")  ($(format_build_date "$CURRENT_ACTIVE"))"
+else
+    echo "  From:     <none>"
+fi
+echo "  To:       $(basename "$SELECTED_BUILD")  ($(format_build_date "$SELECTED_BUILD"))"
 if [ "$RESTORE_DB" = true ]; then
-    echo "  DB Dump:  $(basename "$SELECTED_DUMP")"
+    echo "  DB Dump:  $(basename "$SELECTED_DUMP")  ($(format_dump_date "$SELECTED_DUMP"))"
 else
     echo "  DB Dump:  (skip)"
 fi
@@ -425,8 +460,9 @@ echo "============================================"
 echo -e "  ${GREEN}✅ Rollback Complete!${NC}"
 echo "============================================"
 echo "  Now running: $(basename "$SELECTED_BUILD")"
+echo "  Build date:  $(format_build_date "$SELECTED_BUILD")"
 if [ "$RESTORE_DB" = true ]; then
-    echo "  DB restored: $(basename "$SELECTED_DUMP")"
+    echo "  DB restored: $(basename "$SELECTED_DUMP")  ($(format_dump_date "$SELECTED_DUMP"))"
 fi
 echo "============================================"
 echo ""
