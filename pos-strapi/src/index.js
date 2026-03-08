@@ -111,11 +111,6 @@ module.exports = {
     register(/*{ strapi }*/) { },
 
     async bootstrap({ strapi }) {
-        if (process.env.RUTBA_CMS_SEED === 'true') {
-            const rutbaCmsSeed = require("../database/migrations/20260306-rutba-cms-seed");
-            await rutbaCmsSeed.up({ strapi });
-        }
-        
         const knex = strapi.db.connection;
         // ─── a.1  Ensure the "Rutba App User" role ────────────────
         const ROLE_NAME = 'Rutba App User';
