@@ -470,12 +470,34 @@ done
 # INSTALL DEPENDENCIES
 ###########################################
 
+# Use a persistent npm cache under BUILDS_DIR so tarballs survive
+# across deploys.  Combined with --prefer-offline, npm will skip
+# network fetches for anything already cached.
+NPM_CACHE_DIR="${BUILDS_DIR}/.npm_cache"
+mkdir -p "$NPM_CACHE_DIR"
+
+# Copy node_modules from the previous active build so npm install
+# only needs to reconcile the diff instead of extracting everything
+# from scratch.  This is the single biggest time-saver.
+if [ -n "$CURRENT_ACTIVE" ] && [ -d "$CURRENT_ACTIVE" ]; then
+    if [ -d "$CURRENT_ACTIVE/node_modules" ]; then
+        log "Copying node_modules from previous build (monorepo root)..."
+        cp -a "$CURRENT_ACTIVE/node_modules" "$BUILD_DIR/node_modules"
+        log_ok "Copied root node_modules."
+    fi
+    if [ -d "$CURRENT_ACTIVE/pos-strapi/node_modules" ]; then
+        log "Copying node_modules from previous build (pos-strapi)..."
+        cp -a "$CURRENT_ACTIVE/pos-strapi/node_modules" "$BUILD_DIR/pos-strapi/node_modules"
+        log_ok "Copied pos-strapi node_modules."
+    fi
+fi
+
 log "Installing monorepo dependencies (npm install)..."
-npm install --production=false
+npm install --production=false --prefer-offline --cache "$NPM_CACHE_DIR"
 
 log "Installing pos-strapi dependencies..."
 cd "$BUILD_DIR/pos-strapi"
-npm install --production=false
+npm install --production=false --prefer-offline --cache "$NPM_CACHE_DIR"
 cd "$BUILD_DIR"
 
 ###########################################
