@@ -24,6 +24,7 @@ package-lock.json
 !.env.example
 /.github/copilot-instructions.md
 /ssh-history.txt
+/pos-strapi/database/migrations/20260306-rutba-cms-seed.js
 /pos-strapi/scripts/generate-cms-seed-excel.js
 /pos-strapi/scripts/rutba-cms-seed-data.xlsx
 /pos-strapi/scripts/~$rutba-cms-seed-data.xlsx
