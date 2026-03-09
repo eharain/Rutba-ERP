@@ -103,6 +103,7 @@ export default function CashRegisterPage() {
     );
     const closingCashValue = useMemo(() => Number(closingCash || 0), [closingCash]);
     const difference = useMemo(() => closingCashValue - expectedCash, [expectedCash, closingCashValue]);
+    const isExpired = activeRegister?.status === 'Expired';
     const warningHours = useMemo(() => {
         const hrs = hoursOpen(activeRegister);
         return hrs >= 18 ? Math.round(hrs) : null;
@@ -122,9 +123,8 @@ export default function CashRegisterPage() {
             const register = res?.data ?? null;
 
             if (res?.meta?.expired) {
-                setActiveRegister(null);
+                setActiveRegister(res.meta.expired);
                 setCashRegister(null);
-                setError(`Previous register was automatically expired (exceeded ${EXPIRY_HOURS}h). Open a new one.`);
                 return;
             }
 
@@ -287,7 +287,13 @@ export default function CashRegisterPage() {
                         </Link>
                     </div>
 
-                    {warningHours && activeRegister && (
+                    {isExpired && activeRegister && (
+                        <div className="alert alert-danger py-2 d-flex align-items-center mb-3">
+                            <i className="fas fa-exclamation-triangle me-2"></i>
+                            <span>This register has <strong>expired</strong> (exceeded {EXPIRY_HOURS}h). No new transactions allowed. Please close the register below.</span>
+                        </div>
+                    )}
+                    {warningHours && activeRegister && !isExpired && (
                         <div className="alert alert-warning py-2 d-flex align-items-center mb-3">
                             <i className="fas fa-clock me-2"></i>
                             Register open for <strong className="mx-1">{warningHours}h</strong> — auto-expires at {EXPIRY_HOURS}h.
@@ -350,9 +356,9 @@ export default function CashRegisterPage() {
                                 </div>
                             )}
                             {/* Status bar */}
-                            <div className="alert alert-info py-2 d-flex align-items-center mb-3">
-                                <i className="fas fa-check-circle me-2"></i>
-                                <strong>Active</strong>
+                            <div className={`alert ${isExpired ? 'alert-danger' : 'alert-info'} py-2 d-flex align-items-center mb-3`}>
+                                <i className={`fas ${isExpired ? 'fa-exclamation-triangle' : 'fa-check-circle'} me-2`}></i>
+                                <strong>{isExpired ? 'Expired' : 'Active'}</strong>
                                 <span className="mx-2">|</span>
                                 Opened at {new Date(activeRegister.opened_at).toLocaleString()}
                                 <span className="mx-2">|</span>
@@ -458,7 +464,7 @@ export default function CashRegisterPage() {
                                     </div>
 
                                     {/* Add transaction */}
-                                    <div className="card">
+                                    {!isExpired && (<div className="card">
                                         <div className="card-header"><i className="fas fa-exchange-alt me-2"></i>Record Transaction</div>
                                         <div className="card-body">
                                             <form onSubmit={handleAddTransaction} className="d-grid gap-2">
@@ -505,7 +511,7 @@ export default function CashRegisterPage() {
                                                 </div>
                                             )}
                                         </div>
-                                    </div>
+                                    </div>)}
                                 </div>
 
                                 {/* ── Right: Payments table ────────────── */}

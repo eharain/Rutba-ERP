@@ -109,6 +109,41 @@ module.exports = createCoreController('api::cash-register.cash-register', ({ str
       return ctx.send({ data: null, meta: { expired: register } });
     }
 
+    // If no active register, look for unclosed expired registers
+    // so the user can still close them properly
+    if (!register) {
+      let expired = null;
+      if (desk_id) {
+        const byDesk = await strapi.documents('api::cash-register.cash-register').findMany({
+          filters: {
+            desk_id: { $eq: Number(desk_id) },
+            status: { $eq: 'Expired' },
+            closed_at: { $null: true },
+          },
+          sort: [{ opened_at: 'desc' }],
+          limit: 1,
+          populate: ['opened_by_user', 'branch', 'payments', 'transactions'],
+        });
+        expired = byDesk[0] ?? null;
+      }
+      if (!expired && user_id) {
+        const byUser = await strapi.documents('api::cash-register.cash-register').findMany({
+          filters: {
+            opened_by_user: { documentId: { $eq: user_id } },
+            status: { $eq: 'Expired' },
+            closed_at: { $null: true },
+          },
+          sort: [{ opened_at: 'desc' }],
+          limit: 1,
+          populate: ['opened_by_user', 'branch', 'payments', 'transactions'],
+        });
+        expired = byUser[0] ?? null;
+      }
+      if (expired) {
+        return ctx.send({ data: null, meta: { expired } });
+      }
+    }
+
     return ctx.send({ data: register });
   },
 

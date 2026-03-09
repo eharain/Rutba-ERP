@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import { authApi } from "@rutba/pos-shared/lib/api";
+import { authApi, getAppName } from "@rutba/pos-shared/lib/api";
+import { useAuth } from "@rutba/pos-shared/context/AuthContext";
+import { isAppAdmin } from "@rutba/pos-shared/lib/roles";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
 import { Table, TableHead, TableRow, TableCell, TableBody, TablePagination } from "@rutba/pos-shared/components/Table";
 
@@ -10,6 +12,8 @@ const STATUS_OPTIONS = ["Active", "Open", "Closed", "Expired", "Cancelled"];
 
 export default function CashRegisterHistoryPage() {
     const { currency } = useUtil();
+    const { adminAppAccess } = useAuth();
+    const userIsAdmin = isAppAdmin(adminAppAccess, getAppName());
     const [registers, setRegisters] = useState([]);
     const [loading, setLoading] = useState(false);
     const [page, setPage] = useState(0);
@@ -37,6 +41,17 @@ export default function CashRegisterHistoryPage() {
             if (filterUser) filters.opened_by = { $containsi: filterUser };
             if (filterDateFrom) filters.opened_at = { ...(filters.opened_at || {}), $gte: filterDateFrom };
             if (filterDateTo) filters.opened_at = { ...(filters.opened_at || {}), $lte: filterDateTo + 'T23:59:59.999Z' };
+
+            // Non-admin users can only see registers from the last 7 days
+            if (!userIsAdmin) {
+                const oneWeekAgo = new Date();
+                oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+                const minDate = oneWeekAgo.toISOString().split('T')[0];
+                const existingGte = filters.opened_at?.$gte;
+                if (!existingGte || existingGte < minDate) {
+                    filters.opened_at = { ...(filters.opened_at || {}), $gte: minDate };
+                }
+            }
 
             const res = await authApi.fetch("/cash-registers", {
                 filters,
