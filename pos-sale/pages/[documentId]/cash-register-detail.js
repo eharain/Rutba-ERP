@@ -3,13 +3,17 @@ import { useRouter } from "next/router";
 import Link from "next/link";
 import Layout from "../../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import { authApi } from "@rutba/pos-shared/lib/api";
+import { authApi, getAppName } from "@rutba/pos-shared/lib/api";
+import { useAuth } from "@rutba/pos-shared/context/AuthContext";
+import { isAppAdmin } from "@rutba/pos-shared/lib/roles";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
 
 export default function CashRegisterDetailPage() {
     const router = useRouter();
     const { documentId } = router.query;
     const { currency } = useUtil();
+    const { adminAppAccess } = useAuth();
+    const userIsAdmin = isAppAdmin(adminAppAccess, getAppName());
     const [register, setRegister] = useState(null);
     const [payments, setPayments] = useState([]);
     const [transactions, setTransactions] = useState([]);
@@ -148,6 +152,25 @@ export default function CashRegisterDetailPage() {
                 <div className="p-3"><div className="alert alert-warning">Register not found.</div></div>
             </Layout></ProtectedRoute>
         );
+    }
+
+    // Non-admin users can only view registers from the last 7 days
+    if (!userIsAdmin && register.opened_at) {
+        const oneWeekAgo = new Date();
+        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+        if (new Date(register.opened_at) < oneWeekAgo) {
+            return (
+                <ProtectedRoute><Layout>
+                    <div className="p-3">
+                        <div className="alert alert-danger">
+                            <i className="fas fa-lock me-2"></i>
+                            This register is older than 7 days. Only administrators can view older registers.
+                            <button className="btn btn-outline-secondary btn-sm ms-3" onClick={() => window.history.back()}>Back</button>
+                        </div>
+                    </div>
+                </Layout></ProtectedRoute>
+            );
+        }
     }
 
     return (

@@ -5,6 +5,7 @@ import { getBranch } from "@rutba/pos-shared/lib/utils";
 import { APP_URLS } from "@rutba/pos-shared/lib/roles";
 import AdminModeToggle from "@rutba/pos-shared/components/AdminModeToggle";
 import NavAppSwitcher from "@rutba/pos-shared/components/NavAppSwitcher";
+import PermissionCheck from "@rutba/pos-shared/components/PermissionCheck";
 import { useEffect } from "react";
 
 export default function Navigation() {
@@ -34,9 +35,11 @@ export default function Navigation() {
                     <li className="nav-item">
                         <Link className="nav-link" href="/cash-register">Cash Register</Link>
                     </li>
+                    <PermissionCheck showIf="admin">
                     <li className="nav-item">
                         <Link className="nav-link" href="/cash-register-history">Register History</Link>
                     </li>
+                    </PermissionCheck>
                     <li className="nav-item">
                         <Link className="nav-link" href="/reports">Reports</Link>
                     </li>

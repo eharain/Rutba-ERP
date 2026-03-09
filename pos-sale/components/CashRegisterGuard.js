@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
+import Link from 'next/link';
 import { useUtil } from '@rutba/pos-shared/context/UtilContext';
 import { authApi } from '@rutba/pos-shared/lib/api';
 
@@ -156,6 +157,12 @@ export default function CashRegisterGuard({ children }) {
                 <div className="alert alert-warning py-2 mb-2 d-flex align-items-center">
                     <i className="fas fa-clock me-2"></i>
                     <span>Cash register open for <strong>{warningHours} hours</strong>. Auto-expires at {EXPIRY_HOURS}h.</span>
+                </div>
+            )}
+            {status === 'expired' && (
+                <div className="alert alert-danger py-2 mb-2 d-flex align-items-center">
+                    <i className="fas fa-exclamation-triangle me-2"></i>
+                    <span>Cash register has <strong>expired</strong>. <Link href="/cash-register">Close it</Link> or open a new one to process payments.</span>
                 </div>
             )}
 

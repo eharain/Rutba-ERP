@@ -561,21 +561,8 @@ show_service_status
 # PRUNE OLD BUILDS
 ###########################################
 
-log "Pruning old builds (keeping last ${MAX_BUILDS})..."
-
-mapfile -t ALL_BUILDS < <(
-    find "$BUILDS_DIR" -maxdepth 1 -type d -name "build_*" | sort -r
-)
-
-# Never delete the build we just activated
-KEEP=0
-for b in "${ALL_BUILDS[@]}"; do
-    KEEP=$((KEEP + 1))
-    if [ "$KEEP" -gt "$MAX_BUILDS" ] && [ "$b" != "$BUILD_DIR" ]; then
-        rm -rf "$b"
-        log "  Removed $(basename "$b") ($(format_build_date "$b"))"
-    fi
-done
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+bash "${SCRIPT_DIR}/rutba_prune_builds.sh" --protect "$BUILD_DIR"
 
 # Re-read remaining builds for the summary
 mapfile -t REMAINING_BUILDS < <(
