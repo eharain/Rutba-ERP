@@ -70,11 +70,13 @@ export default function Pages() {
     const [typeFilter, setTypeFilter] = useState("");
     const [importing, setImporting] = useState(false);
     const [importLog, setImportLog] = useState([]);
+    const [error, setError] = useState("");
     const importRef = useRef(null);
 
     const load = useCallback(async () => {
         if (!jwt) return;
         setLoading(true);
+        setError("");
         try {
             const params = {
                 status: 'draft',
@@ -95,6 +97,13 @@ export default function Pages() {
             setPages((draftRes.data || []).map(p => ({ ...p, _isPublished: pubIds.has(p.documentId) })));
         } catch (err) {
             console.error("Failed to load pages", err);
+            const serverMsg = err?.response?.data?.error?.message;
+            const status = err?.response?.status;
+            if (status === 403) {
+                setError(serverMsg || "You do not have permission to access CMS pages. Ensure your account has the 'cms' app access.");
+            } else {
+                setError(serverMsg || err.message || "Failed to load pages");
+            }
         } finally {
             setLoading(false);
         }
@@ -131,7 +140,8 @@ export default function Pages() {
                         log.push({ type: "success", text: `Created: ${row.slug}` });
                     }
                 } catch (err) {
-                    log.push({ type: "danger", text: `Failed: ${row.slug} – ${err.message || "Unknown error"}` });
+                    const detail = err?.response?.data?.error?.message || err.message || "Unknown error";
+                    log.push({ type: "danger", text: `Failed: ${row.slug} – ${detail}` });
                 }
             }
             setImportLog(log);
@@ -202,7 +212,11 @@ export default function Pages() {
 
                 {loading && <p>Loading pages...</p>}
 
-                {!loading && pages.length === 0 && (
+                {!loading && error && (
+                    <div className="alert alert-danger"><i className="fas fa-exclamation-triangle me-2"></i>{error}</div>
+                )}
+
+                {!loading && !error && pages.length === 0 && (
                     <div className="alert alert-info">No pages found. Create your first page!</div>
                 )}
 

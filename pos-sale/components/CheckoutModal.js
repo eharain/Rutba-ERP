@@ -39,7 +39,7 @@ const CheckoutModal = ({ isOpen, onClose, total, exchangeReturnCredit = 0, onCom
         }
     }, [isOpen]);
 
-    const totalPaid = payments.reduce((sum, payment) => sum + validOrDefult(payment.amount, 0), 0);
+    const totalPaid = Math.round(payments.reduce((sum, payment) => sum + validOrDefult(payment.amount, 0), 0) * 100) / 100;
     const change = Math.max(totalPaid - total, 0);
     const remaining = Math.max(total - totalPaid, 0);
     const hasCashPayment = payments.some((payment) => payment.payment_method === 'Cash');

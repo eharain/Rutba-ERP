@@ -15,15 +15,18 @@ export function UtilProvider({ children }) {
     const [showBranchDeskModal, setShowBranchDeskModal] = useState(false);
     const [hydrated, setHydrated] = useState(false);
 
-    // New: invoice print settings persisted under 'invoice-print-settings'
-    const [invoicePrintSettings, setInvoicePrintSettingsState] = useState({
-        paperWidth: '80mm',          // width applied to invoice container
-        fontSize: 11,                // base font size in px
-        showTax: true,               // whether to show tax row
-        showBranch: true,            // whether to show branch information
-        branchFields: ['name', 'companyName', 'web'], // which branch fields to show
-        socialFields: [] // which social/contact fields to show on receipts
-    });
+    // Default invoice print settings — used as initial state and to fill
+    // missing keys when loading older stored data.
+    const INVOICE_PRINT_DEFAULTS = {
+        paperWidth: '80mm',
+        fontSize: 11,
+        showTax: true,
+        showBranch: true,
+        branchFields: ['name', 'companyName', 'web'],
+        socialFields: []
+    };
+
+    const [invoicePrintSettings, setInvoicePrintSettingsState] = useState(INVOICE_PRINT_DEFAULTS);
 
     function getLabelSize() {
         return labelSize;
@@ -42,14 +45,11 @@ export function UtilProvider({ children }) {
             setLabelSizeState(storage.getJSON("label-size") ?? '2.4x1.5');
             setPrintModeState(storage.getJSON("print-mode") ?? 'thermal');
             setCashRegisterState(storage.getJSON("cash-register") ?? null);
-            setInvoicePrintSettingsState(storage.getJSON("invoice-print-settings") ?? {
-                paperWidth: '80mm',
-                fontSize: 11,
-                showTax: true,
-                showBranch: true,
-                branchFields: ['name', 'companyName', 'web'],
-                socialFields: []
-            });
+            // Print settings are a UI preference — always use localStorage
+            // so they survive regardless of the Remember-Me / session choice.
+            const rawPrint = localStorage.getItem("invoice-print-settings");
+            const storedPrint = rawPrint ? JSON.parse(rawPrint) : {};
+            setInvoicePrintSettingsState({ ...INVOICE_PRINT_DEFAULTS, ...storedPrint });
         } catch (err) {
             console.error('UtilProvider: failed to load from storage', err);
         } finally {
@@ -119,11 +119,12 @@ export function UtilProvider({ children }) {
         }
     }
 
-    // New: setter that persists invoice print settings
+    // Setter that persists invoice print settings to localStorage directly
+    // (not session storage) so they always survive reloads and browser restarts.
     function setInvoicePrintSettings(newSettings) {
         setInvoicePrintSettingsState(newSettings);
         try {
-            storage.setJSON("invoice-print-settings", newSettings);
+            localStorage.setItem("invoice-print-settings", JSON.stringify(newSettings));
         } catch (err) {
             console.error('Failed to persist invoice-print-settings', err);
         }
