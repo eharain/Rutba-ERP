@@ -23,37 +23,15 @@ import { ErrorCard } from "../errors/error-card";
 import { IMAGE_URL } from "@/static/const";
 import { useStoreCart } from "@/store/store-cart";
 import { useSession } from "next-auth/react";
-import useBrandsService from "@/services/brands";
-import useCategoriesService from "@/services/categories";
+import useCmsPagesService from "@/services/cms-pages";
+import { BrandInterface } from "@/types/api/brand";
+import { CategoryInterface } from "@/types/api/category";
+import { CmsPageInterface } from "@/types/api/cms-page";
 
-function BrandHeader() {
-  const { getBrands } = useBrandsService();
-
-  const {
-    data: brands,
-    isLoading,
-    isError,
-    error,
-  } = useQuery({
-    queryKey: ["brand-list"],
-    queryFn: async () => {
-      return await getBrands();
-    },
-    // The staleTime option allows you to specify the duration
-    // in milliseconds that the cached data is considered fresh
-    // and can be used without refetching.
-    staleTime: Infinity,
-  });
-
-  if (isLoading) {
-    return <SkeletonBrand></SkeletonBrand>;
-  } else if (isError) {
-    return <ErrorCard message={(error as Error).message}></ErrorCard>;
-  }
-
+function BrandHeader({ brands }: { brands: BrandInterface[] }) {
   return (
     <ul className="grid w-[200px]">
-      {brands?.map((item) => (
+      {brands.map((item) => (
         <li key={"brand-list-header" + item.id}>
           <Link
             className="px-4 py-2 flex items-center hover:bg-slate-100"
@@ -74,34 +52,10 @@ function BrandHeader() {
   );
 }
 
-function CategoryHeader() {
-  const { getCategories } = useCategoriesService();
-
-  const {
-    data: categories,
-    isLoading,
-    isError,
-    error,
-  } = useQuery({
-    queryKey: ["cateogry-list"],
-    queryFn: async () => {
-      return await getCategories();
-    },
-    // The staleTime option allows you to specify the duration
-    // in milliseconds that the cached data is considered fresh
-    // and can be used without refetching.
-    staleTime: Infinity,
-  });
-
-  if (isLoading) {
-    return <SkeletonCategory></SkeletonCategory>;
-  } else if (isError) {
-    return <ErrorCard message={(error as Error).message}></ErrorCard>;
-  }
-
+function CategoryHeader({ categories }: { categories: CategoryInterface[] }) {
   return (
     <ul className="grid w-[400px]">
-      {categories?.map((item) => (
+      {categories.map((item) => (
         <li key={"category-list-header-" + item.id}>
           <Link
             className="p-4 flex items-center justify-between hover:bg-slate-100"
@@ -124,6 +78,23 @@ function CategoryHeader() {
 export default function Header() {
   const { cartItem } = useStoreCart();
   const session = useSession();
+  const { getCmsHeaderData } = useCmsPagesService();
+
+  const {
+    data: cmsPage,
+    isLoading: isCmsLoading,
+    isError: isCmsError,
+    error: cmsError,
+  } = useQuery({
+    queryKey: ["cms-header-data"],
+    queryFn: getCmsHeaderData,
+    staleTime: Infinity,
+  });
+
+  const brands = cmsPage?.brand_groups?.flatMap((g) => g.brands ?? []) ?? [];
+  const categories =
+    cmsPage?.category_groups?.flatMap((g) => g.categories ?? []) ?? [];
+  const pinnedPages = cmsPage?.footer?.pinned_pages ?? [];
 
   return (
     <>
@@ -144,23 +115,55 @@ export default function Header() {
             <div className="flex items-center">
               <NavigationMenu className="mr-4 hidden md:block">
                 <NavigationMenuList>
-                  <NavigationMenuItem>
-                    <NavigationMenuTrigger>
-                      Explore Products
-                    </NavigationMenuTrigger>
-                    <NavigationMenuContent>
-                      <CategoryHeader></CategoryHeader>
-                    </NavigationMenuContent>
-                  </NavigationMenuItem>
+                  {categories.length > 0 && (
+                    <NavigationMenuItem>
+                      <NavigationMenuTrigger>
+                        Explore Products
+                      </NavigationMenuTrigger>
+                      <NavigationMenuContent>
+                        {isCmsLoading ? (
+                          <SkeletonCategory />
+                        ) : isCmsError ? (
+                          <ErrorCard
+                            message={(cmsError as Error).message}
+                          />
+                        ) : (
+                          <CategoryHeader categories={categories} />
+                        )}
+                      </NavigationMenuContent>
+                    </NavigationMenuItem>
+                  )}
 
-                  <NavigationMenuItem>
-                    <NavigationMenuTrigger>
-                      Explore Brands
-                    </NavigationMenuTrigger>
-                    <NavigationMenuContent>
-                      <BrandHeader></BrandHeader>
-                    </NavigationMenuContent>
-                  </NavigationMenuItem>
+                  {brands.length > 0 && (
+                    <NavigationMenuItem>
+                      <NavigationMenuTrigger>
+                        Explore Brands
+                      </NavigationMenuTrigger>
+                      <NavigationMenuContent>
+                        {isCmsLoading ? (
+                          <SkeletonBrand />
+                        ) : isCmsError ? (
+                          <ErrorCard
+                            message={(cmsError as Error).message}
+                          />
+                        ) : (
+                          <BrandHeader brands={brands} />
+                        )}
+                      </NavigationMenuContent>
+                    </NavigationMenuItem>
+                  )}
+
+                  {pinnedPages.length > 0 &&
+                    pinnedPages.map((pp) => (
+                      <NavigationMenuItem key={pp.documentId}>
+                        <Link
+                          href={`/pages/${pp.slug}`}
+                          className="px-4 py-2 text-sm font-medium hover:text-gray-600 transition-colors"
+                        >
+                          {pp.title}
+                        </Link>
+                      </NavigationMenuItem>
+                    ))}
                 </NavigationMenuList>
 
                 <NavigationMenuViewport className="right-0"></NavigationMenuViewport>
@@ -181,6 +184,7 @@ export default function Header() {
 
               <div className="block md:hidden relative">
                 <MenuSideBarMobile
+                  pinnedPages={pinnedPages}
                   trigger={
                     <Button variant={"ghost"}>
                       <Menu></Menu>

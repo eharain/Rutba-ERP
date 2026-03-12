@@ -46,8 +46,25 @@ export default function useCmsPagesService() {
     return pages.length > 0 ? pages[0] : null;
   };
 
+  const getCmsHeaderData = async () => {
+    const req = await axios.get(BASE_URL + "cms-pages", {
+      params: {
+        filters: { slug: { $eq: "index" } },
+        populate: [
+          "brand_groups.brands.logo",
+          "category_groups.categories",
+          "footer.pinned_pages",
+        ],
+      },
+    });
+
+    const pages = req.data.data as CmsPageDetailInterface[];
+    return pages.length > 0 ? pages[0] : null;
+  };
+
   return {
     getCmsPages,
     getCmsPageBySlug,
+    getCmsHeaderData,
   };
 }
