@@ -8,13 +8,18 @@ import {
 
 import { Button } from "@/components/ui/button";
 import SearchModal from "../search/search-modal";
-import { ArrowUpRightSquare, Search, User2 } from "lucide-react";
+import { ArrowUpRightSquare, FileText, Search, User2 } from "lucide-react";
+import Link from "next/link";
+import { CmsPageInterface } from "@/types/api/cms-page";
 
 export interface propsInterface {
   trigger: React.JSX.Element;
+  pinnedPages?: CmsPageInterface[];
 }
 
 export default function MenuSideBarMobile(props: propsInterface) {
+  const pinnedPages = props.pinnedPages ?? [];
+
   return (
     <Sheet>
       <SheetTrigger asChild>{props.trigger}</SheetTrigger>
@@ -32,13 +37,31 @@ export default function MenuSideBarMobile(props: propsInterface) {
           }
         ></SearchModal>
 
-        <Button variant={"secondary"} className="flex justify-start">
-          <ArrowUpRightSquare className="mr-2 h-5"></ArrowUpRightSquare>Explore
-          Products
+        <Button variant={"secondary"} className="flex justify-start" asChild>
+          <Link href="/product">
+            <ArrowUpRightSquare className="mr-2 h-5"></ArrowUpRightSquare>Explore
+            Products
+          </Link>
         </Button>
 
-        <Button className="flex justify-start">
-          <User2 className="mr-2 h-5"></User2>Login or Register
+        {pinnedPages.map((pp) => (
+          <Button
+            key={pp.documentId}
+            variant={"secondary"}
+            className="flex justify-start"
+            asChild
+          >
+            <Link href={`/pages/${pp.slug}`}>
+              <FileText className="mr-2 h-5"></FileText>
+              {pp.title}
+            </Link>
+          </Button>
+        ))}
+
+        <Button className="flex justify-start" asChild>
+          <Link href="/login">
+            <User2 className="mr-2 h-5"></User2>Login or Register
+          </Link>
         </Button>
       </SheetContent>
     </Sheet>
