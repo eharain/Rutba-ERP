@@ -44,6 +44,9 @@ export default function Navigation() {
                     <li className="nav-item">
                         <Link className="nav-link" href="/orders">Orders</Link>
                     </li>
+                    <li className="nav-item">
+                        <Link className="nav-link" href="/media">Media</Link>
+                    </li>
                     </ul>
 
                 <div className="d-flex align-items-center">

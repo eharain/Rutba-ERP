@@ -5,6 +5,7 @@ import Layout from '../../components/Layout';
 import ProtectedRoute from '@rutba/pos-shared/components/ProtectedRoute';
 import { authApi, relationConnects } from '@rutba/pos-shared/lib/api';
 import { saveProduct } from '@rutba/pos-shared/lib/pos/save';
+import ProductGalleryManager from '@rutba/pos-shared/components/ProductGalleryManager';
 
 function getEntryId(entry) {
     return entry?.documentId || entry?.id;
@@ -514,6 +515,19 @@ export default function ProductVariantsPage() {
                                     </table>
                                 </div>
                             )}
+                        </div>
+                    </div>
+
+                    {/* Gallery & Variant Images */}
+                    <div className="card mb-3">
+                        <div className="card-header py-2">
+                            <h6 className="mb-0"><i className="fas fa-images me-2" />Gallery &amp; Variant Images</h6>
+                        </div>
+                        <div className="card-body">
+                            <ProductGalleryManager
+                                productId={documentId}
+                                onUpdate={() => loadProductDetails(documentId)}
+                            />
                         </div>
                     </div>
 

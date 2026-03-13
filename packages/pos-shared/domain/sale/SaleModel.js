@@ -34,6 +34,9 @@ export default class SaleModel {
         this.customer = customer;
         this.items = items?.map(item => new SaleItem(item)) || [];
 
+        // Tracks sale items removed from the sale that need to be disconnected on save
+        this._removedItems = [];
+
         // Exchange return: items returned from a previous sale applied as credit
         this.exchangeReturn = null; // { sale, returnItems: [...] }
 
@@ -204,7 +207,10 @@ export default class SaleModel {
     }
 
     removeItem(index) {
-        this.items.splice(index, 1);
+        const removed = this.items.splice(index, 1);
+        if (removed[0]?.documentId) {
+            this._removedItems.push(removed[0]);
+        }
     }
 
     /* ===============================

@@ -20,6 +20,9 @@ export default function NavigationSecondary() {
                 <li className="nav-item">
                     <Link className="btn btn-sm btn-outline-warning" href="/pages">Pages</Link>
                 </li>
+                <li className="nav-item">
+                    <Link className="btn btn-sm btn-outline-dark" href="/media">Media</Link>
+                </li>
             </ul>
         </nav>
     );
