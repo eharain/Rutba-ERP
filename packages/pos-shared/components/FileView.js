@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { storage } from '../lib/storage';
 import { authApi, StraipImageUrl, isImage, isPDF } from '../lib/api';
+import StrapiMediaLibrary from './StrapiMediaLibrary';
 // Utility functions
 
 // Upload helper using fetch so multipart boundaries are handled by the browser.
@@ -14,6 +15,7 @@ function FileView({ onFileChange = function (field, files, multiple) { }, single
     const [galleryFiles, setGalleryFiles] = useState(gallery);
     const [uploading, setUploading] = useState(false);
     const [uploadError, setUploadError] = useState(null);
+    const [showMediaLibrary, setShowMediaLibrary] = useState(false);
     const inputRef = useRef();
 
     const handleChange = async (e) => {
@@ -105,6 +107,33 @@ function FileView({ onFileChange = function (field, files, multiple) { }, single
         onFileChange(field, null, multiple);
     };
 
+    const handleMediaLibrarySelect = async (selectedFiles) => {
+        if (!selectedFiles || selectedFiles.length === 0) return;
+
+        if (multiple) {
+            if (autoUpload && refName && refId && field) {
+                // Attach selected media to the entity by updating the relation
+                const current = (galleryFiles ?? []).map(f => ({ ...f }));
+                const existingIds = new Set(current.map(f => f.id));
+                const newFiles = selectedFiles.filter(f => !existingIds.has(f.id));
+                const all = [...current, ...newFiles];
+                setGalleryFiles(all);
+                onFileChange(field, all, multiple);
+            } else {
+                const current = (galleryFiles ?? []).map(f => ({ ...f }));
+                const existingIds = new Set(current.map(f => f.id));
+                const newFiles = selectedFiles.filter(f => !existingIds.has(f.id));
+                const all = [...current, ...newFiles];
+                setGalleryFiles(all);
+                onFileChange(field, all, multiple);
+            }
+        } else {
+            const picked = selectedFiles[0];
+            setSingleFile(picked);
+            onFileChange(field, picked, multiple);
+        }
+    };
+
     return (
         <div>
             <input
@@ -124,10 +153,27 @@ function FileView({ onFileChange = function (field, files, multiple) { }, single
                 >
                     {multiple ? 'Upload Images/PDFs' : 'Upload Image/PDF'}
                 </button>
+                <button
+                    type="button"
+                    onClick={() => setShowMediaLibrary(true)}
+                    className="btn btn-outline-secondary"
+                    disabled={uploading}
+                >
+                    <i className="fas fa-photo-video me-1" />
+                    Browse Gallery
+                </button>
 
                 {uploading && <div className="spinner-border spinner-border-sm text-primary" role="status" aria-hidden="true" />}
                 {uploadError && <div className="text-danger small align-self-center ms-2">{uploadError}</div>}
             </div>
+
+            <StrapiMediaLibrary
+                show={showMediaLibrary}
+                onClose={() => setShowMediaLibrary(false)}
+                onSelect={handleMediaLibrarySelect}
+                multiple={multiple}
+                accept="image"
+            />
 
             {/* Single file preview */}
             {!multiple && singleFile && (

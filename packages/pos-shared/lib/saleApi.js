@@ -112,7 +112,11 @@ export default class SaleApi {
         await this.savePayments(documentId, saleModel.payments);
 
         // SALE ITEMS + STOCK
-        await this.saveSaleItems(documentId, saleModel.items, { paid });
+        await this.saveSaleItems(documentId, saleModel.items, {
+            paid,
+            removedItems: saleModel._removedItems || []
+        });
+        saleModel._removedItems = [];
 
         // EXCHANGE RETURN (create sale-return + update stock items)
         // Save whenever return items exist and haven't been persisted yet (no returnNo).
@@ -217,8 +221,9 @@ export default class SaleApi {
        SALE ITEMS + STOCK
     ===================================================== */
 
-    static async saveSaleItems(saleId, saleItems, { paid = false } = {}) {
+    static async saveSaleItems(saleId, saleItems, { paid = false, removedItems = [] } = {}) {
         const results = [];
+        const activeItemIds = [];
 
         for (const item of saleItems) {
 
@@ -231,7 +236,7 @@ export default class SaleApi {
 
             if (baseStockItem?.product?.documentId) {
                 saleItemPayload.product = {
-                    connect: [baseStockItem.product.documentId]
+                    set: [baseStockItem.product.documentId]
                 };
             }
 
@@ -249,6 +254,8 @@ export default class SaleApi {
                 results.push(created);
             }
 
+            activeItemIds.push(saleItemId);
+
             // STOCK ITEMS
             if (!Array.isArray(item.items)) continue;
 
@@ -257,16 +264,14 @@ export default class SaleApi {
                 const status = paid ? { status: 'Sold' } : {}
                 const stockPayload = {
                     ...status,
-                    sale_item: { connect: [saleItemId] }
+                    sale_item: { set: [saleItemId] }
                 };
 
                 if (stockItem.product?.documentId || stockItem.product?.id) {
                     stockPayload.product = {
-                        connect: [stockItem.product.documentId || stockItem.product.id]
+                        set: [stockItem.product.documentId || stockItem.product.id]
                     };
                 }
-
-
 
                 if (stockItem.documentId) {
                     await authApi.put(
@@ -284,6 +289,42 @@ export default class SaleApi {
                     stockItem.documentId = created.documentId ?? created.id;
                 }
             }
+        }
+
+        // DISCONNECT REMOVED ITEMS
+        for (const removed of removedItems) {
+            if (!removed.documentId) continue;
+
+            // Disconnect stock items from the removed sale item
+            if (Array.isArray(removed.items)) {
+                for (const stockItem of removed.items) {
+                    if (!stockItem?.documentId) continue;
+                    await authApi.put(`/stock-items/${stockItem.documentId}`, {
+                        data: {
+                            status: 'InStock',
+                            sale_item: { set: [] },
+                            product: stockItem.product?.documentId
+                                ? { set: [stockItem.product.documentId] }
+                                : { set: [] }
+                        }
+                    });
+                }
+            }
+
+            // Disconnect the sale item from the sale
+            await authApi.put(`/sale-items/${removed.documentId}`, {
+                data: {
+                    sale: { set: [] },
+                    product: { set: [] }
+                }
+            });
+        }
+
+        // Use set on the sale to ensure only active items remain connected
+        if (activeItemIds.length > 0) {
+            await authApi.put(`/sales/${saleId}`, {
+                data: { sale_items: { set: activeItemIds } }
+            });
         }
 
         return results;
