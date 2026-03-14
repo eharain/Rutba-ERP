@@ -6,6 +6,7 @@ import SaleApi from '@rutba/pos-shared/lib/saleApi';
 export default function SalesItemsForm({
     onAddItem,
     onAddNonStock,
+    currentItems = [],
     disabled = false
 }) {
     const [query, setQuery] = useState('');
@@ -14,6 +15,14 @@ export default function SalesItemsForm({
     const [highlightIndex, setHighlightIndex] = useState(0);
     const { currency } = useUtil();
 
+    // Collect stock-item documentIds already added to the sale
+    const usedStockIds = new Set();
+    for (const saleItem of currentItems) {
+        if (!Array.isArray(saleItem.items)) continue;
+        for (const si of saleItem.items) {
+            if (si?.documentId) usedStockIds.add(si.documentId);
+        }
+    }
 
     /* ---------------- Search with debounce ---------------- */
     useEffect(() => {
@@ -31,12 +40,6 @@ export default function SalesItemsForm({
 
     const search = async (text) => {
         try {
-
-            // const res = await searchStockItems(text, 0, 300, 'InStock');
-            //const res = await searchStockItems(text, 0, 300, 'InStock');
-
-            //// 🔥 FIX: aggregate by product
-            //const aggregated = aggregateByProduct(res.data || []);
             const aggregated = await SaleApi.searchStockItemsByNameOrBarcode(text);
             setResults(aggregated);
             setShowResults(true);
@@ -69,7 +72,7 @@ export default function SalesItemsForm({
         if (e.key === 'ArrowDown') {
             e.preventDefault();
             setHighlightIndex(i =>
-                Math.min(i + 1, results.length - 1)
+                Math.min(i + 1, filteredResults.length - 1)
             );
             return;
         }
@@ -84,8 +87,8 @@ export default function SalesItemsForm({
 
         if (e.key === 'Enter') {
             e.preventDefault();
-            results.length
-                ? selectStockItem(results[highlightIndex])
+            filteredResults.length
+                ? selectStockItem(filteredResults[highlightIndex])
                 : addNonStockItem();
             return;
         }
@@ -93,6 +96,19 @@ export default function SalesItemsForm({
         if (e.key === 'Escape') {
             setShowResults(false);
         }
+    };
+
+    // Filter out products where all stock items are already in the sale
+    const filteredResults = results.filter(item => {
+        const allIds = [item.documentId, ...(item.more || []).map(m => m.documentId)].filter(Boolean);
+        const available = allIds.filter(id => !usedStockIds.has(id));
+        return available.length > 0;
+    });
+
+    // Compute available stock count per result for display
+    const availableCount = (item) => {
+        const allIds = [item.documentId, ...(item.more || []).map(m => m.documentId)].filter(Boolean);
+        return allIds.filter(id => !usedStockIds.has(id)).length;
     };
 
     return (
@@ -110,26 +126,35 @@ export default function SalesItemsForm({
 
             {showResults && (
                 <div className="dropdown-menu show w-100">
-                    {results.map((item, index) => (
-                        <div
-                            key={(item.id ?? item.product?.id ?? item.name) + '_' + index}
-                            className={`dropdown-item ${index === highlightIndex ? 'active' : ''}`}
-                            onMouseEnter={() => setHighlightIndex(index)}
-                            onClick={() => selectStockItem(item)}
-                        >
-                            <div className="d-flex justify-content-between">
-                                <span>{item.product?.name ?? item.name}</span>
-                                <strong>
-                                    {currency}
-                                    {item.selling_price || 0}
-                                </strong>
+                    {filteredResults.map((item, index) => {
+                        const remaining = availableCount(item);
+                        return (
+                            <div
+                                key={(item.id ?? item.product?.id ?? item.name) + '_' + index}
+                                className={`dropdown-item ${index === highlightIndex ? 'active' : ''}`}
+                                onMouseEnter={() => setHighlightIndex(index)}
+                                onClick={() => selectStockItem(item)}
+                            >
+                                <div className="d-flex justify-content-between">
+                                    <span>
+                                        {item.product?.name ?? item.name}
+                                        <small className="text-muted ms-2">({remaining} available)</small>
+                                    </span>
+                                    <strong>
+                                        {currency}
+                                        {item.selling_price || 0}
+                                    </strong>
+                                </div>
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
 
-                    {results.length === 0 && (
+                    {filteredResults.length === 0 && (
                         <div className="dropdown-item text-muted">
-                            Type item (name → price → quantity → discount%) to add a non stock item
+                            {results.length > 0
+                                ? 'All matching stock items are already in this sale'
+                                : 'Type item (name \u2192 price \u2192 quantity \u2192 discount%) to add a non stock item'
+                            }
                         </div>
                     )}
                 </div>

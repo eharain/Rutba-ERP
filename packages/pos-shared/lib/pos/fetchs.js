@@ -51,19 +51,23 @@ export async function fetchSaleByIdOrInvoice(id) {
             cash_register: { fields: ['id', 'documentId', 'desk_id', 'desk_name', 'branch_name', 'opened_by', 'opened_at', 'status'] },
             items: { populate: { product: true, items: { populate: ['product'] } } },
             sale_returns: { populate: { items: { populate: ['product'] } } },
-            exchange_return: { populate: { items: { populate: ['product'] }, sale: true } }
+            exchange_returns: { populate: { items: { populate: ['product'] }, sale: true } }
         }
     });
     let data = res?.data ?? res;
     const sale = Array.isArray(data) ? data[0] : data;
 
-    // Hydrate _exchangeReturns from the populated exchange_return relation
+    // Hydrate _exchangeReturns from the populated exchange_returns relation
     if (sale) {
-        if (sale.exchange_return) {
-            sale._exchangeReturns = [sale.exchange_return];
+        const populated = sale.exchange_returns;
+        if (Array.isArray(populated) && populated.length > 0) {
+            sale._exchangeReturns = populated;
+        } else if (populated && typeof populated === 'object' && !Array.isArray(populated)) {
+            // Backwards-compat: if Strapi returns a single object (old oneToOne)
+            sale._exchangeReturns = [populated];
         }
 
-        // Fallback: if exchange_return wasn't populated, try a separate query
+        // Fallback: if exchange_returns wasn't populated, try a separate query
         if (!sale._exchangeReturns?.length) {
             const saleDocId = sale.documentId || sale.id;
             try {

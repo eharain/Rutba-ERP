@@ -36,11 +36,11 @@ const PrintInvoicePage = () => {
                 if (saleId) {
                     // Load from API using sale ID
                     const rawSale = await fetchSaleByIdOrInvoice(saleId);
-                    // Hydrate via SaleModel so exchangeReturn is populated
+                    // Hydrate via SaleModel so exchangeReturns are populated
                     const model = SaleModel.fromApi(rawSale);
                     saleData = {
                         ...rawSale,
-                        exchangeReturn: model.exchangeReturn
+                        exchangeReturns: model.exchangeReturns
                     };
                     itemsData = rawSale.items || [];
 

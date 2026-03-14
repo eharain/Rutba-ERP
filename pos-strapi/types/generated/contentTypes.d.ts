@@ -2099,7 +2099,7 @@ export interface ApiSaleReturnSaleReturn extends Struct.CollectionTypeSchema {
       Schema.Attribute.Private;
     desk_id: Schema.Attribute.Integer;
     desk_name: Schema.Attribute.String;
-    exchange_sale: Schema.Attribute.Relation<'oneToOne', 'api::sale.sale'>;
+    exchange_sale: Schema.Attribute.Relation<'manyToOne', 'api::sale.sale'>;
     items: Schema.Attribute.Relation<
       'oneToMany',
       'api::sale-return-item.sale-return-item'
@@ -2173,8 +2173,8 @@ export interface ApiSaleSale extends Struct.CollectionTypeSchema {
     customer: Schema.Attribute.Relation<'manyToOne', 'api::customer.customer'>;
     discount: Schema.Attribute.Decimal;
     employee: Schema.Attribute.Relation<'manyToOne', 'api::employee.employee'>;
-    exchange_return: Schema.Attribute.Relation<
-      'oneToOne',
+    exchange_returns: Schema.Attribute.Relation<
+      'oneToMany',
       'api::sale-return.sale-return'
     >;
     invoice_no: Schema.Attribute.String & Schema.Attribute.Required;

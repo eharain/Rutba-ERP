@@ -107,9 +107,9 @@
       "target": "api::sale-return.sale-return",
       "mappedBy": "sale"
     },
-    "exchange_return": {
+    "exchange_returns": {
       "type": "relation",
-      "relation": "oneToOne",
+      "relation": "oneToMany",
       "target": "api::sale-return.sale-return",
       "mappedBy": "exchange_sale"
     }

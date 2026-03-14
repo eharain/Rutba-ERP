@@ -62,22 +62,13 @@ const PrintCombinedInvoicePage = () => {
                 );
 
                 // Merge exchange returns from all sales
-                const allReturnItems = [];
-                let totalRefund = 0;
-                let exchangeReturnSale = null;
+                const allExchangeReturns = [];
                 for (const raw of validSales) {
                     const model = SaleModel.fromApi(raw);
-                    if (model.exchangeReturn?.returnItems?.length > 0) {
-                        allReturnItems.push(...model.exchangeReturn.returnItems);
-                        totalRefund += Number(model.exchangeReturn.totalRefund || 0);
-                        if (!exchangeReturnSale) {
-                            exchangeReturnSale = model.exchangeReturn.sale;
-                        }
+                    if (model.exchangeReturns?.length > 0) {
+                        allExchangeReturns.push(...model.exchangeReturns);
                     }
                 }
-                const mergedExchangeReturn = allReturnItems.length > 0
-                    ? { sale: exchangeReturnSale, returnItems: allReturnItems, totalRefund }
-                    : null;
 
                 // Build invoice numbers list
                 const invoiceNos = validSales
@@ -92,7 +83,7 @@ const PrintCombinedInvoicePage = () => {
                     invoice_no: invoiceNos.join(' + '),
                     payments: mergedPayments,
                     payment_status: validSales.every(s => s.payment_status === 'Paid') ? 'Paid' : 'Partial',
-                    exchangeReturn: mergedExchangeReturn,
+                    exchangeReturns: allExchangeReturns,
                 };
 
                 setSale(combinedSale);

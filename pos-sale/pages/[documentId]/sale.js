@@ -122,7 +122,7 @@ export default function SalePage() {
             await SaleApi.saveSale(saleModel,param);
             // After first save, redirect to the real URL so loadSale works
             if (isNew && saleModel.documentId) {
-                router.replace(`/${saleModel.documentId}/sale`);
+                await router.replace(`/${saleModel.documentId}/sale`);
                 return;
             }
             await loadSale();
@@ -185,7 +185,7 @@ export default function SalePage() {
                     sale_date: saleModel.sale_date,
                     payment_status: saleModel.payment_status,
                     payments: saleModel.payments,
-                    exchangeReturn: saleModel.exchangeReturn,
+                    exchangeReturns: saleModel.exchangeReturns,
                 },
                 items: saleModel.items.map(i => i.toJSON()),
                 totals: {
@@ -198,7 +198,8 @@ export default function SalePage() {
             })
         );
 
-        const saleIdParam = documentId && documentId !== 'new' ? `&saleId=${documentId}` : '';
+        const resolvedDocId = saleModel.documentId || (documentId !== 'new' ? documentId : null);
+        const saleIdParam = resolvedDocId ? `&saleId=${resolvedDocId}` : '';
         window.open(`/print-invoice?key=${storageKey}${saleIdParam}`, '_blank', 'width=1000,height=800');
     };
 
@@ -255,6 +256,7 @@ export default function SalePage() {
                         {/* ── Add Items ── */}
                         <SalesItemsForm
                             disabled={!saleModel.isEditable}
+                            currentItems={saleModel.items}
                             onAddItem={(stockItem) => {
                                 saleModel.addStockItem(stockItem);
                                 forceUpdate();
