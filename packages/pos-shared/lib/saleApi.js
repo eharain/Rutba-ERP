@@ -1,7 +1,7 @@
 import { authApi } from './api';
 import { fetchSaleByIdOrInvoice, searchStockItems } from './pos';
 import SaleModel from '../domain/sale/SaleModel';
-import { getCashRegister, getBranch, getBranchDesk, getUser, prepareForPut } from "../lib/utils";
+import { getCashRegister, getBranch, getBranchDesk, getUser } from "../lib/utils";
 
 export default class SaleApi {
 
@@ -118,11 +118,15 @@ export default class SaleApi {
         });
         saleModel._removedItems = [];
 
-        // EXCHANGE RETURN (create sale-return + update stock items)
+        // EXCHANGE RETURNS (create sale-return + update stock items for each)
         // Save whenever return items exist and haven't been persisted yet (no returnNo).
         // Once saved, the return stays linked regardless of payment status.
-        if (saleModel.exchangeReturn?.returnItems?.length > 0 && !saleModel.exchangeReturn.returnNo) {
-            await this.saveExchangeReturn(documentId, saleModel.exchangeReturn);
+        if (saleModel.exchangeReturns?.length > 0) {
+            for (const exchangeReturn of saleModel.exchangeReturns) {
+                if (exchangeReturn.returnItems?.length > 0 && !exchangeReturn.returnNo) {
+                    await this.saveExchangeReturn(documentId, exchangeReturn);
+                }
+            }
         }
 
         return saleResponse;
@@ -191,11 +195,22 @@ export default class SaleApi {
         const activeRegister = getCashRegister();
         const activeRegisterId = activeRegister?.documentId ?? activeRegister?.id;
 
+        // Only send scalar payment fields — never spread populated relation objects
+        const paymentFields = (p) => ({
+            payment_method: p.payment_method,
+            amount: p.amount,
+            transaction_no: p.transaction_no || undefined,
+            payment_date: p.payment_date,
+            cash_received: p.cash_received,
+            change: p.change,
+            due: p.due,
+        });
+
         for (const p of payments) {
             if (!p.documentId) {
                 const res = await authApi.post('/payments', {
                     data: {
-                        ...p,
+                        ...paymentFields(p),
                         ...saleId ? { sale: { connect: [saleId] } } : {},
                         ...(activeRegisterId ? { cash_register: { connect: [activeRegisterId] } } : {})
                     }
@@ -205,7 +220,7 @@ export default class SaleApi {
             } else {
                 await authApi.put(`/payments/${p.documentId}`, {
                     data: {
-                        ...prepareForPut(p),
+                        ...paymentFields(p),
                         ...saleId ? { sale: { connect: [saleId] } } : {},
                         ...(activeRegisterId ? { cash_register: { connect: [activeRegisterId] } } : {})
                     }
@@ -279,9 +294,22 @@ export default class SaleApi {
                         { data: stockPayload }
                     );
                 } else {
+                    // Only send scalar stock-item fields — avoid leaking populated relations
+                    const stockScalars = {
+                        name: stockItem.name,
+                        sku: stockItem.sku,
+                        barcode: stockItem.barcode,
+                        status: stockItem.status,
+                        sellable_units: stockItem.sellable_units,
+                        sold_units: stockItem.sold_units,
+                        cost_price: stockItem.cost_price,
+                        selling_price: stockItem.selling_price,
+                        offer_price: stockItem.offer_price,
+                        discount: stockItem.discount,
+                    };
                     const res = await authApi.post('/stock-items', {
                         data: {
-                            ...prepareForPut(stockItem),
+                            ...stockScalars,
                             ...stockPayload
                         }
                     });
@@ -317,13 +345,6 @@ export default class SaleApi {
                     sale: { set: [] },
                     product: { set: [] }
                 }
-            });
-        }
-
-        // Use set on the sale to ensure only active items remain connected
-        if (activeItemIds.length > 0) {
-            await authApi.put(`/sales/${saleId}`, {
-                data: { sale_items: { set: activeItemIds } }
             });
         }
 

@@ -75,7 +75,7 @@ export default class SaleItem {
     get name() {
         const first = this.first();
 
-        return first?.name || first?.product.name || 'Unnamed Item';
+        return first?.name || first?.product?.name || 'Unnamed Item';
     };
 
     get sellingPrice() {

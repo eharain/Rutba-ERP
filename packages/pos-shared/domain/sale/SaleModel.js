@@ -37,8 +37,9 @@ export default class SaleModel {
         // Tracks sale items removed from the sale that need to be disconnected on save
         this._removedItems = [];
 
-        // Exchange return: items returned from a previous sale applied as credit
-        this.exchangeReturn = null; // { sale, returnItems: [...] }
+        // Exchange returns: items returned from previous sales applied as credit
+        // Array of { sale, returnItems: [...], returnNo?, totalRefund? }
+        this.exchangeReturns = [];
 
         // Cash register this sale was recorded against (populated from API)
         this.cashRegister = null;
@@ -56,23 +57,24 @@ export default class SaleModel {
             model.cashRegister = sale.cash_register;
         }
 
-        // Hydrate exchange return from API data if present
+        // Hydrate exchange returns from API data if present
         if (sale._exchangeReturns?.length > 0) {
-            const excReturn = sale._exchangeReturns[0];
-            const originalSale = excReturn.sale;
-            const returnItems = (excReturn.items || []).map(ri => ({
-                productName: ri.product?.name || 'N/A',
-                price: Number(ri.price || 0),
-                quantity: ri.quantity || 1,
-                total: Number(ri.total || ri.price || 0),
-            }));
-            if (originalSale && returnItems.length > 0) {
-                model.exchangeReturn = {
-                    sale: originalSale,
-                    returnItems,
-                    returnNo: excReturn.return_no,
-                    totalRefund: Number(excReturn.total_refund || 0),
-                };
+            for (const excReturn of sale._exchangeReturns) {
+                const originalSale = excReturn.sale;
+                const returnItems = (excReturn.items || []).map(ri => ({
+                    productName: ri.product?.name || 'N/A',
+                    price: Number(ri.price || 0),
+                    quantity: ri.quantity || 1,
+                    total: Number(ri.total || ri.price || 0),
+                }));
+                if (originalSale && returnItems.length > 0) {
+                    model.exchangeReturns.push({
+                        sale: originalSale,
+                        returnItems,
+                        returnNo: excReturn.return_no,
+                        totalRefund: Number(excReturn.total_refund || 0),
+                    });
+                }
             }
         }
 
@@ -133,24 +135,56 @@ export default class SaleModel {
     }
 
     /* ===============================
-       Exchange Return
+       Exchange Return (multiple sales)
     =============================== */
 
     setExchangeReturn(originalSale, returnItems) {
-        this.exchangeReturn = { sale: originalSale, returnItems };
+        const saleDocId = originalSale?.documentId || originalSale?.id;
+        const idx = this.exchangeReturns.findIndex(er => {
+            const id = er.sale?.documentId || er.sale?.id;
+            return id && id === saleDocId;
+        });
+        if (idx >= 0) {
+            this.exchangeReturns[idx] = { sale: originalSale, returnItems };
+        } else {
+            this.exchangeReturns.push({ sale: originalSale, returnItems });
+        }
+    }
+
+    removeExchangeReturn(saleDocId) {
+        this.exchangeReturns = this.exchangeReturns.filter(er => {
+            const id = er.sale?.documentId || er.sale?.id;
+            return id !== saleDocId;
+        });
     }
 
     clearExchangeReturn() {
-        this.exchangeReturn = null;
+        this.exchangeReturns = [];
+    }
+
+    /** Backwards-compatible merged view for receipt rendering */
+    get exchangeReturn() {
+        if (!this.exchangeReturns.length) return null;
+        if (this.exchangeReturns.length === 1) return this.exchangeReturns[0];
+        const allReturnItems = this.exchangeReturns.flatMap(er => er.returnItems || []);
+        const totalRefund = this.exchangeReturns.reduce((s, er) => s + Number(er.totalRefund || 0), 0);
+        const invoiceNos = this.exchangeReturns.map(er => er.sale?.invoice_no).filter(Boolean);
+        return {
+            sale: { ...this.exchangeReturns[0].sale, invoice_no: invoiceNos.join(', ') },
+            returnItems: allReturnItems,
+            returnNo: this.exchangeReturns.map(er => er.returnNo).filter(Boolean).join(', ') || undefined,
+            totalRefund: totalRefund || undefined,
+        };
     }
 
     get exchangeReturnTotal() {
-        if (!this.exchangeReturn?.returnItems?.length) return 0;
-        return this.exchangeReturn.returnItems.reduce((sum, r) => {
-            // When loaded from API, items are grouped with quantity & total.
-            // When set from UI, each entry is a single stock item with refundPrice (may differ for damaged).
-            if (r.total != null) return sum + Number(r.total);
-            return sum + (r.refundPrice ?? r.price ?? 0);
+        if (!this.exchangeReturns.length) return 0;
+        return this.exchangeReturns.reduce((total, er) => {
+            if (er.totalRefund != null) return total + Number(er.totalRefund);
+            return total + (er.returnItems || []).reduce((sum, r) => {
+                if (r.total != null) return sum + Number(r.total);
+                return sum + (r.refundPrice ?? r.price ?? 0);
+            }, 0);
         }, 0);
     }
 
@@ -159,21 +193,46 @@ export default class SaleModel {
     =============================== */
 
     addStockItem(stockItem) {
-        const existing = this.items.find(i =>
-            i.documentId === stockItem.documentId &&
-            i.costPrice === (stockItem.cost_price || 0) &&
-            i.sellingPrice === stockItem.selling_price &&
-            i.offerPrice === (stockItem.offer_price || null)
-        );
+        // Collect all stock-item documentIds already used in this sale
+        const usedIds = new Set();
+        for (const si of this.items) {
+            if (!Array.isArray(si.items)) continue;
+            for (const s of si.items) {
+                if (s?.documentId) usedIds.add(s.documentId);
+            }
+        }
+
+        // If the incoming stock item is already in the sale, swap it for the
+        // next unused one from the `more` pool.  This is the core fix: the
+        // search results always hand us the same "first" aggregated object,
+        // so on repeated clicks we must skip it and pull from `more`.
+        if (stockItem.documentId && usedIds.has(stockItem.documentId)) {
+            const pool = stockItem.more;
+            if (!Array.isArray(pool) || pool.length === 0) return; // nothing left to add
+            const next = pool.find(s => !usedIds.has(s.documentId));
+            if (!next) return; // all stock of this product already added
+            pool.splice(pool.indexOf(next), 1);
+            stockItem = next;
+        }
+
+        // Match by product id so that adding the same product groups into one
+        // SaleItem row and pulls the next available stock item from `more`.
+        const productId = stockItem.product?.id || stockItem.product?.documentId;
+
+        const existing = productId
+            ? this.items.find(i => {
+                const firstProduct = i.first()?.product;
+                return (firstProduct?.id === productId || firstProduct?.documentId === productId) &&
+                    i.costPrice === (stockItem.cost_price || 0) &&
+                    i.sellingPrice === stockItem.selling_price;
+            })
+            : null;
 
         if (existing) {
             existing.addStockItem(stockItem);
-
-            //   existing.setQuantity(existing.items.length);
+            existing.quantity = existing.items.length;
             return;
         }
-
-        // let name = stockItem.name ?? stockItem?.product?.name;
 
         this.items.push(new SaleItem({
             price: stockItem.selling_price,

@@ -21,10 +21,16 @@ export default function ExchangeReturnSection({ saleModel, onUpdate, disabled = 
     const scanInputRef = useRef(null);
 
     const [scanValue, setScanValue] = useState('');
-    const [originalSale, setOriginalSale] = useState(() => saleModel.exchangeReturn?.sale || null);
+    const [originalSales, setOriginalSales] = useState(() => {
+        return saleModel.exchangeReturns
+            ?.filter(er => er.sale)
+            .map(er => er.sale) || [];
+    });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
-    const [returnItems, setReturnItems] = useState(() => saleModel.exchangeReturn?.returnItems || []);
+    const [returnItems, setReturnItems] = useState(() => {
+        return saleModel.exchangeReturns?.flatMap(er => er.returnItems || []) || [];
+    });
     const initialized = useRef(false);
     const prevModelRef = useRef(saleModel);
 
@@ -32,9 +38,9 @@ export default function ExchangeReturnSection({ saleModel, onUpdate, disabled = 
     useEffect(() => {
         if (prevModelRef.current === saleModel) return;
         prevModelRef.current = saleModel;
-        const exr = saleModel.exchangeReturn;
-        setOriginalSale(exr?.sale || null);
-        setReturnItems(exr?.returnItems || []);
+        const ers = saleModel.exchangeReturns || [];
+        setOriginalSales(ers.filter(er => er.sale).map(er => er.sale));
+        setReturnItems(ers.flatMap(er => er.returnItems || []));
         initialized.current = true; // already in sync, skip next sync effect
     }, [saleModel]);
 
@@ -45,23 +51,38 @@ export default function ExchangeReturnSection({ saleModel, onUpdate, disabled = 
             return;
         }
         if (disabled) return;
-        // Don't overwrite a persisted exchange return
-        if (saleModel.exchangeReturn?.returnNo) return;
-        if (originalSale && returnItems.length > 0) {
-            saleModel.setExchangeReturn(originalSale, returnItems);
-        } else {
-            saleModel.clearExchangeReturn();
+
+        // Preserve already-persisted exchange returns (those with a returnNo)
+        const persisted = (saleModel.exchangeReturns || []).filter(er => er.returnNo);
+
+        // Build new (unpersisted) entries from the local returnItems state
+        const newEntries = [];
+        if (originalSales.length > 0 && returnItems.length > 0) {
+            for (const sale of originalSales) {
+                const saleDocId = getEntryId(sale);
+                // Skip sales whose returns are already persisted
+                if (persisted.some(er => getEntryId(er.sale) === saleDocId)) continue;
+                const saleReturnItems = returnItems.filter(r => r.sourceSaleDocId === saleDocId);
+                if (saleReturnItems.length > 0) {
+                    newEntries.push({ sale, returnItems: saleReturnItems });
+                }
+            }
         }
+
+        // Replace model state: persisted + new
+        saleModel.exchangeReturns = [...persisted];
+        for (const entry of newEntries) {
+            saleModel.setExchangeReturn(entry.sale, entry.returnItems);
+        }
+
         onUpdate();
-    }, [returnItems, originalSale]);
+    }, [returnItems, originalSales]);
 
     async function handleScan(e) {
         if (e.key !== 'Enter') return;
         const value = scanValue.trim();
         if (!value) return;
         setError('');
-        setOriginalSale(null);
-        setReturnItems([]);
         setLoading(true);
         try {
             const saleData = await fetchSaleByIdOrInvoice(value);
@@ -69,7 +90,13 @@ export default function ExchangeReturnSection({ saleModel, onUpdate, disabled = 
                 setError(`No sale found for "${value}"`);
                 return;
             }
-            setOriginalSale(saleData);
+            const saleDocId = getEntryId(saleData);
+            // Check if this sale is already scanned
+            if (originalSales.some(s => getEntryId(s) === saleDocId)) {
+                setError(`Invoice "${saleData.invoice_no}" is already added.`);
+                return;
+            }
+            setOriginalSales(prev => [...prev, saleData]);
         } catch (err) {
             console.error('Failed to load sale', err);
             setError('Failed to load sale.');
@@ -79,7 +106,12 @@ export default function ExchangeReturnSection({ saleModel, onUpdate, disabled = 
         }
     }
 
-    function toggleStockItem(saleItem, stockItem) {
+    function removeSale(saleDocId) {
+        setOriginalSales(prev => prev.filter(s => getEntryId(s) !== saleDocId));
+        setReturnItems(prev => prev.filter(r => r.sourceSaleDocId !== saleDocId));
+    }
+
+    function toggleStockItem(saleItem, stockItem, sourceSale) {
         const product = saleItem.product;
         if (product && product.is_exchangeable === false) return;
 
@@ -89,6 +121,7 @@ export default function ExchangeReturnSection({ saleModel, onUpdate, disabled = 
             if (exists) return prev.filter(r => r.stockItemDocId !== stockDocId);
             const unitPrice = getEffectiveUnitPrice(saleItem, stockItem);
             return [...prev, {
+                sourceSaleDocId: getEntryId(sourceSale),
                 saleItemDocId: getEntryId(saleItem),
                 saleItemId: saleItem.id,
                 stockItemDocId: stockDocId,
@@ -104,7 +137,7 @@ export default function ExchangeReturnSection({ saleModel, onUpdate, disabled = 
         });
     }
 
-    function selectAllFromSaleItem(saleItem) {
+    function selectAllFromSaleItem(saleItem, sourceSale) {
         const product = saleItem.product;
         if (product && product.is_exchangeable === false) return;
         const stockItems = saleItem.items || [];
@@ -124,6 +157,7 @@ export default function ExchangeReturnSection({ saleModel, onUpdate, disabled = 
                     .map(si => {
                         const unitPrice = getEffectiveUnitPrice(saleItem, si);
                         return {
+                            sourceSaleDocId: getEntryId(sourceSale),
                             saleItemDocId: getEntryId(saleItem),
                             saleItemId: saleItem.id,
                             stockItemDocId: getEntryId(si),
@@ -161,47 +195,60 @@ export default function ExchangeReturnSection({ saleModel, onUpdate, disabled = 
     }
 
     function clearAll() {
-        setOriginalSale(null);
+        setOriginalSales([]);
         setReturnItems([]);
         setError('');
         setScanValue('');
     }
 
     const returnTotal = returnItems.reduce((sum, r) => sum + (r.refundPrice ?? r.price), 0);
-    const saleItems = originalSale?.items || [];
 
-    // For paid/disabled sales or already-persisted exchange returns, show read-only summary
-    const alreadySaved = !!saleModel.exchangeReturn?.returnNo;
-    if (disabled || alreadySaved) {
-        const saved = saleModel.exchangeReturn;
-        if (!saved || !saved.returnItems?.length) return null;
-        const savedTotal = saved.totalRefund ?? saved.returnItems.reduce((s, r) => s + Number(r.total ?? r.price ?? 0), 0);
+    // Already-persisted exchange returns (read-only summary)
+    const savedReturns = (saleModel.exchangeReturns || []).filter(er => er.returnNo);
+
+    const savedSummary = savedReturns.length > 0 ? (() => {
+        const allSavedItems = savedReturns.flatMap(er => er.returnItems || []);
+        const savedTotal = savedReturns.reduce((s, er) => s + Number(er.totalRefund || (er.returnItems || []).reduce((rs, r) => rs + Number(r.total ?? r.price ?? 0), 0)), 0);
+        return (
+            <div className="mb-2">
+                {savedReturns.map((saved, sIdx) => (
+                    <div key={sIdx} className={sIdx > 0 ? 'mt-2 pt-2 border-top' : ''}>
+                        <div className="small text-muted mb-2">
+                            {saved.returnNo && <>Return <strong>#{saved.returnNo}</strong> — </>}
+                            From Invoice <strong>#{saved.sale?.invoice_no || '?'}</strong>
+                        </div>
+                        <table className="table table-sm small mb-2">
+                            <thead><tr><th>Product</th><th className="text-end">Qty</th><th className="text-end">Price</th></tr></thead>
+                            <tbody>
+                                {(saved.returnItems || []).map((ri, i) => (
+                                    <tr key={i}>
+                                        <td>{ri.productName || ri.product?.name || 'N/A'}</td>
+                                        <td className="text-end">{ri.quantity || 1}</td>
+                                        <td className="text-end">{currency}{Number(ri.price || 0).toFixed(2)}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                ))}
+                <div className="alert alert-success py-2 mb-0 d-flex justify-content-between align-items-center">
+                    <span><i className="fas fa-undo me-1"></i>{allSavedItems.length} item(s) returned from {savedReturns.length} invoice(s)</span>
+                    <span className="fw-bold">Credit: {currency}{savedTotal.toFixed(2)}</span>
+                </div>
+            </div>
+        );
+    })() : null;
+
+    // For paid/disabled sales, show only the read-only summary
+    if (disabled) {
+        if (!savedSummary) return null;
         return (
             <div className="border rounded">
                 <div className="px-3 py-2 bg-light border-bottom">
-                    <span className="small text-muted"><i className="fas fa-exchange-alt me-1"></i>Exchange Return Applied</span>
+                    <span className="small text-muted"><i className="fas fa-exchange-alt me-1"></i>Exchange Returns Applied</span>
                 </div>
                 <div className="p-2">
-                    <div className="small text-muted mb-2">
-                        {saved.returnNo && <>Return <strong>#{saved.returnNo}</strong> — </>}
-                        From Invoice <strong>#{saved.sale?.invoice_no || '?'}</strong>
-                    </div>
-                    <table className="table table-sm small mb-2">
-                        <thead><tr><th>Product</th><th className="text-end">Qty</th><th className="text-end">Price</th></tr></thead>
-                        <tbody>
-                            {saved.returnItems.map((ri, i) => (
-                                <tr key={i}>
-                                    <td>{ri.productName || ri.product?.name || 'N/A'}</td>
-                                    <td className="text-end">{ri.quantity || 1}</td>
-                                    <td className="text-end">{currency}{Number(ri.price || 0).toFixed(2)}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                    <div className="alert alert-success py-2 mb-0 d-flex justify-content-between align-items-center">
-                        <span><i className="fas fa-undo me-1"></i>{saved.returnItems.length} item(s) returned</span>
-                        <span className="fw-bold">Credit: {currency}{savedTotal.toFixed(2)}</span>
-                    </div>
+                    {savedSummary}
                 </div>
             </div>
         );
@@ -211,13 +258,16 @@ export default function ExchangeReturnSection({ saleModel, onUpdate, disabled = 
         <div className="border rounded">
             <div className="px-3 py-2 bg-light d-flex justify-content-between align-items-center border-bottom">
                 <span className="small text-muted"><i className="fas fa-exchange-alt me-1"></i>Exchange / Return Credit</span>
-                {originalSale && (
-                    <button className="btn btn-sm btn-outline-secondary py-0 px-1" onClick={clearAll}>
+                {originalSales.length > 0 && (
+                    <button className="btn btn-sm btn-outline-secondary py-0 px-1" onClick={clearAll} title="Clear all">
                         <i className="fas fa-times"></i>
                     </button>
                 )}
             </div>
             <div className="p-2">
+                {/* Read-only summary of already-persisted exchange returns */}
+                {savedSummary}
+
                 {/* Scan input */}
                 <div className="row g-2 align-items-end mb-2">
                     <div className="col">
@@ -246,121 +296,136 @@ export default function ExchangeReturnSection({ saleModel, onUpdate, disabled = 
 
                 {error && <div className="alert alert-danger py-1 small mb-2">{error}</div>}
 
-                {/* Original sale items */}
-                {originalSale && (
-                    <>
-                        <div className="small text-muted mb-2">
-                            Invoice <strong>#{originalSale.invoice_no}</strong> —
-                            Select items the customer is returning:
-                        </div>
+                {/* Scanned sales - render each sale's items */}
+                {originalSales.map(originalSale => {
+                    const saleDocId = getEntryId(originalSale);
+                    const saleItems = originalSale?.items || [];
 
-                        {saleItems.length === 0 ? (
-                            <div className="text-muted small">No items found on this sale.</div>
-                        ) : (
-                            saleItems.map(saleItem => {
-                                const stockItems = saleItem.items || [];
-                                const product = saleItem.product;
-                                const isExchangeable = product?.is_exchangeable !== false;
-                                const isReturnable = product?.is_returnable !== false;
-                                const canExchange = isExchangeable && isReturnable;
-                                const soldStockItems = stockItems.filter(si => si.status === 'Sold');
-                                const selectedCount = canExchange ? soldStockItems.filter(si =>
-                                    returnItems.some(r => r.stockItemDocId === getEntryId(si))
-                                ).length : 0;
+                    return (
+                        <div key={saleDocId} className="mb-3">
+                            <div className="d-flex justify-content-between align-items-center mb-2">
+                                <div className="small text-muted">
+                                    Invoice <strong>#{originalSale.invoice_no}</strong> —
+                                    Select items the customer is returning:
+                                </div>
+                                <button
+                                    className="btn btn-sm btn-outline-danger py-0 px-1"
+                                    onClick={() => removeSale(saleDocId)}
+                                    title={`Remove invoice #${originalSale.invoice_no}`}
+                                >
+                                    <i className="fas fa-times"></i>
+                                </button>
+                            </div>
 
-                                return (
-                                    <div key={getEntryId(saleItem)} className="border rounded p-2 mb-2">
-                                        <div className="d-flex justify-content-between align-items-center mb-1">
-                                            <div>
-                                                <strong className="small">{product?.name || 'N/A'}</strong>
-                                                <span className="text-muted ms-2 small">
-                                                    {saleItem.quantity} × {currency}{Number(saleItem.price || 0).toFixed(2)}
-                                                </span>
-                                                {!canExchange && (
-                                                    <span className="badge bg-danger ms-2 small">
-                                                        <i className="fas fa-ban me-1"></i>{!isReturnable ? 'Non-Returnable' : 'Non-Exchangeable'}
+                            {saleItems.length === 0 ? (
+                                <div className="text-muted small">No items found on this sale.</div>
+                            ) : (
+                                saleItems.map(saleItem => {
+                                    const stockItems = saleItem.items || [];
+                                    const product = saleItem.product;
+                                    const isExchangeable = product?.is_exchangeable !== false;
+                                    const isReturnable = product?.is_returnable !== false;
+                                    const canExchange = isExchangeable && isReturnable;
+                                    const soldStockItems = stockItems.filter(si => si.status === 'Sold');
+                                    const selectedCount = canExchange ? soldStockItems.filter(si =>
+                                        returnItems.some(r => r.stockItemDocId === getEntryId(si))
+                                    ).length : 0;
+
+                                    return (
+                                        <div key={getEntryId(saleItem)} className="border rounded p-2 mb-2">
+                                            <div className="d-flex justify-content-between align-items-center mb-1">
+                                                <div>
+                                                    <strong className="small">{product?.name || 'N/A'}</strong>
+                                                    <span className="text-muted ms-2 small">
+                                                        {saleItem.quantity} × {currency}{Number(saleItem.price || 0).toFixed(2)}
                                                     </span>
-                                                )}
-                                            </div>
-                                            {canExchange && soldStockItems.length > 0 && (
-                                                <button
-                                                    className={`btn btn-sm ${selectedCount === soldStockItems.length ? 'btn-outline-secondary' : 'btn-outline-primary'}`}
-                                                    onClick={() => selectAllFromSaleItem(saleItem)}
-                                                >
-                                                    {selectedCount === soldStockItems.length ? 'Deselect' : 'Select All'}
-                                                </button>
-                                            )}
-                                        </div>
-
-                                        {stockItems.map(si => {
-                                            const siDocId = getEntryId(si);
-                                            const isSold = si.status === 'Sold';
-                                            const canSelect = isSold && canExchange;
-                                            const selected = returnItems.find(r => r.stockItemDocId === siDocId);
-                                            return (
-                                                <div key={siDocId} className={`d-flex align-items-center gap-2 small px-1 py-1 ${selected ? 'bg-warning bg-opacity-25 rounded' : ''}`}>
-                                                    {canSelect ? (
-                                                        <input type="checkbox" checked={!!selected} onChange={() => toggleStockItem(saleItem, si)} />
-                                                    ) : (
-                                                        <span className="text-muted">—</span>
-                                                    )}
-                                                    <code>{si.sku || si.barcode || '-'}</code>
-                                                    <span className={`badge ${isSold ? 'bg-secondary' : 'bg-info'}`}>{si.status}</span>
-                                                    {selected && (
-                                                        <>
-                                                            <select
-                                                                className="form-select form-select-sm ms-auto"
-                                                                value={selected.status}
-                                                                onChange={e => setItemReturnStatus(siDocId, e.target.value)}
-                                                                style={{ width: 140 }}
-                                                            >
-                                                                {RETURN_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-                                                            </select>
-                                                            {DAMAGED_STATUSES.includes(selected.status) ? (
-                                                                <div className="d-flex align-items-center gap-1" style={{ minWidth: 100 }}>
-                                                                    <span className="text-muted small text-decoration-line-through">{currency}{selected.price.toFixed(2)}</span>
-                                                                    <input
-                                                                        type="number"
-                                                                        className="form-control form-control-sm text-end"
-                                                                        style={{ width: 80 }}
-                                                                        value={selected.refundPrice}
-                                                                        min="0"
-                                                                        step="0.01"
-                                                                        onChange={e => setItemRefundPrice(siDocId, e.target.value)}
-                                                                        title="Negotiated refund price"
-                                                                    />
-                                                                </div>
-                                                            ) : (
-                                                                <span className="small text-muted" style={{ minWidth: 60 }}>{currency}{selected.price.toFixed(2)}</span>
-                                                            )}
-                                                        </>
+                                                    {!canExchange && (
+                                                        <span className="badge bg-danger ms-2 small">
+                                                            <i className="fas fa-ban me-1"></i>{!isReturnable ? 'Non-Returnable' : 'Non-Exchangeable'}
+                                                        </span>
                                                     )}
                                                 </div>
-                                            );
-                                        })}
-
-                                        {!canExchange && (
-                                            <div className="text-danger small mt-1">
-                                                <i className="fas fa-ban me-1"></i>
-                                                {!isReturnable ? 'This product cannot be returned.' : 'This product cannot be exchanged.'}
+                                                {canExchange && soldStockItems.length > 0 && (
+                                                    <button
+                                                        className={`btn btn-sm ${selectedCount === soldStockItems.length ? 'btn-outline-secondary' : 'btn-outline-primary'}`}
+                                                        onClick={() => selectAllFromSaleItem(saleItem, originalSale)}
+                                                    >
+                                                        {selectedCount === soldStockItems.length ? 'Deselect' : 'Select All'}
+                                                    </button>
+                                                )}
                                             </div>
-                                        )}
-                                    </div>
-                                );
-                            })
-                        )}
 
-                        {/* Return total summary */}
-                        {returnItems.length > 0 && (
-                            <div className="alert alert-success py-2 mb-0 d-flex justify-content-between align-items-center">
-                                <span>
-                                    <i className="fas fa-undo me-1"></i>
-                                    {returnItems.length} item(s) selected for return
-                                </span>
-                                <span className="fw-bold">Credit: {currency}{returnTotal.toFixed(2)}</span>
-                            </div>
-                        )}
-                    </>
+                                            {stockItems.map(si => {
+                                                const siDocId = getEntryId(si);
+                                                const isSold = si.status === 'Sold';
+                                                const canSelect = isSold && canExchange;
+                                                const selected = returnItems.find(r => r.stockItemDocId === siDocId);
+                                                return (
+                                                    <div key={siDocId} className={`d-flex align-items-center gap-2 small px-1 py-1 ${selected ? 'bg-warning bg-opacity-25 rounded' : ''}`}>
+                                                        {canSelect ? (
+                                                            <input type="checkbox" checked={!!selected} onChange={() => toggleStockItem(saleItem, si, originalSale)} />
+                                                        ) : (
+                                                            <span className="text-muted">—</span>
+                                                        )}
+                                                        <code>{si.sku || si.barcode || '-'}</code>
+                                                        <span className={`badge ${isSold ? 'bg-secondary' : 'bg-info'}`}>{si.status}</span>
+                                                        {selected && (
+                                                            <>
+                                                                <select
+                                                                    className="form-select form-select-sm ms-auto"
+                                                                    value={selected.status}
+                                                                    onChange={e => setItemReturnStatus(siDocId, e.target.value)}
+                                                                    style={{ width: 140 }}
+                                                                >
+                                                                    {RETURN_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                                                                </select>
+                                                                {DAMAGED_STATUSES.includes(selected.status) ? (
+                                                                    <div className="d-flex align-items-center gap-1" style={{ minWidth: 100 }}>
+                                                                        <span className="text-muted small text-decoration-line-through">{currency}{selected.price.toFixed(2)}</span>
+                                                                        <input
+                                                                            type="number"
+                                                                            className="form-control form-control-sm text-end"
+                                                                            style={{ width: 80 }}
+                                                                            value={selected.refundPrice}
+                                                                            min="0"
+                                                                            step="0.01"
+                                                                            onChange={e => setItemRefundPrice(siDocId, e.target.value)}
+                                                                            title="Negotiated refund price"
+                                                                        />
+                                                                    </div>
+                                                                ) : (
+                                                                    <span className="small text-muted" style={{ minWidth: 60 }}>{currency}{selected.price.toFixed(2)}</span>
+                                                                )}
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
+
+                                            {!canExchange && (
+                                                <div className="text-danger small mt-1">
+                                                    <i className="fas fa-ban me-1"></i>
+                                                    {!isReturnable ? 'This product cannot be returned.' : 'This product cannot be exchanged.'}
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })
+                            )}
+                        </div>
+                    );
+                })}
+
+                {/* Return total summary */}
+                {returnItems.length > 0 && (
+                    <div className="alert alert-success py-2 mb-0 d-flex justify-content-between align-items-center">
+                        <span>
+                            <i className="fas fa-undo me-1"></i>
+                            {returnItems.length} item(s) selected for return
+                            {originalSales.length > 1 && <> from {originalSales.length} invoices</>}
+                        </span>
+                        <span className="fw-bold">Credit: {currency}{returnTotal.toFixed(2)}</span>
+                    </div>
                 )}
             </div>
         </div>

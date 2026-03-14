@@ -21,11 +21,15 @@ const SaleInvoice = ({ sale, items, totals}) => {
     };
 
     const payments = Array.isArray(sale?.payments) ? sale.payments : [];
-    const exchangeReturn = sale?.exchangeReturn || null;
-    const exchangeReturnTotal = exchangeReturn?.totalRefund
-        ?? (exchangeReturn?.returnItems?.length
-            ? exchangeReturn.returnItems.reduce((s, r) => s + Number(r.total ?? r.price ?? 0), 0)
-            : 0);
+    const exchangeReturns = Array.isArray(sale?.exchangeReturns) ? sale.exchangeReturns
+        : (sale?.exchangeReturn ? [sale.exchangeReturn] : []);
+    const exchangeReturnTotal = exchangeReturns.reduce((s, er) => {
+        const erTotal = er.totalRefund
+            ?? (er.returnItems?.length
+                ? er.returnItems.reduce((rs, r) => rs + Number(r.total ?? r.price ?? 0), 0)
+                : 0);
+        return s + erTotal;
+    }, 0);
     const paid = payments.length > 0
         ? payments.reduce((s, p) => s + (Number(p.amount) || 0), 0)
         : (Number(sale?.paid) || (sale?.payment_status === 'Paid' ? safeTotals.total : 0));
@@ -157,17 +161,28 @@ const SaleInvoice = ({ sale, items, totals}) => {
             </table>
 
             {/* Returned Items (Exchange) */}
-            {exchangeReturn?.returnItems?.length > 0 && (
+            {exchangeReturns.length > 0 && exchangeReturns.some(er => er.returnItems?.length > 0) && (
                 <div style={{ borderTop: '1px dashed #555', paddingTop: '4px', marginBottom: '4px' }}>
-                    <div className="fw-bold text-start mb-1" style={{ fontSize: `${itemsFontSize}px` }}>Returned Items (from #{exchangeReturn.sale?.invoice_no || 'N/A'}):</div>
+                    {exchangeReturns.map((er, erIdx) => {
+                        if (!er.returnItems?.length) return null;
+                        return (
+                            <div key={erIdx}>
+                                <div className="fw-bold text-start mb-1" style={{ fontSize: `${itemsFontSize}px` }}>Returned Items (from #{er.sale?.invoice_no || 'N/A'}):</div>
+                                <table className="w-100" style={{ fontSize: `${itemsFontSize}px`, borderCollapse: 'collapse' }}>
+                                    <tbody>
+                                        {er.returnItems.map((ri, idx) => (
+                                            <tr key={idx}>
+                                                <td className="text-start" style={{ padding: '1px 0' }}>{ri.productName || 'Item'}</td>
+                                                <td className="text-end" style={{ padding: '1px 0', whiteSpace: 'nowrap' }}>-{currency}{Number(ri.price || 0).toFixed(2)}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        );
+                    })}
                     <table className="w-100" style={{ fontSize: `${itemsFontSize}px`, borderCollapse: 'collapse' }}>
                         <tbody>
-                            {exchangeReturn.returnItems.map((ri, idx) => (
-                                <tr key={idx}>
-                                    <td className="text-start" style={{ padding: '1px 0' }}>{ri.productName || 'Item'}</td>
-                                    <td className="text-end" style={{ padding: '1px 0', whiteSpace: 'nowrap' }}>-{currency}{Number(ri.price || 0).toFixed(2)}</td>
-                                </tr>
-                            ))}
                             <tr className="fw-bold" style={{ borderTop: '1px dotted #999' }}>
                                 <td className="text-start" style={{ padding: '2px 0' }}>Return Credit:</td>
                                 <td className="text-end" style={{ padding: '2px 0', whiteSpace: 'nowrap' }}>-{currency}{exchangeReturnTotal.toFixed(2)}</td>
