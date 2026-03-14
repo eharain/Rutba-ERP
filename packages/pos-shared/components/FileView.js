@@ -16,6 +16,8 @@ function FileView({ onFileChange = function (field, files, multiple) { }, single
     const [uploading, setUploading] = useState(false);
     const [uploadError, setUploadError] = useState(null);
     const [showMediaLibrary, setShowMediaLibrary] = useState(false);
+    const [pasteIdValue, setPasteIdValue] = useState('');
+    const [pasteIdLoading, setPasteIdLoading] = useState(false);
     const inputRef = useRef();
 
     const handleChange = async (e) => {
@@ -134,6 +136,28 @@ function FileView({ onFileChange = function (field, files, multiple) { }, single
         }
     };
 
+    const handlePasteId = async () => {
+        const id = parseInt(pasteIdValue.trim(), 10);
+        if (!id || isNaN(id)) return;
+        setPasteIdLoading(true);
+        try {
+            const res = await authApi.get('/media-library/files/' + id);
+            const file = res.data;
+            if (!file) return;
+            handleMediaLibrarySelect([file]);
+            setPasteIdValue('');
+        } catch (err) {
+            console.error('Failed to fetch file by ID', err);
+        } finally {
+            setPasteIdLoading(false);
+        }
+    };
+
+    const copyFileId = (file) => {
+        if (!file || !file.id) return;
+        navigator.clipboard.writeText(String(file.id)).catch(function() {});
+    };
+
     return (
         <div>
             <input
@@ -144,7 +168,7 @@ function FileView({ onFileChange = function (field, files, multiple) { }, single
                 className="d-none"
                 onChange={handleChange}
             />
-            <div className="d-flex gap-2 mb-3">
+            <div className="d-flex flex-wrap gap-2 mb-3 align-items-center">
                 <button
                     type="button"
                     onClick={() => inputRef.current.click()}
@@ -162,6 +186,15 @@ function FileView({ onFileChange = function (field, files, multiple) { }, single
                     <i className="fas fa-photo-video me-1" />
                     Browse Gallery
                 </button>
+                <div className="input-group input-group-sm" style={{ width: 'auto', maxWidth: 170 }}>
+                    <input type="text" className="form-control" placeholder="Paste file ID"
+                        value={pasteIdValue} onChange={e => setPasteIdValue(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter') handlePasteId(); }} />
+                    <button className="btn btn-outline-primary" onClick={handlePasteId}
+                        disabled={pasteIdLoading || !pasteIdValue.trim()} title="Attach file by ID">
+                        <i className={pasteIdLoading ? 'fas fa-spinner fa-spin' : 'fas fa-paste'} />
+                    </button>
+                </div>
 
                 {uploading && <div className="spinner-border spinner-border-sm text-primary" role="status" aria-hidden="true" />}
                 {uploadError && <div className="text-danger small align-self-center ms-2">{uploadError}</div>}
@@ -206,8 +239,9 @@ function FileView({ onFileChange = function (field, files, multiple) { }, single
                             <span>Unsupported file</span>
                         )}
                     </div>
-                    <div className="card-footer text-center p-2" style={{ fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {singleFile.name}
+                    <div className="card-footer text-center p-2 d-flex align-items-center justify-content-center gap-1" style={{ fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <span className="text-truncate">{singleFile.name}</span>
+                        {singleFile.id && <button type="button" className="btn btn-sm btn-outline-secondary p-0 px-1" title={'Copy ID: ' + singleFile.id} onClick={() => copyFileId(singleFile)} style={{ fontSize: '0.65rem', lineHeight: 1 }}><i className="fas fa-hashtag" /></button>}
                     </div>
                 </div>
             )}
@@ -246,8 +280,9 @@ function FileView({ onFileChange = function (field, files, multiple) { }, single
                                         <span>Unsupported file</span>
                                     )}
                                 </div>
-                                <div className="card-footer text-center p-2" style={{ fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                    {fileObj.name}
+                                <div className="card-footer text-center p-2 d-flex align-items-center justify-content-center gap-1" style={{ fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                    <span className="text-truncate">{fileObj.name}</span>
+                                    {fileObj.id && <button type="button" className="btn btn-sm btn-outline-secondary p-0 px-1" title={'Copy ID: ' + fileObj.id} onClick={(e) => { e.stopPropagation(); copyFileId(fileObj); }} style={{ fontSize: '0.65rem', lineHeight: 1 }}><i className="fas fa-hashtag" /></button>}
                                 </div>
                             </div>
                         </div>
