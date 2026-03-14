@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { storage } from '../lib/storage';
 import { authApi, StraipImageUrl, isImage, isPDF } from '../lib/api';
 import StrapiMediaLibrary from './StrapiMediaLibrary';
@@ -157,6 +157,65 @@ function FileView({ onFileChange = function (field, files, multiple) { }, single
         if (!file || !file.id) return;
         navigator.clipboard.writeText(String(file.id)).catch(function() {});
     };
+
+    const handlePasteUpload = useCallback(async (e) => {
+        const items = e.clipboardData?.items;
+        if (!items) return;
+        const imageFiles = [];
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].type.startsWith('image/')) {
+                const file = items[i].getAsFile();
+                if (file) imageFiles.push(file);
+            }
+        }
+        if (imageFiles.length === 0) return;
+        e.preventDefault();
+        setUploadError(null);
+        const filesToUpload = multiple ? imageFiles : [imageFiles[0]];
+        if (autoUpload && refName && refId && field) {
+            setUploading(true);
+            try {
+                const uploaded = await uploadToStrapiFiles(filesToUpload, refName, field, refId, { name, alt: name, caption: name });
+                const newFiles = Array.isArray(uploaded) ? uploaded : [uploaded];
+                if (multiple) {
+                    const current = (galleryFiles ?? []).map(f => ({ ...f }));
+                    const all = [...current, ...newFiles].filter(f => f);
+                    setGalleryFiles(all);
+                    onFileChange(field, all, multiple);
+                } else {
+                    setSingleFile(newFiles[0]);
+                    onFileChange(field, newFiles[0], multiple);
+                }
+            } catch (err) {
+                console.error('Paste upload error', err);
+                setUploadError(err.message || 'Paste upload failed');
+            } finally {
+                setUploading(false);
+            }
+        } else {
+            if (multiple) {
+                const previews = filesToUpload.map(f => ({
+                    name: f.name || 'pasted-image',
+                    url: URL.createObjectURL(f),
+                    mime: f.type
+                }));
+                const current = (galleryFiles ?? []).map(f => ({ ...f }));
+                const all = [...current, ...previews];
+                setGalleryFiles(all);
+                onFileChange(field, all, multiple);
+            } else {
+                const f = filesToUpload[0];
+                const preview = { name: f.name || 'pasted-image', url: URL.createObjectURL(f), mime: f.type };
+                setSingleFile(preview);
+                onFileChange(field, preview, multiple);
+            }
+        }
+    }, [multiple, autoUpload, refName, refId, field, name, galleryFiles, onFileChange]);
+
+    useEffect(() => {
+        document.addEventListener('paste', handlePasteUpload);
+        return () => document.removeEventListener('paste', handlePasteUpload);
+    }, [handlePasteUpload]);
 
     return (
         <div>

@@ -152,6 +152,46 @@ export default function StrapiMediaLibrary({
         }
     };
 
+    const handlePasteUpload = useCallback(async (e) => {
+        if (!show) return;
+        var items = e.clipboardData?.items;
+        if (!items) return;
+        var imageFiles = [];
+        for (var i = 0; i < items.length; i++) {
+            if (items[i].type.startsWith('image/')) {
+                var file = items[i].getAsFile();
+                if (file) imageFiles.push(file);
+            }
+        }
+        if (imageFiles.length === 0) return;
+        e.preventDefault();
+        setUploading(true);
+        try {
+            var folderId = (currentFolderId && currentFolderId !== 'all' && currentFolderId !== 'root')
+                ? currentFolderId : null;
+            var uploaded = await authApi.uploadFile(imageFiles, null, null, null, {
+                name: null, alt: null, caption: null,
+            });
+            if (folderId && uploaded) {
+                var ids = (Array.isArray(uploaded) ? uploaded : [uploaded]).map(function(f) { return f.id; });
+                await authApi.post('/media-library/files/move', {
+                    fileIds: ids,
+                    targetFolderId: Number(folderId),
+                });
+            }
+            await loadFiles();
+        } catch (err) {
+            console.error('Paste upload failed', err);
+        } finally {
+            setUploading(false);
+        }
+    }, [show, currentFolderId, loadFiles]);
+
+    useEffect(function() {
+        document.addEventListener('paste', handlePasteUpload);
+        return function() { document.removeEventListener('paste', handlePasteUpload); };
+    }, [handlePasteUpload]);
+
     const handleCreateFolder = async () => {
         if (!newFolderName.trim()) return;
         try {
