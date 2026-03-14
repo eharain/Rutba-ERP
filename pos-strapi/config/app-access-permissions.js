@@ -275,6 +275,19 @@ const PLUGIN_PERMISSIONS = [
   'plugin::upload.content-api.findOne',
   'plugin::upload.content-api.upload',
   'plugin::upload.content-api.destroy',
+  // Media Library folder & file management
+  'api::media-library.media-library.folderTree',
+  'api::media-library.media-library.getFolders',
+  'api::media-library.media-library.getFolder',
+  'api::media-library.media-library.createFolder',
+  'api::media-library.media-library.renameFolder',
+  'api::media-library.media-library.deleteFolder',
+  'api::media-library.media-library.getFiles',
+  'api::media-library.media-library.getFile',
+  'api::media-library.media-library.moveFiles',
+  'api::media-library.media-library.updateFileInfo',
+  'api::media-library.media-library.deleteFile',
+  'api::media-library.media-library.uploadToFolder',
 ];
 
 const CLIENT_PLUGIN_PERMISSIONS = [
@@ -289,9 +302,22 @@ const CLIENT_PLUGIN_PERMISSIONS = [
   'plugin::upload.content-api.findOne',
   'plugin::upload.content-api.upload',
   'plugin::upload.content-api.destroy',
+  // Media Library folder & file management
+  'api::media-library.media-library.folderTree',
+  'api::media-library.media-library.getFolders',
+  'api::media-library.media-library.getFolder',
+  'api::media-library.media-library.createFolder',
+  'api::media-library.media-library.renameFolder',
+  'api::media-library.media-library.deleteFolder',
+  'api::media-library.media-library.getFiles',
+  'api::media-library.media-library.getFile',
+  'api::media-library.media-library.moveFiles',
+  'api::media-library.media-library.updateFileInfo',
+  'api::media-library.media-library.deleteFile',
+  'api::media-library.media-library.uploadToFolder',
 ];
 
-// ─── Public (unauthenticated) content-API permissions ───────
+// ─── Public (unauthenticated) content-API permissions
 //   These are synced to Strapi's built-in "Public" role so
 //   the web storefront can read products, brands, pages, etc.
 //   without an auth token.
