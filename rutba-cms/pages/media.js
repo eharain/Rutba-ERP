@@ -252,6 +252,48 @@ export default function MediaPage() {
         }
     };
 
+    // ─── Clipboard paste upload ────────────────────────────
+    const handlePasteUpload = useCallback(async (e) => {
+        const items = e.clipboardData?.items;
+        if (!items) return;
+        const imageFiles = [];
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].type.startsWith('image/')) {
+                const file = items[i].getAsFile();
+                if (file) imageFiles.push(file);
+            }
+        }
+        if (imageFiles.length === 0) return;
+        e.preventDefault();
+        setUploading(true);
+        try {
+            const folderId = (currentFolderId && currentFolderId !== 'all' && currentFolderId !== 'root')
+                ? currentFolderId : null;
+            const uploaded = await authApi.uploadFile(imageFiles, null, null, null, {
+                name: null, alt: null, caption: null,
+            });
+            if (folderId && uploaded) {
+                const ids = (Array.isArray(uploaded) ? uploaded : [uploaded]).map(f => f.id);
+                await authApi.post('/media-library/files/move', {
+                    fileIds: ids,
+                    targetFolderId: Number(folderId),
+                });
+            }
+            toast(`Pasted ${imageFiles.length} image(s).`, 'success');
+            await loadFiles();
+        } catch (err) {
+            console.error('Paste upload failed', err);
+            toast('Paste upload failed.', 'danger');
+        } finally {
+            setUploading(false);
+        }
+    }, [currentFolderId, loadFiles]);
+
+    useEffect(() => {
+        document.addEventListener('paste', handlePasteUpload);
+        return () => document.removeEventListener('paste', handlePasteUpload);
+    }, [handlePasteUpload]);
+
     // ─── Drag & Drop ────────────────────────────────────────
     const handleFileDragStart = (e, fileId) => {
         const ids = selectedFileIds.has(fileId) ? Array.from(selectedFileIds) : [fileId];
