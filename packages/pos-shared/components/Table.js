@@ -12,8 +12,8 @@ export function TableHead({ children }) {
 export function TableBody({ children }) {
     return <tbody>{children}</tbody>;
 }
-export function TableRow({ children }) {
-    return <tr>{children}</tr>;
+export function TableRow({ children, style }) {
+    return <tr style={style}>{children}</tr>;
 }
 export function TableCell({ children, align, colSpan, title, onClick, style }) {
     return (

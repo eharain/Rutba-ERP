@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, Fragment } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { Table, TableHead, TableRow, TableCell, TableBody, CircularProgress, TablePagination } from "@rutba/pos-shared/components/Table";
@@ -50,6 +50,9 @@ export default function Products() {
     const [filtersInitialized, setFiltersInitialized] = useState(false);
     const [sortField, setSortField] = useState('id');
     const [sortOrder, setSortOrder] = useState('desc');
+    const [expandedProducts, setExpandedProducts] = useState({});
+    const [variantsMap, setVariantsMap] = useState({});
+    const [loadingVariants, setLoadingVariants] = useState({});
 
     const sortString = `${sortField}:${sortOrder}`;
 
@@ -136,7 +139,8 @@ export default function Products() {
             terms: [selectedTerm],
             purchases: [selectedPurchase],
             stockStatus,
-            searchText
+            searchText,
+            parentOnly: true
         };
 
         // Sync current filter state to URL query params (shallow to avoid full reload)
@@ -173,6 +177,36 @@ export default function Products() {
     const handleChangeRowsPerPage = (event) => {
         setRowsPerPage(parseInt(event.target.value, 10));
         setPage(0);
+    };
+
+    const toggleVariants = async (product) => {
+        const docId = product.documentId;
+        if (expandedProducts[docId]) {
+            setExpandedProducts(prev => ({ ...prev, [docId]: false }));
+            return;
+        }
+        if (!variantsMap[docId]) {
+            setLoadingVariants(prev => ({ ...prev, [docId]: true }));
+            try {
+                const res = await authApi.get("/products", {
+                    filters: { parent: { documentId: docId } },
+                    populate: {
+                        logo: true,
+                        categories: true,
+                        brands: true,
+                        suppliers: true,
+                        purchase_items: { populate: { purchase: true } },
+                    },
+                    pagination: { pageSize: 100 },
+                });
+                setVariantsMap(prev => ({ ...prev, [docId]: res.data || [] }));
+            } catch (err) {
+                console.error("Failed to load variants", err);
+            } finally {
+                setLoadingVariants(prev => ({ ...prev, [docId]: false }));
+            }
+        }
+        setExpandedProducts(prev => ({ ...prev, [docId]: true }));
     };
 
     return (
@@ -213,6 +247,7 @@ export default function Products() {
                             <Table>
                                 <TableHead>
                                     <TableRow>
+                                        <TableCell style={{ width: 30 }}></TableCell>
                                         <SortableHeader label="id" field="id" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />
                                         <SortableHeader label="Product Name" field="name" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />
                                         <TableCell>Logo</TableCell>
@@ -230,57 +265,121 @@ export default function Products() {
                                 <TableBody>
                                     {loading ? (
                                         <TableRow>
-                                            <TableCell colSpan={12} align="center">
+                                            <TableCell colSpan={13} align="center">
                                                 <CircularProgress size={24} />
                                             </TableCell>
                                         </TableRow>
                                     ) : products.length === 0 ? (
                                         <TableRow>
-                                            <TableCell colSpan={12} align="center">
+                                            <TableCell colSpan={13} align="center">
                                                 No products found.
                                             </TableCell>
                                         </TableRow>
                                     ) : (
                                         products.map((product) => (
-                                            <TableRow key={product.id}>
-                                                <TableCell title={product.documentId}>{product.id}</TableCell>
-                                                <TableCell>
-                                                    <Link href={`/${product.documentId ?? product.id}/product-edit`}>{product.name}</Link>
-                                                </TableCell>
-                                                <TableCell><StrapiImage media={product.logo} format="thumbnail" ></StrapiImage> </TableCell>
-                                                <TableCell>{product.barcode}</TableCell>
-                                                <TableCell>{product.sku}</TableCell>
-                                                <TableCell>{product.suppliers?.map(s => s.name)}</TableCell>
-                                                <TableCell>
-                                                    {(product.purchase_items || []).map(pi => pi.purchase?.orderId).filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).map((orderId, i) => (
-                                                        <span key={i}>{i > 0 && ', '}<Link href={`/${product.purchase_items.find(pi => pi.purchase?.orderId === orderId)?.purchase?.documentId}/purchase-view`}>{orderId}</Link></span>
-                                                    ))}
-                                                </TableCell>
-                                                <TableCell>{currency}{product.offer_price}</TableCell>
-                                                <TableCell>{currency}{product.selling_price}</TableCell>
-                                                <TableCell>{product.stock_quantity}</TableCell>
-                                                <TableCell>{product.status}</TableCell>
-
-                                                <TableCell>
-                                                    <div className="d-flex gap-1">
-                                                        <Link href={`/${product.documentId ?? product.id}/product-edit`} className="btn btn-sm btn-outline-primary" title="Edit">
-                                                            <i className="fas fa-edit"></i>
-                                                        </Link>
-                                                        <Link href={`/${product.documentId ?? product.id}/product-stock-items`} className="btn btn-sm btn-outline-info" title="Stock Control">
-                                                            <i className="fas fa-boxes"></i>
-                                                        </Link>
-                                                        <Link href={`/${product.documentId ?? product.id}/product-variants`} className="btn btn-sm btn-outline-warning" title="Variants">
-                                                            <i className="fas fa-layer-group"></i>
-                                                        </Link>
-                                                        <Link href={`/stock-items?product=${product.documentId ?? product.id}`} className="btn btn-sm btn-outline-dark" title="Stock Items">
-                                                            <i className="fas fa-barcode"></i>
-                                                        </Link>
-                                                        <Link href={`/${product.documentId ?? product.id}/product-relations`} className="btn btn-sm btn-outline-danger" title="Relations & Merge">
-                                                            <i className="fas fa-compress-arrows-alt"></i>
-                                                        </Link>
-                                                    </div>
-                                                </TableCell>
-                                            </TableRow>
+                                            <Fragment key={product.id}>
+                                                <TableRow>
+                                                    <TableCell>
+                                                        <button
+                                                            onClick={() => toggleVariants(product)}
+                                                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                                                            title="Show/hide variants"
+                                                        >
+                                                            <i className={`fas fa-chevron-${expandedProducts[product.documentId] ? 'down' : 'right'}`}></i>
+                                                        </button>
+                                                    </TableCell>
+                                                    <TableCell title={product.documentId}>{product.id}</TableCell>
+                                                    <TableCell>
+                                                        <Link href={`/${product.documentId ?? product.id}/product-edit`}><strong>{product.name}</strong></Link>
+                                                    </TableCell>
+                                                    <TableCell><StrapiImage media={product.logo} format="thumbnail" /></TableCell>
+                                                    <TableCell>{product.barcode}</TableCell>
+                                                    <TableCell>{product.sku}</TableCell>
+                                                    <TableCell>{product.suppliers?.map(s => s.name)}</TableCell>
+                                                    <TableCell>
+                                                        {(product.purchase_items || []).map(pi => pi.purchase?.orderId).filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).map((orderId, i) => (
+                                                            <span key={i}>{i > 0 && ', '}<Link href={`/${product.purchase_items.find(pi => pi.purchase?.orderId === orderId)?.purchase?.documentId}/purchase-view`}>{orderId}</Link></span>
+                                                        ))}
+                                                    </TableCell>
+                                                    <TableCell>{currency}{product.offer_price}</TableCell>
+                                                    <TableCell>{currency}{product.selling_price}</TableCell>
+                                                    <TableCell>{product.stock_quantity}</TableCell>
+                                                    <TableCell>{product.status}</TableCell>
+                                                    <TableCell>
+                                                        <div className="d-flex gap-1">
+                                                            <Link href={`/${product.documentId ?? product.id}/product-edit`} className="btn btn-sm btn-outline-primary" title="Edit">
+                                                                <i className="fas fa-edit"></i>
+                                                            </Link>
+                                                            <Link href={`/${product.documentId ?? product.id}/product-stock-items`} className="btn btn-sm btn-outline-info" title="Stock Control">
+                                                                <i className="fas fa-boxes"></i>
+                                                            </Link>
+                                                            <Link href={`/${product.documentId ?? product.id}/product-variants`} className="btn btn-sm btn-outline-warning" title="Variants">
+                                                                <i className="fas fa-layer-group"></i>
+                                                            </Link>
+                                                            <Link href={`/stock-items?product=${product.documentId ?? product.id}`} className="btn btn-sm btn-outline-dark" title="Stock Items">
+                                                                <i className="fas fa-barcode"></i>
+                                                            </Link>
+                                                            <Link href={`/${product.documentId ?? product.id}/product-relations`} className="btn btn-sm btn-outline-danger" title="Relations & Merge">
+                                                                <i className="fas fa-compress-arrows-alt"></i>
+                                                            </Link>
+                                                        </div>
+                                                    </TableCell>
+                                                </TableRow>
+                                                {expandedProducts[product.documentId] && (
+                                                    loadingVariants[product.documentId] ? (
+                                                        <TableRow>
+                                                            <TableCell colSpan={13} align="center">
+                                                                <CircularProgress size={16} /> Loading variants...
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    ) : (variantsMap[product.documentId] || []).length === 0 ? (
+                                                        <TableRow>
+                                                            <TableCell colSpan={13} align="center" style={{ color: '#999', fontStyle: 'italic' }}>
+                                                                No variants
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    ) : (
+                                                        (variantsMap[product.documentId] || []).map(v => (
+                                                            <TableRow key={`variant-${v.id}`} style={{ background: '#f8f9fa' }}>
+                                                                <TableCell></TableCell>
+                                                                <TableCell title={v.documentId}>{v.id}</TableCell>
+                                                                <TableCell>
+                                                                    <span style={{ paddingLeft: 16 }}>
+                                                                        <i className="fas fa-level-up-alt fa-rotate-90" style={{ fontSize: '0.8em', marginRight: 4, color: '#999' }}></i>
+                                                                        <Link href={`/${v.documentId ?? v.id}/product-edit`}>{v.name}</Link>
+                                                                    </span>
+                                                                </TableCell>
+                                                                <TableCell><StrapiImage media={v.logo} format="thumbnail" /></TableCell>
+                                                                <TableCell>{v.barcode}</TableCell>
+                                                                <TableCell>{v.sku}</TableCell>
+                                                                <TableCell>{v.suppliers?.map(s => s.name)}</TableCell>
+                                                                <TableCell>
+                                                                    {(v.purchase_items || []).map(pi => pi.purchase?.orderId).filter(Boolean).filter((val, i, a) => a.indexOf(val) === i).map((orderId, i) => (
+                                                                        <span key={i}>{i > 0 && ', '}<Link href={`/${v.purchase_items.find(pi => pi.purchase?.orderId === orderId)?.purchase?.documentId}/purchase-view`}>{orderId}</Link></span>
+                                                                    ))}
+                                                                </TableCell>
+                                                                <TableCell>{currency}{v.offer_price}</TableCell>
+                                                                <TableCell>{currency}{v.selling_price}</TableCell>
+                                                                <TableCell>{v.stock_quantity}</TableCell>
+                                                                <TableCell>{v.status}</TableCell>
+                                                                <TableCell>
+                                                                    <div className="d-flex gap-1">
+                                                                        <Link href={`/${v.documentId ?? v.id}/product-edit`} className="btn btn-sm btn-outline-primary" title="Edit">
+                                                                            <i className="fas fa-edit"></i>
+                                                                        </Link>
+                                                                        <Link href={`/${v.documentId ?? v.id}/product-stock-items`} className="btn btn-sm btn-outline-info" title="Stock Control">
+                                                                            <i className="fas fa-boxes"></i>
+                                                                        </Link>
+                                                                        <Link href={`/stock-items?product=${v.documentId ?? v.id}`} className="btn btn-sm btn-outline-dark" title="Stock Items">
+                                                                            <i className="fas fa-barcode"></i>
+                                                                        </Link>
+                                                                    </div>
+                                                                </TableCell>
+                                                            </TableRow>
+                                                        ))
+                                                    )
+                                                )}
+                                            </Fragment>
                                         ))
                                     )}
                                 </TableBody>
