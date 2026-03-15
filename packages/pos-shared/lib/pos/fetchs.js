@@ -122,7 +122,7 @@ export async function fetchProducts(filters, page, rowsPerPage, sort) {
     let { query, relations, url } = urlAndRelations(entity, documentId, searchText, page, rowsPerPage)
 
     for (const [field, values] of Object.entries(filters)) {
-        if (field === 'stockStatus' || field === 'searchText') {
+        if (field === 'stockStatus' || field === 'searchText' || field === 'parentOnly' || field === 'status') {
             continue;
         }
         if (Array.isArray(values) && values.length > 0) {
@@ -136,6 +136,14 @@ export async function fetchProducts(filters, page, rowsPerPage, sort) {
                 });
             }
         }
+    }
+
+    if (filters.parentOnly) {
+        url += `&filters[is_variant][$ne]=true`;
+    }
+
+    if (filters.status) {
+        url += `&status=${encodeURIComponent(filters.status)}`;
     }
 
     if (sort) {
