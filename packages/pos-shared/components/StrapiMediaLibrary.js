@@ -37,6 +37,7 @@ export default function StrapiMediaLibrary({
     const [expandedFolders, setExpandedFolders] = useState(new Set());
     const [renamingFolderId, setRenamingFolderId] = useState(null);
     const [renameValue, setRenameValue] = useState('');
+    const [folderSearch, setFolderSearch] = useState('');
     const fileInputRef = useRef();
     const PAGE_SIZE = 24;
 
@@ -165,6 +166,7 @@ export default function StrapiMediaLibrary({
         }
         if (imageFiles.length === 0) return;
         e.preventDefault();
+        e.stopImmediatePropagation();
         setUploading(true);
         try {
             var folderId = (currentFolderId && currentFolderId !== 'all' && currentFolderId !== 'root')
@@ -272,6 +274,26 @@ export default function StrapiMediaLibrary({
         }
     };
 
+    const handleMoveToFolder = async (targetFolderId) => {
+        var ids = selected.size > 0 ? Array.from(selected)
+            : draggedFileIds.length > 0 ? draggedFileIds.slice()
+            : [];
+        if (ids.length === 0) return;
+        try {
+            await authApi.post('/media-library/files/move', {
+                fileIds: ids.map(Number),
+                targetFolderId: targetFolderId === 'root' ? null : Number(targetFolderId),
+            });
+            setDraggedFileIds([]);
+            setSelected(new Set());
+            await loadFiles();
+        } catch (err) {
+            console.error('Failed to move files', err);
+        }
+    };
+
+    var hasMovableSelection = selected.size > 0 || draggedFileIds.length > 0;
+
     const toggleExpand = (folderId) => {
         setExpandedFolders(prev => {
             const s = new Set(prev);
@@ -328,17 +350,29 @@ export default function StrapiMediaLibrary({
                     </div>
 
                     <div className="modal-body p-0 d-flex" style={{ overflowY: 'hidden', minHeight: 0 }}>
-                        <div className="border-end bg-white" style={{ width: 220, minWidth: 220, overflowY: 'auto', padding: '8px 0' }}>
-                            <FolderItem label="All Files" icon="fa-globe" active={currentFolderId === 'all'} onClick={() => setCurrentFolderId('all')} dragOver={false} />
+                        <div className="border-end bg-white d-flex flex-column" style={{ width: 220, minWidth: 220, padding: '8px 0' }}>
+                            <div className="px-2 mb-1">
+                                <div className="input-group input-group-sm">
+                                    <span className="input-group-text" style={{ fontSize: '0.75rem' }}><i className="fas fa-search" /></span>
+                                    <input type="text" className="form-control" placeholder="Search folders…" value={folderSearch}
+                                        onChange={e => setFolderSearch(e.target.value)} style={{ fontSize: '0.8rem' }} />
+                                    {folderSearch && <button className="btn btn-outline-secondary btn-sm" onClick={function() { setFolderSearch(''); }}><i className="fas fa-times" /></button>}
+                                </div>
+                            </div>
+                            <div style={{ overflowY: 'auto', flex: 1 }}>
+                            {!folderSearch.trim() && <FolderItem label="All Files" icon="fa-globe" active={currentFolderId === 'all'} onClick={() => setCurrentFolderId('all')} dragOver={false} />}
                             <FolderItem label="Unsorted" icon="fa-inbox" active={currentFolderId === 'root'} onClick={() => setCurrentFolderId('root')}
                                 onDragOver={function(e) { handleFolderDragOver(e, 'root'); }} onDragLeave={handleFolderDragLeave}
-                                onDrop={function(e) { handleFolderDrop(e, 'root'); }} dragOver={dragOverFolderId === 'root'} />
-                            <hr className="my-1 mx-2" />
+                                onDrop={function(e) { handleFolderDrop(e, 'root'); }} dragOver={dragOverFolderId === 'root'}
+                                showMoveHere={hasMovableSelection} onMoveHere={function() { handleMoveToFolder('root'); }} hidden={folderSearch.trim() && !'unsorted'.includes(folderSearch.trim().toLowerCase())} />
+                            {!folderSearch.trim() && <hr className="my-1 mx-2" />}
                             <FolderTreeNode nodes={folderTree} depth={0} currentFolderId={currentFolderId} setCurrentFolderId={setCurrentFolderId}
                                 expandedFolders={expandedFolders} toggleExpand={toggleExpand} dragOverFolderId={dragOverFolderId}
                                 handleFolderDragOver={handleFolderDragOver} handleFolderDragLeave={handleFolderDragLeave} handleFolderDrop={handleFolderDrop}
                                 handleDeleteFolder={handleDeleteFolder} renamingFolderId={renamingFolderId} setRenamingFolderId={setRenamingFolderId}
-                                renameValue={renameValue} setRenameValue={setRenameValue} handleRenameFolder={handleRenameFolder} />
+                                renameValue={renameValue} setRenameValue={setRenameValue} handleRenameFolder={handleRenameFolder}
+                                folderSearch={folderSearch.trim().toLowerCase()} showMoveHere={hasMovableSelection} onMoveHere={handleMoveToFolder} />
+                            </div>
                             <div className="px-2 mt-2">
                                 {creatingFolder ? (
                                     <div className="input-group input-group-sm">
@@ -410,7 +444,7 @@ export default function StrapiMediaLibrary({
                     <div className="modal-footer py-2">
                         <span className="me-auto text-muted small">
                             {selected.size > 0 ? selected.size + ' file(s) selected' : 'Select a file to attach'}
-                            {draggedFileIds.length > 0 && <span className="ms-2 text-primary"><i className="fas fa-arrows-alt me-1" />Drag to a folder</span>}
+                            {draggedFileIds.length > 0 && <span className="ms-2 text-primary"><i className="fas fa-arrows-alt me-1" />Drag to a folder or click <i className="fas fa-paste mx-1" /></span>}
                         </span>
                         <button className="btn btn-secondary btn-sm" onClick={onClose}>Cancel</button>
                         <button className="btn btn-primary btn-sm" disabled={selected.size === 0} onClick={handleConfirm}>
@@ -423,7 +457,8 @@ export default function StrapiMediaLibrary({
     );
 }
 
-function FolderItem({ label, icon, active, onClick, onDragOver, onDragLeave, onDrop, dragOver, depth, hasChildren, expanded, onToggle, onDelete, isRenaming, renameValue, setRenameValue, onRename, onStartRename }) {
+function FolderItem({ label, icon, active, onClick, onDragOver, onDragLeave, onDrop, dragOver, depth, hasChildren, expanded, onToggle, onDelete, isRenaming, renameValue, setRenameValue, onRename, onStartRename, showMoveHere, onMoveHere, hidden }) {
+    if (hidden) return null;
     return (
         <div className={'d-flex align-items-center px-2 py-1' + (active ? ' bg-primary text-white' : dragOver ? ' bg-info bg-opacity-25' : '')}
             style={{ cursor: 'pointer', paddingLeft: 8 + (depth || 0) * 16, fontSize: '0.85rem', transition: 'background 0.15s', userSelect: 'none' }}
@@ -443,24 +478,37 @@ function FolderItem({ label, icon, active, onClick, onDragOver, onDragLeave, onD
             ) : (
                 <span className="flex-grow-1 text-truncate">{label}</span>
             )}
-            {onDelete && !isRenaming && (
-                <span className="ms-auto d-flex gap-1" onClick={e => e.stopPropagation()}>
-                    <button className={'btn btn-sm p-0 ' + (active ? 'text-white' : 'text-muted')} title="Rename"
-                        onClick={() => { if (onStartRename) onStartRename(); }} style={{ fontSize: '0.7rem', lineHeight: 1 }}><i className="fas fa-pen" /></button>
-                    <button className={'btn btn-sm p-0 ' + (active ? 'text-white' : 'text-danger')} title="Delete folder"
-                        onClick={function(e) { onDelete(e); }} style={{ fontSize: '0.7rem', lineHeight: 1 }}><i className="fas fa-trash" /></button>
-                </span>
-            )}
+            <span className="ms-auto d-flex gap-1" onClick={e => e.stopPropagation()}>
+                {showMoveHere && onMoveHere && !isRenaming && (
+                    <button className={'btn btn-sm p-0 ' + (active ? 'text-white' : 'text-success')} title="Move selected here"
+                        onClick={function() { onMoveHere(); }} style={{ fontSize: '0.7rem', lineHeight: 1 }}><i className="fas fa-paste" /></button>
+                )}
+                {onDelete && !isRenaming && (
+                    <>
+                        <button className={'btn btn-sm p-0 ' + (active ? 'text-white' : 'text-muted')} title="Rename"
+                            onClick={() => { if (onStartRename) onStartRename(); }} style={{ fontSize: '0.7rem', lineHeight: 1 }}><i className="fas fa-pen" /></button>
+                        <button className={'btn btn-sm p-0 ' + (active ? 'text-white' : 'text-danger')} title="Delete folder"
+                            onClick={function(e) { onDelete(e); }} style={{ fontSize: '0.7rem', lineHeight: 1 }}><i className="fas fa-trash" /></button>
+                    </>
+                )}
+            </span>
         </div>
     );
 }
 
-function FolderTreeNode({ nodes, depth, currentFolderId, setCurrentFolderId, expandedFolders, toggleExpand, dragOverFolderId, handleFolderDragOver, handleFolderDragLeave, handleFolderDrop, handleDeleteFolder, renamingFolderId, setRenamingFolderId, renameValue, setRenameValue, handleRenameFolder }) {
+function folderMatchesSearch(folder, search) {
+    if (!search) return true;
+    if (folder.name.toLowerCase().includes(search)) return true;
+    if (folder.children) return folder.children.some(function(c) { return folderMatchesSearch(c, search); });
+    return false;
+}
+
+function FolderTreeNode({ nodes, depth, currentFolderId, setCurrentFolderId, expandedFolders, toggleExpand, dragOverFolderId, handleFolderDragOver, handleFolderDragLeave, handleFolderDrop, handleDeleteFolder, renamingFolderId, setRenamingFolderId, renameValue, setRenameValue, handleRenameFolder, folderSearch, showMoveHere, onMoveHere }) {
     if (!nodes || nodes.length === 0) return null;
-    return nodes.map(folder => {
+    return nodes.filter(function(folder) { return folderMatchesSearch(folder, folderSearch); }).map(folder => {
         var fid = folder.id;
         var hasChildren = folder.children && folder.children.length > 0;
-        var isExpanded = expandedFolders.has(fid);
+        var isExpanded = expandedFolders.has(fid) || (folderSearch && hasChildren);
         var isRenaming = renamingFolderId === fid;
         return (
             <React.Fragment key={fid}>
@@ -470,13 +518,15 @@ function FolderTreeNode({ nodes, depth, currentFolderId, setCurrentFolderId, exp
                     dragOver={dragOverFolderId === fid} depth={depth} hasChildren={hasChildren} expanded={isExpanded} onToggle={() => toggleExpand(fid)}
                     onDelete={function(e) { handleDeleteFolder(fid, e); }} isRenaming={isRenaming} renameValue={renameValue} setRenameValue={setRenameValue}
                     onRename={() => handleRenameFolder(fid)}
-                    onStartRename={() => { setRenamingFolderId(isRenaming ? null : fid); setRenameValue(folder.name); }} />
+                    onStartRename={() => { setRenamingFolderId(isRenaming ? null : fid); setRenameValue(folder.name); }}
+                    showMoveHere={showMoveHere} onMoveHere={function() { onMoveHere(fid); }} />
                 {hasChildren && isExpanded && (
                     <FolderTreeNode nodes={folder.children} depth={depth + 1} currentFolderId={currentFolderId} setCurrentFolderId={setCurrentFolderId}
                         expandedFolders={expandedFolders} toggleExpand={toggleExpand} dragOverFolderId={dragOverFolderId}
                         handleFolderDragOver={handleFolderDragOver} handleFolderDragLeave={handleFolderDragLeave} handleFolderDrop={handleFolderDrop}
                         handleDeleteFolder={handleDeleteFolder} renamingFolderId={renamingFolderId} setRenamingFolderId={setRenamingFolderId}
-                        renameValue={renameValue} setRenameValue={setRenameValue} handleRenameFolder={handleRenameFolder} />
+                        renameValue={renameValue} setRenameValue={setRenameValue} handleRenameFolder={handleRenameFolder}
+                        folderSearch={folderSearch} showMoveHere={showMoveHere} onMoveHere={onMoveHere} />
                 )}
             </React.Fragment>
         );

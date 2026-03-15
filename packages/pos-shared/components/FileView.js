@@ -18,7 +18,9 @@ function FileView({ onFileChange = function (field, files, multiple) { }, single
     const [showMediaLibrary, setShowMediaLibrary] = useState(false);
     const [pasteIdValue, setPasteIdValue] = useState('');
     const [pasteIdLoading, setPasteIdLoading] = useState(false);
+    const [isFocused, setIsFocused] = useState(false);
     const inputRef = useRef();
+    const containerRef = useRef();
 
     const handleChange = async (e) => {
         setUploadError(null);
@@ -159,6 +161,7 @@ function FileView({ onFileChange = function (field, files, multiple) { }, single
     };
 
     const handlePasteUpload = useCallback(async (e) => {
+        if (!isFocused) return;
         const items = e.clipboardData?.items;
         if (!items) return;
         const imageFiles = [];
@@ -170,6 +173,7 @@ function FileView({ onFileChange = function (field, files, multiple) { }, single
         }
         if (imageFiles.length === 0) return;
         e.preventDefault();
+        e.stopImmediatePropagation();
         setUploadError(null);
         const filesToUpload = multiple ? imageFiles : [imageFiles[0]];
         if (autoUpload && refName && refId && field) {
@@ -210,15 +214,30 @@ function FileView({ onFileChange = function (field, files, multiple) { }, single
                 onFileChange(field, preview, multiple);
             }
         }
-    }, [multiple, autoUpload, refName, refId, field, name, galleryFiles, onFileChange]);
+    }, [isFocused, multiple, autoUpload, refName, refId, field, name, galleryFiles, onFileChange]);
 
     useEffect(() => {
         document.addEventListener('paste', handlePasteUpload);
         return () => document.removeEventListener('paste', handlePasteUpload);
     }, [handlePasteUpload]);
 
+    useEffect(() => {
+        const el = containerRef.current;
+        if (!el) return;
+        const onFocusIn = () => setIsFocused(true);
+        const onFocusOut = (e) => {
+            if (!el.contains(e.relatedTarget)) setIsFocused(false);
+        };
+        el.addEventListener('focusin', onFocusIn);
+        el.addEventListener('focusout', onFocusOut);
+        return () => {
+            el.removeEventListener('focusin', onFocusIn);
+            el.removeEventListener('focusout', onFocusOut);
+        };
+    }, []);
+
     return (
-        <div>
+        <div ref={containerRef} tabIndex={-1} style={{ outline: 'none' }}>
             <input
                 ref={inputRef}
                 type="file"
