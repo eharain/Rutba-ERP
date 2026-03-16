@@ -1,10 +1,12 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { marked } from '../lib/marked.esm.js';
 import { markedVideoEmbed } from '../lib/marked-video-embed.js';
+import { IMAGE_URL } from '../lib/api';
 import VideoInsertDialog from './VideoInsertDialog';
+import StrapiMediaLibrary from './StrapiMediaLibrary';
 
 marked.setOptions({ breaks: true, gfm: true });
-marked.use(markedVideoEmbed());
+marked.use(markedVideoEmbed({ imageBaseUrl: IMAGE_URL }));
 
 const TOOLBAR = [
     { icon: 'fa-heading', label: 'H1', md: (s) => `# ${s || 'Heading'}`, wrap: false },
@@ -21,7 +23,6 @@ const TOOLBAR = [
     { type: 'sep' },
     { icon: 'fa-code', label: 'Code', md: (s) => `\`${s || 'code'}\``, wrap: true },
     { icon: 'fa-link', label: 'Link', md: (s) => `[${s || 'text'}](url)`, wrap: true },
-    { icon: 'fa-image', label: 'Image', md: (s) => `![${s || 'alt'}](url)`, wrap: true },
     { type: 'sep' },
     { icon: 'fa-ruler-horizontal', label: 'Horizontal Rule', md: () => `\n---\n`, wrap: false },
     { icon: 'fa-table', label: 'Table', md: () => `| Header | Header |\n| ------ | ------ |\n| Cell   | Cell   |`, wrap: false },
@@ -31,6 +32,7 @@ export default function MarkdownEditor({ value = '', onChange, name, rows = 12, 
     const textareaRef = useRef(null);
     const [mode, setMode] = useState('split'); // 'edit', 'preview', 'split'
     const [videoDialogOpen, setVideoDialogOpen] = useState(false);
+    const [imageLibOpen, setImageLibOpen] = useState(false);
 
     const insertMarkdown = useCallback((toolItem) => {
         const ta = textareaRef.current;
@@ -80,6 +82,23 @@ export default function MarkdownEditor({ value = '', onChange, name, rows = 12, 
         }
     }, [value]);
 
+    const handleImageSelect = useCallback((files) => {
+        const ta = textareaRef.current;
+        const pos = ta ? ta.selectionStart : value.length;
+        const md = files.map(f => `![${f.alternativeText || f.name || 'image'}](${f.url})`).join('\n');
+        const insert = '\n' + md + '\n';
+        const newValue = value.substring(0, pos) + insert + value.substring(pos);
+        onChange({ target: { name, value: newValue } });
+        setImageLibOpen(false);
+        requestAnimationFrame(() => {
+            if (ta) {
+                ta.focus();
+                const cursorPos = pos + insert.length;
+                ta.setSelectionRange(cursorPos, cursorPos);
+            }
+        });
+    }, [value, onChange, name]);
+
     const handleVideoInsert = useCallback((directive) => {
         const ta = textareaRef.current;
         const pos = ta ? ta.selectionStart : value.length;
@@ -119,6 +138,15 @@ export default function MarkdownEditor({ value = '', onChange, name, rows = 12, 
                 })}
 
                 <div style={{ width: 1, height: 20, background: '#ccc' }} />
+                <button
+                    type="button"
+                    className="btn btn-sm btn-outline-secondary"
+                    title="Insert Image from Media Library"
+                    onClick={() => setImageLibOpen(true)}
+                    style={{ padding: '2px 6px', fontSize: '13px' }}
+                >
+                    <i className="fas fa-image" />
+                </button>
                 <button
                     type="button"
                     className="btn btn-sm btn-outline-secondary"
@@ -182,6 +210,14 @@ export default function MarkdownEditor({ value = '', onChange, name, rows = 12, 
                 isOpen={videoDialogOpen}
                 onInsert={handleVideoInsert}
                 onClose={() => setVideoDialogOpen(false)}
+                imageBaseUrl={IMAGE_URL}
+            />
+            <StrapiMediaLibrary
+                show={imageLibOpen}
+                onClose={() => setImageLibOpen(false)}
+                accept="image"
+                multiple
+                onSelect={handleImageSelect}
             />
         </div>
     );

@@ -8,7 +8,11 @@
  *     https://www.youtube.com/watch?v=abc123
  *
  *   Directive with options  (size + overlay thumbnail):
- *     ::video[https://www.youtube.com/watch?v=abc123]{size="medium" overlay="https://example.com/thumb.jpg"}
+ *     ::video[https://www.youtube.com/watch?v=abc123]{size="medium" overlay="/uploads/thumb.jpg"}
+ *
+ * Options:
+ *   markedVideoEmbed({ imageBaseUrl: 'https://cdn.example.com' })
+ *   – prepended to overlay paths that start with '/' so no host is hard-coded in markdown.
  */
 
 // No type import needed — the return satisfies MarkedExtension structurally
@@ -152,7 +156,13 @@ function parseAttrs(attrStr: string): Record<string, string> {
   return attrs;
 }
 
-export function markedVideoEmbed() {
+export function markedVideoEmbed({ imageBaseUrl = '' }: { imageBaseUrl?: string } = {}) {
+  function resolveOverlay(overlay: string) {
+    if (!overlay) return '';
+    if (overlay.startsWith('/') && imageBaseUrl) return imageBaseUrl + overlay;
+    return overlay;
+  }
+
   return {
     extensions: [
       // ::video[URL]{size="medium" overlay="..."}
@@ -191,7 +201,7 @@ export function markedVideoEmbed() {
             return buildTweetEmbed(embedSrc, maxWidth);
           }
           if (token.overlay) {
-            return buildOverlayPlayer(embedSrc, token.overlay, maxWidth);
+            return buildOverlayPlayer(embedSrc, resolveOverlay(token.overlay), maxWidth);
           }
           return buildIframe(embedSrc, maxWidth);
         },
@@ -228,5 +238,12 @@ export function markedVideoEmbed() {
         },
       },
     ],
+    renderer: {
+      image({ href, title, text }: { href: string; title: string | null; text: string }) {
+        const src = (href && href.startsWith('/') && imageBaseUrl) ? imageBaseUrl + href : (href || '');
+        const titleAttr = title ? ` title="${escapeHtml(title)}"` : '';
+        return `<img src="${escapeHtml(src)}" alt="${escapeHtml(text || '')}"${titleAttr} style="max-width:100%" />`;
+      },
+    },
   };
 }

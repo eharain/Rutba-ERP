@@ -25,9 +25,10 @@ import useProductsService from "@/services/products";
 import { currencyFormat } from "@/lib/use-currency";
 import { marked } from "marked";
 import { markedVideoEmbed } from "@/lib/marked-video-embed";
+import { IMAGE_URL } from "@/static/const";
 
 marked.use({ breaks: true, gfm: true });
-marked.use(markedVideoEmbed());
+marked.use(markedVideoEmbed({ imageBaseUrl: IMAGE_URL }));
 
 export default function ProductDetail() {
   const cartStore = useStoreCart();

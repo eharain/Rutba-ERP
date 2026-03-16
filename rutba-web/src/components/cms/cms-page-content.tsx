@@ -7,9 +7,6 @@ import { Navigation, Pagination, Autoplay } from "swiper/modules";
 import { marked } from "marked";
 import { markedVideoEmbed } from "@/lib/marked-video-embed";
 
-marked.use({ breaks: true, gfm: true });
-marked.use(markedVideoEmbed());
-
 import "swiper/css";
 import "swiper/css/navigation";
 import "swiper/css/pagination";
@@ -18,6 +15,9 @@ import { IMAGE_URL } from "@/static/const";
 import { CmsPageDetailInterface } from "@/types/api/cms-page";
 import { ProductInterface } from "@/types/api/product";
 import { BrandInterface } from "@/types/api/brand";
+
+marked.use({ breaks: true, gfm: true });
+marked.use(markedVideoEmbed({ imageBaseUrl: IMAGE_URL }));
 import { CategoryInterface } from "@/types/api/category";
 
 export default function CmsPageContent({
