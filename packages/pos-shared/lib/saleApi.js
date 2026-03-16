@@ -121,10 +121,17 @@ export default class SaleApi {
         // EXCHANGE RETURNS (create sale-return + update stock items for each)
         // Save whenever return items exist and haven't been persisted yet (no returnNo).
         // Once saved, the return stays linked regardless of payment status.
+        // Guard with _saving flag to prevent duplicate creation from concurrent saveSale calls.
         if (saleModel.exchangeReturns?.length > 0) {
             for (const exchangeReturn of saleModel.exchangeReturns) {
-                if (exchangeReturn.returnItems?.length > 0 && !exchangeReturn.returnNo) {
-                    await this.saveExchangeReturn(documentId, exchangeReturn);
+                if (exchangeReturn.returnItems?.length > 0 && !exchangeReturn.returnNo && !exchangeReturn._saving) {
+                    exchangeReturn._saving = true;
+                    try {
+                        await this.saveExchangeReturn(documentId, exchangeReturn);
+                    } catch (err) {
+                        exchangeReturn._saving = false;
+                        throw err;
+                    }
                 }
             }
         }
@@ -356,11 +363,20 @@ export default class SaleApi {
     ===================================================== */
 
     static async saveExchangeReturn(newSaleDocId, exchangeReturn) {
-        const { sale: originalSale, returnItems } = exchangeReturn;
-        if (!returnItems?.length) return;
+        const { sale: originalSale, returnItems: rawReturnItems } = exchangeReturn;
+        if (!rawReturnItems?.length) return;
 
         // Already persisted — nothing to do
         if (exchangeReturn.returnNo) return;
+
+        // Deduplicate by stockItemDocId to prevent the same stock item being returned twice
+        const seen = new Set();
+        const returnItems = [];
+        for (const ri of rawReturnItems) {
+            if (ri.stockItemDocId && seen.has(ri.stockItemDocId)) continue;
+            if (ri.stockItemDocId) seen.add(ri.stockItemDocId);
+            returnItems.push(ri);
+        }
 
         const originalSaleDocId = originalSale.documentId || originalSale.id;
         if (!originalSaleDocId) throw new Error('Exchange return: original sale has no documentId');

@@ -41,6 +41,10 @@ export default class SaleModel {
         // Array of { sale, returnItems: [...], returnNo?, totalRefund? }
         this.exchangeReturns = [];
 
+        // Sale returns: returns made FROM this sale (refund / exchange)
+        // Array of { return_no, type, total_refund, exchange_sale?, items: [...] }
+        this.saleReturns = [];
+
         // Cash register this sale was recorded against (populated from API)
         this.cashRegister = null;
     }
@@ -76,6 +80,23 @@ export default class SaleModel {
                     });
                 }
             }
+        }
+
+        // Hydrate sale returns (returns FROM this sale) if present
+        if (Array.isArray(sale.sale_returns) && sale.sale_returns.length > 0) {
+            model.saleReturns = sale.sale_returns.map(sr => ({
+                returnNo: sr.return_no,
+                type: sr.type,
+                totalRefund: Number(sr.total_refund || 0),
+                returnDate: sr.return_date,
+                exchangeSale: sr.exchange_sale || null,
+                items: (sr.items || []).map(ri => ({
+                    productName: ri.product?.name || 'N/A',
+                    price: Number(ri.price || 0),
+                    quantity: ri.quantity || 1,
+                    total: Number(ri.total || ri.price || 0),
+                })),
+            }));
         }
 
         return model;
