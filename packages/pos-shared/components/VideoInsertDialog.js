@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
+import StrapiMediaLibrary from './StrapiMediaLibrary';
 
 const SIZE_OPTIONS = [
     { value: 'small', label: 'Small', maxWidth: '400px' },
@@ -17,12 +18,16 @@ const VIDEO_URL_HINTS = [
     { provider: 'Twitter / X', example: 'https://x.com/user/status/TWEET_ID' },
 ];
 
-export default function VideoInsertDialog({ isOpen, onInsert, onClose }) {
+export default function VideoInsertDialog({ isOpen, onInsert, onClose, imageBaseUrl = '' }) {
     const [videoUrl, setVideoUrl] = useState('');
     const [size, setSize] = useState('full');
     const [overlayUrl, setOverlayUrl] = useState('');
     const [overlayError, setOverlayError] = useState(false);
+    const [mediaLibOpen, setMediaLibOpen] = useState(false);
     const urlRef = useRef(null);
+
+    const resolvedOverlay = overlayUrl.startsWith('/') && imageBaseUrl
+        ? imageBaseUrl + overlayUrl : overlayUrl;
 
     useEffect(() => {
         if (isOpen) {
@@ -128,13 +133,23 @@ export default function VideoInsertDialog({ isOpen, onInsert, onClose }) {
                                     Overlay / Thumbnail Image
                                     <span className="text-muted fw-normal ms-1">(optional)</span>
                                 </label>
-                                <input
-                                    type="url"
-                                    className="form-control"
-                                    placeholder="https://example.com/thumbnail.jpg"
-                                    value={overlayUrl}
-                                    onChange={e => { setOverlayUrl(e.target.value); setOverlayError(false); }}
-                                />
+                                <div className="input-group">
+                                    <input
+                                        type="url"
+                                        className="form-control"
+                                        placeholder="https://example.com/thumbnail.jpg"
+                                        value={overlayUrl}
+                                        onChange={e => { setOverlayUrl(e.target.value); setOverlayError(false); }}
+                                    />
+                                    <button
+                                        type="button"
+                                        className="btn btn-outline-secondary"
+                                        onClick={() => setMediaLibOpen(true)}
+                                        title="Browse Media Library"
+                                    >
+                                        <i className="fas fa-photo-video me-1" />Browse
+                                    </button>
+                                </div>
                                 <div className="form-text">
                                     When set, the video shows this image with a play button. Clicking it starts the video.
                                 </div>
@@ -149,11 +164,11 @@ export default function VideoInsertDialog({ isOpen, onInsert, onClose }) {
                                         style={{ maxWidth: selectedSize?.maxWidth || '100%', margin: '0 auto' }}
                                     >
                                         {overlayUrl.trim() ? (
-                                            <div style={{ position: 'relative', cursor: 'pointer' }}>
-                                                {!overlayError ? (
-                                                    <img
-                                                        src={overlayUrl}
-                                                        alt="Video overlay"
+                                                            <div style={{ position: 'relative', cursor: 'pointer' }}>
+                                                                {!overlayError ? (
+                                                                    <img
+                                                                        src={resolvedOverlay}
+                                                                        alt="Video overlay"
                                                         style={{ width: '100%', display: 'block', borderRadius: 6 }}
                                                         onError={() => setOverlayError(true)}
                                                     />
@@ -216,6 +231,17 @@ export default function VideoInsertDialog({ isOpen, onInsert, onClose }) {
                     </div>
                 </div>
             </div>
-        </>
-    );
-}
+                    <StrapiMediaLibrary
+                        show={mediaLibOpen}
+                        onClose={() => setMediaLibOpen(false)}
+                        accept="image"
+                        onSelect={(files) => {
+                            if (files.length > 0) {
+                                setOverlayUrl(files[0].url);
+                                setOverlayError(false);
+                            }
+                        }}
+                    />
+                </>
+            );
+        }
