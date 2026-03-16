@@ -57,6 +57,16 @@ export default function EditProduct() {
     const [attachLoading, setAttachLoading] = useState(false);
     const attachInputRef = useRef(null);
 
+    // Customizable barcode prefix for bulk add
+    const [barcodePrefix, setBarcodePrefix] = useState('');
+
+    // Multi-scan section: continuous barcode scanning with running list
+    const [showMultiScanSection, setShowMultiScanSection] = useState(false);
+    const [multiScanBarcode, setMultiScanBarcode] = useState('');
+    const [multiScanAdding, setMultiScanAdding] = useState(false);
+    const [multiScanItems, setMultiScanItems] = useState([]);
+    const multiScanInputRef = useRef(null);
+
     async function fetchAllRecords(endpoint) {
         let allRecords = [];
         let page = 1;
@@ -99,6 +109,7 @@ export default function EditProduct() {
                     const productData = await loadProduct(documentId);
                     setProductId(productData.id);
                     setProduct(productData);
+                    setBarcodePrefix(productData.barcode || '');
                 } else {
                     // ensure arrays exist for new product
                     setProduct(p => ({ ...p, categories: [], brands: [], suppliers: [] }));
@@ -196,22 +207,36 @@ export default function EditProduct() {
         }
     };
 
+    // Helper: find the max incremental barcode suffix among existing stock items
+    const getMaxBarcodeIndex = (prefix) => {
+        const pfx = (prefix || '') + '-';
+        let max = 0;
+        stockItems.forEach(item => {
+            if (item.barcode && item.barcode.startsWith(pfx)) {
+                const suffix = item.barcode.substring(pfx.length);
+                const num = parseInt(suffix, 10);
+                if (!isNaN(num) && num > max) max = num;
+            }
+        });
+        return max;
+    };
+
     // --- Method 1: Add new stock items in bulk with optional incremental barcodes ---
     const handleAddNewItems = async () => {
         if (!documentId || documentId === 'new' || addQty < 1) return;
         setAddingItems(true);
         setError('');
         try {
-            const baseBarcode = product.barcode || '';
+            const baseBarcode = barcodePrefix || product.barcode || '';
             const baseSku = product.sku || product.id?.toString(22)?.toUpperCase() || '';
             const branch = getBranch();
-            const nextIndex = stockItemsTotal;
+            const maxIndex = getMaxBarcodeIndex(baseBarcode);
 
             for (let i = 0; i < addQty; i++) {
-                const idx = nextIndex + i;
-                const sku = `${baseSku}-${Date.now().toString(22)}-${idx.toString(22)}`.toUpperCase();
+                const barcodeNum = maxIndex + i + 1;
+                const sku = `${baseSku}-${Date.now().toString(22)}-${barcodeNum.toString(22)}`.toUpperCase();
                 const barcode = autoBarcode && baseBarcode
-                    ? `${baseBarcode}-${(idx + 1).toString().padStart(4, '0')}`
+                    ? `${baseBarcode}-${barcodeNum.toString().padStart(4, '0')}`
                     : undefined;
 
                 const data = {
@@ -326,6 +351,75 @@ export default function EditProduct() {
             console.error('Error attaching stock item:', err);
         } finally {
             setAttachLoading(false);
+        }
+    };
+
+    // --- Attach product barcode directly to selected stock items ---
+    const handleAttachProductBarcode = async () => {
+        if (selectedStockItems.size === 0 || !product.barcode) return;
+        setApplyingChanges(true);
+        setError('');
+        try {
+            const ids = Array.from(selectedStockItems);
+            await Promise.all(ids.map(id =>
+                authApi.put(`/stock-items/${id}`, { data: { barcode: product.barcode } })
+            ));
+            setSuccess(`Assigned product barcode "${product.barcode}" to ${ids.length} stock item(s)`);
+            fetchStockItems(stockStatusFilter);
+        } catch (err) {
+            setError('Failed to attach barcode: ' + (err?.response?.data?.error?.message || err.message));
+            console.error('Error attaching product barcode:', err);
+        } finally {
+            setApplyingChanges(false);
+        }
+    };
+
+    // --- Multi-scan: continuously scan barcodes to create stock items ---
+    const handleMultiScanAdd = async () => {
+        const code = multiScanBarcode.trim();
+        if (!code || !documentId || documentId === 'new') return;
+        setMultiScanAdding(true);
+        setError('');
+        try {
+            const existing = await authApi.get('/stock-items', {
+                filters: { barcode: { $eq: code } },
+                pagination: { pageSize: 1 }
+            });
+            if (existing?.data?.length > 0) {
+                setError(`Barcode "${code}" is already in use by another stock item`);
+                setMultiScanAdding(false);
+                return;
+            }
+
+            const baseSku = product.sku || product.id?.toString(22)?.toUpperCase() || '';
+            const branch = getBranch();
+
+            const data = {
+                sku: `${baseSku}-${Date.now().toString(22)}`.toUpperCase(),
+                barcode: code,
+                name: product.name,
+                status: 'Received',
+                selling_price: parseFloat(product.selling_price) || 0,
+                offer_price: parseFloat(product.offer_price) || 0,
+                cost_price: parseFloat(product.cost_price) || 0,
+                product: documentId,
+                branch: branch?.documentId || branch?.id || undefined,
+            };
+
+            const res = await authApi.post('/stock-items', { data });
+            setMultiScanItems(prev => [
+                { barcode: code, sku: data.sku, id: res.data?.documentId || res.data?.id, time: new Date().toLocaleTimeString() },
+                ...prev
+            ]);
+            setSuccess(`Stock item created with barcode "${code}" (${multiScanItems.length + 1} scanned)`);
+            setMultiScanBarcode('');
+            if (multiScanInputRef.current) multiScanInputRef.current.focus();
+            fetchStockItems(stockStatusFilter);
+        } catch (err) {
+            setError('Failed to create stock item: ' + (err?.response?.data?.error?.message || err.message));
+            console.error('Error multi-scan adding stock item:', err);
+        } finally {
+            setMultiScanAdding(false);
         }
     };
 
@@ -939,6 +1033,25 @@ export default function EditProduct() {
                                             <i className="fas fa-print" style={{ marginRight: '6px' }} />
                                             Print All ({stockItems.length})
                                         </button>
+
+                                        <button
+                                            type="button"
+                                            onClick={handleAttachProductBarcode}
+                                            disabled={applyingChanges || selectedStockItems.size === 0 || !product.barcode}
+                                            title={!product.barcode ? 'No barcode set on the product' : `Assign "${product.barcode}" to selected items`}
+                                            style={{
+                                                padding: '8px 16px',
+                                                background: (selectedStockItems.size === 0 || !product.barcode) ? '#aaa' : '#6f42c1',
+                                                color: 'white',
+                                                border: 'none',
+                                                borderRadius: '4px',
+                                                cursor: (selectedStockItems.size === 0 || !product.barcode) ? 'not-allowed' : 'pointer',
+                                                fontWeight: 'bold'
+                                            }}
+                                        >
+                                            <i className="fas fa-barcode" style={{ marginRight: '6px' }} />
+                                            {applyingChanges ? 'Attaching...' : `Attach Product Barcode (${selectedStockItems.size})`}
+                                        </button>
                                     </div>
 
                                     {/* Preview of values to apply */}
@@ -1069,6 +1182,16 @@ export default function EditProduct() {
                                                     style={{ width: '80px', padding: '6px 10px', border: '1px solid #ccc', borderRadius: '4px' }}
                                                 />
                                             </div>
+                                            <div>
+                                                <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: 'bold', color: 'black' }}>Barcode Prefix</label>
+                                                <input
+                                                    type="text"
+                                                    value={barcodePrefix}
+                                                    onChange={(e) => setBarcodePrefix(e.target.value)}
+                                                    style={{ width: '180px', padding: '6px 10px', border: '1px solid #ccc', borderRadius: '4px', fontFamily: 'monospace' }}
+                                                    placeholder={product.barcode || 'e.g. 123456'}
+                                                />
+                                            </div>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                                 <input
                                                     type="checkbox"
@@ -1078,7 +1201,7 @@ export default function EditProduct() {
                                                 />
                                                 <label htmlFor="autoBarcode" style={{ fontSize: '13px', color: 'black', cursor: 'pointer' }}>
                                                     Generate incremental barcodes
-                                                    {product.barcode ? ` (${product.barcode}-0001, …)` : ' (no product barcode set)'}
+                                                    {(barcodePrefix || product.barcode) ? ` (${barcodePrefix || product.barcode}-0001, …)` : ' (no barcode prefix set)'}
                                                 </label>
                                             </div>
                                             <button
@@ -1185,6 +1308,135 @@ export default function EditProduct() {
                                             Finds an existing stock item by barcode and re-assigns it to this product. Updates name and pricing. Press Enter to attach.
                                         </div>
                                     </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* ====== MULTI-SCAN SECTION ====== */}
+                    {documentId && documentId !== 'new' && (
+                        <div style={{ marginTop: '30px' }}>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setShowMultiScanSection(!showMultiScanSection);
+                                    if (!showMultiScanSection) {
+                                        setTimeout(() => { if (multiScanInputRef.current) multiScanInputRef.current.focus(); }, 100);
+                                    }
+                                }}
+                                style={{
+                                    background: 'none',
+                                    border: '1px solid #c3e6cb',
+                                    borderRadius: '4px',
+                                    padding: '10px 16px',
+                                    cursor: 'pointer',
+                                    fontWeight: 'bold',
+                                    width: '100%',
+                                    textAlign: 'left',
+                                    fontSize: '16px'
+                                }}
+                            >
+                                {showMultiScanSection ? '▼' : '▶'} <i className="fas fa-qrcode" style={{ marginRight: '8px' }} />Continuous Barcode Scan {multiScanItems.length > 0 ? `(${multiScanItems.length} scanned)` : ''}
+                            </button>
+
+                            {showMultiScanSection && (
+                                <div style={{ background: '#f0fff0', padding: '20px', borderRadius: '0 0 8px 8px', border: '1px solid #c3e6cb', borderTop: 'none' }}>
+                                    <div style={{ marginBottom: '10px', padding: '8px 12px', background: '#e9ecef', borderRadius: '4px', fontSize: '13px', color: 'black' }}>
+                                        <strong>Continuous scan mode:</strong> Each barcode scan creates a new stock item for this product. Duplicates are checked automatically.
+                                    </div>
+
+                                    <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end', marginBottom: '16px' }}>
+                                        <div style={{ flex: 1 }}>
+                                            <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: 'bold', color: 'black' }}>
+                                                <i className="fas fa-barcode" style={{ marginRight: '4px' }} />
+                                                Scan barcode
+                                            </label>
+                                            <input
+                                                ref={multiScanInputRef}
+                                                type="text"
+                                                value={multiScanBarcode}
+                                                onChange={(e) => setMultiScanBarcode(e.target.value)}
+                                                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleMultiScanAdd(); } }}
+                                                style={{
+                                                    width: '100%',
+                                                    padding: '12px',
+                                                    border: '2px solid #28a745',
+                                                    borderRadius: '4px',
+                                                    fontFamily: 'monospace',
+                                                    fontSize: '16px'
+                                                }}
+                                                placeholder="Scan barcode here... (auto-adds on Enter)"
+                                                autoComplete="off"
+                                            />
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={handleMultiScanAdd}
+                                            disabled={multiScanAdding || !multiScanBarcode.trim()}
+                                            style={{
+                                                padding: '12px 20px',
+                                                background: multiScanAdding || !multiScanBarcode.trim() ? '#aaa' : '#28a745',
+                                                color: 'white',
+                                                border: 'none',
+                                                borderRadius: '4px',
+                                                cursor: multiScanAdding || !multiScanBarcode.trim() ? 'not-allowed' : 'pointer',
+                                                fontWeight: 'bold',
+                                                whiteSpace: 'nowrap',
+                                                fontSize: '16px'
+                                            }}
+                                        >
+                                            {multiScanAdding ? 'Adding...' : 'Add'}
+                                        </button>
+                                        {multiScanItems.length > 0 && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setMultiScanItems([])}
+                                                style={{
+                                                    padding: '12px 16px',
+                                                    background: '#dc3545',
+                                                    color: 'white',
+                                                    border: 'none',
+                                                    borderRadius: '4px',
+                                                    cursor: 'pointer',
+                                                    fontWeight: 'bold',
+                                                    whiteSpace: 'nowrap'
+                                                }}
+                                            >
+                                                Clear List
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    {multiScanItems.length > 0 && (
+                                        <div style={{ background: '#fff', borderRadius: '6px', border: '1px solid #dee2e6' }}>
+                                            <div style={{ padding: '10px 16px', background: '#d4edda', borderRadius: '6px 6px 0 0', fontWeight: 'bold', fontSize: '14px', color: 'black' }}>
+                                                <i className="fas fa-list" style={{ marginRight: '6px' }} />
+                                                Scanned Items ({multiScanItems.length})
+                                            </div>
+                                            <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                                                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                                                    <thead>
+                                                        <tr style={{ background: '#f8f9fa' }}>
+                                                            <th style={{ padding: '8px', textAlign: 'left', color: 'black', width: '40px' }}>#</th>
+                                                            <th style={{ padding: '8px', textAlign: 'left', color: 'black' }}>Barcode</th>
+                                                            <th style={{ padding: '8px', textAlign: 'left', color: 'black' }}>SKU</th>
+                                                            <th style={{ padding: '8px', textAlign: 'left', color: 'black' }}>Time</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {multiScanItems.map((item, idx) => (
+                                                            <tr key={idx} style={{ borderBottom: '1px solid #eee', background: idx === 0 ? '#d4edda' : '#fff' }}>
+                                                                <td style={{ padding: '6px 8px', color: '#666' }}>{multiScanItems.length - idx}</td>
+                                                                <td style={{ padding: '6px 8px', fontFamily: 'monospace', fontWeight: idx === 0 ? 'bold' : 'normal', color: 'black' }}>{item.barcode}</td>
+                                                                <td style={{ padding: '6px 8px', fontFamily: 'monospace', color: '#666', fontSize: '12px' }}>{item.sku}</td>
+                                                                <td style={{ padding: '6px 8px', color: '#666', fontSize: '12px' }}>{item.time}</td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>

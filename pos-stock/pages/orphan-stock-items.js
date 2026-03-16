@@ -528,7 +528,11 @@ export default function OrphanStockItemsPage() {
                                         group.items.forEach(item => {
                                             const isBusy = busyId === item.documentId;
                                             rows.push(
-                                                <tr key={item.documentId} className={selected.has(item.documentId) ? "table-active" : ""}>
+                                                <tr
+                                                    key={item.documentId}
+                                                    className={selected.has(item.documentId) ? "table-active" : ""}
+                                                    style={isMulti && !selected.has(item.documentId) ? { backgroundColor: "#fff8e1" } : undefined}
+                                                >
                                                     <td>
                                                         <input
                                                             type="checkbox"

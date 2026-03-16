@@ -50,8 +50,8 @@ export async function fetchSaleByIdOrInvoice(id) {
             customer: true,
             cash_register: { fields: ['id', 'documentId', 'desk_id', 'desk_name', 'branch_name', 'opened_by', 'opened_at', 'status'] },
             items: { populate: { product: true, items: { populate: ['product'] } } },
-            sale_returns: { populate: { items: { populate: ['product'] } } },
-            exchange_returns: { populate: { items: { populate: ['product'] }, sale: true } }
+            sale_returns: { populate: { items: { populate: ['product'] }, exchange_sale: { fields: ['id', 'documentId', 'invoice_no'] } } },
+            exchange_returns: { populate: { items: { populate: ['product'] }, sale: { fields: ['id', 'documentId', 'invoice_no'] } } }
         }
     });
     let data = res?.data ?? res;

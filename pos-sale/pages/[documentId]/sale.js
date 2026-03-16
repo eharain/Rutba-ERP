@@ -1,5 +1,5 @@
 `use client`;
-import { useEffect, useReducer, useState } from 'react';
+import { useEffect, useReducer, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 
 import Layout from '../../components/Layout';
@@ -31,6 +31,7 @@ export default function SalePage() {
     const [isDirty, setIsDirty] = useState(false);
 
     const [loading, setLoading] = useState(false);
+    const savingRef = useRef(false);
     const [showCheckout, setShowCheckout] = useState(false);
     const [notesSaving, setNotesSaving] = useState(false);
     const [showLeadModal, setShowLeadModal] = useState(false);
@@ -93,10 +94,9 @@ export default function SalePage() {
     =============================== */
 
     const handleCheckoutComplete = async (payments) => {
-        if (loading) return;
+        if (savingRef.current) return;
         const paymentsList = Array.isArray(payments) ? payments : [payments];
         paymentsList.forEach((payment) => saleModel.addPayment(payment));
-        setLoading(true);
         try {
             await doSave({ paid: true });
         } catch {
@@ -106,6 +106,8 @@ export default function SalePage() {
     };
 
     const doSave = async (param) => {
+        if (savingRef.current) return;
+        savingRef.current = true;
         setLoading(true);
         try {
             // Ensure invoice number is set before saving (storage may not have been ready at construction)
@@ -132,6 +134,7 @@ export default function SalePage() {
             alert('Save failed');
             throw err;
         } finally {
+            savingRef.current = false;
             setLoading(false);
         }
 
@@ -379,6 +382,46 @@ export default function SalePage() {
                                             : <><i className="fas fa-save me-1"></i>Save Notes</>
                                         }
                                     </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* ── Sale Returns (returns FROM this sale) ── */}
+                        {saleModel.saleReturns?.length > 0 && (
+                            <div className="mt-3 border rounded">
+                                <div className="px-3 py-2 bg-light border-bottom">
+                                    <span className="small text-muted"><i className="fas fa-undo me-1"></i>Returns From This Sale</span>
+                                </div>
+                                <div className="p-2">
+                                    {saleModel.saleReturns.map((sr, idx) => (
+                                        <div key={idx} className={idx > 0 ? 'mt-2 pt-2 border-top' : ''}>
+                                            <div className="small text-muted mb-1">
+                                                {sr.returnNo && <><strong>#{sr.returnNo}</strong> — </>}
+                                                {sr.type || 'Return'}
+                                                {' • '}{currency}{Number(sr.totalRefund || 0).toFixed(2)}
+                                                {sr.exchangeSale && (
+                                                    <> — Exchange Sale{' '}
+                                                        <a href={`/${sr.exchangeSale.documentId || sr.exchangeSale.id}/sale`}
+                                                           className="text-primary">
+                                                            #{sr.exchangeSale.invoice_no || sr.exchangeSale.documentId || sr.exchangeSale.id}
+                                                        </a>
+                                                    </>
+                                                )}
+                                            </div>
+                                            <table className="table table-sm small mb-0">
+                                                <thead><tr><th>Product</th><th className="text-end">Qty</th><th className="text-end">Price</th></tr></thead>
+                                                <tbody>
+                                                    {(sr.items || []).map((ri, i) => (
+                                                        <tr key={i}>
+                                                            <td>{ri.productName}</td>
+                                                            <td className="text-end">{ri.quantity}</td>
+                                                            <td className="text-end">{currency}{Number(ri.price || 0).toFixed(2)}</td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
                         )}
