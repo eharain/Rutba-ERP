@@ -13,7 +13,7 @@ import { APP_URLS } from "../lib/roles";
  * redirects to the original page the user wanted.
  */
 export default function AuthCallback() {
-    const { loginWithToken } = useAuth();
+    const { loginWithToken, logout } = useAuth();
     const router = useRouter();
     const [error, setError] = useState("");
 
@@ -28,7 +28,23 @@ export default function AuthCallback() {
         }
 
         loginWithToken(token, refreshToken || null)
-            .then(() => {
+            .then((authData) => {
+                // Deny access to users without the rutba_app_user role
+                if (authData.roleType !== 'rutba_app_user') {
+                    logout();
+                    setError("Your account does not have the required role. Contact your administrator.");
+                    setTimeout(() => { window.location.href = `${APP_URLS.auth}/login`; }, 3000);
+                    return;
+                }
+
+                // Deny access to users with no app accesses assigned
+                if (!authData.appAccess || authData.appAccess.length === 0) {
+                    logout();
+                    setError("Your account has no app access assigned. Contact your administrator.");
+                    setTimeout(() => { window.location.href = `${APP_URLS.auth}/login`; }, 3000);
+                    return;
+                }
+
                 // Replace callback URL in history so back-button doesn't re-trigger
                 router.replace(state || "/");
             })

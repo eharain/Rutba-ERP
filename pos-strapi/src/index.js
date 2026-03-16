@@ -182,18 +182,37 @@ module.exports = {
 
         const requiredActions = [...new Set([...allActions, ...PLUGIN_PERMISSIONS])].sort();
 
-        await syncPermissionsToRole(knex, role.id, ROLE_NAME, requiredActions, strapi, true);
+        try {
+            await syncPermissionsToRole(knex, role.id, ROLE_NAME, requiredActions, strapi, true);
+        } catch (err) {
+            strapi.log.error(`[bootstrap] Failed to sync permissions for "${ROLE_NAME}": ${err.message}`);
+            strapi.log.error(err.stack);
+        }
 
-        // ─── a.4  Ensure plugin permissions on ALL existing roles ─
-        //    me/permissions, auth, upload etc. must be reachable by
-        //    every authenticated user regardless of their role.
+        // ─── a.4  Ensure permissions on ALL existing roles ─────────
+        //    • public  → plugin perms + public content-API perms
+        //    • other authenticated roles (e.g. "Authenticated")
+        //      → same wide-gate content-API perms as rutba_app_user
+        //        + plugin perms.  Fine-grained access is enforced by
+        //        the app-access-guard middleware, not by Strapi's
+        //        built-in role-permission system.
         const allRoles = await knex('up_roles').select('id', 'name', 'type');
         for (const otherRole of allRoles) {
             if (otherRole.type === ROLE_TYPE) continue; // already handled above
-            const permsForRole = otherRole.type === 'public'
-                ? [...new Set([...PLUGIN_PERMISSIONS, ...PUBLIC_PERMISSIONS])].sort()
-                : PLUGIN_PERMISSIONS;
-            await syncPermissionsToRole(knex, otherRole.id, otherRole.name, permsForRole, strapi);
+            let permsForRole;
+            if (otherRole.type === 'public') {
+                permsForRole = [...new Set([...PLUGIN_PERMISSIONS, ...PUBLIC_PERMISSIONS])].sort();
+            } else {
+                // Every authenticated role gets the full content-API
+                // permission set so Strapi's route-level auth never
+                // blocks requests that the app-access layer allows.
+                permsForRole = requiredActions;  // allActions + PLUGIN_PERMISSIONS
+            }
+            try {
+                await syncPermissionsToRole(knex, otherRole.id, otherRole.name, permsForRole, strapi);
+            } catch (err) {
+                strapi.log.error(`[bootstrap] Failed to sync permissions for "${otherRole.name}": ${err.message}`);
+            }
         }
     },
 };

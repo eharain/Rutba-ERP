@@ -22,6 +22,7 @@ async function fetchPermissions(jwt) {
         const data = res.data;
         return {
             role: data?.role || null,
+            roleType: data?.roleType || null,
             appAccess: data?.appAccess || [],
             adminAppAccess: data?.adminAppAccess || [],
             permissions: data?.permissions || [],
@@ -191,6 +192,7 @@ export function AuthProvider({ children }) {
             refreshToken,
             user,
             role: me?.role || null,
+            roleType: me?.roleType || null,
             appAccess: me?.appAccess || [],
             adminAppAccess: me?.adminAppAccess || [],
             permissions: me?.permissions || [],
@@ -217,6 +219,7 @@ export function AuthProvider({ children }) {
             refreshToken,
             user,
             role: me?.role || null,
+            roleType: me?.roleType || null,
             appAccess: me?.appAccess || [],
             adminAppAccess: me?.adminAppAccess || [],
             permissions: me?.permissions || [],
