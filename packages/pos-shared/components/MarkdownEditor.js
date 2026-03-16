@@ -1,7 +1,10 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { marked } from '../lib/marked.esm.js';
+import { markedVideoEmbed } from '../lib/marked-video-embed.js';
+import VideoInsertDialog from './VideoInsertDialog';
 
 marked.setOptions({ breaks: true, gfm: true });
+marked.use(markedVideoEmbed());
 
 const TOOLBAR = [
     { icon: 'fa-heading', label: 'H1', md: (s) => `# ${s || 'Heading'}`, wrap: false },
@@ -27,6 +30,7 @@ const TOOLBAR = [
 export default function MarkdownEditor({ value = '', onChange, name, rows = 12, placeholder = 'Write markdown...' }) {
     const textareaRef = useRef(null);
     const [mode, setMode] = useState('split'); // 'edit', 'preview', 'split'
+    const [videoDialogOpen, setVideoDialogOpen] = useState(false);
 
     const insertMarkdown = useCallback((toolItem) => {
         const ta = textareaRef.current;
@@ -76,6 +80,21 @@ export default function MarkdownEditor({ value = '', onChange, name, rows = 12, 
         }
     }, [value]);
 
+    const handleVideoInsert = useCallback((directive) => {
+        const ta = textareaRef.current;
+        const pos = ta ? ta.selectionStart : value.length;
+        const newValue = value.substring(0, pos) + directive + value.substring(pos);
+        onChange({ target: { name, value: newValue } });
+        setVideoDialogOpen(false);
+        requestAnimationFrame(() => {
+            if (ta) {
+                ta.focus();
+                const cursorPos = pos + directive.length;
+                ta.setSelectionRange(cursorPos, cursorPos);
+            }
+        });
+    }, [value, onChange, name]);
+
     return (
         <div className="border rounded" style={{ overflow: 'hidden' }}>
             {/* Toolbar */}
@@ -98,6 +117,17 @@ export default function MarkdownEditor({ value = '', onChange, name, rows = 12, 
                         </button>
                     );
                 })}
+
+                <div style={{ width: 1, height: 20, background: '#ccc' }} />
+                <button
+                    type="button"
+                    className="btn btn-sm btn-outline-secondary"
+                    title="Insert Video"
+                    onClick={() => setVideoDialogOpen(true)}
+                    style={{ padding: '2px 6px', fontSize: '13px' }}
+                >
+                    <i className="fas fa-video" />
+                </button>
 
                 <div className="ms-auto d-flex gap-1">
                     <button type="button" className={`btn btn-sm ${mode === 'edit' ? 'btn-primary' : 'btn-outline-secondary'}`} onClick={() => setMode('edit')} title="Edit only">
@@ -148,6 +178,11 @@ export default function MarkdownEditor({ value = '', onChange, name, rows = 12, 
                     />
                 )}
             </div>
+            <VideoInsertDialog
+                isOpen={videoDialogOpen}
+                onInsert={handleVideoInsert}
+                onClose={() => setVideoDialogOpen(false)}
+            />
         </div>
     );
 }
