@@ -4,7 +4,7 @@ import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { api } from "@rutba/pos-shared/lib/api";
 
 export default function Login() {
-    const { login, user, jwt } = useAuth();
+    const { login, logout, user, jwt } = useAuth();
     const router = useRouter();
 
     const [view, setView] = useState("login");
@@ -50,7 +50,22 @@ export default function Login() {
         setBusyLoading(true);
         setErrorMessage("");
         try {
-            await login(identifier, password, rememberMe);
+            const authData = await login(identifier, password, rememberMe);
+
+            // Deny login to users without the rutba_app_user role
+            if (authData.roleType !== 'rutba_app_user') {
+                logout();
+                setErrorMessage("Your account does not have the required role. Contact your administrator.");
+                return;
+            }
+
+            // Deny login to users with no app accesses assigned
+            if (!authData.appAccess || authData.appAccess.length === 0) {
+                logout();
+                setErrorMessage("Your account has no app access assigned. Contact your administrator.");
+                return;
+            }
+
             // The useEffect above will handle the redirect once user/jwt are set
         } catch (e) {
             setErrorMessage("Login failed " + (e.message ?? ""));

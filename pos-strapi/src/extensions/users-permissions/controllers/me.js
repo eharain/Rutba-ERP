@@ -56,6 +56,7 @@ module.exports = createCoreController('plugin::users-permissions.me', ({ strapi 
 
             const data = {
                 role: fullUser.role.name,
+                roleType,
                 appAccess,
                 adminAppAccess,
                 permissions,
