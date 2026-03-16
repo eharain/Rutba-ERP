@@ -5,6 +5,10 @@ import Head from "next/head";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation, Pagination, Autoplay } from "swiper/modules";
 import { marked } from "marked";
+import { markedVideoEmbed } from "@/lib/marked-video-embed";
+
+marked.use({ breaks: true, gfm: true });
+marked.use(markedVideoEmbed());
 
 import "swiper/css";
 import "swiper/css/navigation";
@@ -35,7 +39,7 @@ export default function CmsPageContent({
     <>
       <Head>
         <title>{page.title} - Rutba.pk</title>
-        {page.excerpt && <meta name="description" content={page.excerpt} />}
+        {page.excerpt && <meta name="description" content={page.excerpt.replace(/[#*_~`>\[\]()!|-]/g, '').trim()} />}
       </Head>
 
       {/* Hero Slider */}
@@ -196,9 +200,10 @@ export default function CmsPageContent({
                         {rp.title}
                       </h3>
                       {rp.excerpt && (
-                        <p className="text-sm text-slate-500 mt-1 line-clamp-2">
-                          {rp.excerpt}
-                        </p>
+                        <div
+                          className="text-sm text-slate-500 mt-1 line-clamp-2 prose prose-sm"
+                          dangerouslySetInnerHTML={{ __html: marked.parse(rp.excerpt) as string }}
+                        />
                       )}
                     </div>
                   </div>

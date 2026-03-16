@@ -314,11 +314,11 @@ export default function CmsPageDetail() {
                                         </div>
                                     )}
                                     <div className="mb-3">
-                                        <label className="form-label">Excerpt</label>
-                                        <textarea className="form-control" rows={2} value={excerpt} onChange={e => setExcerpt(e.target.value)} placeholder="Short summary..." />
+                                        <label className="form-label">Excerpt (Markdown)</label>
+                                        <MarkdownEditor value={excerpt} onChange={e => setExcerpt(e.target.value)} name="excerpt" rows={3} placeholder="Short summary..." />
                                     </div>
                                     <div className="mb-3">
-                                        <label className="form-label">Content</label>
+                                        <label className="form-label">Content (Markdown)</label>
                                         <MarkdownEditor value={content} onChange={e => setContent(e.target.value)} name="content" rows={12} />
                                     </div>
                                 </div>

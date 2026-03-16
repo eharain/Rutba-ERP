@@ -25,7 +25,7 @@
       "type": "richtext"
     },
     "excerpt": {
-      "type": "text"
+      "type": "richtext"
     },
     "featured_image": {
       "type": "media",

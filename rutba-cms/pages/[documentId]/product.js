@@ -6,6 +6,7 @@ import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { authApi, StraipImageUrl } from "@rutba/pos-shared/lib/api";
 import FileView from "@rutba/pos-shared/components/FileView";
 import ProductGalleryManager from "@rutba/pos-shared/components/ProductGalleryManager";
+import MarkdownEditor from "@rutba/pos-shared/components/MarkdownEditor";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
 import Link from "next/link";
 import { useToast } from "../../components/Toast";
@@ -142,8 +143,8 @@ export default function ProductDetail() {
                                                 <input type="text" className="form-control" value={name} onChange={e => setName(e.target.value)} />
                                             </div>
                                             <div className="mb-3">
-                                                <label className="form-label">Description</label>
-                                                <textarea className="form-control" rows={5} value={description} onChange={e => setDescription(e.target.value)} />
+                                                <label className="form-label">Description (Markdown)</label>
+                                                <MarkdownEditor value={description} onChange={e => setDescription(e.target.value)} name="description" rows={8} placeholder="Write a product description..." />
                                             </div>
                                             <div className="row">
                                                 <div className="col-md-4 mb-3">

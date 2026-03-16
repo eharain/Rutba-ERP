@@ -23,6 +23,11 @@ import { useStoreCart } from "@/store/store-cart";
 // import useReviewsService from "@/services/reviews";
 import useProductsService from "@/services/products";
 import { currencyFormat } from "@/lib/use-currency";
+import { marked } from "marked";
+import { markedVideoEmbed } from "@/lib/marked-video-embed";
+
+marked.use({ breaks: true, gfm: true });
+marked.use(markedVideoEmbed());
 
 export default function ProductDetail() {
   const cartStore = useStoreCart();
@@ -113,7 +118,12 @@ export default function ProductDetail() {
             <hr className="opacity-50" />
 
             <div className="mt-3">
-              <p>{product?.description}</p>
+              {product?.description && (
+                <div
+                  className="prose prose-slate max-w-none"
+                  dangerouslySetInnerHTML={{ __html: marked.parse(product.description) as string }}
+                />
+              )}
             </div>
 
             <div className="grid grid-cols-12 gap-[5px] my-4">
