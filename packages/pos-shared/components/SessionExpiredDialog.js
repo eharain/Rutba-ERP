@@ -141,34 +141,31 @@ export default function SessionExpiredDialog() {
             style={{ backgroundColor: "rgba(0,0,0,0.5)", zIndex: 9999 }}
             tabIndex="-1"
         >
-            <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: 480 }}>
-                <div className="modal-content">
-                    <div className="modal-header bg-warning text-dark">
-                        <h5 className="modal-title">
+            <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: 600, width: "95vw" }}>
+                <div className="modal-content" style={{ maxHeight: "90vh", display: "flex", flexDirection: "column" }}>
+                    <div className="modal-header bg-warning text-dark py-2">
+                        <h5 className="modal-title mb-0">
                             <i className="fa-solid fa-triangle-exclamation me-2"></i>
                             Session Expired
                         </h5>
-                    </div>
-                    <div className="modal-body p-0">
-                        <p className="text-muted mb-1 px-3 pt-3">
-                            Your session has expired. Sign in again to continue
-                            without losing your work.
-                        </p>
-                        <p className="text-danger fw-semibold mb-2 px-3">
+                        <span className="text-danger fw-semibold small ms-auto">
                             <i className="fa-solid fa-clock me-1"></i>
-                            Redirecting to login in <strong>{timeDisplay}</strong>
-                        </p>
+                            Redirect in {timeDisplay}
+                        </span>
+                    </div>
+                    <div className="modal-body p-0" style={{ flex: "1 1 auto", overflow: "hidden", display: "flex", flexDirection: "column" }}>
                         <iframe
                             src={iframeSrc}
                             style={{
                                 width: "100%",
-                                height: 380,
+                                flex: "1 1 auto",
+                                minHeight: 520,
                                 border: "none",
                             }}
                             title="Re-authenticate"
                         />
                     </div>
-                    <div className="modal-footer justify-content-center">
+                    <div className="modal-footer justify-content-center py-2">
                         <button
                             type="button"
                             className="btn btn-link text-muted btn-sm"

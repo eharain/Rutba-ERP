@@ -683,6 +683,7 @@ export interface ApiBranchBranch extends Struct.CollectionTypeSchema {
     payments: Schema.Attribute.Relation<'manyToMany', 'api::payment.payment'>;
     phone: Schema.Attribute.String;
     po_prefix: Schema.Attribute.String;
+    printSettings: Schema.Attribute.JSON;
     products: Schema.Attribute.Relation<'manyToMany', 'api::product.product'>;
     publishedAt: Schema.Attribute.DateTime;
     purchase_returns: Schema.Attribute.Relation<

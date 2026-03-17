@@ -1,22 +1,17 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import SaleInvoice from './SaleInvoice';
 import { useUtil } from '@rutba/pos-shared/context/UtilContext';
 
 const SaleInvoicePrint = ({ sale, items, totals, onClose  }) => {
-    const { invoicePrintSettings, setInvoicePrintSettings } = useUtil();
+    const { invoicePrintSettings, setInvoicePrintSettings, getBranchPrintSettings, saveBranchPrintSettings } = useUtil();
 
-    // Local editable copy so changes can be previewed before persisting
-    const [localSettings, setLocalSettings] = useState(invoicePrintSettings ?? {
-        paperWidth: '80mm',
-        fontSize: 20,
-        itemsFontSize: 11,
-        fontFamily: 'sans-serif',
-        showTax: true,
-        showCustomer: true,
-        showBranch: true,
-        branchFields: ['name', 'companyName', 'web'],
-        socialFields: []
-    });
+    // Snapshots captured when the settings panel opens — used to revert on Close.
+    const snapshotPrinter = useRef(null);
+    const snapshotBranch = useRef(null);
+
+    // Local editable copies driving the controls.
+    const [localPrinter, setLocalPrinter] = useState(invoicePrintSettings ?? { paperWidth: '80mm' });
+    const [localBranch, setLocalBranch] = useState(getBranchPrintSettings());
 
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -26,29 +21,47 @@ const SaleInvoicePrint = ({ sale, items, totals, onClose  }) => {
         return () => clearTimeout(timer);
     }, []);
 
-    useEffect(() => {
-        // initialize local copy when context changes
-        setLocalSettings(invoicePrintSettings ?? localSettings);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [invoicePrintSettings]);
-
-    function applyAndSave() {
-        setInvoicePrintSettings(localSettings);
-    }
-
     function toggleBranchField(field) {
-        const next = new Set(localSettings.branchFields || []);
+        const next = new Set(localBranch.branchFields || []);
         if (next.has(field)) next.delete(field); else next.add(field);
-        setLocalSettings({ ...localSettings, branchFields: Array.from(next) });
+        setLocalBranch({ ...localBranch, branchFields: Array.from(next) });
     }
 
     function toggleSocialField(field) {
-        const next = new Set(localSettings.socialFields || []);
+        const next = new Set(localBranch.socialFields || []);
         if (next.has(field)) next.delete(field); else next.add(field);
-        setLocalSettings({ ...localSettings, socialFields: Array.from(next) });
+        setLocalBranch({ ...localBranch, socialFields: Array.from(next) });
     }
 
     const [showControls, setShowControls] = useState(false);
+
+    function openControls() {
+        // Snapshot current persisted values before any edits.
+        snapshotPrinter.current = { ...(invoicePrintSettings ?? { paperWidth: '80mm' }) };
+        snapshotBranch.current = { ...getBranchPrintSettings() };
+        setShowControls(true);
+    }
+
+    function closeControls() {
+        // Revert local state to the snapshot (cancel unsaved changes).
+        if (snapshotPrinter.current) {
+            setLocalPrinter(snapshotPrinter.current);
+        }
+        if (snapshotBranch.current) {
+            setLocalBranch(snapshotBranch.current);
+        }
+        setShowControls(false);
+    }
+
+    function handlePrint() {
+        // Persist both printer and branch settings, then print.
+        setInvoicePrintSettings(localPrinter);
+        saveBranchPrintSettings(localBranch);
+        // Update snapshots so a subsequent Close won't revert the saved values.
+        snapshotPrinter.current = { ...localPrinter };
+        snapshotBranch.current = { ...localBranch };
+        window.print();
+    }
 
     return (
         <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
@@ -57,7 +70,7 @@ const SaleInvoicePrint = ({ sale, items, totals, onClose  }) => {
                 type="button"
                 className="d-print-none btn btn-sm btn-primary position-fixed"
                 aria-label="Toggle print settings"
-                onClick={() => setShowControls(s => !s)}
+                onClick={() => showControls ? closeControls() : openControls()}
                 style={{ top: '20px', right: '20px', zIndex: 1100, borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             >
                 ⚙
@@ -69,7 +82,7 @@ const SaleInvoicePrint = ({ sale, items, totals, onClose  }) => {
                     type="button"
                     className="d-print-none btn btn-sm btn-success position-fixed"
                     aria-label="Quick print"
-                    onClick={() => { applyAndSave(); window.print(); }}
+                    onClick={() => { saveBranchPrintSettings(localBranch); window.print(); }}
                     style={{ top: '20px', right: '70px', zIndex: 1100, borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                 >
                     🖨
@@ -89,177 +102,154 @@ const SaleInvoicePrint = ({ sale, items, totals, onClose  }) => {
                     borderRadius: '8px',
                     boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
                     zIndex: 1000,
-                    display: 'flex',
-                    gap: '10px',
-                    alignItems: 'center',
-                    flexDirection: 'column',
-                    minWidth: '220px'
+                    maxHeight: '90vh',
+                    overflowY: 'auto'
                 }}
             >
-                <div className="w-100 mb-2">
-                    <label className="form-label text-white small mb-1">Paper Width</label>
-                    <select
-                        className="form-select form-select-sm"
-                        value={localSettings.paperWidth}
-                        onChange={(e) => setLocalSettings({ ...localSettings, paperWidth: e.target.value })}
-                    >
-                        <option value="58mm">58mm</option>
-                        <option value="80mm">80mm</option>
-                        <option value="210mm">A4</option>
-                    </select>
-                </div>
+                <div style={{ display: 'flex', gap: '20px' }}>
+                    {/* ── Left Column: Printer + Font settings ── */}
+                    <div style={{ minWidth: '180px' }}>
+                        <div className="small text-info fw-bold mb-2">Printer (this device)</div>
 
-                <div className="w-100 mb-2">
-                    <label className="form-label text-white small mb-1">Font Size</label>
-                    <input
-                        type="number"
-                        min="8"
-                        max="18"
-                        className="form-control form-control-sm"
-                        value={localSettings.fontSize}
-                        onChange={(e) => setLocalSettings({ ...localSettings, fontSize: Number(e.target.value) })}
-                    />
-                </div>
+                        <div className="mb-2">
+                            <label className="form-label text-white small mb-1">Paper Width</label>
+                            <select
+                                className="form-select form-select-sm"
+                                value={localPrinter.paperWidth}
+                                onChange={(e) => setLocalPrinter({ ...localPrinter, paperWidth: e.target.value })}
+                            >
+                                <option value="58mm">58mm</option>
+                                <option value="80mm">80mm</option>
+                                <option value="210mm">A4</option>
+                            </select>
+                        </div>
 
-                <div className="w-100 mb-2">
-                    <label className="form-label text-white small mb-1">Items Font Size</label>
-                    <input
-                        type="number"
-                        min="7"
-                        max="16"
-                        className="form-control form-control-sm"
-                        value={localSettings.itemsFontSize ?? localSettings.fontSize}
-                        onChange={(e) => setLocalSettings({ ...localSettings, itemsFontSize: Number(e.target.value) })}
-                    />
-                </div>
+                        <hr className="border-secondary my-2" />
+                        <div className="small text-warning fw-bold mb-2">Branch (all desks)</div>
 
-                <div className="w-100 mb-2">
-                    <label className="form-label text-white small mb-1">Font</label>
-                    <select
-                        className="form-select form-select-sm"
-                        value={localSettings.fontFamily || 'sans-serif'}
-                        onChange={(e) => setLocalSettings({ ...localSettings, fontFamily: e.target.value })}
-                    >
-                        <option value="sans-serif">Sans-serif (clean)</option>
-                        <option value="monospace">Monospace (receipt)</option>
-                        <option value="'Segoe UI', Tahoma, sans-serif">Segoe UI</option>
-                        <option value="Arial, Helvetica, sans-serif">Arial</option>
-                        <option value="Verdana, Geneva, sans-serif">Verdana</option>
-                        <option value="'Courier New', monospace">Courier New</option>
-                    </select>
-                </div>
+                        <div className="mb-2">
+                            <label className="form-label text-white small mb-1">Font Size</label>
+                            <input
+                                type="number" min="8" max="18"
+                                className="form-control form-control-sm"
+                                value={localBranch.fontSize}
+                                onChange={(e) => setLocalBranch({ ...localBranch, fontSize: Number(e.target.value) })}
+                            />
+                        </div>
 
-                <div className="w-100 mb-2 text-white">
-                    <div className="form-check text-white mb-1">
-                        <input
-                            className="form-check-input"
-                            type="checkbox"
-                            id="showTax"
-                            checked={localSettings.showTax}
-                            onChange={(e) => setLocalSettings({ ...localSettings, showTax: e.target.checked })}
-                        />
-                        <label className="form-check-label small" htmlFor="showTax">Show Tax</label>
-                    </div>
+                        <div className="mb-2">
+                            <label className="form-label text-white small mb-1">Items Font Size</label>
+                            <input
+                                type="number" min="7" max="16"
+                                className="form-control form-control-sm"
+                                value={localBranch.itemsFontSize ?? localBranch.fontSize}
+                                onChange={(e) => setLocalBranch({ ...localBranch, itemsFontSize: Number(e.target.value) })}
+                            />
+                        </div>
 
-                    <div className="form-check text-white mb-1">
-                        <input
-                            className="form-check-input"
-                            type="checkbox"
-                            id="showBranch"
-                            checked={localSettings.showBranch}
-                            onChange={(e) => setLocalSettings({ ...localSettings, showBranch: e.target.checked })}
-                        />
-                        <label className="form-check-label small" htmlFor="showBranch">Show Branch</label>
+                        <div className="mb-2">
+                            <label className="form-label text-white small mb-1">Font</label>
+                            <select
+                                className="form-select form-select-sm"
+                                value={localBranch.fontFamily || 'sans-serif'}
+                                onChange={(e) => setLocalBranch({ ...localBranch, fontFamily: e.target.value })}
+                            >
+                                <option value="sans-serif">Sans-serif (clean)</option>
+                                <option value="monospace">Monospace (receipt)</option>
+                                <option value="'Segoe UI', Tahoma, sans-serif">Segoe UI</option>
+                                <option value="Arial, Helvetica, sans-serif">Arial</option>
+                                <option value="Verdana, Geneva, sans-serif">Verdana</option>
+                                <option value="'Courier New', monospace">Courier New</option>
+                            </select>
+                        </div>
+
+                        <div className="text-white">
+                            <div className="form-check text-white mb-1">
+                                <input className="form-check-input" type="checkbox" id="showTax" checked={localBranch.showTax} onChange={(e) => setLocalBranch({ ...localBranch, showTax: e.target.checked })} />
+                                <label className="form-check-label small" htmlFor="showTax">Show Tax</label>
+                            </div>
+                            <div className="form-check text-white mb-1">
+                                <input className="form-check-input" type="checkbox" id="showBranch" checked={localBranch.showBranch} onChange={(e) => setLocalBranch({ ...localBranch, showBranch: e.target.checked })} />
+                                <label className="form-check-label small" htmlFor="showBranch">Show Branch</label>
+                            </div>
+                            <div className="form-check text-white">
+                                <input className="form-check-input" type="checkbox" id="showCustomer" checked={localBranch.showCustomer} onChange={(e) => setLocalBranch({ ...localBranch, showCustomer: e.target.checked })} />
+                                <label className="form-check-label small" htmlFor="showCustomer">Show Customer</label>
+                            </div>
+                        </div>
                     </div>
 
-                    <div className="form-check text-white">
-                        <input
-                            className="form-check-input"
-                            type="checkbox"
-                            id="showCustomer"
-                            checked={localSettings.showCustomer}
-                            onChange={(e) => setLocalSettings({ ...localSettings, showCustomer: e.target.checked })}
-                        />
-                        <label className="form-check-label small" htmlFor="showCustomer">Show Customer</label>
-                    </div>
-                </div>
+                    {/* ── Right Column: Branch Fields + Social ── */}
+                    <div style={{ minWidth: '160px' }}>
+                        <div className="small text-white fw-bold mb-1">Branch Fields</div>
+                        <div className="form-check text-white">
+                            <input className="form-check-input" type="checkbox" id="bf-name" checked={(localBranch.branchFields || []).includes('name')} onChange={() => toggleBranchField('name')} />
+                            <label className="form-check-label small" htmlFor="bf-name">Branch Name</label>
+                        </div>
+                        <div className="form-check text-white">
+                            <input className="form-check-input" type="checkbox" id="bf-company" checked={(localBranch.branchFields || []).includes('companyName')} onChange={() => toggleBranchField('companyName')} />
+                            <label className="form-check-label small" htmlFor="bf-company">Company Name</label>
+                        </div>
+                        <div className="form-check text-white mb-2">
+                            <input className="form-check-input" type="checkbox" id="bf-web" checked={(localBranch.branchFields || []).includes('web')} onChange={() => toggleBranchField('web')} />
+                            <label className="form-check-label small" htmlFor="bf-web">Website</label>
+                        </div>
 
-                <div className="w-100 mt-2" style={{ maxHeight: '120px', overflowY: 'auto' }}>
-                    <div className="small text-white mb-1">Branch Fields</div>
-                    <div className="form-check text-white">
-                        <input className="form-check-input" type="checkbox" id="bf-name" checked={(localSettings.branchFields || []).includes('name')} onChange={() => toggleBranchField('name')} />
-                        <label className="form-check-label small" htmlFor="bf-name">Branch Name</label>
-                    </div>
-                    <div className="form-check text-white">
-                        <input className="form-check-input" type="checkbox" id="bf-company" checked={(localSettings.branchFields || []).includes('companyName')} onChange={() => toggleBranchField('companyName')} />
-                        <label className="form-check-label small" htmlFor="bf-company">Company Name</label>
-                    </div>
-                    <div className="form-check text-white">
-                        <input className="form-check-input" type="checkbox" id="bf-web" checked={(localSettings.branchFields || []).includes('web')} onChange={() => toggleBranchField('web')} />
-                        <label className="form-check-label small" htmlFor="bf-web">Website</label>
-                    </div>
-                </div>
+                        <hr className="border-secondary my-2" />
 
-                <div className="w-100 mt-2" style={{ maxHeight: '180px', overflowY: 'auto' }}>
-                    <div className="small text-white mb-1">Social / Contact on Receipt</div>
-                    <div className="form-check text-white">
-                        <input className="form-check-input" type="checkbox" id="sf-email" checked={(localSettings.socialFields || []).includes('email')} onChange={() => toggleSocialField('email')} />
-                        <label className="form-check-label small" htmlFor="sf-email">Email</label>
-                    </div>
-                    <div className="form-check text-white">
-                        <input className="form-check-input" type="checkbox" id="sf-phone" checked={(localSettings.socialFields || []).includes('phone')} onChange={() => toggleSocialField('phone')} />
-                        <label className="form-check-label small" htmlFor="sf-phone">Phone</label>
-                    </div>
-                    <div className="form-check text-white">
-                        <input className="form-check-input" type="checkbox" id="sf-watsapp" checked={(localSettings.socialFields || []).includes('watsapp')} onChange={() => toggleSocialField('watsapp')} />
-                        <label className="form-check-label small" htmlFor="sf-watsapp">WhatsApp</label>
-                    </div>
-                    <div className="form-check text-white">
-                        <input className="form-check-input" type="checkbox" id="sf-youtube" checked={(localSettings.socialFields || []).includes('youtube')} onChange={() => toggleSocialField('youtube')} />
-                        <label className="form-check-label small" htmlFor="sf-youtube">YouTube</label>
-                    </div>
-                    <div className="form-check text-white">
-                        <input className="form-check-input" type="checkbox" id="sf-tiktok" checked={(localSettings.socialFields || []).includes('tiktok')} onChange={() => toggleSocialField('tiktok')} />
-                        <label className="form-check-label small" htmlFor="sf-tiktok">TikTok</label>
-                    </div>
-                    <div className="form-check text-white">
-                        <input className="form-check-input" type="checkbox" id="sf-instagram" checked={(localSettings.socialFields || []).includes('instagram')} onChange={() => toggleSocialField('instagram')} />
-                        <label className="form-check-label small" htmlFor="sf-instagram">Instagram</label>
-                    </div>
-                    <div className="form-check text-white">
-                        <input className="form-check-input" type="checkbox" id="sf-twitter" checked={(localSettings.socialFields || []).includes('twitter')} onChange={() => toggleSocialField('twitter')} />
-                        <label className="form-check-label small" htmlFor="sf-twitter">Twitter / X</label>
+                        <div className="small text-white fw-bold mb-1">Social / Contact</div>
+                        <div className="form-check text-white">
+                            <input className="form-check-input" type="checkbox" id="sf-email" checked={(localBranch.socialFields || []).includes('email')} onChange={() => toggleSocialField('email')} />
+                            <label className="form-check-label small" htmlFor="sf-email">Email</label>
+                        </div>
+                        <div className="form-check text-white">
+                            <input className="form-check-input" type="checkbox" id="sf-phone" checked={(localBranch.socialFields || []).includes('phone')} onChange={() => toggleSocialField('phone')} />
+                            <label className="form-check-label small" htmlFor="sf-phone">Phone</label>
+                        </div>
+                        <div className="form-check text-white">
+                            <input className="form-check-input" type="checkbox" id="sf-watsapp" checked={(localBranch.socialFields || []).includes('watsapp')} onChange={() => toggleSocialField('watsapp')} />
+                            <label className="form-check-label small" htmlFor="sf-watsapp">WhatsApp</label>
+                        </div>
+                        <div className="form-check text-white">
+                            <input className="form-check-input" type="checkbox" id="sf-youtube" checked={(localBranch.socialFields || []).includes('youtube')} onChange={() => toggleSocialField('youtube')} />
+                            <label className="form-check-label small" htmlFor="sf-youtube">YouTube</label>
+                        </div>
+                        <div className="form-check text-white">
+                            <input className="form-check-input" type="checkbox" id="sf-tiktok" checked={(localBranch.socialFields || []).includes('tiktok')} onChange={() => toggleSocialField('tiktok')} />
+                            <label className="form-check-label small" htmlFor="sf-tiktok">TikTok</label>
+                        </div>
+                        <div className="form-check text-white">
+                            <input className="form-check-input" type="checkbox" id="sf-instagram" checked={(localBranch.socialFields || []).includes('instagram')} onChange={() => toggleSocialField('instagram')} />
+                            <label className="form-check-label small" htmlFor="sf-instagram">Instagram</label>
+                        </div>
+                        <div className="form-check text-white">
+                            <input className="form-check-input" type="checkbox" id="sf-twitter" checked={(localBranch.socialFields || []).includes('twitter')} onChange={() => toggleSocialField('twitter')} />
+                            <label className="form-check-label small" htmlFor="sf-twitter">Twitter / X</label>
+                        </div>
                     </div>
                 </div>
 
-                <div className="d-grid w-100 gap-2 mt-2">
+                {/* ── Buttons spanning full width below both columns ── */}
+                <div className="d-flex gap-2 mt-3">
                     <button
-                        onClick={() => { applyAndSave(); window.print(); }}
-                        className="btn btn-primary btn-sm w-100"
+                        onClick={handlePrint}
+                        className="btn btn-primary btn-sm flex-fill"
                         style={{ fontSize: '14px', fontWeight: 'bold' }}
                     >
                         <i className="fas fa-print me-1"></i>Print
                     </button>
                     <button
-                        onClick={() => { applyAndSave(); }}
-                        className="btn btn-success btn-sm w-100"
+                        onClick={closeControls}
+                        className="btn btn-secondary btn-sm flex-fill"
                         style={{ fontSize: '14px', fontWeight: 'bold' }}
                     >
-                        <i className="fas fa-save me-1"></i>Save
+                        <i className="fas fa-times me-1"></i>Close
                     </button>
                 </div>
-
-                <button
-                    onClick={onClose}
-                    className="btn btn-secondary btn-sm w-100 mt-2"
-                    style={{ fontSize: '14px', fontWeight: 'bold' }}
-                >
-                    <i className="fas fa-times me-1"></i>Close
-                </button>
             </div>
             )}
 
-            <SaleInvoice sale={sale} items={items} totals={totals}  />
+            <SaleInvoice sale={sale} items={items} totals={totals} printerSettings={localPrinter} branchPrintOverrides={localBranch} />
         </div>
     );
 };

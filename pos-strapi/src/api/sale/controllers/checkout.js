@@ -15,6 +15,7 @@ module.exports = {
               items: true, // stock items
             },
           },
+          cash_register: true,
         },
       }
     );
@@ -58,6 +59,7 @@ module.exports = {
             ...p,
             sale: sale.id,
             payment_date: new Date(),
+            ...(sale.cash_register ? { cash_register: sale.cash_register.id } : {}),
           },
         }
       );
