@@ -3,6 +3,22 @@ import { calculateTax } from './pricing';
 
 import { generateNextInvoiceNumber, parseContactLine, parseStockLine } from '../../lib/utils';
 
+/**
+ * Resolve the product name for a sale-return-item.
+ * Tries: direct product relation, then stock items' product, then stock item name.
+ */
+function resolveReturnItemProductName(ri) {
+    if (ri.product?.name) return ri.product.name;
+    const stockItems = ri.items;
+    if (Array.isArray(stockItems) && stockItems.length > 0) {
+        for (const si of stockItems) {
+            if (si.product?.name) return si.product.name;
+            if (si.name) return si.name;
+        }
+    }
+    return 'N/A';
+}
+
 export default class SaleModel {
     constructor({
         id = null,
@@ -66,7 +82,7 @@ export default class SaleModel {
             for (const excReturn of sale._exchangeReturns) {
                 const originalSale = excReturn.sale;
                 const returnItems = (excReturn.items || []).map(ri => ({
-                    productName: ri.product?.name || 'N/A',
+                    productName: resolveReturnItemProductName(ri),
                     price: Number(ri.price || 0),
                     quantity: ri.quantity || 1,
                     total: Number(ri.total || ri.price || 0),
@@ -91,7 +107,7 @@ export default class SaleModel {
                 returnDate: sr.return_date,
                 exchangeSale: sr.exchange_sale || null,
                 items: (sr.items || []).map(ri => ({
-                    productName: ri.product?.name || 'N/A',
+                    productName: resolveReturnItemProductName(ri),
                     price: Number(ri.price || 0),
                     quantity: ri.quantity || 1,
                     total: Number(ri.total || ri.price || 0),

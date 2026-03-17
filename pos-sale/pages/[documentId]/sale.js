@@ -306,37 +306,40 @@ export default function SalePage() {
                                 {/* Totals + buttons — right side */}
                                 <div className="col-lg-5">
                                     <div className="p-3 bg-dark text-white rounded mb-2">
-                                        <div className="d-flex justify-content-between">
+                                        <div className="d-flex justify-content-between small">
                                             <span>Subtotal</span>
                                             <span>{currency}{saleModel.subtotal.toFixed(2)}</span>
                                         </div>
-                                        <div className="d-flex justify-content-between text-danger">
-                                            <span>Discount</span>
-                                            <span>-{currency}{saleModel.discountTotal.toFixed(2)}</span>
-                                        </div>
+                                        {saleModel.discountTotal > 0 && (
+                                            <div className="d-flex justify-content-between small text-danger">
+                                                <span>Discount</span>
+                                                <span>-{currency}{saleModel.discountTotal.toFixed(2)}</span>
+                                            </div>
+                                        )}
                                         {saleModel.tax > 0 && (
-                                            <div className="d-flex justify-content-between">
+                                            <div className="d-flex justify-content-between small">
                                                 <span>Tax</span>
                                                 <span>{currency}{saleModel.tax.toFixed(2)}</span>
                                             </div>
                                         )}
                                         {saleModel.exchangeReturnTotal > 0 && (
-                                            <div className="d-flex justify-content-between text-warning">
-                                                <span>Exchange Return Credit</span>
-                                                <span>-{currency}{saleModel.exchangeReturnTotal.toFixed(2)}</span>
-                                            </div>
+                                            <>
+                                                <hr className="my-1 border-secondary" />
+                                                <div className="d-flex justify-content-between">
+                                                    <span>Sale Total</span>
+                                                    <span>{currency}{saleModel.total.toFixed(2)}</span>
+                                                </div>
+                                                <div className="d-flex justify-content-between text-warning small">
+                                                    <span>Exchange Credit</span>
+                                                    <span>-{currency}{saleModel.exchangeReturnTotal.toFixed(2)}</span>
+                                                </div>
+                                            </>
                                         )}
                                         <hr className="my-2" />
                                         <div className="d-flex justify-content-between fw-bold fs-5">
-                                            <span>Total</span>
-                                            <span>{currency}{saleModel.total.toFixed(2)}</span>
+                                            <span>{saleModel.exchangeReturnTotal > 0 ? 'Amount Due' : 'Total'}</span>
+                                            <span>{currency}{Math.max(0, saleModel.total - saleModel.exchangeReturnTotal).toFixed(2)}</span>
                                         </div>
-                                        {saleModel.exchangeReturnTotal > 0 && (
-                                            <div className="d-flex justify-content-between fw-bold text-warning">
-                                                <span>Amount Due</span>
-                                                <span>{currency}{Math.max(0, saleModel.total - saleModel.exchangeReturnTotal).toFixed(2)}</span>
-                                            </div>
-                                        )}
                                     </div>
 
                                     <SaleButtons saleModel={saleModel} handlePrint={handlePrint} handleSave={handleSave} setShowCheckout={setShowCheckout} isDirty={isDirty} />
