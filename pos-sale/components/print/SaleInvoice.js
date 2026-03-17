@@ -43,6 +43,11 @@ const SaleInvoice = ({ sale, items, totals}) => {
 
     const remaining = Math.max(0, safeTotals.total - paid);
 
+    // Separate actual cash/card/bank payments from exchange-return bookkeeping entries
+    const actualPayments = payments.filter(p => p.payment_method !== 'Exchange Return');
+    const actualPaid = actualPayments.reduce((s, p) => s + (Number(p.amount) || 0), 0);
+    const actualChange = actualPayments.reduce((s, p) => s + (Number(p.change) || 0), 0);
+
     const paperWidth = invoicePrintSettings?.paperWidth || '80mm';
     const fontSize = invoicePrintSettings?.fontSize || 11;
     const itemsFontSize = invoicePrintSettings?.itemsFontSize ?? fontSize;
@@ -132,6 +137,7 @@ const SaleInvoice = ({ sale, items, totals}) => {
                 )}
             </div>
 
+            {/* ── Section 1: Sale Items ── */}
             <table className="items-table w-100" style={{ fontSize: `${itemsFontSize}px`, marginBottom: '6px', borderCollapse: 'collapse' }}>
                 <thead>
                     <tr style={{ borderBottom: '1px solid #000' }}>
@@ -160,20 +166,25 @@ const SaleInvoice = ({ sale, items, totals}) => {
                 </tbody>
             </table>
 
-            {/* Returned Items (Exchange) */}
+            {/* ── Section 2: Exchange Returns ── */}
             {exchangeReturns.length > 0 && exchangeReturns.some(er => er.returnItems?.length > 0) && (
                 <div style={{ borderTop: '1px dashed #555', paddingTop: '4px', marginBottom: '4px' }}>
+                    <div className="fw-bold text-center" style={{ fontSize: `${itemsFontSize}px`, marginBottom: '3px' }}>Exchange Returns</div>
                     {exchangeReturns.map((er, erIdx) => {
                         if (!er.returnItems?.length) return null;
                         return (
-                            <div key={erIdx}>
-                                <div className="fw-bold text-start mb-1" style={{ fontSize: `${itemsFontSize}px` }}>Returned Items (from #{er.sale?.invoice_no || 'N/A'}):</div>
+                            <div key={erIdx} style={erIdx > 0 ? { borderTop: '1px dotted #ccc', paddingTop: '2px', marginTop: '2px' } : undefined}>
+                                <div className="text-start" style={{ fontSize: `${Math.max(itemsFontSize - 1, 8)}px`, marginBottom: '2px', color: '#555' }}>
+                                    From Invoice #{er.sale?.invoice_no || 'N/A'}
+                                    {er.returnNo ? ` (${er.returnNo})` : ''}
+                                </div>
                                 <table className="w-100" style={{ fontSize: `${itemsFontSize}px`, borderCollapse: 'collapse' }}>
                                     <tbody>
                                         {er.returnItems.map((ri, idx) => (
-                                            <tr key={idx}>
-                                                <td className="text-start" style={{ padding: '1px 0' }}>{ri.productName || 'Item'}</td>
-                                                <td className="text-end" style={{ padding: '1px 0', whiteSpace: 'nowrap' }}>-{currency}{Number(ri.price || 0).toFixed(2)}</td>
+                                            <tr key={idx} style={{ borderBottom: '1px dotted #eee' }}>
+                                                <td className="text-center" style={{ width: '12%', padding: '1px 0' }}>{ri.quantity || 1}</td>
+                                                <td className="text-start" style={{ width: '58%', padding: '1px 2px' }}>{ri.productName || 'Item'}</td>
+                                                <td className="text-end" style={{ width: '30%', padding: '1px 0', whiteSpace: 'nowrap' }}>-{currency}{Number(ri.price || 0).toFixed(2)}</td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -192,6 +203,7 @@ const SaleInvoice = ({ sale, items, totals}) => {
                 </div>
             )}
 
+            {/* ── Section 3: Totals ── */}
             <div className="totals-section" style={{ borderTop: '1px dashed #555', paddingTop: '4px', fontSize: `${fontSize}px` }}>
                 <table className="totals-table w-100" style={{ borderCollapse: 'collapse', fontSize: `${fontSize}px` }}>
                     <tbody>
@@ -199,7 +211,7 @@ const SaleInvoice = ({ sale, items, totals}) => {
                             <td className="text-start" style={{ width: '50%', padding: '1px 0' }}>Subtotal:</td>
                             <td className="text-end" style={{ width: '50%', padding: '1px 0' }}>{currency}{safeTotals.subtotal.toFixed(2)}</td>
                         </tr>
-                        {showTax && (
+                        {showTax && safeTotals.tax > 0 && (
                             <tr>
                                 <td className="text-start" style={{ padding: '1px 0' }}>Tax:</td>
                                 <td className="text-end" style={{ padding: '1px 0' }}>{currency}{safeTotals.tax.toFixed(2)}</td>
@@ -207,50 +219,62 @@ const SaleInvoice = ({ sale, items, totals}) => {
                         )}
                         {safeTotals.discount > 0 && (
                             <tr>
-                                <td className="text-start" style={{ padding: '1px 0' }}>Disc:</td>
+                                <td className="text-start" style={{ padding: '1px 0' }}>Discount:</td>
                                 <td className="text-end" style={{ padding: '1px 0' }}>-{currency}{safeTotals.discount.toFixed(2)}</td>
+                            </tr>
+                        )}
+                        {exchangeReturnTotal > 0 && (
+                            <tr>
+                                <td className="text-start" style={{ padding: '1px 0' }}>Exchange Credit:</td>
+                                <td className="text-end" style={{ padding: '1px 0' }}>-{currency}{exchangeReturnTotal.toFixed(2)}</td>
                             </tr>
                         )}
                         <tr className="fw-bold" style={{ fontSize: `${fontSize + 3}px`, borderTop: '1px solid #555' }}>
                             <td className="text-start" style={{ padding: '3px 0' }}>Total:</td>
-                            <td className="text-end" style={{ padding: '3px 0' }}>{currency}{safeTotals.total.toFixed(2)}</td>
+                            <td className="text-end" style={{ padding: '3px 0' }}>{currency}{Math.max(0, safeTotals.total - exchangeReturnTotal).toFixed(2)}</td>
                         </tr>
-                        {payments.length > 0 && (
-                            <>
-                                <tr>
-                                    <td colSpan="2" className="text-start fw-bold" style={{ borderTop: '1px dotted #999', padding: '2px 0 1px' }}>Payments:</td>
-                                </tr>
-                                {payments.map((p, i) => (
-                                    <tr key={i}>
-                                        <td className="text-start" style={{ padding: '1px 0 1px 4px', fontSize: `${fontSize - 1}px` }}>
-                                            {p.payment_method || 'Payment'}
-                                            {p.transaction_no ? ` (${p.transaction_no})` : ''}
-                                        </td>
-                                        <td className="text-end" style={{ padding: '1px 0', fontSize: `${fontSize - 1}px` }}>
-                                            {currency}{Number(p.amount || 0).toFixed(2)}
-                                            {p.change > 0 ? ` (Chg: ${currency}${Number(p.change).toFixed(2)})` : ''}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </>
-                        )}
-                        {isPaid && (
-                            <>
-                                <tr>
-                                    <td className="text-start" style={{ padding: '1px 0' }}>Paid:</td>
-                                    <td className="text-end" style={{ padding: '1px 0' }}>{currency}{paid.toFixed(2)}</td>
-                                </tr>
-                                {changeGiven > 0 && (
-                                    <tr>
-                                        <td className="text-start" style={{ padding: '1px 0' }}>Change:</td>
-                                        <td className="text-end" style={{ padding: '1px 0' }}>{currency}{changeGiven.toFixed(2)}</td>
-                                    </tr>
-                                )}
-                            </>
-                        )}
                     </tbody>
                 </table>
             </div>
+
+            {/* ── Section 4: Payments ── */}
+            {actualPayments.length > 0 && (
+                <div style={{ borderTop: '1px dashed #555', paddingTop: '4px', fontSize: `${fontSize}px` }}>
+                    <table className="w-100" style={{ borderCollapse: 'collapse', fontSize: `${fontSize}px` }}>
+                        <tbody>
+                            <tr>
+                                <td colSpan="2" className="text-start fw-bold" style={{ padding: '2px 0 1px' }}>Payments:</td>
+                            </tr>
+                            {actualPayments.map((p, i) => (
+                                <tr key={i}>
+                                    <td className="text-start" style={{ padding: '1px 0 1px 4px', fontSize: `${fontSize - 1}px` }}>
+                                        {p.payment_method || 'Payment'}
+                                        {p.transaction_no ? ` (${p.transaction_no})` : ''}
+                                    </td>
+                                    <td className="text-end" style={{ padding: '1px 0', fontSize: `${fontSize - 1}px` }}>
+                                        {currency}{Number(p.amount || 0).toFixed(2)}
+                                        {p.change > 0 ? ` (Chg: ${currency}${Number(p.change).toFixed(2)})` : ''}
+                                    </td>
+                                </tr>
+                            ))}
+                            {isPaid && (
+                                <>
+                                    <tr style={{ borderTop: '1px dotted #999' }}>
+                                        <td className="text-start fw-bold" style={{ padding: '1px 0' }}>Paid:</td>
+                                        <td className="text-end fw-bold" style={{ padding: '1px 0' }}>{currency}{actualPaid.toFixed(2)}</td>
+                                    </tr>
+                                    {actualChange > 0 && (
+                                        <tr>
+                                            <td className="text-start" style={{ padding: '1px 0' }}>Change:</td>
+                                            <td className="text-end" style={{ padding: '1px 0' }}>{currency}{actualChange.toFixed(2)}</td>
+                                        </tr>
+                                    )}
+                                </>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            )}
 
             <div className="invoice-footer mt-3">
                 <div className="invoice-number-section">
