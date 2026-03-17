@@ -1,0 +1,72 @@
+1. the sale with exchange is not totaling the invoice correctly with correct headers and clear naming.
+
+
+
+
+check this sale 
+
+    Create:
+
+Cash register has expired. Close it or open a new one to process payments.
+Invoice #IXX2YY7VV5V36IPaid
+Customer:
+#	Item	Unit Price	Qty	Discount / Offer	Row Total	
+1	khaddi 3pc printed lawn 	
+4690.003750.12
+		
+%
+	4690.003750.12	
+Exchange Returns Applied
+Return #EXC-MMNOE538 — From Invoice #IRR2RR7UU5P35T
+Product	Qty	Price
+N/A	1	Rs4240.00
+1 item(s) returned from 1 invoice(s)Credit: Rs4240.00
+SubtotalRs4690.00
+Discount-Rs939.88
+Exchange Return Credit-Rs4240.00
+TotalRs3750.12
+Amount DueRs0.00
+Notes
+Tramari, Lehtrar Road - front desk
+ 
+and invoice its invoice printed
+
+
+Rutba
+Rutba
+Tramari, Lehtrar Road
+RUTBA.PK
+12/03/2026
+User: Ejaz
+Customer: Walk-in Customer
+Qty	Item	Amt
+1	khaddi 3pc printed lawn 	3750
+Returned Items (from #IRR2RR7UU5P35T):
+N/A	-Rs4240.00
+Return Credit:	-Rs4240.00
+Subtotal:	Rs4690.00
+Tax:	Rs0.00
+Disc:	-Rs940.00
+Total:	Rs3750.00
+Payments:
+Exchange Return	Rs4240.00
+Cash	Rs0.01 (Chg: Rs490.01)
+Exchange Return (EXC-MMOT5Q5Q)	Rs-3750.00
+Paid:	Rs490.01
+Change:	Rs490.01
+IXX2YY7VV5V36I
+Thank You!
+
+
+Problem is that headers are not correctly defined and are not in clear sections of their own. 
+the first section is the sale with the item and its price and discount.
+the second section is the exchange return with the returned item and its credit.
+
+the third section is the totals with the subtotal, discount, exchange return credit, total and amount due or refund.
+
+please adjust the sale invoice to have clear sections with correct headers for each part of the sale, exchange return, and totals. This will improve readability and clarity for both the cashier and the customer.
+
+
+since the relation between sale item and stock item is now many to many this should be used to keep the link of stock item with the exchanges and returns as well.
+
+which should fix the issue of the exchange return not showing the correct item and price in the invoice hence their product being N/A in the invoice.

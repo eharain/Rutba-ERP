@@ -286,7 +286,7 @@ export default class SaleApi {
                 const status = paid ? { status: 'Sold' } : {}
                 const stockPayload = {
                     ...status,
-                    sale_item: { set: [saleItemId] }
+                    sale_items: { connect: [saleItemId] }
                 };
 
                 if (stockItem.product?.documentId || stockItem.product?.id) {
@@ -337,7 +337,7 @@ export default class SaleApi {
                     await authApi.put(`/stock-items/${stockItem.documentId}`, {
                         data: {
                             status: 'InStock',
-                            sale_item: { set: [] },
+                            sale_items: { disconnect: [removed.documentId] },
                             product: stockItem.product?.documentId
                                 ? { set: [stockItem.product.documentId] }
                                 : { set: [] }
@@ -457,7 +457,7 @@ export default class SaleApi {
                 await authApi.put(`/stock-items/${ri.stockItemDocId}`, {
                     data: {
                         status: ri.status,
-                        ...(returnItemDocId ? { sale_return_item: { connect: [returnItemDocId] } } : {})
+                        ...(returnItemDocId ? { sale_return_items: { connect: [returnItemDocId] } } : {})
                     }
                 });
             }

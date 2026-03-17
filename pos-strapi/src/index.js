@@ -105,6 +105,116 @@ async function syncPermissionsToRole(knex, roleId, roleName, requiredActions, st
     }
 }
 
+// ── Phase 2: restore backed-up link-table data ─────────────
+// Runs in bootstrap (AFTER Strapi schema sync has created the new tables).
+// Reads from the temp tables created by the migration, inserts into the
+// new manyToMany link tables, then drops the temp tables.
+
+const MIGRATION_RELATIONS = [
+    {
+        newTable: 'stock_items_sale_items_lnk',
+        tempTable: '_tmp_stock_items_sale_item_lnk',
+        sourceCol: 'stock_item_id',
+        targetCol: 'sale_item_id',
+        sourceOrdCol: 'stock_item_ord',
+        targetOrdCol: 'sale_item_ord',
+    },
+    {
+        newTable: 'stock_items_sale_return_items_lnk',
+        tempTable: '_tmp_stock_items_sale_return_item_lnk',
+        sourceCol: 'stock_item_id',
+        targetCol: 'sale_return_item_id',
+        sourceOrdCol: 'stock_item_ord',
+        targetOrdCol: 'sale_return_item_ord',
+    },
+];
+
+async function restoreFromTempTables(knex, logger) {
+    for (const rel of MIGRATION_RELATIONS) {
+        await restoreRelation(knex, rel, logger);
+    }
+}
+
+async function restoreRelation(knex, opts, logger) {
+    const { newTable, tempTable, sourceCol, targetCol, sourceOrdCol, targetOrdCol } = opts;
+
+    const tempExists = await knex.schema.hasTable(tempTable);
+    if (!tempExists) return; // no backup data, nothing to do
+
+    const newExists = await knex.schema.hasTable(newTable);
+    if (!newExists) {
+        logger.warn('[bootstrap-migrate] New table "' + newTable + '" does not exist yet - cannot restore.');
+        return;
+    }
+
+    const tempRows = await knex(tempTable).select(sourceCol, targetCol);
+    if (!tempRows.length) {
+        logger.info('[bootstrap-migrate] Temp table "' + tempTable + '" is empty - dropping.');
+        await knex.schema.dropTableIfExists(tempTable);
+        return;
+    }
+
+    // Read existing rows in the new table to avoid duplicates
+    const existingRows = await knex(newTable).select(sourceCol, targetCol);
+    const existingSet = new Set(existingRows.map(function (r) {
+        return r[sourceCol] + ':' + r[targetCol];
+    }));
+
+    // Deduplicate temp rows
+    const seen = new Set();
+    const toInsert = [];
+    for (const row of tempRows) {
+        if (!row[sourceCol] || !row[targetCol]) continue;
+        const key = row[sourceCol] + ':' + row[targetCol];
+        if (seen.has(key) || existingSet.has(key)) continue;
+        seen.add(key);
+        toInsert.push(row);
+    }
+
+    if (!toInsert.length) {
+        logger.info('[bootstrap-migrate] All rows from "' + tempTable + '" already in "' + newTable + '" - dropping temp.');
+        await knex.schema.dropTableIfExists(tempTable);
+        return;
+    }
+
+    logger.info('[bootstrap-migrate] Restoring ' + toInsert.length + ' row(s) from "' + tempTable + '" to "' + newTable + '".');
+
+    // Compute ordering: get max existing ord per source and target
+    const maxSrcOrds = await knex(newTable).select(sourceCol).max({ maxOrd: sourceOrdCol }).groupBy(sourceCol);
+    const srcOrdMap = {};
+    for (const r of maxSrcOrds) { srcOrdMap[r[sourceCol]] = r.maxOrd || 0; }
+
+    const maxTgtOrds = await knex(newTable).select(targetCol).max({ maxOrd: targetOrdCol }).groupBy(targetCol);
+    const tgtOrdMap = {};
+    for (const r of maxTgtOrds) { tgtOrdMap[r[targetCol]] = r.maxOrd || 0; }
+
+    // Build rows with ordering columns
+    const insertRows = toInsert.map(function (row) {
+        const srcId = row[sourceCol];
+        const tgtId = row[targetCol];
+        srcOrdMap[srcId] = (srcOrdMap[srcId] || 0) + 1;
+        tgtOrdMap[tgtId] = (tgtOrdMap[tgtId] || 0) + 1;
+        const out = {};
+        out[sourceCol] = srcId;
+        out[targetCol] = tgtId;
+        out[sourceOrdCol] = srcOrdMap[srcId];
+        out[targetOrdCol] = tgtOrdMap[tgtId];
+        return out;
+    });
+
+    // Insert in batches
+    const BATCH = 100;
+    for (let i = 0; i < insertRows.length; i += BATCH) {
+        await knex(newTable).insert(insertRows.slice(i, i + BATCH));
+    }
+
+    logger.info('[bootstrap-migrate] Restored ' + insertRows.length + ' row(s) into "' + newTable + '".');
+
+    // Drop the temp table now that data is restored
+    await knex.schema.dropTableIfExists(tempTable);
+    logger.info('[bootstrap-migrate] Dropped temp table "' + tempTable + '".');
+}
+
 // ── bootstrap ───────────────────────────────────────────────
 
 module.exports = {
@@ -112,6 +222,14 @@ module.exports = {
 
     async bootstrap({ strapi }) {
         const knex = strapi.db.connection;
+
+        // ─── Phase 2: restore link-table data from migration backup ──
+        try {
+            await restoreFromTempTables(knex, strapi.log);
+        } catch (err) {
+            strapi.log.error('[bootstrap-migrate] Failed to restore link-table data: ' + err.message);
+            strapi.log.error(err.stack);
+        }
         // ─── a.1  Ensure the "Rutba App User" role ────────────────
         const ROLE_NAME = 'Rutba App User';
         const ROLE_TYPE = 'rutba_app_user';

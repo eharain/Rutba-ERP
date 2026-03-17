@@ -240,9 +240,9 @@ export function buildItemQueries(searchText, page = 1, rowsPerPage = 5) {
                 populate: [
                     'product',
                     'purchase_item',
-                    'sale_item',
+                    'sale_items',
                     'purchase_return_item',
-                    'sale_return_item',
+                    'sale_return_items',
 
                 ],
                 pagination: { page, pageSize: rowsPerPage }

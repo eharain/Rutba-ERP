@@ -39,7 +39,7 @@ module.exports = {
           {
             data: {
               status: 'Sold',
-              sale_item: item.id,
+              sale_items: { connect: [item.id] },
             },
           }
         );

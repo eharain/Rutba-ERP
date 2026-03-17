@@ -52,7 +52,7 @@ async function allocateStock(event) {
       stock.id,
       {
         data: {
-          sale_item: saleItemId,
+          sale_items: { connect: [saleItemId] },
           status: 'Reserved',
         },
       }
