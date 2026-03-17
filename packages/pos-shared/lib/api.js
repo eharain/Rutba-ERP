@@ -283,7 +283,10 @@ async function authCall(fn, ...args) {
         const newJwt = await refreshAccessToken();
         if (!newJwt) {
             emitSessionExpired();
-            throw err;
+            // Return a never-resolving promise so the calling component
+            // does not receive an error (which would flash a 401 message).
+            // The SessionExpiredDialog handles recovery from here.
+            return new Promise(() => {});
         }
         return await fn(...args, newJwt);
     }

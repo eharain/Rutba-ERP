@@ -1,26 +1,92 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useAuth } from "../context/AuthContext";
-import { storage } from "../lib/storage";
 import { APP_URLS } from "../lib/roles";
 
+const SILENT_TIMEOUT_MS = 4000; // time to wait for silent re-auth before showing dialog
+
 /**
- * Modal overlay shown when the user's session expires.
- * Lets them re-authenticate inline (preserving the page state)
- * or redirect to the full login page.
- * Auto-redirects after the configurable sessionTimeout (seconds).
+ * Build the auth-app iframe URL that will redirect through /authorize
+ * and land on /auth/iframe-callback, which posts the token back via postMessage.
+ */
+function buildIframeAuthUrl() {
+    const iframeCallbackUrl = `${APP_URLS.auth}/auth/iframe-callback`;
+    return `${APP_URLS.auth}/authorize?redirect_uri=${encodeURIComponent(iframeCallbackUrl)}`;
+}
+
+/**
+ * Session-recovery component.
+ *
+ * When the app detects a 401 that cannot be recovered by a refresh-token:
+ *  1. A hidden iframe silently asks the auth app whether the user is still
+ *     logged in there. If so, a fresh token is posted back via postMessage
+ *     and the session is restored transparently — the user never sees a dialog.
+ *  2. If silent re-auth fails (timeout or auth app also has no session),
+ *     a modal is shown containing an iframe that loads the auth app's login
+ *     page so the user can re-authenticate without leaving the current page.
+ *  3. A countdown timer auto-redirects to the full login page as a fallback.
  */
 export default function SessionExpiredDialog() {
-    const { sessionExpired, sessionTimeout, login } = useAuth();
-    const [identifier, setIdentifier] = useState("");
-    const [password, setPassword] = useState("");
-    const [error, setError] = useState("");
-    const [submitting, setSubmitting] = useState(false);
+    const { sessionExpired, sessionTimeout, loginWithToken } = useAuth();
+
+    // "silent" → trying hidden iframe | "dialog" → showing visible iframe
+    const [phase, setPhase] = useState("silent");
     const [remaining, setRemaining] = useState(sessionTimeout || 60);
     const timerRef = useRef(null);
+    const silentTimerRef = useRef(null);
+    const silentIframeRef = useRef(null);
 
-    // Reset and start countdown whenever the dialog appears
+    /** Handle token posted back from the auth iframe (hidden or visible). */
+    const handleMessage = useCallback(
+        (event) => {
+            const data = event.data;
+            if (!data || typeof data !== "object") return;
+
+            if (data.type === "rutba-auth-success" && data.token) {
+                // Restore session with the token received from the auth app
+                loginWithToken(data.token, data.refreshToken || null).catch(() => {
+                    // If loginWithToken fails, fall through to the visible dialog
+                    setPhase("dialog");
+                });
+                return;
+            }
+
+            if (data.type === "rutba-auth-failed") {
+                // Auth app confirmed user is not logged in — show the dialog
+                clearTimeout(silentTimerRef.current);
+                setPhase("dialog");
+            }
+        },
+        [loginWithToken]
+    );
+
+    // Subscribe / unsubscribe to postMessage
     useEffect(() => {
         if (!sessionExpired) return;
+        window.addEventListener("message", handleMessage);
+        return () => window.removeEventListener("message", handleMessage);
+    }, [sessionExpired, handleMessage]);
+
+    // Phase 1 — silent iframe re-auth attempt
+    useEffect(() => {
+        if (!sessionExpired) {
+            setPhase("silent");
+            return;
+        }
+
+        // Start silent iframe probe
+        setPhase("silent");
+
+        silentTimerRef.current = setTimeout(() => {
+            // Silent attempt timed out — show the visible dialog
+            setPhase("dialog");
+        }, SILENT_TIMEOUT_MS);
+
+        return () => clearTimeout(silentTimerRef.current);
+    }, [sessionExpired]);
+
+    // Phase 2 — countdown timer (only while the visible dialog is shown)
+    useEffect(() => {
+        if (!sessionExpired || phase !== "dialog") return;
 
         const total = sessionTimeout || 60;
         setRemaining(total);
@@ -37,7 +103,7 @@ export default function SessionExpiredDialog() {
         }, 1000);
 
         return () => clearInterval(timerRef.current);
-    }, [sessionExpired, sessionTimeout]);
+    }, [sessionExpired, phase, sessionTimeout]);
 
     if (!sessionExpired) return null;
 
@@ -47,35 +113,35 @@ export default function SessionExpiredDialog() {
         window.location.href = `${APP_URLS.auth}/authorize?redirect_uri=${encodeURIComponent(callbackUrl)}&state=${encodeURIComponent(state)}`;
     }
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setError("");
-        setSubmitting(true);
-        try {
-            const rememberMe = storage.getRememberMe();
-            await login(identifier, password, rememberMe);
-            // login calls applyAuth which sets sessionExpired = false
-            clearInterval(timerRef.current);
-        } catch (err) {
-            setError("Login failed. Please check your credentials.");
-        } finally {
-            setSubmitting(false);
-        }
-    };
+    const iframeSrc = buildIframeAuthUrl();
 
     const minutes = Math.floor(remaining / 60);
     const seconds = remaining % 60;
-    const timeDisplay = minutes > 0
-        ? `${minutes}:${String(seconds).padStart(2, "0")}`
-        : `${seconds}s`;
+    const timeDisplay =
+        minutes > 0
+            ? `${minutes}:${String(seconds).padStart(2, "0")}`
+            : `${seconds}s`;
 
+    // ---- Phase 1: hidden iframe (no visible UI) ----
+    if (phase === "silent") {
+        return (
+            <iframe
+                ref={silentIframeRef}
+                src={iframeSrc}
+                style={{ display: "none" }}
+                title="Silent re-authentication"
+            />
+        );
+    }
+
+    // ---- Phase 2: visible dialog with auth-app iframe ----
     return (
         <div
             className="modal d-block"
             style={{ backgroundColor: "rgba(0,0,0,0.5)", zIndex: 9999 }}
             tabIndex="-1"
         >
-            <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: 480 }}>
                 <div className="modal-content">
                     <div className="modal-header bg-warning text-dark">
                         <h5 className="modal-title">
@@ -83,48 +149,24 @@ export default function SessionExpiredDialog() {
                             Session Expired
                         </h5>
                     </div>
-                    <div className="modal-body">
-                        <p className="text-muted mb-1">
+                    <div className="modal-body p-0">
+                        <p className="text-muted mb-1 px-3 pt-3">
                             Your session has expired. Sign in again to continue
                             without losing your work.
                         </p>
-                        <p className="text-danger fw-semibold mb-3">
+                        <p className="text-danger fw-semibold mb-2 px-3">
                             <i className="fa-solid fa-clock me-1"></i>
                             Redirecting to login in <strong>{timeDisplay}</strong>
                         </p>
-                        <form onSubmit={handleSubmit}>
-                            {error && (
-                                <div className="alert alert-danger py-2">{error}</div>
-                            )}
-                            <div className="mb-3">
-                                <label className="form-label">Email or Username</label>
-                                <input
-                                    type="text"
-                                    className="form-control"
-                                    value={identifier}
-                                    onChange={(e) => setIdentifier(e.target.value)}
-                                    required
-                                    autoFocus
-                                />
-                            </div>
-                            <div className="mb-3">
-                                <label className="form-label">Password</label>
-                                <input
-                                    type="password"
-                                    className="form-control"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    required
-                                />
-                            </div>
-                            <button
-                                type="submit"
-                                className="btn btn-primary w-100"
-                                disabled={submitting}
-                            >
-                                {submitting ? "Signing in\u2026" : "Sign In & Continue"}
-                            </button>
-                        </form>
+                        <iframe
+                            src={iframeSrc}
+                            style={{
+                                width: "100%",
+                                height: 380,
+                                border: "none",
+                            }}
+                            title="Re-authenticate"
+                        />
                     </div>
                     <div className="modal-footer justify-content-center">
                         <button
