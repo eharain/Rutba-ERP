@@ -2020,7 +2020,10 @@ export interface ApiSaleItemSaleItem extends Struct.CollectionTypeSchema {
       Schema.Attribute.Private;
     discount: Schema.Attribute.Decimal;
     discount_percentage: Schema.Attribute.Decimal;
-    items: Schema.Attribute.Relation<'oneToMany', 'api::stock-item.stock-item'>;
+    items: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::stock-item.stock-item'
+    >;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
@@ -2056,7 +2059,10 @@ export interface ApiSaleReturnItemSaleReturnItem
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
-    items: Schema.Attribute.Relation<'oneToMany', 'api::stock-item.stock-item'>;
+    items: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::stock-item.stock-item'
+    >;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
@@ -2308,12 +2314,12 @@ export interface ApiStockItemStockItem extends Struct.CollectionTypeSchema {
       'manyToOne',
       'api::purchase-item.purchase-item'
     >;
-    sale_item: Schema.Attribute.Relation<
-      'manyToOne',
+    sale_items: Schema.Attribute.Relation<
+      'manyToMany',
       'api::sale-item.sale-item'
     >;
-    sale_return_item: Schema.Attribute.Relation<
-      'manyToOne',
+    sale_return_items: Schema.Attribute.Relation<
+      'manyToMany',
       'api::sale-return-item.sale-return-item'
     >;
     sellable_units: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<1>;

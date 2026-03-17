@@ -73,15 +73,15 @@
       "target": "api::purchase-item.purchase-item",
       "inversedBy": "items"
     },
-    "sale_item": {
+    "sale_items": {
       "type": "relation",
-      "relation": "manyToOne",
+      "relation": "manyToMany",
       "target": "api::sale-item.sale-item",
       "inversedBy": "items"
     },
-    "sale_return_item": {
+    "sale_return_items": {
       "type": "relation",
-      "relation": "manyToOne",
+      "relation": "manyToMany",
       "target": "api::sale-return-item.sale-return-item",
       "inversedBy": "items"
     },

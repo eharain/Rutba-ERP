@@ -473,12 +473,12 @@ function NewSaleReturn() {
                 const returnItem = returnItemRes?.data ?? returnItemRes;
                 const returnItemDocId = getEntryId(returnItem);
 
-                // 4) Update each stock item: change status and link to sale_return_item
+                // 4) Update each stock item: change status and link to sale_return_items
                 for (const ri of items) {
                     await authApi.put(`/stock-items/${ri.stockItemDocId}`, {
                         data: {
                             status: ri.status,
-                            sale_return_item: returnItemDocId
+                            sale_return_items: returnItemDocId
                                 ? { connect: [returnItemDocId] }
                                 : undefined
                         }

@@ -45,9 +45,9 @@
     },
     "items": {
       "type": "relation",
-      "relation": "oneToMany",
+      "relation": "manyToMany",
       "target": "api::stock-item.stock-item",
-      "mappedBy": "sale_item"
+      "mappedBy": "sale_items"
     }
   }
 }
