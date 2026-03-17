@@ -2,8 +2,8 @@ import React from 'react';
 import { useUtil } from '@rutba/pos-shared/context/UtilContext';
 import BarcodeDisplay from './BarcodeDisplay';
 
-const SaleInvoice = ({ sale, items, totals}) => { 
-    const { currency, branch, user, invoicePrintSettings } = useUtil();
+const SaleInvoice = ({ sale, items, totals, printerSettings, branchPrintOverrides }) => { 
+    const { currency, branch, user, invoicePrintSettings, getBranchPrintSettings } = useUtil();
 
     const companyName = branch?.companyName || branch?.name || 'Company Name';
     const branchName = branch?.name || 'Branch Name';
@@ -48,15 +48,19 @@ const SaleInvoice = ({ sale, items, totals}) => {
     const actualPaid = actualPayments.reduce((s, p) => s + (Number(p.amount) || 0), 0);
     const actualChange = actualPayments.reduce((s, p) => s + (Number(p.change) || 0), 0);
 
-    const paperWidth = invoicePrintSettings?.paperWidth || '80mm';
-    const fontSize = invoicePrintSettings?.fontSize || 11;
-    const itemsFontSize = invoicePrintSettings?.itemsFontSize ?? fontSize;
-    const fontFamily = invoicePrintSettings?.fontFamily || 'sans-serif';
-    const showTax = invoicePrintSettings?.showTax ?? true;
-    const showBranch = invoicePrintSettings?.showBranch ?? true;
-    const showCustomer = invoicePrintSettings?.showCustomer ?? true;
-    const branchFields = invoicePrintSettings?.branchFields ?? ['name', 'companyName', 'web'];
-    const socialFields = invoicePrintSettings?.socialFields ?? [];
+    // Use override props when provided (live editing), otherwise fall back to context.
+    const effectivePrinter = printerSettings || invoicePrintSettings;
+    const paperWidth = effectivePrinter?.paperWidth || '80mm';
+
+    const branchPrint = branchPrintOverrides || getBranchPrintSettings();
+    const fontSize = branchPrint.fontSize || 11;
+    const itemsFontSize = branchPrint.itemsFontSize ?? fontSize;
+    const fontFamily = branchPrint.fontFamily || 'sans-serif';
+    const showTax = branchPrint.showTax ?? true;
+    const showBranch = branchPrint.showBranch ?? true;
+    const showCustomer = branchPrint.showCustomer ?? true;
+    const branchFields = branchPrint.branchFields ?? ['name', 'companyName', 'web'];
+    const socialFields = branchPrint.socialFields ?? [];
 
     const renderBranchFields = () => {
         if (!showBranch || !branch) return null;

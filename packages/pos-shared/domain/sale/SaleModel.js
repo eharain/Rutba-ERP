@@ -280,9 +280,12 @@ export default class SaleModel {
     addNonStockItem(input) {
         if (!input) return;
 
-        const { name, price, quantity, discount } = parseStockLine(input);
+        let { name, price, quantity, discount } = parseStockLine(input);
 
         let items = [];
+        quantity = Math.min(quantity ?? 1, 5);
+        discount = Math.min(Math.max(discount ?? 0, 0), 40);
+
         for (let i = 0; i < (quantity ?? 1); i++) {
             items.push(SaleItem.CreateDynamiStockItem(name, price));
         }

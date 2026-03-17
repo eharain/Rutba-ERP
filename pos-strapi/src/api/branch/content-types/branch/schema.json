@@ -123,6 +123,9 @@
       "type": "relation",
       "target": "api::currency.currency",
       "relation": "oneToOne"
+    },
+    "printSettings": {
+      "type": "json"
     }
   }
 }

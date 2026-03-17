@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useMemo, useState, useEffect, useCallback } from "react";
 import { storage } from "../lib/storage";
+import { authApi } from "../lib/api";
 
 const UtilContext = createContext(null);
 
@@ -15,15 +16,21 @@ export function UtilProvider({ children }) {
     const [showBranchDeskModal, setShowBranchDeskModal] = useState(false);
     const [hydrated, setHydrated] = useState(false);
 
-    // Default invoice print settings — used as initial state and to fill
-    // missing keys when loading older stored data.
-    const INVOICE_PRINT_DEFAULTS = {
-        paperWidth: '80mm',
+    // Branch-level print settings defaults — stored on the branch entity.
+    const BRANCH_PRINT_DEFAULTS = {
         fontSize: 11,
+        itemsFontSize: 11,
+        fontFamily: 'sans-serif',
         showTax: true,
+        showCustomer: true,
         showBranch: true,
         branchFields: ['name', 'companyName', 'web'],
         socialFields: []
+    };
+
+    // Printer-level settings defaults — stored in localStorage per device.
+    const INVOICE_PRINT_DEFAULTS = {
+        paperWidth: '80mm'
     };
 
     const [invoicePrintSettings, setInvoicePrintSettingsState] = useState(INVOICE_PRINT_DEFAULTS);
@@ -45,8 +52,7 @@ export function UtilProvider({ children }) {
             setLabelSizeState(storage.getJSON("label-size") ?? '2.4x1.5');
             setPrintModeState(storage.getJSON("print-mode") ?? 'thermal');
             setCashRegisterState(storage.getJSON("cash-register") ?? null);
-            // Print settings are a UI preference — always use localStorage
-            // so they survive regardless of the Remember-Me / session choice.
+            // Printer-level settings — stored in localStorage per device.
             const rawPrint = localStorage.getItem("invoice-print-settings");
             const storedPrint = rawPrint ? JSON.parse(rawPrint) : {};
             setInvoicePrintSettingsState({ ...INVOICE_PRINT_DEFAULTS, ...storedPrint });
@@ -119,14 +125,49 @@ export function UtilProvider({ children }) {
         }
     }
 
-    // Setter that persists invoice print settings to localStorage directly
-    // (not session storage) so they always survive reloads and browser restarts.
+    // Setter that persists printer-level settings to localStorage.
     function setInvoicePrintSettings(newSettings) {
         setInvoicePrintSettingsState(newSettings);
         try {
             localStorage.setItem("invoice-print-settings", JSON.stringify(newSettings));
         } catch (err) {
             console.error('Failed to persist invoice-print-settings', err);
+        }
+    }
+
+    // Returns the merged branch-level print settings with defaults.
+    function getBranchPrintSettings() {
+        return { ...BRANCH_PRINT_DEFAULTS, ...(branch?.printSettings || {}) };
+    }
+
+    // Update branch print settings locally (state + localStorage) for live preview.
+    // Does NOT call the API — use saveBranchPrintSettings to persist to the backend.
+    function updateBranchPrintSettings(newSettings) {
+        const merged = { ...BRANCH_PRINT_DEFAULTS, ...newSettings };
+        const updatedBranch = { ...branch, printSettings: merged };
+        setBranchState(updatedBranch);
+        try {
+            localStorage.setItem("branch", JSON.stringify(updatedBranch));
+        } catch (err) {
+            console.error('Failed to update branch print settings locally', err);
+        }
+    }
+
+    // Persist branch-level print settings to the branch entity via API
+    // and update local branch state so the UI reflects immediately.
+    async function saveBranchPrintSettings(newSettings) {
+        if (!branch?.documentId) {
+            console.error('saveBranchPrintSettings: no branch selected');
+            return;
+        }
+        const merged = { ...BRANCH_PRINT_DEFAULTS, ...newSettings };
+        try {
+            await authApi.put(`/branches/${branch.documentId}`, { data: { printSettings: merged } });
+            const updatedBranch = { ...branch, printSettings: merged };
+            setBranchState(updatedBranch);
+            localStorage.setItem("branch", JSON.stringify(updatedBranch));
+        } catch (err) {
+            console.error('Failed to persist branch print settings', err);
         }
     }
 
@@ -218,6 +259,9 @@ export function UtilProvider({ children }) {
         setCashRegister,
         invoicePrintSettings,
         setInvoicePrintSettings,
+        getBranchPrintSettings,
+        updateBranchPrintSettings,
+        saveBranchPrintSettings,
         ensureBranchDesk,
         showBranchDeskModal,
         setShowBranchDeskModal,

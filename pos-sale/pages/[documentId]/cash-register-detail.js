@@ -35,9 +35,10 @@ export default function CashRegisterDetailPage() {
             const reg = res?.data ?? res;
             setRegister(reg);
 
-            // Load payments
+            // Load payments with linked sale / sale_return
             const paymentsRes = await authApi.fetch("/payments", {
                 filters: { cash_register: { documentId: { $eq: documentId } } },
+                populate: { sale: { fields: ["documentId", "invoice_no"] }, sale_return: { fields: ["documentId", "return_no"] } },
                 sort: ["payment_date:asc"],
                 pagination: { page: 1, pageSize: 500 }
             });
@@ -344,20 +345,38 @@ export default function CashRegisterDetailPage() {
                                                     <th className="text-end">Received</th>
                                                     <th className="text-end">Change</th>
                                                     <th>Txn No</th>
+                                                    <th>Source</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {payments.map((p, i) => (
+                                                {payments.map((p, i) => {
+                                                    const saleDocId = p.sale?.documentId;
+                                                    const returnDocId = p.sale_return?.documentId;
+                                                    return (
                                                     <tr key={p.documentId ?? p.id}>
                                                         <td>{i + 1}</td>
                                                         <td className="small">{p.payment_date ? new Date(p.payment_date).toLocaleString() : '-'}</td>
                                                         <td>{p.payment_method}</td>
-                                                        <td className="text-end">{fmt(p.amount)}</td>
+                                                        <td className={`text-end ${Number(p.amount || 0) < 0 ? 'text-danger' : ''}`}>{fmt(p.amount)}</td>
                                                         <td className="text-end">{p.payment_method === 'Cash' ? fmt(p.cash_received) : '-'}</td>
                                                         <td className="text-end">{p.payment_method === 'Cash' ? fmt(p.change) : '-'}</td>
                                                         <td className="small text-muted">{p.transaction_no || ''}</td>
+                                                        <td>
+                                                            {saleDocId && (
+                                                                <Link href={`/${saleDocId}/sale`} className="badge bg-success text-decoration-none me-1">
+                                                                    <i className="fas fa-receipt me-1"></i>{p.sale.invoice_no || 'Sale'}
+                                                                </Link>
+                                                            )}
+                                                            {returnDocId && (
+                                                                <Link href={`/${returnDocId}/sale-return`} className="badge bg-warning text-dark text-decoration-none">
+                                                                    <i className="fas fa-undo me-1"></i>{p.sale_return.return_no || 'Return'}
+                                                                </Link>
+                                                            )}
+                                                            {!saleDocId && !returnDocId && <span className="text-muted small">-</span>}
+                                                        </td>
                                                     </tr>
-                                                ))}
+                                                    );
+                                                })}
                                             </tbody>
                                         </table>
                                     </div>

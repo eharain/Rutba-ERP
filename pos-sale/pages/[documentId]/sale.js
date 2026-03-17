@@ -1,6 +1,7 @@
 `use client`;
 import { useEffect, useReducer, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
+import Link from 'next/link';
 
 import Layout from '../../components/Layout';
 import ProtectedRoute from '@rutba/pos-shared/components/ProtectedRoute';
@@ -350,19 +351,33 @@ export default function SalePage() {
                                         const totalPaid = actualPayments.reduce((s, p) => s + Number(p.amount || 0), 0);
                                         const amountDue = Math.max(0, saleModel.total - saleModel.exchangeReturnTotal);
                                         const change = Math.max(0, totalPaid - amountDue);
+                                        const registerDocId = saleModel.cash_register?.documentId;
                                         if (!actualPayments.length) return null;
                                         return (
                                             <div className="p-3 bg-dark bg-opacity-75 text-white rounded mb-2">
-                                                <div className="fw-bold small mb-1">Payments</div>
-                                                {actualPayments.map((p, i) => (
-                                                    <div key={i} className="d-flex justify-content-between small">
-                                                        <span className="text-light">
-                                                            {p.payment_method || 'Payment'}
-                                                            {p.transaction_no ? ` (${p.transaction_no})` : ''}
-                                                        </span>
-                                                        <span>{currency}{Number(p.amount || 0).toFixed(2)}</span>
-                                                    </div>
-                                                ))}
+                                                <div className="d-flex justify-content-between align-items-center mb-1">
+                                                    <span className="fw-bold small">Payments</span>
+                                                    {registerDocId && (
+                                                        <Link href={`/${registerDocId}/cash-register-detail`} className="badge bg-primary text-decoration-none">
+                                                            <i className="fas fa-cash-register me-1"></i>Register
+                                                        </Link>
+                                                    )}
+                                                </div>
+                                                {actualPayments.map((p, i) => {
+                                                    const pDocId = p.documentId;
+                                                    const content = (
+                                                        <div key={i} className="d-flex justify-content-between small">
+                                                            <span className="text-light">
+                                                                {p.payment_method || 'Payment'}
+                                                                {p.transaction_no ? ` (${p.transaction_no})` : ''}
+                                                            </span>
+                                                            <span>{currency}{Number(p.amount || 0).toFixed(2)}</span>
+                                                        </div>
+                                                    );
+                                                    return pDocId
+                                                        ? <Link key={i} href={`/${pDocId}/payment`} className="text-decoration-none d-block" style={{ color: 'inherit' }}>{content}</Link>
+                                                        : content;
+                                                })}
                                                 <hr className="my-1 border-secondary" />
                                                 <div className="d-flex justify-content-between small fw-bold">
                                                     <span>Paid</span>

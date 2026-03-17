@@ -174,7 +174,14 @@ function SaleReturnDetail({ documentId }) {
                                 </div>
                                 <div className="col-md-3">
                                     <div className="small text-muted">Return Desk</div>
-                                    <div>{saleReturn.desk_name || (saleReturn.cash_register ? `Desk ${saleReturn.cash_register.desk_name || saleReturn.cash_register.desk_id || ""}` : "N/A")}</div>
+                                    <div>
+                                        {saleReturn.cash_register ? (
+                                            <Link href={`/${getEntryId(saleReturn.cash_register)}/cash-register-detail`}>
+                                                {saleReturn.desk_name || saleReturn.cash_register.desk_name || `Desk ${saleReturn.cash_register.desk_id || ""}`}
+                                                <i className="fas fa-external-link-alt ms-1 small"></i>
+                                            </Link>
+                                        ) : (saleReturn.desk_name || "N/A")}
+                                    </div>
                                 </div>
                                 <div className="col-md-3">
                                     <div className="small text-muted">Returned By</div>
@@ -224,6 +231,47 @@ function SaleReturnDetail({ documentId }) {
                             )}
                         </div>
                     </div>
+
+                    {/* Payments */}
+                    {saleReturn.payments?.length > 0 && (
+                        <div className="card mt-3">
+                            <div className="card-body">
+                                <h5 className="card-title mb-3">Payments</h5>
+                                <div className="table-responsive">
+                                    <table className="table table-sm table-hover mb-0">
+                                        <thead className="table-light">
+                                            <tr>
+                                                <th>#</th>
+                                                <th>Method</th>
+                                                <th className="text-end">Amount</th>
+                                                <th>Date</th>
+                                                <th>Txn No</th>
+                                                <th></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {saleReturn.payments.map((p, idx) => (
+                                                <tr key={getEntryId(p) || idx}>
+                                                    <td>{idx + 1}</td>
+                                                    <td>{p.payment_method || "N/A"}</td>
+                                                    <td className={`text-end ${Number(p.amount || 0) < 0 ? 'text-danger' : ''}`}>{currency}{Number(p.amount || 0).toFixed(2)}</td>
+                                                    <td className="small">{p.payment_date ? new Date(p.payment_date).toLocaleString() : "-"}</td>
+                                                    <td className="small text-muted">{p.transaction_no || "-"}</td>
+                                                    <td>
+                                                        {getEntryId(p) && (
+                                                            <Link href={`/${getEntryId(p)}/payment`} className="btn btn-outline-secondary btn-sm py-0 px-1">
+                                                                <i className="fas fa-external-link-alt"></i>
+                                                            </Link>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     {/* Notes */}
                     <div className="mt-3">
