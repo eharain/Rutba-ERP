@@ -342,6 +342,42 @@ export default function SalePage() {
                                         </div>
                                     </div>
 
+                                    {/* ── Payments breakdown (shown after checkout) ── */}
+                                    {saleModel.payments.length > 0 && (() => {
+                                        const actualPayments = saleModel.payments.filter(
+                                            p => (p.payment_method || '').toLowerCase() !== 'exchange return'
+                                        );
+                                        const totalPaid = actualPayments.reduce((s, p) => s + Number(p.amount || 0), 0);
+                                        const amountDue = Math.max(0, saleModel.total - saleModel.exchangeReturnTotal);
+                                        const change = Math.max(0, totalPaid - amountDue);
+                                        if (!actualPayments.length) return null;
+                                        return (
+                                            <div className="p-3 bg-dark bg-opacity-75 text-white rounded mb-2">
+                                                <div className="fw-bold small mb-1">Payments</div>
+                                                {actualPayments.map((p, i) => (
+                                                    <div key={i} className="d-flex justify-content-between small">
+                                                        <span className="text-light">
+                                                            {p.payment_method || 'Payment'}
+                                                            {p.transaction_no ? ` (${p.transaction_no})` : ''}
+                                                        </span>
+                                                        <span>{currency}{Number(p.amount || 0).toFixed(2)}</span>
+                                                    </div>
+                                                ))}
+                                                <hr className="my-1 border-secondary" />
+                                                <div className="d-flex justify-content-between small fw-bold">
+                                                    <span>Paid</span>
+                                                    <span>{currency}{totalPaid.toFixed(2)}</span>
+                                                </div>
+                                                {change > 0 && (
+                                                    <div className="d-flex justify-content-between small text-info">
+                                                        <span>Change</span>
+                                                        <span>{currency}{change.toFixed(2)}</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })()}
+
                                     <SaleButtons saleModel={saleModel} handlePrint={handlePrint} handleSave={handleSave} setShowCheckout={setShowCheckout} isDirty={isDirty} />
                                 </div>
                             </div>
