@@ -79,15 +79,21 @@ export default function SalePage() {
     =============================== */
 
     const handleCustomerChange = async (customer) => {
-        // Prevent changing customer on paid sales
-        if (saleModel.isPaid) return;
+        // Allow adding a customer to a paid sale when none was set
+        if (saleModel.isPaid && saleModel.customer?.name) return;
 
-        // For unsaved/new sales just update local model. Persist only for existing sales.
         saleModel.setCustomer(customer);
-
         forceUpdate();
         setIsDirty(true);
 
+        // For paid/completed sales, persist customer directly without full re-save
+        if (saleModel.isPaid && saleModel.documentId && customer) {
+            try {
+                await SaleApi.saveCustomer(saleModel.documentId, customer);
+            } catch (err) {
+                console.error('Failed to save customer', err);
+            }
+        }
     };
 
     /* ===============================
@@ -236,7 +242,7 @@ export default function SalePage() {
                                 <CustomerSelect
                                     value={saleModel.customer}
                                     onChange={handleCustomerChange}
-                                    disabled={!saleModel.isEditable}
+                                    disabled={!saleModel.isEditable && !(saleModel.isPaid && !saleModel.customer?.name)}
                                 />
                             </div>
                             {saleModel.customer?.name && (

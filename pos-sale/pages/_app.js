@@ -65,7 +65,7 @@ function BranchDeskGuard({ children }) {
 
 export default function App({ Component, pageProps }) {
     useEffect(() => {
-        import("bootstrap/dist/js/bootstrap.bundle.min.js");
+        import("bootstrap/dist/js/bootstrap.bundle.min.js").catch(() => {});
     }, []);
 
     return (

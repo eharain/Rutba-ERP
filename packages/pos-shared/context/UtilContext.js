@@ -63,6 +63,25 @@ export function UtilProvider({ children }) {
         }
     }, []); // run once
 
+    // Refresh the branch entity from the API after hydration so that
+    // fields edited in the admin panel (social links, etc.) are always current.
+    useEffect(() => {
+        if (!hydrated || !branch?.documentId) return;
+        (async () => {
+            try {
+                const response = await authApi.get(`/branches/${branch.documentId}?populate[0]=desks&populate[1]=currency`);
+                const fresh = response?.data ?? response;
+                if (fresh && fresh.documentId) {
+                    setBranchState(fresh);
+                    localStorage.setItem("branch", JSON.stringify(fresh));
+                }
+            } catch (err) {
+                // Silent — stale localStorage copy is still usable
+                console.warn('Branch refresh failed, using cached data', err?.message);
+            }
+        })();
+    }, [hydrated]); // eslint-disable-line react-hooks/exhaustive-deps
+
     function getBranch() {
         return branch;
     }
@@ -162,8 +181,11 @@ export function UtilProvider({ children }) {
         }
         const merged = { ...BRANCH_PRINT_DEFAULTS, ...newSettings };
         try {
-            await authApi.put(`/branches/${branch.documentId}`, { data: { printSettings: merged } });
-            const updatedBranch = { ...branch, printSettings: merged };
+            const response = await authApi.put(`/branches/${branch.documentId}`, { data: { printSettings: merged } });
+            // Use the API response to get the full fresh branch entity,
+            // so any fields updated in the admin panel are picked up.
+            const fresh = response?.data ?? response;
+            const updatedBranch = (fresh && fresh.documentId) ? fresh : { ...branch, printSettings: merged };
             setBranchState(updatedBranch);
             localStorage.setItem("branch", JSON.stringify(updatedBranch));
         } catch (err) {
