@@ -2294,6 +2294,8 @@ export interface ApiStockItemStockItem extends Struct.CollectionTypeSchema {
     draftAndPublish: false;
   };
   attributes: {
+    archived: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    archived_at: Schema.Attribute.DateTime;
     barcode: Schema.Attribute.String & Schema.Attribute.Unique;
     branch: Schema.Attribute.Relation<'manyToOne', 'api::branch.branch'>;
     cost_price: Schema.Attribute.Decimal;

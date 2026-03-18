@@ -75,8 +75,16 @@ module.exports = createCoreController('plugin::users-permissions.me', ({ strapi 
                 return ctx.unauthorized("You must be logged in");
             }
             const { filters, pagination, sort, populate } = ctx.query;
+
+            // Exclude archived items by default unless explicitly requested
+            const archiveFilter = filters?.archived !== undefined
+                ? {}
+                : { $or: [{ archived: false }, { archived: { $null: true } }] };
+
+            const mergedFilters = { ...filters, ...archiveFilter };
+
             const entries = await strapi.entityService.findMany('api::stock-item.stock-item', {
-                filters: filters,
+                filters: mergedFilters,
                 start: pagination?.page > 1 ? (pagination.page - 1) * (pagination.pageSize || 20) : 0,
                 limit: parseInt(pagination?.pageSize) || 20,
                 sort: sort,
@@ -84,7 +92,7 @@ module.exports = createCoreController('plugin::users-permissions.me', ({ strapi 
             });
 
             const totalCount = await strapi.entityService.count('api::stock-item.stock-item', {
-                filters: filters
+                filters: mergedFilters
             });
             return {
                 data: entries,

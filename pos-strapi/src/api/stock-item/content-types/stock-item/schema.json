@@ -95,6 +95,13 @@
       "type": "component",
       "repeatable": true,
       "component": "pos.stock-status-history"
+    },
+    "archived": {
+      "type": "boolean",
+      "default": false
+    },
+    "archived_at": {
+      "type": "datetime"
     }
   }
 }

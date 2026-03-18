@@ -35,6 +35,7 @@ export default function StockItemsPage() {
     const [selectedBranch, setSelectedBranch] = useState(null);
     const [selectedDestinationBranch, setSelectedDestinationBranch] = useState(null);
     const [productName, setProductName] = useState(null);
+    const [showArchived, setShowArchived] = useState(false);
 
     const productFilter = Array.isArray(router.query.product) ? router.query.product[0] : router.query.product;
 
@@ -83,7 +84,7 @@ export default function StockItemsPage() {
         }, 200);
 
         return () => clearTimeout(handler);
-    }, [page, rowsPerPage, statusFilter, searchTerm, selectedBranch, productFilter]);
+    }, [page, rowsPerPage, statusFilter, searchTerm, selectedBranch, productFilter, showArchived]);
 
     const handleStockItemsSearch = async (searchText) => {
         setLoading(true);
@@ -121,7 +122,8 @@ export default function StockItemsPage() {
                 filters: {
                     ...(statusFilter ? { status: statusFilter } : {}),
                     ...(selectedBranch ? { branch: { documentId: selectedBranch } } : {}),
-                    ...(productFilter ? { product: { documentId: productFilter } } : {})
+                    ...(productFilter ? { product: { documentId: productFilter } } : {}),
+                    ...(showArchived ? { archived: true } : {}),
                 },
                 pagination: {
                     page: page + 1,
@@ -338,7 +340,23 @@ export default function StockItemsPage() {
                                 </select>
                             </div>
                         </div>
-            
+                        <div className="row g-2 mt-1">
+                            <div className="col-auto">
+                                <div className="form-check form-switch">
+                                    <input
+                                        className="form-check-input"
+                                        type="checkbox"
+                                        id="showArchivedToggle"
+                                        checked={showArchived}
+                                        onChange={(e) => { setShowArchived(e.target.checked); setPage(0); }}
+                                    />
+                                    <label className="form-check-label small" htmlFor="showArchivedToggle">
+                                        <i className="fas fa-archive me-1"></i>Show Archived Only
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
 
