@@ -40,6 +40,9 @@ export default function Navigation() {
                     <li className="nav-item">
                         <Link className="nav-link" href="/bulk-stock-inputs">Bulk Stock Inputs</Link>
                     </li>
+                    <li className="nav-item">
+                        <Link className="nav-link text-info" href="/archive-stock"><i className="fas fa-archive me-1"></i>Archive</Link>
+                    </li>
                     <li className="nav-item dropdown">
                         <a className="nav-link dropdown-toggle" href="#" id="catalogMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             Catalog
