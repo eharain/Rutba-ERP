@@ -32,6 +32,36 @@
       ],
       "required": true
     },
+    "sub_type": {
+      "type": "enumeration",
+      "enum": [
+        "Cash",
+        "Bank",
+        "Accounts Receivable",
+        "Inventory",
+        "Fixed Asset",
+        "Other Current Asset",
+        "Accounts Payable",
+        "Tax Payable",
+        "Other Current Liability",
+        "Long Term Liability",
+        "Owner Equity",
+        "Retained Earnings",
+        "Sales Revenue",
+        "Sales Returns",
+        "Other Revenue",
+        "Cost of Goods Sold",
+        "Operating Expense",
+        "Payroll Expense",
+        "Tax Expense",
+        "Other Expense"
+      ]
+    },
+    "normal_balance": {
+      "type": "enumeration",
+      "enum": ["Debit", "Credit"],
+      "required": true
+    },
     "balance": {
       "type": "decimal",
       "default": 0
@@ -39,10 +69,35 @@
     "description": {
       "type": "text"
     },
+    "is_system": {
+      "type": "boolean",
+      "default": false
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
     "parent": {
       "type": "relation",
       "relation": "manyToOne",
-      "target": "api::acc-account.acc-account"
+      "target": "api::acc-account.acc-account",
+      "inversedBy": "children"
+    },
+    "children": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::acc-account.acc-account",
+      "mappedBy": "parent"
+    },
+    "currency": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::currency.currency"
+    },
+    "branch": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::branch.branch"
     }
   }
 }

@@ -1,0 +1,55 @@
+{
+  "kind": "collectionType",
+  "collectionName": "acc_tax_rates",
+  "info": {
+    "singularName": "acc-tax-rate",
+    "pluralName": "acc-tax-rates",
+    "displayName": "Acc Tax Rate",
+    "description": "Configurable tax rates for sales and purchases"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "code": {
+      "type": "string",
+      "unique": true,
+      "required": true
+    },
+    "rate": {
+      "type": "decimal",
+      "required": true
+    },
+    "type": {
+      "type": "enumeration",
+      "enum": ["Inclusive", "Exclusive"],
+      "default": "Exclusive",
+      "required": true
+    },
+    "scope": {
+      "type": "enumeration",
+      "enum": ["Sales", "Purchases", "Both"],
+      "default": "Both",
+      "required": true
+    },
+    "sales_account": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::acc-account.acc-account"
+    },
+    "purchase_account": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::acc-account.acc-account"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    }
+  }
+}

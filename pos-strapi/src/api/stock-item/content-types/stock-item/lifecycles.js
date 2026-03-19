@@ -74,20 +74,34 @@ module.exports = {
     }
   },
 
-  async beforeCreate(event) {
-    const { data } = event.params;
+  async afterCreate(event) {
+    if (_updatingHistory) return;
 
-    if (!data.status) return;
+    const { result } = event;
+    const itemId = result?.id;
+    if (!itemId) return;
 
-    const history = Array.isArray(data.status_history) ? [...data.status_history] : [];
+    const status = result.status;
+    if (!status) return;
 
-    history.push({
-      status: data.status,
-      cost_price: data.cost_price ?? null,
-      selling_price: data.selling_price ?? null,
-      createdAt: new Date().toISOString().split('T')[0],
-    });
-
-    data.status_history = history;
+    _updatingHistory = true;
+    try {
+      await strapi.entityService.update(
+        'api::stock-item.stock-item',
+        itemId,
+        {
+          data: {
+            status_history: [{
+              status: status,
+              cost_price: result.cost_price ?? null,
+              selling_price: result.selling_price ?? null,
+              createdAt: new Date().toISOString().split('T')[0],
+            }],
+          },
+        }
+      );
+    } finally {
+      _updatingHistory = false;
+    }
   },
 };

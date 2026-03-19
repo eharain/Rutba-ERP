@@ -1,6 +1,7 @@
 'use strict';
 
 const { ENTRIES, PLUGIN_PERMISSIONS, PUBLIC_PERMISSIONS } = require('../config/app-access-permissions');
+const seedAccounting = require('./seed/accounting-seed');
 
 // ── helpers ─────────────────────────────────────────────────
 
@@ -331,6 +332,14 @@ module.exports = {
             } catch (err) {
                 strapi.log.error(`[bootstrap] Failed to sync permissions for "${otherRole.name}": ${err.message}`);
             }
+        }
+
+        // ─── Phase 3: Seed accounting Chart of Accounts & mappings ──
+        try {
+            await seedAccounting(strapi);
+        } catch (err) {
+            strapi.log.error('[bootstrap] Accounting seed failed: ' + err.message);
+            strapi.log.error(err.stack);
         }
     },
 };

@@ -1,0 +1,60 @@
+{
+  "kind": "collectionType",
+  "collectionName": "acc_bank_accounts",
+  "info": {
+    "singularName": "acc-bank-account",
+    "pluralName": "acc-bank-accounts",
+    "displayName": "Acc Bank Account",
+    "description": "Bank and cash accounts linked to ledger accounts"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "account_number": {
+      "type": "string"
+    },
+    "bank_name": {
+      "type": "string"
+    },
+    "account_type": {
+      "type": "enumeration",
+      "enum": ["Cash", "Checking", "Savings", "Credit Card", "Mobile Wallet"],
+      "default": "Checking",
+      "required": true
+    },
+    "current_balance": {
+      "type": "decimal",
+      "default": 0
+    },
+    "ledger_account": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::acc-account.acc-account"
+    },
+    "currency": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::currency.currency"
+    },
+    "branch": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::branch.branch"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "owners": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

@@ -1,0 +1,93 @@
+{
+  "kind": "collectionType",
+  "collectionName": "acc_bills",
+  "info": {
+    "singularName": "acc-bill",
+    "pluralName": "acc-bills",
+    "displayName": "Acc Bill",
+    "description": "Supplier bills for accounts payable"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "bill_number": {
+      "type": "string",
+      "unique": true,
+      "required": true
+    },
+    "supplier_ref": {
+      "type": "string"
+    },
+    "date": {
+      "type": "date",
+      "required": true
+    },
+    "due_date": {
+      "type": "date",
+      "required": true
+    },
+    "supplier": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::supplier.supplier"
+    },
+    "purchase": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::purchase.purchase"
+    },
+    "subtotal": {
+      "type": "decimal",
+      "required": true,
+      "default": 0
+    },
+    "tax_amount": {
+      "type": "decimal",
+      "default": 0
+    },
+    "total": {
+      "type": "decimal",
+      "required": true,
+      "default": 0
+    },
+    "amount_paid": {
+      "type": "decimal",
+      "default": 0
+    },
+    "balance_due": {
+      "type": "decimal",
+      "default": 0
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": ["Draft", "Received", "Partially Paid", "Paid", "Overdue", "Cancelled"],
+      "default": "Draft",
+      "required": true
+    },
+    "journal_entry": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::acc-journal-entry.acc-journal-entry"
+    },
+    "currency": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::currency.currency"
+    },
+    "notes": {
+      "type": "text"
+    },
+    "branch": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::branch.branch"
+    },
+    "owners": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

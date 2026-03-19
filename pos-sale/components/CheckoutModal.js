@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useUtil } from '@rutba/pos-shared/context/UtilContext';
 
-const CheckoutModal = ({ isOpen, onClose, total, exchangeReturnCredit = 0, onComplete, loading }) => {
+const CheckoutModal = ({ isOpen, onClose, total, exchangeReturnCredit = 0, existingPayments = [], onComplete, onSavePayments, loading }) => {
     const { currency } = useUtil();
     const [payments, setPayments] = useState([]);
     const [submitting, setSubmitting] = useState(false);
@@ -17,6 +17,23 @@ const CheckoutModal = ({ isOpen, onClose, total, exchangeReturnCredit = 0, onCom
         if (isOpen) {
             setSubmitting(false);
             const initial = [];
+            let alreadyPaid = 0;
+
+            // Add existing saved payments as locked rows
+            if (existingPayments && existingPayments.length > 0) {
+                existingPayments.forEach((ep, i) => {
+                    initial.push({
+                        id: Date.now() - 1000 + i,
+                        payment_method: ep.payment_method || 'Cash',
+                        amount: Number(ep.amount || 0).toFixed(2),
+                        transaction_no: ep.transaction_no || '',
+                        _locked: true,
+                        _existing: true
+                    });
+                    alreadyPaid += Number(ep.amount || 0);
+                });
+            }
+
             if (exchangeReturnCredit > 0) {
                 initial.push({
                     id: Date.now() - 1,
@@ -26,7 +43,7 @@ const CheckoutModal = ({ isOpen, onClose, total, exchangeReturnCredit = 0, onCom
                     _locked: true
                 });
             }
-            const remaining = Math.max(total - exchangeReturnCredit, 0);
+            const remaining = Math.max(total - exchangeReturnCredit - alreadyPaid, 0);
             if (remaining > 0 || initial.length === 0) {
                 initial.push({
                     id: Date.now(),
@@ -77,26 +94,11 @@ const CheckoutModal = ({ isOpen, onClose, total, exchangeReturnCredit = 0, onCom
         setPayments((prev) => prev.filter((_, idx) => idx !== index));
     };
 
-    const handlePay = () => {
-        if (submitting) return;
-        if (totalPaid < total) {
-            alert(`Insufficient payment. Total is ${currency}${total.toFixed(2)}, but only ${currency}${totalPaid.toFixed(2)} received.`);
-            return;
-        }
-        if (totalPaid > total && !hasCashPayment) {
-            alert('Overpayment is only supported when using cash.');
-            return;
-        }
-
-        const hasInvalidAmount = payments.some((payment) => validOrDefult(payment.amount, 0) <= 0);
-        if (hasInvalidAmount) {
-            alert('Please enter a valid amount for each payment.');
-            return;
-        }
-
-        const lastCashIndex = [...payments].reverse().findIndex((payment) => payment.payment_method === 'Cash');
-        const cashIndex = lastCashIndex === -1 ? -1 : payments.length - 1 - lastCashIndex;
-        const paymentsPayload = payments.map((payment, index) => {
+    const buildPaymentsPayload = () => {
+        const newPayments = payments.filter((p) => !p._locked);
+        const lastCashIndex = [...newPayments].reverse().findIndex((payment) => payment.payment_method === 'Cash');
+        const cashIndex = lastCashIndex === -1 ? -1 : newPayments.length - 1 - lastCashIndex;
+        return newPayments.map((payment, index) => {
             const amount = validOrDefult(payment.amount, 0);
             const payload = {
                 payment_method: payment.payment_method,
@@ -113,9 +115,45 @@ const CheckoutModal = ({ isOpen, onClose, total, exchangeReturnCredit = 0, onCom
 
             return payload;
         });
+    };
+
+    const handlePay = () => {
+        if (submitting) return;
+        if (totalPaid < total) {
+            alert(`Insufficient payment. Total is ${currency}${total.toFixed(2)}, but only ${currency}${totalPaid.toFixed(2)} received.`);
+            return;
+        }
+        if (totalPaid > total && !hasCashPayment) {
+            alert('Overpayment is only supported when using cash.');
+            return;
+        }
+
+        const hasInvalidAmount = payments.filter((p) => !p._locked).some((payment) => validOrDefult(payment.amount, 0) <= 0);
+        if (hasInvalidAmount) {
+            alert('Please enter a valid amount for each payment.');
+            return;
+        }
 
         setSubmitting(true);
-        onComplete(paymentsPayload);
+        onComplete(buildPaymentsPayload());
+    };
+
+    const handleSaveDraft = () => {
+        if (submitting) return;
+
+        const newPayments = payments.filter((p) => !p._locked);
+        if (newPayments.length === 0) {
+            alert('No new payments to save.');
+            return;
+        }
+        const hasInvalidAmount = newPayments.some((payment) => validOrDefult(payment.amount, 0) <= 0);
+        if (hasInvalidAmount) {
+            alert('Please enter a valid amount for each payment.');
+            return;
+        }
+
+        setSubmitting(true);
+        onSavePayments(buildPaymentsPayload());
     };
 
     if (!isOpen) return null;
@@ -234,6 +272,9 @@ const CheckoutModal = ({ isOpen, onClose, total, exchangeReturnCredit = 0, onCom
                     </div>
                     <div className="modal-footer">
                         <button type="button" className="btn btn-outline-secondary" onClick={onClose} disabled={loading}>Cancel</button>
+                        <button type="button" className="btn btn-outline-primary px-3" onClick={handleSaveDraft} disabled={submitting || loading || payments.filter(p => !p._locked).length === 0 || totalPaid <= 0}>
+                            {loading ? (<><span className="spinner-border spinner-border-sm me-1"></span>Saving...</>) : (<><i className="fas fa-save me-1"></i>Save Payments</>)}
+                        </button>
                         <button type="button" className="btn btn-success px-4" onClick={handlePay} disabled={submitting || loading || payments.length === 0 || totalPaid < total}>
                             {loading ? (<><span className="spinner-border spinner-border-sm me-1"></span>Processing...</>) : (<><i className="fas fa-check me-1"></i>Confirm Payment</>)}
                         </button>

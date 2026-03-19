@@ -1,0 +1,41 @@
+{
+  "kind": "collectionType",
+  "collectionName": "acc_fiscal_periods",
+  "info": {
+    "singularName": "acc-fiscal-period",
+    "pluralName": "acc-fiscal-periods",
+    "displayName": "Fiscal Period",
+    "description": "Fiscal year periods that control journal posting"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "start_date": {
+      "type": "date",
+      "required": true
+    },
+    "end_date": {
+      "type": "date",
+      "required": true
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": ["Open", "Closed", "Locked"],
+      "default": "Open"
+    },
+    "fiscal_year": {
+      "type": "string"
+    },
+    "owners": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

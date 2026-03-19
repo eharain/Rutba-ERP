@@ -112,6 +112,18 @@ export default function SalePage() {
         setShowCheckout(false);
     };
 
+    const handleSavePayments = async (payments) => {
+        if (savingRef.current) return;
+        const paymentsList = Array.isArray(payments) ? payments : [payments];
+        paymentsList.forEach((payment) => saleModel.addPayment(payment));
+        try {
+            await doSave({ paid: false });
+        } catch {
+            // doSave already shows an alert
+        }
+        setShowCheckout(false);
+    };
+
     const doSave = async (param) => {
         if (savingRef.current) return;
         savingRef.current = true;
@@ -410,7 +422,9 @@ export default function SalePage() {
                             onClose={() => setShowCheckout(false)}
                             total={saleModel.total}
                             exchangeReturnCredit={saleModel.exchangeReturnTotal}
+                            existingPayments={saleModel.payments}
                             onComplete={handleCheckoutComplete}
+                            onSavePayments={handleSavePayments}
                             loading={loading}
                         />
 

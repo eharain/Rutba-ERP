@@ -81,27 +81,35 @@ module.exports = createCoreController('plugin::users-permissions.me', ({ strapi 
                 ? {}
                 : { $or: [{ archived: false }, { archived: { $null: true } }] };
 
-            const mergedFilters = { ...filters, ...archiveFilter };
+            const mergedFilters = Object.keys(archiveFilter).length
+                ? { $and: [filters, archiveFilter].filter(Boolean) }
+                : { ...filters };
 
-            const entries = await strapi.entityService.findMany('api::stock-item.stock-item', {
-                filters: mergedFilters,
-                start: pagination?.page > 1 ? (pagination.page - 1) * (pagination.pageSize || 20) : 0,
-                limit: parseInt(pagination?.pageSize) || 20,
-                sort: sort,
-                populate: populate
-            });
+            const pageSize = parseInt(pagination?.pageSize) || 20;
+            const page = parseInt(pagination?.page) || 1;
+            const start = page > 1 ? (page - 1) * pageSize : 0;
 
-            const totalCount = await strapi.entityService.count('api::stock-item.stock-item', {
-                filters: mergedFilters
-            });
+            const [entries, totalCount] = await Promise.all([
+                strapi.db.query('api::stock-item.stock-item').findMany({
+                    where: mergedFilters,
+                    offset: start,
+                    limit: pageSize,
+                    orderBy: sort,
+                    populate: populate
+                }),
+                strapi.db.query('api::stock-item.stock-item').count({
+                    where: mergedFilters
+                })
+            ]);
+
             return {
                 data: entries,
                 meta: {
                     pagination: {
-                        page: parseInt(pagination?.page) || 1,
-                        pageSize: parseInt(pagination?.pageSize) || 20,
+                        page: page,
+                        pageSize: pageSize,
                         total: totalCount,
-                        pageCount: Math.ceil(totalCount / (parseInt(pagination?.pageSize) || 20))
+                        pageCount: Math.ceil(totalCount / pageSize)
                     }
                 }
             };

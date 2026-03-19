@@ -44,10 +44,25 @@
         "files"
       ]
     },
+    "status": {
+      "type": "enumeration",
+      "enum": ["Draft", "Approved", "Posted", "Cancelled"],
+      "default": "Draft"
+    },
     "account": {
       "type": "relation",
       "relation": "manyToOne",
       "target": "api::acc-account.acc-account"
+    },
+    "journal_entry": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::acc-journal-entry.acc-journal-entry"
+    },
+    "branch": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::branch.branch"
     },
     "owners": {
       "type": "relation",

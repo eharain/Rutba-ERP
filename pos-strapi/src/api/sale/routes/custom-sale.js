@@ -6,6 +6,11 @@ module.exports = {
       handler: 'checkout.checkout',
     },
     {
+      method: 'POST',
+      path: '/sales/:id/record-payment',
+      handler: 'record-payment.recordPayment',
+    },
+    {
       method: 'PUT',
       path: '/sales/:id/cancel',
       handler: 'cancel.cancel',
