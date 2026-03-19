@@ -1039,6 +1039,7 @@ export interface ApiBranchBranch extends Struct.CollectionTypeSchema {
       true
     >;
     instagram: Schema.Attribute.String;
+    invoiceTerms: Schema.Attribute.RichText;
     items: Schema.Attribute.Relation<'oneToMany', 'api::stock-item.stock-item'>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<

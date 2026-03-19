@@ -1,6 +1,8 @@
 import React from 'react';
 import { useUtil } from '@rutba/pos-shared/context/UtilContext';
 import BarcodeDisplay from './BarcodeDisplay';
+import { QRCodeSVG } from 'qrcode.react';
+import { marked } from '@rutba/pos-shared/lib/marked.esm.js';
 
 const SaleInvoice = ({ sale, items, totals, printerSettings, branchPrintOverrides }) => { 
     const { currency, branch, user, invoicePrintSettings, getBranchPrintSettings } = useUtil();
@@ -61,6 +63,8 @@ const SaleInvoice = ({ sale, items, totals, printerSettings, branchPrintOverride
     const showCustomer = branchPrint.showCustomer ?? true;
     const branchFields = branchPrint.branchFields ?? ['name', 'companyName', 'web'];
     const socialFields = branchPrint.socialFields ?? [];
+    const socialQRFields = branchPrint.socialQRFields ?? [];
+    const showTerms = branchPrint.showTerms ?? false;
 
     const renderBranchFields = () => {
         if (!showBranch || !branch) return null;
@@ -293,17 +297,58 @@ const SaleInvoice = ({ sale, items, totals, printerSettings, branchPrintOverride
                 Thank You!
             </div>
 
-            {socialFields.length > 0 && branch && (
-                <div className="social-links mt-1" style={{ fontSize: `${fontSize - 1}px`, lineHeight: 1.4, borderTop: '1px dashed #555', paddingTop: '4px' }}>
-                    {socialFields.includes('email') && branch.email && <div>✉ {branch.email}</div>}
-                    {socialFields.includes('phone') && branch.phone && <div>☎ {branch.phone}</div>}
-                    {socialFields.includes('watsapp') && branch.watsapp && <div>💬 {branch.watsapp}</div>}
-                    {socialFields.includes('youtube') && branch.youtube && <div>▶ {branch.youtube}</div>}
-                    {socialFields.includes('tiktok') && branch.tiktok && <div>♪ {branch.tiktok}</div>}
-                    {socialFields.includes('instagram') && branch.instagram && <div>📷 {branch.instagram}</div>}
-                    {socialFields.includes('twitter') && branch.twitter && <div>𝕏 {branch.twitter}</div>}
+            {showTerms && branch?.invoiceTerms && (
+                <div className="invoice-terms mt-2" style={{ borderTop: '1px dashed #555', paddingTop: '4px', fontSize: `${fontSize - 2}px`, lineHeight: 1.4 }}>
+                    <div dangerouslySetInnerHTML={{ __html: marked(branch.invoiceTerms) }} />
                 </div>
             )}
+
+            {(socialFields.length > 0 || socialQRFields.length > 0) && branch && (() => {
+                const SOCIAL_ITEMS = [
+                    { key: 'email',     icon: <i className="fas fa-envelope" />, label: 'Email',     value: branch.email },
+                    { key: 'phone',     icon: <i className="fas fa-phone" />, label: 'Phone',     value: branch.phone },
+                    { key: 'watsapp',   icon: <i className="fab fa-whatsapp" />, label: 'WhatsApp',  value: branch.watsapp,   qr: true },
+                    { key: 'youtube',   icon: <i className="fab fa-youtube" />, label: 'YouTube',   value: branch.youtube,   qr: true },
+                    { key: 'tiktok',    icon: <i className="fab fa-tiktok" />, label: 'TikTok',    value: branch.tiktok,    qr: true },
+                    { key: 'instagram', icon: <i className="fab fa-instagram" />, label: 'Instagram', value: branch.instagram, qr: true },
+                    { key: 'twitter',   icon: <i className="fab fa-x-twitter" />, label: 'Twitter',   value: branch.twitter,   qr: true },
+                ];
+                const visible = SOCIAL_ITEMS.filter(s => s.value && (socialFields.includes(s.key) || socialQRFields.includes(s.key)));
+                if (!visible.length) return null;
+                const hasQR = visible.some(s => s.qr && socialQRFields.includes(s.key));
+                const colWidth = paperWidth === '210mm' ? '33.33%' : '50%';
+                return (
+                    <div className="social-links mt-1" style={{ borderTop: '1px dashed #555', paddingTop: '4px' }}>
+                        <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: `${fontSize - 1}px`, marginBottom: '4px' }}>Follow Us</div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center' }}>
+                            {visible.map(s => {
+                                const showLink = socialFields.includes(s.key);
+                                const showQR = s.qr && socialQRFields.includes(s.key);
+                                return (
+                                    <div key={s.key} style={{
+                                        width: hasQR ? colWidth : colWidth,
+                                        boxSizing: 'border-box',
+                                        padding: '3px 2px',
+                                        textAlign: 'center',
+                                        fontSize: `${fontSize - 1}px`,
+                                        lineHeight: 1.3
+                                    }}>
+                                        {showQR && (
+                                            <QRCodeSVG value={s.value} size={44} level="L" />
+                                        )}
+                                        {showQR && !showLink && (
+                                            <div style={{ marginTop: '2px', fontWeight: 'bold' }}>{s.icon}</div>
+                                        )}
+                                        {showLink && (
+                                            <div style={showQR ? { marginTop: '2px' } : undefined}>{s.icon} {s.value}</div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                );
+            })()}
         </div>
     );
 };
