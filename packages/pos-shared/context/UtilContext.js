@@ -25,7 +25,9 @@ export function UtilProvider({ children }) {
         showCustomer: true,
         showBranch: true,
         branchFields: ['name', 'companyName', 'web'],
-        socialFields: []
+        socialFields: [],
+        socialQRFields: [],
+        showTerms: false
     };
 
     // Printer-level settings defaults — stored in localStorage per device.

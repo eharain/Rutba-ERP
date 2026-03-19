@@ -33,6 +33,12 @@ const SaleInvoicePrint = ({ sale, items, totals, onClose  }) => {
         setLocalBranch({ ...localBranch, socialFields: Array.from(next) });
     }
 
+    function toggleSocialQRField(field) {
+        const next = new Set(localBranch.socialQRFields || []);
+        if (next.has(field)) next.delete(field); else next.add(field);
+        setLocalBranch({ ...localBranch, socialQRFields: Array.from(next) });
+    }
+
     const [showControls, setShowControls] = useState(false);
 
     function openControls() {
@@ -176,6 +182,10 @@ const SaleInvoicePrint = ({ sale, items, totals, onClose  }) => {
                                 <input className="form-check-input" type="checkbox" id="showCustomer" checked={localBranch.showCustomer} onChange={(e) => setLocalBranch({ ...localBranch, showCustomer: e.target.checked })} />
                                 <label className="form-check-label small" htmlFor="showCustomer">Show Customer</label>
                             </div>
+                            <div className="form-check text-white mt-1">
+                                <input className="form-check-input" type="checkbox" id="showTerms" checked={localBranch.showTerms ?? false} onChange={(e) => setLocalBranch({ ...localBranch, showTerms: e.target.checked })} />
+                                <label className="form-check-label small" htmlFor="showTerms">Show Terms</label>
+                            </div>
                         </div>
                     </div>
 
@@ -197,7 +207,7 @@ const SaleInvoicePrint = ({ sale, items, totals, onClose  }) => {
 
                         <hr className="border-secondary my-2" />
 
-                        <div className="small text-white fw-bold mb-1">Social / Contact</div>
+                        <div className="small text-white fw-bold mb-1">Social / Contact Links</div>
                         <div className="form-check text-white">
                             <input className="form-check-input" type="checkbox" id="sf-email" checked={(localBranch.socialFields || []).includes('email')} onChange={() => toggleSocialField('email')} />
                             <label className="form-check-label small" htmlFor="sf-email">Email</label>
@@ -225,6 +235,30 @@ const SaleInvoicePrint = ({ sale, items, totals, onClose  }) => {
                         <div className="form-check text-white">
                             <input className="form-check-input" type="checkbox" id="sf-twitter" checked={(localBranch.socialFields || []).includes('twitter')} onChange={() => toggleSocialField('twitter')} />
                             <label className="form-check-label small" htmlFor="sf-twitter">Twitter / X</label>
+                        </div>
+
+                        <hr className="border-secondary my-2" />
+
+                        <div className="small text-white fw-bold mb-1">QR Codes</div>
+                        <div className="form-check text-white">
+                            <input className="form-check-input" type="checkbox" id="qr-watsapp" checked={(localBranch.socialQRFields || []).includes('watsapp')} onChange={() => toggleSocialQRField('watsapp')} />
+                            <label className="form-check-label small" htmlFor="qr-watsapp">WhatsApp</label>
+                        </div>
+                        <div className="form-check text-white">
+                            <input className="form-check-input" type="checkbox" id="qr-youtube" checked={(localBranch.socialQRFields || []).includes('youtube')} onChange={() => toggleSocialQRField('youtube')} />
+                            <label className="form-check-label small" htmlFor="qr-youtube">YouTube</label>
+                        </div>
+                        <div className="form-check text-white">
+                            <input className="form-check-input" type="checkbox" id="qr-tiktok" checked={(localBranch.socialQRFields || []).includes('tiktok')} onChange={() => toggleSocialQRField('tiktok')} />
+                            <label className="form-check-label small" htmlFor="qr-tiktok">TikTok</label>
+                        </div>
+                        <div className="form-check text-white">
+                            <input className="form-check-input" type="checkbox" id="qr-instagram" checked={(localBranch.socialQRFields || []).includes('instagram')} onChange={() => toggleSocialQRField('instagram')} />
+                            <label className="form-check-label small" htmlFor="qr-instagram">Instagram</label>
+                        </div>
+                        <div className="form-check text-white">
+                            <input className="form-check-input" type="checkbox" id="qr-twitter" checked={(localBranch.socialQRFields || []).includes('twitter')} onChange={() => toggleSocialQRField('twitter')} />
+                            <label className="form-check-label small" htmlFor="qr-twitter">Twitter / X</label>
                         </div>
                     </div>
                 </div>
