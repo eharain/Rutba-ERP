@@ -1,0 +1,44 @@
+{
+  "kind": "collectionType",
+  "collectionName": "acc_journal_lines",
+  "info": {
+    "singularName": "acc-journal-line",
+    "pluralName": "acc-journal-lines",
+    "displayName": "Journal Line",
+    "description": "Individual debit or credit line within a journal entry"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "journal_entry": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::acc-journal-entry.acc-journal-entry",
+      "inversedBy": "lines"
+    },
+    "account": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::acc-account.acc-account"
+    },
+    "debit": {
+      "type": "decimal",
+      "default": 0
+    },
+    "credit": {
+      "type": "decimal",
+      "default": 0
+    },
+    "description": {
+      "type": "string"
+    },
+    "tax_rate": {
+      "type": "decimal"
+    },
+    "tax_amount": {
+      "type": "decimal"
+    }
+  }
+}

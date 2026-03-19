@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 import { useUtil } from '@rutba/pos-shared/context/UtilContext';
 import SaleApi from '@rutba/pos-shared/lib/saleApi';
@@ -14,6 +14,7 @@ export default function SalesItemsForm({
     const [showResults, setShowResults] = useState(false);
     const [highlightIndex, setHighlightIndex] = useState(0);
     const { currency } = useUtil();
+    const latestSearchRef = useRef('');
 
     // Collect stock-item documentIds already added to the sale
     const usedStockIds = new Set();
@@ -39,14 +40,18 @@ export default function SalesItemsForm({
     }, [query]);
 
     const search = async (text) => {
+        latestSearchRef.current = text;
         try {
             const aggregated = await SaleApi.searchStockItemsByNameOrBarcode(text);
+            if (latestSearchRef.current !== text) return;
             setResults(aggregated);
             setShowResults(true);
             setHighlightIndex(0);
         } catch (e) {
+            if (latestSearchRef.current !== text) return;
             console.error('Product search failed', e);
             setResults([]);
+            setShowResults(false);
         }
     };
 

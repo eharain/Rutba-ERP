@@ -5,35 +5,101 @@
     "singularName": "acc-journal-entry",
     "pluralName": "acc-journal-entries",
     "displayName": "Journal Entry",
-    "description": "Double-entry bookkeeping journal entries"
+    "description": "Header for a balanced set of journal lines"
   },
   "options": {
     "draftAndPublish": false
   },
   "pluginOptions": {},
   "attributes": {
+    "entry_number": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
     "date": {
       "type": "date",
       "required": true
     },
-    "reference": {
-      "type": "string"
-    },
     "description": {
       "type": "text"
     },
-    "debit": {
-      "type": "decimal",
-      "required": true
+    "reference": {
+      "type": "string"
     },
-    "credit": {
-      "type": "decimal",
-      "required": true
+    "source_type": {
+      "type": "enumeration",
+      "enum": [
+        "POS Sale",
+        "Sale Return",
+        "Purchase Order",
+        "Purchase Receipt",
+        "Purchase Return",
+        "Web Order",
+        "Cash Register Open",
+        "Cash Register Close",
+        "Cash Register Transaction",
+        "Inventory Adjustment",
+        "Expense",
+        "Invoice Payment",
+        "Bill Payment",
+        "Manual"
+      ]
     },
-    "account": {
+    "source_id": {
+      "type": "integer"
+    },
+    "source_ref": {
+      "type": "string"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": ["Draft", "Posted", "Reversed"],
+      "default": "Draft"
+    },
+    "total_debit": {
+      "type": "decimal",
+      "default": 0
+    },
+    "total_credit": {
+      "type": "decimal",
+      "default": 0
+    },
+    "lines": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::acc-journal-line.acc-journal-line",
+      "mappedBy": "journal_entry"
+    },
+    "reversal_of": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::acc-journal-entry.acc-journal-entry"
+    },
+    "fiscal_period": {
       "type": "relation",
       "relation": "manyToOne",
-      "target": "api::acc-account.acc-account"
+      "target": "api::acc-fiscal-period.acc-fiscal-period"
+    },
+    "branch": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::branch.branch"
+    },
+    "currency": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::currency.currency"
+    },
+    "exchange_rate": {
+      "type": "decimal",
+      "default": 1
+    },
+    "posted_by": {
+      "type": "string"
+    },
+    "posted_at": {
+      "type": "datetime"
     },
     "owners": {
       "type": "relation",

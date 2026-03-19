@@ -152,7 +152,19 @@ module.exports = {
       });
     }
 
-    // ── 3) Mark sale as Cancelled ────────────────────────────
+    // ── 3) Reverse accounting journal entries ───────────────
+    try {
+      const accounting = strapi.service('api::acc-journal-entry.accounting');
+      await accounting.reverseBySource('POS Sale', sale.id, {
+        posted_by: user.email || user.username || '',
+      });
+    } catch (accountingError) {
+      strapi.log.error(
+        `Accounting reversal failed for sale ${sale.id || id}: ${accountingError.message}`
+      );
+    }
+
+    // ── 4) Mark sale as Cancelled ────────────────────────────
     const updated = await strapi.documents('api::sale.sale').update({
       documentId: id,
       data: {

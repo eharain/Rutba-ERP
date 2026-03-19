@@ -430,6 +430,44 @@ export interface AdminUser extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiAccAccountMappingAccAccountMapping
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'acc_account_mappings';
+  info: {
+    description: 'Maps operational events to ledger accounts';
+    displayName: 'Account Mapping';
+    pluralName: 'acc-account-mappings';
+    singularName: 'acc-account-mapping';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    account: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::acc-account.acc-account'
+    >;
+    branch: Schema.Attribute.Relation<'manyToOne', 'api::branch.branch'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    description: Schema.Attribute.String;
+    key: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.Unique;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::acc-account-mapping.acc-account-mapping'
+    > &
+      Schema.Attribute.Private;
+    publishedAt: Schema.Attribute.DateTime;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiAccAccountAccAccount extends Struct.CollectionTypeSchema {
   collectionName: 'acc_accounts';
   info: {
@@ -447,13 +485,21 @@ export interface ApiAccAccountAccAccount extends Struct.CollectionTypeSchema {
     > &
       Schema.Attribute.Required;
     balance: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    branch: Schema.Attribute.Relation<'manyToOne', 'api::branch.branch'>;
+    children: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::acc-account.acc-account'
+    >;
     code: Schema.Attribute.String &
       Schema.Attribute.Required &
       Schema.Attribute.Unique;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    currency: Schema.Attribute.Relation<'manyToOne', 'api::currency.currency'>;
     description: Schema.Attribute.Text;
+    is_active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    is_system: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
@@ -461,11 +507,147 @@ export interface ApiAccAccountAccAccount extends Struct.CollectionTypeSchema {
     > &
       Schema.Attribute.Private;
     name: Schema.Attribute.String & Schema.Attribute.Required;
+    normal_balance: Schema.Attribute.Enumeration<['Debit', 'Credit']> &
+      Schema.Attribute.Required;
     parent: Schema.Attribute.Relation<
       'manyToOne',
       'api::acc-account.acc-account'
     >;
     publishedAt: Schema.Attribute.DateTime;
+    sub_type: Schema.Attribute.Enumeration<
+      [
+        'Cash',
+        'Bank',
+        'Accounts Receivable',
+        'Inventory',
+        'Fixed Asset',
+        'Other Current Asset',
+        'Accounts Payable',
+        'Tax Payable',
+        'Other Current Liability',
+        'Long Term Liability',
+        'Owner Equity',
+        'Retained Earnings',
+        'Sales Revenue',
+        'Sales Returns',
+        'Other Revenue',
+        'Cost of Goods Sold',
+        'Operating Expense',
+        'Payroll Expense',
+        'Tax Expense',
+        'Other Expense',
+      ]
+    >;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiAccBankAccountAccBankAccount
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'acc_bank_accounts';
+  info: {
+    description: 'Bank and cash accounts linked to ledger accounts';
+    displayName: 'Acc Bank Account';
+    pluralName: 'acc-bank-accounts';
+    singularName: 'acc-bank-account';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    account_number: Schema.Attribute.String;
+    account_type: Schema.Attribute.Enumeration<
+      ['Cash', 'Checking', 'Savings', 'Credit Card', 'Mobile Wallet']
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'Checking'>;
+    bank_name: Schema.Attribute.String;
+    branch: Schema.Attribute.Relation<'manyToOne', 'api::branch.branch'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    currency: Schema.Attribute.Relation<'manyToOne', 'api::currency.currency'>;
+    current_balance: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    is_active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    ledger_account: Schema.Attribute.Relation<
+      'oneToOne',
+      'api::acc-account.acc-account'
+    >;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::acc-bank-account.acc-bank-account'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    owners: Schema.Attribute.Relation<
+      'manyToMany',
+      'plugin::users-permissions.user'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiAccBillAccBill extends Struct.CollectionTypeSchema {
+  collectionName: 'acc_bills';
+  info: {
+    description: 'Supplier bills for accounts payable';
+    displayName: 'Acc Bill';
+    pluralName: 'acc-bills';
+    singularName: 'acc-bill';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    amount_paid: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    balance_due: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    bill_number: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.Unique;
+    branch: Schema.Attribute.Relation<'manyToOne', 'api::branch.branch'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    currency: Schema.Attribute.Relation<'manyToOne', 'api::currency.currency'>;
+    date: Schema.Attribute.Date & Schema.Attribute.Required;
+    due_date: Schema.Attribute.Date & Schema.Attribute.Required;
+    journal_entry: Schema.Attribute.Relation<
+      'oneToOne',
+      'api::acc-journal-entry.acc-journal-entry'
+    >;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::acc-bill.acc-bill'
+    > &
+      Schema.Attribute.Private;
+    notes: Schema.Attribute.Text;
+    owners: Schema.Attribute.Relation<
+      'manyToMany',
+      'plugin::users-permissions.user'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    purchase: Schema.Attribute.Relation<'oneToOne', 'api::purchase.purchase'>;
+    status: Schema.Attribute.Enumeration<
+      ['Draft', 'Received', 'Partially Paid', 'Paid', 'Overdue', 'Cancelled']
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'Draft'>;
+    subtotal: Schema.Attribute.Decimal &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<0>;
+    supplier: Schema.Attribute.Relation<'manyToOne', 'api::supplier.supplier'>;
+    supplier_ref: Schema.Attribute.String;
+    tax_amount: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    total: Schema.Attribute.Decimal &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<0>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -489,12 +671,17 @@ export interface ApiAccExpenseAccExpense extends Struct.CollectionTypeSchema {
       'api::acc-account.acc-account'
     >;
     amount: Schema.Attribute.Decimal & Schema.Attribute.Required;
+    branch: Schema.Attribute.Relation<'manyToOne', 'api::branch.branch'>;
     category: Schema.Attribute.String;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     date: Schema.Attribute.Date & Schema.Attribute.Required;
     description: Schema.Attribute.Text;
+    journal_entry: Schema.Attribute.Relation<
+      'oneToOne',
+      'api::acc-journal-entry.acc-journal-entry'
+    >;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
@@ -510,6 +697,49 @@ export interface ApiAccExpenseAccExpense extends Struct.CollectionTypeSchema {
     >;
     publishedAt: Schema.Attribute.DateTime;
     receipt: Schema.Attribute.Media<'images' | 'files'>;
+    status: Schema.Attribute.Enumeration<
+      ['Draft', 'Approved', 'Posted', 'Cancelled']
+    > &
+      Schema.Attribute.DefaultTo<'Draft'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiAccFiscalPeriodAccFiscalPeriod
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'acc_fiscal_periods';
+  info: {
+    description: 'Fiscal year periods that control journal posting';
+    displayName: 'Fiscal Period';
+    pluralName: 'acc-fiscal-periods';
+    singularName: 'acc-fiscal-period';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    end_date: Schema.Attribute.Date & Schema.Attribute.Required;
+    fiscal_year: Schema.Attribute.String;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::acc-fiscal-period.acc-fiscal-period'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    owners: Schema.Attribute.Relation<
+      'manyToMany',
+      'plugin::users-permissions.user'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    start_date: Schema.Attribute.Date & Schema.Attribute.Required;
+    status: Schema.Attribute.Enumeration<['Open', 'Closed', 'Locked']> &
+      Schema.Attribute.DefaultTo<'Open'>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -528,16 +758,23 @@ export interface ApiAccInvoiceAccInvoice extends Struct.CollectionTypeSchema {
     draftAndPublish: false;
   };
   attributes: {
-    amount: Schema.Attribute.Decimal & Schema.Attribute.Required;
+    amount_paid: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    balance_due: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    branch: Schema.Attribute.Relation<'manyToOne', 'api::branch.branch'>;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
-    customer_name: Schema.Attribute.String;
+    currency: Schema.Attribute.Relation<'manyToOne', 'api::currency.currency'>;
+    customer: Schema.Attribute.Relation<'manyToOne', 'api::customer.customer'>;
     date: Schema.Attribute.Date & Schema.Attribute.Required;
     due_date: Schema.Attribute.Date;
     invoice_number: Schema.Attribute.String &
       Schema.Attribute.Required &
       Schema.Attribute.Unique;
+    journal_entry: Schema.Attribute.Relation<
+      'oneToOne',
+      'api::acc-journal-entry.acc-journal-entry'
+    >;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
@@ -545,17 +782,20 @@ export interface ApiAccInvoiceAccInvoice extends Struct.CollectionTypeSchema {
     > &
       Schema.Attribute.Private;
     notes: Schema.Attribute.Text;
+    order: Schema.Attribute.Relation<'oneToOne', 'api::order.order'>;
     owners: Schema.Attribute.Relation<
       'manyToMany',
       'plugin::users-permissions.user'
     >;
     publishedAt: Schema.Attribute.DateTime;
+    sale: Schema.Attribute.Relation<'oneToOne', 'api::sale.sale'>;
     status: Schema.Attribute.Enumeration<
-      ['Draft', 'Sent', 'Paid', 'Overdue', 'Cancelled']
+      ['Draft', 'Sent', 'Partially Paid', 'Paid', 'Overdue', 'Cancelled']
     > &
       Schema.Attribute.DefaultTo<'Draft'>;
-    tax: Schema.Attribute.Decimal;
-    total: Schema.Attribute.Decimal;
+    subtotal: Schema.Attribute.Decimal & Schema.Attribute.Required;
+    tax_amount: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    total: Schema.Attribute.Decimal & Schema.Attribute.Required;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -566,10 +806,90 @@ export interface ApiAccJournalEntryAccJournalEntry
   extends Struct.CollectionTypeSchema {
   collectionName: 'acc_journal_entries';
   info: {
-    description: 'Double-entry bookkeeping journal entries';
+    description: 'Header for a balanced set of journal lines';
     displayName: 'Journal Entry';
     pluralName: 'acc-journal-entries';
     singularName: 'acc-journal-entry';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    branch: Schema.Attribute.Relation<'manyToOne', 'api::branch.branch'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    currency: Schema.Attribute.Relation<'manyToOne', 'api::currency.currency'>;
+    date: Schema.Attribute.Date & Schema.Attribute.Required;
+    description: Schema.Attribute.Text;
+    entry_number: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.Unique;
+    exchange_rate: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<1>;
+    fiscal_period: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::acc-fiscal-period.acc-fiscal-period'
+    >;
+    lines: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::acc-journal-line.acc-journal-line'
+    >;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::acc-journal-entry.acc-journal-entry'
+    > &
+      Schema.Attribute.Private;
+    owners: Schema.Attribute.Relation<
+      'manyToMany',
+      'plugin::users-permissions.user'
+    >;
+    posted_at: Schema.Attribute.DateTime;
+    posted_by: Schema.Attribute.String;
+    publishedAt: Schema.Attribute.DateTime;
+    reference: Schema.Attribute.String;
+    reversal_of: Schema.Attribute.Relation<
+      'oneToOne',
+      'api::acc-journal-entry.acc-journal-entry'
+    >;
+    source_id: Schema.Attribute.Integer;
+    source_ref: Schema.Attribute.String;
+    source_type: Schema.Attribute.Enumeration<
+      [
+        'POS Sale',
+        'Sale Return',
+        'Purchase Order',
+        'Purchase Receipt',
+        'Purchase Return',
+        'Web Order',
+        'Cash Register Open',
+        'Cash Register Close',
+        'Cash Register Transaction',
+        'Inventory Adjustment',
+        'Expense',
+        'Invoice Payment',
+        'Bill Payment',
+        'Manual',
+      ]
+    >;
+    status: Schema.Attribute.Enumeration<['Draft', 'Posted', 'Reversed']> &
+      Schema.Attribute.DefaultTo<'Draft'>;
+    total_credit: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    total_debit: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiAccJournalLineAccJournalLine
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'acc_journal_lines';
+  info: {
+    description: 'Individual debit or credit line within a journal entry';
+    displayName: 'Journal Line';
+    pluralName: 'acc-journal-lines';
+    singularName: 'acc-journal-line';
   };
   options: {
     draftAndPublish: false;
@@ -582,22 +902,70 @@ export interface ApiAccJournalEntryAccJournalEntry
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
-    credit: Schema.Attribute.Decimal & Schema.Attribute.Required;
-    date: Schema.Attribute.Date & Schema.Attribute.Required;
-    debit: Schema.Attribute.Decimal & Schema.Attribute.Required;
-    description: Schema.Attribute.Text;
+    credit: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    debit: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    description: Schema.Attribute.String;
+    journal_entry: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::acc-journal-entry.acc-journal-entry'
+    >;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
-      'api::acc-journal-entry.acc-journal-entry'
+      'api::acc-journal-line.acc-journal-line'
     > &
       Schema.Attribute.Private;
-    owners: Schema.Attribute.Relation<
-      'manyToMany',
-      'plugin::users-permissions.user'
-    >;
     publishedAt: Schema.Attribute.DateTime;
-    reference: Schema.Attribute.String;
+    tax_amount: Schema.Attribute.Decimal;
+    tax_rate: Schema.Attribute.Decimal;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiAccTaxRateAccTaxRate extends Struct.CollectionTypeSchema {
+  collectionName: 'acc_tax_rates';
+  info: {
+    description: 'Configurable tax rates for sales and purchases';
+    displayName: 'Acc Tax Rate';
+    pluralName: 'acc-tax-rates';
+    singularName: 'acc-tax-rate';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    code: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.Unique;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    is_active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::acc-tax-rate.acc-tax-rate'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    publishedAt: Schema.Attribute.DateTime;
+    purchase_account: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::acc-account.acc-account'
+    >;
+    rate: Schema.Attribute.Decimal & Schema.Attribute.Required;
+    sales_account: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::acc-account.acc-account'
+    >;
+    scope: Schema.Attribute.Enumeration<['Sales', 'Purchases', 'Both']> &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'Both'>;
+    type: Schema.Attribute.Enumeration<['Inclusive', 'Exclusive']> &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'Exclusive'>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -3039,10 +3407,16 @@ declare module '@strapi/strapi' {
       'admin::transfer-token': AdminTransferToken;
       'admin::transfer-token-permission': AdminTransferTokenPermission;
       'admin::user': AdminUser;
+      'api::acc-account-mapping.acc-account-mapping': ApiAccAccountMappingAccAccountMapping;
       'api::acc-account.acc-account': ApiAccAccountAccAccount;
+      'api::acc-bank-account.acc-bank-account': ApiAccBankAccountAccBankAccount;
+      'api::acc-bill.acc-bill': ApiAccBillAccBill;
       'api::acc-expense.acc-expense': ApiAccExpenseAccExpense;
+      'api::acc-fiscal-period.acc-fiscal-period': ApiAccFiscalPeriodAccFiscalPeriod;
       'api::acc-invoice.acc-invoice': ApiAccInvoiceAccInvoice;
       'api::acc-journal-entry.acc-journal-entry': ApiAccJournalEntryAccJournalEntry;
+      'api::acc-journal-line.acc-journal-line': ApiAccJournalLineAccJournalLine;
+      'api::acc-tax-rate.acc-tax-rate': ApiAccTaxRateAccTaxRate;
       'api::app-access.app-access': ApiAppAccessAppAccess;
       'api::branch.branch': ApiBranchBranch;
       'api::brand-group.brand-group': ApiBrandGroupBrandGroup;

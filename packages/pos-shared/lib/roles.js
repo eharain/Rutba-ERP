@@ -34,14 +34,14 @@ const VALID_APP_KEYS = ['stock', 'sale', 'auth', 'web-user', 'crm', 'hr', 'accou
  * a consistent catalogue of apps.
  */
 export const APP_META = {
-    auth:       { icon: 'fa-solid fa-shield-halved',    label: 'User Management',   description: 'Users, roles, app access',                   border: 'border-dark',      color: 'text-light' },
-    stock:      { icon: 'fa-solid fa-boxes-stacked',    label: 'Stock Management',  description: 'Products, purchases, inventory',             border: 'border-primary',   color: 'text-primary' },
-    sale:       { icon: 'fa-solid fa-cash-register',    label: 'Point of Sale',     description: 'Sales, cart, returns, reports',               border: 'border-success',   color: 'text-success' },
-    'web-user': { icon: 'fa-solid fa-bag-shopping',     label: 'My Orders',         description: 'Track orders, manage returns',                border: 'border-info',      color: 'text-info' },
-    crm:        { icon: 'fa-solid fa-handshake',        label: 'CRM',              description: 'Contacts, leads, activities',                  border: 'border-warning',   color: 'text-warning' },
-    hr:         { icon: 'fa-solid fa-users',            label: 'Human Resources',   description: 'Employees, departments, attendance, leave',   border: 'border-secondary', color: 'text-secondary' },
-    accounts:   { icon: 'fa-solid fa-chart-line',       label: 'Accounts',          description: 'Chart of accounts, journals, invoices',       border: 'border-dark',      color: 'text-dark' },
-    payroll:    { icon: 'fa-solid fa-money-check-dollar', label: 'Payroll',         description: 'Salary structures, payroll runs, payslips',   border: 'border-danger',    color: 'text-danger' },
+    auth:       { icon: 'fa-solid fa-users',              label: 'User Management',    description: 'Users, roles, app access',                    border: 'border-dark',      color: 'text-dark' },
+    stock:      { icon: 'fa-solid fa-boxes-stacked',      label: 'Stock Management',   description: 'Products, purchases, inventory',              border: 'border-primary',   color: 'text-primary' },
+    sale:       { icon: 'fa-solid fa-cash-register',      label: 'Point of Sale',      description: 'Sales, cart, returns, reports',               border: 'border-success',   color: 'text-success' },
+    'web-user': { icon: 'fa-solid fa-bag-shopping',       label: 'My Orders',          description: 'Track orders, manage returns',                border: 'border-info',      color: 'text-info' },
+    crm:        { icon: 'fa-solid fa-handshake',          label: 'CRM',                description: 'Contacts, leads, activities',                 border: 'border-warning',   color: 'text-warning' },
+    hr:         { icon: 'fa-solid fa-users',              label: 'Human Resources',    description: 'Employees, departments, attendance, leave',   border: 'border-secondary', color: 'text-secondary' },
+    accounts:   { icon: 'fa-solid fa-chart-line',         label: 'Accounts',           description: 'Chart of accounts, journals, invoices',       border: 'border-dark',      color: 'text-dark' },
+    payroll:    { icon: 'fa-solid fa-money-check-dollar', label: 'Payroll',            description: 'Salary structures, payroll runs, payslips',   border: 'border-danger',    color: 'text-danger' },
     cms:        { icon: 'fa-solid fa-pen-nib',            label: 'Content Management', description: 'Website content, pages, banners',             border: 'border-purple',    color: 'text-purple' },
 };
 

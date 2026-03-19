@@ -24,32 +24,70 @@
     "due_date": {
       "type": "date"
     },
-    "customer_name": {
-      "type": "string"
+    "customer": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::customer.customer"
     },
-    "amount": {
+    "sale": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::sale.sale"
+    },
+    "order": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::order.order"
+    },
+    "subtotal": {
       "type": "decimal",
       "required": true
     },
-    "tax": {
-      "type": "decimal"
+    "tax_amount": {
+      "type": "decimal",
+      "default": 0
     },
     "total": {
-      "type": "decimal"
+      "type": "decimal",
+      "required": true
+    },
+    "amount_paid": {
+      "type": "decimal",
+      "default": 0
+    },
+    "balance_due": {
+      "type": "decimal",
+      "default": 0
     },
     "status": {
       "type": "enumeration",
       "enum": [
         "Draft",
         "Sent",
+        "Partially Paid",
         "Paid",
         "Overdue",
         "Cancelled"
       ],
       "default": "Draft"
     },
+    "journal_entry": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::acc-journal-entry.acc-journal-entry"
+    },
+    "currency": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::currency.currency"
+    },
     "notes": {
       "type": "text"
+    },
+    "branch": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::branch.branch"
     },
     "owners": {
       "type": "relation",

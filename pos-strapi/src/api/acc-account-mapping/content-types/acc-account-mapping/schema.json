@@ -1,0 +1,34 @@
+{
+  "kind": "collectionType",
+  "collectionName": "acc_account_mappings",
+  "info": {
+    "singularName": "acc-account-mapping",
+    "pluralName": "acc-account-mappings",
+    "displayName": "Account Mapping",
+    "description": "Maps operational events to ledger accounts"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "key": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "account": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::acc-account.acc-account"
+    },
+    "description": {
+      "type": "string"
+    },
+    "branch": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::branch.branch"
+    }
+  }
+}

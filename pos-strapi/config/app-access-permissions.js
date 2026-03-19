@@ -96,24 +96,150 @@ const ENTRIES = [
     ],
   },
 
-  // ── Accounting
+  // ── Accounting (Full) ───────────────────────────────────────
+  //    Chief accountant / accounting manager — full CRUD on all
+  //    accounting entities, including system settings like CoA,
+  //    account mappings, fiscal periods and tax rates.
   {
     key: 'accounts',
     name: 'Accounting',
-    description: 'Manage accounts and reports',
+    description: 'Full accounting access — chart of accounts, journal entries, invoices, bills, expenses, fiscal periods, mappings & reports',
     sessionTimeout: 120,
     permissions: [
       { uid: 'api::acc-account.acc-account',                       actions: WRITE },
       { uid: 'api::acc-journal-entry.acc-journal-entry',           actions: WRITE },
+      { uid: 'api::acc-journal-line.acc-journal-line',             actions: WRITE },
       { uid: 'api::acc-invoice.acc-invoice',                       actions: WRITE },
       { uid: 'api::acc-expense.acc-expense',                       actions: WRITE },
+      { uid: 'api::acc-bill.acc-bill',                             actions: WRITE },
+      { uid: 'api::acc-fiscal-period.acc-fiscal-period',           actions: WRITE },
+      { uid: 'api::acc-account-mapping.acc-account-mapping',       actions: WRITE },
+      { uid: 'api::acc-tax-rate.acc-tax-rate',                     actions: WRITE },
+      { uid: 'api::acc-bank-account.acc-bank-account',             actions: WRITE },
       // cross-app read-only
       { uid: 'api::sale.sale',                                     actions: READ },
       { uid: 'api::sale-item.sale-item',                           actions: READ },
+      { uid: 'api::sale-return.sale-return',                       actions: READ },
+      { uid: 'api::sale-return-item.sale-return-item',             actions: READ },
       { uid: 'api::payment.payment',                               actions: READ },
       { uid: 'api::cash-register.cash-register',                   actions: [...READ, 'active'] },
       { uid: 'api::cash-register-transaction.cash-register-transaction', actions: READ },
       { uid: 'api::customer.customer',                             actions: READ },
+      { uid: 'api::supplier.supplier',                             actions: READ },
+      { uid: 'api::purchase.purchase',                             actions: READ },
+      { uid: 'api::purchase-item.purchase-item',                   actions: READ },
+      { uid: 'api::purchase-return.purchase-return',               actions: READ },
+      { uid: 'api::purchase-return-item.purchase-return-item',     actions: READ },
+      { uid: 'api::product.product',                               actions: READ },
+      { uid: 'api::stock-item.stock-item',                         actions: READ },
+      // shared / read
+      { uid: 'api::branch.branch',                                 actions: READ },
+      { uid: 'api::currency.currency',                             actions: READ },
+    ],
+  },
+
+  // ── Accounts Payable ──────────────────────────────────────
+  //    AP clerk — manages supplier bills, expenses, and outgoing
+  //    payments.  Can view (not modify) the chart of accounts,
+  //    journal entries, invoices, and bank accounts for context.
+  {
+    key: 'accounts-ap',
+    name: 'Accounts Payable',
+    description: 'Supplier bills, expenses & outgoing payments',
+    sessionTimeout: 120,
+    permissions: [
+      { uid: 'api::acc-bill.acc-bill',                             actions: WRITE },
+      { uid: 'api::acc-expense.acc-expense',                       actions: WRITE },
+      // read-only accounting context
+      { uid: 'api::acc-account.acc-account',                       actions: READ },
+      { uid: 'api::acc-journal-entry.acc-journal-entry',           actions: READ },
+      { uid: 'api::acc-journal-line.acc-journal-line',             actions: READ },
+      { uid: 'api::acc-invoice.acc-invoice',                       actions: READ },
+      { uid: 'api::acc-bank-account.acc-bank-account',             actions: READ },
+      { uid: 'api::acc-tax-rate.acc-tax-rate',                     actions: READ },
+      { uid: 'api::acc-fiscal-period.acc-fiscal-period',           actions: READ },
+      { uid: 'api::acc-account-mapping.acc-account-mapping',       actions: READ },
+      // cross-app read-only
+      { uid: 'api::supplier.supplier',                             actions: READ },
+      { uid: 'api::purchase.purchase',                             actions: READ },
+      { uid: 'api::purchase-item.purchase-item',                   actions: READ },
+      { uid: 'api::purchase-return.purchase-return',               actions: READ },
+      { uid: 'api::purchase-return-item.purchase-return-item',     actions: READ },
+      { uid: 'api::payment.payment',                               actions: READ },
+      // shared / read
+      { uid: 'api::branch.branch',                                 actions: READ },
+      { uid: 'api::currency.currency',                             actions: READ },
+    ],
+  },
+
+  // ── Accounts Receivable ───────────────────────────────────
+  //    AR clerk — manages customer invoices and incoming payments.
+  //    Can view (not modify) the chart of accounts, journal
+  //    entries, bills, and bank accounts for context.
+  {
+    key: 'accounts-ar',
+    name: 'Accounts Receivable',
+    description: 'Customer invoices, incoming payments & collections',
+    sessionTimeout: 120,
+    permissions: [
+      { uid: 'api::acc-invoice.acc-invoice',                       actions: WRITE },
+      // read-only accounting context
+      { uid: 'api::acc-account.acc-account',                       actions: READ },
+      { uid: 'api::acc-journal-entry.acc-journal-entry',           actions: READ },
+      { uid: 'api::acc-journal-line.acc-journal-line',             actions: READ },
+      { uid: 'api::acc-bill.acc-bill',                             actions: READ },
+      { uid: 'api::acc-expense.acc-expense',                       actions: READ },
+      { uid: 'api::acc-bank-account.acc-bank-account',             actions: READ },
+      { uid: 'api::acc-tax-rate.acc-tax-rate',                     actions: READ },
+      { uid: 'api::acc-fiscal-period.acc-fiscal-period',           actions: READ },
+      { uid: 'api::acc-account-mapping.acc-account-mapping',       actions: READ },
+      // cross-app read-only
+      { uid: 'api::customer.customer',                             actions: READ },
+      { uid: 'api::sale.sale',                                     actions: READ },
+      { uid: 'api::sale-item.sale-item',                           actions: READ },
+      { uid: 'api::sale-return.sale-return',                       actions: READ },
+      { uid: 'api::sale-return-item.sale-return-item',             actions: READ },
+      { uid: 'api::payment.payment',                               actions: READ },
+      { uid: 'api::order.order',                                   actions: READ },
+      // shared / read
+      { uid: 'api::branch.branch',                                 actions: READ },
+      { uid: 'api::currency.currency',                             actions: READ },
+    ],
+  },
+
+  // ── Accounting Viewer ─────────────────────────────────────
+  //    Read-only access for auditors, managers, and owners who
+  //    need to review financial data without modifying anything.
+  {
+    key: 'accounts-viewer',
+    name: 'Accounting Viewer',
+    description: 'Read-only access to all accounting data for auditors & management',
+    sessionTimeout: 120,
+    permissions: [
+      { uid: 'api::acc-account.acc-account',                       actions: READ },
+      { uid: 'api::acc-journal-entry.acc-journal-entry',           actions: READ },
+      { uid: 'api::acc-journal-line.acc-journal-line',             actions: READ },
+      { uid: 'api::acc-invoice.acc-invoice',                       actions: READ },
+      { uid: 'api::acc-expense.acc-expense',                       actions: READ },
+      { uid: 'api::acc-bill.acc-bill',                             actions: READ },
+      { uid: 'api::acc-fiscal-period.acc-fiscal-period',           actions: READ },
+      { uid: 'api::acc-account-mapping.acc-account-mapping',       actions: READ },
+      { uid: 'api::acc-tax-rate.acc-tax-rate',                     actions: READ },
+      { uid: 'api::acc-bank-account.acc-bank-account',             actions: READ },
+      // cross-app read-only (for context in reports)
+      { uid: 'api::sale.sale',                                     actions: READ },
+      { uid: 'api::sale-item.sale-item',                           actions: READ },
+      { uid: 'api::sale-return.sale-return',                       actions: READ },
+      { uid: 'api::payment.payment',                               actions: READ },
+      { uid: 'api::customer.customer',                             actions: READ },
+      { uid: 'api::supplier.supplier',                             actions: READ },
+      { uid: 'api::purchase.purchase',                             actions: READ },
+      { uid: 'api::purchase-item.purchase-item',                   actions: READ },
+      { uid: 'api::purchase-return.purchase-return',               actions: READ },
+      { uid: 'api::cash-register.cash-register',                   actions: READ },
+      { uid: 'api::cash-register-transaction.cash-register-transaction', actions: READ },
+      { uid: 'api::product.product',                               actions: READ },
+      { uid: 'api::stock-item.stock-item',                         actions: READ },
       // shared / read
       { uid: 'api::branch.branch',                                 actions: READ },
       { uid: 'api::currency.currency',                             actions: READ },
