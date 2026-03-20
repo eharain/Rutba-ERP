@@ -18,5 +18,21 @@ module.exports = {
         auth: false,
       },
     },
+    {
+      method: 'GET',
+      path: '/sales/search-by-stock-item',
+      handler: 'search-by-stock-item.searchByStockItem',
+      config: {
+        auth: false,
+      },
+    },
+    {
+      method: 'GET',
+      path: '/sales/search-by-item-price',
+      handler: 'search-by-item-price.searchByItemPrice',
+      config: {
+        auth: false,
+      },
+    },
   ],
 };

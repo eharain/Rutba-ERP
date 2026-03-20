@@ -5,7 +5,7 @@ import PermissionCheck from "@rutba/pos-shared/components/PermissionCheck";
 import { fetchSales } from "@rutba/pos-shared/lib/pos";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { isAppAdmin } from "@rutba/pos-shared/lib/roles";
-import { getBranches, getAdminMode } from "@rutba/pos-shared/lib/api";
+import { getBranches, getAdminMode, authApi } from "@rutba/pos-shared/lib/api";
 import SaleApi from "@rutba/pos-shared/lib/saleApi";
 import Link from "next/link";
 import { Table, TableHead, TableRow, TableCell, TableBody, CircularProgress, TablePagination } from "@rutba/pos-shared/components/Table";
@@ -13,6 +13,17 @@ import { useUtil } from "@rutba/pos-shared/context/UtilContext";
 
 const PAYMENT_STATUSES = ["Paid", "Partial", "Unpaid"];
 const RETURN_STATUSES = ["None", "Returned", "PartiallyReturned"];
+
+const SEARCH_FIELDS = [
+    { key: "stock_item", label: "Stock Item" },
+    { key: "customer", label: "Customer" },
+    { key: "invoice_no", label: "Invoice No" },
+   
+];
+const ADMIN_SEARCH_FIELDS = [
+    { key: "owner", label: "Owner" },
+    { key: "desk", label: "Desk" },
+];
 
 const COLUMNS = [
     { key: "id", label: "#" },
@@ -71,14 +82,18 @@ export default function Sales() {
     // Filters
     const [paymentStatus, setPaymentStatus] = useState("");
     const [returnStatus, setReturnStatus] = useState("");
-    const [customerSearch, setCustomerSearch] = useState("");
     const [dateFrom, setDateFrom] = useState("");
     const [dateTo, setDateTo] = useState("");
+    const [totalMin, setTotalMin] = useState("");
+    const [totalMax, setTotalMax] = useState("");
+    const [priceByItem, setPriceByItem] = useState(false);
+
+    // Consolidated text search
+    const [searchText, setSearchText] = useState("");
+    const [searchField, setSearchField] = useState("customer");
 
     // Admin-only filters
-    const [ownerSearch, setOwnerSearch] = useState("");
     const [branchFilter, setBranchFilter] = useState("");
-    const [deskSearch, setDeskSearch] = useState("");
     const [branches, setBranches] = useState([]);
 
     // Sort
@@ -111,7 +126,25 @@ export default function Sales() {
         const filters = {};
         if (paymentStatus) filters.payment_status = { $eq: paymentStatus };
         if (returnStatus) filters.return_status = { $eq: returnStatus };
-        if (customerSearch.trim()) filters.customer = { name: { $containsi: customerSearch.trim() } };
+
+        // Text search — route based on selected field (stock_item handled in useEffect)
+        const term = searchText.trim();
+        if (term && searchField !== "stock_item") {
+            switch (searchField) {
+                case "customer":
+                    filters.customer = { name: { $containsi: term } };
+                    break;
+                case "invoice_no":
+                    filters.invoice_no = { $containsi: term };
+                    break;
+                case "owner":
+                    if (admin) filters.owners = { username: { $containsi: term } };
+                    break;
+                case "desk":
+                    if (admin) filters.cash_register = { desk_name: { $containsi: term } };
+                    break;
+            }
+        }
 
         // Date range — non-admins are locked to last 24 hours
         if (admin) {
@@ -124,33 +157,80 @@ export default function Sales() {
             filters.sale_date = { $gte: get24hAgo() };
         }
 
-        // Admin-only relation filters
-        if (admin) {
-            if (ownerSearch.trim()) filters.owners = { username: { $containsi: ownerSearch.trim() } };
-            if (branchFilter) filters.branches = { documentId: { $eq: branchFilter } };
-            if (deskSearch.trim()) filters.cash_register = { desk_name: { $containsi: deskSearch.trim() } };
+        // Total range (only when filtering by sale total, not item price)
+        if (!priceByItem && (totalMin !== "" || totalMax !== "")) {
+            filters.total = {};
+            if (totalMin !== "") filters.total.$gte = parseFloat(totalMin);
+            if (totalMax !== "") filters.total.$lte = parseFloat(totalMax);
+        }
+
+        // Admin-only branch filter
+        if (admin && branchFilter) {
+            filters.branches = { documentId: { $eq: branchFilter } };
         }
 
         return Object.keys(filters).length > 0 ? filters : undefined;
-    }, [paymentStatus, returnStatus, customerSearch, dateFrom, dateTo, ownerSearch, branchFilter, deskSearch, admin]);
+    }, [paymentStatus, returnStatus, searchText, searchField, dateFrom, dateTo, totalMin, totalMax, priceByItem, branchFilter, admin]);
 
     useEffect(() => {
         let cancelled = false;
         (async () => {
             setLoading(true);
-            const res = await fetchSales(page + 1, rowsPerPage, {
-                sort: [`${sortField}:${sortOrder}`],
-                filters: buildFilters(),
-                populate,
-            });
-            if (!cancelled) {
-                setSales(res.data || []);
-                setTotal(res.meta?.pagination?.total ?? 0);
-                setLoading(false);
+            try {
+                const filters = buildFilters() || {};
+
+                // Stock item search: resolve matching sale documentIds via custom endpoint
+                if (searchField === "stock_item" && searchText.trim()) {
+                    const stockRes = await authApi.fetch(`/sales/search-by-stock-item?term=${encodeURIComponent(searchText.trim())}`);
+                    const matchedIds = stockRes?.data ?? [];
+                    if (matchedIds.length === 0) {
+                        if (!cancelled) { setSales([]); setTotal(0); setLoading(false); }
+                        return;
+                    }
+                    filters.documentId = { $in: matchedIds };
+                }
+
+                // Item price range: resolve matching sale documentIds via custom endpoint
+                if (priceByItem && (totalMin !== "" || totalMax !== "")) {
+                    const params = new URLSearchParams();
+                    if (totalMin !== "") params.set("min", totalMin);
+                    if (totalMax !== "") params.set("max", totalMax);
+                    const priceRes = await authApi.fetch(`/sales/search-by-item-price?${params.toString()}`);
+                    const priceMatchedIds = priceRes?.data ?? [];
+                    if (priceMatchedIds.length === 0) {
+                        if (!cancelled) { setSales([]); setTotal(0); setLoading(false); }
+                        return;
+                    }
+                    // Intersect with any existing documentId filter (e.g. from stock search)
+                    if (filters.documentId?.$in) {
+                        const existing = new Set(filters.documentId.$in);
+                        filters.documentId.$in = priceMatchedIds.filter(id => existing.has(id));
+                        if (filters.documentId.$in.length === 0) {
+                            if (!cancelled) { setSales([]); setTotal(0); setLoading(false); }
+                            return;
+                        }
+                    } else {
+                        filters.documentId = { $in: priceMatchedIds };
+                    }
+                }
+
+                const res = await fetchSales(page + 1, rowsPerPage, {
+                    sort: [`${sortField}:${sortOrder}`],
+                    filters: Object.keys(filters).length > 0 ? filters : undefined,
+                    populate,
+                });
+                if (!cancelled) {
+                    setSales(res.data || []);
+                    setTotal(res.meta?.pagination?.total ?? 0);
+                    setLoading(false);
+                }
+            } catch (err) {
+                console.error('Failed to fetch sales', err);
+                if (!cancelled) { setLoading(false); }
             }
         })();
         return () => { cancelled = true; };
-    }, [jwt, page, rowsPerPage, sortField, sortOrder, buildFilters, populate, refreshKey]);
+    }, [jwt, page, rowsPerPage, sortField, sortOrder, buildFilters, populate, refreshKey, searchText, searchField, priceByItem, totalMin, totalMax]);
 
     const handleChangePage = (_, newPage) => setPage(newPage);
 
@@ -172,16 +252,18 @@ export default function Sales() {
     const handleClearFilters = () => {
         setPaymentStatus("");
         setReturnStatus("");
-        setCustomerSearch("");
+        setSearchText("");
+        setSearchField("customer");
         setDateFrom("");
         setDateTo("");
-        setOwnerSearch("");
+        setTotalMin("");
+        setTotalMax("");
+        setPriceByItem(false);
         setBranchFilter("");
-        setDeskSearch("");
         setPage(0);
     };
 
-    const hasFilters = paymentStatus || returnStatus || customerSearch || dateFrom || dateTo || ownerSearch || branchFilter || deskSearch;
+    const hasFilters = paymentStatus || returnStatus || searchText || dateFrom || dateTo || totalMin || totalMax || priceByItem || branchFilter;
 
     const toggleSelect = (docId) => {
         setSelectedIds(prev => {
@@ -261,6 +343,28 @@ export default function Sales() {
                         {/* Filters */}
                         <div className="row g-2 mb-3 align-items-end">
                             <div className="col-auto">
+                                <label className="form-label small mb-1">Search In</label>
+                                <div className="input-group input-group-sm">
+                                    <select
+                                        className="form-select form-select-sm"
+                                        value={searchField}
+                                        onChange={e => { setSearchField(e.target.value); setPage(0); }}
+                                        style={{ maxWidth: 140 }}
+                                    >
+                                        {SEARCH_FIELDS.map(f => <option key={f.key} value={f.key}>{f.label}</option>)}
+                                        {admin && ADMIN_SEARCH_FIELDS.map(f => <option key={f.key} value={f.key}>{f.label}</option>)}
+                                    </select>
+                                    <input
+                                        type="text"
+                                        className="form-control form-control-sm"
+                                        placeholder="Search…"
+                                        value={searchText}
+                                        onChange={e => { setSearchText(e.target.value); setPage(0); }}
+                                        style={{ minWidth: 180 }}
+                                    />
+                                </div>
+                            </div>
+                            <div className="col-auto">
                                 <label className="form-label small mb-1">Payment</label>
                                 <select className="form-select form-select-sm" value={paymentStatus} onChange={e => { setPaymentStatus(e.target.value); setPage(0); }}>
                                     <option value="">All</option>
@@ -275,8 +379,24 @@ export default function Sales() {
                                 </select>
                             </div>
                             <div className="col-auto">
-                                <label className="form-label small mb-1">Customer</label>
-                                <input type="text" className="form-control form-control-sm" placeholder="Search customer…" value={customerSearch} onChange={e => { setCustomerSearch(e.target.value); setPage(0); }} />
+                                <label className="form-label small mb-1">{priceByItem ? 'Item Price Min' : 'Total Min'}</label>
+                                <input type="number" className="form-control form-control-sm" placeholder="0" min="0" step="any" value={totalMin} onChange={e => { setTotalMin(e.target.value); setPage(0); }} />
+                            </div>
+                            <div className="col-auto">
+                                <label className="form-label small mb-1">{priceByItem ? 'Item Price Max' : 'Total Max'}</label>
+                                <input type="number" className="form-control form-control-sm" placeholder="∞" min="0" step="any" value={totalMax} onChange={e => { setTotalMax(e.target.value); setPage(0); }} />
+                            </div>
+                            <div className="col-auto d-flex align-items-end pb-1">
+                                <div className="form-check form-check-inline">
+                                    <input
+                                        className="form-check-input"
+                                        type="checkbox"
+                                        id="priceByItem"
+                                        checked={priceByItem}
+                                        onChange={e => { setPriceByItem(e.target.checked); setPage(0); }}
+                                    />
+                                    <label className="form-check-label small" htmlFor="priceByItem">By Item Price</label>
+                                </div>
                             </div>
                             {admin && (
                                 <>
@@ -289,19 +409,11 @@ export default function Sales() {
                                         <input type="date" className="form-control form-control-sm" value={dateTo} onChange={e => { setDateTo(e.target.value); setPage(0); }} />
                                     </div>
                                     <div className="col-auto">
-                                        <label className="form-label small mb-1">Owner</label>
-                                        <input type="text" className="form-control form-control-sm" placeholder="Username…" value={ownerSearch} onChange={e => { setOwnerSearch(e.target.value); setPage(0); }} />
-                                    </div>
-                                    <div className="col-auto">
                                         <label className="form-label small mb-1">Branch</label>
                                         <select className="form-select form-select-sm" value={branchFilter} onChange={e => { setBranchFilter(e.target.value); setPage(0); }}>
                                             <option value="">All</option>
                                             {branches.map(b => <option key={b.documentId || b.id} value={b.documentId || b.id}>{b.name}</option>)}
                                         </select>
-                                    </div>
-                                    <div className="col-auto">
-                                        <label className="form-label small mb-1">Desk</label>
-                                        <input type="text" className="form-control form-control-sm" placeholder="Desk name…" value={deskSearch} onChange={e => { setDeskSearch(e.target.value); setPage(0); }} />
                                     </div>
                                 </>
                             )}
