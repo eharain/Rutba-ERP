@@ -139,7 +139,7 @@ export async function fetchProducts(filters, page, rowsPerPage, sort) {
     }
 
     if (filters.parentOnly) {
-        url += `&filters[is_variant][$ne]=true`;
+        url += `&filters[parent][$null]=true`;
     }
 
     if (filters.status) {
