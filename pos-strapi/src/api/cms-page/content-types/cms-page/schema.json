@@ -89,6 +89,13 @@
       "type": "relation",
       "relation": "manyToOne",
       "target": "api::cms-footer.cms-footer"
+    },
+    "background_image": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images"
+      ]
     }
   }
 }

@@ -5,6 +5,7 @@ import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { authApi, StraipImageUrl } from "@rutba/pos-shared/lib/api";
 import MarkdownEditor from "@rutba/pos-shared/components/MarkdownEditor";
+import FileView from "@rutba/pos-shared/components/FileView";
 import Link from "next/link";
 import { useToast } from "../../components/Toast";
 
@@ -36,6 +37,10 @@ export default function CmsPageDetail() {
     const [selectedRelatedIds, setSelectedRelatedIds] = useState([]);
     const [footerId, setFooterId] = useState("");
 
+    const [featuredImageId, setFeaturedImageId] = useState(null);
+    const [backgroundImageId, setBackgroundImageId] = useState(null);
+    const [galleryIds, setGalleryIds] = useState([]);
+
     const [allGroups, setAllGroups] = useState([]);
     const [allBrandGroups, setAllBrandGroups] = useState([]);
     const [allCategoryGroups, setAllCategoryGroups] = useState([]);
@@ -47,7 +52,7 @@ export default function CmsPageDetail() {
         Promise.all([
             authApi.get(`/cms-pages/${documentId}`, {
                 status: 'draft',
-                populate: ["featured_image", "gallery", "hero_product_groups", "brand_groups", "category_groups", "product_groups", "related_pages", "footer"],
+                populate: ["featured_image", "gallery", "background_image", "hero_product_groups", "brand_groups", "category_groups", "product_groups", "related_pages", "footer"],
             }),
             authApi.get(`/cms-pages/${documentId}`, { status: 'published', fields: ["documentId"] }).catch(() => ({ data: null })),
         ])
@@ -67,6 +72,9 @@ export default function CmsPageDetail() {
                 setSelectedGroupIds((p.product_groups || []).map(g => g.documentId));
                 setSelectedRelatedIds((p.related_pages || []).map(rp => rp.documentId));
                 setFooterId(p.footer?.documentId || "");
+                setFeaturedImageId(p.featured_image?.id || null);
+                setBackgroundImageId(p.background_image?.id || null);
+                setGalleryIds((p.gallery || []).map(g => g.id));
             })
             .catch(err => console.error("Failed to load page", err))
             .finally(() => setLoading(false));
@@ -136,6 +144,10 @@ export default function CmsPageDetail() {
                     footer: footerId || null,
                 },
             };
+            // Only include media when adding/keeping; omit when null to avoid affecting published
+            if (featuredImageId) payload.data.featured_image = featuredImageId;
+            if (backgroundImageId) payload.data.background_image = backgroundImageId;
+            if (galleryIds.length > 0) payload.data.gallery = galleryIds;
             if (isNew) {
                 payload.data.slug = slug || title.toLowerCase().replace(/\s+/g, "-");
                 const res = await authApi.post("/cms-pages", payload);
@@ -170,6 +182,9 @@ export default function CmsPageDetail() {
                     product_groups: { set: selectedGroupIds },
                     related_pages: { set: selectedRelatedIds },
                     footer: footerId || null,
+                    featured_image: featuredImageId || null,
+                    background_image: backgroundImageId || null,
+                    gallery: galleryIds.length > 0 ? galleryIds : null,
                 },
             };
             await authApi.put(`/cms-pages/${documentId}?status=draft`, payload);
@@ -203,7 +218,7 @@ export default function CmsPageDetail() {
         setSaving(true);
         try {
             // Save current form state as draft so nothing is lost
-            await authApi.put(`/cms-pages/${documentId}?status=draft`, {
+            const discardPayload = {
                 data: {
                     title, content, excerpt,
                     page_type: pageType, sort_order: sortOrder,
@@ -214,11 +229,15 @@ export default function CmsPageDetail() {
                     related_pages: { set: selectedRelatedIds },
                     footer: footerId || null,
                 },
-            });
+            };
+            if (featuredImageId) discardPayload.data.featured_image = featuredImageId;
+            if (backgroundImageId) discardPayload.data.background_image = backgroundImageId;
+            if (galleryIds.length > 0) discardPayload.data.gallery = galleryIds;
+            await authApi.put(`/cms-pages/${documentId}?status=draft`, discardPayload);
             // Load the published version into the form
             const res = await authApi.get(`/cms-pages/${documentId}`, {
                 status: 'published',
-                populate: ["featured_image", "gallery", "hero_product_groups", "brand_groups", "category_groups", "product_groups", "related_pages", "footer"],
+                populate: ["featured_image", "gallery", "background_image", "hero_product_groups", "brand_groups", "category_groups", "product_groups", "related_pages", "footer"],
             });
             const p = res.data || res;
             if (!p) { toast("No published version found.", "warning"); return; }
@@ -233,6 +252,10 @@ export default function CmsPageDetail() {
             setSelectedGroupIds((p.product_groups || []).map(g => g.documentId));
             setSelectedRelatedIds((p.related_pages || []).map(rp => rp.documentId));
             setFooterId(p.footer?.documentId || "");
+            setFeaturedImageId(p.featured_image?.id || null);
+            setBackgroundImageId(p.background_image?.id || null);
+            setGalleryIds((p.gallery || []).map(g => g.id));
+            setPage(p);
             toast("Draft saved. Showing published version — click Save Draft to overwrite.", "success");
         } catch (err) {
             console.error("Failed to load published version", err);
@@ -493,25 +516,50 @@ export default function CmsPageDetail() {
                                                     <div className="form-text">Attach a footer to display contact, social links and pinned pages.</div>
                                                 </div>
                                             </div>
-                            {!isNew && page?.featured_image?.url && (
-                                <div className="card mb-3">
-                                    <div className="card-header">Featured Image</div>
-                                    <div className="card-body text-center">
-                                        <img src={StraipImageUrl(page.featured_image)} alt={page.title} style={{ maxWidth: "100%", maxHeight: 200, objectFit: "contain" }} />
-                                    </div>
-                                </div>
-                            )}
-                            {!isNew && page?.gallery && page.gallery.length > 0 && (
-                                <div className="card mb-3">
-                                    <div className="card-header">Gallery ({page.gallery.length})</div>
-                                    <div className="card-body">
-                                        <div className="d-flex flex-wrap gap-2">
-                                            {page.gallery.map((img, i) => (
-                                                <img key={i} src={StraipImageUrl(img)} alt="" style={{ width: 80, height: 80, objectFit: "cover", borderRadius: 4 }} />
-                                            ))}
+                            {!isNew && page && (
+                                <>
+                                    <div className="card mb-3">
+                                        <div className="card-header"><i className="fas fa-image me-2"></i>Featured Image</div>
+                                        <div className="card-body">
+                                            <FileView
+                                                single={page.featured_image}
+                                                refName="cms-page"
+                                                refId={page.id}
+                                                field="featured_image"
+                                                name={title}
+                                                onFileChange={(f, file) => setFeaturedImageId(file?.id || null)}
+                                            />
                                         </div>
                                     </div>
-                                </div>
+                                    <div className="card mb-3">
+                                        <div className="card-header"><i className="fas fa-image me-2"></i>Background Image</div>
+                                        <div className="card-body">
+                                            <FileView
+                                                single={page.background_image}
+                                                refName="cms-page"
+                                                refId={page.id}
+                                                field="background_image"
+                                                name={title}
+                                                onFileChange={(f, file) => setBackgroundImageId(file?.id || null)}
+                                            />
+                                            <div className="form-text">Full-page background image rendered behind the page content.</div>
+                                        </div>
+                                    </div>
+                                    <div className="card mb-3">
+                                        <div className="card-header"><i className="fas fa-images me-2"></i>Gallery</div>
+                                        <div className="card-body">
+                                            <FileView
+                                                gallery={page.gallery || []}
+                                                multiple
+                                                refName="cms-page"
+                                                refId={page.id}
+                                                field="gallery"
+                                                name={title}
+                                                onFileChange={(f, files) => setGalleryIds((files || []).map(g => g.id).filter(Boolean))}
+                                            />
+                                        </div>
+                                    </div>
+                                </>
                             )}
                         </div>
                     </div>

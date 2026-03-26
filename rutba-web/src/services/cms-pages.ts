@@ -7,7 +7,7 @@ export default function useCmsPagesService() {
     const req = await axios.get(BASE_URL + "cms-pages", {
       params: {
         sort: ["sort_order:asc", "createdAt:desc"],
-        populate: ["featured_image"],
+        populate: ["featured_image", "background_image"],
         pagination: { pageSize: 50 },
       },
     });
@@ -21,6 +21,7 @@ export default function useCmsPagesService() {
         filters: { slug: { $eq: slug } },
         populate: [
           "featured_image",
+          "background_image",
           "gallery",
           "hero_product_groups.products.gallery",
           "hero_product_groups.products.logo",
