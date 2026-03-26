@@ -1385,6 +1385,7 @@ export interface ApiCmsPageCmsPage extends Struct.CollectionTypeSchema {
     draftAndPublish: true;
   };
   attributes: {
+    background_image: Schema.Attribute.Media<'images'>;
     brand_groups: Schema.Attribute.Relation<
       'manyToMany',
       'api::brand-group.brand-group'

@@ -15,6 +15,7 @@ export interface CmsPageInterface {
   updatedAt: string;
   publishedAt: string;
   featured_image?: ImageInterface;
+  background_image?: ImageInterface;
 }
 
 export interface CmsProductGroupInterface {

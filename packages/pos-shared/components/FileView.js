@@ -82,31 +82,14 @@ function FileView({ onFileChange = function (field, files, multiple) { }, single
         e.target.value = '';
     };
 
-    const handleRemove = async (index) => {
-        const target = galleryFiles[index];
-        // If uploaded and has id, attempt to detach/delete from Strapi
-        if (target?.id) {
-            try {
-                await authApi.deleteFile(target.id);
-            } catch (err) {
-                console.warn('Failed to delete remote file', err);
-            }
-        }
+    const handleRemove = (index) => {
         const updated = galleryFiles.filter((_, i) => i !== index);
         setGalleryFiles(updated);
         onFileChange(field, updated, multiple);
     };
 
-    const handleRemoveSingle = async () => {
-        const target = singleFile;
-        if (!target) return;
-        if (target?.id) {
-            try {
-                await authApi.deleteFile(target.id);
-            } catch (err) {
-                console.warn('Failed to delete remote file', err);
-            }
-        }
+    const handleRemoveSingle = () => {
+        if (!singleFile) return;
         setSingleFile(null);
         onFileChange(field, null, multiple);
     };
@@ -288,7 +271,7 @@ function FileView({ onFileChange = function (field, files, multiple) { }, single
 
             {/* Single file preview */}
             {!multiple && singleFile && (
-                <div className="card mx-auto mb-3" style={{ width: 180, height: 180, position: 'relative' }}>
+                <div className="card mx-auto mb-3" style={{ maxWidth: '100%', position: 'relative', overflow: 'hidden' }}>
                     <button
                         type="button"
                         onClick={handleRemoveSingle}
@@ -297,20 +280,20 @@ function FileView({ onFileChange = function (field, files, multiple) { }, single
                         aria-label="Remove"
                         style={{ zIndex: 2 }}
                     />
-                    <div className="d-flex align-items-center justify-content-center h-100">
+                    <div style={{ width: '100%', maxHeight: '300px', overflow: 'hidden' }}>
                         {isImage(singleFile) ? (
                             <img
                                 src={StraipImageUrl(singleFile)}
                                 alt={singleFile.name}
-                                className="img-fluid h-100 w-100"
-                                style={{ objectFit: 'cover' }}
+                                className="img-fluid"
+                                style={{ width: '100%', height: 'auto', objectFit: 'cover', maxHeight: '300px' }}
                             />
                         ) : isPDF(singleFile) ? (
                             <embed
                                 src={StraipImageUrl(singleFile)}
                                 type="application/pdf"
                                 width="100%"
-                                height="100%"
+                                height="300px"
                                 style={{ border: 'none' }}
                             />
                         ) : (
@@ -329,7 +312,7 @@ function FileView({ onFileChange = function (field, files, multiple) { }, single
                 <div className="row g-3">
                     {galleryFiles.map((fileObj, idx) => (
                         <div key={fileObj.id ?? fileObj.url ?? idx} className="col-6 col-sm-4 col-md-3">
-                            <div className="card position-relative" style={{ width: 140, height: 140 }}>
+                            <div className="card position-relative" style={{ overflow: 'hidden' }}>
                                 <button
                                     type="button"
                                     onClick={() => handleRemove(idx)}
@@ -338,13 +321,12 @@ function FileView({ onFileChange = function (field, files, multiple) { }, single
                                     aria-label="Remove"
                                     style={{ zIndex: 2 }}
                                 />
-                                <div className="d-flex align-items-center justify-content-center h-100">
+                                <div style={{ width: '100%', height: '140px', overflow: 'hidden' }}>
                                     {isImage(fileObj) ? (
                                         <img
                                             src={StraipImageUrl(fileObj)}
                                             alt={fileObj.name}
-                                            className="img-fluid h-100 w-100"
-                                            style={{ objectFit: 'cover' }}
+                                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                         />
                                     ) : isPDF(fileObj) ? (
                                         <embed
@@ -370,5 +352,4 @@ function FileView({ onFileChange = function (field, files, multiple) { }, single
         </div>
     );
 }
-
 export default FileView;

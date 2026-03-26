@@ -102,18 +102,48 @@ module.exports = ({ strapi }) => ({
     },
 
     async deleteFolder(folderId) {
-        // Move all files in this folder to root first
-        await strapi.db.query('plugin::upload.file').updateMany({
-            where: { folder: { id: folderId } },
-            data: { folder: null, folderPath: '/' },
+        // Look up the folder to get its path
+        const folder = await strapi.db.query('plugin::upload.folder').findOne({
+            where: { id: folderId },
         });
+        if (!folder) return null;
 
-        // Move child folders to root
-        await strapi.db.query('plugin::upload.folder').updateMany({
-            where: { parent: { id: folderId } },
-            data: { parent: null },
+        // Find all descendant folders (path starts with this folder's path)
+        const descendantFolders = await strapi.db.query('plugin::upload.folder').findMany({
+            where: {
+                path: { $startsWith: `${folder.path}/` },
+            },
         });
+        const allFolderPaths = [folder.path, ...descendantFolders.map((f) => f.path)];
 
+        // Move files in this folder and all descendant folders to root
+        const files = await strapi.db.query('plugin::upload.file').findMany({
+            where: {
+                $or: allFolderPaths.flatMap((p) => [
+                    { folderPath: { $eq: p } },
+                    { folderPath: { $startsWith: `${p}/` } },
+                ]),
+            },
+        });
+        for (const file of files) {
+            await strapi.db.query('plugin::upload.file').update({
+                where: { id: file.id },
+                data: { folder: null, folderPath: '/' },
+            });
+        }
+
+        // Move direct child folders to root (clear parent relation)
+        const childFolders = descendantFolders.filter(
+            (f) => f.path.startsWith(`${folder.path}/`) && !f.path.slice(folder.path.length + 1).includes('/')
+        );
+        for (const child of childFolders) {
+            await strapi.db.query('plugin::upload.folder').update({
+                where: { id: child.id },
+                data: { parent: null },
+            });
+        }
+
+        // Delete the folder
         return strapi.db.query('plugin::upload.folder').delete({
             where: { id: folderId },
         });

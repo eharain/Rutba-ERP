@@ -35,12 +35,30 @@ export default function CmsPageContent({
   );
   const productGroups = page.product_groups ?? [];
 
+  const bgUrl = page.background_image?.url
+    ? IMAGE_URL + page.background_image.url
+    : null;
+
   return (
     <>
       <Head>
         <title>{page.title} - Rutba.pk</title>
         {page.excerpt && <meta name="description" content={page.excerpt.replace(/[#*_~`>\[\]()!|-]/g, '').trim()} />}
       </Head>
+
+      <div
+        style={
+          bgUrl
+            ? {
+                backgroundImage: `url(${bgUrl})`,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+                backgroundRepeat: "no-repeat",
+                backgroundAttachment: "fixed",
+              }
+            : undefined
+        }
+      >
 
       {/* Hero Slider */}
       {heroProducts.length > 0 && (
@@ -79,20 +97,27 @@ export default function CmsPageContent({
 
       {/* Featured Image (fallback when no hero slider) */}
       {heroProducts.length === 0 && page.featured_image?.url && (
-        <div className="relative w-full h-[30vh] md:h-[40vh] overflow-hidden">
-          <NextImage
+        <div className="relative w-full overflow-hidden" style={{ maxHeight: '60vh' }}>
+          <img
             src={IMAGE_URL + page.featured_image.url}
-            layout="fill"
-            className="object-cover"
+            className="w-full block object-cover"
             alt={page.title}
-            useSkeleton
-            priority
           />
           <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
             <h1 className="text-white text-3xl md:text-5xl font-bold text-center px-4">
               {page.title}
             </h1>
           </div>
+        </div>
+      )}
+
+      {/* Excerpt */}
+      {page.excerpt && (
+        <div className="container mx-auto my-12 px-4">
+          <div
+            className="prose prose-slate max-w-none prose-img:rounded-lg prose-a:text-blue-600"
+            dangerouslySetInnerHTML={{ __html: marked.parse(page.excerpt) as string }}
+          />
         </div>
       )}
 
@@ -136,7 +161,7 @@ export default function CmsPageContent({
       {page.content && (
         <div className="container mx-auto my-12 px-4">
           <div
-            className="prose prose-slate max-w-none"
+            className="prose prose-slate max-w-none prose-img:rounded-lg prose-a:text-blue-600"
             dangerouslySetInnerHTML={{ __html: marked.parse(page.content) as string }}
           />
         </div>
@@ -213,6 +238,7 @@ export default function CmsPageContent({
           </div>
         </div>
       )}
+      </div>
     </>
   );
 }
