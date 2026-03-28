@@ -115,9 +115,12 @@ function buildOverlayPlayer(
   const escapedSrc = escapeHtml(embedSrc);
   const escapedOverlay = escapeHtml(overlayUrl);
 
+  // &quot; is decoded to " by the HTML parser before the JS engine sees the
+  // onclick value, so the JS string ends up with real double-quotes inside
+  // the single-quoted innerHTML assignment.
   const onClickHandler =
     `var c=this.parentElement;` +
-    `c.innerHTML='<div style=\\"position:relative;padding-bottom:56.25%;height:0;overflow:hidden\\"><iframe src=\\"${escapedSrc}?autoplay=1\\" style=\\"position:absolute;top:0;left:0;width:100%;height:100%;border:0\\" allowfullscreen></iframe></div>';`;
+    `c.innerHTML=&apos;&lt;div style=&quot;position:relative;padding-bottom:56.25%;height:0;overflow:hidden&quot;&gt;&lt;iframe src=&quot;${escapedSrc}?autoplay=1&quot; style=&quot;position:absolute;top:0;left:0;width:100%;height:100%;border:0&quot; allowfullscreen&gt;&lt;/iframe&gt;&lt;/div&gt;&apos;;`;
 
   return (
     `<div style="${widthStyle}margin-top:1em;margin-bottom:1em">` +
@@ -125,12 +128,12 @@ function buildOverlayPlayer(
     `onclick="${onClickHandler}">` +
     `<img src="${escapedOverlay}" alt="Video thumbnail" ` +
     'style="width:100%;display:block;border-radius:6px" ' +
-    `onerror="this.style.display='none'" />` +
+    `onerror="this.style.display=&apos;none&apos;" />` +
     '<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);' +
-    "width:68px;height:68px;background:rgba(0,0,0,0.65);border-radius:50%;" +
+    'width:68px;height:68px;background:rgba(0,0,0,0.65);border-radius:50%;' +
     'display:flex;align-items:center;justify-content:center;transition:background 0.2s" ' +
-    "onmouseover=\"this.style.background='rgba(0,0,0,0.8)'\" " +
-    "onmouseout=\"this.style.background='rgba(0,0,0,0.65)'\">" +
+    `onmouseover="this.style.background=&apos;rgba(0,0,0,0.8)&apos;" ` +
+    `onmouseout="this.style.background=&apos;rgba(0,0,0,0.65)&apos;">` +
     '<div style="width:0;height:0;border-top:14px solid transparent;' +
     'border-bottom:14px solid transparent;border-left:22px solid #fff;margin-left:5px"></div>' +
     "</div>" +
@@ -243,6 +246,22 @@ export function markedVideoEmbed({ imageBaseUrl = '' }: { imageBaseUrl?: string 
         const src = (href && href.startsWith('/') && imageBaseUrl) ? imageBaseUrl + href : (href || '');
         const titleAttr = title ? ` title="${escapeHtml(title)}"` : '';
         return `<img src="${escapeHtml(src)}" alt="${escapeHtml(text || '')}"${titleAttr} style="max-width:100%" />`;
+      },
+      link({ href, text }: { href: string; text: string }): string | false {
+        // GFM auto-links produce a link whose visible text equals the URL.
+        // When that URL matches a video provider, render the embed instead
+        // of a clickable text link so the raw URL doesn't appear on the page.
+        if (href && text === href) {
+          const hit = matchVideoUrl(href);
+          if (hit) {
+            const embedSrc = hit.provider.embed(hit.id, href);
+            if (hit.provider.type === 'tweet') {
+              return buildTweetEmbed(embedSrc, '100%');
+            }
+            return buildIframe(embedSrc, '100%');
+          }
+        }
+        return false; // fall back to default link rendering
       },
     },
   };
