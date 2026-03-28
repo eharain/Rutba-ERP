@@ -7,8 +7,5 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
-  },
-  "dependencies": {
-    "qs": "^6.14.0"
   }
 }

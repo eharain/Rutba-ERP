@@ -15,20 +15,20 @@
     "upgrade:dry": "npx @strapi/upgrade latest --dry"
   },
   "dependencies": {
-    "@easypost/api": "^8.5.0",
-    "@strapi/plugin-cloud": "5.37.1",
-    "@strapi/plugin-users-permissions": "5.37.1",
-    "@strapi/strapi": "5.37.1",
-    "mysql2": "3.18.2",
+    "@easypost/api": "^8.8.0",
+    "@strapi/plugin-cloud": "5.40.0",
+    "@strapi/plugin-users-permissions": "5.40.0",
+    "@strapi/strapi": "5.40.0",
+    "mysql2": "3.20.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^6.0.0",
-    "stripe": "^20.3.1",
-    "styled-components": "^6.0.0",
+    "react-router-dom": "^6.30.3",
+    "stripe": "^21.0.1",
+    "styled-components": "^6.3.12",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
-    "baseline-browser-mapping": "^2.9.11"
+    "baseline-browser-mapping": "^2.10.11"
   },
   "engines": {
     "node": ">=18.0.0 <=22.x.x",

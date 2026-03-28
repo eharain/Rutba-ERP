@@ -89,12 +89,22 @@ module.exports = createCoreController('plugin::users-permissions.me', ({ strapi 
             const page = parseInt(pagination?.page) || 1;
             const start = page > 1 ? (page - 1) * pageSize : 0;
 
+            // Parse REST-style sort (e.g. ["createdAt:desc"]) into db orderBy format ({ createdAt: 'desc' })
+            let orderBy;
+            if (sort) {
+                const sortArr = Array.isArray(sort) ? sort : [sort];
+                orderBy = sortArr.map(s => {
+                    const [field, dir] = String(s).split(':');
+                    return { [field]: dir || 'asc' };
+                });
+            }
+
             const [entries, totalCount] = await Promise.all([
                 strapi.db.query('api::stock-item.stock-item').findMany({
                     where: mergedFilters,
                     offset: start,
                     limit: pageSize,
-                    orderBy: sort,
+                    orderBy,
                     populate: populate
                 }),
                 strapi.db.query('api::stock-item.stock-item').count({

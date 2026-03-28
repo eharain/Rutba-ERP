@@ -12,9 +12,6 @@ const nextConfig = {
 	  },
 	],
   },
-  eslint: {
-	ignoreDuringBuilds: true
-  },
   typescript: {
 	// TODO: fix pre-existing type errors surfaced by React 19 / TS 5.7 upgrade
 	ignoreBuildErrors: true

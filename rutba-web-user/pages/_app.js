@@ -8,7 +8,7 @@ setAppName('web-user');
 import 'bootstrap/dist/css/bootstrap.min.css';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 import '@rutba/pos-shared/styles/layout.css';
-import '../src/app/globals.css';
+import '../src/styles/globals.css';
 import 'primereact/resources/themes/saga-blue/theme.css';
 import 'primereact/resources/primereact.min.css';
 import { Geist, Geist_Mono } from "next/font/google";
