@@ -123,7 +123,7 @@ export default function ProductFilter({
             <div className="hidden xl:flex">
               {filterForm.category && (
                 <Badge variant={"secondary"} className="ml-1">
-                  Shoes For:{" "}
+                  Search For:{" "}
                   <span className="capitalize"> {filterForm.category}</span>
                 </Badge>
               )}
