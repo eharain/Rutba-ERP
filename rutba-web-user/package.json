@@ -7,10 +7,5 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
-  },
-  "dependencies": {
-    "primereact": "^10.9.7",
-    "qs": "^6.14.0",
-    "sonner": "^2.0.7"
   }
 }
