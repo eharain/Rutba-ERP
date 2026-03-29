@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { authApi, StraipImageUrl, isImage } from '../lib/api';
 import { saveProduct } from '../lib/pos/save';
+import StrapiMediaLibrary from './StrapiMediaLibrary';
 
 function getEntryId(entry) {
     return entry?.documentId || entry?.id;
@@ -33,6 +34,10 @@ export default function ProductGalleryManager({ productId, onUpdate }) {
     // Upload
     const [uploading, setUploading] = useState(false);
     const fileInputRef = useRef();
+
+    // Media library picker
+    const [showMediaLibrary, setShowMediaLibrary] = useState(false);
+    const [mediaLibraryTarget, setMediaLibraryTarget] = useState(null); // null = parent, variantDocId = variant
 
     useEffect(() => {
         if (success || error) {
@@ -180,6 +185,53 @@ export default function ProductGalleryManager({ productId, onUpdate }) {
         } finally {
             setUploading(false);
             e.target.value = '';
+        }
+    }
+
+    // --- Add from media library ---
+
+    function openMediaLibrary(target) {
+        setMediaLibraryTarget(target);
+        setShowMediaLibrary(true);
+    }
+
+    async function handleMediaLibrarySelect(selectedFiles) {
+        if (!selectedFiles || selectedFiles.length === 0) return;
+        setLoading(true);
+        try {
+            if (!mediaLibraryTarget) {
+                // Add to parent gallery
+                const existingIds = new Set(parentGallery.map(g => g.id));
+                const newIds = selectedFiles.map(f => f.id).filter(id => !existingIds.has(id));
+                if (newIds.length > 0) {
+                    const updatedGallery = [...parentGallery.map(g => g.id), ...newIds];
+                    await authApi.put(`/products/${getEntryId(product)}`, {
+                        data: { gallery: updatedGallery }
+                    });
+                }
+                setSuccess(`Added ${newIds.length} image(s) from media library`);
+            } else {
+                // Add to variant gallery
+                const variant = variants.find(v => getEntryId(v) === mediaLibraryTarget);
+                if (!variant) { setError('Variant not found'); return; }
+                const vGallery = variant.gallery || [];
+                const existingIds = new Set(vGallery.map(g => g.id));
+                const newIds = selectedFiles.map(f => f.id).filter(id => !existingIds.has(id));
+                if (newIds.length > 0) {
+                    const updatedGallery = [...vGallery.map(g => g.id), ...newIds];
+                    await authApi.put(`/products/${mediaLibraryTarget}`, {
+                        data: { gallery: updatedGallery }
+                    });
+                }
+                setSuccess(`Added ${newIds.length} image(s) to "${variant.name}" from media library`);
+            }
+            await loadData();
+            if (onUpdate) onUpdate();
+        } catch (err) {
+            console.error('Failed to add images from media library', err);
+            setError('Failed to add images from media library');
+        } finally {
+            setLoading(false);
         }
     }
 
@@ -584,6 +636,13 @@ export default function ProductGalleryManager({ productId, onUpdate }) {
                         >
                             <i className="fas fa-upload me-1" />{uploading ? 'Uploading...' : 'Upload Images'}
                         </button>
+                        <button
+                            className="btn btn-sm btn-outline-secondary"
+                            type="button"
+                            onClick={() => openMediaLibrary(null)}
+                        >
+                            <i className="fas fa-photo-video me-1" />Media Library
+                        </button>
                         {parentGallery.length > 0 && (
                             <button className="btn btn-sm btn-outline-secondary" type="button" onClick={selectAllParentImages}>
                                 {selectedParentImages.size === parentGallery.length ? 'Deselect All' : 'Select All'}
@@ -799,6 +858,16 @@ export default function ProductGalleryManager({ productId, onUpdate }) {
                                                 </div>
                                             </div>
 
+                                            <div className="d-flex justify-content-end mb-2">
+                                                <button
+                                                    className="btn btn-sm btn-outline-secondary"
+                                                    type="button"
+                                                    onClick={(e) => { e.stopPropagation(); openMediaLibrary(vId); }}
+                                                >
+                                                    <i className="fas fa-photo-video me-1" />Media Library
+                                                </button>
+                                            </div>
+
                                             {vGallery.length === 0 ? (
                                                 <div className="text-muted text-center py-2 small">No images assigned to this variant</div>
                                             ) : (
@@ -971,6 +1040,14 @@ export default function ProductGalleryManager({ productId, onUpdate }) {
                     </div>
                 </div>
             )}
+
+            <StrapiMediaLibrary
+                show={showMediaLibrary}
+                onClose={() => setShowMediaLibrary(false)}
+                onSelect={handleMediaLibrarySelect}
+                multiple
+                accept="image"
+            />
         </div>
     );
 }

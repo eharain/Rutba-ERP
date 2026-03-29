@@ -1,0 +1,9 @@
+
+> dev:stock
+> node scripts/load-env.js -- npm run dev --workspace=pos-stock
+
+
+> pos-stock@0.1.0 dev
+> next dev --turbopack
+
+[?25h
