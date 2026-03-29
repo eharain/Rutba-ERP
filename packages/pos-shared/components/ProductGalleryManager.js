@@ -26,6 +26,10 @@ export default function ProductGalleryManager({ productId, onUpdate }) {
     // Expanded variant panels
     const [expandedVariants, setExpandedVariants] = useState(new Set());
 
+    // Variant inline editing state: { [variantDocId]: { name, selling_price, offer_price } }
+    const [variantEdits, setVariantEdits] = useState({});
+    const [savingVariant, setSavingVariant] = useState({});
+
     // Upload
     const [uploading, setUploading] = useState(false);
     const fileInputRef = useRef();
@@ -45,7 +49,7 @@ export default function ProductGalleryManager({ productId, onUpdate }) {
                 populate: {
                     gallery: true,
                     logo: true,
-                    variants: { populate: { gallery: true, terms: true } }
+                    variants: { populate: { gallery: true, logo: true, terms: true } }
                 }
             });
             const prod = res.data || res;
@@ -110,6 +114,50 @@ export default function ProductGalleryManager({ productId, onUpdate }) {
             s.has(variantDocId) ? s.delete(variantDocId) : s.add(variantDocId);
             return s;
         });
+    }
+
+    // --- Variant inline editing helpers ---
+
+    function getVariantEdit(variantDocId, variant) {
+        if (variantEdits[variantDocId]) return variantEdits[variantDocId];
+        return {
+            name: variant.name || '',
+            selling_price: variant.selling_price ?? '',
+            offer_price: variant.offer_price ?? '',
+        };
+    }
+
+    function updateVariantEdit(variantDocId, field, value) {
+        setVariantEdits(prev => ({
+            ...prev,
+            [variantDocId]: {
+                ...prev[variantDocId],
+                [field]: value,
+            },
+        }));
+    }
+
+    async function saveVariantEdit(variantDocId, variant) {
+        const edits = getVariantEdit(variantDocId, variant);
+        setSavingVariant(prev => ({ ...prev, [variantDocId]: true }));
+        try {
+            await authApi.put(`/products/${variantDocId}`, {
+                data: {
+                    name: edits.name,
+                    selling_price: parseFloat(edits.selling_price) || 0,
+                    offer_price: edits.offer_price ? parseFloat(edits.offer_price) : null,
+                },
+            });
+            await loadData();
+            if (onUpdate) onUpdate();
+            setVariantEdits(prev => { const n = { ...prev }; delete n[variantDocId]; return n; });
+            setSuccess(`Variant "${edits.name}" updated`);
+        } catch (err) {
+            console.error('Failed to update variant', err);
+            setError('Failed to update variant');
+        } finally {
+            setSavingVariant(prev => ({ ...prev, [variantDocId]: false }));
+        }
     }
 
     // --- Upload ---
@@ -361,6 +409,7 @@ export default function ProductGalleryManager({ productId, onUpdate }) {
                 parent: parentDocId,
                 is_variant: true,
                 gallery: imagesToAssign,
+                logo: imagesToAssign[0],
             };
 
             await saveProduct('new', payload);
@@ -412,6 +461,7 @@ export default function ProductGalleryManager({ productId, onUpdate }) {
                     parent: parentDocId,
                     is_variant: true,
                     gallery: [img.id],
+                    logo: img.id,
                 };
                 await saveProduct('new', payload);
                 created++;
@@ -680,6 +730,9 @@ export default function ProductGalleryManager({ productId, onUpdate }) {
                             const isExpanded = expandedVariants.has(vId);
                             const termNames = (variant.terms || []).map(t => t.name).join(', ');
                             const moveTarget = variantMoveTargets[vId] || '';
+                            const edits = getVariantEdit(vId, variant);
+                            const isEdited = !!variantEdits[vId];
+                            const isSaving = !!savingVariant[vId];
 
                             return (
                                 <div key={vId} className="card mb-2">
@@ -703,6 +756,49 @@ export default function ProductGalleryManager({ productId, onUpdate }) {
 
                                     {isExpanded && (
                                         <div className="card-body py-2">
+                                            {/* --- Inline editable fields --- */}
+                                            <div className="row g-2 mb-3">
+                                                <div className="col-12 col-md-4">
+                                                    <label className="form-label small fw-bold mb-1">Name</label>
+                                                    <input
+                                                        className="form-control form-control-sm"
+                                                        value={edits.name}
+                                                        onClick={e => e.stopPropagation()}
+                                                        onChange={e => updateVariantEdit(vId, 'name', e.target.value)}
+                                                    />
+                                                </div>
+                                                <div className="col-6 col-md-3">
+                                                    <label className="form-label small fw-bold mb-1">Selling Price</label>
+                                                    <input
+                                                        type="number"
+                                                        className="form-control form-control-sm"
+                                                        value={edits.selling_price}
+                                                        onClick={e => e.stopPropagation()}
+                                                        onChange={e => updateVariantEdit(vId, 'selling_price', e.target.value)}
+                                                    />
+                                                </div>
+                                                <div className="col-6 col-md-3">
+                                                    <label className="form-label small fw-bold mb-1">Offer Price</label>
+                                                    <input
+                                                        type="number"
+                                                        className="form-control form-control-sm"
+                                                        value={edits.offer_price}
+                                                        onClick={e => e.stopPropagation()}
+                                                        onChange={e => updateVariantEdit(vId, 'offer_price', e.target.value)}
+                                                    />
+                                                </div>
+                                                <div className="col-12 col-md-2 d-flex align-items-end">
+                                                    <button
+                                                        className="btn btn-sm btn-primary w-100"
+                                                        type="button"
+                                                        disabled={!isEdited || isSaving}
+                                                        onClick={e => { e.stopPropagation(); saveVariantEdit(vId, variant); }}
+                                                    >
+                                                        {isSaving ? <><i className="fas fa-spinner fa-spin me-1" />Saving</> : <><i className="fas fa-save me-1" />Save</>}
+                                                    </button>
+                                                </div>
+                                            </div>
+
                                             {vGallery.length === 0 ? (
                                                 <div className="text-muted text-center py-2 small">No images assigned to this variant</div>
                                             ) : (

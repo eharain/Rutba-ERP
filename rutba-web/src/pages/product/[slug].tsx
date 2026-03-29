@@ -103,6 +103,9 @@ export default function ProductDetail() {
             <ImageListProduct
               logo={product?.logo}
               imageList={product?.gallery}
+              variants={product?.variants}
+              selectedVariantId={selectVariant}
+              onVariantSelect={(id) => setSelectedVariant(id)}
             ></ImageListProduct>
           </div>
           <div className="col-span-12 md:col-span-6 lg:col-span-5">
