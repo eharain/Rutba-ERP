@@ -6,6 +6,7 @@ import ProtectedRoute from '@rutba/pos-shared/components/ProtectedRoute';
 import { authApi, relationConnects } from '@rutba/pos-shared/lib/api';
 import { saveProduct } from '@rutba/pos-shared/lib/pos/save';
 import ProductGalleryManager from '@rutba/pos-shared/components/ProductGalleryManager';
+import TermTypeTermDialog from '@rutba/pos-shared/components/TermTypeTermDialog';
 
 function getEntryId(entry) {
     return entry?.documentId || entry?.id;
@@ -31,6 +32,7 @@ export default function ProductVariantsPage() {
     const [selectedVariants, setSelectedVariants] = useState(new Set());
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+    const [showTermTypeDialog, setShowTermTypeDialog] = useState(false);
 
     useEffect(() => {
         if (documentId) {
@@ -385,6 +387,23 @@ export default function ProductVariantsPage() {
     const currentTerms = selectedTermType?.terms || [];
     const creatableTerms = getCreatableTerms();
 
+    function handleTermTypeDialogConfirm({ termType, selectedTerms }) {
+        const ttId = getEntryId(termType);
+        // Merge the confirmed term type into local state if not already present
+        setTermTypes(prev => {
+            const exists = prev.some(t => getEntryId(t) === ttId);
+            if (exists) {
+                // Update the terms list for this type with any newly created terms
+                return prev.map(t => getEntryId(t) === ttId ? { ...t, terms: termType.terms || t.terms } : t);
+            }
+            return [...prev, termType];
+        });
+        setSelectedTermTypeId(ttId);
+        setShowTermTypeDialog(false);
+        // Reload term types to get fresh data
+        loadTermTypes();
+    }
+
     return (
         <ProtectedRoute>
             <Layout>
@@ -551,16 +570,26 @@ export default function ProductVariantsPage() {
                             <div className="row g-2 mb-3">
                                 <div className="col-md-4">
                                     <label className="form-label small fw-bold mb-1">Term Type</label>
-                                    <select
-                                        className="form-select form-select-sm"
-                                        value={selectedTermTypeId}
-                                        onChange={(e) => setSelectedTermTypeId(e.target.value)}
-                                    >
-                                        <option value="">Choose term type...</option>
-                                        {termTypes.map(tt => (
-                                            <option key={getEntryId(tt)} value={getEntryId(tt)}>{tt.name} ({(tt.terms || []).length} terms)</option>
-                                        ))}
-                                    </select>
+                                    <div className="input-group input-group-sm">
+                                        <select
+                                            className="form-select form-select-sm"
+                                            value={selectedTermTypeId}
+                                            onChange={(e) => setSelectedTermTypeId(e.target.value)}
+                                        >
+                                            <option value="">Choose term type...</option>
+                                            {termTypes.map(tt => (
+                                                <option key={getEntryId(tt)} value={getEntryId(tt)}>{tt.name} ({(tt.terms || []).length} terms)</option>
+                                            ))}
+                                        </select>
+                                        <button
+                                            className="btn btn-outline-primary"
+                                            type="button"
+                                            onClick={() => setShowTermTypeDialog(true)}
+                                            title="Browse & manage term types and terms"
+                                        >
+                                            <i className="fas fa-tags" />
+                                        </button>
+                                    </div>
                                 </div>
                                 <div className="col-md-4">
                                     <label className="form-label small fw-bold mb-1">Base Name</label>
@@ -707,6 +736,13 @@ export default function ProductVariantsPage() {
                             )}
                         </div>
                     </div>
+
+                    <TermTypeTermDialog
+                        show={showTermTypeDialog}
+                        onClose={() => setShowTermTypeDialog(false)}
+                        onConfirm={handleTermTypeDialogConfirm}
+                        variantOnly={true}
+                    />
 
                     {/* Parent Stock Items - Move to Variant */}
                     <div className="card mb-3">
