@@ -40,7 +40,7 @@ export default function ProductDetail() {
                     gallery: true,
                     categories: true,
                     brands: true,
-                    variants: { populate: { gallery: true, terms: true } },
+                    variants: { populate: { gallery: true, logo: true, terms: true } },
                 },
             });
             const p = res.data || res;

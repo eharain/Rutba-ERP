@@ -129,7 +129,18 @@ export default function useProductsService() {
   const getProductDetail = async (slug: string) => {
     const req = await axios.get(BASE_URL + "products/" + slug, {
       params: {
-        populate: ["gallery", "variants", "brands", "categories", "logo"],
+        populate: {
+          gallery: true,
+          logo: true,
+          brands: true,
+          categories: true,
+          variants: {
+            populate: {
+              gallery: true,
+              logo: true,
+            },
+          },
+        },
       },
     });
 
@@ -143,10 +154,21 @@ export default function useProductsService() {
    * @return {ProductInterface[]} - An array of product data.
    */
   const productInArrayId = async (idProducts: number[]) => {
-    
+
     const req = await axios.get(BASE_URL + "products", {
       params: {
-        populate: ["gallery", "variants", "brands", "categories", "logo"],
+        populate: {
+          gallery: true,
+          logo: true,
+          brands: true,
+          categories: true,
+          variants: {
+            populate: {
+              gallery: true,
+              logo: true,
+            },
+          },
+        },
         filters: {
           id: {
             $in: idProducts

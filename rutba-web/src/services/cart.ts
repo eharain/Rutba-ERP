@@ -137,13 +137,20 @@ export const useCartService = () => {
           (variant) => variant.id === item.variantId
         );
 
+        const variantImage =
+          productVariant?.logo?.url ??
+          productVariant?.gallery?.[0]?.url;
+        const parentImage =
+          productData?.logo?.url ??
+          productData?.gallery?.[0]?.url;
+
         return {
           id: productData?.id,
-          image: productData?.logo?.url,
+          image: variantImage ?? parentImage,
           name: productData?.name,
           variant_id: productVariant?.id,
           variant_name: productVariant?.name,
-          price: productData?.selling_price,
+          price: productVariant?.selling_price ?? productData?.selling_price,
           documentId: productData?.documentId,
           qty: item.qty,
         };
