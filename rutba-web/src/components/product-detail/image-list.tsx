@@ -2,24 +2,36 @@ import NextImage from "@/components/next-image";
 import { IMAGE_URL } from "@/static/const";
 import { ImageInterface } from "@/types/api/image";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 export default function ImageListProduct({
+  logo,
   imageList,
 }: {
+  logo?: ImageInterface;
   imageList?: ImageInterface[];
 }) {
+  const allImages = useMemo(() => {
+    const images: ImageInterface[] = [];
+    if (logo) images.push(logo);
+    if (imageList) {
+      imageList.forEach((img) => {
+        if (!logo || img.id !== logo.id) images.push(img);
+      });
+    }
+    return images;
+  }, [logo, imageList]);
+
   const [selectedImage, setSelectedImage] = useState(
-    imageList?.[0]?.url
-      ? IMAGE_URL + imageList[0].url
+    allImages[0]?.url
+      ? IMAGE_URL + allImages[0].url
       : "/images/fallback-image.png"
   );
 
   return (
     <div className="flex flex-col-reverse md:flex-row gap-5 sticky top-5">
-      {/* --{JSON.stringify(imageList)} */}
       <div className="flex flex-row md:flex-col gap-2 md:gap-5 flex-wrap">
-        {imageList?.map((item) => {
+        {allImages.map((item) => {
           return (
             <NextImage
               key={"image-product-" + item.id}

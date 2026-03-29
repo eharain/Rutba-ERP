@@ -77,7 +77,7 @@ export default function SearchModal(props: propsInterface) {
                     className="flex items-center hover:bg-slate-100 rounded-md overflow-hidden px-2 py-2"
                   >
                     <NextImage
-                      src={IMAGE_URL + (item.logo?.url || "/images/fallback-image.png")}
+                      src={IMAGE_URL + (item.logo?.url ?? item.gallery?.[0]?.url ?? "")}
                       alt="product"
                       width={60}
                       height={60}
