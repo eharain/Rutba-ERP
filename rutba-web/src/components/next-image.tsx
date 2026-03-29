@@ -45,6 +45,11 @@ export default function NextImage({
 
   const fallbackImage = "/images/fallback-image.png";
 
+  const imageSrc = error ? fallbackImage : src;
+  const isExternal =
+    typeof imageSrc === "string" && imageSrc.startsWith("http");
+  const externalLoader = ({ src }: { src: string }) => src;
+
   return (
     <figure
       style={!widthIsSet ? { width: `${width}px` } : undefined}
@@ -56,11 +61,12 @@ export default function NextImage({
           status === "loading" && cn("animate-pulse", classNames?.blur)
         )}
         onError={() => setError(true)}
-        src={error ? fallbackImage : src}
+        src={imageSrc}
         width={width}
         height={height}
         alt={alt}
         onLoadingComplete={() => setStatus("complete")}
+        {...(isExternal ? { loader: externalLoader, unoptimized: true } : {})}
         {...rest}
       />
     </figure>

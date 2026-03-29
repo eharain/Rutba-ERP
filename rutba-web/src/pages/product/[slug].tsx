@@ -100,7 +100,10 @@ export default function ProductDetail() {
       <div className="container mx-auto my-20">
         <div className="grid grid-cols-12 gap-[15px] lg:gap-[30px]">
           <div className="col-span-12 md:col-span-6 lg:col-span-6">
-            <ImageListProduct imageList={product?.gallery}></ImageListProduct>
+            <ImageListProduct
+              logo={product?.logo}
+              imageList={product?.gallery}
+            ></ImageListProduct>
           </div>
           <div className="col-span-12 md:col-span-6 lg:col-span-5">
             <div className="flex flex-wrap items-center justify-between">

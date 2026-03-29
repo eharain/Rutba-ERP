@@ -56,7 +56,7 @@ export default function FeaturedSneakers() {
               name={item.name}
               category={item.categories?.[0]}
               brand={item.brands?.[0]}
-              thumbnail={item.gallery?.[0]?.url ?? null}
+              thumbnail={item.logo?.url ?? item.gallery?.[0]?.url ?? null}
               slug={item.documentId}
               variantPrice={variantPrice}
             ></ProductCard>
