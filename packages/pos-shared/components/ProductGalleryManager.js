@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { authApi, StraipImageUrl, isImage } from '../lib/api';
+import { authApi, StraipImageUrl, isImage, relationConnects } from '../lib/api';
 import { saveProduct } from '../lib/pos/save';
 import StrapiMediaLibrary from './StrapiMediaLibrary';
+import TermTypeTermDialog from './TermTypeTermDialog';
 
 function getEntryId(entry) {
     return entry?.documentId || entry?.id;
@@ -38,6 +39,15 @@ export default function ProductGalleryManager({ productId, onUpdate }) {
     // Media library picker
     const [showMediaLibrary, setShowMediaLibrary] = useState(false);
     const [mediaLibraryTarget, setMediaLibraryTarget] = useState(null); // null = parent, variantDocId = variant
+
+    // --- Term-type variant creation ---
+    const [showTermTypeDialog, setShowTermTypeDialog] = useState(false);
+    const [termTypes, setTermTypes] = useState([]);
+    const [selectedTermTypeId, setSelectedTermTypeId] = useState('');
+    const [termForms, setTermForms] = useState({});
+    const [nameAffix, setNameAffix] = useState('suffix');
+    const [variantBaseName, setVariantBaseName] = useState('');
+    const [bulkCreating, setBulkCreating] = useState(false);
 
     useEffect(() => {
         if (success || error) {
@@ -538,6 +548,167 @@ export default function ProductGalleryManager({ productId, onUpdate }) {
         }
     }
 
+    // --- Term-type variant creation ---
+
+    const loadTermTypes = useCallback(async () => {
+        try {
+            const res = await authApi.fetch('/term-types', {
+                filters: { is_variant: true },
+                populate: { terms: true },
+                pagination: { page: 1, pageSize: 500 },
+                sort: ['name:asc']
+            });
+            const types = res?.data ?? res;
+            setTermTypes(types || []);
+        } catch (err) {
+            console.error('Failed to load term types', err);
+        }
+    }, []);
+
+    useEffect(() => { loadTermTypes(); }, [loadTermTypes]);
+
+    useEffect(() => {
+        if (product && !variantBaseName) {
+            setVariantBaseName(product.name || '');
+        }
+    }, [product]);
+
+    function buildVariantName(termName) {
+        const baseName = variantBaseName || product?.name || '';
+        if (!termName) return baseName;
+        if (!baseName) return termName;
+        return nameAffix === 'prefix'
+            ? `${termName} - ${baseName}`
+            : `${baseName} - ${termName}`;
+    }
+
+    function getDefaultVariantForm() {
+        return {
+            sku: product?.sku || '',
+            barcode: product?.barcode || '',
+            selling_price: product?.selling_price ?? 0,
+            offer_price: product?.offer_price ?? 0,
+            is_active: product?.is_active ?? true,
+        };
+    }
+
+    function getTermForm(termId) {
+        return termForms[termId] || getDefaultVariantForm();
+    }
+
+    function updateTermForm(termId, field, value) {
+        setTermForms(prev => ({
+            ...prev,
+            [termId]: {
+                ...getTermForm(termId),
+                [field]: value,
+            },
+        }));
+    }
+
+    function isTermAlreadyVariant(term) {
+        return variants.some(v => (v.terms || []).some(t => getEntryId(t) === getEntryId(term)));
+    }
+
+    function getCreatableTerms() {
+        const selectedTermType = termTypes.find(t => getEntryId(t) === selectedTermTypeId);
+        if (!selectedTermType) return [];
+        return (selectedTermType.terms || []).filter(term => !isTermAlreadyVariant(term));
+    }
+
+    async function handleCreateVariantByTerm(term) {
+        if (!product) return setError('Missing product');
+        const selectedTermType = termTypes.find(t => getEntryId(t) === selectedTermTypeId);
+        if (!selectedTermType) return setError('Choose a term type');
+        if (!term) return setError('Choose a term');
+        if (isTermAlreadyVariant(term)) return setError('Variant already exists for this term');
+        const formValues = getTermForm(getEntryId(term));
+        try {
+            setLoading(true);
+            const parentDocumentId = getEntryId(product);
+            const name = buildVariantName(term.name);
+            const payload = {
+                sku: formValues.sku,
+                barcode: formValues.barcode,
+                selling_price: formValues.selling_price,
+                offer_price: formValues.offer_price,
+                is_active: formValues.is_active,
+                name,
+                parent: parentDocumentId,
+                is_variant: true,
+                ...relationConnects({ terms: [term] }),
+            };
+            await saveProduct('new', payload);
+            await loadData();
+            if (onUpdate) onUpdate();
+            setTermForms(prev => ({ ...prev, [getEntryId(term)]: getDefaultVariantForm() }));
+            setSuccess(`Variant "${name}" created`);
+        } catch (err) {
+            console.error('Failed to create variant', err);
+            setError('Failed to create variant');
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    async function handleBulkCreateVariantsByTerm() {
+        const creatableTerms = getCreatableTerms();
+        if (creatableTerms.length === 0) return setError('No new variants to create');
+        if (!confirm(`Create ${creatableTerms.length} variant(s)?`)) return;
+        setBulkCreating(true);
+        setLoading(true);
+        let created = 0;
+        try {
+            const parentDocumentId = getEntryId(product);
+            for (const term of creatableTerms) {
+                const termId = getEntryId(term);
+                const formValues = getTermForm(termId);
+                const name = buildVariantName(term.name);
+                const payload = {
+                    sku: formValues.sku,
+                    barcode: formValues.barcode,
+                    selling_price: formValues.selling_price,
+                    offer_price: formValues.offer_price,
+                    is_active: formValues.is_active,
+                    name,
+                    parent: parentDocumentId,
+                    is_variant: true,
+                    ...relationConnects({ terms: [term] }),
+                };
+                await saveProduct('new', payload);
+                created++;
+            }
+            await loadData();
+            if (onUpdate) onUpdate();
+            setTermForms({});
+            setSuccess(`Created ${created} variant(s)`);
+        } catch (err) {
+            console.error('Bulk create failed', err);
+            setError(`Bulk create failed after ${created} variant(s)`);
+        } finally {
+            setLoading(false);
+            setBulkCreating(false);
+        }
+    }
+
+    function handleTermTypeDialogConfirm({ termType, selectedTerms }) {
+        const ttId = getEntryId(termType);
+        setTermTypes(prev => {
+            const exists = prev.some(t => getEntryId(t) === ttId);
+            if (exists) {
+                return prev.map(t => getEntryId(t) === ttId ? { ...t, terms: termType.terms || t.terms } : t);
+            }
+            return [...prev, termType];
+        });
+        setSelectedTermTypeId(ttId);
+        setShowTermTypeDialog(false);
+        loadTermTypes();
+    }
+
+    const selectedTermType = termTypes.find(t => getEntryId(t) === selectedTermTypeId);
+    const currentTerms = selectedTermType?.terms || [];
+    const creatableTerms = getCreatableTerms();
+
     // --- Render helpers ---
 
     function renderImageThumbnail(img, selected, onClick) {
@@ -964,6 +1135,188 @@ export default function ProductGalleryManager({ productId, onUpdate }) {
                     </div>
                 </div>
             )}
+
+            {/* =============== CREATE VARIANTS BY TERM TYPE =============== */}
+            <div className="card mb-3">
+                <div className="card-header d-flex justify-content-between align-items-center py-2">
+                    <h6 className="mb-0"><i className="fas fa-plus-circle me-2" />Create Variants by Term Type</h6>
+                    {selectedTermTypeId && creatableTerms.length > 0 && (
+                        <button
+                            className="btn btn-success btn-sm"
+                            type="button"
+                            onClick={handleBulkCreateVariantsByTerm}
+                            disabled={loading || bulkCreating}
+                        >
+                            <i className="fas fa-bolt me-1" />
+                            {bulkCreating ? 'Creating...' : `Create All (${creatableTerms.length})`}
+                        </button>
+                    )}
+                </div>
+                <div className="card-body">
+                    <div className="row g-2 mb-3">
+                        <div className="col-md-4">
+                            <label className="form-label small fw-bold mb-1">Term Type</label>
+                            <div className="input-group input-group-sm">
+                                <select
+                                    className="form-select form-select-sm"
+                                    value={selectedTermTypeId}
+                                    onChange={(e) => setSelectedTermTypeId(e.target.value)}
+                                >
+                                    <option value="">Choose term type...</option>
+                                    {termTypes.map(tt => (
+                                        <option key={getEntryId(tt)} value={getEntryId(tt)}>{tt.name} ({(tt.terms || []).length} terms)</option>
+                                    ))}
+                                </select>
+                                <button
+                                    className="btn btn-outline-primary"
+                                    type="button"
+                                    onClick={() => setShowTermTypeDialog(true)}
+                                    title="Browse & manage term types and terms"
+                                >
+                                    <i className="fas fa-tags" />
+                                </button>
+                            </div>
+                        </div>
+                        <div className="col-md-4">
+                            <label className="form-label small fw-bold mb-1">Base Name</label>
+                            <input
+                                className="form-control form-control-sm"
+                                value={variantBaseName}
+                                onChange={(e) => setVariantBaseName(e.target.value)}
+                                placeholder="Parent name"
+                            />
+                        </div>
+                        <div className="col-md-4">
+                            <label className="form-label small fw-bold mb-1">Naming</label>
+                            <select
+                                className="form-select form-select-sm"
+                                value={nameAffix}
+                                onChange={(e) => setNameAffix(e.target.value)}
+                            >
+                                <option value="suffix">Base Name - Term</option>
+                                <option value="prefix">Term - Base Name</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    {selectedTermTypeId && (
+                        <div className="table-responsive">
+                            <table className="table table-sm align-middle table-bordered">
+                                <thead className="table-light">
+                                    <tr>
+                                        <th>Term</th>
+                                        <th>Variant Name</th>
+                                        <th>SKU</th>
+                                        <th>Barcode</th>
+                                        <th>Selling</th>
+                                        <th>Offer</th>
+                                        <th style={{ width: '50px' }}>Active</th>
+                                        <th style={{ width: '80px' }}></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {currentTerms.map(term => {
+                                        const termId = getEntryId(term);
+                                        const alreadyExists = isTermAlreadyVariant(term);
+                                        const formValues = getTermForm(termId);
+                                        return (
+                                            <tr key={termId} className={alreadyExists ? 'table-light' : ''}>
+                                                <td>
+                                                    {term.name}
+                                                    {alreadyExists && <span className="badge bg-success ms-2">Created</span>}
+                                                </td>
+                                                <td>
+                                                    <input
+                                                        value={buildVariantName(term.name)}
+                                                        className="form-control form-control-sm bg-light"
+                                                        readOnly
+                                                        tabIndex={-1}
+                                                    />
+                                                </td>
+                                                <td>
+                                                    <input
+                                                        value={formValues.sku}
+                                                        onChange={(e) => updateTermForm(termId, 'sku', e.target.value)}
+                                                        className="form-control form-control-sm"
+                                                        placeholder="SKU"
+                                                        disabled={alreadyExists}
+                                                    />
+                                                </td>
+                                                <td>
+                                                    <input
+                                                        value={formValues.barcode}
+                                                        onChange={(e) => updateTermForm(termId, 'barcode', e.target.value)}
+                                                        className="form-control form-control-sm"
+                                                        placeholder="Barcode"
+                                                        disabled={alreadyExists}
+                                                    />
+                                                </td>
+                                                <td>
+                                                    <input
+                                                        type="number"
+                                                        step="0.01"
+                                                        value={formValues.selling_price}
+                                                        onChange={(e) => updateTermForm(termId, 'selling_price', e.target.value)}
+                                                        className="form-control form-control-sm"
+                                                        disabled={alreadyExists}
+                                                    />
+                                                </td>
+                                                <td>
+                                                    <input
+                                                        type="number"
+                                                        step="0.01"
+                                                        value={formValues.offer_price}
+                                                        onChange={(e) => updateTermForm(termId, 'offer_price', e.target.value)}
+                                                        className="form-control form-control-sm"
+                                                        disabled={alreadyExists}
+                                                    />
+                                                </td>
+                                                <td className="text-center">
+                                                    <input
+                                                        type="checkbox"
+                                                        className="form-check-input"
+                                                        checked={formValues.is_active}
+                                                        onChange={(e) => updateTermForm(termId, 'is_active', e.target.checked)}
+                                                        disabled={alreadyExists}
+                                                    />
+                                                </td>
+                                                <td>
+                                                    <button
+                                                        className="btn btn-sm btn-primary w-100"
+                                                        type="button"
+                                                        onClick={() => handleCreateVariantByTerm(term)}
+                                                        disabled={alreadyExists || loading}
+                                                    >
+                                                        {alreadyExists ? <i className="fas fa-check" /> : 'Create'}
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                    {currentTerms.length === 0 && (
+                                        <tr>
+                                            <td colSpan="8" className="text-muted text-center py-3">No terms for this term type</td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+
+                    {!selectedTermTypeId && (
+                        <div className="text-muted text-center py-3">
+                            <i className="fas fa-info-circle me-2" />Choose a term type above to see available terms for creating variants
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            <TermTypeTermDialog
+                show={showTermTypeDialog}
+                onClose={() => setShowTermTypeDialog(false)}
+                onConfirm={handleTermTypeDialogConfirm}
+                variantOnly={true}
+            />
 
             {/* =============== SUMMARY =============== */}
             {variants.length > 0 && (
