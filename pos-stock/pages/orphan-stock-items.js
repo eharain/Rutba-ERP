@@ -31,6 +31,8 @@ export default function OrphanStockItemsPage() {
     const [expandedGroups, setExpandedGroups] = useState(new Set());
     const [groupNames, setGroupNames] = useState({});
     const [applyNameToItems, setApplyNameToItems] = useState(new Set());
+    const [groupExtras, setGroupExtras] = useState({});
+    const [groupLoading, setGroupLoading] = useState({});
     const [pickerOpen, setPickerOpen] = useState(false);
     const [pickerTitle, setPickerTitle] = useState("");
     const pickerCallbackRef = useRef(null);
@@ -51,6 +53,7 @@ export default function OrphanStockItemsPage() {
     async function loadOrphans() {
         setLoading(true);
         setError("");
+        setGroupExtras({});
         try {
             const filters = {
                 product: { id: { $null: true } },
@@ -130,6 +133,64 @@ export default function OrphanStockItemsPage() {
             setError("Failed to attach product.");
         } finally {
             setBusyId(null);
+        }
+    }
+
+    function selectGroupAll(groupItems) {
+        setSelected(prev => {
+            const next = new Set(prev);
+            for (const item of groupItems) next.add(item.documentId);
+            return next;
+        });
+    }
+
+    function deselectGroupAll(groupItems) {
+        setSelected(prev => {
+            const next = new Set(prev);
+            for (const item of groupItems) next.delete(item.documentId);
+            return next;
+        });
+    }
+
+    function invertGroupSelection(groupItems) {
+        setSelected(prev => {
+            const next = new Set(prev);
+            for (const item of groupItems) {
+                if (next.has(item.documentId)) next.delete(item.documentId);
+                else next.add(item.documentId);
+            }
+            return next;
+        });
+    }
+
+    async function loadAllInGroup(groupName, groupKey) {
+        setGroupLoading(prev => ({ ...prev, [groupKey]: true }));
+        try {
+            const filters = {
+                product: { id: { $null: true } },
+                name: { $eqi: groupName },
+                ...(statusFilter ? { status: { $eq: statusFilter } } : {}),
+            };
+            if (skuFilter === "has") filters.sku = { $notNull: true };
+            else if (skuFilter === "none") filters.sku = { $null: true };
+
+            const params = {
+                filters,
+                pagination: { page: 1, pageSize: 10000 },
+                sort: [`${sortField}:${sortDir}`],
+            };
+            const res = await authApi.get("/stock-items", params);
+            setGroupExtras(prev => ({ ...prev, [groupKey]: res.data || [] }));
+            setExpandedGroups(prev => {
+                const next = new Set(prev);
+                next.add(groupKey);
+                return next;
+            });
+        } catch (e) {
+            console.error("Failed to load all items for group:", e);
+            setError("Failed to load all items for this group.");
+        } finally {
+            setGroupLoading(prev => ({ ...prev, [groupKey]: false }));
         }
     }
 
@@ -314,9 +375,19 @@ export default function OrphanStockItemsPage() {
             }
             map.get(key).items.push(item);
         }
+        for (const [key, extraItems] of Object.entries(groupExtras)) {
+            if (extraItems.length === 0) continue;
+            if (map.has(key)) {
+                map.get(key).items = extraItems;
+            } else {
+                const group = { name: extraItems[0]?.name || "", items: [...extraItems] };
+                map.set(key, group);
+                groups.push(group);
+            }
+        }
         if (duplicatesOnly) return groups.filter(g => g.items.length > 1);
         return groups;
-    }, [items, duplicatesOnly]);
+    }, [items, duplicatesOnly, groupExtras]);
 
     const hasActiveFilters = statusFilter || skuFilter || duplicatesOnly;
 
@@ -384,7 +455,7 @@ export default function OrphanStockItemsPage() {
                         onChange={e => { setPageSize(Number(e.target.value)); setPage(1); }}
                         style={{ width: 90 }}
                     >
-                        {[10, 25, 50, 100].map(s => (
+                        {[10, 25, 50, 100,150,200,250].map(s => (
                             <option key={s} value={s}>{s}</option>
                         ))}
                     </select>
@@ -458,6 +529,9 @@ export default function OrphanStockItemsPage() {
                                     if (isMulti) {
                                         const editedName = groupNames[groupKey] ?? group.name;
                                         const nameChanged = editedName !== group.name;
+                                        const allGroupSelected = group.items.every(i => selected.has(i.documentId));
+                                        const hasExtras = !!groupExtras[groupKey];
+                                        const isGroupLoading = !!groupLoading[groupKey];
                                         rows.push(
                                             <tr key={`grp-${group.name}`} className="table-warning">
                                                 <td
@@ -467,9 +541,37 @@ export default function OrphanStockItemsPage() {
                                                     onClick={() => toggleGroup(groupKey)}
                                                     style={{ cursor: "pointer" }}
                                                 >
-                                                    <span className="me-2">{isExpanded ? "▼" : "▶"}</span>
-                                                    <span className="badge bg-secondary ms-1">{group.items.length} items</span>
-                                                    {bulkProgress && <span className="text-muted ms-2 fw-normal small">{bulkProgress}</span>}
+                                                    <div className="d-flex align-items-center flex-wrap gap-1">
+                                                        <span className="me-1">{isExpanded ? "▼" : "▶"}</span>
+                                                        <span className="badge bg-secondary">{group.items.length} items</span>
+                                                        {total > items.length && !hasExtras && (
+                                                            <button
+                                                                className="btn btn-sm btn-outline-info py-0 px-1"
+                                                                onClick={e => { e.stopPropagation(); loadAllInGroup(group.name, groupKey); }}
+                                                                disabled={bulkBusy || isGroupLoading}
+                                                            >
+                                                                {isGroupLoading ? "Loading…" : "Load all"}
+                                                            </button>
+                                                        )}
+                                                        {hasExtras && <span className="badge bg-info">All loaded</span>}
+                                                        <button
+                                                            className="btn btn-sm btn-outline-secondary py-0 px-1"
+                                                            onClick={e => { e.stopPropagation(); allGroupSelected ? deselectGroupAll(group.items) : selectGroupAll(group.items); }}
+                                                            disabled={bulkBusy}
+                                                            title={allGroupSelected ? "Deselect all items in this group" : "Select all items in this group"}
+                                                        >
+                                                            {allGroupSelected ? "☐ Deselect" : "☑ Select all"}
+                                                        </button>
+                                                        <button
+                                                            className="btn btn-sm btn-outline-secondary py-0 px-1"
+                                                            onClick={e => { e.stopPropagation(); invertGroupSelection(group.items); }}
+                                                            disabled={bulkBusy}
+                                                            title="Invert selection in this group"
+                                                        >
+                                                            ⇄ Invert
+                                                        </button>
+                                                        {bulkProgress && <span className="text-muted fw-normal small">{bulkProgress}</span>}
+                                                    </div>
                                                 </td>
                                                 <td colSpan={3}>
                                                     <div className="d-flex align-items-center gap-2">
