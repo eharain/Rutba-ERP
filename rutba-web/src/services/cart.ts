@@ -1,12 +1,13 @@
 import useErrorHandler from "@/hooks/useErrorHandler";
 import { useStoreCart } from "@/store/store-cart";
-import { CartInterface } from "@/types/api/cart";
+import { CartInterface, CartTermInfo } from "@/types/api/cart";
 import useProductsService from "./products";
 
 export interface cartLocalStorage {
   productId: number | null;
   variantId: number | null;
   qty: number | null;
+  variantTerms?: CartTermInfo[];
 }
 
 export const useCartService = () => {
@@ -24,7 +25,8 @@ export const useCartService = () => {
   const addToCart = (
     productId: number | null,
     variantId: number | null,
-    qty: number
+    qty: number,
+    variantTerms?: CartTermInfo[]
   ) => {
     const cart = localStorage.getItem("cart");
 
@@ -46,9 +48,10 @@ export const useCartService = () => {
           productId: productId,
           variantId: variantId,
           qty: qty,
+          variantTerms: variantTerms,
         });
       }
-      
+
       localStorage.setItem("cart", JSON.stringify(cartData));
       setCartItem(cartData);
     } else {
@@ -57,6 +60,7 @@ export const useCartService = () => {
           productId: productId,
           variantId: variantId,
           qty: qty,
+          variantTerms: variantTerms,
         },
       ];
 
@@ -144,6 +148,14 @@ export const useCartService = () => {
           productData?.logo?.url ??
           productData?.gallery?.[0]?.url;
 
+        // Extract variant terms from populated data
+        const apiTerms: CartTermInfo[] = (productVariant?.terms || [])
+          .flatMap((t) =>
+            (t.term_types || [])
+              .filter((tt) => tt.is_variant || tt.is_public)
+              .map((tt) => ({ typeName: tt.name, termName: t.name }))
+          );
+
         return {
           id: productData?.id,
           image: variantImage ?? parentImage,
@@ -153,6 +165,7 @@ export const useCartService = () => {
           price: productVariant?.selling_price ?? productData?.selling_price,
           documentId: productData?.documentId,
           qty: item.qty,
+          variant_terms: apiTerms.length > 0 ? apiTerms : (item.variantTerms || []),
         };
       }) as CartInterface[];
     }

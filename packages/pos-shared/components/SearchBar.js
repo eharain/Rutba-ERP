@@ -1,17 +1,25 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 export default function SearchBar({ value, onChange, delay = 500 }) {
     const [internalValue, setInternalValue] = useState(value);
+    const onChangeRef = useRef(onChange);
+    const lastReportedValue = useRef(value);
 
     useEffect(() => {
+        onChangeRef.current = onChange;
+    }, [onChange]);
+
+    useEffect(() => {
+        if (internalValue === lastReportedValue.current) return;
         const handler = setTimeout(() => {
-            onChange(internalValue);
+            lastReportedValue.current = internalValue;
+            onChangeRef.current(internalValue);
         }, delay);
 
         return () => {
             clearTimeout(handler);
         };
-    }, [internalValue, delay, onChange]);
+    }, [internalValue, delay]);
 
     return (
         <input

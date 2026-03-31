@@ -10,6 +10,7 @@
       "type": "enumeration",
       "default": "InStock",
       "enum": [
+        "Received",
         "InStock",
         "Reserved",
         "Sold",

@@ -2,6 +2,7 @@ import { useCartService } from "@/services/cart";
 import NextImage from "../next-image";
 import { IMAGE_URL } from "@/static/const";
 import { currencyFormat } from "@/lib/use-currency";
+import { CartTermInfo } from "@/types/api/cart";
 
 interface CartItem {
   id?: number;
@@ -11,6 +12,7 @@ interface CartItem {
   variant_name?: string;
   price?: number;
   qty?: number | null;
+  variant_terms?: CartTermInfo[];
 }
 
 export default function CartItem({
@@ -44,7 +46,17 @@ export default function CartItem({
               {currencyFormat(cartItem.price ?? 0)}
             </p>
           </div>
-          <p className="mt-1 text-sm text-gray-500">{cartItem.variant_name}</p>
+          {cartItem.variant_terms && cartItem.variant_terms.length > 0 ? (
+            <div className="mt-1 flex flex-wrap gap-1">
+              {cartItem.variant_terms.map((t, i) => (
+                <span key={i} className="text-xs bg-slate-100 text-slate-600 rounded px-1.5 py-0.5">
+                  {t.typeName}: {t.termName}
+                </span>
+              ))}
+            </div>
+          ) : cartItem.variant_name ? (
+            <p className="mt-1 text-sm text-gray-500">{cartItem.variant_name}</p>
+          ) : null}
         </div>
         <div className="flex flex-1 items-end justify-between text-sm">
           {showAction && (

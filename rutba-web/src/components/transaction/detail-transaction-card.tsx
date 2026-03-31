@@ -4,6 +4,11 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { IMAGE_URL } from "@/static/const";
 
+interface OrderTermInfo {
+  typeName: string;
+  termName: string;
+}
+
 interface propsTransactionInterface {
   order_id: string;
   date: string;
@@ -12,6 +17,7 @@ interface propsTransactionInterface {
     qty: number;
     image?: string;
     variant_name: string;
+    variant_terms?: OrderTermInfo[];
     price: number;
   }[];
   customer: {
@@ -79,8 +85,19 @@ export default function DetailTransactionCard({
                     alt="product"
                   />
                   <div>
-                    <div className="flex flex-col gap-2">
+                    <div className="flex flex-col gap-1">
                       <p>{item.name}</p>
+                      {item.variant_terms && item.variant_terms.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {item.variant_terms.map((t, i) => (
+                            <span key={i} className="text-xs bg-slate-100 text-slate-600 rounded px-1.5 py-0.5">
+                              {t.typeName}: {t.termName}
+                            </span>
+                          ))}
+                        </div>
+                      ) : item.variant_name ? (
+                        <p className="text-xs text-slate-500">{item.variant_name}</p>
+                      ) : null}
                       <p className="opacity-50">Qty: {item.qty}</p>
                     </div>
                   </div>

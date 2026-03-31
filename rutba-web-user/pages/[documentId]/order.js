@@ -56,6 +56,7 @@ export default function OrderDetail() {
                                             <thead>
                                                 <tr>
                                                     <th>Product</th>
+                                                    <th>Variant / Options</th>
                                                     <th>Qty</th>
                                                     <th>Price</th>
                                                     <th>Subtotal</th>
@@ -64,7 +65,22 @@ export default function OrderDetail() {
                                             <tbody>
                                                 {order.items.map((item, idx) => (
                                                     <tr key={idx}>
-                                                        <td>{item.productName || item.name}</td>
+                                                        <td>{item.productName || item.product_name || item.name}</td>
+                                                        <td>
+                                                            {item.variant_terms && item.variant_terms.length > 0 ? (
+                                                                <div className="d-flex flex-wrap gap-1">
+                                                                    {item.variant_terms.map((t, i) => (
+                                                                        <span key={i} className="badge bg-light text-dark border">
+                                                                            {t.typeName}: {t.termName}
+                                                                        </span>
+                                                                    ))}
+                                                                </div>
+                                                            ) : (
+                                                                <span className="text-muted">
+                                                                    {item.variant_name || item.variant || "—"}
+                                                                </span>
+                                                            )}
+                                                        </td>
                                                         <td>{item.quantity}</td>
                                                         <td>{item.price?.toFixed(2)}</td>
                                                         <td>{(item.quantity * item.price)?.toFixed(2)}</td>
@@ -73,11 +89,103 @@ export default function OrderDetail() {
                                             </tbody>
                                         </table>
                                     )}
+
+                                    {/* Fallback: products.items from JSON structure */}
+                                    {(!order.items || order.items.length === 0) && order.products?.items?.length > 0 && (
+                                        <table className="table table-sm mt-3">
+                                            <thead>
+                                                <tr>
+                                                    <th>Product</th>
+                                                    <th>Variant / Options</th>
+                                                    <th>Qty</th>
+                                                    <th>Price</th>
+                                                    <th>Subtotal</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {order.products.items.map((item, idx) => (
+                                                    <tr key={idx}>
+                                                        <td>{item.product_name || item.name}</td>
+                                                        <td>
+                                                            {item.variant_terms && item.variant_terms.length > 0 ? (
+                                                                <div className="d-flex flex-wrap gap-1">
+                                                                    {item.variant_terms.map((t, i) => (
+                                                                        <span key={i} className="badge bg-light text-dark border">
+                                                                            {t.typeName}: {t.termName}
+                                                                        </span>
+                                                                    ))}
+                                                                </div>
+                                                            ) : (
+                                                                <span className="text-muted">
+                                                                    {item.variant_name || item.variant || "—"}
+                                                                </span>
+                                                            )}
+                                                        </td>
+                                                        <td>{item.quantity}</td>
+                                                        <td>{Number(item.price).toFixed(2)}</td>
+                                                        <td>{(item.quantity * item.price).toFixed(2)}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    )}
                                 </div>
                             </div>
+
+                            {/* Packaging / Dispatch Helper */}
+                            {((order.items && order.items.length > 0) || (order.products?.items?.length > 0)) && (
+                                <div className="card mb-3 border-info">
+                                    <div className="card-header bg-info text-white">
+                                        <i className="fas fa-box me-2"></i>Packaging &amp; Dispatch
+                                    </div>
+                                    <div className="card-body">
+                                        <p className="text-muted small mb-2">Use the details below to locate the correct items for this order.</p>
+                                        {(order.items || order.products?.items || []).map((item, idx) => (
+                                            <div key={idx} className="d-flex align-items-start gap-3 p-2 mb-2 bg-light rounded border">
+                                                <div className="fw-bold" style={{ minWidth: 30 }}>#{idx + 1}</div>
+                                                <div className="flex-grow-1">
+                                                    <div className="fw-bold">{item.product_name || item.productName || item.name}</div>
+                                                    {item.variant_terms && item.variant_terms.length > 0 ? (
+                                                        <div className="d-flex flex-wrap gap-1 mt-1">
+                                                            {item.variant_terms.map((t, i) => (
+                                                                <span key={i} className="badge bg-primary">
+                                                                    {t.typeName}: {t.termName}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    ) : (item.variant_name || item.variant) ? (
+                                                        <div className="text-muted small mt-1">Variant: {item.variant_name || item.variant}</div>
+                                                    ) : null}
+                                                </div>
+                                                <div className="text-end">
+                                                    <span className="badge bg-dark fs-6">×{item.quantity}</span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         <div className="col-md-4">
+                            {/* Customer Info */}
+                            {order.customer_contact && (
+                                <div className="card mb-3">
+                                    <div className="card-header"><strong>Customer</strong></div>
+                                    <div className="card-body">
+                                        <p className="fw-bold">{order.customer_contact.name}</p>
+                                        <p className="small">{order.customer_contact.phone_number}</p>
+                                        <p className="small">{order.customer_contact.email}</p>
+                                        <hr />
+                                        <p className="small mb-0">
+                                            {order.customer_contact.address}<br />
+                                            {order.customer_contact.city}, {order.customer_contact.state}<br />
+                                            {order.customer_contact.country} {order.customer_contact.zip_code}
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="card">
                                 <div className="card-header"><strong>Actions</strong></div>
                                 <div className="card-body d-grid gap-2">

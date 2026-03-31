@@ -6,6 +6,7 @@ import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { authApi, StraipImageUrl } from "@rutba/pos-shared/lib/api";
 import FileView from "@rutba/pos-shared/components/FileView";
 import ProductGalleryManager from "@rutba/pos-shared/components/ProductGalleryManager";
+import ProductVariantManager from "@rutba/pos-shared/components/ProductVariantManager";
 import MarkdownEditor from "@rutba/pos-shared/components/MarkdownEditor";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
 import Link from "next/link";
@@ -130,6 +131,18 @@ export default function ProductDetail() {
                                     )}
                                 </button>
                             </li>
+                            <li className="nav-item">
+                                <button
+                                    type="button"
+                                    className={`nav-link ${activeTab === "variants" ? "active" : ""}`}
+                                    onClick={() => setActiveTab("variants")}
+                                >
+                                    <i className="fas fa-layer-group me-1" /> Product &amp; Variants
+                                    {variantCount > 0 && (
+                                        <span className="badge bg-secondary ms-1">{variantCount}</span>
+                                    )}
+                                </button>
+                            </li>
                         </ul>
 
                         {/* ---- PRODUCT DETAILS TAB ---- */}
@@ -208,6 +221,14 @@ export default function ProductDetail() {
                         {/* ---- GALLERY & VARIANTS TAB ---- */}
                         {activeTab === "gallery" && (
                             <ProductGalleryManager
+                                productId={documentId}
+                                onUpdate={loadProduct}
+                            />
+                        )}
+
+                        {/* ---- PRODUCT & VARIANTS TAB ---- */}
+                        {activeTab === "variants" && (
+                            <ProductVariantManager
                                 productId={documentId}
                                 onUpdate={loadProduct}
                             />

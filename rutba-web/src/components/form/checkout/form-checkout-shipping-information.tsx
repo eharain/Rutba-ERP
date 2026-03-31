@@ -84,13 +84,16 @@ export default function FormCheckoutShippingInformation() {
     const formattedItems = cartItems.map((item) => {
       const itemQty = Number(item.qty || 1);
       const itemPrice = Number(item.price || 0);
-      
+
       return {
         quantity: itemQty,
         price: itemPrice,
         total: itemPrice * itemQty,
         product_name: item.name,
         product: item.documentId, 
+        variant: item.variant_id ? String(item.variant_id) : undefined,
+        variant_name: item.variant_name,
+        variant_terms: item.variant_terms,
       };
     });
 

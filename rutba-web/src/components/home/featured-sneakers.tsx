@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { SkeletonProduct } from "../skeleton";
 import { ErrorCard } from "../errors/error-card";
 import useProductsService from "@/services/products";
+import { getVariantTermSummary } from "@/types/api/product";
 
 export default function FeaturedSneakers() {
   const { getFeaturedSneakers } = useProductsService();
@@ -59,6 +60,7 @@ export default function FeaturedSneakers() {
               thumbnail={item.logo?.url ?? item.gallery?.[0]?.url ?? null}
               slug={item.documentId}
               variantPrice={variantPrice}
+              variantTermSummary={getVariantTermSummary(item)}
             ></ProductCard>
           </div>
         );

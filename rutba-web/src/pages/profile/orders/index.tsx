@@ -84,7 +84,7 @@ export default function Transaction() {
                         </div>
                       </div>
                     </CardHeader>
-                    <CardContent>
+                        <CardContent>
                       <div className="item-transaction">
                         <div className="flex items-center justify-between gap-5 flex-wrap">
                           <div className="flex gap-5">
@@ -96,9 +96,19 @@ export default function Transaction() {
                               alt="product"
                             />
                             <div>
-                              <div className="flex gap-2">
+                              <div className="flex flex-col gap-1">
                                 <p>{item.products.items[0]?.product_name}</p>
-                                <p className="opacity-50 w-20 text-right">
+                                {item.products.items[0]?.variant_terms &&
+                                  item.products.items[0].variant_terms.length > 0 && (
+                                  <div className="flex flex-wrap gap-1">
+                                    {item.products.items[0].variant_terms.map((t: any, i: number) => (
+                                      <span key={i} className="text-[10px] bg-slate-100 text-slate-500 rounded px-1 py-0.5">
+                                        {t.typeName}: {t.termName}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                                <p className="opacity-50 text-sm">
                                   Qty: {item.products.items[0]?.quantity}
                                 </p>
                               </div>

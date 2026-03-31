@@ -15,16 +15,24 @@ export default function useProductsService() {
   const getFeaturedSneakers = async () => {
     const req = await axios.get(BASE_URL + "product-groups", {
       params: {
-        populate: [
-          "products.gallery",
-          "products.logo",
-          "products.variants",
-          "products.brands",
-          "products.categories",
-        ],
+        populate: {
+          products: {
+            populate: {
+              gallery: true,
+              logo: true,
+              brands: true,
+              categories: true,
+              variants: {
+                populate: {
+                  terms: { populate: { term_types: true } },
+                },
+              },
+            },
+          },
+        },
       },
     });
-    
+
     return req.data.data[0].products as ProductInterface[];
   };
 
@@ -61,7 +69,17 @@ export default function useProductsService() {
           pageSize: 24,
           page,
         },
-        populate: ["gallery", "variants", "brands", "categories", "logo"],
+        populate: {
+          gallery: true,
+          logo: true,
+          brands: true,
+          categories: true,
+          variants: {
+            populate: {
+              terms: { populate: { term_types: true } },
+            },
+          },
+        },
         sort: (() => {
           if (filter?.sort === "price-low-high") {
             return ["selling_price:ASC", "name:ASC"];
@@ -134,10 +152,12 @@ export default function useProductsService() {
           logo: true,
           brands: true,
           categories: true,
+          terms: { populate: { term_types: true } },
           variants: {
             populate: {
               gallery: true,
               logo: true,
+              terms: { populate: { term_types: true } },
             },
           },
         },
@@ -166,6 +186,7 @@ export default function useProductsService() {
             populate: {
               gallery: true,
               logo: true,
+              terms: { populate: { term_types: true } },
             },
           },
         },
@@ -193,7 +214,17 @@ export default function useProductsService() {
 
     const req = await axios.get(BASE_URL + "products", {
       params: {
-        populate: ["gallery", "variants", "brands", "categories", "logo"],
+        populate: {
+          gallery: true,
+          logo: true,
+          brands: true,
+          categories: true,
+          variants: {
+            populate: {
+              terms: { populate: { term_types: true } },
+            },
+          },
+        },
         pagination: {
           limit: 5,
         },

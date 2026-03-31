@@ -6,9 +6,8 @@ import Layout from "../components/Layout";
 import ProductCard from "@rutba/pos-shared/components/ProductCard";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import PermissionCheck from "@rutba/pos-shared/components/PermissionCheck";
-import { authApi } from "@rutba/pos-shared/lib/api";
+import { authApi, StraipImageUrl } from "@rutba/pos-shared/lib/api";
 import { fetchProducts } from "@rutba/pos-shared/lib/pos";
-import StrapiImage from "@rutba/pos-shared/components/StrapiImage";
 import { ProductFilter } from "@rutba/pos-shared/components/filter/product-filter";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
 
@@ -292,7 +291,17 @@ export default function Products() {
                                                     <TableCell>
                                                         <Link href={`/${product.documentId ?? product.id}/product-edit`}><strong>{product.name}</strong></Link>
                                                     </TableCell>
-                                                    <TableCell><StrapiImage media={product.logo} format="thumbnail" /></TableCell>
+                                                    <TableCell>
+                                                        {product.logo?.url ? (
+                                                            <img
+                                                                src={StraipImageUrl(product.logo)}
+                                                                alt={product.name}
+                                                                style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 4 }}
+                                                            />
+                                                        ) : (
+                                                            <span style={{ color: '#999' }}><i className="fas fa-image"></i></span>
+                                                        )}
+                                                    </TableCell>
                                                     <TableCell>{product.barcode}</TableCell>
                                                     <TableCell>{product.sku}</TableCell>
                                                     <TableCell>{product.suppliers?.map(s => s.name)}</TableCell>
@@ -349,7 +358,17 @@ export default function Products() {
                                                                         <Link href={`/${v.documentId ?? v.id}/product-edit`}>{v.name}</Link>
                                                                     </span>
                                                                 </TableCell>
-                                                                <TableCell><StrapiImage media={v.logo} format="thumbnail" /></TableCell>
+                                                                <TableCell>
+                                                                    {v.logo?.url ? (
+                                                                        <img
+                                                                            src={StraipImageUrl(v.logo)}
+                                                                            alt={v.name}
+                                                                            style={{ width: 30, height: 30, objectFit: "cover", borderRadius: 4 }}
+                                                                        />
+                                                                    ) : (
+                                                                        <span style={{ color: '#999' }}><i className="fas fa-image" style={{ fontSize: '0.8em' }}></i></span>
+                                                                    )}
+                                                                </TableCell>
                                                                 <TableCell>{v.barcode}</TableCell>
                                                                 <TableCell>{v.sku}</TableCell>
                                                                 <TableCell>{v.suppliers?.map(s => s.name)}</TableCell>

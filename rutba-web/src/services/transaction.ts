@@ -36,7 +36,7 @@ export default function useTransactionService() {
           products: {
             populate: {
               items: {
-                fields: ['quantity', 'product_name'] 
+                fields: ['quantity', 'product_name', 'variant', 'variant_name', 'variant_terms'] 
               }
             }
           }
