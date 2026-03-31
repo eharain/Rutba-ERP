@@ -136,10 +136,15 @@ export default function OrphanStockItemsPage() {
         }
     }
 
-    function selectGroupAll(groupItems) {
+    function selectGroupAll(groupItems, groupKey) {
         setSelected(prev => {
             const next = new Set(prev);
             for (const item of groupItems) next.add(item.documentId);
+            return next;
+        });
+        setExpandedGroups(prev => {
+            const next = new Set(prev);
+            next.add(groupKey);
             return next;
         });
     }
@@ -152,13 +157,18 @@ export default function OrphanStockItemsPage() {
         });
     }
 
-    function invertGroupSelection(groupItems) {
+    function invertGroupSelection(groupItems, groupKey) {
         setSelected(prev => {
             const next = new Set(prev);
             for (const item of groupItems) {
                 if (next.has(item.documentId)) next.delete(item.documentId);
                 else next.add(item.documentId);
             }
+            return next;
+        });
+        setExpandedGroups(prev => {
+            const next = new Set(prev);
+            next.add(groupKey);
             return next;
         });
     }
@@ -203,15 +213,16 @@ export default function OrphanStockItemsPage() {
     }
 
     function toggleSelectAll() {
-        if (selected.size === items.length) {
+        const all = allVisibleItems;
+        if (selected.size === all.length) {
             setSelected(new Set());
         } else {
-            setSelected(new Set(items.map(i => i.documentId)));
+            setSelected(new Set(all.map(i => i.documentId)));
         }
     }
 
     async function handleBulkCreateProducts() {
-        const selectedItems = items.filter(i => selected.has(i.documentId));
+        const selectedItems = allVisibleItems.filter(i => selected.has(i.documentId));
         if (selectedItems.length === 0) return;
         setBulkBusy(true);
         setError("");
@@ -251,7 +262,7 @@ export default function OrphanStockItemsPage() {
 
     async function handleBulkAttachProduct(productDocId) {
         if (!productDocId) return;
-        const selectedItems = items.filter(i => selected.has(i.documentId));
+        const selectedItems = allVisibleItems.filter(i => selected.has(i.documentId));
         if (selectedItems.length === 0) return;
         setBulkBusy(true);
         setError("");
@@ -389,6 +400,8 @@ export default function OrphanStockItemsPage() {
         return groups;
     }, [items, duplicatesOnly, groupExtras]);
 
+    const allVisibleItems = useMemo(() => groupedItems.flatMap(g => g.items), [groupedItems]);
+
     const hasActiveFilters = statusFilter || skuFilter || duplicatesOnly;
 
     const totalPages = Math.ceil(total / pageSize) || 1;
@@ -506,7 +519,7 @@ export default function OrphanStockItemsPage() {
                                         <input
                                             type="checkbox"
                                             className="form-check-input"
-                                            checked={items.length > 0 && selected.size === items.length}
+                                            checked={allVisibleItems.length > 0 && selected.size === allVisibleItems.length}
                                             onChange={toggleSelectAll}
                                             disabled={bulkBusy}
                                         />
@@ -556,7 +569,7 @@ export default function OrphanStockItemsPage() {
                                                         {hasExtras && <span className="badge bg-info">All loaded</span>}
                                                         <button
                                                             className="btn btn-sm btn-outline-secondary py-0 px-1"
-                                                            onClick={e => { e.stopPropagation(); allGroupSelected ? deselectGroupAll(group.items) : selectGroupAll(group.items); }}
+                                                            onClick={e => { e.stopPropagation(); allGroupSelected ? deselectGroupAll(group.items) : selectGroupAll(group.items, groupKey); }}
                                                             disabled={bulkBusy}
                                                             title={allGroupSelected ? "Deselect all items in this group" : "Select all items in this group"}
                                                         >
@@ -564,7 +577,7 @@ export default function OrphanStockItemsPage() {
                                                         </button>
                                                         <button
                                                             className="btn btn-sm btn-outline-secondary py-0 px-1"
-                                                            onClick={e => { e.stopPropagation(); invertGroupSelection(group.items); }}
+                                                            onClick={e => { e.stopPropagation(); invertGroupSelection(group.items, groupKey); }}
                                                             disabled={bulkBusy}
                                                             title="Invert selection in this group"
                                                         >
