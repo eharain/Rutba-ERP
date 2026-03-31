@@ -7,6 +7,7 @@ import { ChevronLeft, ChevronRight, Search } from "lucide-react";
 import ReactPaginate from "react-paginate";
 import { buttonVariants } from "../ui/button";
 import useProductsService from "@/services/products";
+import { getVariantTermSummary } from "@/types/api/product";
 
 export default function ProductListItem() {
   const router = useRouter();
@@ -103,6 +104,7 @@ export default function ProductListItem() {
                 thumbnail={item.logo?.url ?? item.gallery?.[0]?.url ?? null}
                 slug={item.documentId}
                 variantPrice={variantPrice}
+                variantTermSummary={getVariantTermSummary(item)}
               ></ProductCard>
             </div>
           );

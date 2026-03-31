@@ -9,35 +9,52 @@ import { ProductFilter } from "@rutba/pos-shared/components/filter/product-filte
 import { fetchProducts } from "@rutba/pos-shared/lib/pos";
 import Link from "next/link";
 
+const PAGE_SIZE = 25;
+
 export default function Products() {
     const router = useRouter();
     const { jwt } = useAuth();
     const { currency } = useUtil();
+
+    // --- product list results ---
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [page, setPage] = useState(1);
-    const [pageSize] = useState(25);
     const [pageCount, setPageCount] = useState(1);
     const [total, setTotal] = useState(0);
 
+    // --- lookup data (fetched once) ---
     const [brands, setBrands] = useState([]);
     const [categories, setCategories] = useState([]);
     const [suppliers, setSuppliers] = useState([]);
     const [termTypes, setTermTypes] = useState([]);
     const [purchases, setPurchases] = useState([]);
-    const [selectedBrand, setSelectedBrand] = useState("");
-    const [selectedCategory, setSelectedCategory] = useState("");
-    const [selectedSupplier, setSelectedSupplier] = useState("");
-    const [selectedTerm, setSelectedTerm] = useState("");
-    const [selectedPurchase, setSelectedPurchase] = useState("");
-    const [searchText, setSearchText] = useState("");
-    const [filters, setFilters] = useState({ parentOnly: true, status: "draft" });
-    const [filtersInitialized, setFiltersInitialized] = useState(false);
 
+    // --- variant expansion ---
     const [expandedProducts, setExpandedProducts] = useState({});
     const [variantsMap, setVariantsMap] = useState({});
     const [loadingVariants, setLoadingVariants] = useState({});
 
+    // --- derive ALL filter & page state from the URL ---
+    const qVal = (v) => (Array.isArray(v) ? v[0] : v) || "";
+    const selectedBrand = qVal(router.query.brands);
+    const selectedCategory = qVal(router.query.categories);
+    const selectedSupplier = qVal(router.query.suppliers);
+    const selectedTerm = qVal(router.query.terms);
+    const selectedPurchase = qVal(router.query.purchases);
+    const searchText = qVal(router.query.searchText);
+    const page = parseInt(router.query.page, 10) || 1;
+
+    // helper: merge params into the current URL (falsy values are removed)
+    const updateQuery = useCallback((params) => {
+        const merged = { ...router.query, ...params };
+        const cleaned = {};
+        for (const [k, v] of Object.entries(merged)) {
+            if (v != null && v !== "" && v !== undefined) cleaned[k] = String(v);
+        }
+        router.push({ pathname: router.pathname, query: cleaned }, undefined, { shallow: true });
+    }, [router]);
+
+    // fetch lookup data once
     useEffect(() => {
         Promise.all([
             authApi.getAll("/brands"),
@@ -54,69 +71,38 @@ export default function Products() {
         });
     }, []);
 
+    // single effect: fetch products whenever URL params or jwt change
     useEffect(() => {
-        if (!router.isReady || filtersInitialized) return;
-        const getQueryValue = (v) => (Array.isArray(v) ? v[0] : v);
-        const q = router.query;
-        if (q.brands) setSelectedBrand(getQueryValue(q.brands));
-        if (q.categories) setSelectedCategory(getQueryValue(q.categories));
-        if (q.suppliers) setSelectedSupplier(getQueryValue(q.suppliers));
-        if (q.terms) setSelectedTerm(getQueryValue(q.terms));
-        if (q.purchases) setSelectedPurchase(getQueryValue(q.purchases));
-        if (q.searchText) setSearchText(getQueryValue(q.searchText));
-        setFiltersInitialized(true);
-    }, [router.isReady, router.query, filtersInitialized]);
+        if (!router.isReady || !jwt) return;
 
-    useEffect(() => {
-        if (!filtersInitialized) return;
-        const updatedFilters = {
-            brands: [selectedBrand].filter(Boolean),
-            categories: [selectedCategory].filter(Boolean),
-            suppliers: [selectedSupplier].filter(Boolean),
-            terms: [selectedTerm].filter(Boolean),
-            purchases: [selectedPurchase].filter(Boolean),
-            searchText,
-            parentOnly: true,
-            status: "draft",
-        };
-        const query = {};
-        if (selectedBrand) query.brands = selectedBrand;
-        if (selectedCategory) query.categories = selectedCategory;
-        if (selectedSupplier) query.suppliers = selectedSupplier;
-        if (selectedTerm) query.terms = selectedTerm;
-        if (selectedPurchase) query.purchases = selectedPurchase;
-        if (searchText) query.searchText = searchText;
-        router.replace({ pathname: router.pathname, query }, undefined, { shallow: true });
+        const filters = { parentOnly: true, status: "draft", searchText };
+        if (selectedBrand) filters.brands = [selectedBrand];
+        if (selectedCategory) filters.categories = [selectedCategory];
+        if (selectedSupplier) filters.suppliers = [selectedSupplier];
+        if (selectedTerm) filters.terms = [selectedTerm];
+        if (selectedPurchase) filters.purchases = [selectedPurchase];
 
-        for (const [key, value] of Object.entries(updatedFilters)) {
-            if (Array.isArray(value) && value.length === 0) {
-                delete updatedFilters[key];
-            }
-        }
-        setFilters(updatedFilters);
-        setPage(1);
-    }, [selectedBrand, selectedCategory, selectedSupplier, selectedTerm, selectedPurchase, searchText, filtersInitialized]);
-
-    const loadProducts = useCallback(async () => {
-        if (!jwt || !filtersInitialized) return;
+        let cancelled = false;
         setLoading(true);
-        try {
-            const [productRes, pubRes] = await Promise.all([
-                fetchProducts(filters, page, pageSize, "createdAt:desc"),
-                authApi.get("/products", { status: 'published', fields: ["documentId"], pagination: { pageSize: 500 } }),
-            ]);
+
+        Promise.all([
+            fetchProducts(filters, page, PAGE_SIZE, "createdAt:desc"),
+            authApi.get("/products", { status: 'published', fields: ["documentId"], pagination: { pageSize: 500 } }),
+        ]).then(([productRes, pubRes]) => {
+            if (cancelled) return;
             const pubIds = new Set((pubRes.data || []).map(p => p.documentId));
             setProducts((productRes.data || []).map(p => ({ ...p, _isPublished: pubIds.has(p.documentId) })));
             setPageCount(productRes.meta?.pagination?.pageCount ?? 1);
             setTotal(productRes.meta?.pagination?.total ?? 0);
-        } catch (err) {
+        }).catch(err => {
+            if (cancelled) return;
             console.error("Failed to load products", err);
-        } finally {
-            setLoading(false);
-        }
-    }, [jwt, page, filters, filtersInitialized]);
+        }).finally(() => {
+            if (!cancelled) setLoading(false);
+        });
 
-    useEffect(() => { loadProducts(); }, [loadProducts]);
+        return () => { cancelled = true; };
+    }, [router.isReady, jwt, page, selectedBrand, selectedCategory, selectedSupplier, selectedTerm, selectedPurchase, searchText]);
 
     const toggleVariants = async (product) => {
         const docId = product.documentId;
@@ -172,12 +158,12 @@ export default function Products() {
                     selectedTerm={selectedTerm}
                     selectedPurchase={selectedPurchase}
                     searchText={searchText}
-                    onBrandChange={(v) => { setSelectedBrand(v); setPage(1); }}
-                    onCategoryChange={(v) => { setSelectedCategory(v); setPage(1); }}
-                    onSupplierChange={(v) => { setSelectedSupplier(v); setPage(1); }}
-                    onTermChange={(v) => { setSelectedTerm(v); setPage(1); }}
-                    onPurchaseChange={(v) => { setSelectedPurchase(v); setPage(1); }}
-                    onSearchTextChange={(v) => { setSearchText(v); setPage(1); }}
+                    onBrandChange={(v) => updateQuery({ brands: v || undefined, page: undefined })}
+                    onCategoryChange={(v) => updateQuery({ categories: v || undefined, page: undefined })}
+                    onSupplierChange={(v) => updateQuery({ suppliers: v || undefined, page: undefined })}
+                    onTermChange={(v) => updateQuery({ terms: v || undefined, page: undefined })}
+                    onPurchaseChange={(v) => updateQuery({ purchases: v || undefined, page: undefined })}
+                    onSearchTextChange={(v) => updateQuery({ searchText: v || undefined, page: undefined })}
                 />
 
                 <div className="d-flex align-items-center justify-content-between my-2">
@@ -205,7 +191,7 @@ export default function Products() {
                                     <th>Brands</th>
                                     <th>Purchase #</th>
                                     <th>Published</th>
-                                    <th></th>
+                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -316,7 +302,7 @@ export default function Products() {
                         <ul className="pagination pagination-sm">
                             {Array.from({ length: pageCount }, (_, i) => (
                                 <li key={i + 1} className={`page-item ${page === i + 1 ? "active" : ""}`}>
-                                    <button className="page-link" onClick={() => setPage(i + 1)}>{i + 1}</button>
+                                    <button className="page-link" onClick={() => updateQuery({ page: i + 1 > 1 ? i + 1 : undefined })}>{i + 1}</button>
                                 </li>
                             ))}
                         </ul>

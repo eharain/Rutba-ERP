@@ -12,7 +12,21 @@ import FileView from '@rutba/pos-shared/components/FileView';
 // Replaced local MultiSelect with PrimeReact MultiSelect
 import { MultiSelect } from 'primereact/multiselect';
 
-
+/**
+ * Generate a short barcode prefix from a product name.
+ * Single word  → word uppercased (e.g. "Bracelet" → "BRACELET")
+ * Multi-word   → first letter of each significant word (e.g. "Gold Plated Ring" → "GPR")
+ */
+function generateSmartPrefix(name) {
+    if (!name) return '';
+    const stopWords = new Set(['the', 'a', 'an', 'of', 'in', 'on', 'at', 'to', 'for', 'and', 'or', 'with', 'is', 'it']);
+    const words = name.trim().split(/\s+/).filter(w => w.length > 0);
+    if (words.length === 0) return '';
+    if (words.length === 1) return words[0].toUpperCase();
+    const significant = words.filter(w => !stopWords.has(w.toLowerCase()));
+    const picked = significant.length > 0 ? significant : words;
+    return picked.map(w => w[0].toUpperCase()).join('');
+}
 
 export default function EditProduct() {
     const router = useRouter();
@@ -109,7 +123,26 @@ export default function EditProduct() {
                     const productData = await loadProduct(documentId);
                     setProductId(productData.id);
                     setProduct(productData);
-                    setBarcodePrefix(productData.barcode || '');
+
+                    // Smart barcode prefix: product barcode or abbreviation from name
+                    const smartPrefix = productData.barcode || generateSmartPrefix(productData.name);
+                    setBarcodePrefix(smartPrefix);
+
+                    // Override with most recent stock item's barcode prefix if available
+                    try {
+                        const res = await authApi.get('/stock-items', {
+                            filters: { product: { documentId } },
+                            sort: ['createdAt:desc'],
+                            pagination: { pageSize: 5 },
+                            fields: ['barcode'],
+                        });
+                        const items = res?.data || [];
+                        const recentWithBarcode = items.find(item => item.barcode);
+                        if (recentWithBarcode?.barcode) {
+                            const match = recentWithBarcode.barcode.match(/^(.+)-\d{2,}$/);
+                            if (match) setBarcodePrefix(match[1]);
+                        }
+                    } catch (e) { /* keep smart prefix */ }
                 } else {
                     // ensure arrays exist for new product
                     setProduct(p => ({ ...p, categories: [], brands: [], suppliers: [] }));
@@ -1189,7 +1222,7 @@ export default function EditProduct() {
                                                     value={barcodePrefix}
                                                     onChange={(e) => setBarcodePrefix(e.target.value)}
                                                     style={{ width: '180px', padding: '6px 10px', border: '1px solid #ccc', borderRadius: '4px', fontFamily: 'monospace' }}
-                                                    placeholder={product.barcode || 'e.g. 123456'}
+                                                    placeholder={product.barcode || generateSmartPrefix(product.name) || 'e.g. ABC'}
                                                 />
                                             </div>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>

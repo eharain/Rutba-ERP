@@ -6,6 +6,7 @@ import ProtectedRoute from '@rutba/pos-shared/components/ProtectedRoute';
 import { authApi, relationConnects } from '@rutba/pos-shared/lib/api';
 import { saveProduct } from '@rutba/pos-shared/lib/pos/save';
 import ProductGalleryManager from '@rutba/pos-shared/components/ProductGalleryManager';
+import ProductVariantManager from '@rutba/pos-shared/components/ProductVariantManager';
 import TermTypeTermDialog from '@rutba/pos-shared/components/TermTypeTermDialog';
 
 function getEntryId(entry) {
@@ -534,6 +535,19 @@ export default function ProductVariantsPage() {
                                     </table>
                                 </div>
                             )}
+                        </div>
+                    </div>
+
+                    {/* Product & Variant Terms */}
+                    <div className="card mb-3">
+                        <div className="card-header py-2">
+                            <h6 className="mb-0"><i className="fas fa-tags me-2" />Product &amp; Variant Terms</h6>
+                        </div>
+                        <div className="card-body">
+                            <ProductVariantManager
+                                productId={documentId}
+                                onUpdate={() => loadProductDetails(documentId)}
+                            />
                         </div>
                     </div>
 

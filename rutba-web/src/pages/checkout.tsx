@@ -115,6 +115,7 @@ export default function CheckoutPage() {
                         variant_name: item.variant_name,
                         price: item.price,
                         qty: getQuantity(item?.id, item?.variant_id),
+                        variant_terms: item.variant_terms,
                       }}
                     ></CartItem>
                   </div>

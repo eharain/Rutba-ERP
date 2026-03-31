@@ -1,3 +1,8 @@
+export interface CartTermInfo {
+  typeName: string;
+  termName: string;
+}
+
 export interface CartInterface {
   id: number;
   image: string;
@@ -11,4 +16,5 @@ export interface CartInterface {
   weight: number;
   qty: number;
   documentId: string;
+  variant_terms?: CartTermInfo[];
 }

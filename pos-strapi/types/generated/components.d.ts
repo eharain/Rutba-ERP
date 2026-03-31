@@ -80,6 +80,7 @@ export interface PosStockStatusHistory extends Struct.ComponentSchema {
     selling_price: Schema.Attribute.Decimal;
     status: Schema.Attribute.Enumeration<
       [
+        'Received',
         'InStock',
         'Reserved',
         'Sold',

@@ -21,12 +21,12 @@ export default function Orders() {
     return (
         <ProtectedRoute>
             <Layout>
-                <h2 className="mb-3">My Orders</h2>
+                <h2 className="mb-3">Orders</h2>
 
                 {loading && <p>Loading orders...</p>}
 
                 {!loading && orders.length === 0 && (
-                    <div className="alert alert-info">You have no orders yet.</div>
+                    <div className="alert alert-info">No orders yet.</div>
                 )}
 
                 {!loading && orders.length > 0 && (
@@ -36,29 +36,53 @@ export default function Orders() {
                                 <tr>
                                     <th>Order #</th>
                                     <th>Date</th>
+                                    <th>Items</th>
                                     <th>Status</th>
                                     <th>Total</th>
                                     <th></th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {orders.map((order) => (
-                                    <tr key={order.id}>
-                                        <td>{order.orderNumber || order.id}</td>
-                                        <td>{new Date(order.createdAt).toLocaleDateString()}</td>
-                                        <td>
-                                            <span className={`badge bg-${statusColor(order.status)}`}>
-                                                {order.status || "Pending"}
-                                            </span>
-                                        </td>
-                                        <td>{order.total != null ? order.total.toFixed(2) : "—"}</td>
-                                        <td>
-                                            <Link className="btn btn-sm btn-outline-primary" href={`/${order.documentId || order.id}/order`}>
-                                                View
-                                            </Link>
-                                        </td>
-                                    </tr>
-                                ))}
+                                {orders.map((order) => {
+                                    const items = order.items || order.products?.items || [];
+                                    return (
+                                        <tr key={order.id}>
+                                            <td>{order.orderNumber || order.order_id || order.id}</td>
+                                            <td>{new Date(order.createdAt).toLocaleDateString()}</td>
+                                            <td>
+                                                {items.slice(0, 2).map((item, idx) => (
+                                                    <div key={idx} className="small mb-1">
+                                                        <span className="fw-bold">{item.product_name || item.productName || item.name}</span>
+                                                        {item.variant_terms && item.variant_terms.length > 0 && (
+                                                            <span className="ms-1">
+                                                                {item.variant_terms.map((t, i) => (
+                                                                    <span key={i} className="badge bg-light text-dark border me-1" style={{ fontSize: '0.65rem' }}>
+                                                                        {t.typeName}: {t.termName}
+                                                                    </span>
+                                                                ))}
+                                                            </span>
+                                                        )}
+                                                        <span className="text-muted ms-1">×{item.quantity}</span>
+                                                    </div>
+                                                ))}
+                                                {items.length > 2 && (
+                                                    <span className="text-muted small">+{items.length - 2} more</span>
+                                                )}
+                                            </td>
+                                            <td>
+                                                <span className={`badge bg-${statusColor(order.status || order.payment_status)}`}>
+                                                    {order.status || order.payment_status || "Pending"}
+                                                </span>
+                                            </td>
+                                            <td>{order.total != null ? Number(order.total).toFixed(2) : "—"}</td>
+                                            <td>
+                                                <Link className="btn btn-sm btn-outline-primary" href={`/${order.documentId || order.id}/order`}>
+                                                    View
+                                                </Link>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
                         </table>
                     </div>

@@ -4,6 +4,7 @@ import { CategoryInterface } from "@/types/api/category";
 import { IMAGE_URL } from "@/static/const";
 import { BrandInterface } from "@/types/api/brand";
 import { currencyFormat } from "@/lib/use-currency";
+import { VariantTermSummary } from "@/types/api/product";
 
 export interface ProductCardInterface {
   name: string;
@@ -12,6 +13,7 @@ export interface ProductCardInterface {
   thumbnail: string | null;
   variantPrice: number[];
   slug: string;
+  variantTermSummary?: VariantTermSummary[];
 }
 
 export default function ProductCard({
@@ -21,6 +23,7 @@ export default function ProductCard({
   thumbnail,
   variantPrice,
   slug,
+  variantTermSummary,
 }: ProductCardInterface) {
   const getCheapestPrice = () => {
     if (variantPrice.length <= 0) {
@@ -66,6 +69,19 @@ export default function ProductCard({
             <p className="text-sm"> - {currencyFormat(getHighestPrice())}</p>
           )}
         </div>
+
+        {variantTermSummary && variantTermSummary.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-1">
+            {variantTermSummary.map((s) => (
+              <span
+                key={s.typeName}
+                className="text-[10px] text-slate-500 bg-slate-100 rounded px-1.5 py-0.5"
+              >
+                {s.typeName}: {s.termNames.join(", ")}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
     </Link>
   );

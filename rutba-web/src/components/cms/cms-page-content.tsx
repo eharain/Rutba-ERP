@@ -13,7 +13,7 @@ import "swiper/css/pagination";
 
 import { IMAGE_URL } from "@/static/const";
 import { CmsPageDetailInterface } from "@/types/api/cms-page";
-import { ProductInterface } from "@/types/api/product";
+import { ProductInterface, getVariantTermSummary } from "@/types/api/product";
 import { BrandInterface } from "@/types/api/brand";
 
 marked.use({ breaks: true, gfm: true });
@@ -335,6 +335,7 @@ function ProductGrid({ products }: { products: ProductInterface[] }) {
               thumbnail={item.gallery?.[0]?.url ?? null}
               slug={item.documentId}
               variantPrice={variantPrice}
+              variantTermSummary={getVariantTermSummary(item)}
             />
           </div>
         );
