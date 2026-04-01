@@ -296,11 +296,20 @@ export default function ProductGroupDetail() {
                                             {filteredProducts.map(p => {
                                                 const selected = selectedProductIds.includes(p.documentId);
                                                 return (
-                                                    <button key={p.documentId} type="button" className={`btn btn-sm ${selected ? "btn-success" : "btn-outline-secondary"}`} onClick={() => toggleProduct(p.documentId)}>
-                                                        {selected && <i className="fas fa-check me-1"></i>}
-                                                        {p.logo?.url && <img src={StraipImageUrl(p.logo)} alt="" style={{ width: 16, height: 16, objectFit: "contain", marginRight: 4 }} />}
-                                                        {p.name}
-                                                    </button>
+                                                    <div key={p.documentId} className="d-inline-flex align-items-center gap-1">
+                                                        <button type="button" className={`btn btn-sm ${selected ? "btn-success" : "btn-outline-secondary"}`} onClick={() => toggleProduct(p.documentId)}>
+                                                            {selected && <i className="fas fa-check me-1"></i>}
+                                                            {p.logo?.url && <img src={StraipImageUrl(p.logo)} alt="" style={{ width: 16, height: 16, objectFit: "contain", marginRight: 4 }} />}
+                                                            {p.name}
+                                                        </button>
+                                                        <Link
+                                                            href={`/${p.documentId}/product`}
+                                                            className="btn btn-sm btn-outline-primary"
+                                                            title="Open product"
+                                                        >
+                                                            <i className="fas fa-external-link-alt"></i>
+                                                        </Link>
+                                                    </div>
                                                 );
                                             })}
                                         </div>

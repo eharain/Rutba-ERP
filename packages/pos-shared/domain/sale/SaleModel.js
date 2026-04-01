@@ -20,7 +20,8 @@ function resolveReturnItemProductName(ri) {
 }
 
 export default class SaleModel {
-    constructor({
+    constructor(data = {}) {
+        const {
         id = null,
         documentId = null,
         invoice_no = null,
@@ -35,7 +36,7 @@ export default class SaleModel {
         items = [],
         payments = [],
 
-    }) {
+        } = data || {};
         this.id = id;
         this.documentId = documentId;
         this.invoice_no = invoice_no || generateNextInvoiceNumber();

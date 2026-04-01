@@ -29,6 +29,13 @@ export default function ProductDetail() {
     const [sellingPrice, setSellingPrice] = useState("");
     const [offerPrice, setOfferPrice] = useState("");
     const [isActive, setIsActive] = useState(true);
+    const [allGroups, setAllGroups] = useState([]);
+    const [selectedGroupIds, setSelectedGroupIds] = useState([]);
+    const [groupsLoading, setGroupsLoading] = useState(false);
+    const [groupBusyId, setGroupBusyId] = useState("");
+    const [creatingGroup, setCreatingGroup] = useState(false);
+    const [newGroupName, setNewGroupName] = useState("");
+    const [newGroupTitle, setNewGroupTitle] = useState("");
 
     const loadProduct = useCallback(async () => {
         if (!jwt || !documentId) return;
@@ -60,6 +67,31 @@ export default function ProductDetail() {
 
     useEffect(() => { loadProduct(); }, [loadProduct]);
 
+    const loadProductGroups = useCallback(async () => {
+        if (!jwt || !documentId) return;
+        setGroupsLoading(true);
+        try {
+            const res = await authApi.get("/product-groups", {
+                status: "draft",
+                sort: ["name:asc"],
+                pagination: { pageSize: 500 },
+                populate: ["products"],
+            });
+            const groups = res.data || [];
+            setAllGroups(groups);
+            const selected = groups
+                .filter(g => (g.products || []).some(p => p.documentId === documentId))
+                .map(g => g.documentId);
+            setSelectedGroupIds(selected);
+        } catch (err) {
+            console.error("Failed to load product groups", err);
+        } finally {
+            setGroupsLoading(false);
+        }
+    }, [jwt, documentId]);
+
+    useEffect(() => { loadProductGroups(); }, [loadProductGroups]);
+
     const handleSave = async () => {
         setSaving(true);
         try {
@@ -78,6 +110,73 @@ export default function ProductDetail() {
             toast("Failed to save changes.", "danger");
         } finally {
             setSaving(false);
+        }
+    };
+
+    const toggleGroup = async (groupDocId) => {
+        const group = allGroups.find(g => g.documentId === groupDocId);
+        if (!group) return;
+
+        const currentIds = (group.products || []).map(p => p.documentId);
+        const isSelected = currentIds.includes(documentId);
+        const nextIds = isSelected
+            ? currentIds.filter(id => id !== documentId)
+            : [...currentIds, documentId];
+
+        setGroupBusyId(groupDocId);
+        try {
+            await authApi.put(`/product-groups/${groupDocId}?status=draft`, {
+                data: { products: { set: nextIds } },
+            });
+            setAllGroups(prev => prev.map(g =>
+                g.documentId === groupDocId
+                    ? {
+                        ...g,
+                        products: isSelected
+                            ? (g.products || []).filter(p => p.documentId !== documentId)
+                            : [...(g.products || []), { documentId }],
+                    }
+                    : g
+            ));
+            setSelectedGroupIds(prev =>
+                isSelected ? prev.filter(id => id !== groupDocId) : [...prev, groupDocId]
+            );
+            toast(isSelected ? "Removed from group." : "Added to group.", "success");
+        } catch (err) {
+            console.error("Failed to update product group relation", err);
+            toast("Failed to update product group.", "danger");
+        } finally {
+            setGroupBusyId("");
+        }
+    };
+
+    const handleCreateGroup = async () => {
+        const trimmedName = newGroupName.trim();
+        if (!trimmedName) {
+            toast("Enter a group name.", "warning");
+            return;
+        }
+
+        setCreatingGroup(true);
+        try {
+            const generatedSlug = trimmedName.toLowerCase().trim().replace(/\s+/g, "-");
+            await authApi.post("/product-groups", {
+                data: {
+                    name: trimmedName,
+                    title: newGroupTitle.trim() || undefined,
+                    slug: generatedSlug,
+                    products: { set: [documentId] },
+                },
+            });
+            setNewGroupName("");
+            setNewGroupTitle("");
+            toast("New group created and linked.", "success");
+            await loadProductGroups();
+        } catch (err) {
+            console.error("Failed to create product group", err);
+            toast("Failed to create product group.", "danger");
+        } finally {
+            setCreatingGroup(false);
         }
     };
 
@@ -212,6 +311,78 @@ export default function ProductDetail() {
                                             <p><strong>Categories:</strong> {(product.categories || []).map(c => c.name).join(", ") || "—"}</p>
                                             <p><strong>Brands:</strong> {(product.brands || []).map(b => b.name).join(", ") || "—"}</p>
                                             <p><strong>Stock:</strong> {product.stock_quantity ?? "—"}</p>
+                                        </div>
+                                    </div>
+                                    <div className="card mb-3">
+                                        <div className="card-header d-flex align-items-center justify-content-between">
+                                            <span>Product Groups</span>
+                                            <Link href="/product-groups" className="btn btn-sm btn-outline-secondary">
+                                                Manage
+                                            </Link>
+                                        </div>
+                                        <div className="card-body">
+                                            <div className="mb-2 small text-muted">
+                                                Select existing groups or quickly create a new one.
+                                            </div>
+
+                                            <div className="mb-3">
+                                                <input
+                                                    type="text"
+                                                    className="form-control form-control-sm mb-2"
+                                                    placeholder="New group name"
+                                                    value={newGroupName}
+                                                    onChange={e => setNewGroupName(e.target.value)}
+                                                />
+                                                <div className="d-flex gap-2">
+                                                    <input
+                                                        type="text"
+                                                        className="form-control form-control-sm"
+                                                        placeholder="Title (optional)"
+                                                        value={newGroupTitle}
+                                                        onChange={e => setNewGroupTitle(e.target.value)}
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-sm btn-primary"
+                                                        onClick={handleCreateGroup}
+                                                        disabled={creatingGroup}
+                                                    >
+                                                        {creatingGroup ? "Creating…" : "Create"}
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            {groupsLoading && <p className="text-muted small mb-0">Loading groups...</p>}
+
+                                            {!groupsLoading && allGroups.length === 0 && (
+                                                <p className="text-muted small mb-0">No product groups yet.</p>
+                                            )}
+
+                                            {!groupsLoading && allGroups.length > 0 && (
+                                                <div className="d-flex flex-column gap-2" style={{ maxHeight: 220, overflowY: "auto" }}>
+                                                    {allGroups.map(g => {
+                                                        const checked = selectedGroupIds.includes(g.documentId);
+                                                        const busy = groupBusyId === g.documentId;
+                                                        return (
+                                                            <div key={g.documentId} className="d-flex align-items-center justify-content-between border rounded px-2 py-1">
+                                                                <label className="form-check d-flex align-items-center gap-2 mb-0">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        className="form-check-input"
+                                                                        checked={checked}
+                                                                        onChange={() => toggleGroup(g.documentId)}
+                                                                        disabled={busy}
+                                                                    />
+                                                                    <span className="small">{g.name}</span>
+                                                                </label>
+                                                                <Link className="btn btn-sm btn-outline-primary" href={`/${g.documentId}/product-group`}>
+                                                                    Open
+                                                                </Link>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
