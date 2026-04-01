@@ -315,7 +315,10 @@ export default function ProductDetail() {
                                     </div>
                                     <div className="card mb-3">
                                         <div className="card-header d-flex align-items-center justify-content-between">
-                                            <span>Product Groups</span>
+                                            <div className="d-flex align-items-center">
+                                                <span>Product Groups</span>
+                                                <span className="badge bg-primary ms-2">{selectedGroupIds.length}</span>
+                                            </div>
                                             <Link href="/product-groups" className="btn btn-sm btn-outline-secondary">
                                                 Manage
                                             </Link>
@@ -359,24 +362,23 @@ export default function ProductDetail() {
                                             )}
 
                                             {!groupsLoading && allGroups.length > 0 && (
-                                                <div className="d-flex flex-column gap-2" style={{ maxHeight: 220, overflowY: "auto" }}>
+                                                <div className="d-flex flex-wrap gap-2" style={{ maxHeight: 240, overflowY: "auto" }}>
                                                     {allGroups.map(g => {
-                                                        const checked = selectedGroupIds.includes(g.documentId);
+                                                        const selected = selectedGroupIds.includes(g.documentId);
                                                         const busy = groupBusyId === g.documentId;
                                                         return (
-                                                            <div key={g.documentId} className="d-flex align-items-center justify-content-between border rounded px-2 py-1">
-                                                                <label className="form-check d-flex align-items-center gap-2 mb-0">
-                                                                    <input
-                                                                        type="checkbox"
-                                                                        className="form-check-input"
-                                                                        checked={checked}
-                                                                        onChange={() => toggleGroup(g.documentId)}
-                                                                        disabled={busy}
-                                                                    />
-                                                                    <span className="small">{g.name}</span>
-                                                                </label>
-                                                                <Link className="btn btn-sm btn-outline-primary" href={`/${g.documentId}/product-group`}>
-                                                                    Open
+                                                            <div key={g.documentId} className="d-inline-flex align-items-center gap-1">
+                                                                <button
+                                                                    type="button"
+                                                                    className={`btn btn-sm ${selected ? "btn-success" : "btn-outline-secondary"}`}
+                                                                    onClick={() => toggleGroup(g.documentId)}
+                                                                    disabled={busy}
+                                                                >
+                                                                    {selected && <i className="fas fa-check me-1"></i>}
+                                                                    {g.name}
+                                                                </button>
+                                                                <Link className="btn btn-sm btn-outline-primary" href={`/${g.documentId}/product-group`} title="Open group">
+                                                                    <i className="fas fa-external-link-alt"></i>
                                                                 </Link>
                                                             </div>
                                                         );

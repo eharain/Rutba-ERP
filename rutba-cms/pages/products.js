@@ -9,7 +9,8 @@ import { ProductFilter } from "@rutba/pos-shared/components/filter/product-filte
 import { fetchProducts } from "@rutba/pos-shared/lib/pos";
 import Link from "next/link";
 
-const PAGE_SIZE = 25;
+const DEFAULT_PAGE_SIZE = 25;
+const PAGE_SIZE_OPTIONS = [5, 10, 25, 50, 100, 150, 200];
 
 export default function Products() {
     const router = useRouter();
@@ -43,6 +44,7 @@ export default function Products() {
     const selectedPurchase = qVal(router.query.purchases);
     const searchText = qVal(router.query.searchText);
     const page = parseInt(router.query.page, 10) || 1;
+    const pageSize = parseInt(router.query.pageSize, 10) || DEFAULT_PAGE_SIZE;
 
     // helper: merge params into the current URL (falsy values are removed)
     const updateQuery = useCallback((params) => {
@@ -86,7 +88,7 @@ export default function Products() {
         setLoading(true);
 
         Promise.all([
-            fetchProducts(filters, page, PAGE_SIZE, "createdAt:desc"),
+            fetchProducts(filters, page, pageSize, "createdAt:desc"),
             authApi.get("/products", { status: 'published', fields: ["documentId"], pagination: { pageSize: 500 } }),
         ]).then(([productRes, pubRes]) => {
             if (cancelled) return;
@@ -102,7 +104,18 @@ export default function Products() {
         });
 
         return () => { cancelled = true; };
-    }, [router.isReady, jwt, page, selectedBrand, selectedCategory, selectedSupplier, selectedTerm, selectedPurchase, searchText]);
+    }, [router.isReady, jwt, page, pageSize, selectedBrand, selectedCategory, selectedSupplier, selectedTerm, selectedPurchase, searchText]);
+
+    const fromItem = total === 0 ? 0 : (page - 1) * pageSize + 1;
+    const toItem = Math.min(page * pageSize, total);
+    const [goToPage, setGoToPage] = useState("");
+
+    const paginationItems = (() => {
+        if (pageCount <= 7) return Array.from({ length: pageCount }, (_, i) => i + 1);
+        if (page <= 4) return [1, 2, 3, 4, 5, "…", pageCount];
+        if (page >= pageCount - 3) return [1, "…", pageCount - 4, pageCount - 3, pageCount - 2, pageCount - 1, pageCount];
+        return [1, "…", page - 1, page, page + 1, "…", pageCount];
+    })();
 
     const toggleVariants = async (product) => {
         const docId = product.documentId;
@@ -167,7 +180,20 @@ export default function Products() {
                 />
 
                 <div className="d-flex align-items-center justify-content-between my-2">
-                    <small className="text-muted">{total} products found</small>
+                    <small className="text-muted">{total} products found{total > 0 ? ` · Showing ${fromItem}-${toItem}` : ""}</small>
+                    <div className="d-flex align-items-center gap-2">
+                        <label className="small text-muted mb-0">Rows:</label>
+                        <select
+                            className="form-select form-select-sm"
+                            style={{ width: 90 }}
+                            value={pageSize}
+                            onChange={(e) => updateQuery({ pageSize: e.target.value, page: undefined })}
+                        >
+                            {PAGE_SIZE_OPTIONS.map((size) => (
+                                <option key={size} value={size}>{size}</option>
+                            ))}
+                        </select>
+                    </div>
                 </div>
 
                 {loading && <p>Loading products...</p>}
@@ -298,14 +324,66 @@ export default function Products() {
                 )}
 
                 {pageCount > 1 && (
-                    <nav>
-                        <ul className="pagination pagination-sm">
-                            {Array.from({ length: pageCount }, (_, i) => (
-                                <li key={i + 1} className={`page-item ${page === i + 1 ? "active" : ""}`}>
-                                    <button className="page-link" onClick={() => updateQuery({ page: i + 1 > 1 ? i + 1 : undefined })}>{i + 1}</button>
-                                </li>
-                            ))}
-                        </ul>
+                    <nav className="d-flex align-items-center justify-content-between">
+                        <div>
+                            <button
+                                className="btn btn-sm btn-outline-secondary me-1"
+                                disabled={page <= 1}
+                                onClick={() => updateQuery({ page: page - 1 > 1 ? page - 1 : undefined })}
+                            >
+                                &laquo; Prev
+                            </button>
+                            <button
+                                className="btn btn-sm btn-outline-secondary"
+                                disabled={page >= pageCount}
+                                onClick={() => updateQuery({ page: page + 1 })}
+                            >
+                                Next &raquo;
+                            </button>
+                        </div>
+                        <div className="d-flex align-items-center gap-2">
+                            <ul className="pagination pagination-sm mb-0">
+                                {paginationItems.map((item, idx) => (
+                                    typeof item === "number" ? (
+                                        <li key={item} className={`page-item ${page === item ? "active" : ""}`}>
+                                            <button className="page-link" onClick={() => updateQuery({ page: item > 1 ? item : undefined })}>{item}</button>
+                                        </li>
+                                    ) : (
+                                        <li key={`ellipsis-${idx}`} className="page-item disabled">
+                                            <span className="page-link">…</span>
+                                        </li>
+                                    )
+                                ))}
+                            </ul>
+                            <div className="d-flex align-items-center gap-1">
+                                <span className="small text-muted">Go to</span>
+                                <input
+                                    type="number"
+                                    min={1}
+                                    max={pageCount}
+                                    className="form-control form-control-sm"
+                                    style={{ width: 80 }}
+                                    value={goToPage}
+                                    onChange={(e) => setGoToPage(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key !== "Enter") return;
+                                        const target = Math.max(1, Math.min(pageCount, parseInt(goToPage, 10) || 1));
+                                        updateQuery({ page: target > 1 ? target : undefined });
+                                        setGoToPage("");
+                                    }}
+                                />
+                                <button
+                                    className="btn btn-sm btn-outline-secondary"
+                                    onClick={() => {
+                                        const target = Math.max(1, Math.min(pageCount, parseInt(goToPage, 10) || 1));
+                                        updateQuery({ page: target > 1 ? target : undefined });
+                                        setGoToPage("");
+                                    }}
+                                >
+                                    Go
+                                </button>
+                            </div>
+                        </div>
                     </nav>
                 )}
             </Layout>

@@ -8,6 +8,11 @@ import FileView from "@rutba/pos-shared/components/FileView";
 import MarkdownEditor from "@rutba/pos-shared/components/MarkdownEditor";
 import Link from "next/link";
 import { useToast } from "../../components/Toast";
+import { ProductFilter } from "@rutba/pos-shared/components/filter/product-filter";
+import { fetchProducts } from "@rutba/pos-shared/lib/pos";
+
+const DEFAULT_PAGE_SIZE = 25;
+const PAGE_SIZE_OPTIONS = [5, 10, 25, 50, 100, 150, 200];
 
 export default function ProductGroupDetail() {
     const router = useRouter();
@@ -27,13 +32,27 @@ export default function ProductGroupDetail() {
     const [content, setContent] = useState("");
     const [selectedProductIds, setSelectedProductIds] = useState([]);
 
-    // Product listing state
-    const [allProducts, setAllProducts] = useState([]);
-    const [productSearch, setProductSearch] = useState("");
-    const [allBrands, setAllBrands] = useState([]);
-    const [allCategories, setAllCategories] = useState([]);
-    const [filterBrand, setFilterBrand] = useState("");
-    const [filterCategory, setFilterCategory] = useState("");
+    // Product picker state
+    const [pickerProducts, setPickerProducts] = useState([]);
+    const [pickerLoading, setPickerLoading] = useState(false);
+    const [pickerPage, setPickerPage] = useState(1);
+    const [pickerPageSize, setPickerPageSize] = useState(DEFAULT_PAGE_SIZE);
+    const [pickerPageCount, setPickerPageCount] = useState(1);
+    const [pickerTotal, setPickerTotal] = useState(0);
+    const [goToPage, setGoToPage] = useState("");
+
+    const [brands, setBrands] = useState([]);
+    const [categories, setCategories] = useState([]);
+    const [suppliers, setSuppliers] = useState([]);
+    const [termTypes, setTermTypes] = useState([]);
+    const [purchases, setPurchases] = useState([]);
+
+    const [selectedBrand, setSelectedBrand] = useState("");
+    const [selectedCategory, setSelectedCategory] = useState("");
+    const [selectedSupplier, setSelectedSupplier] = useState("");
+    const [selectedTerm, setSelectedTerm] = useState("");
+    const [selectedPurchase, setSelectedPurchase] = useState("");
+    const [searchText, setSearchText] = useState("");
 
     useEffect(() => {
         if (!jwt || !documentId || isNew) { setLoading(false); return; }
@@ -59,14 +78,18 @@ export default function ProductGroupDetail() {
     const loadPickerData = useCallback(async () => {
         if (!jwt) return;
         try {
-            const [productsRes, brandsRes, categoriesRes] = await Promise.all([
-                authApi.get("/products", { status: 'draft', pagination: { pageSize: 500 }, sort: ["name:asc"], populate: ["logo", "brands", "categories"] }),
-                authApi.get("/brands", { status: 'draft', pagination: { pageSize: 200 }, sort: ["name:asc"] }),
-                authApi.get("/categories", { status: 'draft', pagination: { pageSize: 200 }, sort: ["name:asc"] }),
+            const [brandsRes, categoriesRes, suppliersRes, termTypesRes, purchasesRes] = await Promise.all([
+                authApi.getAll("/brands"),
+                authApi.getAll("/categories"),
+                authApi.getAll("/suppliers"),
+                authApi.getAll("/term-types", { populate: ["terms"] }),
+                authApi.getAll("/purchases", { sort: ["createdAt:desc"] }),
             ]);
-            setAllProducts(productsRes.data || []);
-            setAllBrands(brandsRes.data || []);
-            setAllCategories(categoriesRes.data || []);
+            setBrands(brandsRes?.data || brandsRes || []);
+            setCategories(categoriesRes?.data || categoriesRes || []);
+            setSuppliers(suppliersRes?.data || suppliersRes || []);
+            setTermTypes(termTypesRes?.data || termTypesRes || []);
+            setPurchases(purchasesRes?.data || purchasesRes || []);
         } catch (err) {
             console.error("Failed to load picker data", err);
         }
@@ -74,18 +97,51 @@ export default function ProductGroupDetail() {
 
     useEffect(() => { loadPickerData(); }, [loadPickerData]);
 
+    useEffect(() => {
+        if (!jwt) return;
+
+        const filters = { parentOnly: true, status: "draft", searchText };
+        if (selectedBrand) filters.brands = [selectedBrand];
+        if (selectedCategory) filters.categories = [selectedCategory];
+        if (selectedSupplier) filters.suppliers = [selectedSupplier];
+        if (selectedTerm) filters.terms = [selectedTerm];
+        if (selectedPurchase) filters.purchases = [selectedPurchase];
+
+        let cancelled = false;
+        setPickerLoading(true);
+
+        fetchProducts(filters, pickerPage, pickerPageSize, "createdAt:desc")
+            .then((res) => {
+                if (cancelled) return;
+                setPickerProducts(res.data || []);
+                setPickerPageCount(res.meta?.pagination?.pageCount ?? 1);
+                setPickerTotal(res.meta?.pagination?.total ?? 0);
+            })
+            .catch((err) => {
+                if (cancelled) return;
+                console.error("Failed to load filtered products", err);
+            })
+            .finally(() => {
+                if (!cancelled) setPickerLoading(false);
+            });
+
+        return () => { cancelled = true; };
+    }, [jwt, pickerPage, pickerPageSize, selectedBrand, selectedCategory, selectedSupplier, selectedTerm, selectedPurchase, searchText]);
+
+    const pickerFromItem = pickerTotal === 0 ? 0 : (pickerPage - 1) * pickerPageSize + 1;
+    const pickerToItem = Math.min(pickerPage * pickerPageSize, pickerTotal);
+    const pickerPaginationItems = (() => {
+        if (pickerPageCount <= 7) return Array.from({ length: pickerPageCount }, (_, i) => i + 1);
+        if (pickerPage <= 4) return [1, 2, 3, 4, 5, "…", pickerPageCount];
+        if (pickerPage >= pickerPageCount - 3) return [1, "…", pickerPageCount - 4, pickerPageCount - 3, pickerPageCount - 2, pickerPageCount - 1, pickerPageCount];
+        return [1, "…", pickerPage - 1, pickerPage, pickerPage + 1, "…", pickerPageCount];
+    })();
+
     const toggleProduct = (docId) => {
         setSelectedProductIds(prev =>
             prev.includes(docId) ? prev.filter(id => id !== docId) : [...prev, docId]
         );
     };
-
-    const filteredProducts = allProducts.filter(p => {
-        if (productSearch && !p.name.toLowerCase().includes(productSearch.toLowerCase())) return false;
-        if (filterBrand && !(p.brands || []).some(b => b.documentId === filterBrand)) return false;
-        if (filterCategory && !(p.categories || []).some(c => c.documentId === filterCategory)) return false;
-        return true;
-    });
 
     const handleSave = async () => {
         setSaving(true);
@@ -272,28 +328,50 @@ export default function ProductGroupDetail() {
                                     <span className="badge bg-primary ms-2">{selectedProductIds.length}</span>
                                 </div>
                                 <div className="card-body">
-                                    <div className="row g-2 mb-3">
-                                        <div className="col-md-4">
-                                            <input type="text" className="form-control form-control-sm" placeholder="Search products…" value={productSearch} onChange={e => setProductSearch(e.target.value)} />
-                                        </div>
-                                        <div className="col-md-4">
-                                            <select className="form-select form-select-sm" value={filterBrand} onChange={e => setFilterBrand(e.target.value)}>
-                                                <option value="">All Brands</option>
-                                                {allBrands.map(b => <option key={b.documentId} value={b.documentId}>{b.name}</option>)}
-                                            </select>
-                                        </div>
-                                        <div className="col-md-4">
-                                            <select className="form-select form-select-sm" value={filterCategory} onChange={e => setFilterCategory(e.target.value)}>
-                                                <option value="">All Categories</option>
-                                                {allCategories.map(c => <option key={c.documentId} value={c.documentId}>{c.name}</option>)}
+                                    <ProductFilter
+                                        brands={brands}
+                                        categories={categories}
+                                        suppliers={suppliers}
+                                        termTypes={termTypes}
+                                        purchases={purchases}
+                                        selectedBrand={selectedBrand}
+                                        selectedCategory={selectedCategory}
+                                        selectedSupplier={selectedSupplier}
+                                        selectedTerm={selectedTerm}
+                                        selectedPurchase={selectedPurchase}
+                                        searchText={searchText}
+                                        onBrandChange={(v) => { setSelectedBrand(v || ""); setPickerPage(1); }}
+                                        onCategoryChange={(v) => { setSelectedCategory(v || ""); setPickerPage(1); }}
+                                        onSupplierChange={(v) => { setSelectedSupplier(v || ""); setPickerPage(1); }}
+                                        onTermChange={(v) => { setSelectedTerm(v || ""); setPickerPage(1); }}
+                                        onPurchaseChange={(v) => { setSelectedPurchase(v || ""); setPickerPage(1); }}
+                                        onSearchTextChange={(v) => { setSearchText(v || ""); setPickerPage(1); }}
+                                    />
+
+                                    <div className="d-flex align-items-center justify-content-between my-2">
+                                        <small className="text-muted">{pickerTotal} products found{pickerTotal > 0 ? ` · Showing ${pickerFromItem}-${pickerToItem}` : ""}</small>
+                                        <div className="d-flex align-items-center gap-2">
+                                            <label className="small text-muted mb-0">Rows:</label>
+                                            <select
+                                                className="form-select form-select-sm"
+                                                style={{ width: 90 }}
+                                                value={pickerPageSize}
+                                                onChange={(e) => { setPickerPageSize(parseInt(e.target.value, 10)); setPickerPage(1); }}
+                                            >
+                                                {PAGE_SIZE_OPTIONS.map((size) => (
+                                                    <option key={size} value={size}>{size}</option>
+                                                ))}
                                             </select>
                                         </div>
                                     </div>
-                                    {filteredProducts.length === 0 ? (
+
+                                    {pickerLoading && <p className="text-muted small">Loading products...</p>}
+
+                                    {!pickerLoading && pickerProducts.length === 0 ? (
                                         <p className="text-muted small">No products match the filters.</p>
                                     ) : (
                                         <div className="d-flex flex-wrap gap-2">
-                                            {filteredProducts.map(p => {
+                                            {pickerProducts.map(p => {
                                                 const selected = selectedProductIds.includes(p.documentId);
                                                 return (
                                                     <div key={p.documentId} className="d-inline-flex align-items-center gap-1">
@@ -313,6 +391,70 @@ export default function ProductGroupDetail() {
                                                 );
                                             })}
                                         </div>
+                                    )}
+
+                                    {pickerPageCount > 1 && (
+                                        <nav className="mt-3 d-flex align-items-center justify-content-between">
+                                            <div>
+                                                <button
+                                                    className="btn btn-sm btn-outline-secondary me-1"
+                                                    disabled={pickerPage <= 1}
+                                                    onClick={() => setPickerPage(p => Math.max(1, p - 1))}
+                                                >
+                                                    &laquo; Prev
+                                                </button>
+                                                <button
+                                                    className="btn btn-sm btn-outline-secondary"
+                                                    disabled={pickerPage >= pickerPageCount}
+                                                    onClick={() => setPickerPage(p => Math.min(pickerPageCount, p + 1))}
+                                                >
+                                                    Next &raquo;
+                                                </button>
+                                            </div>
+                                            <div className="d-flex align-items-center gap-2">
+                                                <ul className="pagination pagination-sm mb-0">
+                                                    {pickerPaginationItems.map((item, idx) => (
+                                                        typeof item === "number" ? (
+                                                            <li key={item} className={`page-item ${pickerPage === item ? "active" : ""}`}>
+                                                                <button className="page-link" onClick={() => setPickerPage(item)}>{item}</button>
+                                                            </li>
+                                                        ) : (
+                                                            <li key={`ellipsis-${idx}`} className="page-item disabled">
+                                                                <span className="page-link">…</span>
+                                                            </li>
+                                                        )
+                                                    ))}
+                                                </ul>
+                                                <div className="d-flex align-items-center gap-1">
+                                                    <span className="small text-muted">Go to</span>
+                                                    <input
+                                                        type="number"
+                                                        min={1}
+                                                        max={pickerPageCount}
+                                                        className="form-control form-control-sm"
+                                                        style={{ width: 80 }}
+                                                        value={goToPage}
+                                                        onChange={(e) => setGoToPage(e.target.value)}
+                                                        onKeyDown={(e) => {
+                                                            if (e.key !== "Enter") return;
+                                                            const target = Math.max(1, Math.min(pickerPageCount, parseInt(goToPage, 10) || 1));
+                                                            setPickerPage(target);
+                                                            setGoToPage("");
+                                                        }}
+                                                    />
+                                                    <button
+                                                        className="btn btn-sm btn-outline-secondary"
+                                                        onClick={() => {
+                                                            const target = Math.max(1, Math.min(pickerPageCount, parseInt(goToPage, 10) || 1));
+                                                            setPickerPage(target);
+                                                            setGoToPage("");
+                                                        }}
+                                                    >
+                                                        Go
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </nav>
                                     )}
                                 </div>
                             </div>
