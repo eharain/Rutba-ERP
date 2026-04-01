@@ -378,21 +378,21 @@ export default function OrphanStockItemsPage() {
         const groups = [];
         const map = new Map();
         for (const item of items) {
-            const key = (item.name || "").toLowerCase();
+            const key = (item.name || "").trim().toLowerCase();
             if (!map.has(key)) {
-                const group = { name: item.name || "", items: [] };
+                const group = { key, name: item.name || "", items: [] };
                 map.set(key, group);
                 groups.push(group);
             }
             map.get(key).items.push(item);
         }
-        for (const [key, extraItems] of Object.entries(groupExtras)) {
+        for (const [extraKey, extraItems] of Object.entries(groupExtras)) {
             if (extraItems.length === 0) continue;
-            if (map.has(key)) {
-                map.get(key).items = extraItems;
+            if (map.has(extraKey)) {
+                map.get(extraKey).items = extraItems;
             } else {
-                const group = { name: extraItems[0]?.name || "", items: [...extraItems] };
-                map.set(key, group);
+                const group = { key: extraKey, name: extraItems[0]?.name || "", items: [...extraItems] };
+                map.set(extraKey, group);
                 groups.push(group);
             }
         }
@@ -534,7 +534,7 @@ export default function OrphanStockItemsPage() {
                             </thead>
                             <tbody>
                                 {groupedItems.flatMap(group => {
-                                    const groupKey = group.name.toLowerCase();
+                                    const groupKey = group.key;
                                     const isMulti = group.items.length > 1;
                                     const isExpanded = expandedGroups.has(groupKey);
                                     const rows = [];
@@ -546,7 +546,7 @@ export default function OrphanStockItemsPage() {
                                         const hasExtras = !!groupExtras[groupKey];
                                         const isGroupLoading = !!groupLoading[groupKey];
                                         rows.push(
-                                            <tr key={`grp-${group.name}`} className="table-warning">
+                                            <tr key={`grp-${groupKey}`} className="table-warning">
                                                 <td
                                                     colSpan={2}
                                                     className="fw-bold"
