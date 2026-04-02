@@ -566,118 +566,113 @@ export default function OrphanStockItemsPage() {
                                     const groupKey = group.key;
                                     const groupCount = group.groupCount || group.items.length;
                                     const isMulti = groupCount > 1;
-                                    const isExpanded = isMulti ? expandedGroups.has(groupKey) : true;
+                                    const isExpanded = expandedGroups.has(groupKey);
                                     const rows = [];
 
-                                    const editedName = groupNames[groupKey] ?? group.name;
-                                    const nameChanged = editedName !== group.name;
-                                    const allGroupSelected = group.items.every(i => selected.has(i.documentId));
-                                    const hasExtras = !!groupExtras[groupKey];
-                                    const isGroupLoading = !!groupLoading[groupKey];
-                                    const groupFullyLoaded = !isMulti || hasExtras || group.items.length >= groupCount;
-
-                                    rows.push(
-                                        <tr key={`grp-${groupKey}`} className={isMulti ? "table-warning" : "table-light"}>
-                                            <td
-                                                colSpan={2}
-                                                className="fw-bold"
-                                                role={isMulti ? "button" : undefined}
-                                                onClick={isMulti ? () => toggleGroup(groupKey) : undefined}
-                                                style={isMulti ? { cursor: "pointer" } : undefined}
-                                            >
-                                                <div className="d-flex align-items-center flex-wrap gap-1">
-                                                    {isMulti && <span className="me-1">{isExpanded ? "▼" : "▶"}</span>}
-                                                    <span className={`badge ${isMulti ? "bg-secondary" : "bg-light text-dark border"}`}>
-                                                        {groupCount} item{groupCount !== 1 ? "s" : ""}
-                                                    </span>
-                                                    {isMulti && groupCount > group.items.length && !hasExtras && (
+                                    if (isMulti) {
+                                        const editedName = groupNames[groupKey] ?? group.name;
+                                        const nameChanged = editedName !== group.name;
+                                        const allGroupSelected = group.items.every(i => selected.has(i.documentId));
+                                        const hasExtras = !!groupExtras[groupKey];
+                                        const isGroupLoading = !!groupLoading[groupKey];
+                                        const groupFullyLoaded = hasExtras || group.items.length >= groupCount;
+                                        rows.push(
+                                            <tr key={`grp-${groupKey}`} className="table-warning">
+                                                <td
+                                                    colSpan={2}
+                                                    className="fw-bold"
+                                                    role="button"
+                                                    onClick={() => toggleGroup(groupKey)}
+                                                    style={{ cursor: "pointer" }}
+                                                >
+                                                    <div className="d-flex align-items-center flex-wrap gap-1">
+                                                        <span className="me-1">{isExpanded ? "▼" : "▶"}</span>
+                                                        <span className="badge bg-secondary">{groupCount} items</span>
+                                                        {groupCount > group.items.length && !hasExtras && (
+                                                            <button
+                                                                className="btn btn-sm btn-outline-info py-0 px-1"
+                                                                onClick={e => { e.stopPropagation(); loadAllInGroup(group); }}
+                                                                disabled={bulkBusy || isGroupLoading}
+                                                            >
+                                                                {isGroupLoading ? "Loading…" : "Load all"}
+                                                            </button>
+                                                        )}
+                                                        {hasExtras && <span className="badge bg-info">All loaded</span>}
                                                         <button
-                                                            className="btn btn-sm btn-outline-info py-0 px-1"
-                                                            onClick={e => { e.stopPropagation(); loadAllInGroup(group); }}
-                                                            disabled={bulkBusy || isGroupLoading}
+                                                            className="btn btn-sm btn-outline-secondary py-0 px-1"
+                                                            onClick={e => { e.stopPropagation(); allGroupSelected ? deselectGroupAll(group.items) : selectGroupAll(group.items, groupKey); }}
+                                                            disabled={bulkBusy || !groupFullyLoaded}
+                                                            title={groupFullyLoaded ? (allGroupSelected ? "Deselect all items in this group" : "Select all items in this group") : "Load all items first"}
                                                         >
-                                                            {isGroupLoading ? "Loading…" : "Load all"}
+                                                            {allGroupSelected ? "☐ Deselect" : "☑ Select all"}
                                                         </button>
-                                                    )}
-                                                    {isMulti && hasExtras && <span className="badge bg-info">All loaded</span>}
-                                                    {isMulti && (
-                                                        <>
-                                                            <button
-                                                                className="btn btn-sm btn-outline-secondary py-0 px-1"
-                                                                onClick={e => { e.stopPropagation(); allGroupSelected ? deselectGroupAll(group.items) : selectGroupAll(group.items, groupKey); }}
-                                                                disabled={bulkBusy || !groupFullyLoaded}
-                                                                title={groupFullyLoaded ? (allGroupSelected ? "Deselect all items in this group" : "Select all items in this group") : "Load all items first"}
-                                                            >
-                                                                {allGroupSelected ? "☐ Deselect" : "☑ Select all"}
-                                                            </button>
-                                                            <button
-                                                                className="btn btn-sm btn-outline-secondary py-0 px-1"
-                                                                onClick={e => { e.stopPropagation(); invertGroupSelection(group.items, groupKey); }}
-                                                                disabled={bulkBusy || !groupFullyLoaded}
-                                                                title={groupFullyLoaded ? "Invert selection in this group" : "Load all items first"}
-                                                            >
-                                                                ⇄ Invert
-                                                            </button>
-                                                        </>
-                                                    )}
-                                                    {bulkProgress && <span className="text-muted fw-normal small">{bulkProgress}</span>}
-                                                </div>
-                                            </td>
-                                            <td colSpan={3}>
-                                                <div className="d-flex align-items-center gap-2">
-                                                    <input
-                                                        type="text"
-                                                        className={`form-control form-control-sm${nameChanged ? " border-primary" : ""}`}
-                                                        value={editedName}
-                                                        onChange={e => setGroupNames(prev => ({ ...prev, [groupKey]: e.target.value }))}
-                                                        onClick={e => e.stopPropagation()}
-                                                        disabled={bulkBusy}
-                                                        placeholder="Product name"
-                                                    />
-                                                    {nameChanged && (
-                                                        <div className="form-check text-nowrap" onClick={e => e.stopPropagation()}>
-                                                            <input
-                                                                type="checkbox"
-                                                                className="form-check-input"
-                                                                id={`apply-${groupKey}`}
-                                                                checked={applyNameToItems.has(groupKey)}
-                                                                onChange={e => setApplyNameToItems(prev => {
-                                                                    const next = new Set(prev);
-                                                                    if (e.target.checked) next.add(groupKey); else next.delete(groupKey);
-                                                                    return next;
-                                                                })}
-                                                                disabled={bulkBusy}
-                                                            />
-                                                            <label className="form-check-label small" htmlFor={`apply-${groupKey}`}>Rename items</label>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </td>
-                                            <td colSpan={2} className="text-end">
-                                                <button
-                                                    className="btn btn-sm btn-outline-primary me-2"
-                                                    onClick={() => handleGroupCreateProduct(group.items, groupKey)}
-                                                    disabled={bulkBusy || !groupFullyLoaded}
-                                                    title={groupFullyLoaded ? "" : "Load all items first"}
-                                                >
-                                                    {bulkBusy ? "Working..." : "Create Product & Link All"}
-                                                </button>
-                                                <button
-                                                    className="btn btn-sm btn-outline-secondary"
-                                                    onClick={() => openProductPicker(
-                                                        `Attach ${group.items.length} items to…`,
-                                                        (docId) => handleGroupAttachProduct(group.items, docId)
-                                                    )}
-                                                    disabled={bulkBusy || !groupFullyLoaded}
-                                                    title={groupFullyLoaded ? "" : "Load all items first"}
-                                                >
-                                                    Attach all to…
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    );
+                                                        <button
+                                                            className="btn btn-sm btn-outline-secondary py-0 px-1"
+                                                            onClick={e => { e.stopPropagation(); invertGroupSelection(group.items, groupKey); }}
+                                                            disabled={bulkBusy || !groupFullyLoaded}
+                                                            title={groupFullyLoaded ? "Invert selection in this group" : "Load all items first"}
+                                                        >
+                                                            ⇄ Invert
+                                                        </button>
+                                                        {bulkProgress && <span className="text-muted fw-normal small">{bulkProgress}</span>}
+                                                    </div>
+                                                </td>
+                                                <td colSpan={3}>
+                                                    <div className="d-flex align-items-center gap-2">
+                                                        <input
+                                                            type="text"
+                                                            className={`form-control form-control-sm${nameChanged ? " border-primary" : ""}`}
+                                                            value={editedName}
+                                                            onChange={e => setGroupNames(prev => ({ ...prev, [groupKey]: e.target.value }))}
+                                                            onClick={e => e.stopPropagation()}
+                                                            disabled={bulkBusy}
+                                                            placeholder="Product name"
+                                                        />
+                                                        {nameChanged && (
+                                                            <div className="form-check text-nowrap" onClick={e => e.stopPropagation()}>
+                                                                <input
+                                                                    type="checkbox"
+                                                                    className="form-check-input"
+                                                                    id={`apply-${groupKey}`}
+                                                                    checked={applyNameToItems.has(groupKey)}
+                                                                    onChange={e => setApplyNameToItems(prev => {
+                                                                        const next = new Set(prev);
+                                                                        if (e.target.checked) next.add(groupKey); else next.delete(groupKey);
+                                                                        return next;
+                                                                    })}
+                                                                    disabled={bulkBusy}
+                                                                />
+                                                                <label className="form-check-label small" htmlFor={`apply-${groupKey}`}>Rename items</label>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                                <td colSpan={2} className="text-end">
+                                                    <button
+                                                        className="btn btn-sm btn-outline-primary me-2"
+                                                        onClick={() => handleGroupCreateProduct(group.items, groupKey)}
+                                                        disabled={bulkBusy || !groupFullyLoaded}
+                                                        title={groupFullyLoaded ? "" : "Load all items first"}
+                                                    >
+                                                        {bulkBusy ? "Working..." : "Create Product & Link All"}
+                                                    </button>
+                                                    <button
+                                                        className="btn btn-sm btn-outline-secondary"
+                                                        onClick={() => openProductPicker(
+                                                            `Attach ${group.items.length} items to…`,
+                                                            (docId) => handleGroupAttachProduct(group.items, docId)
+                                                        )}
+                                                        disabled={bulkBusy || !groupFullyLoaded}
+                                                        title={groupFullyLoaded ? "" : "Load all items first"}
+                                                    >
+                                                        Attach all to…
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        );
+                                    }
 
-                                    if (isExpanded) {
+                                    if (!isMulti || isExpanded) {
                                         group.items.forEach(item => {
                                             const isBusy = busyId === item.documentId;
                                             const isSelected = selected.has(item.documentId);
@@ -685,10 +680,10 @@ export default function OrphanStockItemsPage() {
                                                 <tr
                                                     key={item.documentId}
                                                     className={isSelected ? "table-active" : ""}
-                                                    style={{
-                                                        backgroundColor: isSelected ? undefined : (isMulti ? "#fdf2d0" : "#f8f9fa"),
-                                                        borderLeft: isMulti ? "4px solid #f0ad4e" : "4px solid #dee2e6",
-                                                    }}
+                                                    style={isMulti ? {
+                                                        backgroundColor: isSelected ? undefined : "#fdf2d0",
+                                                        borderLeft: "4px solid #f0ad4e",
+                                                    } : undefined}
                                                 >
                                                     <td>
                                                         <input
