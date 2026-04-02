@@ -55,21 +55,26 @@ export default function OrphanStockItemsPage() {
         setError("");
         setGroupExtras({});
         try {
-            const filters = {
-                product: { id: { $null: true } },
-                ...(search ? { name: { $containsi: search } } : {}),
-                ...(statusFilter ? { status: { $eq: statusFilter } } : {}),
-            };
-            if (skuFilter === "has") filters.sku = { $notNull: true };
-            else if (skuFilter === "none") filters.sku = { $null: true };
-
             const params = {
-                filters,
-                pagination: { page, pageSize },
-                sort: [`${sortField}:${sortDir}`, ...(sortField !== "name" ? ["name:asc"] : [])],
+                page,
+                pageSize,
+                search,
+                statusFilter,
+                skuFilter,
+                sortField,
+                sortDir,
             };
-            const res = await authApi.get("/stock-items", params);
-            setItems(res.data || []);
+            const res = await authApi.get("/stock-items/orphan-groups", params);
+            const groups = res.data || [];
+            const sampleItems = groups
+                .map(g => ({
+                    ...(g.sample || {}),
+                    __groupName: g.name,
+                    __groupSellingPrice: g.selling_price,
+                    __groupCount: g.count || 0,
+                }))
+                .filter(i => i.documentId);
+            setItems(sampleItems);
             setTotal(res.meta?.pagination?.total || 0);
         } catch (e) {
             console.error("Failed to load orphan stock items:", e);
@@ -173,24 +178,31 @@ export default function OrphanStockItemsPage() {
         });
     }
 
-    async function loadAllInGroup(groupName, groupKey) {
+    function makeGroupKey(name, sellingPrice) {
+        const normalizedName = String(name ?? "").toLowerCase();
+        const normalizedSellingPrice = sellingPrice == null ? "__null__" : String(sellingPrice);
+        return `${normalizedName}__${normalizedSellingPrice}`;
+    }
+
+    async function loadAllInGroup(group) {
+        const groupKey = group.key;
         setGroupLoading(prev => ({ ...prev, [groupKey]: true }));
         try {
-            const filters = {
-                product: { id: { $null: true } },
-                name: { $eqi: groupName },
-                ...(statusFilter ? { status: { $eq: statusFilter } } : {}),
-            };
-            if (skuFilter === "has") filters.sku = { $notNull: true };
-            else if (skuFilter === "none") filters.sku = { $null: true };
-
             const params = {
-                filters,
-                pagination: { page: 1, pageSize: 10000 },
-                sort: [`${sortField}:${sortDir}`],
+                page: 1,
+                pageSize: 10000,
+                name: group.name,
+                selling_price: group.selling_price == null ? "__null__" : String(group.selling_price),
+                statusFilter,
+                skuFilter,
+                sortField,
+                sortDir,
             };
-            const res = await authApi.get("/stock-items", params);
-            setGroupExtras(prev => ({ ...prev, [groupKey]: res.data || [] }));
+            const res = await authApi.get("/stock-items/orphan-groups/items", params);
+            const exactGroupItems = (res.data || []).filter(item =>
+                makeGroupKey(item.name, item.selling_price) === groupKey
+            );
+            setGroupExtras(prev => ({ ...prev, [groupKey]: exactGroupItems }));
             setExpandedGroups(prev => {
                 const next = new Set(prev);
                 next.add(groupKey);
@@ -378,25 +390,42 @@ export default function OrphanStockItemsPage() {
         const groups = [];
         const map = new Map();
         for (const item of items) {
-            const key = (item.name || "").trim().toLowerCase();
+            const groupName = item.__groupName ?? item.name;
+            const groupSellingPrice = item.__groupSellingPrice ?? item.selling_price;
+            const key = makeGroupKey(groupName, groupSellingPrice);
             if (!map.has(key)) {
-                const group = { key, name: item.name || "", items: [] };
+                const group = {
+                    key,
+                    name: groupName || "",
+                    selling_price: groupSellingPrice,
+                    groupCount: item.__groupCount || 0,
+                    items: [],
+                };
                 map.set(key, group);
                 groups.push(group);
             }
             map.get(key).items.push(item);
+            if (!map.get(key).groupCount) map.get(key).groupCount = map.get(key).items.length;
         }
         for (const [extraKey, extraItems] of Object.entries(groupExtras)) {
             if (extraItems.length === 0) continue;
             if (map.has(extraKey)) {
                 map.get(extraKey).items = extraItems;
+                map.get(extraKey).groupCount = Math.max(map.get(extraKey).groupCount || 0, extraItems.length);
             } else {
-                const group = { key: extraKey, name: extraItems[0]?.name || "", items: [...extraItems] };
+                const first = extraItems[0] || {};
+                const group = {
+                    key: extraKey,
+                    name: first.name || "",
+                    selling_price: first.selling_price,
+                    groupCount: extraItems.length,
+                    items: [...extraItems],
+                };
                 map.set(extraKey, group);
                 groups.push(group);
             }
         }
-        if (duplicatesOnly) return groups.filter(g => g.items.length > 1);
+        if (duplicatesOnly) return groups.filter(g => (g.groupCount || g.items.length) > 1);
         return groups;
     }, [items, duplicatesOnly, groupExtras]);
 
@@ -535,124 +564,137 @@ export default function OrphanStockItemsPage() {
                             <tbody>
                                 {groupedItems.flatMap(group => {
                                     const groupKey = group.key;
-                                    const isMulti = group.items.length > 1;
-                                    const isExpanded = expandedGroups.has(groupKey);
+                                    const groupCount = group.groupCount || group.items.length;
+                                    const isMulti = groupCount > 1;
+                                    const isExpanded = isMulti ? expandedGroups.has(groupKey) : true;
                                     const rows = [];
 
-                                    if (isMulti) {
-                                        const editedName = groupNames[groupKey] ?? group.name;
-                                        const nameChanged = editedName !== group.name;
-                                        const allGroupSelected = group.items.every(i => selected.has(i.documentId));
-                                        const hasExtras = !!groupExtras[groupKey];
-                                        const isGroupLoading = !!groupLoading[groupKey];
-                                        rows.push(
-                                            <tr key={`grp-${groupKey}`} className="table-warning">
-                                                <td
-                                                    colSpan={2}
-                                                    className="fw-bold"
-                                                    role="button"
-                                                    onClick={() => toggleGroup(groupKey)}
-                                                    style={{ cursor: "pointer" }}
-                                                >
-                                                    <div className="d-flex align-items-center flex-wrap gap-1">
-                                                        <span className="me-1">{isExpanded ? "▼" : "▶"}</span>
-                                                        <span className="badge bg-secondary">{group.items.length} items</span>
-                                                        {total > items.length && !hasExtras && (
-                                                            <button
-                                                                className="btn btn-sm btn-outline-info py-0 px-1"
-                                                                onClick={e => { e.stopPropagation(); loadAllInGroup(group.name, groupKey); }}
-                                                                disabled={bulkBusy || isGroupLoading}
-                                                            >
-                                                                {isGroupLoading ? "Loading…" : "Load all"}
-                                                            </button>
-                                                        )}
-                                                        {hasExtras && <span className="badge bg-info">All loaded</span>}
-                                                        <button
-                                                            className="btn btn-sm btn-outline-secondary py-0 px-1"
-                                                            onClick={e => { e.stopPropagation(); allGroupSelected ? deselectGroupAll(group.items) : selectGroupAll(group.items, groupKey); }}
-                                                            disabled={bulkBusy}
-                                                            title={allGroupSelected ? "Deselect all items in this group" : "Select all items in this group"}
-                                                        >
-                                                            {allGroupSelected ? "☐ Deselect" : "☑ Select all"}
-                                                        </button>
-                                                        <button
-                                                            className="btn btn-sm btn-outline-secondary py-0 px-1"
-                                                            onClick={e => { e.stopPropagation(); invertGroupSelection(group.items, groupKey); }}
-                                                            disabled={bulkBusy}
-                                                            title="Invert selection in this group"
-                                                        >
-                                                            ⇄ Invert
-                                                        </button>
-                                                        {bulkProgress && <span className="text-muted fw-normal small">{bulkProgress}</span>}
-                                                    </div>
-                                                </td>
-                                                <td colSpan={3}>
-                                                    <div className="d-flex align-items-center gap-2">
-                                                        <input
-                                                            type="text"
-                                                            className={`form-control form-control-sm${nameChanged ? " border-primary" : ""}`}
-                                                            value={editedName}
-                                                            onChange={e => setGroupNames(prev => ({ ...prev, [groupKey]: e.target.value }))}
-                                                            onClick={e => e.stopPropagation()}
-                                                            disabled={bulkBusy}
-                                                            placeholder="Product name"
-                                                        />
-                                                        {nameChanged && (
-                                                            <div className="form-check text-nowrap" onClick={e => e.stopPropagation()}>
-                                                                <input
-                                                                    type="checkbox"
-                                                                    className="form-check-input"
-                                                                    id={`apply-${groupKey}`}
-                                                                    checked={applyNameToItems.has(groupKey)}
-                                                                    onChange={e => setApplyNameToItems(prev => {
-                                                                        const next = new Set(prev);
-                                                                        if (e.target.checked) next.add(groupKey); else next.delete(groupKey);
-                                                                        return next;
-                                                                    })}
-                                                                    disabled={bulkBusy}
-                                                                />
-                                                                <label className="form-check-label small" htmlFor={`apply-${groupKey}`}>Rename items</label>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </td>
-                                                <td colSpan={2} className="text-end">
-                                                    <button
-                                                        className="btn btn-sm btn-outline-primary me-2"
-                                                        onClick={() => handleGroupCreateProduct(group.items, groupKey)}
-                                                        disabled={bulkBusy}
-                                                    >
-                                                        {bulkBusy ? "Working..." : "Create Product & Link All"}
-                                                    </button>
-                                                    <button
-                                                        className="btn btn-sm btn-outline-secondary"
-                                                        onClick={() => openProductPicker(
-                                                            `Attach ${group.items.length} items to…`,
-                                                            (docId) => handleGroupAttachProduct(group.items, docId)
-                                                        )}
-                                                        disabled={bulkBusy}
-                                                    >
-                                                        Attach all to…
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        );
-                                    }
+                                    const editedName = groupNames[groupKey] ?? group.name;
+                                    const nameChanged = editedName !== group.name;
+                                    const allGroupSelected = group.items.every(i => selected.has(i.documentId));
+                                    const hasExtras = !!groupExtras[groupKey];
+                                    const isGroupLoading = !!groupLoading[groupKey];
+                                    const groupFullyLoaded = !isMulti || hasExtras || group.items.length >= groupCount;
 
-                                    if (!isMulti || isExpanded) {
+                                    rows.push(
+                                        <tr key={`grp-${groupKey}`} className={isMulti ? "table-warning" : "table-light"}>
+                                            <td
+                                                colSpan={2}
+                                                className="fw-bold"
+                                                role={isMulti ? "button" : undefined}
+                                                onClick={isMulti ? () => toggleGroup(groupKey) : undefined}
+                                                style={isMulti ? { cursor: "pointer" } : undefined}
+                                            >
+                                                <div className="d-flex align-items-center flex-wrap gap-1">
+                                                    {isMulti && <span className="me-1">{isExpanded ? "▼" : "▶"}</span>}
+                                                    <span className={`badge ${isMulti ? "bg-secondary" : "bg-light text-dark border"}`}>
+                                                        {groupCount} item{groupCount !== 1 ? "s" : ""}
+                                                    </span>
+                                                    {isMulti && groupCount > group.items.length && !hasExtras && (
+                                                        <button
+                                                            className="btn btn-sm btn-outline-info py-0 px-1"
+                                                            onClick={e => { e.stopPropagation(); loadAllInGroup(group); }}
+                                                            disabled={bulkBusy || isGroupLoading}
+                                                        >
+                                                            {isGroupLoading ? "Loading…" : "Load all"}
+                                                        </button>
+                                                    )}
+                                                    {isMulti && hasExtras && <span className="badge bg-info">All loaded</span>}
+                                                    {isMulti && (
+                                                        <>
+                                                            <button
+                                                                className="btn btn-sm btn-outline-secondary py-0 px-1"
+                                                                onClick={e => { e.stopPropagation(); allGroupSelected ? deselectGroupAll(group.items) : selectGroupAll(group.items, groupKey); }}
+                                                                disabled={bulkBusy || !groupFullyLoaded}
+                                                                title={groupFullyLoaded ? (allGroupSelected ? "Deselect all items in this group" : "Select all items in this group") : "Load all items first"}
+                                                            >
+                                                                {allGroupSelected ? "☐ Deselect" : "☑ Select all"}
+                                                            </button>
+                                                            <button
+                                                                className="btn btn-sm btn-outline-secondary py-0 px-1"
+                                                                onClick={e => { e.stopPropagation(); invertGroupSelection(group.items, groupKey); }}
+                                                                disabled={bulkBusy || !groupFullyLoaded}
+                                                                title={groupFullyLoaded ? "Invert selection in this group" : "Load all items first"}
+                                                            >
+                                                                ⇄ Invert
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                    {bulkProgress && <span className="text-muted fw-normal small">{bulkProgress}</span>}
+                                                </div>
+                                            </td>
+                                            <td colSpan={3}>
+                                                <div className="d-flex align-items-center gap-2">
+                                                    <input
+                                                        type="text"
+                                                        className={`form-control form-control-sm${nameChanged ? " border-primary" : ""}`}
+                                                        value={editedName}
+                                                        onChange={e => setGroupNames(prev => ({ ...prev, [groupKey]: e.target.value }))}
+                                                        onClick={e => e.stopPropagation()}
+                                                        disabled={bulkBusy}
+                                                        placeholder="Product name"
+                                                    />
+                                                    {nameChanged && (
+                                                        <div className="form-check text-nowrap" onClick={e => e.stopPropagation()}>
+                                                            <input
+                                                                type="checkbox"
+                                                                className="form-check-input"
+                                                                id={`apply-${groupKey}`}
+                                                                checked={applyNameToItems.has(groupKey)}
+                                                                onChange={e => setApplyNameToItems(prev => {
+                                                                    const next = new Set(prev);
+                                                                    if (e.target.checked) next.add(groupKey); else next.delete(groupKey);
+                                                                    return next;
+                                                                })}
+                                                                disabled={bulkBusy}
+                                                            />
+                                                            <label className="form-check-label small" htmlFor={`apply-${groupKey}`}>Rename items</label>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td colSpan={2} className="text-end">
+                                                <button
+                                                    className="btn btn-sm btn-outline-primary me-2"
+                                                    onClick={() => handleGroupCreateProduct(group.items, groupKey)}
+                                                    disabled={bulkBusy || !groupFullyLoaded}
+                                                    title={groupFullyLoaded ? "" : "Load all items first"}
+                                                >
+                                                    {bulkBusy ? "Working..." : "Create Product & Link All"}
+                                                </button>
+                                                <button
+                                                    className="btn btn-sm btn-outline-secondary"
+                                                    onClick={() => openProductPicker(
+                                                        `Attach ${group.items.length} items to…`,
+                                                        (docId) => handleGroupAttachProduct(group.items, docId)
+                                                    )}
+                                                    disabled={bulkBusy || !groupFullyLoaded}
+                                                    title={groupFullyLoaded ? "" : "Load all items first"}
+                                                >
+                                                    Attach all to…
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    );
+
+                                    if (isExpanded) {
                                         group.items.forEach(item => {
                                             const isBusy = busyId === item.documentId;
+                                            const isSelected = selected.has(item.documentId);
                                             rows.push(
                                                 <tr
                                                     key={item.documentId}
-                                                    className={selected.has(item.documentId) ? "table-active" : ""}
-                                                    style={isMulti && !selected.has(item.documentId) ? { backgroundColor: "#fff8e1" } : undefined}
+                                                    className={isSelected ? "table-active" : ""}
+                                                    style={{
+                                                        backgroundColor: isSelected ? undefined : (isMulti ? "#fdf2d0" : "#f8f9fa"),
+                                                        borderLeft: isMulti ? "4px solid #f0ad4e" : "4px solid #dee2e6",
+                                                    }}
                                                 >
                                                     <td>
                                                         <input
                                                             type="checkbox"
                                                             className="form-check-input"
-                                                            checked={selected.has(item.documentId)}
+                                                            checked={isSelected}
                                                             onChange={() => toggleSelect(item.documentId)}
                                                             disabled={bulkBusy}
                                                         />
