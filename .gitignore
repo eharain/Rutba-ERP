@@ -28,3 +28,6 @@ package-lock.json
 /pos-strapi/scripts/generate-cms-seed-excel.js
 /pos-strapi/scripts/rutba-cms-seed-data.xlsx
 /pos-strapi/scripts/~$rutba-cms-seed-data.xlsx
+/dev-error.log
+/dev-output.log
+/next
