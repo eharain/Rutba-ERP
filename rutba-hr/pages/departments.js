@@ -55,4 +55,3 @@ export default function Departments() {
     );
 }
 
-export async function getServerSideProps() { return { props: {} }; }

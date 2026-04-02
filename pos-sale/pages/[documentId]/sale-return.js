@@ -969,4 +969,3 @@ export default function SaleReturnDetailPage() {
     );
 }
 
-export async function getServerSideProps() { return { props: {} }; }

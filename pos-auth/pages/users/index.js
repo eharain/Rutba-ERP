@@ -115,4 +115,3 @@ export default function UsersPage() {
     );
 }
 
-export async function getServerSideProps() { return { props: {} }; }

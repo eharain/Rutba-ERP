@@ -497,4 +497,3 @@ export default function StockItemsPage() {
 
 
 
-export async function getServerSideProps() { return { props: {} }; }

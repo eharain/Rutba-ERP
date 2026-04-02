@@ -693,4 +693,3 @@ export default function BulkStockInputs() {
     );
 }
 
-export async function getServerSideProps() { return { props: {} }; }

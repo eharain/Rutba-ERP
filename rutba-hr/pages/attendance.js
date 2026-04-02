@@ -73,4 +73,3 @@ function attendanceColor(status) {
     }
 }
 
-export async function getServerSideProps() { return { props: {} }; }

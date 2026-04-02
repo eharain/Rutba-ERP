@@ -50,4 +50,3 @@ export default function Authorize() {
     return <p className="text-center mt-5">Authorizing...</p>;
 }
 
-export async function getServerSideProps() { return { props: {} }; }

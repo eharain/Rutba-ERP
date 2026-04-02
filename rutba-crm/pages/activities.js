@@ -59,4 +59,3 @@ export default function Activities() {
     );
 }
 
-export async function getServerSideProps() { return { props: {} }; }

@@ -103,4 +103,3 @@ function statusColor(status) {
     }
 }
 
-export async function getServerSideProps() { return { props: {} }; }

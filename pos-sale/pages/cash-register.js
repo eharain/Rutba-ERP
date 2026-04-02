@@ -567,4 +567,3 @@ export default function CashRegisterPage() {
     );
 }
 
-export async function getServerSideProps() { return { props: {} }; }

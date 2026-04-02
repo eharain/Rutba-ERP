@@ -108,4 +108,3 @@ export default function Brands() {
     );
 }
 
-export async function getServerSideProps() { return { props: {} }; }

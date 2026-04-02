@@ -478,4 +478,3 @@ export default function ProductDetail() {
   );
 }
 
-export async function getServerSideProps() { return { props: {} }; }

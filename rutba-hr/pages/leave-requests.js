@@ -74,4 +74,3 @@ function leaveStatusColor(status) {
     }
 }
 
-export async function getServerSideProps() { return { props: {} }; }

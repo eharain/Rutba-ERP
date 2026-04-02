@@ -104,4 +104,3 @@ export default function ProductGroups() {
     );
 }
 
-export async function getServerSideProps() { return { props: {} }; }

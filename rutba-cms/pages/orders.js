@@ -109,4 +109,3 @@ export default function Orders() {
     );
 }
 
-export async function getServerSideProps() { return { props: {} }; }

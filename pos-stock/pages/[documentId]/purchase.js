@@ -290,4 +290,3 @@ export default function PurchasePage() {
     );
 }
 
-export async function getServerSideProps() { return { props: {} }; }

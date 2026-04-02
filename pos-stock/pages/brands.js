@@ -833,4 +833,3 @@ export default function BrandsPage() {
 }
 
 
-export async function getServerSideProps() { return { props: {} }; }

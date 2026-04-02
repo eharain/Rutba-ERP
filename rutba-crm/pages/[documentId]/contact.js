@@ -60,4 +60,3 @@ export default function ContactDetail() {
     );
 }
 
-export async function getServerSideProps() { return { props: {} }; }

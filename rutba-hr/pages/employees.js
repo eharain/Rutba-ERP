@@ -66,4 +66,3 @@ export default function Employees() {
     );
 }
 
-export async function getServerSideProps() { return { props: {} }; }

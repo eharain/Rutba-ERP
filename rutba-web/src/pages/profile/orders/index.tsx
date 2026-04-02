@@ -146,4 +146,3 @@ export default function Transaction() {
   );
 }
 
-export async function getServerSideProps() { return { props: {} }; }

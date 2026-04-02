@@ -118,4 +118,3 @@ export default function SalesReturnsPage() {
     );
 }
 
-export async function getServerSideProps() { return { props: {} }; }
