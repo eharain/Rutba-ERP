@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
@@ -6,6 +6,7 @@ import { authApi, StraipImageUrl, isImage, isPDF } from "@rutba/pos-shared/lib/a
 import { useToast } from "../components/Toast";
 
 const PAGE_SIZE = 30;
+const FOLDER_PAGE_SIZE = 24;
 
 function formatBytes(kb) {
     if (!kb && kb !== 0) return '';
@@ -27,6 +28,8 @@ export default function MediaPage() {
     const [renamingFolderId, setRenamingFolderId] = useState(null);
     const [renameValue, setRenameValue] = useState('');
     const [folderSearch, setFolderSearch] = useState('');
+    const [folderPage, setFolderPage] = useState(1);
+    const [foldersCollapsed, setFoldersCollapsed] = useState(false);
 
     // File state
     const [files, setFiles] = useState([]);
@@ -369,6 +372,15 @@ export default function MediaPage() {
         }
     };
 
+    // ─── Computed folder data ──────────────────────────────
+    const flatFolders = useMemo(() => flattenFolders(folderTree), [folderTree]);
+    const filteredFolders = folderSearch.trim()
+        ? flatFolders.filter(f => f.name.toLowerCase().includes(folderSearch.trim().toLowerCase()) || f._parentPath.toLowerCase().includes(folderSearch.trim().toLowerCase()))
+        : flatFolders;
+    const folderPageCount = Math.ceil(filteredFolders.length / FOLDER_PAGE_SIZE) || 1;
+    const clampedFolderPage = Math.min(folderPage, folderPageCount);
+    const pagedFolders = filteredFolders.slice((clampedFolderPage - 1) * FOLDER_PAGE_SIZE, clampedFolderPage * FOLDER_PAGE_SIZE);
+
     return (
         <ProtectedRoute>
             <Layout fullWidth>
@@ -430,51 +442,79 @@ export default function MediaPage() {
                     </div>
                 </div>
 
-                <div className="d-flex" style={{ minHeight: '60vh' }}>
-                    {/* Folder sidebar */}
-                    <div className="border rounded-start bg-white me-0 d-flex flex-column" style={{ width: 220, minWidth: 220, padding: '8px 0' }}>
-                        <div className="px-2 mb-1">
-                            <div className="input-group input-group-sm">
-                                <span className="input-group-text" style={{ fontSize: '0.75rem' }}><i className="fas fa-search" /></span>
-                                <input type="text" className="form-control" placeholder="Search folders…" value={folderSearch}
-                                    onChange={e => setFolderSearch(e.target.value)} style={{ fontSize: '0.8rem' }} />
-                                {folderSearch && <button className="btn btn-outline-secondary btn-sm" onClick={() => setFolderSearch('')}><i className="fas fa-times" /></button>}
+                {/* Folder bar */}
+                <div className="card mb-3">
+                    <div className="card-header py-1 d-flex align-items-center gap-2" style={{ fontSize: '0.85rem' }}>
+                        <button className="btn btn-sm btn-link p-0 text-dark" onClick={() => setFoldersCollapsed(c => !c)} style={{ lineHeight: 1 }}>
+                            <i className={`fas fa-caret-${foldersCollapsed ? 'right' : 'down'}`} />
+                        </button>
+                        <i className="fas fa-folder text-warning" style={{ fontSize: '0.8rem' }} />
+                        <strong>Folders</strong>
+                        <span className="badge bg-secondary">{filteredFolders.length}</span>
+                        <div className="input-group input-group-sm" style={{ maxWidth: 180 }}>
+                            <input type="text" className="form-control" placeholder="Search folders…" value={folderSearch}
+                                onChange={e => { setFolderSearch(e.target.value); setFolderPage(1); }} style={{ fontSize: '0.78rem' }} />
+                            {folderSearch && <button className="btn btn-outline-secondary btn-sm" onClick={() => { setFolderSearch(''); setFolderPage(1); }}><i className="fas fa-times" /></button>}
+                        </div>
+                        {creatingFolder ? (
+                            <div className="input-group input-group-sm" style={{ maxWidth: 220 }}>
+                                <input type="text" className="form-control" placeholder="Folder name" value={newFolderName}
+                                    onChange={e => setNewFolderName(e.target.value)}
+                                    onKeyDown={e => { if (e.key === 'Enter') handleCreateFolder(); if (e.key === 'Escape') { setCreatingFolder(false); setNewFolderName(''); } }}
+                                    autoFocus style={{ fontSize: '0.78rem' }} />
+                                <button className="btn btn-success btn-sm" onClick={handleCreateFolder}><i className="fas fa-check" /></button>
+                                <button className="btn btn-outline-secondary btn-sm" onClick={() => { setCreatingFolder(false); setNewFolderName(''); }}><i className="fas fa-times" /></button>
+                            </div>
+                        ) : (
+                            <button className="btn btn-sm btn-outline-secondary" onClick={() => setCreatingFolder(true)} style={{ fontSize: '0.78rem' }}>
+                                <i className="fas fa-folder-plus me-1" />New
+                            </button>
+                        )}
+                        {folderPageCount > 1 && (
+                            <div className="ms-auto d-flex align-items-center gap-1">
+                                <small className="text-muted">{(clampedFolderPage - 1) * FOLDER_PAGE_SIZE + 1}–{Math.min(clampedFolderPage * FOLDER_PAGE_SIZE, filteredFolders.length)} of {filteredFolders.length}</small>
+                                <button className="btn btn-sm btn-outline-secondary py-0 px-1" disabled={clampedFolderPage <= 1} onClick={() => setFolderPage(p => p - 1)}><i className="fas fa-chevron-left fa-xs" /></button>
+                                <button className="btn btn-sm btn-outline-secondary py-0 px-1" disabled={clampedFolderPage >= folderPageCount} onClick={() => setFolderPage(p => p + 1)}><i className="fas fa-chevron-right fa-xs" /></button>
+                            </div>
+                        )}
+                    </div>
+                    {!foldersCollapsed && (
+                        <div className="card-body py-2">
+                            <div className="d-flex flex-wrap gap-2">
+                                {!folderSearch.trim() && (
+                                    <FolderChip label="All Files" icon="fa-globe" active={currentFolderId === 'all'}
+                                        onClick={() => setCurrentFolderId('all')} />
+                                )}
+                                {(!folderSearch.trim() || 'unsorted'.includes(folderSearch.trim().toLowerCase())) && (
+                                    <FolderChip label="Unsorted" icon="fa-inbox" active={currentFolderId === 'root'}
+                                        onClick={() => setCurrentFolderId('root')}
+                                        onDragOver={(e) => handleFolderDragOver(e, 'root')} onDragLeave={handleFolderDragLeave}
+                                        onDrop={(e) => handleFolderDrop(e, 'root')} dragOver={dragOverFolderId === 'root'}
+                                        showMoveHere={hasMovableSelection} onMoveHere={() => handleMoveToFolder('root')} />
+                                )}
+                                {pagedFolders.map(folder => {
+                                    const fid = folder.id;
+                                    const isActive = String(currentFolderId) === String(fid);
+                                    const isRenaming = renamingFolderId === fid;
+                                    return (
+                                        <FolderChip key={fid} label={folder.name} parentPath={folder._parentPath}
+                                            active={isActive} onClick={() => setCurrentFolderId(fid)}
+                                            onDragOver={(e) => handleFolderDragOver(e, fid)} onDragLeave={handleFolderDragLeave}
+                                            onDrop={(e) => handleFolderDrop(e, fid)} dragOver={dragOverFolderId === fid}
+                                            isRenaming={isRenaming} renameValue={renameValue} setRenameValue={setRenameValue}
+                                            onRename={() => handleRenameFolder(fid)}
+                                            onStartRename={() => { setRenamingFolderId(isRenaming ? null : fid); setRenameValue(folder.name); }}
+                                            onDelete={(e) => handleDeleteFolder(fid, e)}
+                                            showMoveHere={hasMovableSelection} onMoveHere={() => handleMoveToFolder(fid)} />
+                                    );
+                                })}
                             </div>
                         </div>
-                        <div style={{ overflowY: 'auto', flex: 1 }}>
-                        {!folderSearch.trim() && <FolderSidebarItem label="All Files" icon="fa-globe" active={currentFolderId === 'all'} onClick={() => setCurrentFolderId('all')} dragOver={false} />}
-                        <FolderSidebarItem label="Unsorted" icon="fa-inbox" active={currentFolderId === 'root'} onClick={() => setCurrentFolderId('root')}
-                            onDragOver={(e) => handleFolderDragOver(e, 'root')} onDragLeave={handleFolderDragLeave}
-                            onDrop={(e) => handleFolderDrop(e, 'root')} dragOver={dragOverFolderId === 'root'}
-                            showMoveHere={hasMovableSelection} onMoveHere={() => handleMoveToFolder('root')} hidden={folderSearch.trim() && !'unsorted'.includes(folderSearch.trim().toLowerCase())} />
-                        {!folderSearch.trim() && <hr className="my-1 mx-2" />}
-                        <FolderTreeRenderer nodes={folderTree} depth={0} currentFolderId={currentFolderId} setCurrentFolderId={setCurrentFolderId}
-                            expandedFolders={expandedFolders} toggleExpand={toggleExpand} dragOverFolderId={dragOverFolderId}
-                            handleFolderDragOver={handleFolderDragOver} handleFolderDragLeave={handleFolderDragLeave} handleFolderDrop={handleFolderDrop}
-                            handleDeleteFolder={handleDeleteFolder} renamingFolderId={renamingFolderId} setRenamingFolderId={setRenamingFolderId}
-                            renameValue={renameValue} setRenameValue={setRenameValue} handleRenameFolder={handleRenameFolder}
-                            folderSearch={folderSearch.trim().toLowerCase()} showMoveHere={hasMovableSelection} onMoveHere={handleMoveToFolder} />
-                        </div>
-                        <div className="px-2 mt-2">
-                            {creatingFolder ? (
-                                <div className="input-group input-group-sm">
-                                    <input type="text" className="form-control" placeholder="Folder name" value={newFolderName}
-                                        onChange={e => setNewFolderName(e.target.value)}
-                                        onKeyDown={e => { if (e.key === 'Enter') handleCreateFolder(); if (e.key === 'Escape') { setCreatingFolder(false); setNewFolderName(''); } }}
-                                        autoFocus />
-                                    <button className="btn btn-success btn-sm" onClick={handleCreateFolder}><i className="fas fa-check" /></button>
-                                    <button className="btn btn-outline-secondary btn-sm" onClick={() => { setCreatingFolder(false); setNewFolderName(''); }}><i className="fas fa-times" /></button>
-                                </div>
-                            ) : (
-                                <button className="btn btn-sm btn-outline-secondary w-100" onClick={() => setCreatingFolder(true)}>
-                                    <i className="fas fa-folder-plus me-1" /> New Folder
-                                </button>
-                            )}
-                        </div>
-                    </div>
+                    )}
+                </div>
 
-                    {/* Main content */}
-                    <div className="flex-grow-1 d-flex flex-column" style={{ minWidth: 0 }}>
+                {/* Main content */}
+                <div style={{ minHeight: '50vh' }}>
                         <div className={`flex-grow-1 ${selectedFile ? 'd-flex' : ''}`} style={{ overflowY: 'auto' }}>
                             <div className={selectedFile ? 'flex-grow-1' : ''} style={{ padding: 16 }}>
                                 {loading && files.length === 0 && (
@@ -645,7 +685,6 @@ export default function MediaPage() {
                                 </div>
                             )}
                         </div>
-                    </div>
                 </div>
 
                 {/* Drag hint */}
@@ -661,81 +700,54 @@ export default function MediaPage() {
     );
 }
 
-// ─── Folder sidebar components ──────────────────────────────
-function FolderSidebarItem({ label, icon, active, onClick, onDragOver, onDragLeave, onDrop, dragOver, depth, hasChildren, expanded, onToggle, onDelete, isRenaming, renameValue, setRenameValue, onRename, onStartRename, showMoveHere, onMoveHere, hidden }) {
-    if (hidden) return null;
+// ─── Folder chip component ──────────────────────────────────
+function FolderChip({ label, icon, parentPath, active, onClick, onDragOver, onDragLeave, onDrop, dragOver, onDelete, isRenaming, renameValue, setRenameValue, onRename, onStartRename, showMoveHere, onMoveHere }) {
     return (
-        <div className={`d-flex align-items-center px-2 py-1${active ? ' bg-primary text-white' : dragOver ? ' bg-info bg-opacity-25' : ''}`}
-            style={{ cursor: 'pointer', paddingLeft: 8 + (depth || 0) * 16, fontSize: '0.85rem', transition: 'background 0.15s', userSelect: 'none' }}
-            onClick={onClick} onDragOver={onDragOver || undefined} onDragLeave={onDragLeave || undefined} onDrop={onDrop || undefined}>
-            {hasChildren !== undefined && (
-                <span className="me-1" style={{ width: 16, textAlign: 'center', cursor: 'pointer' }}
-                    onClick={(e) => { e.stopPropagation(); if (onToggle) onToggle(); }}>
-                    {hasChildren ? <i className={`fas fa-caret-${expanded ? 'down' : 'right'} fa-sm`} /> : <span style={{ width: 16, display: 'inline-block' }} />}
+        <div
+            className={`d-inline-flex align-items-center border rounded-pill px-2 py-1 ${active ? 'bg-primary text-white border-primary' : dragOver ? 'bg-info bg-opacity-25 border-info' : 'bg-white'}`}
+            style={{ cursor: 'pointer', fontSize: '0.82rem', userSelect: 'none', transition: 'all 0.15s' }}
+            onClick={onClick}
+            onDragOver={onDragOver || undefined} onDragLeave={onDragLeave || undefined} onDrop={onDrop || undefined}>
+            <i className={`fas ${icon || 'fa-folder'} me-1${active ? '' : ' text-warning'}`} style={{ fontSize: '0.75rem' }} />
+            {isRenaming ? (
+                <input type="text" className="form-control form-control-sm" value={renameValue}
+                    onChange={e => setRenameValue(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') onRename(); if (e.key === 'Escape' && onStartRename) onStartRename(); }}
+                    onClick={e => e.stopPropagation()} autoFocus
+                    style={{ height: 20, fontSize: '0.78rem', width: 90, padding: '0 4px' }} />
+            ) : (
+                <>
+                    {parentPath && <small className={`${active ? 'text-white-50' : 'text-muted'} me-1`}>{parentPath} /</small>}
+                    <span className="text-nowrap">{label}</span>
+                </>
+            )}
+            {!isRenaming && (onDelete || (showMoveHere && onMoveHere)) && (
+                <span className="ms-1 d-inline-flex align-items-center gap-1" onClick={e => e.stopPropagation()} style={{ fontSize: '0.65rem' }}>
+                    {showMoveHere && onMoveHere && (
+                        <i className={`fas fa-paste ${active ? 'text-white' : 'text-success'}`} title="Move here"
+                            onClick={onMoveHere} style={{ cursor: 'pointer' }} />
+                    )}
+                    {onDelete && (
+                        <>
+                            <i className={`fas fa-pen ${active ? 'text-white-50' : 'text-muted'}`} title="Rename"
+                                onClick={() => { if (onStartRename) onStartRename(); }} style={{ cursor: 'pointer' }} />
+                            <i className={`fas fa-trash ${active ? 'text-white-50' : 'text-danger'}`} title="Delete"
+                                onClick={onDelete} style={{ cursor: 'pointer' }} />
+                        </>
+                    )}
                 </span>
             )}
-            <i className={`fas ${icon || 'fa-folder'} me-2${active ? '' : ' text-warning'}`} style={{ fontSize: '0.8rem' }} />
-            {isRenaming ? (
-                <input type="text" className="form-control form-control-sm flex-grow-1" value={renameValue}
-                    onChange={e => setRenameValue(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') onRename(); if (e.key === 'Escape' && onStartRename) onStartRename(null); }}
-                    onClick={e => e.stopPropagation()} autoFocus style={{ height: 22, fontSize: '0.8rem' }} />
-            ) : (
-                <span className="flex-grow-1 text-truncate">{label}</span>
-            )}
-            <span className="ms-auto d-flex gap-1" onClick={e => e.stopPropagation()}>
-                {showMoveHere && onMoveHere && !isRenaming && (
-                    <button className={`btn btn-sm p-0 ${active ? 'text-white' : 'text-success'}`} title="Move selected here"
-                        onClick={() => onMoveHere()} style={{ fontSize: '0.7rem', lineHeight: 1 }}><i className="fas fa-paste" /></button>
-                )}
-                {onDelete && !isRenaming && (
-                    <>
-                        <button className={`btn btn-sm p-0 ${active ? 'text-white' : 'text-muted'}`} title="Rename"
-                            onClick={() => { if (onStartRename) onStartRename(); }} style={{ fontSize: '0.7rem', lineHeight: 1 }}><i className="fas fa-pen" /></button>
-                        <button className={`btn btn-sm p-0 ${active ? 'text-white' : 'text-danger'}`} title="Delete folder"
-                            onClick={(e) => onDelete(e)} style={{ fontSize: '0.7rem', lineHeight: 1 }}><i className="fas fa-trash" /></button>
-                    </>
-                )}
-            </span>
         </div>
     );
 }
 
-function folderMatchesSearch(folder, search) {
-    if (!search) return true;
-    if (folder.name.toLowerCase().includes(search)) return true;
-    if (folder.children) return folder.children.some(c => folderMatchesSearch(c, search));
-    return false;
+function flattenFolders(nodes, parentPath = '') {
+    let result = [];
+    for (const f of (nodes || [])) {
+        result.push({ ...f, _parentPath: parentPath });
+        if (f.children?.length) {
+            result = result.concat(flattenFolders(f.children, parentPath ? `${parentPath} / ${f.name}` : f.name));
+        }
+    }
+    return result;
 }
-
-function FolderTreeRenderer({ nodes, depth, currentFolderId, setCurrentFolderId, expandedFolders, toggleExpand, dragOverFolderId, handleFolderDragOver, handleFolderDragLeave, handleFolderDrop, handleDeleteFolder, renamingFolderId, setRenamingFolderId, renameValue, setRenameValue, handleRenameFolder, folderSearch, showMoveHere, onMoveHere }) {
-    if (!nodes || nodes.length === 0) return null;
-    return nodes.filter(folder => folderMatchesSearch(folder, folderSearch)).map(folder => {
-        const fid = folder.id;
-        const hasChildren = folder.children && folder.children.length > 0;
-        const isExpanded = expandedFolders.has(fid) || (folderSearch && hasChildren);
-        const isRenaming = renamingFolderId === fid;
-        return (
-            <React.Fragment key={fid}>
-                <FolderSidebarItem label={folder.name} icon={isExpanded && hasChildren ? 'fa-folder-open' : 'fa-folder'}
-                    active={String(currentFolderId) === String(fid)} onClick={() => setCurrentFolderId(fid)}
-                    onDragOver={(e) => handleFolderDragOver(e, fid)} onDragLeave={handleFolderDragLeave} onDrop={(e) => handleFolderDrop(e, fid)}
-                    dragOver={dragOverFolderId === fid} depth={depth} hasChildren={hasChildren} expanded={isExpanded} onToggle={() => toggleExpand(fid)}
-                    onDelete={(e) => handleDeleteFolder(fid, e)} isRenaming={isRenaming} renameValue={renameValue} setRenameValue={setRenameValue}
-                    onRename={() => handleRenameFolder(fid)}
-                    onStartRename={() => { setRenamingFolderId(isRenaming ? null : fid); setRenameValue(folder.name); }}
-                    showMoveHere={showMoveHere} onMoveHere={() => onMoveHere(fid)} />
-                {hasChildren && isExpanded && (
-                    <FolderTreeRenderer nodes={folder.children} depth={depth + 1} currentFolderId={currentFolderId} setCurrentFolderId={setCurrentFolderId}
-                        expandedFolders={expandedFolders} toggleExpand={toggleExpand} dragOverFolderId={dragOverFolderId}
-                        handleFolderDragOver={handleFolderDragOver} handleFolderDragLeave={handleFolderDragLeave} handleFolderDrop={handleFolderDrop}
-                        handleDeleteFolder={handleDeleteFolder} renamingFolderId={renamingFolderId} setRenamingFolderId={setRenamingFolderId}
-                        renameValue={renameValue} setRenameValue={setRenameValue} handleRenameFolder={handleRenameFolder}
-                        folderSearch={folderSearch} showMoveHere={showMoveHere} onMoveHere={onMoveHere} />
-                )}
-            </React.Fragment>
-        );
-    });
-}
-
-export async function getServerSideProps() { return { props: {} }; }
