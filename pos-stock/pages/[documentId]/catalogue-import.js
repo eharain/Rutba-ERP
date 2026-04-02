@@ -704,4 +704,3 @@ export default function CatalogueImportPage() {
     );
 }
 
-export async function getServerSideProps() { return { props: {} }; }

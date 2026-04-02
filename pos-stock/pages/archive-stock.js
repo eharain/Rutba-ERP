@@ -483,4 +483,3 @@ export default function ArchiveStockPage() {
     );
 }
 
-export async function getServerSideProps() { return { props: {} }; }

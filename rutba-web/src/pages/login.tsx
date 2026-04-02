@@ -78,4 +78,3 @@ export default function RegisterPage() {
   );
 }
 
-export async function getServerSideProps() { return { props: {} }; }

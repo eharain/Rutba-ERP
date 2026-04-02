@@ -198,4 +198,3 @@ export default function CheckoutPage() {
   );
 }
 
-export async function getServerSideProps() { return { props: {} }; }

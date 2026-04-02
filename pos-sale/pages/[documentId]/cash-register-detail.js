@@ -455,4 +455,3 @@ export default function CashRegisterDetailPage() {
     );
 }
 
-export async function getServerSideProps() { return { props: {} }; }

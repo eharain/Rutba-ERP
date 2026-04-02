@@ -9,4 +9,3 @@ export default function ExchangePage() {
     return null;
 }
 
-export async function getServerSideProps() { return { props: {} }; }

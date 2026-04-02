@@ -73,3 +73,51 @@ export default function useCmsPagesService() {
     getCmsHeaderData,
   };
 }
+
+export const getCmsPagesSSR = async () => {
+  const req = await axios.get(BASE_URL + "cms-pages", {
+    params: {
+      sort: ["sort_order:asc", "createdAt:desc"],
+      populate: ["featured_image", "background_image"],
+      pagination: { pageSize: 50 },
+    },
+  });
+
+  return req.data.data as CmsPageInterface[];
+};
+
+export const getCmsPageBySlugSSR = async (slug: string) => {
+  const req = await axios.get(BASE_URL + "cms-pages", {
+    params: {
+      filters: { slug: { $eq: slug } },
+      populate: [
+        "featured_image",
+        "background_image",
+        "gallery",
+        "hero_product_groups.products.gallery",
+        "hero_product_groups.products.logo",
+        "hero_product_groups.products.brands",
+        "hero_product_groups.products.categories",
+        "hero_product_groups.products.variants",
+        "hero_product_groups.products.variants.terms",
+        "hero_product_groups.products.variants.terms.term_types",
+        "hero_product_groups.cover_image",
+        "brand_groups.brands.logo",
+        "category_groups.categories.logo",
+        "product_groups.products.gallery",
+        "product_groups.products.logo",
+        "product_groups.products.brands",
+        "product_groups.products.categories",
+        "product_groups.products.variants",
+        "product_groups.products.variants.terms",
+        "product_groups.products.variants.terms.term_types",
+        "product_groups.cover_image",
+        "related_pages.featured_image",
+        "footer.pinned_pages",
+      ],
+    },
+  });
+
+  const pages = req.data.data as CmsPageDetailInterface[];
+  return pages.length > 0 ? pages[0] : null;
+};

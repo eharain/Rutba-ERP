@@ -40,6 +40,3 @@ export default function ContactPage() {
   );
 }
 
-export async function getServerSideProps() {
-  return { props: {} };
-}

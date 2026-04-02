@@ -893,4 +893,3 @@ export default function SuppliersPage() {
 }
 
 
-export async function getServerSideProps() { return { props: {} }; }

@@ -51,4 +51,3 @@ export default function Reports() {
 }
 
 
-export async function getServerSideProps() { return { props: {} }; }

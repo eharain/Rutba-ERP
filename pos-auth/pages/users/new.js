@@ -172,4 +172,3 @@ export default function NewUserPage() {
     );
 }
 
-export async function getServerSideProps() { return { props: {} }; }

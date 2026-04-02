@@ -45,4 +45,3 @@ export default function IframeCallback() {
     );
 }
 
-export async function getServerSideProps() { return { props: {} }; }

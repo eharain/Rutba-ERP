@@ -96,4 +96,3 @@ export default function CategoryGroups() {
     );
 }
 
-export async function getServerSideProps() { return { props: {} }; }

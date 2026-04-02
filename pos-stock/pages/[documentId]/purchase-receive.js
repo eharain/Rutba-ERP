@@ -49,4 +49,3 @@ export default function PurchaseReceivePage() {
 }
 
 
-export async function getServerSideProps() { return { props: {} }; }

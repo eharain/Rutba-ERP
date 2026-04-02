@@ -219,4 +219,3 @@ export default function Footers() {
     );
 }
 
-export async function getServerSideProps() { return { props: {} }; }

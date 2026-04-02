@@ -1494,4 +1494,3 @@ export default function EditProduct() {
 
 
 
-export async function getServerSideProps() { return { props: {} }; }

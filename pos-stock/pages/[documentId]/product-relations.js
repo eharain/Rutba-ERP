@@ -484,4 +484,3 @@ export default function ProductRelationsPage() {
     );
 }
 
-export async function getServerSideProps() { return { props: {} }; }

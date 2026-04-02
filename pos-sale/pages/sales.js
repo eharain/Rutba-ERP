@@ -524,4 +524,3 @@ export default function Sales() {
     );
 }
 
-export async function getServerSideProps() { return { props: {} }; }

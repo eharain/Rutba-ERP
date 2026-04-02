@@ -96,4 +96,3 @@ export default function BrandGroups() {
     );
 }
 
-export async function getServerSideProps() { return { props: {} }; }

@@ -64,4 +64,3 @@ export default function Contacts() {
     );
 }
 
-export async function getServerSideProps() { return { props: {} }; }

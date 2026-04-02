@@ -578,4 +578,3 @@ function SaleButtons({ handlePrint, handleSave, saleModel, setShowCheckout, isDi
         </div>)
 }
 
-export async function getServerSideProps() { return { props: {} }; }

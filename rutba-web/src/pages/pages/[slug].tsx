@@ -5,11 +5,29 @@ import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/router";
 import { SkeletonProductDetail } from "@/components/skeleton";
 import { ErrorCard } from "@/components/errors/error-card";
-import useCmsPagesService from "@/services/cms-pages";
+import useCmsPagesService, { getCmsPageBySlugSSR } from "@/services/cms-pages";
+import { CmsPageDetailInterface } from "@/types/api/cms-page";
+import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 
-export default function CmsPageDetail() {
+export const getServerSideProps: GetServerSideProps<{
+  initialPage: CmsPageDetailInterface | null;
+  slug: string;
+}> = async (context) => {
+  const slug = context.params?.slug as string;
+  try {
+    const page = await getCmsPageBySlugSSR(slug);
+    return { props: { initialPage: page, slug } };
+  } catch {
+    return { props: { initialPage: null, slug } };
+  }
+};
+
+export default function CmsPageDetail({
+  initialPage,
+  slug: ssrSlug,
+}: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
-  const { slug } = router.query;
+  const slug = (router.query.slug as string) ?? ssrSlug;
   const { getCmsPageBySlug } = useCmsPagesService();
 
   const {
@@ -22,6 +40,7 @@ export default function CmsPageDetail() {
     queryFn: () => getCmsPageBySlug(slug as string),
     enabled: !!slug,
     staleTime: 60_000,
+    initialData: initialPage ?? undefined,
   });
 
   if (isLoading) {
@@ -62,6 +81,3 @@ export default function CmsPageDetail() {
   );
 }
 
-export async function getServerSideProps() {
-  return { props: {} };
-}

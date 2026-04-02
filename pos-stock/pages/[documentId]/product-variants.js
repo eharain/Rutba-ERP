@@ -851,4 +851,3 @@ export default function ProductVariantsPage() {
     );
 }
 
-export async function getServerSideProps() { return { props: {} }; }

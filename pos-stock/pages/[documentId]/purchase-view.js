@@ -141,4 +141,3 @@ export default function PurchaseViewPage() {
     );
 }
 
-export async function getServerSideProps() { return { props: {} }; }

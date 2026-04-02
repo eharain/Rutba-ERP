@@ -19,4 +19,3 @@ export default function Logout() {
     return <p className="text-center mt-5">Logging out...</p>;
 }
 
-export async function getServerSideProps() { return { props: {} }; }

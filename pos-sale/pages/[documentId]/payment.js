@@ -216,4 +216,3 @@ export default function PaymentRedirectPage() {
     );
 }
 
-export async function getServerSideProps() { return { props: {} }; }

@@ -170,4 +170,3 @@ export default function AppAccessPage() {
     );
 }
 
-export async function getServerSideProps() { return { props: {} }; }

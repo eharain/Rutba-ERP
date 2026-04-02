@@ -81,4 +81,3 @@ export default function SettingsPage() {
 }
 
 
-export async function getServerSideProps() { return { props: {} }; }

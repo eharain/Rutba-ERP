@@ -5,10 +5,25 @@ import { useQuery } from "@tanstack/react-query";
 import { SkeletonProduct } from "@/components/skeleton";
 import { ErrorCard } from "@/components/errors/error-card";
 import { IMAGE_URL } from "@/static/const";
-import useCmsPagesService from "@/services/cms-pages";
+import useCmsPagesService, { getCmsPagesSSR } from "@/services/cms-pages";
+import { CmsPageInterface } from "@/types/api/cms-page";
+import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Head from "next/head";
 
-export default function PagesIndex() {
+export const getServerSideProps: GetServerSideProps<{
+  initialPages: CmsPageInterface[];
+}> = async () => {
+  try {
+    const pages = await getCmsPagesSSR();
+    return { props: { initialPages: pages ?? [] } };
+  } catch {
+    return { props: { initialPages: [] } };
+  }
+};
+
+export default function PagesIndex({
+  initialPages,
+}: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { getCmsPages } = useCmsPagesService();
 
   const {
@@ -20,6 +35,7 @@ export default function PagesIndex() {
     queryKey: ["cms-pages-list"],
     queryFn: getCmsPages,
     staleTime: 60_000,
+    initialData: initialPages.length > 0 ? initialPages : undefined,
   });
 
   return (
@@ -92,6 +108,3 @@ export default function PagesIndex() {
   );
 }
 
-export async function getServerSideProps() {
-  return { props: {} };
-}

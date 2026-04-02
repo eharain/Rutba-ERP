@@ -81,4 +81,3 @@ export default function StockEntry() {
     );
 } 
 
-export async function getServerSideProps() { return { props: {} }; }

@@ -51,4 +51,3 @@ export default function PaymentSuccess() {
   );
 }
 
-export async function getServerSideProps() { return { props: {} }; }

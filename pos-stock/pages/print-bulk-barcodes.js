@@ -65,4 +65,3 @@ const PrintBulkBarcodesPage = () => {
 
 export default PrintBulkBarcodesPage;
 
-export async function getServerSideProps() { return { props: {} }; }

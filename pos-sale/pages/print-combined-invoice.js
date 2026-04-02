@@ -140,4 +140,3 @@ const PrintCombinedInvoicePage = () => {
 
 export default PrintCombinedInvoicePage;
 
-export async function getServerSideProps() { return { props: {} }; }

@@ -84,4 +84,3 @@ export default function Cart() {
 }
 
 
-export async function getServerSideProps() { return { props: {} }; }

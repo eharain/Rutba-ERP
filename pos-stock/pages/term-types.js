@@ -824,4 +824,3 @@ export default function TermTypesPage() {
 }
 
 
-export async function getServerSideProps() { return { props: {} }; }

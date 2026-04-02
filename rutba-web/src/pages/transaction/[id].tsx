@@ -143,4 +143,3 @@ export default function OrderDetailGuest() {
   );
 }
 
-export async function getServerSideProps() { return { props: {} }; }
