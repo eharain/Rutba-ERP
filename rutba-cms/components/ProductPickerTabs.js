@@ -126,19 +126,23 @@ export default function ProductPickerTabs({ selectedProductIds, connectedProduct
         const selected = selectedProductIds.includes(p.documentId);
         return (
             <div key={p.documentId} className="d-inline-flex align-items-center gap-1">
+                {p.logo?.url ? (
+                    <img
+                        src={StraipImageUrl(p.logo)}
+                        alt={p.name}
+                        style={{ width: 32, height: 32, objectFit: "cover", borderRadius: 4 }}
+                    />
+                ) : (
+                    <span className="text-muted" style={{ width: 32, height: 32, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+                        <i className="fas fa-image"></i>
+                    </span>
+                )}
                 <button
                     type="button"
                     className={`btn btn-sm ${selected ? "btn-success" : "btn-outline-secondary"}`}
                     onClick={() => onToggle(p.documentId)}
                 >
                     {selected && <i className="fas fa-check me-1"></i>}
-                    {p.logo?.url && (
-                        <img
-                            src={StraipImageUrl(p.logo)}
-                            alt=""
-                            style={{ width: 16, height: 16, objectFit: "contain", marginRight: 4 }}
-                        />
-                    )}
                     {p.name}
                 </button>
                 <Link
