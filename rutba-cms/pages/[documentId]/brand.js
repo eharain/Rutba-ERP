@@ -1,12 +1,14 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
 import Layout from "../../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { authApi, StraipImageUrl } from "@rutba/pos-shared/lib/api";
+import { authApi } from "@rutba/pos-shared/lib/api";
 import FileView from "@rutba/pos-shared/components/FileView";
 import Link from "next/link";
 import { useToast } from "../../components/Toast";
+import ProductPickerTabs from "../../components/ProductPickerTabs";
+import { fetchProducts } from "@rutba/pos-shared/lib/pos";
 
 export default function BrandDetail() {
     const router = useRouter();
@@ -21,18 +23,37 @@ export default function BrandDetail() {
     const [name, setName] = useState("");
     const [slug, setSlug] = useState("");
 
+    const [selectedProductIds, setSelectedProductIds] = useState([]);
+    const [connectedProducts, setConnectedProducts] = useState([]);
+    const initialProductIdsRef = useRef([]);
+
     useEffect(() => {
         if (!jwt || !documentId || isNew) { setLoading(false); return; }
-        authApi.get(`/brands/${documentId}`, { status: 'draft', populate: ["logo", "gallery"] })
-            .then(res => {
-                const b = res.data || res;
+        Promise.all([
+            authApi.get(`/brands/${documentId}`, { status: 'draft', populate: ["logo", "gallery"] }),
+            fetchProducts({ brands: [documentId], parentOnly: true, status: "draft" }, 1, 1000, "name:asc"),
+        ])
+            .then(([brandRes, productsRes]) => {
+                const b = brandRes.data || brandRes;
                 setBrand(b);
                 setName(b.name || "");
                 setSlug(b.slug || "");
+
+                const products = productsRes.data || [];
+                setConnectedProducts(products);
+                const ids = products.map(p => p.documentId);
+                setSelectedProductIds(ids);
+                initialProductIdsRef.current = ids;
             })
             .catch(err => console.error("Failed to load brand", err))
             .finally(() => setLoading(false));
     }, [jwt, documentId, isNew]);
+
+    const toggleProduct = (docId) => {
+        setSelectedProductIds(prev =>
+            prev.includes(docId) ? prev.filter(id => id !== docId) : [...prev, docId]
+        );
+    };
 
     const handleSave = async () => {
         setSaving(true);
@@ -47,6 +68,26 @@ export default function BrandDetail() {
                 await authApi.put(`/brands/${documentId}?status=draft`, {
                     data: { name },
                 });
+
+                const initialIds = new Set(initialProductIdsRef.current);
+                const currentIds = new Set(selectedProductIds);
+                const added = selectedProductIds.filter(id => !initialIds.has(id));
+                const removed = initialProductIdsRef.current.filter(id => !currentIds.has(id));
+
+                const updates = [];
+                for (const id of added) {
+                    updates.push(authApi.put(`/products/${id}?status=draft`, {
+                        data: { brands: { connect: [documentId] } }
+                    }));
+                }
+                for (const id of removed) {
+                    updates.push(authApi.put(`/products/${id}?status=draft`, {
+                        data: { brands: { disconnect: [documentId] } }
+                    }));
+                }
+                await Promise.all(updates);
+
+                initialProductIdsRef.current = [...selectedProductIds];
                 toast("Brand updated!", "success");
             }
         } catch (err) {
@@ -77,7 +118,7 @@ export default function BrandDetail() {
                 {!loading && (isNew || brand) && (
                     <div className="row">
                         <div className="col-md-8">
-                            <div className="card">
+                            <div className="card mb-3">
                                 <div className="card-body">
                                     <div className="mb-3">
                                         <label className="form-label">Name</label>
@@ -94,6 +135,14 @@ export default function BrandDetail() {
                                     </button>
                                 </div>
                             </div>
+
+                            {!isNew && (
+                                <ProductPickerTabs
+                                    selectedProductIds={selectedProductIds}
+                                    connectedProducts={connectedProducts}
+                                    onToggle={toggleProduct}
+                                />
+                            )}
                         </div>
                         {!isNew && brand && (
                             <div className="col-md-4">

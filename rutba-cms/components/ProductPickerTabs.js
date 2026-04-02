@@ -1,0 +1,316 @@
+import { useState, useEffect, useCallback } from "react";
+import { useAuth } from "@rutba/pos-shared/context/AuthContext";
+import { authApi, StraipImageUrl } from "@rutba/pos-shared/lib/api";
+import { ProductFilter } from "@rutba/pos-shared/components/filter/product-filter";
+import { fetchProducts } from "@rutba/pos-shared/lib/pos";
+import Link from "next/link";
+
+const DEFAULT_PAGE_SIZE = 25;
+const PAGE_SIZE_OPTIONS = [5, 10, 25, 50, 100, 150, 200];
+
+export default function ProductPickerTabs({ selectedProductIds, connectedProducts, onToggle }) {
+    const [activeTab, setActiveTab] = useState("connected");
+    const { jwt } = useAuth();
+
+    // Cache of product objects keyed by documentId
+    const [productCache, setProductCache] = useState({});
+
+    // Seed cache from connectedProducts
+    useEffect(() => {
+        if (!connectedProducts?.length) return;
+        setProductCache(prev => {
+            const next = { ...prev };
+            connectedProducts.forEach(p => { next[p.documentId] = p; });
+            return next;
+        });
+    }, [connectedProducts]);
+
+    // Picker state
+    const [pickerProducts, setPickerProducts] = useState([]);
+    const [pickerLoading, setPickerLoading] = useState(false);
+    const [pickerPage, setPickerPage] = useState(1);
+    const [pickerPageSize, setPickerPageSize] = useState(DEFAULT_PAGE_SIZE);
+    const [pickerPageCount, setPickerPageCount] = useState(1);
+    const [pickerTotal, setPickerTotal] = useState(0);
+    const [goToPage, setGoToPage] = useState("");
+
+    // Filter data
+    const [brands, setBrands] = useState([]);
+    const [categories, setCategories] = useState([]);
+    const [suppliers, setSuppliers] = useState([]);
+    const [termTypes, setTermTypes] = useState([]);
+    const [purchases, setPurchases] = useState([]);
+
+    // Selected filters
+    const [selectedBrand, setSelectedBrand] = useState("");
+    const [selectedCategory, setSelectedCategory] = useState("");
+    const [selectedSupplier, setSelectedSupplier] = useState("");
+    const [selectedTerm, setSelectedTerm] = useState("");
+    const [selectedPurchase, setSelectedPurchase] = useState("");
+    const [searchText, setSearchText] = useState("");
+
+    // Load filter options
+    const [filterDataLoaded, setFilterDataLoaded] = useState(false);
+    useEffect(() => {
+        if (!jwt || filterDataLoaded || activeTab !== "all") return;
+        (async () => {
+            try {
+                const [brandsRes, categoriesRes, suppliersRes, termTypesRes, purchasesRes] = await Promise.all([
+                    authApi.getAll("/brands"),
+                    authApi.getAll("/categories"),
+                    authApi.getAll("/suppliers"),
+                    authApi.getAll("/term-types", { populate: ["terms"] }),
+                    authApi.getAll("/purchases", { sort: ["createdAt:desc"] }),
+                ]);
+                setBrands(brandsRes?.data || brandsRes || []);
+                setCategories(categoriesRes?.data || categoriesRes || []);
+                setSuppliers(suppliersRes?.data || suppliersRes || []);
+                setTermTypes(termTypesRes?.data || termTypesRes || []);
+                setPurchases(purchasesRes?.data || purchasesRes || []);
+                setFilterDataLoaded(true);
+            } catch (err) {
+                console.error("Failed to load picker data", err);
+            }
+        })();
+    }, [jwt, activeTab, filterDataLoaded]);
+
+    // Fetch picker products (only when All Products tab is active)
+    useEffect(() => {
+        if (!jwt || activeTab !== "all") return;
+
+        const filters = { parentOnly: true, status: "draft", searchText };
+        if (selectedBrand) filters.brands = [selectedBrand];
+        if (selectedCategory) filters.categories = [selectedCategory];
+        if (selectedSupplier) filters.suppliers = [selectedSupplier];
+        if (selectedTerm) filters.terms = [selectedTerm];
+        if (selectedPurchase) filters.purchases = [selectedPurchase];
+
+        let cancelled = false;
+        setPickerLoading(true);
+
+        fetchProducts(filters, pickerPage, pickerPageSize, "createdAt:desc")
+            .then((res) => {
+                if (cancelled) return;
+                const products = res.data || [];
+                setPickerProducts(products);
+                setPickerPageCount(res.meta?.pagination?.pageCount ?? 1);
+                setPickerTotal(res.meta?.pagination?.total ?? 0);
+                setProductCache(prev => {
+                    const next = { ...prev };
+                    products.forEach(p => { next[p.documentId] = p; });
+                    return next;
+                });
+            })
+            .catch((err) => { if (!cancelled) console.error("Failed to load filtered products", err); })
+            .finally(() => { if (!cancelled) setPickerLoading(false); });
+
+        return () => { cancelled = true; };
+    }, [jwt, activeTab, pickerPage, pickerPageSize, selectedBrand, selectedCategory, selectedSupplier, selectedTerm, selectedPurchase, searchText]);
+
+    // Pagination helpers
+    const pickerFromItem = pickerTotal === 0 ? 0 : (pickerPage - 1) * pickerPageSize + 1;
+    const pickerToItem = Math.min(pickerPage * pickerPageSize, pickerTotal);
+    const pickerPaginationItems = (() => {
+        if (pickerPageCount <= 7) return Array.from({ length: pickerPageCount }, (_, i) => i + 1);
+        if (pickerPage <= 4) return [1, 2, 3, 4, 5, "…", pickerPageCount];
+        if (pickerPage >= pickerPageCount - 3) return [1, "…", pickerPageCount - 4, pickerPageCount - 3, pickerPageCount - 2, pickerPageCount - 1, pickerPageCount];
+        return [1, "…", pickerPage - 1, pickerPage, pickerPage + 1, "…", pickerPageCount];
+    })();
+
+    // Connected products from cache
+    const displayConnected = selectedProductIds
+        .map(id => productCache[id])
+        .filter(Boolean);
+
+    const renderProductButton = (p) => {
+        const selected = selectedProductIds.includes(p.documentId);
+        return (
+            <div key={p.documentId} className="d-inline-flex align-items-center gap-1">
+                <button
+                    type="button"
+                    className={`btn btn-sm ${selected ? "btn-success" : "btn-outline-secondary"}`}
+                    onClick={() => onToggle(p.documentId)}
+                >
+                    {selected && <i className="fas fa-check me-1"></i>}
+                    {p.logo?.url && (
+                        <img
+                            src={StraipImageUrl(p.logo)}
+                            alt=""
+                            style={{ width: 16, height: 16, objectFit: "contain", marginRight: 4 }}
+                        />
+                    )}
+                    {p.name}
+                </button>
+                <Link
+                    href={`/${p.documentId}/product`}
+                    className="btn btn-sm btn-outline-primary"
+                    title="Open product"
+                >
+                    <i className="fas fa-external-link-alt"></i>
+                </Link>
+            </div>
+        );
+    };
+
+    return (
+        <div className="card mb-3">
+            <div className="card-header d-flex align-items-center">
+                <i className="fas fa-box me-2"></i>
+                <strong>Products</strong>
+                <span className="badge bg-primary ms-2">{selectedProductIds.length}</span>
+            </div>
+            <div className="card-body">
+                <ul className="nav nav-tabs mb-3">
+                    <li className="nav-item">
+                        <button
+                            className={`nav-link ${activeTab === "connected" ? "active" : ""}`}
+                            onClick={() => setActiveTab("connected")}
+                        >
+                            <i className="fas fa-link me-1"></i>
+                            Connected <span className="badge bg-success ms-1">{selectedProductIds.length}</span>
+                        </button>
+                    </li>
+                    <li className="nav-item">
+                        <button
+                            className={`nav-link ${activeTab === "all" ? "active" : ""}`}
+                            onClick={() => setActiveTab("all")}
+                        >
+                            <i className="fas fa-search me-1"></i>
+                            All Products
+                        </button>
+                    </li>
+                </ul>
+
+                {activeTab === "connected" && (
+                    <>
+                        {displayConnected.length === 0 ? (
+                            <p className="text-muted small">No products connected yet. Use the "All Products" tab to search and add products.</p>
+                        ) : (
+                            <div className="d-flex flex-wrap gap-2">
+                                {displayConnected.map(p => renderProductButton(p))}
+                            </div>
+                        )}
+                    </>
+                )}
+
+                {activeTab === "all" && (
+                    <>
+                        <ProductFilter
+                            brands={brands}
+                            categories={categories}
+                            suppliers={suppliers}
+                            termTypes={termTypes}
+                            purchases={purchases}
+                            selectedBrand={selectedBrand}
+                            selectedCategory={selectedCategory}
+                            selectedSupplier={selectedSupplier}
+                            selectedTerm={selectedTerm}
+                            selectedPurchase={selectedPurchase}
+                            searchText={searchText}
+                            onBrandChange={(v) => { setSelectedBrand(v || ""); setPickerPage(1); }}
+                            onCategoryChange={(v) => { setSelectedCategory(v || ""); setPickerPage(1); }}
+                            onSupplierChange={(v) => { setSelectedSupplier(v || ""); setPickerPage(1); }}
+                            onTermChange={(v) => { setSelectedTerm(v || ""); setPickerPage(1); }}
+                            onPurchaseChange={(v) => { setSelectedPurchase(v || ""); setPickerPage(1); }}
+                            onSearchTextChange={(v) => { setSearchText(v || ""); setPickerPage(1); }}
+                        />
+
+                        <div className="d-flex align-items-center justify-content-between my-2">
+                            <small className="text-muted">
+                                {pickerTotal} products found
+                                {pickerTotal > 0 ? ` · Showing ${pickerFromItem}-${pickerToItem}` : ""}
+                            </small>
+                            <div className="d-flex align-items-center gap-2">
+                                <label className="small text-muted mb-0">Rows:</label>
+                                <select
+                                    className="form-select form-select-sm"
+                                    style={{ width: 90 }}
+                                    value={pickerPageSize}
+                                    onChange={(e) => { setPickerPageSize(parseInt(e.target.value, 10)); setPickerPage(1); }}
+                                >
+                                    {PAGE_SIZE_OPTIONS.map((size) => (
+                                        <option key={size} value={size}>{size}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+
+                        {pickerLoading && <p className="text-muted small">Loading products...</p>}
+
+                        {!pickerLoading && pickerProducts.length === 0 ? (
+                            <p className="text-muted small">No products match the filters.</p>
+                        ) : (
+                            <div className="d-flex flex-wrap gap-2">
+                                {pickerProducts.map(p => renderProductButton(p))}
+                            </div>
+                        )}
+
+                        {pickerPageCount > 1 && (
+                            <nav className="mt-3 d-flex align-items-center justify-content-between">
+                                <div>
+                                    <button
+                                        className="btn btn-sm btn-outline-secondary me-1"
+                                        disabled={pickerPage <= 1}
+                                        onClick={() => setPickerPage(p => Math.max(1, p - 1))}
+                                    >
+                                        &laquo; Prev
+                                    </button>
+                                    <button
+                                        className="btn btn-sm btn-outline-secondary"
+                                        disabled={pickerPage >= pickerPageCount}
+                                        onClick={() => setPickerPage(p => Math.min(pickerPageCount, p + 1))}
+                                    >
+                                        Next &raquo;
+                                    </button>
+                                </div>
+                                <div className="d-flex align-items-center gap-2">
+                                    <ul className="pagination pagination-sm mb-0">
+                                        {pickerPaginationItems.map((item, idx) => (
+                                            typeof item === "number" ? (
+                                                <li key={item} className={`page-item ${pickerPage === item ? "active" : ""}`}>
+                                                    <button className="page-link" onClick={() => setPickerPage(item)}>{item}</button>
+                                                </li>
+                                            ) : (
+                                                <li key={`ellipsis-${idx}`} className="page-item disabled">
+                                                    <span className="page-link">…</span>
+                                                </li>
+                                            )
+                                        ))}
+                                    </ul>
+                                    <div className="d-flex align-items-center gap-1">
+                                        <span className="small text-muted">Go to</span>
+                                        <input
+                                            type="number"
+                                            min={1}
+                                            max={pickerPageCount}
+                                            className="form-control form-control-sm"
+                                            style={{ width: 80 }}
+                                            value={goToPage}
+                                            onChange={(e) => setGoToPage(e.target.value)}
+                                            onKeyDown={(e) => {
+                                                if (e.key !== "Enter") return;
+                                                const target = Math.max(1, Math.min(pickerPageCount, parseInt(goToPage, 10) || 1));
+                                                setPickerPage(target);
+                                                setGoToPage("");
+                                            }}
+                                        />
+                                        <button
+                                            className="btn btn-sm btn-outline-secondary"
+                                            onClick={() => {
+                                                const target = Math.max(1, Math.min(pickerPageCount, parseInt(goToPage, 10) || 1));
+                                                setPickerPage(target);
+                                                setGoToPage("");
+                                            }}
+                                        >
+                                            Go
+                                        </button>
+                                    </div>
+                                </div>
+                            </nav>
+                        )}
+                    </>
+                )}
+            </div>
+        </div>
+    );
+}
