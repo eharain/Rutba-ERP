@@ -568,5 +568,3 @@ export default function CmsPageDetail() {
         </ProtectedRoute>
     );
 }
-
-export async function getServerSideProps() { return { props: {} }; }

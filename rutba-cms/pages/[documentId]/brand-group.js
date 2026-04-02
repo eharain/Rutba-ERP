@@ -275,5 +275,3 @@ export default function BrandGroupDetail() {
         </ProtectedRoute>
     );
 }
-
-export async function getServerSideProps() { return { props: {} }; }

@@ -400,5 +400,3 @@ export default function CmsFooterDetail() {
         </ProtectedRoute>
     );
 }
-
-export async function getServerSideProps() { return { props: {} }; }

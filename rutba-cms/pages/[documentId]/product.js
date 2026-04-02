@@ -412,5 +412,3 @@ export default function ProductDetail() {
         </ProtectedRoute>
     );
 }
-
-export async function getServerSideProps() { return { props: {} }; }

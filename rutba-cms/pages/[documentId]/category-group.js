@@ -270,5 +270,3 @@ export default function CategoryGroupDetail() {
         </ProtectedRoute>
     );
 }
-
-export async function getServerSideProps() { return { props: {} }; }
