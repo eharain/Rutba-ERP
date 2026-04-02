@@ -25,6 +25,8 @@ const NO_DEL   = ['find', 'findOne', 'create', 'update'];
 const CASH_REG = ['find', 'findOne', 'create', 'update', 'delete', 'open', 'close', 'active', 'expire'];
 const STOCK_INPUT = ['find', 'findOne', 'create', 'update', 'delete', 'bulk', 'process'];
 const CMS_WRITE  = ['find', 'findOne', 'create', 'update', 'delete', 'publish', 'unpublish'];
+const STOCK_ITEM_READ = ['find', 'findOne', 'orphanGroups', 'orphanGroupItems'];
+const STOCK_ITEM_WRITE = ['find', 'findOne', 'create', 'update', 'delete', 'orphanGroups', 'orphanGroupItems'];
 
 /**
  * Default time (in seconds) the session-expired dialog stays open
@@ -53,7 +55,7 @@ const ENTRIES = [
       { uid: 'api::purchase-item.purchase-item',                   actions: WRITE },
       { uid: 'api::purchase-return.purchase-return',               actions: WRITE },
       { uid: 'api::purchase-return-item.purchase-return-item',     actions: WRITE },
-      { uid: 'api::stock-item.stock-item',                         actions: WRITE },
+      { uid: 'api::stock-item.stock-item',                         actions: STOCK_ITEM_WRITE },
       { uid: 'api::stock-input.stock-input',                       actions: STOCK_INPUT },
       // shared / read
       { uid: 'api::branch.branch',                                 actions: READ },
@@ -84,7 +86,7 @@ const ENTRIES = [
       { uid: 'api::product.product',                               actions: READ },
       { uid: 'api::category.category',                             actions: READ },
       { uid: 'api::brand.brand',                                   actions: READ },
-      { uid: 'api::stock-item.stock-item',                         actions: [...READ, 'update'] },
+      { uid: 'api::stock-item.stock-item',                         actions: [...STOCK_ITEM_READ, 'update'] },
       // shared / read
       { uid: 'api::branch.branch',                                 actions: READ },
       { uid: 'api::currency.currency',                             actions: READ },
@@ -131,7 +133,7 @@ const ENTRIES = [
       { uid: 'api::purchase-return.purchase-return',               actions: READ },
       { uid: 'api::purchase-return-item.purchase-return-item',     actions: READ },
       { uid: 'api::product.product',                               actions: READ },
-      { uid: 'api::stock-item.stock-item',                         actions: READ },
+      { uid: 'api::stock-item.stock-item',                         actions: STOCK_ITEM_READ },
       // shared / read
       { uid: 'api::branch.branch',                                 actions: READ },
       { uid: 'api::currency.currency',                             actions: READ },
@@ -239,7 +241,7 @@ const ENTRIES = [
       { uid: 'api::cash-register.cash-register',                   actions: READ },
       { uid: 'api::cash-register-transaction.cash-register-transaction', actions: READ },
       { uid: 'api::product.product',                               actions: READ },
-      { uid: 'api::stock-item.stock-item',                         actions: READ },
+      { uid: 'api::stock-item.stock-item',                         actions: STOCK_ITEM_READ },
       // shared / read
       { uid: 'api::branch.branch',                                 actions: READ },
       { uid: 'api::currency.currency',                             actions: READ },
