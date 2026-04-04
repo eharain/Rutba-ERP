@@ -362,13 +362,11 @@ export default function ProductsBulkEdit() {
             // Pick the most recently created ones to reduce
             const itemsToReduce = existingItems.slice(0, toReduce);
 
-            await Promise.all(
-                itemsToReduce.map(item =>
-                    authApi.put(`/stock-items/${item.documentId || item.id}`, {
-                        data: { status: 'Reduced' }
-                    })
-                )
-            );
+            for (const item of itemsToReduce) {
+                await authApi.put(`/stock-items/${item.documentId || item.id}`, {
+                    data: { status: 'Reduced' }
+                });
+            }
             return `Reduced ${toReduce} stock item(s) to "Reduced" status`;
         }
 

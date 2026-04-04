@@ -30,6 +30,15 @@
     },
     "product_name": {
       "type": "string"
+    },
+    "variant_name": {
+      "type": "string"
+    },
+    "variant_terms": {
+      "type": "json"
+    },
+    "image": {
+      "type": "string"
     }
   }
 }

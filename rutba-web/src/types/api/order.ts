@@ -41,6 +41,7 @@ export interface OrderInterface {
             variant_terms?: OrderTermInfo[];
             product_name: string;
             product: string;
+            image?: string;
         }[];
     };
 }
@@ -57,6 +58,7 @@ export interface CheckoutPayload {
             variant?: string;
             variant_name?: string;
             variant_terms?: OrderTermInfo[];
+            image?: string;
         }[];
     };
     subtotal: number;

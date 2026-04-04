@@ -4,7 +4,7 @@ import { ImageInterface } from "@/types/api/image";
 import { ProductInterface } from "@/types/api/product";
 import { cn } from "@/lib/utils";
 
-import { useMemo, useEffect, useState } from "react";
+import { useMemo, useEffect, useState, useCallback } from "react";
 
 interface ImageEntry {
   image: ImageInterface;
@@ -17,12 +17,14 @@ export default function ImageListProduct({
   variants,
   selectedVariantId,
   onVariantSelect,
+  onImageChange,
 }: {
   logo?: ImageInterface;
   imageList?: ImageInterface[];
   variants?: ProductInterface[];
   selectedVariantId?: number | null;
   onVariantSelect?: (variantId: number) => void;
+  onImageChange?: (relativeUrl: string | null) => void;
 }) {
   const allEntries = useMemo(() => {
     const entries: ImageEntry[] = [];
@@ -67,6 +69,17 @@ export default function ImageListProduct({
       ? IMAGE_URL + allEntries[0].image.url
       : "/images/fallback-image.png"
   );
+
+  // Notify parent whenever the displayed image changes
+  useEffect(() => {
+    if (onImageChange) {
+      if (selectedImage.startsWith(IMAGE_URL)) {
+        onImageChange(selectedImage.slice(IMAGE_URL.length));
+      } else {
+        onImageChange(null);
+      }
+    }
+  }, [selectedImage, onImageChange]);
 
   // When a variant is selected externally, jump to its first image
   useEffect(() => {

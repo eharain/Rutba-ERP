@@ -94,6 +94,7 @@ export default function FormCheckoutShippingInformation() {
         variant: item.variant_id ? String(item.variant_id) : undefined,
         variant_name: item.variant_name,
         variant_terms: item.variant_terms,
+        image: item.image,
       };
     });
 

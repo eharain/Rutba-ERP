@@ -118,6 +118,9 @@ export default function ProductDetail() {
   // Classic variant selection (fallback for no-terms variants)
   const [selectVariant, setSelectedVariant] = useState<number | null>(null);
 
+  // Track the image currently displayed in the gallery
+  const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
+
   // Filter variants by current term selection (both variant and public terms)
   const matchedVariants = useMemo(() => {
     if (!product?.variants) return [];
@@ -264,6 +267,7 @@ export default function ProductDetail() {
               onVariantSelect={(id) => {
                 if (!hasTermVariants) setSelectedVariant(id);
               }}
+              onImageChange={setSelectedImageUrl}
             ></ImageListProduct>
           </div>
           <div className="col-span-12 md:col-span-6 lg:col-span-5">
@@ -444,7 +448,7 @@ export default function ProductDetail() {
               disabled={!canAddToCart}
               onClick={() => {
                 const variantId = resolvedVariant?.id ?? selectVariant;
-                addToCart(product?.id ?? null, variantId, 1, selectedTermsForCart);
+                addToCart(product?.id ?? null, variantId, 1, selectedTermsForCart, selectedImageUrl);
                 cartStore.setIsCartOpen(true);
               }}
             >

@@ -8,6 +8,7 @@ export interface cartLocalStorage {
   variantId: number | null;
   qty: number | null;
   variantTerms?: CartTermInfo[];
+  selectedImage?: string | null;
 }
 
 export const useCartService = () => {
@@ -26,7 +27,8 @@ export const useCartService = () => {
     productId: number | null,
     variantId: number | null,
     qty: number,
-    variantTerms?: CartTermInfo[]
+    variantTerms?: CartTermInfo[],
+    selectedImage?: string | null
   ) => {
     const cart = localStorage.getItem("cart");
 
@@ -43,12 +45,14 @@ export const useCartService = () => {
       );
       if (index > -1) {
         cartData[index].qty += qty;
+        if (selectedImage) cartData[index].selectedImage = selectedImage;
       } else {
         cartData.push({
           productId: productId,
           variantId: variantId,
           qty: qty,
           variantTerms: variantTerms,
+          selectedImage: selectedImage,
         });
       }
 
@@ -61,6 +65,7 @@ export const useCartService = () => {
           variantId: variantId,
           qty: qty,
           variantTerms: variantTerms,
+          selectedImage: selectedImage,
         },
       ];
 
@@ -148,6 +153,9 @@ export const useCartService = () => {
           productData?.logo?.url ??
           productData?.gallery?.[0]?.url;
 
+        // Prefer the image the user explicitly selected in the gallery
+        const displayImage = item.selectedImage ?? variantImage ?? parentImage;
+
         // Extract variant terms from populated data
         const apiTerms: CartTermInfo[] = (productVariant?.terms || [])
           .flatMap((t) =>
@@ -158,7 +166,7 @@ export const useCartService = () => {
 
         return {
           id: productData?.id,
-          image: variantImage ?? parentImage,
+          image: displayImage,
           name: productData?.name,
           variant_id: productVariant?.id,
           variant_name: productVariant?.name,
