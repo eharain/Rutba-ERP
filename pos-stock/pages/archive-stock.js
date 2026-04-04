@@ -223,6 +223,7 @@ export default function ArchiveStockPage() {
             case "Damaged": return "#dc3545";
             case "Lost": return "#343a40";
             case "Expired": return "#6f42c1";
+            case "Reduced": return "#ffc107";
             default: return "#6c757d";
         }
     };

@@ -62,6 +62,21 @@ export default function ProductEditPage() {
                 if (documentId && documentId !== 'new') {
                     const productData = await loadProduct(documentId);
                     setProductId(productData.id);
+
+                    // Load stock_quantity as the count of Received + InStock stock items
+                    try {
+                        const siRes = await authApi.get('/stock-items', {
+                            filters: {
+                                product: { documentId },
+                                status: { $in: ['Received', 'InStock'] },
+                            },
+                            pagination: { pageSize: 1 },
+                        });
+                        productData.stock_quantity = siRes.meta?.pagination?.total || 0;
+                    } catch (_) {
+                        // keep whatever value came from the product
+                    }
+
                     setProduct(productData);
                 } else {
                     setProduct({

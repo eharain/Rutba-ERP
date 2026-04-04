@@ -33,6 +33,7 @@ export interface ProductInterface {
   selling_price: number;
   cost_price: number;
   stock_quantity: number;
+  summary: string;
   description: string;
   createdAt: string;
   updatedAt: string;
