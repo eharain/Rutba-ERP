@@ -20,7 +20,8 @@
         "Damaged",
         "Lost",
         "Expired",
-        "Transferred"
+        "Transferred",
+        "Reduced"
       ]
     },
     "cost_price": {

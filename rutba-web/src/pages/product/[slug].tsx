@@ -248,7 +248,8 @@ export default function ProductDetail() {
     );
   }
 
-  const canAddToCart = hasTermVariants ? resolvedVariant != null : selectVariant != null;
+  const hasVariants = (product?.variants?.length ?? 0) > 0;
+  const canAddToCart = !hasVariants || (hasTermVariants ? resolvedVariant != null : selectVariant != null);
 
   return (
     <LayoutMain>
@@ -274,9 +275,15 @@ export default function ProductDetail() {
             <hr className="opacity-50" />
 
             <div className="mt-3">
-              {product?.description && (
+              {product?.summary && (
                 <div
                   className="prose prose-slate max-w-none"
+                  dangerouslySetInnerHTML={{ __html: marked.parse(product.summary) as string }}
+                />
+              )}
+              {product?.description && (
+                <div
+                  className="prose prose-slate max-w-none mt-3"
                   dangerouslySetInnerHTML={{ __html: marked.parse(product.description) as string }}
                 />
               )}

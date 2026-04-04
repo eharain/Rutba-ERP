@@ -7,7 +7,7 @@ import { authApi } from "@rutba/pos-shared/lib/api";
 const STATUS_OPTIONS = [
     "InStock", "Sold", "Received", "Reserved",
     "Returned", "ReturnedDamaged", "ReturnedToSupplier",
-    "Damaged", "Lost", "Expired",
+    "Damaged", "Lost", "Expired", "Reduced",
 ];
 
 export default function OrphanStockItemsPage() {

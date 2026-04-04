@@ -23,6 +23,7 @@ const TERMINAL_STATUSES = [
   'Damaged',
   'Lost',
   'Expired',
+  'Reduced',
 ];
 
 module.exports = {

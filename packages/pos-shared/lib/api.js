@@ -325,7 +325,8 @@ export async function getStockStatus() {
         "Damaged",      // Not sellable due to damage
         "Lost",         // Missing in inventory
         "Expired",      // Expired product (if applicable)
-        "Transferred"   // Moved to another branch/warehouse
+        "Transferred",   // Moved to another branch/warehouse
+        "Reduced"       // Reduced stock
     ].reduce((pre, status) => {
         pre[status] = status;
         pre.statuses.push(status);

@@ -213,7 +213,26 @@ export default function Products() {
             <PermissionCheck required="api::product.product.find">
                 <Layout>
                     <div style={{ padding: 10 }}>
-                        <h1>Products</h1>
+                        <div className="d-flex flex-wrap align-items-center gap-2 mb-2">
+                            <h1 className="mb-0">Products</h1>
+                            <Link
+                                href={`/products-bulk-edit${(() => {
+                                    const params = new URLSearchParams();
+                                    if (selectedBrand) params.set('brands', selectedBrand);
+                                    if (selectedCategory) params.set('categories', selectedCategory);
+                                    if (selectedSupplier) params.set('suppliers', selectedSupplier);
+                                    if (selectedTerm) params.set('terms', selectedTerm);
+                                    if (selectedPurchase) params.set('purchases', selectedPurchase);
+                                    if (searchText) params.set('searchText', searchText);
+                                    if (stockStatus) params.set('stockStatus', stockStatus);
+                                    const qs = params.toString();
+                                    return qs ? '?' + qs : '';
+                                })()}`}
+                                className="btn btn-outline-warning btn-sm ms-auto"
+                            >
+                                <i className="fas fa-pen-square me-1" /> Bulk Edit
+                            </Link>
+                        </div>
                         <div>
 
                             <ProductFilter

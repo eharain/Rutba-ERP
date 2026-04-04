@@ -36,7 +36,8 @@
         "Damaged",
         "Lost",
         "Expired",
-        "Transferred"
+        "Transferred",
+        "Reduced"
       ]
     },
     "sellable_units": {

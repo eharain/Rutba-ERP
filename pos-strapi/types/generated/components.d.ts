@@ -91,6 +91,7 @@ export interface PosStockStatusHistory extends Struct.ComponentSchema {
         'Lost',
         'Expired',
         'Transferred',
+        'Reduced',
       ]
     > &
       Schema.Attribute.DefaultTo<'InStock'>;

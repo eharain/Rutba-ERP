@@ -2712,6 +2712,7 @@ export interface ApiStockItemStockItem extends Struct.CollectionTypeSchema {
         'Lost',
         'Expired',
         'Transferred',
+        'Reduced',
       ]
     > &
       Schema.Attribute.DefaultTo<'InStock'>;
