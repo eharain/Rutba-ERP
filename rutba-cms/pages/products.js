@@ -8,6 +8,7 @@ import { useUtil } from "@rutba/pos-shared/context/UtilContext";
 import { ProductFilter } from "@rutba/pos-shared/components/filter/product-filter";
 import { fetchProducts } from "@rutba/pos-shared/lib/pos";
 import Link from "next/link";
+import { useToast } from "../components/Toast";
 
 const DEFAULT_PAGE_SIZE = 25;
 const PAGE_SIZE_OPTIONS = [5, 10, 25, 50, 100, 150, 200];
@@ -34,6 +35,154 @@ export default function Products() {
     const [expandedProducts, setExpandedProducts] = useState({});
     const [variantsMap, setVariantsMap] = useState({});
     const [loadingVariants, setLoadingVariants] = useState({});
+
+    // --- toast ---
+    const { toast, ToastContainer } = useToast();
+
+    // --- selection & bulk publish ---
+    const [selectedIds, setSelectedIds] = useState(new Set());
+    const [publishing, setPublishing] = useState({});
+
+    const toggleSelected = (docId) => {
+        setSelectedIds(prev => {
+            const next = new Set(prev);
+            if (next.has(docId)) next.delete(docId); else next.add(docId);
+            return next;
+        });
+    };
+
+    const allPageIds = products.map(p => p.documentId);
+    const allSelected = allPageIds.length > 0 && allPageIds.every(id => selectedIds.has(id));
+    const toggleSelectAll = () => {
+        setSelectedIds(prev => {
+            const next = new Set(prev);
+            if (allSelected) {
+                allPageIds.forEach(id => next.delete(id));
+            } else {
+                allPageIds.forEach(id => next.add(id));
+            }
+            return next;
+        });
+    };
+
+    const publishOne = async (docId) => {
+        setPublishing(prev => ({ ...prev, [docId]: true }));
+        try {
+            await authApi.post(`/products/${docId}/publish`, {});
+            setProducts(prev => prev.map(p => p.documentId === docId ? { ...p, _isPublished: true } : p));
+            setVariantsMap(prev => {
+                const copy = { ...prev };
+                for (const key of Object.keys(copy)) {
+                    copy[key] = copy[key].map(v => v.documentId === docId ? { ...v, _isPublished: true } : v);
+                }
+                return copy;
+            });
+            toast("Published!", "success");
+        } catch (err) {
+            console.error("Failed to publish", err);
+            toast("Failed to publish.", "danger");
+        } finally {
+            setPublishing(prev => ({ ...prev, [docId]: false }));
+        }
+    };
+
+    const unpublishOne = async (docId) => {
+        setPublishing(prev => ({ ...prev, [docId]: true }));
+        try {
+            await authApi.post(`/products/${docId}/unpublish`, {});
+            setProducts(prev => prev.map(p => p.documentId === docId ? { ...p, _isPublished: false } : p));
+            setVariantsMap(prev => {
+                const copy = { ...prev };
+                for (const key of Object.keys(copy)) {
+                    copy[key] = copy[key].map(v => v.documentId === docId ? { ...v, _isPublished: false } : v);
+                }
+                return copy;
+            });
+            toast("Unpublished.", "success");
+        } catch (err) {
+            console.error("Failed to unpublish", err);
+            toast("Failed to unpublish.", "danger");
+        } finally {
+            setPublishing(prev => ({ ...prev, [docId]: false }));
+        }
+    };
+
+    const bulkPublish = async (includeVariants) => {
+        const ids = [...selectedIds];
+        if (ids.length === 0) { toast("No products selected.", "warning"); return; }
+        if (!confirm(`Publish ${ids.length} product(s)${includeVariants ? " including their variants" : ""}?`)) return;
+
+        const allIds = [...ids];
+        if (includeVariants) {
+            for (const docId of ids) {
+                try {
+                    const res = await authApi.get("/products", {
+                        status: "draft",
+                        filters: { parent: { documentId: docId } },
+                        fields: ["documentId"],
+                        pagination: { pageSize: 200 },
+                    });
+                    (res.data || []).forEach(v => { if (!allIds.includes(v.documentId)) allIds.push(v.documentId); });
+                } catch (err) {
+                    console.error("Failed to fetch variants for", docId, err);
+                }
+            }
+        }
+
+        let ok = 0, fail = 0;
+        for (const docId of allIds) {
+            setPublishing(prev => ({ ...prev, [docId]: true }));
+            try {
+                await authApi.post(`/products/${docId}/publish`, {});
+                ok++;
+                setProducts(prev => prev.map(p => p.documentId === docId ? { ...p, _isPublished: true } : p));
+                setVariantsMap(prev => {
+                    const copy = { ...prev };
+                    for (const key of Object.keys(copy)) {
+                        copy[key] = copy[key].map(v => v.documentId === docId ? { ...v, _isPublished: true } : v);
+                    }
+                    return copy;
+                });
+            } catch (err) {
+                fail++;
+                console.error("Failed to publish", docId, err);
+            } finally {
+                setPublishing(prev => ({ ...prev, [docId]: false }));
+            }
+        }
+        toast(`Published ${ok} product(s)${fail ? `, ${fail} failed` : ""}.`, fail ? "warning" : "success");
+        setSelectedIds(new Set());
+    };
+
+    const bulkUnpublish = async () => {
+        const ids = [...selectedIds];
+        if (ids.length === 0) { toast("No products selected.", "warning"); return; }
+        if (!confirm(`Unpublish ${ids.length} product(s)?`)) return;
+
+        let ok = 0, fail = 0;
+        for (const docId of ids) {
+            setPublishing(prev => ({ ...prev, [docId]: true }));
+            try {
+                await authApi.post(`/products/${docId}/unpublish`, {});
+                ok++;
+                setProducts(prev => prev.map(p => p.documentId === docId ? { ...p, _isPublished: false } : p));
+                setVariantsMap(prev => {
+                    const copy = { ...prev };
+                    for (const key of Object.keys(copy)) {
+                        copy[key] = copy[key].map(v => v.documentId === docId ? { ...v, _isPublished: false } : v);
+                    }
+                    return copy;
+                });
+            } catch (err) {
+                fail++;
+                console.error("Failed to unpublish", docId, err);
+            } finally {
+                setPublishing(prev => ({ ...prev, [docId]: false }));
+            }
+        }
+        toast(`Unpublished ${ok} product(s)${fail ? `, ${fail} failed` : ""}.`, fail ? "warning" : "success");
+        setSelectedIds(new Set());
+    };
 
     // --- derive ALL filter & page state from the URL ---
     const qVal = (v) => (Array.isArray(v) ? v[0] : v) || "";
@@ -155,8 +304,23 @@ export default function Products() {
     return (
         <ProtectedRoute>
             <Layout>
+                <ToastContainer />
                 <div className="d-flex align-items-center justify-content-between mb-3">
                     <h2 className="mb-0">Products</h2>
+                    {selectedIds.size > 0 && (
+                        <div className="d-flex align-items-center gap-2">
+                            <span className="badge bg-primary">{selectedIds.size} selected</span>
+                            <button className="btn btn-sm btn-success" onClick={() => bulkPublish(false)}>
+                                <i className="fas fa-upload me-1"></i>Publish Selected
+                            </button>
+                            <button className="btn btn-sm btn-outline-success" onClick={() => bulkPublish(true)}>
+                                <i className="fas fa-upload me-1"></i>Publish + Variants
+                            </button>
+                            <button className="btn btn-sm btn-outline-secondary" onClick={bulkUnpublish}>
+                                <i className="fas fa-eye-slash me-1"></i>Unpublish Selected
+                            </button>
+                        </div>
+                    )}
                 </div>
 
                 <ProductFilter
@@ -207,6 +371,9 @@ export default function Products() {
                         <table className="table table-striped table-hover">
                             <thead className="table-dark">
                                 <tr>
+                                    <th style={{ width: 30 }}>
+                                        <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} title="Select all" />
+                                    </th>
                                     <th style={{ width: 30 }}></th>
                                     <th style={{ width: 50 }}></th>
                                     <th>Name</th>
@@ -224,6 +391,9 @@ export default function Products() {
                                 {products.map(p => (
                                     <Fragment key={p.id}>
                                         <tr>
+                                            <td>
+                                                <input type="checkbox" checked={selectedIds.has(p.documentId)} onChange={() => toggleSelected(p.documentId)} />
+                                            </td>
                                             <td>
                                                 <button
                                                     className="btn btn-sm btn-link p-0"
@@ -253,8 +423,12 @@ export default function Products() {
                                             <td>{(p.purchase_items || []).map(pi => pi.purchase?.orderId).filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(", ") || "—"}</td>
                                             <td>
                                                 {p._isPublished
-                                                    ? <span className="badge bg-success">Published</span>
-                                                    : <span className="badge bg-secondary">Draft</span>
+                                                    ? <button className="btn btn-sm btn-success py-0 px-1" onClick={() => unpublishOne(p.documentId)} disabled={publishing[p.documentId]} title="Click to unpublish">
+                                                        {publishing[p.documentId] ? <i className="fas fa-spinner fa-spin"></i> : <><i className="fas fa-check me-1"></i>Published</>}
+                                                    </button>
+                                                    : <button className="btn btn-sm btn-outline-secondary py-0 px-1" onClick={() => publishOne(p.documentId)} disabled={publishing[p.documentId]} title="Click to publish">
+                                                        {publishing[p.documentId] ? <i className="fas fa-spinner fa-spin"></i> : "Draft"}
+                                                    </button>
                                                 }
                                             </td>
                                             <td>
@@ -266,19 +440,20 @@ export default function Products() {
                                         {expandedProducts[p.documentId] && (
                                             loadingVariants[p.documentId] ? (
                                                 <tr>
-                                                    <td colSpan={11} className="text-center text-muted">
+                                                    <td colSpan={12} className="text-center text-muted">
                                                         Loading variants...
                                                     </td>
                                                 </tr>
                                             ) : (variantsMap[p.documentId] || []).length === 0 ? (
                                                 <tr>
-                                                    <td colSpan={11} className="text-center text-muted">
+                                                    <td colSpan={12} className="text-center text-muted">
                                                         No variants
                                                     </td>
                                                 </tr>
                                             ) : (
                                                 (variantsMap[p.documentId] || []).map(v => (
                                                     <tr key={`variant-${v.id}`} className="table-light">
+                                                        <td></td>
                                                         <td></td>
                                                         <td>
                                                             {v.logo?.url ? (
@@ -303,8 +478,12 @@ export default function Products() {
                                                         <td>{(v.purchase_items || []).map(pi => pi.purchase?.orderId).filter(Boolean).filter((val, i, a) => a.indexOf(val) === i).join(", ") || "—"}</td>
                                                         <td>
                                                             {v._isPublished
-                                                                ? <span className="badge bg-success">Published</span>
-                                                                : <span className="badge bg-secondary">Draft</span>
+                                                                ? <button className="btn btn-sm btn-success py-0 px-1" onClick={() => unpublishOne(v.documentId)} disabled={publishing[v.documentId]} title="Click to unpublish">
+                                                                    {publishing[v.documentId] ? <i className="fas fa-spinner fa-spin"></i> : <><i className="fas fa-check me-1"></i>Published</>}
+                                                                </button>
+                                                                : <button className="btn btn-sm btn-outline-secondary py-0 px-1" onClick={() => publishOne(v.documentId)} disabled={publishing[v.documentId]} title="Click to publish">
+                                                                    {publishing[v.documentId] ? <i className="fas fa-spinner fa-spin"></i> : "Draft"}
+                                                                </button>
                                                             }
                                                         </td>
                                                         <td>

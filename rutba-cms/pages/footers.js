@@ -5,6 +5,7 @@ import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { authApi } from "@rutba/pos-shared/lib/api";
 import Link from "next/link";
+import { useToast } from "../components/Toast";
 
 const FOOTER_EXPORT_COLUMNS = ["slug", "name", "phone", "email", "address", "opening_hours", "social_links", "copyright_text"];
 
@@ -68,6 +69,85 @@ export default function Footers() {
     const [importing, setImporting] = useState(false);
     const [importLog, setImportLog] = useState([]);
     const importRef = useRef(null);
+    const { toast, ToastContainer } = useToast();
+    const [selectedIds, setSelectedIds] = useState(new Set());
+    const [publishing, setPublishing] = useState({});
+
+    const toggleSelected = (docId) => {
+        setSelectedIds(prev => {
+            const next = new Set(prev);
+            if (next.has(docId)) next.delete(docId); else next.add(docId);
+            return next;
+        });
+    };
+
+    const allPageIds = footers.map(f => f.documentId);
+    const allSelected = allPageIds.length > 0 && allPageIds.every(id => selectedIds.has(id));
+    const toggleSelectAll = () => {
+        setSelectedIds(prev => {
+            const next = new Set(prev);
+            if (allSelected) { allPageIds.forEach(id => next.delete(id)); } else { allPageIds.forEach(id => next.add(id)); }
+            return next;
+        });
+    };
+
+    const publishOne = async (docId) => {
+        setPublishing(prev => ({ ...prev, [docId]: true }));
+        try {
+            await authApi.post(`/cms-footers/${docId}/publish`, {});
+            setFooters(prev => prev.map(f => f.documentId === docId ? { ...f, _isPublished: true } : f));
+            toast("Published!", "success");
+        } catch (err) {
+            console.error("Failed to publish", err);
+            toast("Failed to publish.", "danger");
+        } finally {
+            setPublishing(prev => ({ ...prev, [docId]: false }));
+        }
+    };
+
+    const unpublishOne = async (docId) => {
+        setPublishing(prev => ({ ...prev, [docId]: true }));
+        try {
+            await authApi.post(`/cms-footers/${docId}/unpublish`, {});
+            setFooters(prev => prev.map(f => f.documentId === docId ? { ...f, _isPublished: false } : f));
+            toast("Unpublished.", "success");
+        } catch (err) {
+            console.error("Failed to unpublish", err);
+            toast("Failed to unpublish.", "danger");
+        } finally {
+            setPublishing(prev => ({ ...prev, [docId]: false }));
+        }
+    };
+
+    const bulkPublish = async () => {
+        const ids = [...selectedIds];
+        if (ids.length === 0) { toast("No items selected.", "warning"); return; }
+        if (!confirm(`Publish ${ids.length} footer(s)?`)) return;
+        let ok = 0, fail = 0;
+        for (const docId of ids) {
+            setPublishing(prev => ({ ...prev, [docId]: true }));
+            try { await authApi.post(`/cms-footers/${docId}/publish`, {}); ok++; setFooters(prev => prev.map(f => f.documentId === docId ? { ...f, _isPublished: true } : f)); }
+            catch { fail++; }
+            finally { setPublishing(prev => ({ ...prev, [docId]: false })); }
+        }
+        toast(`Published ${ok} footer(s)${fail ? `, ${fail} failed` : ""}.`, fail ? "warning" : "success");
+        setSelectedIds(new Set());
+    };
+
+    const bulkUnpublish = async () => {
+        const ids = [...selectedIds];
+        if (ids.length === 0) { toast("No items selected.", "warning"); return; }
+        if (!confirm(`Unpublish ${ids.length} footer(s)?`)) return;
+        let ok = 0, fail = 0;
+        for (const docId of ids) {
+            setPublishing(prev => ({ ...prev, [docId]: true }));
+            try { await authApi.post(`/cms-footers/${docId}/unpublish`, {}); ok++; setFooters(prev => prev.map(f => f.documentId === docId ? { ...f, _isPublished: false } : f)); }
+            catch { fail++; }
+            finally { setPublishing(prev => ({ ...prev, [docId]: false })); }
+        }
+        toast(`Unpublished ${ok} footer(s)${fail ? `, ${fail} failed` : ""}.`, fail ? "warning" : "success");
+        setSelectedIds(new Set());
+    };
 
     const load = useCallback(async () => {
         if (!jwt) return;
@@ -137,9 +217,21 @@ export default function Footers() {
     return (
         <ProtectedRoute>
             <Layout>
+                <ToastContainer />
                 <div className="d-flex align-items-center justify-content-between mb-3">
                     <h2 className="mb-0">Footers</h2>
                     <div className="d-flex gap-2">
+                        {selectedIds.size > 0 && (
+                            <>
+                                <span className="badge bg-primary align-self-center">{selectedIds.size} selected</span>
+                                <button className="btn btn-sm btn-success" onClick={bulkPublish}>
+                                    <i className="fas fa-upload me-1"></i>Publish
+                                </button>
+                                <button className="btn btn-sm btn-outline-secondary" onClick={bulkUnpublish}>
+                                    <i className="fas fa-eye-slash me-1"></i>Unpublish
+                                </button>
+                            </>
+                        )}
                         <button
                             className="btn btn-outline-success btn-sm"
                             disabled={footers.length === 0}
@@ -184,6 +276,9 @@ export default function Footers() {
                         <table className="table table-striped table-hover">
                             <thead className="table-dark">
                                 <tr>
+                                    <th style={{ width: 30 }}>
+                                        <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} title="Select all" />
+                                    </th>
                                     <th>Name</th>
                                     <th>Slug</th>
                                     <th>Phone</th>
@@ -194,13 +289,20 @@ export default function Footers() {
                             <tbody>
                                 {footers.map(f => (
                                     <tr key={f.id}>
+                                        <td>
+                                            <input type="checkbox" checked={selectedIds.has(f.documentId)} onChange={() => toggleSelected(f.documentId)} />
+                                        </td>
                                         <td>{f.name}</td>
                                         <td><code>{f.slug}</code></td>
                                         <td>{f.phone || "—"}</td>
                                         <td>
                                             {f._isPublished
-                                                ? <span className="badge bg-success">Published</span>
-                                                : <span className="badge bg-secondary">Draft</span>
+                                                ? <button className="btn btn-sm btn-success py-0 px-1" onClick={() => unpublishOne(f.documentId)} disabled={publishing[f.documentId]} title="Click to unpublish">
+                                                    {publishing[f.documentId] ? <i className="fas fa-spinner fa-spin"></i> : <><i className="fas fa-check me-1"></i>Published</>}
+                                                </button>
+                                                : <button className="btn btn-sm btn-outline-secondary py-0 px-1" onClick={() => publishOne(f.documentId)} disabled={publishing[f.documentId]} title="Click to publish">
+                                                    {publishing[f.documentId] ? <i className="fas fa-spinner fa-spin"></i> : "Draft"}
+                                                </button>
                                             }
                                         </td>
                                         <td>

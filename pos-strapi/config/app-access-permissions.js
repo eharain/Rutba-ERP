@@ -351,13 +351,13 @@ const ENTRIES = [
     sessionTimeout: 120,
     permissions: [
       { uid: 'api::cms-page.cms-page',                             actions: CMS_WRITE },
-      { uid: 'api::product.product',                               actions: WRITE },
+      { uid: 'api::product.product',                               actions: CMS_WRITE },
       { uid: 'api::product-group.product-group',                   actions: CMS_WRITE },
       { uid: 'api::brand-group.brand-group',                       actions: CMS_WRITE },
       { uid: 'api::category-group.category-group',                 actions: CMS_WRITE },
       { uid: 'api::cms-footer.cms-footer',                         actions: CMS_WRITE },
-      { uid: 'api::category.category',                             actions: WRITE },
-      { uid: 'api::brand.brand',                                   actions: WRITE },
+      { uid: 'api::category.category',                             actions: CMS_WRITE },
+      { uid: 'api::brand.brand',                                   actions: CMS_WRITE },
       // cross-app read-only
       { uid: 'api::order.order',                                   actions: READ },
       { uid: 'api::customer.customer',                             actions: READ },

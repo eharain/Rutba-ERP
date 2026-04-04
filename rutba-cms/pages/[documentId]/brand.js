@@ -15,6 +15,7 @@ export default function BrandDetail() {
     const { documentId } = router.query;
     const { jwt } = useAuth();
     const [brand, setBrand] = useState(null);
+    const [isPublished, setIsPublished] = useState(false);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const { toast, ToastContainer } = useToast();
@@ -31,11 +32,13 @@ export default function BrandDetail() {
         if (!jwt || !documentId || isNew) { setLoading(false); return; }
         Promise.all([
             authApi.get(`/brands/${documentId}`, { status: 'draft', populate: ["logo", "gallery"] }),
+            authApi.get(`/brands/${documentId}`, { status: 'published', fields: ["documentId"] }).catch(() => ({ data: null })),
             fetchProducts({ brands: [documentId], parentOnly: true, status: "draft" }, 1, 1000, "name:asc"),
         ])
-            .then(([brandRes, productsRes]) => {
+            .then(([brandRes, pubRes, productsRes]) => {
                 const b = brandRes.data || brandRes;
                 setBrand(b);
+                setIsPublished(!!(pubRes.data));
                 setName(b.name || "");
                 setSlug(b.slug || "");
 
@@ -88,11 +91,64 @@ export default function BrandDetail() {
                 await Promise.all(updates);
 
                 initialProductIdsRef.current = [...selectedProductIds];
-                toast("Brand updated!", "success");
+                toast("Draft saved!", "success");
             }
         } catch (err) {
             console.error("Failed to save brand", err);
             toast("Failed to save.", "danger");
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handlePublish = async () => {
+        setSaving(true);
+        try {
+            await authApi.put(`/brands/${documentId}?status=draft`, {
+                data: { name },
+            });
+            await authApi.post(`/brands/${documentId}/publish`, {});
+            setIsPublished(true);
+            toast("Brand saved & published!", "success");
+        } catch (err) {
+            console.error("Failed to publish brand", err);
+            toast("Failed to publish.", "danger");
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleUnpublish = async () => {
+        setSaving(true);
+        try {
+            await authApi.post(`/brands/${documentId}/unpublish`, {});
+            setIsPublished(false);
+            toast("Brand unpublished.", "success");
+        } catch (err) {
+            console.error("Failed to unpublish brand", err);
+            toast("Failed to unpublish.", "danger");
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleDiscardDraft = async () => {
+        if (!confirm("Save current draft and load the published version into the editor?")) return;
+        setSaving(true);
+        try {
+            await authApi.put(`/brands/${documentId}?status=draft`, {
+                data: { name },
+            });
+            const res = await authApi.get(`/brands/${documentId}`, { status: 'published', populate: ["logo", "gallery"] });
+            const b = res.data || res;
+            if (!b) { toast("No published version found.", "warning"); return; }
+            setName(b.name || "");
+            setSlug(b.slug || "");
+            setBrand(b);
+            toast("Draft saved. Showing published version \u2014 click Save Draft to overwrite.", "success");
+        } catch (err) {
+            console.error("Failed to load published version", err);
+            toast("Failed to load published version.", "danger");
         } finally {
             setSaving(false);
         }
@@ -107,6 +163,20 @@ export default function BrandDetail() {
                         <i className="fas fa-arrow-left"></i> Back
                     </Link>
                     <h2 className="mb-0">{isNew ? "New Brand" : "Edit Brand"}</h2>
+                    {!isNew && isPublished && <span className="badge bg-success ms-2 align-self-center">Published</span>}
+                    {!isNew && brand && !isPublished && <span className="badge bg-secondary ms-2 align-self-center">Draft</span>}
+                    <div className="ms-auto d-flex gap-2">
+                        {!isNew && isPublished && (
+                            <button className="btn btn-sm btn-outline-secondary" onClick={handleUnpublish} disabled={saving}>
+                                <i className="fas fa-eye-slash me-1"></i>Unpublish
+                            </button>
+                        )}
+                        {!isNew && isPublished && (
+                            <button className="btn btn-sm btn-outline-warning" onClick={handleDiscardDraft} disabled={saving}>
+                                <i className="fas fa-undo me-1"></i>Load Published
+                            </button>
+                        )}
+                    </div>
                 </div>
 
                 {loading && <p>Loading...</p>}
@@ -130,9 +200,16 @@ export default function BrandDetail() {
                                             <input type="text" className="form-control" value={slug} onChange={e => setSlug(e.target.value)} placeholder="auto-generated from name" />
                                         </div>
                                     )}
-                                    <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
-                                        {saving ? "Saving…" : isNew ? "Create Brand" : "Save Changes"}
-                                    </button>
+                                    <div className="d-flex gap-2">
+                                        <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
+                                            {saving ? "Saving…" : isNew ? "Create Brand" : "Save Draft"}
+                                        </button>
+                                        {!isNew && (
+                                            <button className="btn btn-success" onClick={handlePublish} disabled={saving}>
+                                                <i className="fas fa-upload me-1"></i>{saving ? "Publishing…" : "Save & Publish"}
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
 
