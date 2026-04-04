@@ -27,12 +27,15 @@ export interface OrderOrderProductItem extends Struct.ComponentSchema {
     icon: 'arrowRight';
   };
   attributes: {
+    image: Schema.Attribute.String;
     price: Schema.Attribute.Decimal & Schema.Attribute.Required;
     product: Schema.Attribute.Relation<'oneToOne', 'api::product.product'>;
     product_name: Schema.Attribute.String;
     quantity: Schema.Attribute.Integer & Schema.Attribute.Required;
     total: Schema.Attribute.Decimal & Schema.Attribute.Required;
     variant: Schema.Attribute.String;
+    variant_name: Schema.Attribute.String;
+    variant_terms: Schema.Attribute.JSON;
   };
 }
 

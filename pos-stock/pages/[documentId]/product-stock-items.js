@@ -226,9 +226,9 @@ export default function EditProduct() {
             }
 
             const ids = Array.from(selectedStockItems);
-            await Promise.all(ids.map(id =>
-                authApi.put(`/stock-items/${id}`, { data: updates })
-            ));
+            for (const id of ids) {
+                await authApi.put(`/stock-items/${id}`, { data: updates });
+            }
 
             setSuccess(`Applied changes to ${ids.length} stock item(s)`);
             fetchStockItems(stockStatusFilter);
@@ -394,9 +394,9 @@ export default function EditProduct() {
         setError('');
         try {
             const ids = Array.from(selectedStockItems);
-            await Promise.all(ids.map(id =>
-                authApi.put(`/stock-items/${id}`, { data: { barcode: product.barcode } })
-            ));
+            for (const id of ids) {
+                await authApi.put(`/stock-items/${id}`, { data: { barcode: product.barcode } });
+            }
             setSuccess(`Assigned product barcode "${product.barcode}" to ${ids.length} stock item(s)`);
             fetchStockItems(stockStatusFilter);
         } catch (err) {

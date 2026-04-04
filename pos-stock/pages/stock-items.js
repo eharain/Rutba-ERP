@@ -152,9 +152,9 @@ export default function StockItemsPage() {
         setLoading(true);
         const documentIdsToUpdate = Array.from(selectedItems);
         try {
-            await Promise.all(documentIdsToUpdate.map(id =>
-                authApi.put(`/stock-items/${id}`, { data: { status: 'InStock', branch: destinationBranch } })
-            ));
+            for (const id of documentIdsToUpdate) {
+                await authApi.put(`/stock-items/${id}`, { data: { status: 'InStock', branch: destinationBranch } });
+            }
             alert(`Stock sent to ${destinationBranch} successfully for ${documentIdsToUpdate.length} items`);
             loadStockItems();
         }

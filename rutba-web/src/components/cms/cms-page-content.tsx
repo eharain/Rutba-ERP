@@ -81,10 +81,10 @@ export default function CmsPageContent({
                       <NextImage
                         src={IMAGE_URL + item.logo.url}
                         layout="fill"
-                        className="object-cover"
-                        alt={item.name || "hero-banner"}
+                                
+                        alt={item.name || "Rutba "}
                         useSkeleton
-                        priority
+                        
                       />
                     )}
                   </div>
