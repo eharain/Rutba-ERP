@@ -57,13 +57,15 @@ export default function DetailTransactionCard({
         <div className="flex items-center justify-between">
           <p className="font-bold">#{dataTransaction.order_id}</p>
           <p>
-            {new Intl.DateTimeFormat("en-US", {
-              year: "numeric",
-              month: "short",
-              day: "2-digit",
-              minute: "2-digit",
-              hour: "numeric",
-            }).format(new Date(dataTransaction.date))}
+            {dataTransaction.date
+              ? new Intl.DateTimeFormat("en-US", {
+                  year: "numeric",
+                  month: "short",
+                  day: "2-digit",
+                  minute: "2-digit",
+                  hour: "numeric",
+                }).format(new Date(dataTransaction.date))
+              : ""}
           </p>
         </div>
       </CardHeader>
