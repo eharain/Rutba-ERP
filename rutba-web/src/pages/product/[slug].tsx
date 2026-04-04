@@ -212,6 +212,17 @@ export default function ProductDetail() {
       .filter((t) => t.termName);
   }, [variantTermTypes, publicTermTypes, termSelection]);
 
+  // Resolved summary & description: prefer variant content when selected, fall back to product
+  const displaySummary = useMemo(() => {
+    if (resolvedVariant?.summary) return resolvedVariant.summary;
+    return product?.summary || "";
+  }, [resolvedVariant, product]);
+
+  const displayDescription = useMemo(() => {
+    if (resolvedVariant?.description) return resolvedVariant.description;
+    return product?.description || "";
+  }, [resolvedVariant, product]);
+
   // Auto-select first variant for no-term products
   useEffect(() => {
     if (!hasTermVariants) {
@@ -279,16 +290,16 @@ export default function ProductDetail() {
             <hr className="opacity-50" />
 
             <div className="mt-3">
-              {product?.summary && (
+              {displaySummary && (
                 <div
                   className="prose prose-slate max-w-none"
-                  dangerouslySetInnerHTML={{ __html: marked.parse(product.summary) as string }}
+                  dangerouslySetInnerHTML={{ __html: marked.parse(displaySummary) as string }}
                 />
               )}
-              {product?.description && (
+              {displayDescription && (
                 <div
                   className="prose prose-slate max-w-none mt-3"
-                  dangerouslySetInnerHTML={{ __html: marked.parse(product.description) as string }}
+                  dangerouslySetInnerHTML={{ __html: marked.parse(displayDescription) as string }}
                 />
               )}
             </div>
@@ -466,8 +477,30 @@ export default function ProductDetail() {
                 </span>
               </div>
             </Button>
-            <Accordion type="multiple" className="mt-8" defaultValue={["delivery"]}>
-              <AccordionItem value="delivery" data-state="open">
+            <Accordion type="multiple" className="mt-8" defaultValue={["delivery", ...(displaySummary ? ["summary"] : []), ...(displayDescription ? ["description"] : [])]}>
+              {displaySummary && (
+                <AccordionItem value="summary">
+                  <AccordionTrigger>Summary</AccordionTrigger>
+                  <AccordionContent>
+                    <div
+                      className="prose prose-slate max-w-none"
+                      dangerouslySetInnerHTML={{ __html: marked.parse(displaySummary) as string }}
+                    />
+                  </AccordionContent>
+                </AccordionItem>
+              )}
+              {displayDescription && (
+                <AccordionItem value="description">
+                  <AccordionTrigger>Description</AccordionTrigger>
+                  <AccordionContent>
+                    <div
+                      className="prose prose-slate max-w-none"
+                      dangerouslySetInnerHTML={{ __html: marked.parse(displayDescription) as string }}
+                    />
+                  </AccordionContent>
+                </AccordionItem>
+              )}
+              <AccordionItem value="delivery">
                 <AccordionTrigger>Delivery and Returns</AccordionTrigger>
                 <AccordionContent>
                   <p>

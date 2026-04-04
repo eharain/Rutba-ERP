@@ -5,6 +5,7 @@ import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { authApi } from "@rutba/pos-shared/lib/api";
 import Link from "next/link";
+import { useToast } from "../components/Toast";
 
 const PAGE_TYPES = ["page", "blog", "announcement"];
 
@@ -72,6 +73,85 @@ export default function Pages() {
     const [importLog, setImportLog] = useState([]);
     const [error, setError] = useState("");
     const importRef = useRef(null);
+    const { toast, ToastContainer } = useToast();
+    const [selectedIds, setSelectedIds] = useState(new Set());
+    const [publishing, setPublishing] = useState({});
+
+    const toggleSelected = (docId) => {
+        setSelectedIds(prev => {
+            const next = new Set(prev);
+            if (next.has(docId)) next.delete(docId); else next.add(docId);
+            return next;
+        });
+    };
+
+    const allPageIds = pages.map(p => p.documentId);
+    const allSelected = allPageIds.length > 0 && allPageIds.every(id => selectedIds.has(id));
+    const toggleSelectAll = () => {
+        setSelectedIds(prev => {
+            const next = new Set(prev);
+            if (allSelected) { allPageIds.forEach(id => next.delete(id)); } else { allPageIds.forEach(id => next.add(id)); }
+            return next;
+        });
+    };
+
+    const publishOne = async (docId) => {
+        setPublishing(prev => ({ ...prev, [docId]: true }));
+        try {
+            await authApi.post(`/cms-pages/${docId}/publish`, {});
+            setPages(prev => prev.map(p => p.documentId === docId ? { ...p, _isPublished: true } : p));
+            toast("Published!", "success");
+        } catch (err) {
+            console.error("Failed to publish", err);
+            toast("Failed to publish.", "danger");
+        } finally {
+            setPublishing(prev => ({ ...prev, [docId]: false }));
+        }
+    };
+
+    const unpublishOne = async (docId) => {
+        setPublishing(prev => ({ ...prev, [docId]: true }));
+        try {
+            await authApi.post(`/cms-pages/${docId}/unpublish`, {});
+            setPages(prev => prev.map(p => p.documentId === docId ? { ...p, _isPublished: false } : p));
+            toast("Unpublished.", "success");
+        } catch (err) {
+            console.error("Failed to unpublish", err);
+            toast("Failed to unpublish.", "danger");
+        } finally {
+            setPublishing(prev => ({ ...prev, [docId]: false }));
+        }
+    };
+
+    const bulkPublish = async () => {
+        const ids = [...selectedIds];
+        if (ids.length === 0) { toast("No items selected.", "warning"); return; }
+        if (!confirm(`Publish ${ids.length} page(s)?`)) return;
+        let ok = 0, fail = 0;
+        for (const docId of ids) {
+            setPublishing(prev => ({ ...prev, [docId]: true }));
+            try { await authApi.post(`/cms-pages/${docId}/publish`, {}); ok++; setPages(prev => prev.map(p => p.documentId === docId ? { ...p, _isPublished: true } : p)); }
+            catch { fail++; }
+            finally { setPublishing(prev => ({ ...prev, [docId]: false })); }
+        }
+        toast(`Published ${ok} page(s)${fail ? `, ${fail} failed` : ""}.`, fail ? "warning" : "success");
+        setSelectedIds(new Set());
+    };
+
+    const bulkUnpublish = async () => {
+        const ids = [...selectedIds];
+        if (ids.length === 0) { toast("No items selected.", "warning"); return; }
+        if (!confirm(`Unpublish ${ids.length} page(s)?`)) return;
+        let ok = 0, fail = 0;
+        for (const docId of ids) {
+            setPublishing(prev => ({ ...prev, [docId]: true }));
+            try { await authApi.post(`/cms-pages/${docId}/unpublish`, {}); ok++; setPages(prev => prev.map(p => p.documentId === docId ? { ...p, _isPublished: false } : p)); }
+            catch { fail++; }
+            finally { setPublishing(prev => ({ ...prev, [docId]: false })); }
+        }
+        toast(`Unpublished ${ok} page(s)${fail ? `, ${fail} failed` : ""}.`, fail ? "warning" : "success");
+        setSelectedIds(new Set());
+    };
 
     const load = useCallback(async () => {
         if (!jwt) return;
@@ -157,9 +237,21 @@ export default function Pages() {
     return (
         <ProtectedRoute>
             <Layout>
+                <ToastContainer />
                 <div className="d-flex align-items-center justify-content-between mb-3">
                     <h2 className="mb-0">Pages</h2>
                     <div className="d-flex gap-2">
+                        {selectedIds.size > 0 && (
+                            <>
+                                <span className="badge bg-primary align-self-center">{selectedIds.size} selected</span>
+                                <button className="btn btn-sm btn-success" onClick={bulkPublish}>
+                                    <i className="fas fa-upload me-1"></i>Publish
+                                </button>
+                                <button className="btn btn-sm btn-outline-secondary" onClick={bulkUnpublish}>
+                                    <i className="fas fa-eye-slash me-1"></i>Unpublish
+                                </button>
+                            </>
+                        )}
                         <button
                             className="btn btn-outline-success btn-sm"
                             disabled={pages.length === 0}
@@ -225,6 +317,9 @@ export default function Pages() {
                         <table className="table table-striped table-hover">
                             <thead className="table-dark">
                                 <tr>
+                                    <th style={{ width: 30 }}>
+                                        <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} title="Select all" />
+                                    </th>
                                     <th>Title</th>
                                     <th>Slug</th>
                                     <th>Type</th>
@@ -236,14 +331,21 @@ export default function Pages() {
                             <tbody>
                                 {pages.map(p => (
                                     <tr key={p.id}>
+                                        <td>
+                                            <input type="checkbox" checked={selectedIds.has(p.documentId)} onChange={() => toggleSelected(p.documentId)} />
+                                        </td>
                                         <td>{p.title}</td>
                                         <td><code>{p.slug}</code></td>
                                         <td><span className={`badge ${getTypeBadgeClass(p.page_type)}`}>{p.page_type}</span></td>
                                         <td>{p.sort_order}</td>
                                         <td>
                                             {p._isPublished
-                                                ? <span className="badge bg-success">Published</span>
-                                                : <span className="badge bg-secondary">Draft</span>
+                                                ? <button className="btn btn-sm btn-success py-0 px-1" onClick={() => unpublishOne(p.documentId)} disabled={publishing[p.documentId]} title="Click to unpublish">
+                                                    {publishing[p.documentId] ? <i className="fas fa-spinner fa-spin"></i> : <><i className="fas fa-check me-1"></i>Published</>}
+                                                </button>
+                                                : <button className="btn btn-sm btn-outline-secondary py-0 px-1" onClick={() => publishOne(p.documentId)} disabled={publishing[p.documentId]} title="Click to publish">
+                                                    {publishing[p.documentId] ? <i className="fas fa-spinner fa-spin"></i> : "Draft"}
+                                                </button>
                                             }
                                         </td>
                                         <td>

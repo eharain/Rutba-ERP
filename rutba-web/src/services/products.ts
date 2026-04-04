@@ -147,6 +147,20 @@ export default function useProductsService() {
   const getProductDetail = async (slug: string) => {
     const req = await axios.get(BASE_URL + "products/" + slug, {
       params: {
+        fields: [
+          "name",
+          "sku",
+          "barcode",
+          "selling_price",
+          "cost_price",
+          "offer_price",
+          "stock_quantity",
+          "summary",
+          "description",
+          "is_variant",
+          "is_active",
+          "keywords",
+        ],
         populate: {
           gallery: true,
           logo: true,
@@ -154,6 +168,18 @@ export default function useProductsService() {
           categories: true,
           terms: { populate: { term_types: true } },
           variants: {
+            fields: [
+              "name",
+              "sku",
+              "barcode",
+              "selling_price",
+              "cost_price",
+              "offer_price",
+              "stock_quantity",
+              "summary",
+              "description",
+              "is_variant",
+            ],
             populate: {
               gallery: true,
               logo: true,

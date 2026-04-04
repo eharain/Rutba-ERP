@@ -18,6 +18,7 @@ export default function ProductDetail() {
     const { jwt } = useAuth();
     const { currency } = useUtil();
     const [product, setProduct] = useState(null);
+    const [isPublished, setIsPublished] = useState(false);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const { toast, ToastContainer } = useToast();
@@ -25,6 +26,7 @@ export default function ProductDetail() {
 
     // Editable fields
     const [name, setName] = useState("");
+    const [summary  , setSummary] = useState("");
     const [description, setDescription] = useState("");
     const [sellingPrice, setSellingPrice] = useState("");
     const [offerPrice, setOfferPrice] = useState("");
@@ -41,19 +43,24 @@ export default function ProductDetail() {
         if (!jwt || !documentId) return;
         setLoading(true);
         try {
-            const res = await authApi.get(`/products/${documentId}`, {
-                status: 'draft',
-                populate: {
-                    logo: true,
-                    gallery: true,
-                    categories: true,
-                    brands: true,
-                    variants: { populate: { gallery: true, logo: true, terms: true } },
-                },
-            });
-            const p = res.data || res;
+            const [draftRes, pubRes] = await Promise.all([
+                authApi.get(`/products/${documentId}`, {
+                    status: 'draft',
+                    populate: {
+                        logo: true,
+                        gallery: true,
+                        categories: true,
+                        brands: true,
+                        variants: { populate: { gallery: true, logo: true, terms: true } },
+                    },
+                }),
+                authApi.get(`/products/${documentId}`, { status: 'published', fields: ["documentId"] }).catch(() => ({ data: null })),
+            ]);
+            const p = draftRes.data || draftRes;
             setProduct(p);
+            setIsPublished(!!(pubRes.data));
             setName(p.name || "");
+            setSummary(p.summary || "");
             setDescription(p.description || "");
             setSellingPrice(p.selling_price ?? "");
             setOfferPrice(p.offer_price ?? "");
@@ -98,16 +105,98 @@ export default function ProductDetail() {
             await authApi.put(`/products/${documentId}?status=draft`, {
                 data: {
                     name,
+                    summary,
                     description,
                     selling_price: parseFloat(sellingPrice) || 0,
                     offer_price: offerPrice ? parseFloat(offerPrice) : null,
                     is_active: isActive,
                 },
             });
-            toast("Product updated!", "success");
+            toast("Draft saved!", "success");
         } catch (err) {
             console.error("Failed to update product", err);
             toast("Failed to save changes.", "danger");
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handlePublish = async () => {
+        setSaving(true);
+        try {
+            const payload = {
+                data: {
+                    name,
+                    summary,
+                    description,
+                    selling_price: parseFloat(sellingPrice) || 0,
+                    offer_price: offerPrice ? parseFloat(offerPrice) : null,
+                    is_active: isActive,
+                },
+            };
+            await authApi.put(`/products/${documentId}?status=draft`, payload);
+            await authApi.post(`/products/${documentId}/publish`, {});
+            setIsPublished(true);
+            toast("Product saved & published!", "success");
+        } catch (err) {
+            console.error("Failed to publish product", err);
+            toast("Failed to publish.", "danger");
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleUnpublish = async () => {
+        setSaving(true);
+        try {
+            await authApi.post(`/products/${documentId}/unpublish`, {});
+            setIsPublished(false);
+            toast("Product unpublished.", "success");
+        } catch (err) {
+            console.error("Failed to unpublish product", err);
+            toast("Failed to unpublish.", "danger");
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleDiscardDraft = async () => {
+        if (!confirm("Save current draft and load the published version into the editor?")) return;
+        setSaving(true);
+        try {
+            await authApi.put(`/products/${documentId}?status=draft`, {
+                data: {
+                    name,
+                    summary,
+                    description,
+                    selling_price: parseFloat(sellingPrice) || 0,
+                    offer_price: offerPrice ? parseFloat(offerPrice) : null,
+                    is_active: isActive,
+                },
+            });
+            const res = await authApi.get(`/products/${documentId}`, {
+                status: 'published',
+                populate: {
+                    logo: true,
+                    gallery: true,
+                    categories: true,
+                    brands: true,
+                    variants: { populate: { gallery: true, logo: true, terms: true } },
+                },
+            });
+            const p = res.data || res;
+            if (!p) { toast("No published version found.", "warning"); return; }
+            setName(p.name || "");
+            setSummary(p.summary || "");
+            setDescription(p.description || "");
+            setSellingPrice(p.selling_price ?? "");
+            setOfferPrice(p.offer_price ?? "");
+            setIsActive(p.is_active ?? true);
+            setProduct(p);
+            toast("Draft saved. Showing published version — click Save Draft to overwrite.", "success");
+        } catch (err) {
+            console.error("Failed to load published version", err);
+            toast("Failed to load published version.", "danger");
         } finally {
             setSaving(false);
         }
@@ -192,11 +281,28 @@ export default function ProductDetail() {
                         <i className="fas fa-arrow-left"></i> Back
                     </Link>
                     <h2 className="mb-0">Edit Product</h2>
-                    {activeTab === "details" && (
-                        <button className="btn btn-sm btn-primary ms-auto" onClick={handleSave} disabled={saving}>
-                            {saving ? "Saving…" : "Save Changes"}
+                    {isPublished && <span className="badge bg-success ms-2 align-self-center">Published</span>}
+                    {product && !isPublished && <span className="badge bg-secondary ms-2 align-self-center">Draft</span>}
+                    <div className="ms-auto d-flex gap-2">
+                        {isPublished && (
+                            <button className="btn btn-sm btn-outline-secondary" onClick={handleUnpublish} disabled={saving}>
+                                <i className="fas fa-eye-slash me-1"></i>Unpublish
+                            </button>
+                        )}
+                        {isPublished && (
+                            <button className="btn btn-sm btn-outline-warning" onClick={handleDiscardDraft} disabled={saving}>
+                                <i className="fas fa-undo me-1"></i>Load Published
+                            </button>
+                        )}
+                        {activeTab === "details" && (
+                            <button className="btn btn-sm btn-primary" onClick={handleSave} disabled={saving}>
+                                {saving ? "Saving…" : "Save Draft"}
+                            </button>
+                        )}
+                        <button className="btn btn-sm btn-success" onClick={handlePublish} disabled={saving}>
+                            <i className="fas fa-upload me-1"></i>{saving ? "Publishing…" : "Save & Publish"}
                         </button>
-                    )}
+                    </div>
                 </div>
 
                 {loading && <p>Loading...</p>}
@@ -253,6 +359,10 @@ export default function ProductDetail() {
                                             <div className="mb-3">
                                                 <label className="form-label">Name</label>
                                                 <input type="text" className="form-control" value={name} onChange={e => setName(e.target.value)} />
+                                            </div>
+                                            <div className="mb-3">
+                                                <label className="form-label">Summary (Markdown)</label>
+                                                <MarkdownEditor value={summary} onChange={e => setSummary(e.target.value)} name="summary" rows={8} placeholder="Write a product summary..." />
                                             </div>
                                             <div className="mb-3">
                                                 <label className="form-label">Description (Markdown)</label>

@@ -15,6 +15,7 @@ export default function CategoryDetail() {
     const { documentId } = router.query;
     const { jwt } = useAuth();
     const [category, setCategory] = useState(null);
+    const [isPublished, setIsPublished] = useState(false);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const { toast, ToastContainer } = useToast();
@@ -33,11 +34,13 @@ export default function CategoryDetail() {
         if (!jwt || !documentId || isNew) { setLoading(false); return; }
         Promise.all([
             authApi.get(`/categories/${documentId}`, { status: 'draft', populate: ["logo", "gallery", "parent"] }),
+            authApi.get(`/categories/${documentId}`, { status: 'published', fields: ["documentId"] }).catch(() => ({ data: null })),
             fetchProducts({ categories: [documentId], parentOnly: true, status: "draft" }, 1, 1000, "name:asc"),
         ])
-            .then(([catRes, productsRes]) => {
+            .then(([catRes, pubRes, productsRes]) => {
                 const c = catRes.data || catRes;
                 setCategory(c);
+                setIsPublished(!!(pubRes.data));
                 setName(c.name || "");
                 setSlug(c.slug || "");
                 setSummary(c.summary || "");
@@ -92,11 +95,66 @@ export default function CategoryDetail() {
                 await Promise.all(updates);
 
                 initialProductIdsRef.current = [...selectedProductIds];
-                toast("Category updated!", "success");
+                toast("Draft saved!", "success");
             }
         } catch (err) {
             console.error("Failed to save category", err);
             toast("Failed to save.", "danger");
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handlePublish = async () => {
+        setSaving(true);
+        try {
+            await authApi.put(`/categories/${documentId}?status=draft`, {
+                data: { name, summary, description },
+            });
+            await authApi.post(`/categories/${documentId}/publish`, {});
+            setIsPublished(true);
+            toast("Category saved & published!", "success");
+        } catch (err) {
+            console.error("Failed to publish category", err);
+            toast("Failed to publish.", "danger");
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleUnpublish = async () => {
+        setSaving(true);
+        try {
+            await authApi.post(`/categories/${documentId}/unpublish`, {});
+            setIsPublished(false);
+            toast("Category unpublished.", "success");
+        } catch (err) {
+            console.error("Failed to unpublish category", err);
+            toast("Failed to unpublish.", "danger");
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleDiscardDraft = async () => {
+        if (!confirm("Save current draft and load the published version into the editor?")) return;
+        setSaving(true);
+        try {
+            await authApi.put(`/categories/${documentId}?status=draft`, {
+                data: { name, summary, description },
+            });
+            const res = await authApi.get(`/categories/${documentId}`, { status: 'published', populate: ["logo", "gallery", "parent"] });
+            const c = res.data || res;
+            if (!c) { toast("No published version found.", "warning"); return; }
+            setName(c.name || "");
+            setSlug(c.slug || "");
+            setSummary(c.summary || "");
+            setDescription(c.description || "");
+            setCategory(c);
+            toast("Draft saved. Showing published version \u2014 click Save Draft to overwrite.", "success");
+        } catch (err) {
+            console.error("Failed to load published version", err);
+            toast("Failed to load published version.", "danger");
         } finally {
             setSaving(false);
         }
@@ -111,6 +169,20 @@ export default function CategoryDetail() {
                         <i className="fas fa-arrow-left"></i> Back
                     </Link>
                     <h2 className="mb-0">{isNew ? "New Category" : "Edit Category"}</h2>
+                    {!isNew && isPublished && <span className="badge bg-success ms-2 align-self-center">Published</span>}
+                    {!isNew && category && !isPublished && <span className="badge bg-secondary ms-2 align-self-center">Draft</span>}
+                    <div className="ms-auto d-flex gap-2">
+                        {!isNew && isPublished && (
+                            <button className="btn btn-sm btn-outline-secondary" onClick={handleUnpublish} disabled={saving}>
+                                <i className="fas fa-eye-slash me-1"></i>Unpublish
+                            </button>
+                        )}
+                        {!isNew && isPublished && (
+                            <button className="btn btn-sm btn-outline-warning" onClick={handleDiscardDraft} disabled={saving}>
+                                <i className="fas fa-undo me-1"></i>Load Published
+                            </button>
+                        )}
+                    </div>
                 </div>
 
                 {loading && <p>Loading...</p>}
@@ -142,9 +214,16 @@ export default function CategoryDetail() {
                                         <label className="form-label">Description</label>
                                         <textarea className="form-control" rows={4} value={description} onChange={e => setDescription(e.target.value)} />
                                     </div>
-                                    <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
-                                        {saving ? "Saving…" : isNew ? "Create Category" : "Save Changes"}
-                                    </button>
+                                    <div className="d-flex gap-2">
+                                        <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
+                                            {saving ? "Saving…" : isNew ? "Create Category" : "Save Draft"}
+                                        </button>
+                                        {!isNew && (
+                                            <button className="btn btn-success" onClick={handlePublish} disabled={saving}>
+                                                <i className="fas fa-upload me-1"></i>{saving ? "Publishing…" : "Save & Publish"}
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
 
