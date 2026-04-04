@@ -24,7 +24,13 @@ export default function Transaction() {
     enabled: !!session.data && !!router.query.id,
   });
 
-  if (isLoading) return "<Spinner />";
+  if (isLoading || !dataTransaction)
+    return (
+      <ProfileLayout>
+        <></>
+        <p>Loading...</p>
+      </ProfileLayout>
+    );
   if (isError)
     return <ErrorCard message={(error as Error).message}></ErrorCard>;
 
