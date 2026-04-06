@@ -41,11 +41,12 @@ export const useCartService = () => {
       const cartData = JSON.parse(cart);
       const index = cartData.findIndex(
         (item: cartLocalStorage) =>
-          item.productId === productId && item.variantId === variantId
+          item.productId === productId &&
+          item.variantId === variantId &&
+          (item.selectedImage ?? null) === (selectedImage ?? null)
       );
       if (index > -1) {
         cartData[index].qty += qty;
-        if (selectedImage) cartData[index].selectedImage = selectedImage;
       } else {
         cartData.push({
           productId: productId,
@@ -78,7 +79,8 @@ export const useCartService = () => {
   const updateQuantity = (
     productId?: number | null,
     variantId?: number | null,
-    qty?: number
+    qty?: number,
+    selectedImage?: string | null
   ) => {
     const cart = localStorage.getItem("cart");
 
@@ -89,7 +91,9 @@ export const useCartService = () => {
     const cartData = JSON.parse(cart);
     const index = cartData.findIndex(
       (item: cartLocalStorage) =>
-        item.productId === productId || item.variantId === variantId
+        item.productId === productId &&
+        item.variantId === variantId &&
+        (item.selectedImage ?? null) === (selectedImage ?? null)
     );
 
     if (index > -1) {
@@ -174,6 +178,7 @@ export const useCartService = () => {
           documentId: productData?.documentId,
           qty: item.qty,
           variant_terms: apiTerms.length > 0 ? apiTerms : (item.variantTerms || []),
+          selectedImage: item.selectedImage ?? null,
         };
       }) as CartInterface[];
     }
@@ -189,7 +194,8 @@ export const useCartService = () => {
    */
   const removeItemFromCart = (
     productId?: number | null,
-    variantId?: number | null
+    variantId?: number | null,
+    selectedImage?: string | null
   ) => {
     const cart = localStorage.getItem("cart");
 
@@ -198,7 +204,11 @@ export const useCartService = () => {
     const cartData = JSON.parse(cart);
 
     const updatedCart = cartData.filter((item: cartLocalStorage) => {
-      return !(item.productId === productId || item.variantId === variantId);
+      return !(
+        item.productId === productId &&
+        item.variantId === variantId &&
+        (item.selectedImage ?? null) === (selectedImage ?? null)
+      );
     });
 
     localStorage.setItem("cart", JSON.stringify(updatedCart));

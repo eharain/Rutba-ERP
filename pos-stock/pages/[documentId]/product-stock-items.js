@@ -557,7 +557,7 @@ export default function EditProduct() {
         return (
             <ProtectedRoute>
                 <Layout>
-                    <div style={{ padding: '20px', textAlign: 'center' }}>
+                    <div className="page-content" style={{ textAlign: 'center' }}>
                         <p>Loading product data...</p>
                     </div>
                 </Layout>
@@ -568,7 +568,7 @@ export default function EditProduct() {
     return (
         <ProtectedRoute>
             <Layout>
-                <div style={{ padding: '20px', maxWidth: '900px', margin: '0 auto' }}>
+                <div className="page-content">
                     {/* Page navigation */}
                     <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
                         <Link href={`/${documentId}/product-edit`} className="btn btn-outline-secondary btn-sm">

@@ -12,7 +12,7 @@ type NextImageProps = {
   alt: string;
 } & (
   | { width: string | number; height: string | number }
-  | { layout: "fill"; width?: string | number; height?: string | number }
+  | { fill: true; width?: string | number; height?: string | number }
 ) &
   ImageProps;
 
@@ -29,6 +29,7 @@ export default function NextImage({
   alt,
   className,
   classNames,
+  fill,
   ...rest
 }: NextImageProps) {
   const [status, setStatus] = React.useState(
@@ -49,6 +50,26 @@ export default function NextImage({
   const isExternal =
     typeof imageSrc === "string" && imageSrc.startsWith("http");
   const externalLoader = ({ src }: { src: string }) => src;
+
+  if (fill) {
+    return (
+      <figure className={cn("relative w-full h-full", classNames?.image)}>
+        <Image
+          className={cn(
+            className,
+            status === "loading" && cn("animate-pulse", classNames?.blur)
+          )}
+          onError={() => setError(true)}
+          src={imageSrc}
+          fill
+          alt={alt}
+          onLoad={() => setStatus("complete")}
+          {...(isExternal ? { loader: externalLoader, unoptimized: true } : {})}
+          {...rest}
+        />
+      </figure>
+    );
+  }
 
   return (
     <figure

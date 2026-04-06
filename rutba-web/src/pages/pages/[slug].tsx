@@ -54,7 +54,7 @@ export default function CmsPageDetail({
   if (isError) {
     return (
       <LayoutMain>
-        <div className="container mx-auto my-20">
+        <div className="container-fluid my-20">
           <ErrorCard message={(error as Error).message} />
         </div>
       </LayoutMain>
@@ -64,7 +64,7 @@ export default function CmsPageDetail({
   if (!page) {
     return (
       <LayoutMain>
-        <div className="container mx-auto my-20 text-center">
+        <div className="container-fluid my-20 text-center">
           <h2 className="text-2xl font-bold mb-4">Page not found</h2>
           <Link href="/pages" className="text-blue-600 hover:underline">
             Back to pages

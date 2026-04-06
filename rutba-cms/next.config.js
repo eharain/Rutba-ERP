@@ -37,6 +37,9 @@ const nextConfig = {
     images: {
         remotePatterns: generateRemotePatterns(urls)
     },
+    experimental: {
+        clientRouterFilter: false,
+    },
 };
 
 module.exports = nextConfig;

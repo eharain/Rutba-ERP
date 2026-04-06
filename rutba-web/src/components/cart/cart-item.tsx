@@ -13,6 +13,7 @@ interface CartItem {
   price?: number;
   qty?: number | null;
   variant_terms?: CartTermInfo[];
+  selectedImage?: string | null;
 }
 
 export default function CartItem({
@@ -66,7 +67,8 @@ export default function CartItem({
                   updateQuantity(
                     cartItem?.id,
                     cartItem?.variant_id,
-                    (cartItem?.qty ?? 1) - 1
+                    (cartItem?.qty ?? 1) - 1,
+                    cartItem?.selectedImage
                   )
                 }
                 className="border hover:bg-black hover:text-white h-6 w-6 flex items-center justify-center rounded-sm"
@@ -79,7 +81,8 @@ export default function CartItem({
                   updateQuantity(
                     cartItem?.id,
                     cartItem?.variant_id,
-                    (cartItem?.qty ?? 1) + 1
+                    (cartItem?.qty ?? 1) + 1,
+                    cartItem?.selectedImage
                   )
                 }
                 className="border hover:bg-black hover:text-white h-6 w-6 flex items-center justify-center rounded-sm"
@@ -99,7 +102,7 @@ export default function CartItem({
                 type="button"
                 className="font-medium text-slate-500"
                 onClick={() =>
-                  removeItemFromCart(cartItem?.id, cartItem?.variant_id)
+                  removeItemFromCart(cartItem?.id, cartItem?.variant_id, cartItem?.selectedImage)
                 }
               >
                 Remove

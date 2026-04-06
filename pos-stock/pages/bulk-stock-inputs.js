@@ -388,8 +388,8 @@ export default function BulkStockInputs() {
     return (
         <ProtectedRoute>
             <PermissionCheck required="api::stock-input.stock-input.create">
-                <Layout fullWidth>
-                    <div className="container-fluid mt-3">
+                <Layout>
+                    <div className="page-content">
                         <h1><i className="fas fa-boxes me-2"></i>Bulk Stock Inputs</h1>
                         <p className="text-muted">Add multiple stock input rows and save them. Then process to create products, purchases and stock items.</p>
 

@@ -53,7 +53,7 @@ export default function StockEntry() {
     return (
         <ProtectedRoute>
         <Layout>
-        <div className="container-fluid mt-4">
+        <div className="page-content">
         <div className="row justify-content-center" >
             <div className="col-md-10 col-lg-8" >
                 <div className="card" >
