@@ -38,6 +38,7 @@ export default function Cart(props: propsInterface) {
         return {
           variant: item.variantId,
           productId: item.productId,
+          selectedImage: item.selectedImage,
         };
       }),
     ],
@@ -57,9 +58,12 @@ export default function Cart(props: propsInterface) {
   }, []);
 
   // To get the quantity of the product use this.
-  const getQuantity = (productId?: number, variantId?: number) => {
+  const getQuantity = (productId?: number, variantId?: number, selectedImage?: string | null) => {
     const data = cartItem.find(
-      (item) => item.productId === productId || item.variantId === variantId
+      (item) =>
+        item.productId === productId &&
+        item.variantId === variantId &&
+        (item.selectedImage ?? null) === (selectedImage ?? null)
     );
     return data?.qty ?? 0;
   };
@@ -68,7 +72,7 @@ export default function Cart(props: propsInterface) {
   const countSubTotal = () => {
     return cart?.reduce(
       (total, item) =>
-        total + (item?.price ?? 0) * getQuantity(item.id, item.variant_id),
+        total + (item?.price ?? 0) * getQuantity(item.id, item.variant_id, item.selectedImage),
       0
     );
   };
@@ -97,7 +101,7 @@ export default function Cart(props: propsInterface) {
                 return (
                   <li
                     className="py-6"
-                    key={"product-cart-" + item.id + item.variant_id}
+                    key={"product-cart-" + item.id + "-" + item.variant_id + "-" + (item.selectedImage ?? "default")}
                   >
                     <CartItem
                       cartItem={{
@@ -107,8 +111,9 @@ export default function Cart(props: propsInterface) {
                         variant_id: item.variant_id,
                         variant_name: item.variant_name,
                         price: item.price,
-                        qty: getQuantity(item?.id, item?.variant_id),
+                        qty: getQuantity(item?.id, item?.variant_id, item?.selectedImage),
                         variant_terms: item.variant_terms,
+                        selectedImage: item.selectedImage,
                       }}
                     ></CartItem>
                   </li>

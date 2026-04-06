@@ -255,7 +255,7 @@ export default function ProductDetail() {
   } else if (isError) {
     return (
       <LayoutMain>
-        <div className="container mx-auto my-20">
+        <div className="container-fluid my-20">
           <ErrorCard message={(error as Error).message}></ErrorCard>
         </div>
       </LayoutMain>
@@ -267,7 +267,7 @@ export default function ProductDetail() {
 
   return (
     <LayoutMain>
-      <div className="container mx-auto my-20">
+      <div className="container-fluid my-20">
         <div className="grid grid-cols-12 gap-[15px] lg:gap-[30px]">
           <div className="col-span-12 md:col-span-6 lg:col-span-6">
             <ImageListProduct

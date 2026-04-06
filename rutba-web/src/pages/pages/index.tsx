@@ -45,7 +45,7 @@ export default function PagesIndex({
           <title>Pages - Rutba.pk</title>
         </Head>
 
-        <div className="container mx-auto my-16 px-4">
+        <div className="container-fluid my-16">
           <h1 className="text-3xl font-bold mb-8">Pages</h1>
 
           {isLoading && (
@@ -74,7 +74,7 @@ export default function PagesIndex({
                         <div className="relative w-full h-48">
                           <NextImage
                             src={IMAGE_URL + page.featured_image.url}
-                            layout="fill"
+                            fill
                             className="object-cover"
                             alt={page.title}
                             useSkeleton

@@ -63,8 +63,8 @@ export default function HeroSlider() {
                 {item.logo?.url && (
                   <NextImage
                     src={IMAGE_URL + item.logo.url}
-                    layout="fill"
-                    className="object-cover"
+                    fill
+                    className="object-contain"
                     alt={item.name || "hero-banner"}
                     useSkeleton
                     priority // Highly recommended for Hero images

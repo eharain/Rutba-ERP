@@ -293,3 +293,7 @@ export default function ProductGroupDetail() {
         </ProtectedRoute>
     );
 }
+
+export async function getServerSideProps() {
+    return { props: {} };
+}

@@ -270,7 +270,7 @@ export default function ProductEditPage() {
     return (
         <ProtectedRoute>
             <Layout>
-                <div className="container-fluid p-4" style={{ maxWidth: 1100 }}>
+                <div className="page-content">
                     {/* Page navigation */}
                     <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
                         <span className="btn btn-primary btn-sm">

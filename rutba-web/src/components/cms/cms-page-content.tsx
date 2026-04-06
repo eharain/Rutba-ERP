@@ -80,11 +80,10 @@ export default function CmsPageContent({
                     {item.logo?.url && (
                       <NextImage
                         src={IMAGE_URL + item.logo.url}
-                        layout="fill"
-                                
+                        fill
+                        className="object-contain"
                         alt={item.name || "Rutba "}
                         useSkeleton
-                        
                       />
                     )}
                   </div>
@@ -113,7 +112,7 @@ export default function CmsPageContent({
 
       {/* Excerpt */}
       {page.excerpt && (
-        <div className="container mx-auto my-12 px-4">
+        <div className="container-fluid my-12">
           <div
             className="prose prose-slate max-w-none prose-img:rounded-lg prose-a:text-blue-600"
             dangerouslySetInnerHTML={{ __html: marked.parse(page.excerpt) as string }}
@@ -159,7 +158,7 @@ export default function CmsPageContent({
 
       {/* Content */}
       {page.content && (
-        <div className="container mx-auto my-12 px-4">
+        <div className="container-fluid my-12">
           <div
             className="prose prose-slate max-w-none prose-img:rounded-lg prose-a:text-blue-600"
             dangerouslySetInnerHTML={{ __html: marked.parse(page.content) as string }}
@@ -169,7 +168,7 @@ export default function CmsPageContent({
 
       {/* Gallery */}
       {page.gallery && page.gallery.length > 0 && (
-        <div className="container mx-auto my-12 px-4">
+        <div className="container-fluid my-12">
           <h2 className="text-2xl font-bold mb-4">Gallery</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {page.gallery.map((img, i) => (
@@ -179,7 +178,7 @@ export default function CmsPageContent({
               >
                 <NextImage
                   src={IMAGE_URL + img.url}
-                  layout="fill"
+                  fill
                   className="object-cover"
                   alt={img.alternativeText || page.title}
                   useSkeleton
@@ -192,7 +191,7 @@ export default function CmsPageContent({
 
       {/* Related Pages */}
       {page.related_pages && page.related_pages.length > 0 && (
-        <div className="container mx-auto my-12 px-4">
+        <div className="container-fluid my-12">
           <h2 className="text-2xl font-bold mb-5">Related Pages</h2>
           <div className="grid grid-cols-12 gap-4">
             {page.related_pages.map((rp) => (
@@ -206,7 +205,7 @@ export default function CmsPageContent({
                       <div className="relative w-full h-40">
                         <NextImage
                           src={IMAGE_URL + rp.featured_image.url}
-                          layout="fill"
+                          fill
                           className="object-cover"
                           alt={rp.title}
                           useSkeleton
@@ -292,9 +291,8 @@ function CategorySwiper({ categories }: { categories: CategoryInterface[] }) {
     >
       {categories.map((item) => (
         <SwiperSlide key={"cat-" + item.id}>
-          <Link
-            href={{ pathname: "/product", query: { category: item.slug } }}
-          >
+              <Link href={{ pathname: "/product", query: { category: item.slug } }}>
+
             <div className="bg-slate-100 px-3 w-full py-3 flex items-center justify-center flex-col rounded-md border border-transparent hover:shadow-sm hover:border-slate-300">
               {item.logo && (
                 <NextImage

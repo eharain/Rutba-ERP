@@ -17,4 +17,5 @@ export interface CartInterface {
   qty: number;
   documentId: string;
   variant_terms?: CartTermInfo[];
+  selectedImage?: string | null;
 }

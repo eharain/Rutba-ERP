@@ -30,7 +30,7 @@ export default function Home() {
   if (isError) {
     return (
       <LayoutMain>
-        <div className="container mx-auto my-20">
+        <div className="container-fluid my-20">
           <ErrorCard message={(error as Error).message} />
         </div>
       </LayoutMain>
@@ -40,7 +40,7 @@ export default function Home() {
   if (!page) {
     return (
       <LayoutMain>
-        <div className="container mx-auto my-20 text-center">
+        <div className="container-fluid my-20 text-center">
           <p className="text-slate-500">
             Create a CMS page with slug <code>index</code> to configure this
             page.

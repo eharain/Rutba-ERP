@@ -46,7 +46,7 @@ export default function OrderDetailGuest() {
 
   return (
     <LayoutMain>
-      <div className="container my-20">
+      <div className="container-fluid my-20">
         <div className="grid grid-cols-12 gap-[15px] lg:gap[30px]">
           {!validToView && (
             <div className="col-[1_/_span_12] md:col-[1_/_span_12] lg:col-[3_/_span_8]">

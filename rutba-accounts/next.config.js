@@ -37,6 +37,9 @@ const nextConfig = {
     images: {
         remotePatterns: generateRemotePatterns(urls)
     },
+    experimental: {
+        disableOptimizedLoading: true,
+    },
 };
 
 module.exports = nextConfig;
