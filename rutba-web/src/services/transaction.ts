@@ -36,7 +36,10 @@ export default function useTransactionService() {
           products: {
             populate: {
               items: {
-                fields: ['quantity', 'product_name', 'variant', 'variant_name', 'variant_terms'] 
+                fields: ['quantity', 'product_name', 'variant', 'variant_name', 'variant_terms'],
+                populate: {
+                  image: true
+                }
               }
             }
           }
@@ -57,6 +60,19 @@ export default function useTransactionService() {
 
   const getMyTransactionById = async (id?: string) => {
     const req = await axios.get(`${BASE_URL}orders/me/transaction/${id}`, {
+      params: {
+        populate: {
+          products: {
+            populate: {
+              items: {
+                populate: {
+                  image: true
+                }
+              }
+            }
+          }
+        },
+      },
       headers: {
         Authorization: session?.data?.jwt
           ? "Bearer " + session?.data?.jwt

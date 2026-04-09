@@ -6,6 +6,7 @@ export interface CartTermInfo {
 export interface CartInterface {
   id: number;
   image: string;
+  imageId?: number | null;
   name: string;
   variant_id: number;
   variant_name: string;

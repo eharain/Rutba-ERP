@@ -1,4 +1,4 @@
-// import { ImageInterface } from "./image";
+import { ImageInterface } from "./image";
 
 export interface OrderTermInfo {
     typeName: string;
@@ -41,7 +41,7 @@ export interface OrderInterface {
             variant_terms?: OrderTermInfo[];
             product_name: string;
             product: string;
-            image?: string;
+            image?: ImageInterface | null;
         }[];
     };
 }
@@ -58,7 +58,7 @@ export interface CheckoutPayload {
             variant?: string;
             variant_name?: string;
             variant_terms?: OrderTermInfo[];
-            image?: string;
+            image?: number;
         }[];
     };
     subtotal: number;

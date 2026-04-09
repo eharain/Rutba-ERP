@@ -46,10 +46,28 @@ export default function FormCheckoutShippingInformation() {
     mutationFn: checkoutItem,
     onSuccess: (response) => {
         const phoneNumber = "+923245303530";
-        const orderId = response?.order_id || "New Order";
-        const total = response?.total || 0;
+        const orderId = response?.order_id || "N/A";
+        const customerName = response?.customer_contact?.name || "";
+        const total = response?.total || response?.subtotal || 0;
 
-        const message = `Hello! I just placed an order (ID: ${orderId}).\nTotal Amount: Rs. ${total}.\nPlease confirm my order.`;
+        const items = response?.products?.items ?? [];
+        const itemLines = items.map(
+          (item, i) => {
+            const line = `${i + 1}. ${item.product_name || "Item"}` +
+              (item.variant_name ? ` (${item.variant_name})` : "") +
+              ` × ${item.quantity} = Rs. ${item.total}`;
+            return line;
+          }
+        );
+
+        const message =
+          `Asalam u Alikum! 🛒\n\n` +
+          `*Order ID:* ${orderId}\n` +
+          (customerName ? `*Name:* ${customerName}\n` : "") +
+          `\n*Items:*\n${itemLines.join("\n")}\n` +
+          `\n*Total: Rs. ${total}*\n\n` +
+          `Please confirm my order. JazakAllah!`;
+
         const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
 
         clearCart();
@@ -94,7 +112,7 @@ export default function FormCheckoutShippingInformation() {
         variant: item.variant_id ? String(item.variant_id) : undefined,
         variant_name: item.variant_name,
         variant_terms: item.variant_terms,
-        image: item.image,
+        image: item.imageId ?? undefined,
       };
     });
 

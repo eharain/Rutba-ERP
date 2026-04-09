@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import ProfileLayout from "@/components/layouts/profile-layout";
+import { IMAGE_URL } from "@/static/const";
 
 import {
   Card,
@@ -89,7 +90,7 @@ export default function Transaction() {
                         <div className="flex items-center justify-between gap-5 flex-wrap">
                           <div className="flex gap-5">
                             <NextImage
-                              src={"/images/product.png"}
+                              src={item.products.items[0]?.image?.url ? IMAGE_URL + item.products.items[0].image.url : "/images/product.png"}
                               className="rounded-md"
                               width={50}
                               height={50}

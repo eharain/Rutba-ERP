@@ -7,11 +7,9 @@ import {
   RequestShippingRateInterface,
   ValidateAddressInterface,
 } from "@/types/api/checkout";
-import { useSession } from "next-auth/react";
 import { CheckoutPayload, OrderInterface } from "@/types/api/order";
 
 export default function useCheckoutService() {
-  const session = useSession();
 
   /**
    * Validates the given shipping information address.
@@ -59,16 +57,9 @@ export default function useCheckoutService() {
       {
         data
       },
-      {
-        headers: {
-          Authorization: session?.data?.jwt
-            ? "Bearer " + session?.data?.jwt
-            : undefined,
-        },
-      }
     );
 
-    return req.data as OrderInterface;
+    return req.data.data as OrderInterface;
   };
 
   return {
