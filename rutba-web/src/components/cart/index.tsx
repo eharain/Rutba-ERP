@@ -58,11 +58,11 @@ export default function Cart(props: propsInterface) {
   }, []);
 
   // To get the quantity of the product use this.
-  const getQuantity = (productId?: number, variantId?: number, selectedImage?: string | null) => {
+  const getQuantity = (productId?: number, variantId?: number | null, selectedImage?: string | null) => {
     const data = cartItem.find(
       (item) =>
         item.productId === productId &&
-        item.variantId === variantId &&
+        (item.variantId ?? null) === (variantId ?? null) &&
         (item.selectedImage ?? null) === (selectedImage ?? null)
     );
     return data?.qty ?? 0;

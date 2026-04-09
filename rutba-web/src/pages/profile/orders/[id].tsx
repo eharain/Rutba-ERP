@@ -46,7 +46,7 @@ export default function Transaction() {
             return {
               name: item.product_name ?? "",
               qty: item.quantity ?? 0,
-              image: item.product?.thumbnail.url ?? undefined,
+              image: item.image?.url ?? undefined,
               variant_name: item.variant_name ?? item.variant ?? "",
               variant_terms: item.variant_terms,
               price: item.price ?? 0,

@@ -92,7 +92,7 @@ export const useCartService = () => {
     const index = cartData.findIndex(
       (item: cartLocalStorage) =>
         item.productId === productId &&
-        item.variantId === variantId &&
+        (item.variantId ?? null) === (variantId ?? null) &&
         (item.selectedImage ?? null) === (selectedImage ?? null)
     );
 
@@ -160,6 +160,16 @@ export const useCartService = () => {
         // Prefer the image the user explicitly selected in the gallery
         const displayImage = item.selectedImage ?? variantImage ?? parentImage;
 
+        // Resolve the media id for the displayed image
+        const allImages = [
+          productVariant?.logo,
+          ...(productVariant?.gallery ?? []),
+          productData?.logo,
+          ...(productData?.gallery ?? []),
+        ].filter(Boolean);
+        const matchedImage = allImages.find((img) => img?.url === displayImage);
+        const imageId = matchedImage?.id ?? null;
+
         // Extract variant terms from populated data
         const apiTerms: CartTermInfo[] = (productVariant?.terms || [])
           .flatMap((t) =>
@@ -171,6 +181,7 @@ export const useCartService = () => {
         return {
           id: productData?.id,
           image: displayImage,
+          imageId,
           name: productData?.name,
           variant_id: productVariant?.id,
           variant_name: productVariant?.name,
@@ -206,7 +217,7 @@ export const useCartService = () => {
     const updatedCart = cartData.filter((item: cartLocalStorage) => {
       return !(
         item.productId === productId &&
-        item.variantId === variantId &&
+        (item.variantId ?? null) === (variantId ?? null) &&
         (item.selectedImage ?? null) === (selectedImage ?? null)
       );
     });

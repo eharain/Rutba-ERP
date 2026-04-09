@@ -73,23 +73,36 @@ export default function CmsPageContent({
             autoplay={{ delay: 5000, disableOnInteraction: false }}
             className="w-full"
           >
-            {heroProducts.map((item) => (
-              <SwiperSlide key={"hero-" + item.id}>
-                <Link href={`/product/${item.documentId}`}>
-                  <div className="relative w-full h-[30vh] md:h-[45vh] lg:h-[70vh] xl:h-[80vh] overflow-hidden">
-                    {item.logo?.url && (
-                      <NextImage
-                        src={IMAGE_URL + item.logo.url}
-                        fill
-                        className="object-contain"
-                        alt={item.name || "Rutba "}
-                        useSkeleton
-                      />
-                    )}
-                  </div>
-                </Link>
-              </SwiperSlide>
-            ))}
+            {heroProducts.map((item) => {
+              const heroImages =
+                item.gallery && item.gallery.length > 0
+                  ? item.gallery.map((g) => g.url)
+                  : item.logo?.url
+                  ? [item.logo.url]
+                  : [];
+              return (
+                <SwiperSlide key={"hero-" + item.id}>
+                  <Link href={`/product/${item.documentId}`}>
+                    <div className="relative w-full h-[30vh] md:h-[45vh] lg:h-[70vh] xl:h-[80vh] overflow-hidden flex">
+                      {heroImages.map((url, idx) => (
+                        <div
+                          key={idx}
+                          className="relative flex-1 h-full overflow-hidden"
+                        >
+                          <NextImage
+                            src={IMAGE_URL + url}
+                            fill
+                            className="object-contain"
+                            alt={`${item.name || "Rutba"} ${idx + 1}`}
+                            useSkeleton
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </Link>
+                </SwiperSlide>
+              );
+            })}
           </Swiper>
         </div>
       )}

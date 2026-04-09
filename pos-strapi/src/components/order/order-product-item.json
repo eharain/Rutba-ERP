@@ -38,7 +38,12 @@
       "type": "json"
     },
     "image": {
-      "type": "string"
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": [
+        "images"
+      ]
     }
   }
 }
