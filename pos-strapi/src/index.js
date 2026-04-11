@@ -50,6 +50,23 @@ function hashCode(s) {
 }
 
 /**
+ * Insert a row and return the auto-increment id.
+ * Skips `.returning()` on MySQL/MariaDB to avoid noisy warnings.
+ */
+async function insertReturningId(knex, table, data) {
+    const client = (knex.client.config.client || '').toLowerCase();
+    const isMySQL = ['mysql', 'mysql2', 'mariadb'].includes(client);
+
+    if (isMySQL) {
+        const [insertedId] = await knex(table).insert(data);
+        return insertedId;
+    }
+
+    const [insertedId] = await knex(table).insert(data).returning('id');
+    return typeof insertedId === 'object' ? insertedId.id : insertedId;
+}
+
+/**
  * Ensure a role has (at least) the given permissions.
  * Always adds missing ones.  When `prune` is true, also removes
  * permissions that are NOT in requiredActions (used for rutba_app_user
@@ -66,17 +83,13 @@ async function syncPermissionsToRole(knex, roleId, roleName, requiredActions, st
     let added = 0;
     for (const action of requiredActions) {
         if (!existingActions.has(action)) {
-            const [insertedId] = await knex('up_permissions')
-                .insert({
+            const permId = await insertReturningId(knex, 'up_permissions', {
                     document_id: String(hashCode(action)),
                     action,
                     created_at: new Date(),
                     updated_at: new Date(),
                     published_at: new Date(),
-                })
-                .returning('id');
-
-            const permId = typeof insertedId === 'object' ? insertedId.id : insertedId;
+                });
 
             await knex('up_permissions_role_lnk').insert({
                 permission_id: permId,
@@ -240,19 +253,14 @@ module.exports = {
         let role = await knex('up_roles').where('type', ROLE_TYPE).first();
 
         if (!role) {
-            const [insertedId] = await knex('up_roles')
-                .insert({
-
+            const roleId = await insertReturningId(knex, 'up_roles', {
                     document_id: ROLE_TYPE,
                     name: ROLE_NAME,
                     description: ROLE_DESC,
                     type: ROLE_TYPE,
                     created_at: new Date(),
                     updated_at: new Date(),
-                })
-                .returning('id');
-
-            const roleId = typeof insertedId === 'object' ? insertedId.id : insertedId;
+                });
             role = { id: roleId, name: ROLE_NAME, type: ROLE_TYPE };
             strapi.log.info(`[bootstrap] Created role "${ROLE_NAME}" (id=${role.id})`);
         } else {
@@ -317,18 +325,14 @@ module.exports = {
         let webRole = await knex('up_roles').where('type', WEB_ROLE_TYPE).first();
 
         if (!webRole) {
-            const [insertedWebId] = await knex('up_roles')
-                .insert({
+            const webRoleId = await insertReturningId(knex, 'up_roles', {
                     document_id: WEB_ROLE_TYPE,
                     name: WEB_ROLE_NAME,
                     description: WEB_ROLE_DESC,
                     type: WEB_ROLE_TYPE,
                     created_at: new Date(),
                     updated_at: new Date(),
-                })
-                .returning('id');
-
-            const webRoleId = typeof insertedWebId === 'object' ? insertedWebId.id : insertedWebId;
+                });
             webRole = { id: webRoleId, name: WEB_ROLE_NAME, type: WEB_ROLE_TYPE };
             strapi.log.info(`[bootstrap] Created role "${WEB_ROLE_NAME}" (id=${webRole.id})`);
         } else {

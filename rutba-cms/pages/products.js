@@ -12,6 +12,22 @@ import { useToast } from "../components/Toast";
 
 const DEFAULT_PAGE_SIZE = 25;
 const PAGE_SIZE_OPTIONS = [5, 10, 25, 50, 100, 150, 200];
+const DEFAULT_SORT_FIELD = "createdAt";
+const DEFAULT_SORT_DIR = "desc";
+
+function SortableHeader({ label, field, currentField, currentDir, onSort }) {
+    const active = currentField === field;
+    return (
+        <th style={{ cursor: "pointer", userSelect: "none", whiteSpace: "nowrap" }} onClick={() => onSort(field)}>
+            {label}
+            {active ? (
+                <i className={`fas fa-sort-${currentDir === "asc" ? "up" : "down"} ms-1`}></i>
+            ) : (
+                <i className="fas fa-sort ms-1" style={{ opacity: 0.3 }}></i>
+            )}
+        </th>
+    );
+}
 
 export default function Products() {
     const router = useRouter();
@@ -39,9 +55,10 @@ export default function Products() {
     // --- toast ---
     const { toast, ToastContainer } = useToast();
 
-    // --- selection & bulk publish ---
+    // --- selection & bulk operations ---
     const [selectedIds, setSelectedIds] = useState(new Set());
     const [publishing, setPublishing] = useState({});
+    const [bulkUpdating, setBulkUpdating] = useState(false);
 
     const toggleSelected = (docId) => {
         setSelectedIds(prev => {
@@ -184,6 +201,44 @@ export default function Products() {
         setSelectedIds(new Set());
     };
 
+    const bulkAssignRelation = async (field, documentIds) => {
+        const ids = [...selectedIds];
+        if (ids.length === 0) { toast("No products selected.", "warning"); return; }
+        const lookupMap = { categories, brands, suppliers };
+        const label = field;
+        if (!confirm(`Assign selected ${label} to ${ids.length} product(s)?`)) return;
+
+        setBulkUpdating(true);
+        let ok = 0, fail = 0;
+        for (const docId of ids) {
+            try {
+                await authApi.put(`/products/${docId}?status=draft`, {
+                    data: { [field]: documentIds },
+                });
+                ok++;
+                const updater = (p) => {
+                    if (p.documentId !== docId) return p;
+                    const lookup = lookupMap[field] || [];
+                    const resolved = documentIds.map(did => lookup.find(x => x.documentId === did)).filter(Boolean);
+                    return { ...p, [field]: resolved };
+                };
+                setProducts(prev => prev.map(updater));
+                setVariantsMap(prev => {
+                    const copy = { ...prev };
+                    for (const key of Object.keys(copy)) {
+                        copy[key] = copy[key].map(updater);
+                    }
+                    return copy;
+                });
+            } catch (err) {
+                fail++;
+                console.error(`Failed to update ${label} for`, docId, err);
+            }
+        }
+        toast(`Updated ${label} on ${ok} product(s)${fail ? `, ${fail} failed` : ""}.`, fail ? "warning" : "success");
+        setBulkUpdating(false);
+    };
+
     // --- derive ALL filter & page state from the URL ---
     const qVal = (v) => (Array.isArray(v) ? v[0] : v) || "";
     const selectedBrand = qVal(router.query.brands);
@@ -194,6 +249,8 @@ export default function Products() {
     const searchText = qVal(router.query.searchText);
     const page = parseInt(router.query.page, 10) || 1;
     const pageSize = parseInt(router.query.pageSize, 10) || DEFAULT_PAGE_SIZE;
+    const sortField = qVal(router.query.sortField) || DEFAULT_SORT_FIELD;
+    const sortDir = qVal(router.query.sortDir) || DEFAULT_SORT_DIR;
 
     // helper: merge params into the current URL (falsy values are removed)
     const updateQuery = useCallback((params) => {
@@ -204,6 +261,11 @@ export default function Products() {
         }
         router.push({ pathname: router.pathname, query: cleaned }, undefined, { shallow: true });
     }, [router]);
+
+    const handleSort = useCallback((field) => {
+        const newDir = sortField === field && sortDir === "asc" ? "desc" : "asc";
+        updateQuery({ sortField: field === DEFAULT_SORT_FIELD && newDir === DEFAULT_SORT_DIR ? undefined : field, sortDir: newDir === DEFAULT_SORT_DIR && field === DEFAULT_SORT_FIELD ? undefined : newDir, page: undefined });
+    }, [sortField, sortDir, updateQuery]);
 
     // fetch lookup data once
     useEffect(() => {
@@ -237,7 +299,7 @@ export default function Products() {
         setLoading(true);
 
         Promise.all([
-            fetchProducts(filters, page, pageSize, "createdAt:desc"),
+            fetchProducts(filters, page, pageSize, `${sortField}:${sortDir}`),
             authApi.get("/products", { status: 'published', fields: ["documentId"], pagination: { pageSize: 500 } }),
         ]).then(([productRes, pubRes]) => {
             if (cancelled) return;
@@ -253,7 +315,7 @@ export default function Products() {
         });
 
         return () => { cancelled = true; };
-    }, [router.isReady, jwt, page, pageSize, selectedBrand, selectedCategory, selectedSupplier, selectedTerm, selectedPurchase, searchText]);
+    }, [router.isReady, jwt, page, pageSize, selectedBrand, selectedCategory, selectedSupplier, selectedTerm, selectedPurchase, searchText, sortField, sortDir]);
 
     const fromItem = total === 0 ? 0 : (page - 1) * pageSize + 1;
     const toItem = Math.min(page * pageSize, total);
@@ -308,17 +370,67 @@ export default function Products() {
                 <div className="d-flex align-items-center justify-content-between mb-3">
                     <h2 className="mb-0">Products</h2>
                     {selectedIds.size > 0 && (
-                        <div className="d-flex align-items-center gap-2">
+                        <div className="d-flex align-items-center gap-2 flex-wrap">
                             <span className="badge bg-primary">{selectedIds.size} selected</span>
-                            <button className="btn btn-sm btn-success" onClick={() => bulkPublish(false)}>
-                                <i className="fas fa-upload me-1"></i>Publish Selected
+                            <button className="btn btn-sm btn-success" onClick={() => bulkPublish(false)} disabled={bulkUpdating}>
+                                <i className="fas fa-upload me-1"></i>Publish
                             </button>
-                            <button className="btn btn-sm btn-outline-success" onClick={() => bulkPublish(true)}>
+                            <button className="btn btn-sm btn-outline-success" onClick={() => bulkPublish(true)} disabled={bulkUpdating}>
                                 <i className="fas fa-upload me-1"></i>Publish + Variants
                             </button>
-                            <button className="btn btn-sm btn-outline-secondary" onClick={bulkUnpublish}>
-                                <i className="fas fa-eye-slash me-1"></i>Unpublish Selected
+                            <button className="btn btn-sm btn-outline-secondary" onClick={bulkUnpublish} disabled={bulkUpdating}>
+                                <i className="fas fa-eye-slash me-1"></i>Unpublish
                             </button>
+                            <span className="border-start ps-2"></span>
+                            <select
+                                className="form-select form-select-sm"
+                                style={{ width: 160 }}
+                                disabled={bulkUpdating}
+                                defaultValue=""
+                                onChange={(e) => {
+                                    if (!e.target.value) return;
+                                    bulkAssignRelation("categories", [e.target.value]);
+                                    e.target.value = "";
+                                }}
+                            >
+                                <option value="">Assign Category…</option>
+                                {categories.map(c => (
+                                    <option key={c.documentId} value={c.documentId}>{c.name}</option>
+                                ))}
+                            </select>
+                            <select
+                                className="form-select form-select-sm"
+                                style={{ width: 160 }}
+                                disabled={bulkUpdating}
+                                defaultValue=""
+                                onChange={(e) => {
+                                    if (!e.target.value) return;
+                                    bulkAssignRelation("brands", [e.target.value]);
+                                    e.target.value = "";
+                                }}
+                            >
+                                <option value="">Assign Brand…</option>
+                                {brands.map(b => (
+                                    <option key={b.documentId} value={b.documentId}>{b.name}</option>
+                                ))}
+                            </select>
+                            <select
+                                className="form-select form-select-sm"
+                                style={{ width: 160 }}
+                                disabled={bulkUpdating}
+                                defaultValue=""
+                                onChange={(e) => {
+                                    if (!e.target.value) return;
+                                    bulkAssignRelation("suppliers", [e.target.value]);
+                                    e.target.value = "";
+                                }}
+                            >
+                                <option value="">Assign Supplier…</option>
+                                {suppliers.map(s => (
+                                    <option key={s.documentId} value={s.documentId}>{s.name}</option>
+                                ))}
+                            </select>
+                            {bulkUpdating && <i className="fas fa-spinner fa-spin text-muted"></i>}
                         </div>
                     )}
                 </div>
@@ -376,13 +488,14 @@ export default function Products() {
                                     </th>
                                     <th style={{ width: 30 }}></th>
                                     <th style={{ width: 50 }}></th>
-                                    <th>Name</th>
-                                    <th>SKU</th>
-                                    <th>Price</th>
-                                    <th>Stock</th>
+                                    <SortableHeader label="Name" field="name" currentField={sortField} currentDir={sortDir} onSort={handleSort} />
+                                    <SortableHeader label="SKU" field="sku" currentField={sortField} currentDir={sortDir} onSort={handleSort} />
+                                    <SortableHeader label="Price" field="selling_price" currentField={sortField} currentDir={sortDir} onSort={handleSort} />
+                                    <SortableHeader label="Stock" field="stock_quantity" currentField={sortField} currentDir={sortDir} onSort={handleSort} />
                                     <th>Categories</th>
                                     <th>Brands</th>
                                     <th>Purchase #</th>
+                                    <SortableHeader label="Modified" field="updatedAt" currentField={sortField} currentDir={sortDir} onSort={handleSort} />
                                     <th>Published</th>
                                     <th>Actions</th>
                                 </tr>
@@ -421,6 +534,7 @@ export default function Products() {
                                             <td>{(p.categories || []).map(c => c.name).join(", ") || "—"}</td>
                                             <td>{(p.brands || []).map(b => b.name).join(", ") || "—"}</td>
                                             <td>{(p.purchase_items || []).map(pi => pi.purchase?.orderId).filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(", ") || "—"}</td>
+                                            <td className="small text-nowrap">{p.updatedAt ? new Date(p.updatedAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "—"}</td>
                                             <td>
                                                 {p._isPublished
                                                     ? <button className="btn btn-sm btn-success py-0 px-1" onClick={() => unpublishOne(p.documentId)} disabled={publishing[p.documentId]} title="Click to unpublish">
@@ -440,13 +554,13 @@ export default function Products() {
                                         {expandedProducts[p.documentId] && (
                                             loadingVariants[p.documentId] ? (
                                                 <tr>
-                                                    <td colSpan={12} className="text-center text-muted">
+                                                    <td colSpan={13} className="text-center text-muted">
                                                         Loading variants...
                                                     </td>
                                                 </tr>
                                             ) : (variantsMap[p.documentId] || []).length === 0 ? (
                                                 <tr>
-                                                    <td colSpan={12} className="text-center text-muted">
+                                                    <td colSpan={13} className="text-center text-muted">
                                                         No variants
                                                     </td>
                                                 </tr>
@@ -476,6 +590,7 @@ export default function Products() {
                                                         <td>{(v.categories || []).map(c => c.name).join(", ") || "—"}</td>
                                                         <td>{(v.brands || []).map(b => b.name).join(", ") || "—"}</td>
                                                         <td>{(v.purchase_items || []).map(pi => pi.purchase?.orderId).filter(Boolean).filter((val, i, a) => a.indexOf(val) === i).join(", ") || "—"}</td>
+                                                        <td className="small text-nowrap">{v.updatedAt ? new Date(v.updatedAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "—"}</td>
                                                         <td>
                                                             {v._isPublished
                                                                 ? <button className="btn btn-sm btn-success py-0 px-1" onClick={() => unpublishOne(v.documentId)} disabled={publishing[v.documentId]} title="Click to unpublish">
