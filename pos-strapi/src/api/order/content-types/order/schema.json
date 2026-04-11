@@ -77,6 +77,11 @@
     },
     "user_id": {
       "type": "string"
+    },
+    "owners": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::users-permissions.user"
     }
   }
 }

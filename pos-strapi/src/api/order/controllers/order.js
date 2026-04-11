@@ -3,6 +3,7 @@
  */
 
 const { factories } = require("@strapi/strapi");
+const { ensureUser } = require("../../../utils/ensure-user");
 // const EasyPost = require("@easypost/api");
 // const Stripe = require("stripe");
 /*
@@ -11,6 +12,23 @@ const stripe = new Stripe(process.env.STRIPE_API_KEY, {
     apiVersion: "2023-08-16",
 });
 */
+
+/**
+ * Verify the authenticated user has the rutba_web_user role.
+ * Returns the full user record or null (after sending 403).
+ */
+async function requireWebUser(ctx, strapi, user) {
+    const fullUser = await strapi.query('plugin::users-permissions.user').findOne({
+        where: { id: user.id },
+        populate: { role: { select: ['type'] } },
+    });
+    if (!fullUser || fullUser.role?.type !== 'rutba_web_user') {
+        ctx.forbidden('Only Rutba Web Users can access this resource.');
+        return null;
+    }
+    return fullUser;
+}
+
 module.exports = factories.createCoreController(
     "api::order.order",
     ({ strapi }) => ({
@@ -188,6 +206,52 @@ module.exports = factories.createCoreController(
         // async buyLabel(id, rate_id) {
         //     return easyPost.Shipment.buy(id, rate_id);
         // },
+
+        // ── Web-user order endpoints (rutba_web_user only) ──────
+
+        async myOrders(ctx) {
+            const user = await ensureUser(ctx, strapi);
+            if (!user) return;
+
+            const webUser = await requireWebUser(ctx, strapi, user);
+            if (!webUser) return;
+
+            const orders = await strapi.documents('api::order.order').findMany({
+                filters: { owners: { id: { $eq: user.id } } },
+                sort: ctx.query.sort || 'createdAt:desc',
+                populate: ['products', 'customer_contact'],
+            });
+
+            ctx.send({ data: orders });
+        },
+
+        async myOrderDetail(ctx) {
+            const user = await ensureUser(ctx, strapi);
+            if (!user) return;
+
+            const webUser = await requireWebUser(ctx, strapi, user);
+            if (!webUser) return;
+
+            const { documentId } = ctx.params;
+            const order = await strapi.documents('api::order.order').findOne({
+                documentId,
+                populate: ['products', 'customer_contact', 'owners'],
+            });
+
+            if (!order) {
+                return ctx.notFound('Order not found');
+            }
+
+            const owners = order.owners || [];
+            const isOwner = owners.some((o) => o.id === user.id);
+            if (!isOwner) {
+                return ctx.forbidden('You can only view your own orders.');
+            }
+
+            // Remove owners from response
+            delete order.owners;
+            ctx.send({ data: order });
+        },
 
         async validateAddress(ctx) {
             const data = ctx.request.body.data;

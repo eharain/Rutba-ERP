@@ -1886,6 +1886,10 @@ export interface ApiOrderOrder extends Struct.CollectionTypeSchema {
       Schema.Attribute.Private;
     order_id: Schema.Attribute.UID & Schema.Attribute.Required;
     order_secret: Schema.Attribute.String;
+    owners: Schema.Attribute.Relation<
+      'manyToMany',
+      'plugin::users-permissions.user'
+    >;
     payment_status: Schema.Attribute.String & Schema.Attribute.Required;
     products: Schema.Attribute.Component<'order.order-products', false>;
     publishedAt: Schema.Attribute.DateTime;

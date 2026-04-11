@@ -107,6 +107,64 @@ module.exports = (config, { strapi }) => {
       // ── b.1  Non-rutba_app_user → let Strapi decide ──────────
     const { roleType, appKeys, adminKeys } = await getUserAccess(user.id);
 
+    // ── b.1b  rutba_web_user → enforce owner scoping on all
+    //    content-types with an owners relation.  Web users must
+    //    NOT access records they do not own through standard
+    //    content-API endpoints.
+    if (roleType === 'rutba_web_user') {
+      const model = strapi.contentTypes[uid];
+      const hasOwnerRelation =
+        model?.attributes?.owners &&
+        model.attributes.owners.target === 'plugin::users-permissions.user';
+
+      if (hasOwnerRelation) {
+        if (action === 'create') {
+          const body = ctx.request.body;
+          if (body?.data) {
+            body.data.owners = { connect: [user.documentId || user.id] };
+          } else if (body) {
+            ctx.request.body = {
+              ...body,
+              data: { ...(body.data || {}), owners: { connect: [user.documentId || user.id] } },
+            };
+          }
+        }
+
+        if (action === 'find') {
+          ctx.query = ctx.query || {};
+          ctx.query.filters = ctx.query.filters || {};
+          ctx.query.filters.owners = { id: { $eq: user.id } };
+        }
+
+        if (action === 'update' || action === 'delete') {
+          const documentId = ctx.params?.id;
+          if (documentId) {
+            try {
+              const record = await strapi.documents(uid).findOne({
+                documentId,
+                populate: { owners: { fields: ['id'] } },
+              });
+              if (!record) {
+                return ctx.notFound('Record not found');
+              }
+              const owners = record.owners || [];
+              const isOwner = Array.isArray(owners)
+                ? owners.some((o) => o.id === user.id)
+                : owners.id === user.id;
+              if (!isOwner) {
+                return ctx.forbidden('You can only modify your own records');
+              }
+            } catch (err) {
+              strapi.log.error(`[app-access-guard] web-user ownership check failed for ${uid}/${documentId}: ${err.message}`);
+              return ctx.forbidden('Ownership verification failed');
+            }
+          }
+        }
+      }
+
+      return next();
+    }
+
     if (roleType !== 'rutba_app_user') return next();
 
       /// ── b.2  Missing X-Rutba-App header → reject ─────────────
