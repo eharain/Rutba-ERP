@@ -1,6 +1,6 @@
 'use strict';
 
-const { ENTRIES, PLUGIN_PERMISSIONS, PUBLIC_PERMISSIONS } = require('../config/app-access-permissions');
+const { ENTRIES, PLUGIN_PERMISSIONS, PUBLIC_PERMISSIONS, WEB_USER_PLUGIN_PERMISSIONS } = require('../config/app-access-permissions');
 const seedAccounting = require('./seed/accounting-seed');
 
 // ── helpers ─────────────────────────────────────────────────
@@ -308,6 +308,71 @@ module.exports = {
             strapi.log.error(err.stack);
         }
 
+        // ─── a.3b  Ensure the "Rutba Web User" role ──────────────
+        const WEB_ROLE_NAME = 'Rutba Web User';
+        const WEB_ROLE_TYPE = 'rutba_web_user';
+        const WEB_ROLE_DESC =
+            'Role for Rutba web storefront users. Only web-registered customers receive this role.';
+
+        let webRole = await knex('up_roles').where('type', WEB_ROLE_TYPE).first();
+
+        if (!webRole) {
+            const [insertedWebId] = await knex('up_roles')
+                .insert({
+                    document_id: WEB_ROLE_TYPE,
+                    name: WEB_ROLE_NAME,
+                    description: WEB_ROLE_DESC,
+                    type: WEB_ROLE_TYPE,
+                    created_at: new Date(),
+                    updated_at: new Date(),
+                })
+                .returning('id');
+
+            const webRoleId = typeof insertedWebId === 'object' ? insertedWebId.id : insertedWebId;
+            webRole = { id: webRoleId, name: WEB_ROLE_NAME, type: WEB_ROLE_TYPE };
+            strapi.log.info(`[bootstrap] Created role "${WEB_ROLE_NAME}" (id=${webRole.id})`);
+        } else {
+            await knex('up_roles').where('id', webRole.id).update({
+                document_id: WEB_ROLE_TYPE,
+                name: WEB_ROLE_NAME,
+                description: WEB_ROLE_DESC,
+                updated_at: new Date(),
+            });
+            strapi.log.info(`[bootstrap] Role "${WEB_ROLE_NAME}" already exists (id=${webRole.id})`);
+        }
+
+        // ─── a.3c  Sync permissions for rutba_web_user role ──────
+        //    Build permissions from the "web-user" app-access entry
+        //    plus the minimal web-user plugin permissions.
+        const webUserEntry = ENTRIES.find(e => e.key === 'web-user');
+        const webUserContentActions = webUserEntry && webUserEntry.permissions
+            ? buildPermissionActions(webUserEntry.permissions)
+            : [];
+        const webUserRequiredActions = [...new Set([...webUserContentActions, ...WEB_USER_PLUGIN_PERMISSIONS])].sort();
+
+        try {
+            await syncPermissionsToRole(knex, webRole.id, WEB_ROLE_NAME, webUserRequiredActions, strapi, true);
+        } catch (err) {
+            strapi.log.error(`[bootstrap] Failed to sync permissions for "${WEB_ROLE_NAME}": ${err.message}`);
+            strapi.log.error(err.stack);
+        }
+
+        // ─── a.3d  Set rutba_web_user as default registration role ─
+        //    Users who register via auth/local/register or OAuth
+        //    callbacks receive this role automatically.  Internal
+        //    staff users are assigned rutba_app_user via the admin.
+        try {
+            const pluginStore = strapi.store({ type: 'plugin', name: 'users-permissions' });
+            const advanced = await pluginStore.get({ key: 'advanced' });
+            if (advanced && String(advanced.default_role) !== String(webRole.id)) {
+                advanced.default_role = String(webRole.id);
+                await pluginStore.set({ key: 'advanced', value: advanced });
+                strapi.log.info(`[bootstrap] Set default registration role to "${WEB_ROLE_NAME}" (id=${webRole.id})`);
+            }
+        } catch (err) {
+            strapi.log.error(`[bootstrap] Failed to set default registration role: ${err.message}`);
+        }
+
         // ─── a.4  Ensure permissions on ALL existing roles ─────────
         //    • public  → plugin perms + public content-API perms
         //    • other authenticated roles (e.g. "Authenticated")
@@ -318,6 +383,7 @@ module.exports = {
         const allRoles = await knex('up_roles').select('id', 'name', 'type');
         for (const otherRole of allRoles) {
             if (otherRole.type === ROLE_TYPE) continue; // already handled above
+            if (otherRole.type === WEB_ROLE_TYPE) continue; // already handled above
             let permsForRole;
             if (otherRole.type === 'public') {
                 permsForRole = [...new Set([...PLUGIN_PERMISSIONS, ...PUBLIC_PERMISSIONS])].sort();

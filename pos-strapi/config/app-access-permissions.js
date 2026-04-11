@@ -445,6 +445,21 @@ const CLIENT_PLUGIN_PERMISSIONS = [
   'api::media-library.media-library.uploadToFolder',
 ];
 
+// ─── Web-user (rutba_web_user) plugin permissions ───────
+//   Minimal set for web storefront authenticated users.
+//   They only need auth, profile, and basic upload access.
+
+const WEB_USER_PLUGIN_PERMISSIONS = [
+  'plugin::users-permissions.auth.callback',
+  'plugin::users-permissions.auth.connect',
+  'plugin::users-permissions.auth.forgotPassword',
+  'plugin::users-permissions.auth.resetPassword',
+  'plugin::users-permissions.auth.changePassword',
+  'plugin::users-permissions.auth.emailConfirmation',
+  'plugin::users-permissions.user.me',
+  'plugin::users-permissions.user.update',
+];
+
 // ─── Public (unauthenticated) content-API permissions
 //   These are synced to Strapi's built-in "Public" role so
 //   the web storefront can read products, brands, pages, etc.
@@ -477,4 +492,4 @@ const PUBLIC_PERMISSIONS = [
   'api::crm-lead.crm-lead.create',
 ];
 
-module.exports = { ENTRIES, permissionsByKey, settingsByKey, DEFAULT_SESSION_TIMEOUT, PLUGIN_PERMISSIONS, CLIENT_PLUGIN_PERMISSIONS, PUBLIC_PERMISSIONS };
+module.exports = { ENTRIES, permissionsByKey, settingsByKey, DEFAULT_SESSION_TIMEOUT, PLUGIN_PERMISSIONS, CLIENT_PLUGIN_PERMISSIONS, WEB_USER_PLUGIN_PERMISSIONS, PUBLIC_PERMISSIONS };

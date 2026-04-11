@@ -38,6 +38,20 @@ const config = {
     //   path: '/orders/me/transaction/:code',
     //   handler: 'api::order.order.getOrderById',
     // },
+
+    // ── Web-user order routes (rutba_web_user only) ─────────
+    {
+      method: 'GET',
+      path: '/web-orders',
+      handler: 'api::order.order.myOrders',
+      config: { auth: false },
+    },
+    {
+      method: 'GET',
+      path: '/web-orders/:documentId',
+      handler: 'api::order.order.myOrderDetail',
+      config: { auth: false },
+    },
   ]
 };
 
