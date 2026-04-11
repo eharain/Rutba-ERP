@@ -9,6 +9,7 @@ import { ProductFilter } from "@rutba/pos-shared/components/filter/product-filte
 import { fetchProducts } from "@rutba/pos-shared/lib/pos";
 import Link from "next/link";
 import { useToast } from "../components/Toast";
+import BulkProductActions from "@rutba/pos-shared/components/BulkProductActions";
 
 const DEFAULT_PAGE_SIZE = 25;
 const PAGE_SIZE_OPTIONS = [5, 10, 25, 50, 100, 150, 200];
@@ -58,7 +59,6 @@ export default function Products() {
     // --- selection & bulk operations ---
     const [selectedIds, setSelectedIds] = useState(new Set());
     const [publishing, setPublishing] = useState({});
-    const [bulkUpdating, setBulkUpdating] = useState(false);
 
     const toggleSelected = (docId) => {
         setSelectedIds(prev => {
@@ -124,119 +124,40 @@ export default function Products() {
         }
     };
 
-    const bulkPublish = async (includeVariants) => {
-        const ids = [...selectedIds];
-        if (ids.length === 0) { toast("No products selected.", "warning"); return; }
-        if (!confirm(`Publish ${ids.length} product(s)${includeVariants ? " including their variants" : ""}?`)) return;
+    const lookupMap = { categories, brands, suppliers };
 
-        const allIds = [...ids];
-        if (includeVariants) {
-            for (const docId of ids) {
-                try {
-                    const res = await authApi.get("/products", {
-                        status: "draft",
-                        filters: { parent: { documentId: docId } },
-                        fields: ["documentId"],
-                        pagination: { pageSize: 200 },
-                    });
-                    (res.data || []).forEach(v => { if (!allIds.includes(v.documentId)) allIds.push(v.documentId); });
-                } catch (err) {
-                    console.error("Failed to fetch variants for", docId, err);
-                }
-            }
-        }
-
-        let ok = 0, fail = 0;
-        for (const docId of allIds) {
-            setPublishing(prev => ({ ...prev, [docId]: true }));
-            try {
-                await authApi.post(`/products/${docId}/publish`, {});
-                ok++;
-                setProducts(prev => prev.map(p => p.documentId === docId ? { ...p, _isPublished: true } : p));
-                setVariantsMap(prev => {
-                    const copy = { ...prev };
-                    for (const key of Object.keys(copy)) {
-                        copy[key] = copy[key].map(v => v.documentId === docId ? { ...v, _isPublished: true } : v);
-                    }
-                    return copy;
-                });
-            } catch (err) {
-                fail++;
-                console.error("Failed to publish", docId, err);
-            } finally {
-                setPublishing(prev => ({ ...prev, [docId]: false }));
-            }
-        }
-        toast(`Published ${ok} product(s)${fail ? `, ${fail} failed` : ""}.`, fail ? "warning" : "success");
-        setSelectedIds(new Set());
+    const handleBulkAssigned = (field, documentIds, docId) => {
+        const lookup = lookupMap[field] || [];
+        const resolved = documentIds.map(did => lookup.find(x => x.documentId === did)).filter(Boolean);
+        const updater = (p) => p.documentId !== docId ? p : { ...p, [field]: resolved };
+        setProducts(prev => prev.map(updater));
+        setVariantsMap(prev => {
+            const copy = { ...prev };
+            for (const key of Object.keys(copy)) { copy[key] = copy[key].map(updater); }
+            return copy;
+        });
     };
 
-    const bulkUnpublish = async () => {
-        const ids = [...selectedIds];
-        if (ids.length === 0) { toast("No products selected.", "warning"); return; }
-        if (!confirm(`Unpublish ${ids.length} product(s)?`)) return;
-
-        let ok = 0, fail = 0;
-        for (const docId of ids) {
-            setPublishing(prev => ({ ...prev, [docId]: true }));
-            try {
-                await authApi.post(`/products/${docId}/unpublish`, {});
-                ok++;
-                setProducts(prev => prev.map(p => p.documentId === docId ? { ...p, _isPublished: false } : p));
-                setVariantsMap(prev => {
-                    const copy = { ...prev };
-                    for (const key of Object.keys(copy)) {
-                        copy[key] = copy[key].map(v => v.documentId === docId ? { ...v, _isPublished: false } : v);
-                    }
-                    return copy;
-                });
-            } catch (err) {
-                fail++;
-                console.error("Failed to unpublish", docId, err);
-            } finally {
-                setPublishing(prev => ({ ...prev, [docId]: false }));
+    const handleBulkPublished = (docId) => {
+        setProducts(prev => prev.map(p => p.documentId === docId ? { ...p, _isPublished: true } : p));
+        setVariantsMap(prev => {
+            const copy = { ...prev };
+            for (const key of Object.keys(copy)) {
+                copy[key] = copy[key].map(v => v.documentId === docId ? { ...v, _isPublished: true } : v);
             }
-        }
-        toast(`Unpublished ${ok} product(s)${fail ? `, ${fail} failed` : ""}.`, fail ? "warning" : "success");
-        setSelectedIds(new Set());
+            return copy;
+        });
     };
 
-    const bulkAssignRelation = async (field, documentIds) => {
-        const ids = [...selectedIds];
-        if (ids.length === 0) { toast("No products selected.", "warning"); return; }
-        const lookupMap = { categories, brands, suppliers };
-        const label = field;
-        if (!confirm(`Assign selected ${label} to ${ids.length} product(s)?`)) return;
-
-        setBulkUpdating(true);
-        let ok = 0, fail = 0;
-        for (const docId of ids) {
-            try {
-                await authApi.put(`/products/${docId}?status=draft`, {
-                    data: { [field]: documentIds },
-                });
-                ok++;
-                const updater = (p) => {
-                    if (p.documentId !== docId) return p;
-                    const lookup = lookupMap[field] || [];
-                    const resolved = documentIds.map(did => lookup.find(x => x.documentId === did)).filter(Boolean);
-                    return { ...p, [field]: resolved };
-                };
-                setProducts(prev => prev.map(updater));
-                setVariantsMap(prev => {
-                    const copy = { ...prev };
-                    for (const key of Object.keys(copy)) {
-                        copy[key] = copy[key].map(updater);
-                    }
-                    return copy;
-                });
-            } catch (err) {
-                fail++;
-                console.error(`Failed to update ${label} for`, docId, err);
+    const handleBulkUnpublished = (docId) => {
+        setProducts(prev => prev.map(p => p.documentId === docId ? { ...p, _isPublished: false } : p));
+        setVariantsMap(prev => {
+            const copy = { ...prev };
+            for (const key of Object.keys(copy)) {
+                copy[key] = copy[key].map(v => v.documentId === docId ? { ...v, _isPublished: false } : v);
             }
-        }
-        toast(`Updated ${label} on ${ok} product(s)${fail ? `, ${fail} failed` : ""}.`, fail ? "warning" : "success");
-        setBulkUpdating(false);
+            return copy;
+        });
     };
 
     // --- derive ALL filter & page state from the URL ---
@@ -369,70 +290,17 @@ export default function Products() {
                 <ToastContainer />
                 <div className="d-flex align-items-center justify-content-between mb-3">
                     <h2 className="mb-0">Products</h2>
-                    {selectedIds.size > 0 && (
-                        <div className="d-flex align-items-center gap-2 flex-wrap">
-                            <span className="badge bg-primary">{selectedIds.size} selected</span>
-                            <button className="btn btn-sm btn-success" onClick={() => bulkPublish(false)} disabled={bulkUpdating}>
-                                <i className="fas fa-upload me-1"></i>Publish
-                            </button>
-                            <button className="btn btn-sm btn-outline-success" onClick={() => bulkPublish(true)} disabled={bulkUpdating}>
-                                <i className="fas fa-upload me-1"></i>Publish + Variants
-                            </button>
-                            <button className="btn btn-sm btn-outline-secondary" onClick={bulkUnpublish} disabled={bulkUpdating}>
-                                <i className="fas fa-eye-slash me-1"></i>Unpublish
-                            </button>
-                            <span className="border-start ps-2"></span>
-                            <select
-                                className="form-select form-select-sm"
-                                style={{ width: 160 }}
-                                disabled={bulkUpdating}
-                                defaultValue=""
-                                onChange={(e) => {
-                                    if (!e.target.value) return;
-                                    bulkAssignRelation("categories", [e.target.value]);
-                                    e.target.value = "";
-                                }}
-                            >
-                                <option value="">Assign Category…</option>
-                                {categories.map(c => (
-                                    <option key={c.documentId} value={c.documentId}>{c.name}</option>
-                                ))}
-                            </select>
-                            <select
-                                className="form-select form-select-sm"
-                                style={{ width: 160 }}
-                                disabled={bulkUpdating}
-                                defaultValue=""
-                                onChange={(e) => {
-                                    if (!e.target.value) return;
-                                    bulkAssignRelation("brands", [e.target.value]);
-                                    e.target.value = "";
-                                }}
-                            >
-                                <option value="">Assign Brand…</option>
-                                {brands.map(b => (
-                                    <option key={b.documentId} value={b.documentId}>{b.name}</option>
-                                ))}
-                            </select>
-                            <select
-                                className="form-select form-select-sm"
-                                style={{ width: 160 }}
-                                disabled={bulkUpdating}
-                                defaultValue=""
-                                onChange={(e) => {
-                                    if (!e.target.value) return;
-                                    bulkAssignRelation("suppliers", [e.target.value]);
-                                    e.target.value = "";
-                                }}
-                            >
-                                <option value="">Assign Supplier…</option>
-                                {suppliers.map(s => (
-                                    <option key={s.documentId} value={s.documentId}>{s.name}</option>
-                                ))}
-                            </select>
-                            {bulkUpdating && <i className="fas fa-spinner fa-spin text-muted"></i>}
-                        </div>
-                    )}
+                    <BulkProductActions
+                        selectedIds={selectedIds}
+                        categories={categories}
+                        brands={brands}
+                        suppliers={suppliers}
+                        onAssigned={handleBulkAssigned}
+                        onPublished={handleBulkPublished}
+                        onUnpublished={handleBulkUnpublished}
+                        onComplete={() => setSelectedIds(new Set())}
+                        toast={toast}
+                    />
                 </div>
 
                 <ProductFilter

@@ -10,6 +10,7 @@ import { authApi, StraipImageUrl } from "@rutba/pos-shared/lib/api";
 import { fetchProducts } from "@rutba/pos-shared/lib/pos";
 import { ProductFilter } from "@rutba/pos-shared/components/filter/product-filter";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
+import BulkProductActions from "@rutba/pos-shared/components/BulkProductActions";
 
 function SortableHeader({ label, field, sortField, sortOrder, onSort, align }) {
     const isActive = sortField === field;
@@ -52,6 +53,49 @@ export default function Products() {
     const [expandedProducts, setExpandedProducts] = useState({});
     const [variantsMap, setVariantsMap] = useState({});
     const [loadingVariants, setLoadingVariants] = useState({});
+    const [selectedIds, setSelectedIds] = useState(new Set());
+    const [bulkMessage, setBulkMessage] = useState(null);
+
+    const toggleSelected = (docId) => {
+        setSelectedIds(prev => {
+            const next = new Set(prev);
+            if (next.has(docId)) next.delete(docId); else next.add(docId);
+            return next;
+        });
+    };
+
+    const allPageIds = products.map(p => p.documentId);
+    const allSelected = allPageIds.length > 0 && allPageIds.every(id => selectedIds.has(id));
+    const toggleSelectAll = () => {
+        setSelectedIds(prev => {
+            const next = new Set(prev);
+            if (allSelected) {
+                allPageIds.forEach(id => next.delete(id));
+            } else {
+                allPageIds.forEach(id => next.add(id));
+            }
+            return next;
+        });
+    };
+
+    const bulkToast = (message, variant) => {
+        setBulkMessage({ message, variant });
+        setTimeout(() => setBulkMessage(null), 4000);
+    };
+
+    const lookupMap = { categories, brands, suppliers };
+
+    const handleBulkAssigned = (field, documentIds, docId) => {
+        const lookup = lookupMap[field] || [];
+        const resolved = documentIds.map(did => lookup.find(x => x.documentId === did)).filter(Boolean);
+        const updater = (p) => p.documentId !== docId ? p : { ...p, [field]: resolved };
+        setProducts(prev => prev.map(updater));
+        setVariantsMap(prev => {
+            const copy = { ...prev };
+            for (const key of Object.keys(copy)) { copy[key] = copy[key].map(updater); }
+            return copy;
+        });
+    };
 
     const sortString = `${sortField}:${sortOrder}`;
 
@@ -232,7 +276,23 @@ export default function Products() {
                             >
                                 <i className="fas fa-pen-square me-1" /> Bulk Edit
                             </Link>
+                            <BulkProductActions
+                                selectedIds={selectedIds}
+                                categories={categories}
+                                brands={brands}
+                                suppliers={suppliers}
+                                onAssigned={handleBulkAssigned}
+                                onComplete={() => setSelectedIds(new Set())}
+                                toast={bulkToast}
+                                showPublish={false}
+                            />
                         </div>
+                        {bulkMessage && (
+                            <div className={`alert alert-${bulkMessage.variant} alert-dismissible fade show py-2 mb-2`} role="alert">
+                                {bulkMessage.message}
+                                <button type="button" className="btn-close" onClick={() => setBulkMessage(null)}></button>
+                            </div>
+                        )}
                         <div>
 
                             <ProductFilter
@@ -265,6 +325,9 @@ export default function Products() {
                             <Table>
                                 <TableHead>
                                     <TableRow>
+                                        <TableCell style={{ width: 30 }}>
+                                            <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} title="Select all" />
+                                        </TableCell>
                                         <TableCell style={{ width: 30 }}></TableCell>
                                         <SortableHeader label="id" field="id" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />
                                         <SortableHeader label="Product Name" field="name" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />
@@ -283,13 +346,13 @@ export default function Products() {
                                 <TableBody>
                                     {loading ? (
                                         <TableRow>
-                                            <TableCell colSpan={13} align="center">
+                                            <TableCell colSpan={14} align="center">
                                                 <CircularProgress size={24} />
                                             </TableCell>
                                         </TableRow>
                                     ) : products.length === 0 ? (
                                         <TableRow>
-                                            <TableCell colSpan={13} align="center">
+                                            <TableCell colSpan={14} align="center">
                                                 No products found.
                                             </TableCell>
                                         </TableRow>
@@ -297,7 +360,10 @@ export default function Products() {
                                         products.map((product) => (
                                             <Fragment key={product.id}>
                                                 <TableRow>
-                                                    <TableCell>
+                                                        <TableCell>
+                                                            <input type="checkbox" checked={selectedIds.has(product.documentId)} onChange={() => toggleSelected(product.documentId)} />
+                                                        </TableCell>
+                                                        <TableCell>
                                                         <button
                                                             onClick={() => toggleVariants(product)}
                                                             style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
@@ -356,19 +422,20 @@ export default function Products() {
                                                 {expandedProducts[product.documentId] && (
                                                     loadingVariants[product.documentId] ? (
                                                         <TableRow>
-                                                            <TableCell colSpan={13} align="center">
+                                                            <TableCell colSpan={14} align="center">
                                                                 <CircularProgress size={16} /> Loading variants...
                                                             </TableCell>
                                                         </TableRow>
                                                     ) : (variantsMap[product.documentId] || []).length === 0 ? (
                                                         <TableRow>
-                                                            <TableCell colSpan={13} align="center" style={{ color: '#999', fontStyle: 'italic' }}>
+                                                            <TableCell colSpan={14} align="center" style={{ color: '#999', fontStyle: 'italic' }}>
                                                                 No variants
                                                             </TableCell>
                                                         </TableRow>
                                                     ) : (
                                                         (variantsMap[product.documentId] || []).map(v => (
                                                             <TableRow key={`variant-${v.id}`} style={{ background: '#f8f9fa' }}>
+                                                                <TableCell></TableCell>
                                                                 <TableCell></TableCell>
                                                                 <TableCell title={v.documentId}>{v.id}</TableCell>
                                                                 <TableCell>
