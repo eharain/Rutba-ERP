@@ -15,6 +15,7 @@ const DEFAULT_PAGE_SIZE = 25;
 const PAGE_SIZE_OPTIONS = [5, 10, 25, 50, 100, 150, 200];
 const DEFAULT_SORT_FIELD = "createdAt";
 const DEFAULT_SORT_DIR = "desc";
+const SORTABLE_FIELDS = new Set(["name", "sku", "selling_price", "stock_quantity", "updatedAt", "createdAt"]);
 
 function SortableHeader({ label, field, currentField, currentDir, onSort }) {
     const active = currentField === field;
@@ -86,11 +87,12 @@ export default function Products() {
         setPublishing(prev => ({ ...prev, [docId]: true }));
         try {
             await authApi.post(`/products/${docId}/publish`, {});
-            setProducts(prev => prev.map(p => p.documentId === docId ? { ...p, _isPublished: true } : p));
+            const now = new Date().toISOString();
+            setProducts(prev => prev.map(p => p.documentId === docId ? { ...p, _isPublished: true, _publishedAt: now } : p));
             setVariantsMap(prev => {
                 const copy = { ...prev };
                 for (const key of Object.keys(copy)) {
-                    copy[key] = copy[key].map(v => v.documentId === docId ? { ...v, _isPublished: true } : v);
+                    copy[key] = copy[key].map(v => v.documentId === docId ? { ...v, _isPublished: true, _publishedAt: now } : v);
                 }
                 return copy;
             });
@@ -107,11 +109,11 @@ export default function Products() {
         setPublishing(prev => ({ ...prev, [docId]: true }));
         try {
             await authApi.post(`/products/${docId}/unpublish`, {});
-            setProducts(prev => prev.map(p => p.documentId === docId ? { ...p, _isPublished: false } : p));
+            setProducts(prev => prev.map(p => p.documentId === docId ? { ...p, _isPublished: false, _publishedAt: null } : p));
             setVariantsMap(prev => {
                 const copy = { ...prev };
                 for (const key of Object.keys(copy)) {
-                    copy[key] = copy[key].map(v => v.documentId === docId ? { ...v, _isPublished: false } : v);
+                    copy[key] = copy[key].map(v => v.documentId === docId ? { ...v, _isPublished: false, _publishedAt: null } : v);
                 }
                 return copy;
             });
@@ -139,22 +141,23 @@ export default function Products() {
     };
 
     const handleBulkPublished = (docId) => {
-        setProducts(prev => prev.map(p => p.documentId === docId ? { ...p, _isPublished: true } : p));
+        const now = new Date().toISOString();
+        setProducts(prev => prev.map(p => p.documentId === docId ? { ...p, _isPublished: true, _publishedAt: now } : p));
         setVariantsMap(prev => {
             const copy = { ...prev };
             for (const key of Object.keys(copy)) {
-                copy[key] = copy[key].map(v => v.documentId === docId ? { ...v, _isPublished: true } : v);
+                copy[key] = copy[key].map(v => v.documentId === docId ? { ...v, _isPublished: true, _publishedAt: now } : v);
             }
             return copy;
         });
     };
 
     const handleBulkUnpublished = (docId) => {
-        setProducts(prev => prev.map(p => p.documentId === docId ? { ...p, _isPublished: false } : p));
+        setProducts(prev => prev.map(p => p.documentId === docId ? { ...p, _isPublished: false, _publishedAt: null } : p));
         setVariantsMap(prev => {
             const copy = { ...prev };
             for (const key of Object.keys(copy)) {
-                copy[key] = copy[key].map(v => v.documentId === docId ? { ...v, _isPublished: false } : v);
+                copy[key] = copy[key].map(v => v.documentId === docId ? { ...v, _isPublished: false, _publishedAt: null } : v);
             }
             return copy;
         });
@@ -170,7 +173,7 @@ export default function Products() {
     const searchText = qVal(router.query.searchText);
     const page = parseInt(router.query.page, 10) || 1;
     const pageSize = parseInt(router.query.pageSize, 10) || DEFAULT_PAGE_SIZE;
-    const sortField = qVal(router.query.sortField) || DEFAULT_SORT_FIELD;
+    const sortField = SORTABLE_FIELDS.has(qVal(router.query.sortField)) ? qVal(router.query.sortField) : DEFAULT_SORT_FIELD;
     const sortDir = qVal(router.query.sortDir) || DEFAULT_SORT_DIR;
 
     // helper: merge params into the current URL (falsy values are removed)
@@ -219,21 +222,37 @@ export default function Products() {
         let cancelled = false;
         setLoading(true);
 
-        Promise.all([
-            fetchProducts(filters, page, pageSize, `${sortField}:${sortDir}`),
-            authApi.get("/products", { status: 'published', fields: ["documentId"], pagination: { pageSize: 500 } }),
-        ]).then(([productRes, pubRes]) => {
-            if (cancelled) return;
-            const pubIds = new Set((pubRes.data || []).map(p => p.documentId));
-            setProducts((productRes.data || []).map(p => ({ ...p, _isPublished: pubIds.has(p.documentId) })));
-            setPageCount(productRes.meta?.pagination?.pageCount ?? 1);
-            setTotal(productRes.meta?.pagination?.total ?? 0);
-        }).catch(err => {
-            if (cancelled) return;
-            console.error("Failed to load products", err);
-        }).finally(() => {
-            if (!cancelled) setLoading(false);
-        });
+        fetchProducts(filters, page, pageSize, `${sortField}:${sortDir}`)
+            .then(async (productRes) => {
+                if (cancelled) return;
+                const draftProducts = productRes.data || [];
+                // Check published status only for the current page's products
+                let pubMap = {};
+                if (draftProducts.length > 0) {
+                    const docIds = draftProducts.map(p => p.documentId);
+                    try {
+                        const pubRes = await authApi.get("/products", {
+                            status: "published",
+                            fields: ["documentId", "publishedAt"],
+                            filters: { documentId: { $in: docIds } },
+                            pagination: { pageSize: docIds.length },
+                        });
+                        for (const p of (pubRes.data || [])) {
+                            pubMap[p.documentId] = p.publishedAt;
+                        }
+                    } catch (err) {
+                        console.error("Failed to check published status", err);
+                    }
+                }
+                setProducts(draftProducts.map(p => ({ ...p, _isPublished: !!pubMap[p.documentId], _publishedAt: pubMap[p.documentId] || null })));
+                setPageCount(productRes.meta?.pagination?.pageCount ?? 1);
+                setTotal(productRes.meta?.pagination?.total ?? 0);
+            }).catch(err => {
+                if (cancelled) return;
+                console.error("Failed to load products", err);
+            }).finally(() => {
+                if (!cancelled) setLoading(false);
+            });
 
         return () => { cancelled = true; };
     }, [router.isReady, jwt, page, pageSize, selectedBrand, selectedCategory, selectedSupplier, selectedTerm, selectedPurchase, searchText, sortField, sortDir]);
@@ -267,13 +286,16 @@ export default function Products() {
                 const pubRes = await authApi.get("/products", {
                     status: "published",
                     filters: { parent: { documentId: docId } },
-                    fields: ["documentId"],
+                    fields: ["documentId", "publishedAt"],
                     pagination: { pageSize: 100 },
                 });
-                const pubIds = new Set((pubRes.data || []).map(p => p.documentId));
+                const varPubMap = {};
+                for (const pv of (pubRes.data || [])) {
+                    varPubMap[pv.documentId] = pv.publishedAt;
+                }
                 setVariantsMap(prev => ({
                     ...prev,
-                    [docId]: (res.data || []).map(v => ({ ...v, _isPublished: pubIds.has(v.documentId) })),
+                    [docId]: (res.data || []).map(v => ({ ...v, _isPublished: !!varPubMap[v.documentId], _publishedAt: varPubMap[v.documentId] || null })),
                 }));
             } catch (err) {
                 console.error("Failed to load variants", err);
@@ -289,7 +311,12 @@ export default function Products() {
             <Layout>
                 <ToastContainer />
                 <div className="d-flex align-items-center justify-content-between mb-3">
-                    <h2 className="mb-0">Products</h2>
+                    <div className="d-flex align-items-center gap-2">
+                        <h2 className="mb-0">Products</h2>
+                        <Link className="btn btn-sm btn-primary" href="/new/product">
+                            <i className="fas fa-plus me-1"></i>New Product
+                        </Link>
+                    </div>
                     <BulkProductActions
                         selectedIds={selectedIds}
                         categories={categories}
@@ -403,10 +430,10 @@ export default function Products() {
                                             <td>{(p.brands || []).map(b => b.name).join(", ") || "—"}</td>
                                             <td>{(p.purchase_items || []).map(pi => pi.purchase?.orderId).filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(", ") || "—"}</td>
                                             <td className="small text-nowrap">{p.updatedAt ? new Date(p.updatedAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "—"}</td>
-                                            <td>
+                                            <td className="small text-nowrap">
                                                 {p._isPublished
                                                     ? <button className="btn btn-sm btn-success py-0 px-1" onClick={() => unpublishOne(p.documentId)} disabled={publishing[p.documentId]} title="Click to unpublish">
-                                                        {publishing[p.documentId] ? <i className="fas fa-spinner fa-spin"></i> : <><i className="fas fa-check me-1"></i>Published</>}
+                                                        {publishing[p.documentId] ? <i className="fas fa-spinner fa-spin"></i> : <><i className="fas fa-check me-1"></i>{p._publishedAt ? new Date(p._publishedAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "Published"}</>}
                                                     </button>
                                                     : <button className="btn btn-sm btn-outline-secondary py-0 px-1" onClick={() => publishOne(p.documentId)} disabled={publishing[p.documentId]} title="Click to publish">
                                                         {publishing[p.documentId] ? <i className="fas fa-spinner fa-spin"></i> : "Draft"}
@@ -459,10 +486,10 @@ export default function Products() {
                                                         <td>{(v.brands || []).map(b => b.name).join(", ") || "—"}</td>
                                                         <td>{(v.purchase_items || []).map(pi => pi.purchase?.orderId).filter(Boolean).filter((val, i, a) => a.indexOf(val) === i).join(", ") || "—"}</td>
                                                         <td className="small text-nowrap">{v.updatedAt ? new Date(v.updatedAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "—"}</td>
-                                                        <td>
+                                                        <td className="small text-nowrap">
                                                             {v._isPublished
                                                                 ? <button className="btn btn-sm btn-success py-0 px-1" onClick={() => unpublishOne(v.documentId)} disabled={publishing[v.documentId]} title="Click to unpublish">
-                                                                    {publishing[v.documentId] ? <i className="fas fa-spinner fa-spin"></i> : <><i className="fas fa-check me-1"></i>Published</>}
+                                                                    {publishing[v.documentId] ? <i className="fas fa-spinner fa-spin"></i> : <><i className="fas fa-check me-1"></i>{v._publishedAt ? new Date(v._publishedAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "Published"}</>}
                                                                 </button>
                                                                 : <button className="btn btn-sm btn-outline-secondary py-0 px-1" onClick={() => publishOne(v.documentId)} disabled={publishing[v.documentId]} title="Click to publish">
                                                                     {publishing[v.documentId] ? <i className="fas fa-spinner fa-spin"></i> : "Draft"}

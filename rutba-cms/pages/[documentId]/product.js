@@ -17,6 +17,7 @@ export default function ProductDetail() {
     const { documentId } = router.query;
     const { jwt } = useAuth();
     const { currency } = useUtil();
+    const isNew = documentId === "new";
     const [product, setProduct] = useState(null);
     const [isPublished, setIsPublished] = useState(false);
     const [loading, setLoading] = useState(true);
@@ -26,7 +27,7 @@ export default function ProductDetail() {
 
     // Editable fields
     const [name, setName] = useState("");
-    const [summary  , setSummary] = useState("");
+    const [summary, setSummary] = useState("");
     const [description, setDescription] = useState("");
     const [sellingPrice, setSellingPrice] = useState("");
     const [offerPrice, setOfferPrice] = useState("");
@@ -41,6 +42,11 @@ export default function ProductDetail() {
 
     const loadProduct = useCallback(async () => {
         if (!jwt || !documentId) return;
+        if (isNew) {
+            setProduct({});
+            setLoading(false);
+            return;
+        }
         setLoading(true);
         try {
             const [draftRes, pubRes] = await Promise.all([
@@ -70,12 +76,12 @@ export default function ProductDetail() {
         } finally {
             setLoading(false);
         }
-    }, [jwt, documentId]);
+    }, [jwt, documentId, isNew]);
 
     useEffect(() => { loadProduct(); }, [loadProduct]);
 
     const loadProductGroups = useCallback(async () => {
-        if (!jwt || !documentId) return;
+        if (!jwt || !documentId || isNew) return;
         setGroupsLoading(true);
         try {
             const res = await authApi.get("/product-groups", {
@@ -102,19 +108,25 @@ export default function ProductDetail() {
     const handleSave = async () => {
         setSaving(true);
         try {
-            await authApi.put(`/products/${documentId}?status=draft`, {
-                data: {
-                    name,
-                    summary,
-                    description,
-                    selling_price: parseFloat(sellingPrice) || 0,
-                    offer_price: offerPrice ? parseFloat(offerPrice) : null,
-                    is_active: isActive,
-                },
-            });
-            toast("Draft saved!", "success");
+            const payload = {
+                name,
+                summary,
+                description,
+                selling_price: parseFloat(sellingPrice) || 0,
+                offer_price: offerPrice ? parseFloat(offerPrice) : null,
+                is_active: isActive,
+            };
+            if (isNew) {
+                const res = await authApi.post("/products", { data: { ...payload, status: "draft" } });
+                const created = res.data || res;
+                toast("Product created!", "success");
+                router.push(`/${created.documentId}/product`);
+            } else {
+                await authApi.put(`/products/${documentId}?status=draft`, { data: payload });
+                toast("Draft saved!", "success");
+            }
         } catch (err) {
-            console.error("Failed to update product", err);
+            console.error("Failed to save product", err);
             toast("Failed to save changes.", "danger");
         } finally {
             setSaving(false);
@@ -124,20 +136,26 @@ export default function ProductDetail() {
     const handlePublish = async () => {
         setSaving(true);
         try {
-            const payload = {
-                data: {
-                    name,
-                    summary,
-                    description,
-                    selling_price: parseFloat(sellingPrice) || 0,
-                    offer_price: offerPrice ? parseFloat(offerPrice) : null,
-                    is_active: isActive,
-                },
+            const data = {
+                name,
+                summary,
+                description,
+                selling_price: parseFloat(sellingPrice) || 0,
+                offer_price: offerPrice ? parseFloat(offerPrice) : null,
+                is_active: isActive,
             };
-            await authApi.put(`/products/${documentId}?status=draft`, payload);
-            await authApi.post(`/products/${documentId}/publish`, {});
-            setIsPublished(true);
-            toast("Product saved & published!", "success");
+            if (isNew) {
+                const res = await authApi.post("/products", { data });
+                const created = res.data || res;
+                await authApi.post(`/products/${created.documentId}/publish`, {});
+                toast("Product created & published!", "success");
+                router.push(`/${created.documentId}/product`);
+            } else {
+                await authApi.put(`/products/${documentId}?status=draft`, { data });
+                await authApi.post(`/products/${documentId}/publish`, {});
+                setIsPublished(true);
+                toast("Product saved & published!", "success");
+            }
         } catch (err) {
             console.error("Failed to publish product", err);
             toast("Failed to publish.", "danger");
@@ -280,27 +298,27 @@ export default function ProductDetail() {
                     <Link className="btn btn-sm btn-outline-secondary me-3" href="/products">
                         <i className="fas fa-arrow-left"></i> Back
                     </Link>
-                    <h2 className="mb-0">Edit Product</h2>
-                    {isPublished && <span className="badge bg-success ms-2 align-self-center">Published</span>}
-                    {product && !isPublished && <span className="badge bg-secondary ms-2 align-self-center">Draft</span>}
+                    <h2 className="mb-0">{isNew ? "New Product" : "Edit Product"}</h2>
+                    {!isNew && isPublished && <span className="badge bg-success ms-2 align-self-center">Published</span>}
+                    {!isNew && product && !isPublished && <span className="badge bg-secondary ms-2 align-self-center">Draft</span>}
                     <div className="ms-auto d-flex gap-2">
-                        {isPublished && (
+                        {!isNew && isPublished && (
                             <button className="btn btn-sm btn-outline-secondary" onClick={handleUnpublish} disabled={saving}>
                                 <i className="fas fa-eye-slash me-1"></i>Unpublish
                             </button>
                         )}
-                        {isPublished && (
+                        {!isNew && isPublished && (
                             <button className="btn btn-sm btn-outline-warning" onClick={handleDiscardDraft} disabled={saving}>
                                 <i className="fas fa-undo me-1"></i>Load Published
                             </button>
                         )}
                         {activeTab === "details" && (
                             <button className="btn btn-sm btn-primary" onClick={handleSave} disabled={saving}>
-                                {saving ? "Saving…" : "Save Draft"}
+                                {saving ? "Saving…" : isNew ? "Create Draft" : "Save Draft"}
                             </button>
                         )}
                         <button className="btn btn-sm btn-success" onClick={handlePublish} disabled={saving}>
-                            <i className="fas fa-upload me-1"></i>{saving ? "Publishing…" : "Save & Publish"}
+                            <i className="fas fa-upload me-1"></i>{saving ? "Publishing…" : isNew ? "Create & Publish" : "Save & Publish"}
                         </button>
                     </div>
                 </div>
@@ -324,30 +342,34 @@ export default function ProductDetail() {
                                     <i className="fas fa-edit me-1" /> Product Details
                                 </button>
                             </li>
-                            <li className="nav-item">
-                                <button
-                                    type="button"
-                                    className={`nav-link ${activeTab === "gallery" ? "active" : ""}`}
-                                    onClick={() => setActiveTab("gallery")}
-                                >
-                                    <i className="fas fa-images me-1" /> Gallery &amp; Variants
-                                    {(variantCount > 0 || galleryCount > 0) && (
-                                        <span className="badge bg-secondary ms-1">{galleryCount} img · {variantCount} var</span>
-                                    )}
-                                </button>
-                            </li>
-                            <li className="nav-item">
-                                <button
-                                    type="button"
-                                    className={`nav-link ${activeTab === "variants" ? "active" : ""}`}
-                                    onClick={() => setActiveTab("variants")}
-                                >
-                                    <i className="fas fa-layer-group me-1" /> Product &amp; Variants
-                                    {variantCount > 0 && (
-                                        <span className="badge bg-secondary ms-1">{variantCount}</span>
-                                    )}
-                                </button>
-                            </li>
+                            {!isNew && (
+                                <li className="nav-item">
+                                    <button
+                                        type="button"
+                                        className={`nav-link ${activeTab === "gallery" ? "active" : ""}`}
+                                        onClick={() => setActiveTab("gallery")}
+                                    >
+                                        <i className="fas fa-images me-1" /> Gallery &amp; Variants
+                                        {(variantCount > 0 || galleryCount > 0) && (
+                                            <span className="badge bg-secondary ms-1">{galleryCount} img · {variantCount} var</span>
+                                        )}
+                                    </button>
+                                </li>
+                            )}
+                            {!isNew && (
+                                <li className="nav-item">
+                                    <button
+                                        type="button"
+                                        className={`nav-link ${activeTab === "variants" ? "active" : ""}`}
+                                        onClick={() => setActiveTab("variants")}
+                                    >
+                                        <i className="fas fa-layer-group me-1" /> Product &amp; Variants
+                                        {variantCount > 0 && (
+                                            <span className="badge bg-secondary ms-1">{variantCount}</span>
+                                        )}
+                                    </button>
+                                </li>
+                            )}
                         </ul>
 
                         {/* ---- PRODUCT DETAILS TAB ---- */}
@@ -388,6 +410,15 @@ export default function ProductDetail() {
                                     </div>
                                 </div>
                                 <div className="col-md-4">
+                                    {isNew ? (
+                                        <div className="card mb-3">
+                                            <div className="card-body text-muted small">
+                                                <i className="fas fa-info-circle me-1"></i>
+                                                Save the product first to upload a logo, gallery images, and manage groups.
+                                            </div>
+                                        </div>
+                                    ) : (
+                                    <>
                                     <div className="card mb-3">
                                         <div className="card-header">Logo</div>
                                         <div className="card-body">
@@ -497,6 +528,8 @@ export default function ProductDetail() {
                                             )}
                                         </div>
                                     </div>
+                                    </>
+                                    )}
                                 </div>
                             </div>
                         )}
