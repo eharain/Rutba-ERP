@@ -570,6 +570,19 @@ mapfile -t REMAINING_BUILDS < <(
 )
 
 ###########################################
+# SETUP LOG ROTATION CRON JOB
+###########################################
+# Ensure the nightly log rotation cron job is installed.
+# The setup script is idempotent -- safe to run every deploy.
+
+if [ -f "${SCRIPT_DIR}/rutba_setup_log_cron.sh" ]; then
+    log "Setting up log rotation cron job..."
+    bash "${SCRIPT_DIR}/rutba_setup_log_cron.sh" && log_ok "Log rotation cron job configured." || log_warn "Failed to setup log rotation cron job."
+else
+    log_warn "rutba_setup_log_cron.sh not found -- skipping log rotation setup."
+fi
+
+###########################################
 # DONE
 ###########################################
 
@@ -600,6 +613,11 @@ echo ""
 echo "  View logs:"
 echo "    sudo journalctl -fu rutba_pos_strapi"
 echo "    tail -f ${LOG_FILE}"
+echo ""
+echo "  Log rotation:"
+echo "    Cron: nightly at 02:00 (vacuums journal + rotates deploy log)"
+echo "    Log:  /var/log/rutba_log_rotate.log"
+echo "    Run:  sudo bash ${BUILD_DIR}/scripts/rutba_log_rotate.sh"
 echo ""
 echo "  To edit environment:"
 echo "    sudo nano ${BUILDS_DIR}/.env.production"

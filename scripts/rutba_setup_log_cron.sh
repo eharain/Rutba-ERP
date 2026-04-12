@@ -3,14 +3,14 @@
 set -euo pipefail
 
 ###########################################
-# Rutba ERP Ã¢â‚¬â€ Setup / Update Log Rotation Cron Job
+# Rutba ERP -- Setup / Update Log Rotation Cron Job
 ###########################################
 #
 # Installs (or updates) a nightly cron job that runs
 # rutba_log_rotate.sh to vacuum journal logs and rotate
 # the deploy log file.
 #
-# Idempotent Ã¢â‚¬â€ safe to run multiple times. If the cron
+# Idempotent -- safe to run multiple times. If the cron
 # entry already exists it is replaced with the current
 # schedule and path.
 #
@@ -40,9 +40,9 @@ CYAN='\033[0;36m'
 NC='\033[0m'
 
 log()      { echo -e "${CYAN}$(date '+%Y-%m-%d %H:%M:%S') : $1${NC}"; }
-log_ok()   { echo -e "${GREEN}$(date '+%Y-%m-%d %H:%M:%S') : Ã¢Å“â€¦ $1${NC}"; }
-log_warn() { echo -e "${YELLOW}$(date '+%Y-%m-%d %H:%M:%S') : Ã¢Å¡Â  $1${NC}"; }
-abort()    { echo -e "${RED}$(date '+%Y-%m-%d %H:%M:%S') : Ã¢ÂÅ’ $1${NC}" >&2; exit 1; }
+log_ok()   { echo -e "${GREEN}$(date '+%Y-%m-%d %H:%M:%S') : [OK] $1${NC}"; }
+log_warn() { echo -e "${YELLOW}$(date '+%Y-%m-%d %H:%M:%S') : [WARN] $1${NC}"; }
+abort()    { echo -e "${RED}$(date '+%Y-%m-%d %H:%M:%S') : [ERROR] $1${NC}" >&2; exit 1; }
 
 ###########################################
 # PRE-FLIGHT
@@ -83,7 +83,7 @@ log "Checking existing crontab for ${CRON_USER}..."
 EXISTING_CRONTAB=$(crontab -u "$CRON_USER" -l 2>/dev/null || true)
 
 if echo "$EXISTING_CRONTAB" | grep -qF "$CRON_TAG"; then
-    # Entry exists Ã¢â‚¬â€ replace it
+    # Entry exists -- replace it
     log "Existing cron entry found. Updating..."
     NEW_CRONTAB=$(echo "$EXISTING_CRONTAB" | grep -vF "$CRON_TAG")
     NEW_CRONTAB="${NEW_CRONTAB}
@@ -91,7 +91,7 @@ ${CRON_LINE}"
     echo "$NEW_CRONTAB" | crontab -u "$CRON_USER" -
     log_ok "Cron entry updated."
 else
-    # No entry Ã¢â‚¬â€ append
+    # No entry -- append
     log "No existing cron entry found. Installing..."
     if [ -n "$EXISTING_CRONTAB" ]; then
         NEW_CRONTAB="${EXISTING_CRONTAB}
@@ -102,29 +102,3 @@ ${CRON_LINE}"
     echo "$NEW_CRONTAB" | crontab -u "$CRON_USER" -
     log_ok "Cron entry installed."
 fi
-
-###########################################
-# VERIFY
-###########################################
-
-echo ""
-echo "============================================"
-echo -e "  ${GREEN}Ã¢Å“â€¦ Log Rotation Cron Job Configured${NC}"
-echo "============================================"
-echo ""
-echo "  Schedule:  ${CRON_SCHEDULE}  (daily at 02:00)"
-echo "  Script:    ${ROTATE_SCRIPT}"
-echo "  Cron user: ${CRON_USER}"
-echo ""
-echo "  Current crontab entry:"
-crontab -u "$CRON_USER" -l 2>/dev/null | grep -F "$CRON_TAG" | sed 's/^/    /'
-echo ""
-echo "  Rotation log:"
-echo "    /var/log/rutba_log_rotate.log"
-echo ""
-echo "  To run manually:"
-echo "    sudo bash ${ROTATE_SCRIPT}"
-echo ""
-echo "  To remove the cron job:"
-echo "    sudo crontab -e   # delete the line tagged ${CRON_TAG}"
-echo "============================================"
