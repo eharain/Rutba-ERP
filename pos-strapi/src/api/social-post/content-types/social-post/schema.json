@@ -45,11 +45,17 @@
     "platform_results": {
       "type": "json"
     },
-    "media": {
+    "cover": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "video": {
       "type": "media",
       "multiple": true,
       "allowedTypes": [
-        "images",
         "videos"
       ]
     },
@@ -63,6 +69,11 @@
       "relation": "oneToMany",
       "target": "api::social-reply.social-reply",
       "mappedBy": "social_post"
+    },
+    "products": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::product.product"
     },
     "tags": {
       "type": "json"
