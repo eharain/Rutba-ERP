@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+﻿import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/router";
 import Layout from "../../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
@@ -6,25 +6,32 @@ import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { authApi, StraipImageUrl } from "@rutba/pos-shared/lib/api";
 import { useToast } from "../../components/Toast";
 import PLATFORMS from "../../components/PlatformBadge";
+import FileView from "@rutba/pos-shared/components/FileView";
+import Link from "next/link";
+
+const WEB_URL = process.env.NEXT_PUBLIC_WEB_URL || "http://localhost:4000";
 
 export default function CreatePostPage() {
     const { jwt } = useAuth();
     const { toast, ToastContainer } = useToast();
     const router = useRouter();
-    const fileInputRef = useRef();
 
     const [accounts, setAccounts] = useState([]);
-    const [form, setForm] = useState({
-        title: "",
-        body: "",
-        platforms: [],
-        scheduled_at: "",
-        tags: "",
-    });
+    const [title, setTitle] = useState("");
+    const [body, setBody] = useState("");
+    const [platforms, setPlatforms] = useState([]);
+    const [scheduledAt, setScheduledAt] = useState("");
+    const [tagsText, setTagsText] = useState("");
     const [selectedAccountIds, setSelectedAccountIds] = useState([]);
-    const [mediaFiles, setMediaFiles] = useState([]);
-    const [uploading, setUploading] = useState(false);
+    const [coverId, setCoverId] = useState(null);
+    const [videoIds, setVideoIds] = useState([]);
     const [saving, setSaving] = useState(false);
+
+    // Product picker
+    const [selectedProductIds, setSelectedProductIds] = useState([]);
+    const [productSearch, setProductSearch] = useState("");
+    const [productResults, setProductResults] = useState([]);
+    const [productLoading, setProductLoading] = useState(false);
 
     const loadAccounts = useCallback(async () => {
         if (!jwt) return;
@@ -41,79 +48,72 @@ export default function CreatePostPage() {
 
     useEffect(() => { loadAccounts(); }, [loadAccounts]);
 
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setForm((prev) => ({ ...prev, [name]: value }));
-    };
-
     const togglePlatform = (platform) => {
-        setForm((prev) => {
-            const platforms = prev.platforms.includes(platform)
-                ? prev.platforms.filter((p) => p !== platform)
-                : [...prev.platforms, platform];
-            return { ...prev, platforms };
-        });
-    };
-
-    const toggleAccount = (accountId) => {
-        setSelectedAccountIds((prev) =>
-            prev.includes(accountId)
-                ? prev.filter((id) => id !== accountId)
-                : [...prev, accountId]
+        setPlatforms(prev =>
+            prev.includes(platform) ? prev.filter(p => p !== platform) : [...prev, platform]
         );
     };
 
-    const handleFileUpload = async (e) => {
-        const files = e.target.files;
-        if (!files || files.length === 0) return;
-        setUploading(true);
-        try {
-            const fd = new FormData();
-            for (const file of files) {
-                fd.append("files", file);
-            }
-            const res = await authApi.post("/upload", fd, {
-                headers: { "Content-Type": "multipart/form-data" },
-            });
-            const uploaded = res.data || [];
-            setMediaFiles((prev) => [...prev, ...uploaded]);
-            toast(`Uploaded ${uploaded.length} file(s).`, "success");
-        } catch (err) {
-            console.error("Upload failed", err);
-            toast("Upload failed.", "danger");
-        } finally {
-            setUploading(false);
-            if (fileInputRef.current) fileInputRef.current.value = "";
-        }
+    const toggleAccount = (accountId) => {
+        setSelectedAccountIds(prev =>
+            prev.includes(accountId) ? prev.filter(id => id !== accountId) : [...prev, accountId]
+        );
     };
 
-    const removeMedia = (id) => {
-        setMediaFiles((prev) => prev.filter((f) => f.id !== id));
+    const searchProducts = useCallback(async () => {
+        if (!jwt || !productSearch.trim()) { setProductResults([]); return; }
+        setProductLoading(true);
+        try {
+            const res = await authApi.get('/products', {
+                status: 'draft',
+                filters: { name: { $containsi: productSearch.trim() } },
+                fields: ['name', 'sku', 'documentId'],
+                populate: ['logo'],
+                pagination: { pageSize: 20 },
+                sort: ['name:asc'],
+            });
+            setProductResults(res.data || []);
+        } catch (err) {
+            console.error("Failed to search products", err);
+        } finally {
+            setProductLoading(false);
+        }
+    }, [jwt, productSearch]);
+
+    useEffect(() => {
+        const timer = setTimeout(searchProducts, 400);
+        return () => clearTimeout(timer);
+    }, [searchProducts]);
+
+    const toggleProduct = (docId) => {
+        setSelectedProductIds(prev =>
+            prev.includes(docId) ? prev.filter(id => id !== docId) : [...prev, docId]
+        );
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (form.platforms.length === 0) {
+        if (platforms.length === 0) {
             toast("Select at least one platform.", "warning");
             return;
         }
         setSaving(true);
         try {
-            const tags = form.tags
-                ? form.tags.split(",").map((t) => t.trim()).filter(Boolean)
-                : [];
+            const tags = tagsText ? tagsText.split(",").map(t => t.trim()).filter(Boolean) : [];
             const payload = {
                 data: {
-                    title: form.title,
-                    body: form.body,
-                    platforms: form.platforms,
-                    scheduled_at: form.scheduled_at || null,
-                    post_status: form.scheduled_at ? "scheduled" : "draft",
+                    title,
+                    body,
+                    platforms,
+                    scheduled_at: scheduledAt || null,
+                    post_status: scheduledAt ? "scheduled" : "draft",
                     tags,
-                    media: mediaFiles.map((f) => f.id),
                     social_accounts: selectedAccountIds,
+                    products: { set: selectedProductIds },
                 },
             };
+            if (coverId) payload.data.cover = coverId;
+            if (videoIds.length > 0) payload.data.video = videoIds;
             const res = await authApi.post("/social-posts", payload);
             toast("Post created!", "success");
             router.push(`/posts/${res.data?.documentId}`);
@@ -129,7 +129,12 @@ export default function CreatePostPage() {
         <ProtectedRoute>
             <Layout>
                 <ToastContainer />
-                <h3 className="mb-3"><i className="fas fa-plus me-2"></i>New Post</h3>
+                <div className="d-flex align-items-center mb-3">
+                    <Link className="btn btn-sm btn-outline-secondary me-3" href="/posts">
+                        <i className="fas fa-arrow-left"></i> Back
+                    </Link>
+                    <h3 className="mb-0"><i className="fas fa-plus me-2"></i>New Post</h3>
+                </div>
 
                 <form onSubmit={handleSubmit}>
                     <div className="row g-3">
@@ -138,43 +143,101 @@ export default function CreatePostPage() {
                                 <div className="card-body">
                                     <div className="mb-3">
                                         <label className="form-label">Title</label>
-                                        <input className="form-control" name="title" value={form.title} onChange={handleChange} required />
+                                        <input className="form-control" value={title} onChange={e => setTitle(e.target.value)} required />
                                     </div>
                                     <div className="mb-3">
                                         <label className="form-label">Body</label>
-                                        <textarea className="form-control" name="body" value={form.body} onChange={handleChange} rows={6} required />
-                                        <div className="form-text">{(form.body || "").length} characters</div>
+                                        <textarea className="form-control" value={body} onChange={e => setBody(e.target.value)} rows={6} required />
+                                        <div className="form-text">{(body || "").length} characters</div>
                                     </div>
                                     <div className="mb-3">
                                         <label className="form-label">Tags (comma-separated)</label>
-                                        <input className="form-control" name="tags" value={form.tags} onChange={handleChange} placeholder="e.g. sale, new-arrival, promo" />
+                                        <input className="form-control" value={tagsText} onChange={e => setTagsText(e.target.value)} placeholder="e.g. sale, new-arrival, promo" />
                                     </div>
                                     <div className="mb-3">
                                         <label className="form-label">Schedule (optional)</label>
-                                        <input className="form-control" type="datetime-local" name="scheduled_at" value={form.scheduled_at} onChange={handleChange} />
+                                        <input className="form-control" type="datetime-local" value={scheduledAt} onChange={e => setScheduledAt(e.target.value)} />
                                     </div>
                                 </div>
                             </div>
 
+                            {/* Cover Image */}
                             <div className="card mb-3">
-                                <div className="card-header">Media</div>
+                                <div className="card-header"><i className="fas fa-image me-2"></i>Cover Image</div>
                                 <div className="card-body">
-                                    <input type="file" ref={fileInputRef} className="form-control form-control-sm mb-2" multiple accept="image/*,video/*" onChange={handleFileUpload} />
-                                    {uploading && <div className="spinner-border spinner-border-sm me-2"></div>}
-                                    {mediaFiles.length > 0 && (
-                                        <div className="d-flex flex-wrap gap-2 mt-2">
-                                            {mediaFiles.map((f) => (
-                                                <div key={f.id} className="position-relative" style={{ width: 80, height: 80 }}>
-                                                    {f.mime?.startsWith("image/") ? (
-                                                        <img src={StraipImageUrl(f)} alt={f.name} className="rounded" style={{ width: 80, height: 80, objectFit: "cover" }} />
-                                                    ) : (
-                                                        <div className="bg-dark text-white rounded d-flex align-items-center justify-content-center" style={{ width: 80, height: 80 }}>
-                                                            <i className="fas fa-video"></i>
-                                                        </div>
-                                                    )}
-                                                    <button type="button" className="btn btn-sm btn-danger position-absolute top-0 end-0" style={{ padding: "0 4px", fontSize: 10 }} onClick={() => removeMedia(f.id)}>×</button>
-                                                </div>
-                                            ))}
+                                    <FileView
+                                        single={null}
+                                        field="cover"
+                                        name={title}
+                                        autoUpload={false}
+                                        onFileChange={(f, file) => setCoverId(file?.id || null)}
+                                    />
+                                    <div className="form-text">Single image used as the post cover/thumbnail.</div>
+                                </div>
+                            </div>
+
+                            {/* Video */}
+                            <div className="card mb-3">
+                                <div className="card-header"><i className="fas fa-video me-2"></i>Videos</div>
+                                <div className="card-body">
+                                    <FileView
+                                        gallery={[]}
+                                        multiple
+                                        field="video"
+                                        name={title}
+                                        autoUpload={false}
+                                        accept="video/*"
+                                        buttonLabel="Upload Video"
+                                        onFileChange={(f, files) => setVideoIds((files || []).map(v => v.id).filter(Boolean))}
+                                    />
+                                    <div className="form-text">Attach videos for the post.</div>
+                                </div>
+                            </div>
+
+                            {/* Product Linker */}
+                            <div className="card mb-3">
+                                <div className="card-header d-flex align-items-center">
+                                    <i className="fas fa-box me-2"></i>
+                                    <strong>Linked Products</strong>
+                                    <span className="badge bg-primary ms-2">{selectedProductIds.length}</span>
+                                </div>
+                                <div className="card-body">
+                                    <input
+                                        className="form-control form-control-sm mb-2"
+                                        placeholder="Search products by name..."
+                                        value={productSearch}
+                                        onChange={e => setProductSearch(e.target.value)}
+                                    />
+                                    {productLoading && <div className="spinner-border spinner-border-sm me-2"></div>}
+                                    {productResults.length > 0 && (
+                                        <div className="d-flex flex-wrap gap-2 mb-2">
+                                            {productResults.map(p => {
+                                                const selected = selectedProductIds.includes(p.documentId);
+                                                return (
+                                                    <div key={p.documentId} className="d-inline-flex align-items-center gap-1">
+                                                        {p.logo?.url ? (
+                                                            <img src={StraipImageUrl(p.logo)} alt={p.name} style={{ width: 28, height: 28, objectFit: "cover", borderRadius: 4 }} />
+                                                        ) : (
+                                                            <span className="text-muted" style={{ width: 28, height: 28, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+                                                                <i className="fas fa-image"></i>
+                                                            </span>
+                                                        )}
+                                                        <button
+                                                            type="button"
+                                                            className={`btn btn-sm ${selected ? "btn-success" : "btn-outline-secondary"}`}
+                                                            onClick={() => toggleProduct(p.documentId)}
+                                                        >
+                                                            {selected && <i className="fas fa-check me-1"></i>}
+                                                            {p.name}
+                                                        </button>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                    {selectedProductIds.length > 0 && (
+                                        <div className="mt-2">
+                                            <small className="text-muted">Selected: {selectedProductIds.length} product(s)</small>
                                         </div>
                                     )}
                                 </div>
@@ -191,7 +254,7 @@ export default function CreatePostPage() {
                                                 className="form-check-input"
                                                 type="checkbox"
                                                 id={`platform-${key}`}
-                                                checked={form.platforms.includes(key)}
+                                                checked={platforms.includes(key)}
                                                 onChange={() => togglePlatform(key)}
                                             />
                                             <label className="form-check-label" htmlFor={`platform-${key}`}>
@@ -209,8 +272,8 @@ export default function CreatePostPage() {
                                         <p className="text-muted small mb-0">No active accounts. <a href="/accounts">Configure accounts</a>.</p>
                                     ) : (
                                         accounts
-                                            .filter((a) => form.platforms.includes(a.platform))
-                                            .map((a) => (
+                                            .filter(a => platforms.includes(a.platform))
+                                            .map(a => (
                                                 <div className="form-check mb-2" key={a.id}>
                                                     <input
                                                         className="form-check-input"
@@ -225,7 +288,7 @@ export default function CreatePostPage() {
                                                 </div>
                                             ))
                                     )}
-                                    {form.platforms.length > 0 && accounts.filter((a) => form.platforms.includes(a.platform)).length === 0 && (
+                                    {platforms.length > 0 && accounts.filter(a => platforms.includes(a.platform)).length === 0 && (
                                         <p className="text-muted small mb-0">No accounts match selected platforms.</p>
                                     )}
                                 </div>

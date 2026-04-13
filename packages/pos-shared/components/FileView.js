@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { storage } from '../lib/storage';
-import { authApi, StraipImageUrl, isImage, isPDF } from '../lib/api';
+import { authApi, StraipImageUrl, isImage, isPDF, isVideo } from '../lib/api';
 import StrapiMediaLibrary from './StrapiMediaLibrary';
 // Utility functions
 
@@ -10,7 +10,7 @@ export async function uploadToStrapiFiles(files = [], ref, field, refId, info) {
     return await authApi.uploadFile(files, ref, field, refId, info);
 }
 
-function FileView({ onFileChange = function (field, files, multiple) { }, single = null, gallery = [], multiple = false, refName = null, refId = null, field = null, autoUpload = true, name = null }) {
+function FileView({ onFileChange = function (field, files, multiple) { }, single = null, gallery = [], multiple = false, refName = null, refId = null, field = null, autoUpload = true, name = null, accept = null, buttonLabel = null }) {
     const [singleFile, setSingleFile] = useState(single);
     const [galleryFiles, setGalleryFiles] = useState(gallery);
     const [uploading, setUploading] = useState(false);
@@ -19,6 +19,7 @@ function FileView({ onFileChange = function (field, files, multiple) { }, single
     const [pasteIdValue, setPasteIdValue] = useState('');
     const [pasteIdLoading, setPasteIdLoading] = useState(false);
     const [isFocused, setIsFocused] = useState(false);
+    const [playingVideo, setPlayingVideo] = useState(null);
     const inputRef = useRef();
     const containerRef = useRef();
 
@@ -224,7 +225,7 @@ function FileView({ onFileChange = function (field, files, multiple) { }, single
             <input
                 ref={inputRef}
                 type="file"
-                accept="image/*,application/pdf"
+                accept={accept || "image/*,application/pdf"}
                 multiple={multiple}
                 className="d-none"
                 onChange={handleChange}
@@ -236,7 +237,7 @@ function FileView({ onFileChange = function (field, files, multiple) { }, single
                     className="btn btn-primary"
                     disabled={uploading}
                 >
-                    {multiple ? 'Upload Images/PDFs' : 'Upload Image/PDF'}
+                    {buttonLabel || (multiple ? 'Upload Images/PDFs' : 'Upload Image/PDF')}
                 </button>
                 <button
                     type="button"
@@ -266,7 +267,7 @@ function FileView({ onFileChange = function (field, files, multiple) { }, single
                 onClose={() => setShowMediaLibrary(false)}
                 onSelect={handleMediaLibrarySelect}
                 multiple={multiple}
-                accept="image"
+                accept={accept === 'video/*' ? 'all' : accept === 'image/*' ? 'image' : 'all'}
             />
 
             {/* Single file preview */}
@@ -282,26 +283,34 @@ function FileView({ onFileChange = function (field, files, multiple) { }, single
                     />
                     <div style={{ width: '100%', maxHeight: '300px', overflow: 'hidden' }}>
                         {isImage(singleFile) ? (
-                            <img
-                                src={StraipImageUrl(singleFile)}
-                                alt={singleFile.name}
-                                className="img-fluid"
-                                style={{ width: '100%', height: 'auto', objectFit: 'cover', maxHeight: '300px' }}
-                            />
-                        ) : isPDF(singleFile) ? (
-                            <embed
-                                src={StraipImageUrl(singleFile)}
-                                type="application/pdf"
-                                width="100%"
-                                height="300px"
-                                style={{ border: 'none' }}
-                            />
-                        ) : (
-                            <span>Unsupported file</span>
-                        )}
+                                <img
+                                    src={StraipImageUrl(singleFile)}
+                                    alt={singleFile.name}
+                                    className="img-fluid"
+                                    style={{ width: '100%', height: 'auto', objectFit: 'cover', maxHeight: '300px' }}
+                                />
+                            ) : isVideo(singleFile) ? (
+                                <video
+                                    src={StraipImageUrl(singleFile)}
+                                    controls
+                                    preload="none"
+                                    style={{ width: '100%', maxHeight: '300px' }}
+                                />
+                            ) : isPDF(singleFile) ? (
+                                <embed
+                                    src={StraipImageUrl(singleFile)}
+                                    type="application/pdf"
+                                    width="100%"
+                                    height="300px"
+                                    style={{ border: 'none' }}
+                                />
+                            ) : (
+                                <span>Unsupported file</span>
+                            )}
                     </div>
                     <div className="card-footer text-center p-2 d-flex align-items-center justify-content-center gap-1" style={{ fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         <span className="text-truncate">{singleFile.name}</span>
+                        {isVideo(singleFile) && <a href={StraipImageUrl(singleFile)} download={singleFile.name} className="btn btn-sm btn-outline-secondary p-0 px-1" title="Download video" style={{ fontSize: '0.65rem', lineHeight: 1 }}><i className="fas fa-download" /></a>}
                         {singleFile.id && <button type="button" className="btn btn-sm btn-outline-secondary p-0 px-1" title={'Copy ID: ' + singleFile.id} onClick={() => copyFileId(singleFile)} style={{ fontSize: '0.65rem', lineHeight: 1 }}><i className="fas fa-hashtag" /></button>}
                     </div>
                 </div>
@@ -328,6 +337,15 @@ function FileView({ onFileChange = function (field, files, multiple) { }, single
                                             alt={fileObj.name}
                                             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                         />
+                                    ) : isVideo(fileObj) ? (
+                                        <div
+                                            onClick={() => setPlayingVideo(fileObj)}
+                                            style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#1a1a2e', color: '#fff', position: 'relative', cursor: 'pointer' }}
+                                            title="Click to play"
+                                        >
+                                            <i className="fas fa-play-circle" style={{ fontSize: '2.5rem', opacity: 0.85 }} />
+                                            <span style={{ position: 'absolute', bottom: 4, left: 0, right: 0, textAlign: 'center', fontSize: 10, opacity: 0.7 }}>{fileObj.name}</span>
+                                        </div>
                                     ) : isPDF(fileObj) ? (
                                         <embed
                                             src={StraipImageUrl(fileObj)}
@@ -342,11 +360,38 @@ function FileView({ onFileChange = function (field, files, multiple) { }, single
                                 </div>
                                 <div className="card-footer text-center p-2 d-flex align-items-center justify-content-center gap-1" style={{ fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                     <span className="text-truncate">{fileObj.name}</span>
+                                    {isVideo(fileObj) && <a href={StraipImageUrl(fileObj)} download={fileObj.name} onClick={e => e.stopPropagation()} className="btn btn-sm btn-outline-secondary p-0 px-1" title="Download video" style={{ fontSize: '0.65rem', lineHeight: 1 }}><i className="fas fa-download" /></a>}
                                     {fileObj.id && <button type="button" className="btn btn-sm btn-outline-secondary p-0 px-1" title={'Copy ID: ' + fileObj.id} onClick={(e) => { e.stopPropagation(); copyFileId(fileObj); }} style={{ fontSize: '0.65rem', lineHeight: 1 }}><i className="fas fa-hashtag" /></button>}
                                 </div>
                             </div>
                         </div>
                     ))}
+                </div>
+            )}
+
+            {/* Video player overlay */}
+            {playingVideo && (
+                <div
+                    onClick={() => setPlayingVideo(null)}
+                    style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                >
+                    <div onClick={e => e.stopPropagation()} style={{ position: 'relative', width: '90%', maxWidth: 900 }}>
+                        <button
+                            type="button"
+                            className="btn-close btn-close-white position-absolute"
+                            onClick={() => setPlayingVideo(null)}
+                            aria-label="Close"
+                            style={{ top: -36, right: 0, zIndex: 2 }}
+                        />
+                        <video
+                            src={StraipImageUrl(playingVideo)}
+                            controls
+                            autoPlay
+                            preload="auto"
+                            style={{ width: '100%', maxHeight: '80vh', background: '#000', borderRadius: 8 }}
+                        />
+                        <div className="text-white text-center mt-2" style={{ fontSize: 13, opacity: 0.8 }}>{playingVideo.name}</div>
+                    </div>
                 </div>
             )}
         </div>
