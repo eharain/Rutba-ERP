@@ -36,6 +36,9 @@
     "author_handle": {
       "type": "string"
     },
+    "author_avatar_url": {
+      "type": "string"
+    },
     "is_outbound": {
       "type": "boolean",
       "default": false
