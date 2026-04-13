@@ -61,6 +61,7 @@ SERVICES=(
     rutba_accounts
     rutba_payroll
     rutba_cms
+    rutba_social
     rutba_pos_desk
 )
 
@@ -78,6 +79,7 @@ declare -A SVC_CMD=(
     [rutba_accounts]="run start --workspace=rutba-accounts"
     [rutba_payroll]="run start --workspace=rutba-payroll"
     [rutba_cms]="run start --workspace=rutba-cms"
+    [rutba_social]="run start --workspace=rutba-social"
     [rutba_pos_desk]="run start --workspace=pos-desk"
 )
 
@@ -93,6 +95,7 @@ declare -A SVC_DESC=(
     [rutba_accounts]="Rutba ERP — Accounting (rutba-accounts)"
     [rutba_payroll]="Rutba ERP — Payroll (rutba-payroll)"
     [rutba_cms]="Rutba ERP — Content Management (rutba-cms)"
+    [rutba_social]="Rutba ERP — Social Media (rutba-social)"
     [rutba_pos_desk]="Rutba ERP — Legacy Desk (pos-desk)"
 )
 

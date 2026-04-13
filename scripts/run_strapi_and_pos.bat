@@ -48,6 +48,9 @@ start "Payroll" cmd /k "npm run dev:payroll"
 echo Starting CMS...
 start "CMS" cmd /k "npm run dev:cms"
 
+echo Starting Social...
+start "Social" cmd /k "npm run dev:social"
+
 echo.
 echo All services started. Ports configured via .env.development.
 
@@ -65,5 +68,7 @@ echo   CRM           : http://localhost:4005
 echo   HR            : http://localhost:4006
 echo   Accounts      : http://localhost:4007
 echo   Payroll       : http://localhost:4008
+echo   CMS           : http://localhost:4009
+echo   Social        : http://localhost:4011
 
 ENDLOCAL

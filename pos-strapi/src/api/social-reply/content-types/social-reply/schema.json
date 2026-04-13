@@ -1,0 +1,58 @@
+{
+  "kind": "collectionType",
+  "collectionName": "social_replies",
+  "info": {
+    "singularName": "social-reply",
+    "pluralName": "social-replies",
+    "displayName": "Social Reply",
+    "description": "Replies and comments on social media posts"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "body": {
+      "type": "text",
+      "required": true
+    },
+    "platform": {
+      "type": "enumeration",
+      "enum": [
+        "instagram",
+        "facebook",
+        "x",
+        "tiktok",
+        "youtube"
+      ],
+      "required": true
+    },
+    "platform_comment_id": {
+      "type": "string"
+    },
+    "author_name": {
+      "type": "string"
+    },
+    "author_handle": {
+      "type": "string"
+    },
+    "is_outbound": {
+      "type": "boolean",
+      "default": false
+    },
+    "replied_at": {
+      "type": "datetime"
+    },
+    "social_post": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::social-post.social-post",
+      "inversedBy": "social_replies"
+    },
+    "parent_reply": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::social-reply.social-reply"
+    }
+  }
+}

@@ -1,0 +1,71 @@
+{
+  "kind": "collectionType",
+  "collectionName": "social_posts",
+  "info": {
+    "singularName": "social-post",
+    "pluralName": "social-posts",
+    "displayName": "Social Post",
+    "description": "Social media posts with multi-platform publishing"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "title": {
+      "type": "string",
+      "required": true
+    },
+    "body": {
+      "type": "text",
+      "required": true
+    },
+    "platforms": {
+      "type": "json",
+      "required": true
+    },
+    "scheduled_at": {
+      "type": "datetime"
+    },
+    "published_at_social": {
+      "type": "datetime"
+    },
+    "post_status": {
+      "type": "enumeration",
+      "enum": [
+        "draft",
+        "scheduled",
+        "publishing",
+        "published",
+        "partially_published",
+        "failed"
+      ],
+      "default": "draft"
+    },
+    "platform_results": {
+      "type": "json"
+    },
+    "media": {
+      "type": "media",
+      "multiple": true,
+      "allowedTypes": [
+        "images",
+        "videos"
+      ]
+    },
+    "social_accounts": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::social-account.social-account"
+    },
+    "social_replies": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::social-reply.social-reply",
+      "mappedBy": "social_post"
+    },
+    "tags": {
+      "type": "json"
+    }
+  }
+}

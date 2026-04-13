@@ -12,7 +12,8 @@
     "rutba-hr",
     "rutba-accounts",
     "rutba-payroll",
-    "rutba-cms"
+    "rutba-cms",
+    "rutba-social"
   ],
   "scripts": {
     "dev:desk": "node scripts/load-env.js -- npm run dev --workspace=pos-desk",
@@ -27,6 +28,7 @@
     "dev:accounts": "node scripts/load-env.js -- npm run dev --workspace=rutba-accounts",
     "dev:payroll": "node scripts/load-env.js -- npm run dev --workspace=rutba-payroll",
     "dev:cms": "node scripts/load-env.js -- npm run dev --workspace=rutba-cms",
+    "dev:social": "node scripts/load-env.js -- npm run dev --workspace=rutba-social",
     "dev:all": "node scripts/run-all.js dev",
     "start:strapi": "node scripts/load-env.js -- npm --prefix pos-strapi run start",
     "start:auth": "node scripts/load-env.js -- npm run start --workspace=pos-auth",
@@ -39,6 +41,7 @@
     "start:accounts": "node scripts/load-env.js -- npm run start --workspace=rutba-accounts",
     "start:payroll": "node scripts/load-env.js -- npm run start --workspace=rutba-payroll",
     "start:cms": "node scripts/load-env.js -- npm run start --workspace=rutba-cms",
+    "start:social": "node scripts/load-env.js -- npm run start --workspace=rutba-social",
     "start:all": "node scripts/run-all.js start",
     "build:strapi": "node scripts/load-env.js -- npm --prefix pos-strapi run build",
     "build:auth": "node scripts/load-env.js -- npm run build --workspace=pos-auth",
@@ -51,7 +54,8 @@
     "build:accounts": "node scripts/load-env.js -- npm run build --workspace=rutba-accounts",
     "build:payroll": "node scripts/load-env.js -- npm run build --workspace=rutba-payroll",
     "build:cms": "node scripts/load-env.js -- npm run build --workspace=rutba-cms",
-    "build:all": "npm run build:auth && npm run build:stock && npm run build:sale && npm run build:web && npm run build:web-user && npm run build:crm && npm run build:hr && npm run build:accounts && npm run build:payroll && npm run build:cms",
+    "build:social": "node scripts/load-env.js -- npm run build --workspace=rutba-social",
+    "build:all": "npm run build:auth && npm run build:stock && npm run build:sale && npm run build:web && npm run build:web-user && npm run build:crm && npm run build:hr && npm run build:accounts && npm run build:payroll && npm run build:cms && npm run build:social",
     "docker:env": "node scripts/generate-docker-env.js"
   },
   "dependencies": {

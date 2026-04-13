@@ -66,6 +66,9 @@ start "Payroll" cmd /k "npm run dev:payroll"
 echo Starting CMS...
 start "CMS" cmd /k "npm run dev:cms"
 
+echo Starting Social...
+start "Social" cmd /k "npm run dev:social"
+
 echo.
 echo ============================================
 echo   All services started!
