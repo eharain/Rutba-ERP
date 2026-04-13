@@ -1,0 +1,57 @@
+{
+  "kind": "collectionType",
+  "collectionName": "social_accounts",
+  "info": {
+    "singularName": "social-account",
+    "pluralName": "social-accounts",
+    "displayName": "Social Account",
+    "description": "API credentials for connected social media platforms"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "platform": {
+      "type": "enumeration",
+      "enum": [
+        "instagram",
+        "facebook",
+        "x",
+        "tiktok",
+        "youtube"
+      ],
+      "required": true
+    },
+    "account_name": {
+      "type": "string",
+      "required": true
+    },
+    "api_key": {
+      "type": "text",
+      "private": true
+    },
+    "api_secret": {
+      "type": "text",
+      "private": true
+    },
+    "access_token": {
+      "type": "text",
+      "private": true
+    },
+    "refresh_token": {
+      "type": "text",
+      "private": true
+    },
+    "page_id": {
+      "type": "string"
+    },
+    "extra_config": {
+      "type": "json"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    }
+  }
+}

@@ -2594,6 +2594,148 @@ export interface ApiSaleSale extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiSocialAccountSocialAccount
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'social_accounts';
+  info: {
+    description: 'API credentials for connected social media platforms';
+    displayName: 'Social Account';
+    pluralName: 'social-accounts';
+    singularName: 'social-account';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    access_token: Schema.Attribute.Text & Schema.Attribute.Private;
+    account_name: Schema.Attribute.String & Schema.Attribute.Required;
+    api_key: Schema.Attribute.Text & Schema.Attribute.Private;
+    api_secret: Schema.Attribute.Text & Schema.Attribute.Private;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    extra_config: Schema.Attribute.JSON;
+    is_active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::social-account.social-account'
+    > &
+      Schema.Attribute.Private;
+    page_id: Schema.Attribute.String;
+    platform: Schema.Attribute.Enumeration<
+      ['instagram', 'facebook', 'x', 'tiktok', 'youtube']
+    > &
+      Schema.Attribute.Required;
+    publishedAt: Schema.Attribute.DateTime;
+    refresh_token: Schema.Attribute.Text & Schema.Attribute.Private;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiSocialPostSocialPost extends Struct.CollectionTypeSchema {
+  collectionName: 'social_posts';
+  info: {
+    description: 'Social media posts with multi-platform publishing';
+    displayName: 'Social Post';
+    pluralName: 'social-posts';
+    singularName: 'social-post';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    body: Schema.Attribute.Text & Schema.Attribute.Required;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::social-post.social-post'
+    > &
+      Schema.Attribute.Private;
+    media: Schema.Attribute.Media<'images' | 'videos', true>;
+    platform_results: Schema.Attribute.JSON;
+    platforms: Schema.Attribute.JSON & Schema.Attribute.Required;
+    post_status: Schema.Attribute.Enumeration<
+      [
+        'draft',
+        'scheduled',
+        'publishing',
+        'published',
+        'partially_published',
+        'failed',
+      ]
+    > &
+      Schema.Attribute.DefaultTo<'draft'>;
+    published_at_social: Schema.Attribute.DateTime;
+    publishedAt: Schema.Attribute.DateTime;
+    scheduled_at: Schema.Attribute.DateTime;
+    social_accounts: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::social-account.social-account'
+    >;
+    social_replies: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::social-reply.social-reply'
+    >;
+    tags: Schema.Attribute.JSON;
+    title: Schema.Attribute.String & Schema.Attribute.Required;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiSocialReplySocialReply extends Struct.CollectionTypeSchema {
+  collectionName: 'social_replies';
+  info: {
+    description: 'Replies and comments on social media posts';
+    displayName: 'Social Reply';
+    pluralName: 'social-replies';
+    singularName: 'social-reply';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    author_handle: Schema.Attribute.String;
+    author_name: Schema.Attribute.String;
+    body: Schema.Attribute.Text & Schema.Attribute.Required;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    is_outbound: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::social-reply.social-reply'
+    > &
+      Schema.Attribute.Private;
+    parent_reply: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::social-reply.social-reply'
+    >;
+    platform: Schema.Attribute.Enumeration<
+      ['instagram', 'facebook', 'x', 'tiktok', 'youtube']
+    > &
+      Schema.Attribute.Required;
+    platform_comment_id: Schema.Attribute.String;
+    publishedAt: Schema.Attribute.DateTime;
+    replied_at: Schema.Attribute.DateTime;
+    social_post: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::social-post.social-post'
+    >;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiStockInputStockInput extends Struct.CollectionTypeSchema {
   collectionName: 'stock_inputs';
   info: {
@@ -3459,6 +3601,9 @@ declare module '@strapi/strapi' {
       'api::sale-return-item.sale-return-item': ApiSaleReturnItemSaleReturnItem;
       'api::sale-return.sale-return': ApiSaleReturnSaleReturn;
       'api::sale.sale': ApiSaleSale;
+      'api::social-account.social-account': ApiSocialAccountSocialAccount;
+      'api::social-post.social-post': ApiSocialPostSocialPost;
+      'api::social-reply.social-reply': ApiSocialReplySocialReply;
       'api::stock-input.stock-input': ApiStockInputStockInput;
       'api::stock-item.stock-item': ApiStockItemStockItem;
       'api::supplier.supplier': ApiSupplierSupplier;

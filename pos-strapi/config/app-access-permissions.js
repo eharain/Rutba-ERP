@@ -363,6 +363,22 @@ const ENTRIES = [
       { uid: 'api::customer.customer',                             actions: READ },
     ],
   },
+
+  // ── Social Media ─────────────────────────────────────────
+  {
+    key: 'social',
+    name: 'Social Media',
+    description: 'Posts, replies, multi-platform publishing & social account management',
+    sessionTimeout: 180,
+    permissions: [
+      { uid: 'api::social-post.social-post',                        actions: CMS_WRITE },
+      { uid: 'api::social-reply.social-reply',                      actions: WRITE },
+      { uid: 'api::social-account.social-account',                  actions: WRITE },
+      // shared / read
+      { uid: 'api::branch.branch',                                  actions: READ },
+      { uid: 'api::employee.employee',                              actions: READ },
+    ],
+  },
 ];
 
 // ─── Derived: key → permissions[] map for the middleware ─────
