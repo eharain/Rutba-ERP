@@ -250,6 +250,10 @@ export function isPDF(file) {
     return (file?.mime ?? '') === 'application/pdf';
 }
 
+export function isVideo(file) {
+    return (file?.mime ?? '').startsWith('video/');
+}
+
 export function relationConnects(relations) {
     const connects = {};
     Object.entries(relations).forEach(([key, obj]) => {

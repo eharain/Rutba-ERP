@@ -31,6 +31,7 @@ module.exports = ({ env }) => {
     'strapi::body',
     'strapi::session',
     'strapi::favicon',
+    'global::video-range',
     'strapi::public',
     'global::app-access-guard',
   ];

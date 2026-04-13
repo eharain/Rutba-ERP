@@ -9,6 +9,14 @@ import Link from "next/link";
 
 const PAGE_SIZE = 25;
 
+const PLATFORM_COLORS = {
+    instagram: "#E1306C",
+    facebook: "#1877F2",
+    x: "#000000",
+    tiktok: "#010101",
+    youtube: "#FF0000",
+};
+
 export default function RepliesPage() {
     const { jwt } = useAuth();
     const { toast, ToastContainer } = useToast();
@@ -18,6 +26,7 @@ export default function RepliesPage() {
     const [page, setPage] = useState(1);
     const [pageCount, setPageCount] = useState(1);
     const [platformFilter, setPlatformFilter] = useState("all");
+    const [directionFilter, setDirectionFilter] = useState("all");
 
     const loadReplies = useCallback(async () => {
         if (!jwt) return;
@@ -28,9 +37,11 @@ export default function RepliesPage() {
                 pagination: { page, pageSize: PAGE_SIZE },
                 populate: ['social_post'],
             };
-            if (platformFilter !== 'all') {
-                params.filters = { platform: { $eq: platformFilter } };
-            }
+            const filters = {};
+            if (platformFilter !== 'all') filters.platform = { $eq: platformFilter };
+            if (directionFilter === 'inbound') filters.is_outbound = { $eq: false };
+            if (directionFilter === 'outbound') filters.is_outbound = { $eq: true };
+            if (Object.keys(filters).length > 0) params.filters = filters;
             const res = await authApi.get('/social-replies', params);
             setReplies(res.data || []);
             setPageCount(res.meta?.pagination?.pageCount || 1);
@@ -40,14 +51,14 @@ export default function RepliesPage() {
         } finally {
             setLoading(false);
         }
-    }, [jwt, page, platformFilter]);
+    }, [jwt, page, platformFilter, directionFilter]);
 
     useEffect(() => { loadReplies(); }, [loadReplies]);
 
     const handleDelete = async (reply) => {
         if (!confirm("Delete this reply?")) return;
         try {
-            await authApi.delete(`/social-replies/${reply.documentId}`);
+            await authApi.del(`/social-replies/${reply.documentId}`);
             toast("Reply deleted.", "success");
             await loadReplies();
         } catch (err) {
@@ -75,6 +86,13 @@ export default function RepliesPage() {
                             <option value="youtube">YouTube</option>
                         </select>
                     </div>
+                    <div className="col-md-3">
+                        <select className="form-select form-select-sm" value={directionFilter} onChange={(e) => { setDirectionFilter(e.target.value); setPage(1); }}>
+                            <option value="all">All Directions</option>
+                            <option value="inbound">Viewer Comments</option>
+                            <option value="outbound">Our Replies</option>
+                        </select>
+                    </div>
                 </div>
 
                 {loading ? (
@@ -85,21 +103,47 @@ export default function RepliesPage() {
                     <>
                         <div className="list-group mb-3">
                             {replies.map((reply) => (
-                                <div key={reply.id} className="list-group-item">
+                                <div key={reply.id} className={`list-group-item ${reply.is_outbound ? "border-start border-3 border-primary" : ""}`}>
                                     <div className="d-flex justify-content-between align-items-start">
-                                        <div>
-                                            <PlatformBadge platform={reply.platform} />
-                                            <strong className="ms-1">{reply.author_name || reply.author_handle || "Unknown"}</strong>
-                                            {reply.is_outbound && <span className="badge bg-info ms-1">Outbound</span>}
-                                            {reply.social_post && (
-                                                <span className="ms-2 text-muted small">
-                                                    on <Link href={`/posts/${reply.social_post.documentId}`}>
-                                                        {reply.social_post.title || "Post"}
-                                                    </Link>
-                                                </span>
+                                        <div className="d-flex align-items-center gap-2">
+                                            {reply.author_avatar_url ? (
+                                                <img src={reply.author_avatar_url} alt="" className="rounded-circle" style={{ width: 32, height: 32, objectFit: "cover" }} />
+                                            ) : (
+                                                <div className="rounded-circle bg-light d-flex align-items-center justify-content-center" style={{ width: 32, height: 32 }}>
+                                                    <i className={`fas ${reply.is_outbound ? "fa-headset" : "fa-user"} text-muted`} style={{ fontSize: 14 }}></i>
+                                                </div>
                                             )}
+                                            <div>
+                                                <PlatformBadge platform={reply.platform} />
+                                                <strong className="ms-1">{reply.author_name || reply.author_handle || "Unknown"}</strong>
+                                                {reply.author_handle && reply.author_name && (
+                                                    <span className="text-muted small ms-1">@{reply.author_handle}</span>
+                                                )}
+                                                {reply.is_outbound ? (
+                                                    <span className="badge bg-primary ms-1">Our Reply</span>
+                                                ) : (
+                                                    <span className="badge bg-light text-dark ms-1">Viewer</span>
+                                                )}
+                                                {reply.social_post && (
+                                                    <span className="ms-2 text-muted small">
+                                                        on <Link href={`/posts/${reply.social_post.documentId}`}>
+                                                            {reply.social_post.title || "Post"}
+                                                        </Link>
+                                                    </span>
+                                                )}
+                                            </div>
                                         </div>
                                         <div className="d-flex align-items-center gap-2">
+                                            <span
+                                                className="badge"
+                                                style={{
+                                                    backgroundColor: PLATFORM_COLORS[reply.platform] || "#6c757d",
+                                                    color: reply.platform === "x" ? "#fff" : "#fff",
+                                                    fontSize: 10,
+                                                }}
+                                            >
+                                                {reply.platform}
+                                            </span>
                                             <small className="text-muted">
                                                 {reply.replied_at ? new Date(reply.replied_at).toLocaleString() : reply.createdAt ? new Date(reply.createdAt).toLocaleString() : ""}
                                             </small>
@@ -108,7 +152,7 @@ export default function RepliesPage() {
                                             </button>
                                         </div>
                                     </div>
-                                    <p className="mb-0 mt-1">{reply.body}</p>
+                                    <p className="mb-0 mt-1" style={{ whiteSpace: "pre-wrap" }}>{reply.body}</p>
                                 </div>
                             ))}
                         </div>

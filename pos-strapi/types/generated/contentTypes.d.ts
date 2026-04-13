@@ -2648,6 +2648,7 @@ export interface ApiSocialPostSocialPost extends Struct.CollectionTypeSchema {
   };
   attributes: {
     body: Schema.Attribute.Text & Schema.Attribute.Required;
+    cover: Schema.Attribute.Media<'images'>;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -2657,7 +2658,6 @@ export interface ApiSocialPostSocialPost extends Struct.CollectionTypeSchema {
       'api::social-post.social-post'
     > &
       Schema.Attribute.Private;
-    media: Schema.Attribute.Media<'images' | 'videos', true>;
     platform_results: Schema.Attribute.JSON;
     platforms: Schema.Attribute.JSON & Schema.Attribute.Required;
     post_status: Schema.Attribute.Enumeration<
@@ -2671,6 +2671,7 @@ export interface ApiSocialPostSocialPost extends Struct.CollectionTypeSchema {
       ]
     > &
       Schema.Attribute.DefaultTo<'draft'>;
+    products: Schema.Attribute.Relation<'manyToMany', 'api::product.product'>;
     published_at_social: Schema.Attribute.DateTime;
     publishedAt: Schema.Attribute.DateTime;
     scheduled_at: Schema.Attribute.DateTime;
@@ -2687,6 +2688,7 @@ export interface ApiSocialPostSocialPost extends Struct.CollectionTypeSchema {
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    video: Schema.Attribute.Media<'videos', true>;
   };
 }
 
@@ -2702,6 +2704,7 @@ export interface ApiSocialReplySocialReply extends Struct.CollectionTypeSchema {
     draftAndPublish: false;
   };
   attributes: {
+    author_avatar_url: Schema.Attribute.String;
     author_handle: Schema.Attribute.String;
     author_name: Schema.Attribute.String;
     body: Schema.Attribute.Text & Schema.Attribute.Required;

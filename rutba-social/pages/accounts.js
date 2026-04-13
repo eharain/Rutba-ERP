@@ -97,7 +97,7 @@ export default function AccountsPage() {
     const handleDelete = async (account) => {
         if (!confirm(`Delete account "${account.account_name}"?`)) return;
         try {
-            await authApi.delete(`/social-accounts/${account.documentId}`);
+            await authApi.del(`/social-accounts/${account.documentId}`);
             toast("Account deleted.", "success");
             await loadAccounts();
         } catch (err) {

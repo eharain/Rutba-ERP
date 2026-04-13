@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/router";
 import Layout from "../../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
@@ -6,7 +6,10 @@ import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { authApi, StraipImageUrl } from "@rutba/pos-shared/lib/api";
 import { useToast } from "../../components/Toast";
 import PLATFORMS, { PlatformBadge } from "../../components/PlatformBadge";
+import FileView from "@rutba/pos-shared/components/FileView";
 import Link from "next/link";
+
+const WEB_URL = process.env.NEXT_PUBLIC_WEB_URL || "http://localhost:4000";
 
 const STATUS_BADGES = {
     draft: "bg-secondary",
@@ -17,45 +20,70 @@ const STATUS_BADGES = {
     failed: "bg-danger",
 };
 
+const PLATFORM_COLORS = {
+    instagram: "#E1306C",
+    facebook: "#1877F2",
+    x: "#000000",
+    tiktok: "#010101",
+    youtube: "#FF0000",
+};
+
 export default function PostDetailPage() {
     const { jwt } = useAuth();
     const { toast, ToastContainer } = useToast();
     const router = useRouter();
     const { documentId } = router.query;
-    const fileInputRef = useRef();
 
     const [post, setPost] = useState(null);
+    const [isPublished, setIsPublished] = useState(false);
     const [loading, setLoading] = useState(true);
-    const [editing, setEditing] = useState(false);
-    const [form, setForm] = useState({});
     const [saving, setSaving] = useState(false);
-    const [publishing, setPublishing] = useState(false);
-    const [mediaFiles, setMediaFiles] = useState([]);
-    const [uploading, setUploading] = useState(false);
-    const [accounts, setAccounts] = useState([]);
-    const [selectedAccountIds, setSelectedAccountIds] = useState([]);
-    const [replies, setReplies] = useState([]);
 
+    const [title, setTitle] = useState("");
+    const [body, setBody] = useState("");
+    const [platforms, setPlatforms] = useState([]);
+    const [scheduledAt, setScheduledAt] = useState("");
+    const [tagsText, setTagsText] = useState("");
+    const [postStatus, setPostStatus] = useState("draft");
+
+    const [coverId, setCoverId] = useState(null);
+    const [videoIds, setVideoIds] = useState([]);
+
+    const [selectedAccountIds, setSelectedAccountIds] = useState([]);
+    const [selectedProductIds, setSelectedProductIds] = useState([]);
+    const [accounts, setAccounts] = useState([]);
+    const [replies, setReplies] = useState([]);
+    const [connectedProducts, setConnectedProducts] = useState([]);
+
+    const [productSearch, setProductSearch] = useState("");
+    const [productResults, setProductResults] = useState([]);
+    const [productLoading, setProductLoading] = useState(false);
     const loadPost = useCallback(async () => {
         if (!jwt || !documentId) return;
         setLoading(true);
         try {
-            const res = await authApi.get(`/social-posts/${documentId}`, {
-                status: 'draft',
-                populate: ['media', 'social_accounts', 'social_replies'],
-            });
-            const data = res.data;
-            setPost(data);
-            setMediaFiles(data?.media || []);
-            setSelectedAccountIds((data?.social_accounts || []).map((a) => a.id));
-            setReplies(data?.social_replies || []);
-            setForm({
-                title: data?.title || "",
-                body: data?.body || "",
-                platforms: data?.platforms || [],
-                scheduled_at: data?.scheduled_at ? data.scheduled_at.slice(0, 16) : "",
-                tags: (data?.tags || []).join(", "),
-            });
+            const [draftRes, pubRes] = await Promise.all([
+                authApi.get(`/social-posts/${documentId}`, {
+                    status: 'draft',
+                    populate: ['cover', 'video', 'social_accounts', 'social_replies', 'products'],
+                }),
+                authApi.get(`/social-posts/${documentId}`, { status: 'published', fields: ['documentId'] }).catch(() => ({ data: null })),
+            ]);
+            const p = draftRes.data || draftRes;
+            setPost(p);
+            setIsPublished(!!(pubRes.data));
+            setTitle(p.title || "");
+            setBody(p.body || "");
+            setPlatforms(p.platforms || []);
+            setScheduledAt(p.scheduled_at ? p.scheduled_at.slice(0, 16) : "");
+            setTagsText((p.tags || []).join(", "));
+            setPostStatus(p.post_status || "draft");
+            setCoverId(p.cover?.id || null);
+            setVideoIds((p.video || []).map(v => v.id));
+            setSelectedAccountIds((p.social_accounts || []).map(a => a.id));
+            setSelectedProductIds((p.products || []).map(pr => pr.documentId));
+            setConnectedProducts(p.products || []);
+            setReplies(p.social_replies || []);
         } catch (err) {
             console.error("Failed to load post", err);
             toast("Failed to load post.", "danger");
@@ -79,196 +107,187 @@ export default function PostDetailPage() {
 
     useEffect(() => { loadPost(); loadAccounts(); }, [loadPost, loadAccounts]);
 
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setForm((prev) => ({ ...prev, [name]: value }));
-    };
-
     const togglePlatform = (platform) => {
-        setForm((prev) => {
-            const platforms = prev.platforms.includes(platform)
-                ? prev.platforms.filter((p) => p !== platform)
-                : [...prev.platforms, platform];
-            return { ...prev, platforms };
-        });
+        setPlatforms(prev => prev.includes(platform) ? prev.filter(p => p !== platform) : [...prev, platform]);
     };
 
     const toggleAccount = (accountId) => {
-        setSelectedAccountIds((prev) =>
-            prev.includes(accountId) ? prev.filter((id) => id !== accountId) : [...prev, accountId]
-        );
+        setSelectedAccountIds(prev => prev.includes(accountId) ? prev.filter(id => id !== accountId) : [...prev, accountId]);
     };
 
-    const handleFileUpload = async (e) => {
-        const files = e.target.files;
-        if (!files || files.length === 0) return;
-        setUploading(true);
+    const searchProducts = useCallback(async () => {
+        if (!jwt || !productSearch.trim()) { setProductResults([]); return; }
+        setProductLoading(true);
         try {
-            const fd = new FormData();
-            for (const file of files) fd.append("files", file);
-            const res = await authApi.post("/upload", fd, {
-                headers: { "Content-Type": "multipart/form-data" },
+            const res = await authApi.get('/products', {
+                status: 'draft',
+                filters: { name: { $containsi: productSearch.trim() } },
+                fields: ['name', 'sku', 'documentId'],
+                populate: ['logo'],
+                pagination: { pageSize: 20 },
+                sort: ['name:asc'],
             });
-            setMediaFiles((prev) => [...prev, ...(res.data || [])]);
-            toast(`Uploaded ${(res.data || []).length} file(s).`, "success");
+            setProductResults(res.data || []);
         } catch (err) {
-            console.error("Upload failed", err);
-            toast("Upload failed.", "danger");
+            console.error("Failed to search products", err);
         } finally {
-            setUploading(false);
-            if (fileInputRef.current) fileInputRef.current.value = "";
+            setProductLoading(false);
         }
+    }, [jwt, productSearch]);
+
+    useEffect(() => {
+        const timer = setTimeout(searchProducts, 400);
+        return () => clearTimeout(timer);
+    }, [searchProducts]);
+
+    const toggleProduct = (docId) => {
+        setSelectedProductIds(prev => prev.includes(docId) ? prev.filter(id => id !== docId) : [...prev, docId]);
     };
 
-    const removeMedia = (id) => {
-        setMediaFiles((prev) => prev.filter((f) => f.id !== id));
+    const buildPayload = () => {
+        const tags = tagsText ? tagsText.split(",").map(t => t.trim()).filter(Boolean) : [];
+        const payload = {
+            data: {
+                title, body, platforms,
+                scheduled_at: scheduledAt || null,
+                post_status: scheduledAt && postStatus === "draft" ? "scheduled" : postStatus,
+                tags,
+                social_accounts: selectedAccountIds,
+                products: { set: selectedProductIds },
+            },
+        };
+        if (coverId) payload.data.cover = coverId;
+        else payload.data.cover = null;
+        if (videoIds.length > 0) payload.data.video = videoIds;
+        else payload.data.video = null;
+        return payload;
     };
 
     const handleSave = async () => {
         setSaving(true);
         try {
-            const tags = form.tags ? form.tags.split(",").map((t) => t.trim()).filter(Boolean) : [];
-            await authApi.put(`/social-posts/${documentId}`, {
-                data: {
-                    title: form.title,
-                    body: form.body,
-                    platforms: form.platforms,
-                    scheduled_at: form.scheduled_at || null,
-                    post_status: form.scheduled_at ? "scheduled" : (post?.post_status || "draft"),
-                    tags,
-                    media: mediaFiles.map((f) => f.id),
-                    social_accounts: selectedAccountIds,
-                },
-            });
-            toast("Post saved.", "success");
-            setEditing(false);
+            await authApi.put(`/social-posts/${documentId}?status=draft`, buildPayload());
+            toast("Draft saved!", "success");
             await loadPost();
         } catch (err) {
             console.error("Failed to save post", err);
-            toast("Failed to save post.", "danger");
+            toast("Failed to save.", "danger");
         } finally {
             setSaving(false);
         }
     };
 
     const handlePublish = async () => {
-        if (!confirm("Publish this post to the selected platforms now?")) return;
-        setPublishing(true);
+        setSaving(true);
         try {
-            // Save first to ensure latest data
-            const tags = form.tags ? form.tags.split(",").map((t) => t.trim()).filter(Boolean) : [];
-            await authApi.put(`/social-posts/${documentId}`, {
-                data: {
-                    title: form.title,
-                    body: form.body,
-                    platforms: form.platforms,
-                    tags,
-                    media: mediaFiles.map((f) => f.id),
-                    social_accounts: selectedAccountIds,
-                    post_status: "publishing",
-                    published_at_social: new Date().toISOString(),
-                },
-            });
-
-            // Trigger publish to each platform
-            const results = {};
-            for (const platform of (form.platforms || [])) {
-                const platformAccounts = accounts.filter(
-                    (a) => a.platform === platform && selectedAccountIds.includes(a.id)
-                );
-                for (const account of platformAccounts) {
-                    try {
-                        await authApi.post(`/social-posts/${documentId}/publish`, {
-                            platform,
-                            account_id: account.id,
-                        });
-                        results[`${platform}_${account.id}`] = { status: "success" };
-                    } catch (err) {
-                        results[`${platform}_${account.id}`] = {
-                            status: "failed",
-                            error: err?.response?.data?.error?.message || err.message,
-                        };
-                    }
-                }
-            }
-
-            const allSuccess = Object.values(results).every((r) => r.status === "success");
-            const allFailed = Object.values(results).every((r) => r.status === "failed");
-            const finalStatus = allSuccess ? "published" : allFailed ? "failed" : "partially_published";
-
-            await authApi.put(`/social-posts/${documentId}`, {
-                data: {
-                    post_status: finalStatus,
-                    platform_results: results,
-                },
-            });
-
-            toast(
-                finalStatus === "published"
-                    ? "Published successfully!"
-                    : finalStatus === "failed"
-                        ? "Publishing failed on all platforms."
-                        : "Published partially — some platforms failed.",
-                finalStatus === "published" ? "success" : "warning"
-            );
-            setEditing(false);
+            await authApi.put(`/social-posts/${documentId}?status=draft`, buildPayload());
+            await authApi.post(`/social-posts/${documentId}/publish`, {});
+            setIsPublished(true);
+            toast("Post saved & published!", "success");
             await loadPost();
         } catch (err) {
-            console.error("Publish failed", err);
-            toast("Publishing failed.", "danger");
+            console.error("Failed to publish post", err);
+            toast("Failed to publish.", "danger");
         } finally {
-            setPublishing(false);
+            setSaving(false);
         }
     };
 
+    const handleUnpublish = async () => {
+        setSaving(true);
+        try {
+            await authApi.post(`/social-posts/${documentId}/unpublish`, {});
+            setIsPublished(false);
+            toast("Post unpublished.", "success");
+        } catch (err) {
+            console.error("Failed to unpublish post", err);
+            toast("Failed to unpublish.", "danger");
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleDiscardDraft = async () => {
+        if (!confirm("Load the published version into the editor?")) return;
+        setSaving(true);
+        try {
+            await authApi.put(`/social-posts/${documentId}?status=draft`, buildPayload());
+            const res = await authApi.get(`/social-posts/${documentId}`, {
+                status: 'published',
+                populate: ['cover', 'video', 'social_accounts', 'social_replies', 'products'],
+            });
+            const p = res.data || res;
+            if (!p) { toast("No published version found.", "warning"); return; }
+            setTitle(p.title || ""); setBody(p.body || "");
+            setPlatforms(p.platforms || []);
+            setScheduledAt(p.scheduled_at ? p.scheduled_at.slice(0, 16) : "");
+            setTagsText((p.tags || []).join(", "));
+            setPostStatus(p.post_status || "draft");
+            setCoverId(p.cover?.id || null);
+            setVideoIds((p.video || []).map(v => v.id));
+            setSelectedAccountIds((p.social_accounts || []).map(a => a.id));
+            setSelectedProductIds((p.products || []).map(pr => pr.documentId));
+            setConnectedProducts(p.products || []);
+            setReplies(p.social_replies || []);
+            setPost(p);
+            toast("Draft saved. Showing published version.", "success");
+        } catch (err) {
+            console.error("Failed to load published version", err);
+            toast("Failed to load published version.", "danger");
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!confirm("Are you sure you want to delete this post?")) return;
+        try {
+            await authApi.del(`/social-posts/${documentId}`);
+            router.push("/posts");
+        } catch (err) {
+            console.error("Failed to delete post", err);
+            toast("Failed to delete.", "danger");
+        }
+    };
     if (loading) {
-        return (
-            <ProtectedRoute>
-                <Layout>
-                    <div className="text-center py-5"><div className="spinner-border"></div></div>
-                </Layout>
-            </ProtectedRoute>
-        );
+        return (<ProtectedRoute><Layout><div className="text-center py-5"><div className="spinner-border"></div></div></Layout></ProtectedRoute>);
     }
 
     if (!post) {
-        return (
-            <ProtectedRoute>
-                <Layout>
-                    <div className="alert alert-warning">Post not found.</div>
-                </Layout>
-            </ProtectedRoute>
-        );
+        return (<ProtectedRoute><Layout><div className="alert alert-warning">Post not found.</div></Layout></ProtectedRoute>);
     }
+
+    const sortedReplies = [...replies].sort((a, b) => {
+        const da = a.replied_at || a.createdAt || "";
+        const db = b.replied_at || b.createdAt || "";
+        return db.localeCompare(da);
+    });
 
     return (
         <ProtectedRoute>
             <Layout>
                 <ToastContainer />
-
-                <div className="d-flex justify-content-between align-items-center mb-3">
-                    <div>
-                        <Link href="/posts" className="text-decoration-none me-2">← Posts</Link>
-                        <span className={`badge ${STATUS_BADGES[post.post_status] || "bg-secondary"} ms-2`}>
-                            {(post.post_status || "draft").replace("_", " ")}
-                        </span>
-                    </div>
-                    <div className="d-flex gap-2">
-                        {!editing && (
-                            <button className="btn btn-outline-primary btn-sm" onClick={() => setEditing(true)}>
-                                <i className="fas fa-pen me-1"></i>Edit
-                            </button>
+                <div className="d-flex align-items-center mb-3">
+                    <Link className="btn btn-sm btn-outline-secondary me-3" href="/posts">
+                        <i className="fas fa-arrow-left"></i> Back
+                    </Link>
+                    <h2 className="mb-0">Edit Post</h2>
+                    {isPublished && <span className="badge bg-success ms-2 align-self-center">Published</span>}
+                    {!isPublished && <span className="badge bg-secondary ms-2 align-self-center">Draft</span>}
+                    <span className={`badge ${STATUS_BADGES[post.post_status] || "bg-secondary"} ms-2`}>
+                        {(post.post_status || "draft").replace("_", " ")}
+                    </span>
+                    <div className="ms-auto d-flex gap-2">
+                        <button className="btn btn-sm btn-outline-danger" onClick={handleDelete}><i className="fas fa-trash me-1"></i>Delete</button>
+                        {isPublished && (
+                            <button className="btn btn-sm btn-outline-secondary" onClick={handleUnpublish} disabled={saving}><i className="fas fa-eye-slash me-1"></i>Unpublish</button>
                         )}
-                        <button
-                            className="btn btn-success btn-sm"
-                            onClick={handlePublish}
-                            disabled={publishing || form.platforms.length === 0}
-                        >
-                            {publishing ? (
-                                <><span className="spinner-border spinner-border-sm me-1"></span>Publishing...</>
-                            ) : (
-                                <><i className="fas fa-share me-1"></i>Publish Now</>
-                            )}
+                        {isPublished && (
+                            <button className="btn btn-sm btn-outline-warning" onClick={handleDiscardDraft} disabled={saving}><i className="fas fa-undo me-1"></i>Load Published</button>
+                        )}
+                        <button className="btn btn-sm btn-primary" onClick={handleSave} disabled={saving}>{saving ? "Saving..." : "Save Draft"}</button>
+                        <button className="btn btn-sm btn-success" onClick={handlePublish} disabled={saving}>
+                            <i className="fas fa-upload me-1"></i>{saving ? "Publishing..." : "Save & Publish"}
                         </button>
                     </div>
                 </div>
@@ -277,97 +296,131 @@ export default function PostDetailPage() {
                     <div className="col-md-8">
                         <div className="card mb-3">
                             <div className="card-body">
-                                {editing ? (
-                                    <>
-                                        <div className="mb-3">
-                                            <label className="form-label">Title</label>
-                                            <input className="form-control" name="title" value={form.title} onChange={handleChange} />
-                                        </div>
-                                        <div className="mb-3">
-                                            <label className="form-label">Body</label>
-                                            <textarea className="form-control" name="body" value={form.body} onChange={handleChange} rows={6} />
-                                            <div className="form-text">{(form.body || "").length} characters</div>
-                                        </div>
-                                        <div className="mb-3">
-                                            <label className="form-label">Tags</label>
-                                            <input className="form-control" name="tags" value={form.tags} onChange={handleChange} />
-                                        </div>
-                                        <div className="mb-3">
-                                            <label className="form-label">Schedule</label>
-                                            <input className="form-control" type="datetime-local" name="scheduled_at" value={form.scheduled_at} onChange={handleChange} />
-                                        </div>
-                                    </>
-                                ) : (
-                                    <>
-                                        <h4>{post.title}</h4>
-                                        <p style={{ whiteSpace: "pre-wrap" }}>{post.body}</p>
-                                        {post.tags && post.tags.length > 0 && (
-                                            <div className="mb-2">
-                                                {post.tags.map((t, i) => (
-                                                    <span key={i} className="badge bg-light text-dark me-1">#{t}</span>
-                                                ))}
-                                            </div>
-                                        )}
-                                        {post.scheduled_at && (
-                                            <p className="text-muted small">
-                                                <i className="fas fa-clock me-1"></i>Scheduled: {new Date(post.scheduled_at).toLocaleString()}
-                                            </p>
-                                        )}
-                                    </>
-                                )}
+                                <div className="mb-3">
+                                    <label className="form-label">Title</label>
+                                    <input className="form-control" value={title} onChange={e => setTitle(e.target.value)} />
+                                </div>
+                                <div className="mb-3">
+                                    <label className="form-label">Body</label>
+                                    <textarea className="form-control" value={body} onChange={e => setBody(e.target.value)} rows={6} />
+                                    <div className="form-text">{(body || "").length} characters</div>
+                                </div>
+                                <div className="mb-3">
+                                    <label className="form-label">Tags (comma-separated)</label>
+                                    <input className="form-control" value={tagsText} onChange={e => setTagsText(e.target.value)} />
+                                </div>
+                                <div className="mb-3">
+                                    <label className="form-label">Schedule</label>
+                                    <input className="form-control" type="datetime-local" value={scheduledAt} onChange={e => setScheduledAt(e.target.value)} />
+                                </div>
                             </div>
                         </div>
 
-                        {/* Media */}
                         <div className="card mb-3">
-                            <div className="card-header">Media</div>
+                            <div className="card-header"><i className="fas fa-image me-2"></i>Cover Image</div>
                             <div className="card-body">
-                                {editing && (
-                                    <>
-                                        <input type="file" ref={fileInputRef} className="form-control form-control-sm mb-2" multiple accept="image/*,video/*" onChange={handleFileUpload} />
-                                        {uploading && <div className="spinner-border spinner-border-sm me-2"></div>}
-                                    </>
-                                )}
-                                {mediaFiles.length > 0 ? (
-                                    <div className="d-flex flex-wrap gap-2 mt-2">
-                                        {mediaFiles.map((f) => (
-                                            <div key={f.id} className="position-relative" style={{ width: 100, height: 100 }}>
-                                                {f.mime?.startsWith("image/") ? (
-                                                    <img src={StraipImageUrl(f)} alt={f.name} className="rounded" style={{ width: 100, height: 100, objectFit: "cover" }} />
-                                                ) : (
-                                                    <div className="bg-dark text-white rounded d-flex align-items-center justify-content-center" style={{ width: 100, height: 100 }}>
-                                                        <i className="fas fa-video fa-2x"></i>
-                                                    </div>
-                                                )}
-                                                {editing && (
-                                                    <button type="button" className="btn btn-sm btn-danger position-absolute top-0 end-0" style={{ padding: "0 5px", fontSize: 11 }} onClick={() => removeMedia(f.id)}>×</button>
-                                                )}
-                                            </div>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <p className="text-muted small mb-0">No media attached.</p>
-                                )}
+                                <FileView
+                                    single={post.cover}
+                                    refName="social-post"
+                                    refId={post.id}
+                                    field="cover"
+                                    name={title}
+                                    onFileChange={(f, file) => setCoverId(file?.id || null)}
+                                />
+                                <div className="form-text">Single image used as the post cover/thumbnail.</div>
                             </div>
                         </div>
 
-                        {/* Platform Results */}
+                        <div className="card mb-3">
+                            <div className="card-header"><i className="fas fa-video me-2"></i>Videos</div>
+                            <div className="card-body">
+                                <FileView
+                                    gallery={post.video || []}
+                                    multiple
+                                    refName="social-post"
+                                    refId={post.id}
+                                    field="video"
+                                    name={title}
+                                    accept="video/*"
+                                    buttonLabel="Upload Video"
+                                    onFileChange={(f, files) => setVideoIds((files || []).map(v => v.id).filter(Boolean))}
+                                />
+                                <div className="form-text">Attach videos for the post.</div>
+                            </div>
+                        </div>
+                        <div className="card mb-3">
+                            <div className="card-header d-flex align-items-center">
+                                <i className="fas fa-box me-2"></i><strong>Linked Products</strong>
+                                <span className="badge bg-primary ms-2">{selectedProductIds.length}</span>
+                            </div>
+                            <div className="card-body">
+                                {connectedProducts.length > 0 && (
+                                    <div className="mb-3">
+                                        <small className="text-muted d-block mb-1">Connected:</small>
+                                        <div className="d-flex flex-wrap gap-2">
+                                            {connectedProducts.map(p => {
+                                                const selected = selectedProductIds.includes(p.documentId);
+                                                return (
+                                                    <div key={p.documentId} className="d-inline-flex align-items-center gap-1">
+                                                        {p.logo?.url ? (
+                                                            <img src={StraipImageUrl(p.logo)} alt={p.name} style={{ width: 28, height: 28, objectFit: "cover", borderRadius: 4 }} />
+                                                        ) : (
+                                                            <span className="text-muted" style={{ width: 28, height: 28, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+                                                                <i className="fas fa-image"></i>
+                                                            </span>
+                                                        )}
+                                                        <button type="button" className={`btn btn-sm ${selected ? "btn-success" : "btn-outline-secondary"}`} onClick={() => toggleProduct(p.documentId)}>
+                                                            {selected && <i className="fas fa-check me-1"></i>}{p.name}
+                                                        </button>
+                                                        <a href={`${WEB_URL}/product/${p.documentId}`} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-outline-primary" title="View on website">
+                                                            <i className="fas fa-external-link-alt"></i>
+                                                        </a>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
+                                <input className="form-control form-control-sm mb-2" placeholder="Search products by name..." value={productSearch} onChange={e => setProductSearch(e.target.value)} />
+                                {productLoading && <div className="spinner-border spinner-border-sm me-2"></div>}
+                                {productResults.length > 0 && (
+                                    <div className="d-flex flex-wrap gap-2">
+                                        {productResults.map(p => {
+                                            const selected = selectedProductIds.includes(p.documentId);
+                                            return (
+                                                <div key={p.documentId} className="d-inline-flex align-items-center gap-1">
+                                                    {p.logo?.url ? (
+                                                        <img src={StraipImageUrl(p.logo)} alt={p.name} style={{ width: 28, height: 28, objectFit: "cover", borderRadius: 4 }} />
+                                                    ) : (
+                                                        <span className="text-muted" style={{ width: 28, height: 28, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+                                                            <i className="fas fa-image"></i>
+                                                        </span>
+                                                    )}
+                                                    <button type="button" className={`btn btn-sm ${selected ? "btn-success" : "btn-outline-secondary"}`} onClick={() => toggleProduct(p.documentId)}>
+                                                        {selected && <i className="fas fa-check me-1"></i>}{p.name}
+                                                    </button>
+                                                    <a href={`${WEB_URL}/product/${p.documentId}`} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-outline-primary" title="View on website">
+                                                        <i className="fas fa-external-link-alt"></i>
+                                                    </a>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                         {post.platform_results && Object.keys(post.platform_results).length > 0 && (
                             <div className="card mb-3">
                                 <div className="card-header">Publish Results</div>
                                 <div className="card-body">
                                     <table className="table table-sm mb-0">
-                                        <thead>
-                                            <tr><th>Platform / Account</th><th>Status</th><th>Detail</th></tr>
-                                        </thead>
+                                        <thead><tr><th>Platform / Account</th><th>Status</th><th>Detail</th></tr></thead>
                                         <tbody>
                                             {Object.entries(post.platform_results).map(([key, val]) => (
                                                 <tr key={key}>
                                                     <td><code>{key}</code></td>
-                                                    <td>
-                                                        <span className={`badge ${val.status === "success" ? "bg-success" : "bg-danger"}`}>{val.status}</span>
-                                                    </td>
-                                                    <td className="text-muted small">{val.error || "—"}</td>
+                                                    <td><span className={`badge ${val.status === "success" ? "bg-success" : "bg-danger"}`}>{val.status}</span></td>
+                                                    <td className="text-muted small">{val.error || ""}</td>
                                                 </tr>
                                             ))}
                                         </tbody>
@@ -376,106 +429,83 @@ export default function PostDetailPage() {
                             </div>
                         )}
 
-                        {/* Replies */}
                         <div className="card mb-3">
-                            <div className="card-header">Replies ({replies.length})</div>
+                            <div className="card-header d-flex align-items-center justify-content-between">
+                                <span><i className="fas fa-comments me-2"></i>Replies ({replies.length})</span>
+                            </div>
                             <div className="card-body">
-                                {replies.length === 0 ? (
+                                {sortedReplies.length === 0 ? (
                                     <p className="text-muted small mb-0">No replies yet.</p>
                                 ) : (
                                     <div className="list-group list-group-flush">
-                                        {replies.map((r) => (
-                                            <div key={r.id} className="list-group-item px-0">
-                                                <div className="d-flex justify-content-between">
-                                                    <div>
-                                                        <PlatformBadge platform={r.platform} />
-                                                        <strong className="ms-1">{r.author_name || r.author_handle || "Unknown"}</strong>
-                                                        {r.is_outbound && <span className="badge bg-info ms-1">You</span>}
+                                        {sortedReplies.map(r => (
+                                            <div key={r.id} className={`list-group-item px-0 ${r.is_outbound ? "border-start border-3 border-primary ps-3" : ""}`}>
+                                                <div className="d-flex justify-content-between align-items-start">
+                                                    <div className="d-flex align-items-center gap-2">
+                                                        {r.author_avatar_url ? (
+                                                            <img src={r.author_avatar_url} alt="" className="rounded-circle" style={{ width: 28, height: 28, objectFit: "cover" }} />
+                                                        ) : (
+                                                            <div className="rounded-circle bg-light d-flex align-items-center justify-content-center" style={{ width: 28, height: 28 }}>
+                                                                <i className="fas fa-user text-muted" style={{ fontSize: 12 }}></i>
+                                                            </div>
+                                                        )}
+                                                        <div>
+                                                            <PlatformBadge platform={r.platform} />
+                                                            <strong className="ms-1">{r.author_name || r.author_handle || "Unknown"}</strong>
+                                                            {r.author_handle && r.author_name && (
+                                                                <span className="text-muted small ms-1">@{r.author_handle}</span>
+                                                            )}
+                                                            {r.is_outbound && <span className="badge bg-primary ms-1">Our Reply</span>}
+                                                        </div>
                                                     </div>
-                                                    <small className="text-muted">
-                                                        {r.replied_at ? new Date(r.replied_at).toLocaleString() : ""}
-                                                    </small>
+                                                    <div className="d-flex align-items-center gap-2">
+                                                        <small className="text-muted">
+                                                            {r.replied_at ? new Date(r.replied_at).toLocaleString() : r.createdAt ? new Date(r.createdAt).toLocaleString() : ""}
+                                                        </small>
+                                                        <span className="badge" style={{ backgroundColor: PLATFORM_COLORS[r.platform] || "#6c757d", color: "#fff", fontSize: 10 }}>
+                                                            {r.platform}
+                                                        </span>
+                                                    </div>
                                                 </div>
-                                                <p className="mb-0 mt-1">{r.body}</p>
+                                                <p className="mb-0 mt-1" style={{ whiteSpace: "pre-wrap" }}>{r.body}</p>
                                             </div>
                                         ))}
                                     </div>
                                 )}
                             </div>
                         </div>
-
-                        {editing && (
-                            <div className="d-flex gap-2">
-                                <button className="btn btn-success" onClick={handleSave} disabled={saving}>
-                                    {saving ? "Saving..." : "Save Changes"}
-                                </button>
-                                <button className="btn btn-secondary" onClick={() => { setEditing(false); loadPost(); }}>
-                                    Cancel
-                                </button>
-                            </div>
-                        )}
                     </div>
-
                     <div className="col-md-4">
                         <div className="card mb-3">
                             <div className="card-header">Platforms</div>
                             <div className="card-body">
-                                {editing ? (
-                                    Object.entries(PLATFORMS).map(([key, p]) => (
-                                        <div className="form-check mb-2" key={key}>
-                                            <input
-                                                className="form-check-input"
-                                                type="checkbox"
-                                                id={`platform-${key}`}
-                                                checked={(form.platforms || []).includes(key)}
-                                                onChange={() => togglePlatform(key)}
-                                            />
-                                            <label className="form-check-label" htmlFor={`platform-${key}`}>
-                                                <i className={`${p.icon} me-1`} style={{ color: p.color }}></i>{p.label}
-                                            </label>
-                                        </div>
-                                    ))
-                                ) : (
-                                    <div>
-                                        {(post.platforms || []).map((p) => (
-                                            <PlatformBadge key={p} platform={p} />
-                                        ))}
+                                {Object.entries(PLATFORMS).map(([key, p]) => (
+                                    <div className="form-check mb-2" key={key}>
+                                        <input className="form-check-input" type="checkbox" id={`platform-${key}`} checked={platforms.includes(key)} onChange={() => togglePlatform(key)} />
+                                        <label className="form-check-label" htmlFor={`platform-${key}`}>
+                                            <i className={`${p.icon} me-1`} style={{ color: p.color }}></i>{p.label}
+                                        </label>
                                     </div>
-                                )}
+                                ))}
                             </div>
                         </div>
 
                         <div className="card mb-3">
                             <div className="card-header">Linked Accounts</div>
                             <div className="card-body">
-                                {editing ? (
-                                    accounts
-                                        .filter((a) => (form.platforms || []).includes(a.platform))
-                                        .map((a) => (
-                                            <div className="form-check mb-2" key={a.id}>
-                                                <input
-                                                    className="form-check-input"
-                                                    type="checkbox"
-                                                    id={`acc-${a.id}`}
-                                                    checked={selectedAccountIds.includes(a.id)}
-                                                    onChange={() => toggleAccount(a.id)}
-                                                />
-                                                <label className="form-check-label" htmlFor={`acc-${a.id}`}>
-                                                    {a.account_name} <span className="text-muted">({a.platform})</span>
-                                                </label>
-                                            </div>
-                                        ))
-                                ) : (
-                                    <div>
-                                        {(post.social_accounts || []).map((a) => (
-                                            <div key={a.id} className="mb-1">
-                                                <PlatformBadge platform={a.platform} /> {a.account_name}
-                                            </div>
-                                        ))}
-                                        {(!post.social_accounts || post.social_accounts.length === 0) && (
-                                            <p className="text-muted small mb-0">No accounts linked.</p>
-                                        )}
+                                {accounts.filter(a => platforms.includes(a.platform)).map(a => (
+                                    <div className="form-check mb-2" key={a.id}>
+                                        <input className="form-check-input" type="checkbox" id={`acc-${a.id}`} checked={selectedAccountIds.includes(a.id)} onChange={() => toggleAccount(a.id)} />
+                                        <label className="form-check-label" htmlFor={`acc-${a.id}`}>
+                                            {a.account_name} <span className="text-muted">({a.platform})</span>
+                                        </label>
                                     </div>
+                                ))}
+                                {platforms.length > 0 && accounts.filter(a => platforms.includes(a.platform)).length === 0 && (
+                                    <p className="text-muted small mb-0">No accounts match selected platforms.</p>
+                                )}
+                                {(!platforms || platforms.length === 0) && (
+                                    <p className="text-muted small mb-0">Select platforms first.</p>
                                 )}
                             </div>
                         </div>
@@ -483,11 +513,12 @@ export default function PostDetailPage() {
                         <div className="card">
                             <div className="card-header">Info</div>
                             <div className="card-body small text-muted">
-                                <p className="mb-1"><strong>Created:</strong> {post.createdAt ? new Date(post.createdAt).toLocaleString() : "—"}</p>
-                                <p className="mb-1"><strong>Updated:</strong> {post.updatedAt ? new Date(post.updatedAt).toLocaleString() : "—"}</p>
+                                <p className="mb-1"><strong>Created:</strong> {post.createdAt ? new Date(post.createdAt).toLocaleString() : ""}</p>
+                                <p className="mb-1"><strong>Updated:</strong> {post.updatedAt ? new Date(post.updatedAt).toLocaleString() : ""}</p>
                                 {post.published_at_social && (
-                                    <p className="mb-0"><strong>Published:</strong> {new Date(post.published_at_social).toLocaleString()}</p>
+                                    <p className="mb-1"><strong>Social Published:</strong> {new Date(post.published_at_social).toLocaleString()}</p>
                                 )}
+                                <p className="mb-0"><strong>CMS Status:</strong> {isPublished ? "Published" : "Draft"}</p>
                             </div>
                         </div>
                     </div>
