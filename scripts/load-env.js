@@ -4,84 +4,46 @@
 /**
  * scripts/load-env.js — Centralized environment loader for Rutba POS
  *
+ * Operates in two discrete modes:
+ *
+ *   File mode  (default — .env file exists at repo root)
+ *     1. Reads .env           → determines ENVIRONMENT (+ base vars)
+ *     2. Reads .env.<ENV>     → full configuration (overrides .env)
+ *     3. File values take precedence over process.env
+ *
+ *   Env-var mode  (no .env file — Docker / CI)
+ *     1. ENVIRONMENT from process.env (default: development)
+ *     2. All config pulled from process.env
+ *     3. Only keys matching known prefixes or NEXT_PUBLIC_* collected
+ *
+ * In both modes the loader:
+ *   - Validates variables against the registry in scripts/env-config.js
+ *   - Errors on missing critical variables, warns on optional ones
+ *   - Splits globals vs PREFIX__VAR app-specific variables
+ *   - Auto-derives PORT from NEXT_PUBLIC_*_URL when not explicit
+ *   - Auto-computes CORS_ORIGINS for pos-strapi
+ *   - Spawns <command> with the merged environment
+ *
  * Usage:
  *   node scripts/load-env.js -- <command> [args...]
  *
  * The target app is auto-detected from --workspace=<dir> or --prefix <dir>
- * in the command arguments. No separate app name needed.
- *
- * How it works:
- *   1. Reads .env to determine ENVIRONMENT (default: development)
- *   2. Reads .env.<ENVIRONMENT> for all configuration
- *   3. Builds the known-prefix list from package.json workspaces + pos-strapi
- *   4. Variables with no known prefix   → global (passed to every app)
- *      Variables with PREFIX__VARNAME   → app-specific (prefix + __ stripped,
- *                                         only injected into that app)
- *   5. For pos-strapi, auto-computes CORS_ORIGINS from all URL values
- *   6. Spawns <command> with the merged environment
+ * in the command arguments.
  *
  * Prefix convention:
- *   workspace dir "pos-auth"      → prefix POS_AUTH
+ *   workspace dir "pos-auth"       → prefix POS_AUTH
  *   workspace dir "rutba-web-user" → prefix RUTBA_WEB_USER
  *   Double underscore (__) separates prefix from var name:
  *     POS_STRAPI__PORT=4010  →  PORT=4010  (for pos-strapi only)
  */
 
-const fs = require('fs');
-const path = require('path');
 const { spawn } = require('child_process');
-
-const ROOT = path.resolve(__dirname, '..');
-
-// ── .env parser ────────────────────────────────────────────
-
-function parseEnvFile(filePath) {
-  if (!fs.existsSync(filePath)) return {};
-  const content = fs.readFileSync(filePath, 'utf8');
-  const vars = {};
-  for (const line of content.split(/\r?\n/)) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith('#')) continue;
-    const eqIndex = trimmed.indexOf('=');
-    if (eqIndex === -1) continue;
-    const key = trimmed.slice(0, eqIndex).trim();
-    let value = trimmed.slice(eqIndex + 1).trim();
-    if (
-      (value.startsWith('"') && value.endsWith('"')) ||
-      (value.startsWith("'") && value.endsWith("'"))
-    ) {
-      value = value.slice(1, -1);
-    }
-    vars[key] = value;
-  }
-  return vars;
-}
-
-// ── build prefix list from workspace dirs ──────────────────
-
-function getAppPrefixes() {
-  const pkg = JSON.parse(
-    fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')
-  );
-  const dirs = [];
-  for (const ws of pkg.workspaces || []) {
-    if (ws.includes('*')) {
-      const base = ws.replace(/\/?\*$/, '');
-      const fullBase = path.join(ROOT, base);
-      if (fs.existsSync(fullBase)) {
-        for (const entry of fs.readdirSync(fullBase, { withFileTypes: true })) {
-          if (entry.isDirectory()) dirs.push(entry.name);
-        }
-      }
-    } else {
-      dirs.push(ws);
-    }
-  }
-  // pos-strapi is not in workspaces but is a launchable app
-  dirs.push('pos-strapi');
-
-  return dirs.map((d) => d.toUpperCase().replace(/-/g, '_'));
-}
+const {
+  resolveAllVariables,
+  getAppPrefixes,
+  splitVariables,
+  validateVariables,
+} = require('./env-utils');
 
 // ── detect target from command arguments ───────────────────
 
@@ -92,15 +54,6 @@ function findTargetDir(cmdArgs) {
     if (cmdArgs[i] === '--prefix' && cmdArgs[i + 1]) return cmdArgs[i + 1];
   }
   return null;
-}
-
-/** Extract the origin (scheme + host + port) from a URL string. */
-function extractOrigin(value) {
-  try {
-    return new URL(value).origin;
-  } catch {
-    return null;
-  }
 }
 
 // ── CLI parsing ────────────────────────────────────────────
@@ -124,51 +77,51 @@ if (!targetDir) {
   process.exit(1);
 }
 
-const targetPrefix = targetDir.toUpperCase().replace(/-/g, '_'); // "pos-auth" → "POS_AUTH"
-const allPrefixes = getAppPrefixes(); // ["POS_SHARED","POS_DESK","POS_STOCK", ...]
+const targetPrefix = targetDir.toUpperCase().replace(/-/g, '_');
+const allPrefixes = getAppPrefixes();
 
-// ── 1. Read .env → ENVIRONMENT ─────────────────────────────
+// ── 1. Resolve variables (file mode or env-var mode) ───────
 
-const rootVars = parseEnvFile(path.join(ROOT, '.env'));
-const environment = rootVars.ENVIRONMENT || 'development';
+const { mode, environment, vars } = resolveAllVariables();
+console.log(
+  `[env] Mode: ${mode} | Environment: ${environment} | Target: ${targetPrefix}`
+);
 
-// ── 2. Read .env.<environment> ─────────────────────────────
+// ── 2. Split global vs app-specific ────────────────────────
 
-const envFilePath = path.join(ROOT, `.env.${environment}`);
-if (!fs.existsSync(envFilePath)) {
-  console.error(`Environment file not found: .env.${environment}`);
+const { globals, appVars, allOrigins } = splitVariables(vars, allPrefixes);
+
+// ── 3. Validate against required-variables registry ────────
+
+const { errors, warnings } = validateVariables(
+  globals, appVars, allPrefixes, { targetPrefix }
+);
+
+for (const w of warnings) console.warn(`[env] WARN: ${w}`);
+if (errors.length) {
+  for (const e of errors) console.error(`[env] ERROR: ${e}`);
+  console.error(
+    `[env] ${errors.length} required variable(s) missing — aborting.`
+  );
   process.exit(1);
 }
-const allVars = parseEnvFile(envFilePath);
 
-// ── 3. Split global vs app-specific ────────────────────────
-// Convention: PREFIX__VARNAME  (double underscore)
+// ── 4. Build env map for the target app ────────────────────
 
-const DELIM = '__';
 const envForApp = {};
-const allOrigins = new Set();
 
-for (const [key, value] of Object.entries(allVars)) {
-  const origin = extractOrigin(value);
-  if (origin) allOrigins.add(origin);
-
-  const delimIdx = key.indexOf(DELIM);
-  if (delimIdx > 0) {
-    const prefix = key.slice(0, delimIdx);
-    if (allPrefixes.includes(prefix)) {
-      // App-specific variable
-      if (prefix === targetPrefix) {
-        const stripped = key.slice(delimIdx + DELIM.length);
-        envForApp[stripped] = value;
-      }
-      continue; // belongs to another app — skip
-    }
-  }
-  // No known prefix (or no __) → global
+// Globals go to every app
+for (const [key, value] of Object.entries(globals)) {
   envForApp[key] = value;
 }
 
-// ── 4. Auto-derive PORT from matching NEXT_PUBLIC_*_URL ────
+// App-specific vars (prefix stripped)
+const targetAppVars = appVars[targetPrefix] || {};
+for (const [key, value] of Object.entries(targetAppVars)) {
+  envForApp[key] = value;
+}
+
+// ── 5. Auto-derive PORT from matching NEXT_PUBLIC_*_URL ────
 //    pos-auth → strip "pos-" → AUTH → NEXT_PUBLIC_AUTH_URL
 //    rutba-web-user → strip "rutba-" → WEB_USER → NEXT_PUBLIC_WEB_USER_URL
 //    Explicit APP__PORT in .env always wins (already in envForApp).
@@ -189,7 +142,7 @@ if (!envForApp.PORT) {
   }
 }
 
-// ── 5. For pos-strapi, inject CORS_ORIGINS ─────────────────
+// ── 6. For pos-strapi, inject CORS_ORIGINS ─────────────────
 
 if (targetPrefix === 'POS_STRAPI') {
   const strapiPort = envForApp.PORT || '4010';
@@ -203,7 +156,7 @@ if (targetPrefix === 'POS_STRAPI') {
   envForApp.CORS_ORIGINS = corsOrigins.join(',');
 }
 
-// ── 6. Spawn the command ───────────────────────────────────
+// ── 7. Spawn the command ───────────────────────────────────
 
 const child = spawn(command, commandArgs, {
   stdio: 'inherit',

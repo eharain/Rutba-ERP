@@ -4,17 +4,21 @@
 /**
  * scripts/generate-docker-env.js
  *
- * Reads the centralized config (.env → .env.<ENVIRONMENT>) and writes
- * a flat .env.docker file that Docker Compose can consume directly.
+ * Resolves configuration (file mode or env-var mode — see env-utils.js)
+ * and writes a flat .env.docker file that Docker Compose can consume.
+ *
+ * Modes:
+ *   File mode   — .env exists → reads .env + .env.<ENVIRONMENT>
+ *   Env-var mode — no .env    → reads matching keys from process.env
  *
  * Usage:
- *   node scripts/generate-docker-env.js            # uses ENVIRONMENT from .env
- *   node scripts/generate-docker-env.js production  # explicit override
+ *   node scripts/generate-docker-env.js            # auto-detect mode
+ *   node scripts/generate-docker-env.js production  # explicit environment override
  *
  * Output (.env.docker):
  *   - All NEXT_PUBLIC_* globals (for build args + client env)
- *   - POS_STRAPI__* stripped → bare names (DATABASE_CLIENT, etc.)
- *   - RUTBA_WEB__* stripped → bare names (NEXTAUTH_SECRET, etc.)
+ *   - POS_STRAPI__* stripped → STRAPI_* (DATABASE_CLIENT, etc.)
+ *   - RUTBA_WEB__* stripped → WEB_* (NEXTAUTH_SECRET, etc.)
  *   - PORT_<APP> derived from NEXT_PUBLIC_<APP>_URL
  *   - CORS_ORIGINS auto-computed
  *
@@ -24,90 +28,39 @@
 const fs = require('fs');
 const path = require('path');
 
-const ROOT = path.resolve(__dirname, '..');
-
-// ── .env parser (shared with load-env.js) ──────────────────
-
-function parseEnvFile(filePath) {
-  if (!fs.existsSync(filePath)) return {};
-  const content = fs.readFileSync(filePath, 'utf8');
-  const vars = {};
-  for (const line of content.split(/\r?\n/)) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith('#')) continue;
-    const eqIndex = trimmed.indexOf('=');
-    if (eqIndex === -1) continue;
-    const key = trimmed.slice(0, eqIndex).trim();
-    let value = trimmed.slice(eqIndex + 1).trim();
-    if (
-      (value.startsWith('"') && value.endsWith('"')) ||
-      (value.startsWith("'") && value.endsWith("'"))
-    ) {
-      value = value.slice(1, -1);
-    }
-    vars[key] = value;
-  }
-  return vars;
-}
-
-function getAppPrefixes() {
-  const pkg = JSON.parse(
-    fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')
-  );
-  const dirs = [];
-  for (const ws of pkg.workspaces || []) {
-    if (ws.includes('*')) {
-      const base = ws.replace(/\/?\*$/, '');
-      const fullBase = path.join(ROOT, base);
-      if (fs.existsSync(fullBase)) {
-        for (const entry of fs.readdirSync(fullBase, { withFileTypes: true })) {
-          if (entry.isDirectory()) dirs.push(entry.name);
-        }
-      }
-    } else {
-      dirs.push(ws);
-    }
-  }
-  dirs.push('pos-strapi');
-  return dirs.map((d) => d.toUpperCase().replace(/-/g, '_'));
-}
+const {
+  ROOT,
+  resolveAllVariables,
+  getAppPrefixes,
+  splitVariables,
+  validateVariables,
+} = require('./env-utils');
 
 // ── main ───────────────────────────────────────────────────
 
-const rootVars = parseEnvFile(path.join(ROOT, '.env'));
-const environment = process.argv[2] || rootVars.ENVIRONMENT || 'development';
+const environmentOverride = process.argv[2] || undefined;
+const { mode, environment, vars } = resolveAllVariables({ environmentOverride });
+console.log(`[docker-env] Mode: ${mode} | Environment: ${environment}`);
 
-const envFilePath = path.join(ROOT, `.env.${environment}`);
-if (!fs.existsSync(envFilePath)) {
-  console.error(`Environment file not found: .env.${environment}`);
+const allPrefixes = getAppPrefixes();
+const { globals, appVars, allOrigins } = splitVariables(vars, allPrefixes);
+
+// ── validate ───────────────────────────────────────────────
+
+const { errors, warnings } = validateVariables(globals, appVars, allPrefixes);
+
+for (const w of warnings) console.warn(`[docker-env] WARN: ${w}`);
+if (errors.length) {
+  for (const e of errors) console.error(`[docker-env] ERROR: ${e}`);
+  console.error(
+    `[docker-env] ${errors.length} required variable(s) missing — aborting.`
+  );
   process.exit(1);
 }
 
-const allVars = parseEnvFile(envFilePath);
-const allPrefixes = getAppPrefixes();
-const DELIM = '__';
+// ── derive per-app ports from NEXT_PUBLIC_*_URL ────────────
 
-const globals = {};
-const appVars = {}; // { POS_STRAPI: { HOST: '0.0.0.0', ... }, RUTBA_WEB: { ... } }
-const allOrigins = new Set();
-
-for (const [key, value] of Object.entries(allVars)) {
-  try { allOrigins.add(new URL(value).origin); } catch {}
-
-  const delimIdx = key.indexOf(DELIM);
-  if (delimIdx > 0) {
-    const prefix = key.slice(0, delimIdx);
-    if (allPrefixes.includes(prefix)) {
-      if (!appVars[prefix]) appVars[prefix] = {};
-      appVars[prefix][key.slice(delimIdx + DELIM.length)] = value;
-      continue;
-    }
-  }
-  globals[key] = value;
-}
-
-// Derive per-app ports from NEXT_PUBLIC_*_URL
-const portMap = {}; // { AUTH: '4003', STOCK: '4001', ... }
+const portMap = {};
 const urlPattern = /^NEXT_PUBLIC_(\w+)_URL$/;
 for (const [key, value] of Object.entries(globals)) {
   const m = key.match(urlPattern);
@@ -120,6 +73,12 @@ for (const [key, value] of Object.entries(globals)) {
 const strapiVars = appVars['POS_STRAPI'] || {};
 const strapiPort = strapiVars.PORT || '4010';
 
+// Web port
+const webVars = appVars['RUTBA_WEB'] || {};
+if (webVars.PORT && !portMap['WEB']) {
+  portMap['WEB'] = webVars.PORT;
+}
+
 // Compute CORS origins (exclude Strapi's own)
 const strapiOrigins = new Set([
   `http://localhost:${strapiPort}`,
@@ -129,10 +88,12 @@ const corsOrigins = [...allOrigins].filter((o) => !strapiOrigins.has(o));
 
 // ── write .env.docker ──────────────────────────────────────
 
+const source = mode === 'file' ? `.env.${environment}` : 'environment variables';
+
 const lines = [
   '# ============================================================',
   '# .env.docker — Auto-generated by scripts/generate-docker-env.js',
-  `# Source: .env.${environment}`,
+  `# Mode: ${mode} | Source: ${source}`,
   '# Re-generate:  node scripts/generate-docker-env.js',
   '# Usage:        docker compose --env-file .env.docker up --build',
   '# ============================================================',
@@ -159,7 +120,6 @@ lines.push('', '# --- CORS origins (auto-computed) ---');
 lines.push(`CORS_ORIGINS=${corsOrigins.join(',')}`);
 
 // Web runtime vars
-const webVars = appVars['RUTBA_WEB'] || {};
 if (Object.keys(webVars).length) {
   lines.push('', '# --- Rutba Web runtime (RUTBA_WEB__ stripped) ---');
   for (const [k, v] of Object.entries(webVars)) {
@@ -167,8 +127,19 @@ if (Object.keys(webVars).length) {
   }
 }
 
+// Other app-specific vars
+for (const [prefix, prefixVars] of Object.entries(appVars)) {
+  if (prefix === 'POS_STRAPI' || prefix === 'RUTBA_WEB') continue;
+  if (!Object.keys(prefixVars).length) continue;
+  const label = prefix.replace(/_/g, ' ');
+  lines.push('', `# --- ${label} runtime (${prefix}__ stripped) ---`);
+  for (const [k, v] of Object.entries(prefixVars)) {
+    lines.push(`${prefix}_${k}=${v}`);
+  }
+}
+
 lines.push('');
 
 const outPath = path.join(ROOT, '.env.docker');
 fs.writeFileSync(outPath, lines.join('\n'), 'utf8');
-console.log(`Generated ${outPath} from .env.${environment}`);
+console.log(`[docker-env] Generated ${outPath}`);
