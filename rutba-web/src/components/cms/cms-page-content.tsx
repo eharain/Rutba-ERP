@@ -15,6 +15,7 @@ import { IMAGE_URL } from "@/static/const";
 import { CmsPageDetailInterface } from "@/types/api/cms-page";
 import { ProductInterface, getVariantTermSummary } from "@/types/api/product";
 import { BrandInterface } from "@/types/api/brand";
+import { getPageUrl } from "@/lib/cms-page-types";
 
 marked.use({ breaks: true, gfm: true });
 marked.use(markedVideoEmbed({ imageBaseUrl: IMAGE_URL }));
@@ -212,7 +213,7 @@ export default function CmsPageContent({
                 key={rp.id}
                 className="col-span-12 md:col-span-6 lg:col-span-4"
               >
-                <Link href={`/pages/${rp.slug}`} className="block group">
+                <Link href={getPageUrl(rp)} className="block group">
                   <div className="rounded-lg border border-slate-200 overflow-hidden hover:shadow-md transition-shadow">
                     {rp.featured_image?.url ? (
                       <div className="relative w-full h-40">

@@ -11,6 +11,7 @@ import SearchModal from "../search/search-modal";
 import { ArrowUpRightSquare, FileText, Search, User2 } from "lucide-react";
 import Link from "next/link";
 import { CmsPageInterface } from "@/types/api/cms-page";
+import { getPageUrl } from "@/lib/cms-page-types";
 
 export interface propsInterface {
   trigger: React.JSX.Element;
@@ -51,7 +52,7 @@ export default function MenuSideBarMobile(props: propsInterface) {
             className="flex justify-start"
             asChild
           >
-            <Link href={`/pages/${pp.slug}`}>
+            <Link href={getPageUrl(pp)}>
               <FileText className="mr-2 h-5"></FileText>
               {pp.title}
             </Link>

@@ -1419,8 +1419,8 @@ export interface ApiCmsPageCmsPage extends Struct.CollectionTypeSchema {
       'manyToMany',
       'plugin::users-permissions.user'
     >;
-    page_type: Schema.Attribute.Enumeration<['page', 'blog', 'announcement']> &
-      Schema.Attribute.DefaultTo<'page'>;
+    page_type: Schema.Attribute.Enumeration<['shop', 'blog', 'news', 'info']> &
+      Schema.Attribute.DefaultTo<'shop'>;
     product_groups: Schema.Attribute.Relation<
       'manyToMany',
       'api::product-group.product-group'

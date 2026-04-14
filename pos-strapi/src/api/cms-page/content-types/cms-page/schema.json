@@ -45,11 +45,12 @@
     "page_type": {
       "type": "enumeration",
       "enum": [
-        "page",
+        "shop",
         "blog",
-        "announcement"
+        "news",
+        "info"
       ],
-      "default": "page"
+      "default": "shop"
     },
     "sort_order": {
       "type": "integer",

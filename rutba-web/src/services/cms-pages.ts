@@ -67,8 +67,22 @@ export default function useCmsPagesService() {
     return pages.length > 0 ? pages[0] : null;
   };
 
+  const getCmsPagesByType = async (pageType: string) => {
+    const req = await axios.get(BASE_URL + "cms-pages", {
+      params: {
+        filters: { page_type: { $eq: pageType } },
+        sort: ["sort_order:asc", "createdAt:desc"],
+        populate: ["featured_image", "background_image"],
+        pagination: { pageSize: 50 },
+      },
+    });
+
+    return req.data.data as CmsPageInterface[];
+  };
+
   return {
     getCmsPages,
+    getCmsPagesByType,
     getCmsPageBySlug,
     getCmsHeaderData,
   };
@@ -77,6 +91,19 @@ export default function useCmsPagesService() {
 export const getCmsPagesSSR = async () => {
   const req = await axios.get(BASE_URL + "cms-pages", {
     params: {
+      sort: ["sort_order:asc", "createdAt:desc"],
+      populate: ["featured_image", "background_image"],
+      pagination: { pageSize: 50 },
+    },
+  });
+
+  return req.data.data as CmsPageInterface[];
+};
+
+export const getCmsPagesByTypeSSR = async (pageType: string) => {
+  const req = await axios.get(BASE_URL + "cms-pages", {
+    params: {
+      filters: { page_type: { $eq: pageType } },
       sort: ["sort_order:asc", "createdAt:desc"],
       populate: ["featured_image", "background_image"],
       pagination: { pageSize: 50 },

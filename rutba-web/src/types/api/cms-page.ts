@@ -9,7 +9,7 @@ export interface CmsPageInterface {
   title: string;
   slug: string;
   excerpt?: string;
-  page_type: "page" | "blog" | "announcement";
+  page_type: "shop" | "blog" | "news" | "info";
   sort_order: number;
   createdAt: string;
   updatedAt: string;

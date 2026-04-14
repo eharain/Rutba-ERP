@@ -1,6 +1,6 @@
 import LayoutMain from "@/components/layouts";
 import Link from "next/link";
-import CmsPageContent from "@/components/cms/cms-page-content";
+import CmsInfoPageContent from "@/components/cms/cms-info-page-content";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/router";
 import { SkeletonProductDetail } from "@/components/skeleton";
@@ -9,20 +9,26 @@ import useCmsPagesService, { getCmsPageBySlugSSR } from "@/services/cms-pages";
 import { CmsPageDetailInterface } from "@/types/api/cms-page";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 
+const PAGE_TYPE = "info";
+
 export const getServerSideProps: GetServerSideProps<{
   initialPage: CmsPageDetailInterface | null;
   slug: string;
 }> = async (context) => {
   const slug = context.params?.slug as string;
+
   try {
     const page = await getCmsPageBySlugSSR(slug);
+    if (page && page.page_type !== PAGE_TYPE) {
+      return { notFound: true };
+    }
     return { props: { initialPage: page, slug } };
   } catch {
     return { props: { initialPage: null, slug } };
   }
 };
 
-export default function CmsPageDetail({
+export default function InfoPageDetail({
   initialPage,
   slug: ssrSlug,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
@@ -66,8 +72,8 @@ export default function CmsPageDetail({
       <LayoutMain>
         <div className="container-fluid my-20 text-center">
           <h2 className="text-2xl font-bold mb-4">Page not found</h2>
-          <Link href="/pages" className="text-blue-600 hover:underline">
-            Back to pages
+          <Link href="/info" className="text-blue-600 hover:underline">
+            Back to info
           </Link>
         </div>
       </LayoutMain>
@@ -76,8 +82,7 @@ export default function CmsPageDetail({
 
   return (
     <LayoutMain footer={page.footer}>
-      <CmsPageContent page={page} />
+      <CmsInfoPageContent page={page} />
     </LayoutMain>
   );
 }
-

@@ -5,26 +5,29 @@ import { useQuery } from "@tanstack/react-query";
 import { SkeletonProduct } from "@/components/skeleton";
 import { ErrorCard } from "@/components/errors/error-card";
 import { IMAGE_URL } from "@/static/const";
-import useCmsPagesService, { getCmsPagesSSR } from "@/services/cms-pages";
+import useCmsPagesService, { getCmsPagesByTypeSSR } from "@/services/cms-pages";
 import { CmsPageInterface } from "@/types/api/cms-page";
+import { getPageUrl } from "@/lib/cms-page-types";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Head from "next/head";
+
+const PAGE_TYPE = "blog";
 
 export const getServerSideProps: GetServerSideProps<{
   initialPages: CmsPageInterface[];
 }> = async () => {
   try {
-    const pages = await getCmsPagesSSR();
+    const pages = await getCmsPagesByTypeSSR(PAGE_TYPE);
     return { props: { initialPages: pages ?? [] } };
   } catch {
     return { props: { initialPages: [] } };
   }
 };
 
-export default function PagesIndex({
+export default function BlogIndex({
   initialPages,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const { getCmsPages } = useCmsPagesService();
+  const { getCmsPagesByType } = useCmsPagesService();
 
   const {
     data: pages,
@@ -32,8 +35,8 @@ export default function PagesIndex({
     isError,
     error,
   } = useQuery({
-    queryKey: ["cms-pages-list"],
-    queryFn: getCmsPages,
+    queryKey: ["cms-pages-list", PAGE_TYPE],
+    queryFn: () => getCmsPagesByType(PAGE_TYPE),
     staleTime: 60_000,
     initialData: initialPages.length > 0 ? initialPages : undefined,
   });
@@ -42,11 +45,11 @@ export default function PagesIndex({
     <LayoutMain>
       <>
         <Head>
-          <title>Pages - Rutba.pk</title>
+          <title>Blog - Rutba.pk</title>
         </Head>
 
         <div className="container-fluid my-16">
-          <h1 className="text-3xl font-bold mb-8">Pages</h1>
+          <h1 className="text-3xl font-bold mb-8">Blog</h1>
 
           {isLoading && (
             <div className="grid grid-cols-12 gap-4">
@@ -61,14 +64,14 @@ export default function PagesIndex({
           {isError && <ErrorCard message={(error as Error).message} />}
 
           {!isLoading && !isError && pages && pages.length === 0 && (
-            <p className="text-slate-500 text-center py-12">No pages published yet.</p>
+            <p className="text-slate-500 text-center py-12">No blog posts published yet.</p>
           )}
 
           {!isLoading && !isError && pages && pages.length > 0 && (
             <div className="grid grid-cols-12 gap-6">
               {pages.map((page) => (
                 <div key={page.id} className="col-span-12 md:col-span-6 lg:col-span-4">
-                  <Link href={`/pages/${page.slug}`} className="block group">
+                  <Link href={getPageUrl(page)} className="block group">
                     <div className="rounded-lg border border-slate-200 overflow-hidden hover:shadow-md transition-shadow">
                       {page.featured_image?.url ? (
                         <div className="relative w-full h-48">
@@ -82,13 +85,17 @@ export default function PagesIndex({
                         </div>
                       ) : (
                         <div className="w-full h-48 bg-slate-100 flex items-center justify-center">
-                          <span className="text-slate-400 text-4xl">📄</span>
+                          <span className="text-slate-400 text-4xl">✍️</span>
                         </div>
                       )}
                       <div className="p-4">
-                        <span className="text-xs uppercase tracking-wide text-slate-400">
-                          {page.page_type}
-                        </span>
+                        <p className="text-xs text-slate-400">
+                          {new Date(page.publishedAt).toLocaleDateString("en-PK", {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          })}
+                        </p>
                         <h2 className="text-lg font-semibold mt-1 group-hover:text-blue-600 transition-colors">
                           {page.title}
                         </h2>
@@ -107,4 +114,3 @@ export default function PagesIndex({
     </LayoutMain>
   );
 }
-

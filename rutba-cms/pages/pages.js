@@ -7,7 +7,7 @@ import { authApi } from "@rutba/pos-shared/lib/api";
 import Link from "next/link";
 import { useToast } from "../components/Toast";
 
-const PAGE_TYPES = ["page", "blog", "announcement"];
+const PAGE_TYPES = ["shop", "blog", "news", "info"];
 
 const PAGE_EXPORT_COLUMNS = ["slug", "title", "excerpt", "content", "page_type", "sort_order"];
 
@@ -17,7 +17,7 @@ function exportPagesToExcel(pages) {
         title: p.title || "",
         excerpt: p.excerpt || "",
         content: p.content || "",
-        page_type: p.page_type || "page",
+        page_type: p.page_type || "shop",
         sort_order: p.sort_order ?? 0,
     }));
     const wb = XLSX.utils.book_new();
@@ -43,7 +43,7 @@ function parsePageExcel(file) {
                     title: String(row.title || row.Title || "").trim(),
                     excerpt: String(row.excerpt || row.Excerpt || "").trim(),
                     content: String(row.content || row.Content || "").trim(),
-                    page_type: String(row.page_type || row["Page Type"] || "page").trim(),
+                    page_type: String(row.page_type || row["Page Type"] || "shop").trim(),
                     sort_order: parseInt(row.sort_order ?? row["Sort Order"] ?? 0, 10) || 0,
                 })).filter(r => r.slug && r.title);
                 resolve(mapped);
@@ -56,9 +56,10 @@ function parsePageExcel(file) {
 
 function getTypeBadgeClass(type) {
     switch (type) {
-        case "blog": return "bg-info";
-        case "announcement": return "bg-warning text-dark";
-        case "page": return "bg-primary";
+        case "shop": return "bg-primary";
+        case "blog": return "bg-success";
+        case "news": return "bg-danger";
+        case "info": return "bg-info";
         default: return "bg-secondary";
     }
 }
