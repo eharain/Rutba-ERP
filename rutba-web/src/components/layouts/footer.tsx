@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { CmsFooterInterface } from "@/types/api/cms-page";
+import { getPageUrl } from "@/lib/cms-page-types";
 
 interface FooterProps {
   footer?: CmsFooterInterface;
@@ -75,7 +76,7 @@ export default function Footer({ footer }: FooterProps) {
                 {pinnedPages.map((pp) => (
                   <li key={pp.documentId}>
                     <Link
-                      href={`/pages/${pp.slug}`}
+                      href={getPageUrl(pp)}
                       className="text-gray-700 transition hover:opacity-75"
                     >
                       {pp.title}
@@ -85,10 +86,10 @@ export default function Footer({ footer }: FooterProps) {
 
                 <li>
                   <Link
-                    href="/pages"
+                    href="/blog"
                     className="text-gray-700 transition hover:opacity-75"
                   >
-                    Pages
+                    Blog
                   </Link>
                 </li>
 

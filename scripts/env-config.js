@@ -20,6 +20,7 @@
 const GLOBAL_VARS = [
   { key: 'NEXT_PUBLIC_API_URL',              severity: 'error', description: 'Strapi API base URL' },
   { key: 'NEXT_PUBLIC_IMAGE_URL',            severity: 'error', description: 'Strapi media base URL' },
+  { key: 'NEXT_PUBLIC_WEB_URL',              severity: 'error', description: 'Public storefront URL' },
   { key: 'NEXT_PUBLIC_AUTH_URL',             severity: 'error', description: 'Auth portal URL' },
   { key: 'NEXT_PUBLIC_STOCK_URL',            severity: 'error', description: 'Stock app URL' },
   { key: 'NEXT_PUBLIC_SALE_URL',             severity: 'error', description: 'Sale app URL' },

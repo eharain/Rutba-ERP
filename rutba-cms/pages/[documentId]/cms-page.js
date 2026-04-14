@@ -9,7 +9,7 @@ import FileView from "@rutba/pos-shared/components/FileView";
 import Link from "next/link";
 import { useToast } from "../../components/Toast";
 
-const PAGE_TYPES = ["page", "blog", "announcement"];
+const PAGE_TYPES = ["shop", "blog", "news", "info"];
 
 export default function CmsPageDetail() {
     const router = useRouter();
@@ -27,7 +27,7 @@ export default function CmsPageDetail() {
     const [slug, setSlug] = useState("");
     const [content, setContent] = useState("");
     const [excerpt, setExcerpt] = useState("");
-    const [pageType, setPageType] = useState("page");
+    const [pageType, setPageType] = useState("shop");
     const [sortOrder, setSortOrder] = useState(0);
 
     const [selectedHeroGroupIds, setSelectedHeroGroupIds] = useState([]);
@@ -64,7 +64,7 @@ export default function CmsPageDetail() {
                 setSlug(p.slug || "");
                 setContent(p.content || "");
                 setExcerpt(p.excerpt || "");
-                setPageType(p.page_type || "page");
+                setPageType(p.page_type || "shop");
                 setSortOrder(p.sort_order ?? 0);
                 setSelectedHeroGroupIds((p.hero_product_groups || []).map(g => g.documentId));
                 setSelectedBrandGroupIds((p.brand_groups || []).map(bg => bg.documentId));
@@ -244,7 +244,7 @@ export default function CmsPageDetail() {
             setTitle(p.title || "");
             setContent(p.content || "");
             setExcerpt(p.excerpt || "");
-            setPageType(p.page_type || "page");
+            setPageType(p.page_type || "shop");
             setSortOrder(p.sort_order ?? 0);
             setSelectedHeroGroupIds((p.hero_product_groups || []).map(g => g.documentId));
             setSelectedBrandGroupIds((p.brand_groups || []).map(bg => bg.documentId));

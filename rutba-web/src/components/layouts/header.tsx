@@ -1,5 +1,6 @@
 // import HeaderTopPromo from "@/components/layouts/header-top-promo";
 import Link from "next/link";
+import { getPageUrl } from "@/lib/cms-page-types";
 
 import { ChevronRight, Menu, ShoppingBasket, User2 } from "lucide-react";
 
@@ -157,7 +158,7 @@ export default function Header() {
                     pinnedPages.map((pp) => (
                       <NavigationMenuItem key={pp.documentId}>
                         <Link
-                          href={`/pages/${pp.slug}`}
+                          href={getPageUrl(pp)}
                           className="px-4 py-2 text-sm font-medium hover:text-gray-600 transition-colors"
                         >
                           {pp.title}
