@@ -31,3 +31,4 @@ package-lock.json
 /dev-error.log
 /dev-output.log
 /next
+/scripts/seed-cms-pages.js
