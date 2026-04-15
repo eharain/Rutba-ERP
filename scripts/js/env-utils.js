@@ -309,10 +309,10 @@ function buildEnvForApp(opts) {
       envForApp.NEXT_BUILD_OUTPUT = globals.NEXT_BUILD_OUTPUT;
     }
 
-    // BUILD_DEST_DIR: app-specific wins, then global (computed as relative path
-    // from the app directory to <root>/<BUILD_DEST_DIR>/<app-dir>)
+    // BUILD_DEST_DIR: passed through as-is for post-build copy by run-app.js.
+    // Not used as distDir (Turbopack forbids paths outside the project).
     if (!envForApp.BUILD_DEST_DIR && globals.BUILD_DEST_DIR) {
-      envForApp.BUILD_DEST_DIR = path.join('..', globals.BUILD_DEST_DIR, targetDir);
+      envForApp.BUILD_DEST_DIR = globals.BUILD_DEST_DIR;
     }
   }
 

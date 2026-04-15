@@ -25,6 +25,7 @@ const ROOT = path.resolve(__dirname, '..', '..');
 const action = process.argv[2];       // build | start
 // CLI arg takes priority; fall back to RUTBA_APP env var for per-installation mode
 const appName = process.argv[3] || process.env.RUTBA_APP || null;
+const BUILD_DEST_DIR = process.env.BUILD_DEST_DIR || null;
 
 if (!action || !['build', 'start'].includes(action)) {
   console.error('Usage: node scripts/run-app.js <build|start> [app-name]');
@@ -34,6 +35,57 @@ if (!action || !['build', 'start'].includes(action)) {
 const pkg = JSON.parse(
   fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')
 );
+
+// ── Post-build copy ────────────────────────────────────────
+// When BUILD_DEST_DIR is set, copy the build output to
+// <BUILD_DEST_DIR>/<workspace-dir>/ after each successful build.
+// Next.js/Turbopack forbids distDir outside the project, so this
+// is the only safe way to collect builds into a common directory.
+
+/**
+ * Extract the workspace directory name from a build script key.
+ * e.g. "build:web" → script value contains "--workspace=rutba-web" → "rutba-web"
+ *      "build:strapi" → script value contains "--prefix pos-strapi" → "pos-strapi"
+ */
+function getWorkspaceDir(scriptKey) {
+  const script = pkg.scripts[scriptKey] || '';
+  const wsMatch = script.match(/--workspace=(\S+)/);
+  if (wsMatch) return wsMatch[1];
+  const prefixMatch = script.match(/--prefix\s+(\S+)/);
+  if (prefixMatch) return prefixMatch[1];
+  return null;
+}
+
+/**
+ * Copy the .next build output to BUILD_DEST_DIR/<workspace-dir>/.
+ * Skips silently when BUILD_DEST_DIR is not set or the source doesn't exist.
+ */
+function copyBuildOutput(scriptKey) {
+  if (!BUILD_DEST_DIR) return;
+
+  const wsDir = getWorkspaceDir(scriptKey);
+  if (!wsDir) return;
+
+  const src = path.join(ROOT, wsDir, '.next');
+  if (!fs.existsSync(src)) return;
+
+  const destBase = path.resolve(ROOT, BUILD_DEST_DIR);
+  const dest = path.join(destBase, wsDir);
+
+  console.log(`\x1b[36m[run-app]\x1b[0m Copying build output → ${path.relative(ROOT, dest) || dest}`);
+
+  // Ensure destination exists, then copy recursively
+  fs.mkdirSync(dest, { recursive: true });
+  fs.cpSync(src, path.join(dest, '.next'), { recursive: true, force: true });
+
+  // Also copy package.json and next.config.js for standalone deployments
+  for (const file of ['package.json', 'next.config.js']) {
+    const fileSrc = path.join(ROOT, wsDir, file);
+    if (fs.existsSync(fileSrc)) {
+      fs.cpSync(fileSrc, path.join(dest, file), { force: true });
+    }
+  }
+}
 
 // ── Single-app mode ────────────────────────────────────────
 
@@ -58,7 +110,10 @@ if (appName) {
     stdio: 'inherit',
     shell: true,
   });
-  child.on('exit', (code) => process.exit(code ?? 1));
+  child.on('exit', (code) => {
+    if (code === 0 && action === 'build') copyBuildOutput(scriptKey);
+    process.exit(code ?? 1);
+  });
   child.on('error', (err) => {
     console.error(`[run-app] ${scriptKey} error: ${err.message}`);
     process.exit(1);
@@ -104,6 +159,7 @@ for (const key of buildKeys) {
   console.log(`\x1b[36m[run-app]\x1b[0m ── ${key} ──`);
   try {
     execSync(`npm run ${key}`, { cwd: ROOT, stdio: 'inherit' });
+    copyBuildOutput(key);
   } catch (err) {
     console.error(`\x1b[31m[run-app]\x1b[0m ${key} failed`);
     failed = true;

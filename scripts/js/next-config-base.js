@@ -6,13 +6,16 @@
  *
  * Centralises the common config that every Next.js app in the monorepo needs:
  *   • NEXT_BUILD_OUTPUT  →  output   (conditional — omitted when env var is absent)
- *   • BUILD_DEST_DIR     →  distDir  (conditional — omitted when env var is absent)
  *   • Default image remotePatterns derived from NEXT_PUBLIC_API_URL
  *   • transpilePackages: ['@rutba/pos-shared']
  *
+ * BUILD_DEST_DIR is NOT mapped to distDir because Next.js/Turbopack forbids
+ * distDir outside the project directory.  Instead, run-app.js copies the
+ * build output to BUILD_DEST_DIR/<app> after each successful build.
+ *
  * Usage (from any app's next.config.js):
  *
- *   const { createNextConfig } = require('../scripts/next-config-base');
+ *   const { createNextConfig } = require('../scripts/js/next-config-base');
  *   module.exports = createNextConfig({ experimental: { ... } });
  */
 
@@ -70,7 +73,6 @@ function createNextConfig(overrides = {}) {
   const base = {
     reactStrictMode: true,
     ...(process.env.NEXT_BUILD_OUTPUT ? { output: process.env.NEXT_BUILD_OUTPUT } : {}),
-    ...(process.env.BUILD_DEST_DIR ? { distDir: process.env.BUILD_DEST_DIR } : {}),
     transpilePackages: ['@rutba/pos-shared'],
     images: {
       remotePatterns: generateRemotePatterns(DEFAULT_IMAGE_URLS),
