@@ -62,9 +62,9 @@
     "docker:env": "node scripts/js/generate-docker-env.js",
 
     "build": "node scripts/js/run-app.js build",
-    "start": "node scripts/js/run-app.js start"
+    "start": "node scripts/js/run-app.js start",
 
-
+    "postinstall": "npm install --prefix pos-strapi"
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^7.2.0",
