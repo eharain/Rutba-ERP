@@ -19,7 +19,7 @@
  *   - All NEXT_PUBLIC_* globals (for build args + client env)
  *   - POS_STRAPI__* stripped → STRAPI_* (DATABASE_CLIENT, etc.)
  *   - RUTBA_WEB__* stripped → WEB_* (NEXTAUTH_SECRET, etc.)
- *   - PORT_<APP> derived from NEXT_PUBLIC_<APP>_URL
+ *   - PORT_<APP> from explicit PREFIX__PORT config
  *   - CORS_ORIGINS auto-computed
  *
  * Then run:  docker compose --env-file .env.docker up --build
@@ -58,14 +58,16 @@ if (errors.length) {
   process.exit(1);
 }
 
-// ── derive per-app ports from NEXT_PUBLIC_*_URL ────────────
+// ── derive per-app ports from explicit PREFIX__PORT ────────
 
 const portMap = {};
-const urlPattern = /^NEXT_PUBLIC_(\w+)_URL$/;
-for (const [key, value] of Object.entries(globals)) {
-  const m = key.match(urlPattern);
-  if (m && m[1] !== 'API' && m[1] !== 'IMAGE' && m[1] !== 'IMAGE_HOST') {
-    try { portMap[m[1]] = new URL(value).port; } catch {}
+for (const [prefix, prefixVars] of Object.entries(appVars)) {
+  if (prefixVars.PORT) {
+    // Convert prefix to short name: POS_AUTH → AUTH, RUTBA_WEB → WEB
+    const shortName = prefix
+      .replace(/^POS_/, '')
+      .replace(/^RUTBA_/, '');
+    portMap[shortName] = prefixVars.PORT;
   }
 }
 
@@ -75,9 +77,6 @@ const strapiPort = strapiVars.PORT || '4010';
 
 // Web port
 const webVars = appVars['RUTBA_WEB'] || {};
-if (webVars.PORT && !portMap['WEB']) {
-  portMap['WEB'] = webVars.PORT;
-}
 
 // Compute CORS origins (exclude Strapi's own)
 const strapiOrigins = new Set([
@@ -105,11 +104,10 @@ for (const [k, v] of Object.entries(globals)) {
   lines.push(`${k}=${v}`);
 }
 
-lines.push('', '# --- Per-app ports (derived from NEXT_PUBLIC_*_URL) ---');
+lines.push('', '# --- Per-app ports (from PREFIX__PORT config) ---');
 for (const [name, port] of Object.entries(portMap)) {
   lines.push(`PORT_${name}=${port}`);
 }
-lines.push(`PORT_STRAPI=${strapiPort}`);
 
 lines.push('', '# --- Strapi runtime (POS_STRAPI__ stripped) ---');
 for (const [k, v] of Object.entries(strapiVars)) {

@@ -1,6 +1,6 @@
-# Rutba ERP — Production Deployment Guide (systemd)
+# Rutba ERP — Production Deployment Guide
 
-This guide covers every aspect of running Rutba ERP on a Linux server: first-time setup, environment configuration, normal deploys, rollback, log management, and troubleshooting.
+This guide covers deploying Rutba ERP: full-stack on a Linux server with systemd, or a single app (e.g. `rutba-web`) on a managed hosting platform like Hostinger.
 
 ---
 
@@ -18,8 +18,9 @@ This guide covers every aspect of running Rutba ERP on a Linux server: first-tim
 10. [Re-create Service Files](#10-re-create-service-files)
 11. [Update Environment Variables](#11-update-environment-variables)
 12. [Automated Deploys](#12-automated-deploys)
-13. [Troubleshooting](#13-troubleshooting)
-14. [Script Reference](#14-script-reference)
+13. [Deploying a Single App on Hostinger / PaaS](#13-deploying-a-single-app-on-hostinger--paas)
+14. [Troubleshooting](#14-troubleshooting)
+15. [Script Reference](#15-script-reference)
 
 ---
 
@@ -193,11 +194,14 @@ Examples:
   RUTBA_WEB__NEXTAUTH_SECRET=abc                  → NEXTAUTH_SECRET=abc (rutba-web only)
 ```
 
-**Port resolution order** (first match wins):
-1. Explicit `PREFIX__PORT` in env file
-2. Port embedded in `NEXT_PUBLIC_<APP>_URL` (e.g. `:4003`)
-3. No port in URL → scheme default (`http` → 80, `https` → 443)
-4. Multiple apps sharing the same host with no explicit port → incremental from 40000
+**Port resolution** — PORT is only set when explicitly configured:
+
+1. **`process.env.PORT`** — platform / host override (Hostinger, Docker, CI). This **always wins**, even over `PREFIX__PORT` in env files.
+2. Explicit `PREFIX__PORT` in env file (e.g. `POS_STRAPI__PORT=4010`)
+
+No PORT is auto-derived from URLs. If neither source provides a PORT, the app uses its own default (e.g. Next.js defaults to 3000, Strapi to 1337).
+
+> **Why does platform PORT win?** Managed platforms like Hostinger, Azure App Service, and Railway set `PORT` in the environment to tell your app which port to bind. The loader must respect this — the platform's reverse proxy forwards traffic to that specific port.
 
 **Required variables** are declared in `scripts/env-config.js`. The loader validates them at startup:
 - `severity: 'error'` → missing variable aborts the service
@@ -284,7 +288,8 @@ RUTBA_WEB__NEXTAUTH_SECRET=<generate>
 RUTBA_WEB__GOOGLE_CLIENT_KEY=<from Google Cloud Console>
 RUTBA_WEB__GOOGLE_SECRET_KEY=<from Google Cloud Console>
 
-# ── Per-app ports (optional — loader derives from URL if omitted) ──
+# ── Per-app ports ────────────────────────────────────────────
+# On managed platforms the platform PORT env var wins automatically.
 POS_AUTH__PORT=4003
 POS_STOCK__PORT=4001
 POS_SALE__PORT=4002
@@ -654,7 +659,125 @@ For CI-driven deploys, use **env-var mode** (no `.env` file — the loader reads
 
 ---
 
-## 13. Troubleshooting
+## 13. Deploying a Single App on Hostinger / PaaS
+
+You can deploy individual Next.js apps (e.g. `rutba-web`) on managed Node.js platforms without the full systemd setup. The monorepo's npm workspace structure supports this directly.
+
+### 13.1 How It Works
+
+- The repo root is an **npm workspace** — `npm install` at the root installs dependencies for all apps.
+- Each Next.js app has `output: 'standalone'` in `next.config.js`, producing a self-contained `.next/standalone/` directory.
+- Both `next dev` and `next start` natively read the **`PORT`** environment variable. The platform sets `PORT`; the app binds to it automatically.
+- `scripts/load-env.js` also respects `PORT` — if the platform provides it, the loader will **never** override it.
+
+### 13.2 Hostinger Setup
+
+On Hostinger's Node.js hosting panel, configure:
+
+| Setting | Value |
+|---|---|
+| **Root directory** | `/` (repo root — required for npm workspaces) |
+| **Install command** | `npm install` |
+| **Build command** | `npm run build:web` |
+| **Start command** | `npm run start:web` |
+
+> `npm run build:web` and `npm run start:web` are defined in the root `package.json` and go through `scripts/load-env.js`, which handles all environment variable injection.
+
+#### Environment Variables on Hostinger
+
+Set these in Hostinger's **Environment variables** panel (not in `.env` files — the platform provides them):
+
+```ini
+# Required — the loader detects "env-var mode" (no .env file on platform)
+ENVIRONMENT=production
+
+# Public URLs (baked at build time by Next.js)
+NEXT_PUBLIC_API_URL=https://api.rutba.pk/api/
+NEXT_PUBLIC_IMAGE_URL=https://api.rutba.pk
+NEXT_PUBLIC_WEB_URL=https://rutba.pk
+NEXT_PUBLIC_IMAGE_HOST_PROTOCOL=https
+NEXT_PUBLIC_IMAGE_HOST_NAME=api.rutba.pk
+NEXT_PUBLIC_IMAGE_HOST_PORT=443
+
+# NextAuth (rutba-web specific)
+RUTBA_WEB__NEXTAUTH_URL=https://rutba.pk
+RUTBA_WEB__NEXTAUTH_SECRET=<generate with: openssl rand -base64 32>
+RUTBA_WEB__GOOGLE_CLIENT_KEY=<from Google Cloud Console>
+RUTBA_WEB__GOOGLE_SECRET_KEY=<from Google Cloud Console>
+```
+
+> **Do NOT set `PORT`** — Hostinger sets it automatically. The loader and Next.js both respect the platform-provided `PORT`.
+
+> **No `.env` file needed** — When there is no `.env` file on the platform, the loader runs in **env-var mode** and reads all configuration from `process.env`.
+
+### 13.3 Other PaaS Platforms
+
+The same pattern works on any Node.js hosting that sets `PORT`:
+
+| Platform | Install | Build | Start |
+|---|---|---|---|
+| **Hostinger** | `npm install` | `npm run build:web` | `npm run start:web` |
+| **Railway** | `npm install` | `npm run build:web` | `npm run start:web` |
+| **Render** | `npm install` | `npm run build:web` | `npm run start:web` |
+| **Azure App Service** | `npm install` | `npm run build:web` | `npm run start:web` |
+| **Fly.io** | `npm install` | `npm run build:web` | `npm run start:web` |
+
+For **any other app** in the monorepo, replace `:web` with the app's name:
+
+```bash
+# Build & start rutba-crm on a PaaS
+npm run build:crm
+npm run start:crm
+```
+
+### 13.4 DNS / Domain Setup
+
+Before deploying, ensure your domain points to the hosting platform:
+
+1. **In Hostinger DNS zone** (or your DNS provider):
+   - `A` record: `rutba.pk` → Hostinger server IP
+   - `CNAME` record: `www.rutba.pk` → `rutba.pk` (or Hostinger's provided hostname)
+
+2. **Verify propagation:**
+   ```bash
+   # Check A record
+   dig rutba.pk A +short
+   # or
+   nslookup rutba.pk
+   ```
+
+3. **SSL:** Hostinger provides free SSL certificates. Enable it in the Hostinger panel after the domain resolves correctly.
+
+4. **NEXTAUTH_URL** must match the final public URL (with `https://`).
+
+### 13.5 Deploying Without `load-env.js` (Direct Start)
+
+If the platform cannot run the monorepo root (e.g. it expects a single `package.json`), you can start `rutba-web` directly:
+
+```bash
+# Install from repo root (workspace hoisting)
+npm install
+
+# Build rutba-web
+npm run build --workspace=rutba-web
+
+# Start — Next.js reads PORT from the environment natively
+npm run start --workspace=rutba-web
+```
+
+In this case the app reads `NEXT_PUBLIC_*` vars at build time and `PORT` at runtime — no `load-env.js` required. However, app-specific vars like `NEXTAUTH_SECRET` must be set without the `RUTBA_WEB__` prefix (since `load-env.js` is not stripping prefixes):
+
+```ini
+# Without load-env.js — set bare variable names
+NEXTAUTH_URL=https://rutba.pk
+NEXTAUTH_SECRET=<generate>
+GOOGLE_CLIENT_KEY=<from Google Cloud Console>
+GOOGLE_SECRET_KEY=<from Google Cloud Console>
+```
+
+---
+
+## 14. Troubleshooting
 
 ### Service won't start
 
@@ -758,7 +881,7 @@ cat /var/log/rutba_log_rotate.log
 
 ---
 
-## 14. Script Reference
+## 15. Script Reference
 
 | Script | Run As | Purpose |
 |---|---|---|

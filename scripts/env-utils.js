@@ -52,7 +52,12 @@ function parseEnvFile(filePath) {
 
 // ── build prefix list from workspace dirs ──────────────────
 
-function getAppPrefixes() {
+/**
+ * Returns all launchable app directories with their env prefixes.
+ *
+ * @returns {{ dir: string, prefix: string }[]}
+ */
+function getAppDirs() {
   const pkg = JSON.parse(
     fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')
   );
@@ -72,7 +77,14 @@ function getAppPrefixes() {
   }
   // pos-strapi is not in workspaces but is a launchable app
   dirs.push('pos-strapi');
-  return dirs.map((d) => d.toUpperCase().replace(/-/g, '_'));
+  return dirs.map((d) => ({
+    dir: d,
+    prefix: d.toUpperCase().replace(/-/g, '_'),
+  }));
+}
+
+function getAppPrefixes() {
+  return getAppDirs().map((a) => a.prefix);
 }
 
 // ── resolve variables (two-mode) ───────────────────────────
@@ -118,9 +130,12 @@ function resolveAllVariables(opts = {}) {
       'development';
 
     // Collect only relevant keys from process.env
+    const GLOBAL_PASSTHROUGH = new Set([
+      'ENVIRONMENT', 'BUILD_OUTPUT', 'BUILD_DIR',
+    ]);
     vars = {};
     for (const [key, value] of Object.entries(process.env)) {
-      if (key === 'ENVIRONMENT') {
+      if (GLOBAL_PASSTHROUGH.has(key)) {
         vars[key] = value;
         continue;
       }
@@ -223,6 +238,91 @@ function validateVariables(globals, appVars, allPrefixes, opts = {}) {
   return { errors, warnings };
 }
 
+// ── build per-app env map (shared by load-env + generate-app-env) ──
+
+/**
+ * Builds the final env map for a single app — exactly what load-env.js
+ * would inject into the child process.
+ *
+ * Replicates:
+ *   Step 4 — globals + prefix-stripped app vars
+ *   Step 5 — PORT pass-through (explicit config only, no auto-derivation)
+ *   Step 6 — BUILD_OUTPUT / BUILD_DIR resolution for Next.js apps
+ *   Step 7 — CORS_ORIGINS for POS_STRAPI
+ *
+ * PORT is only set when explicitly configured:
+ *   - process.env.PORT (platform/host override — always wins)
+ *   - PREFIX__PORT in config files (e.g. POS_AUTH__PORT=4003)
+ * No PORT is derived from URLs or invented automatically.
+ *
+ * @param {Object}  opts
+ * @param {string}  opts.targetDir       Workspace directory name (e.g. 'pos-auth')
+ * @param {string}  opts.targetPrefix    Env prefix (e.g. 'POS_AUTH')
+ * @param {Object<string,string>} opts.globals    Global variables
+ * @param {Object<string,Object<string,string>>} opts.appVars  Per-prefix vars
+ * @param {Set<string>}           opts.allOrigins All URL origins found in vars
+ * @param {string}  [opts.platformPort]  process.env.PORT (platform override)
+ * @returns {Object<string,string>} The flat key=value map for the app
+ */
+function buildEnvForApp(opts) {
+  const {
+    targetDir, targetPrefix,
+    globals, appVars, allOrigins,
+    platformPort,
+  } = opts;
+
+  const envForApp = {};
+
+  // Globals go to every app
+  for (const [key, value] of Object.entries(globals)) {
+    envForApp[key] = value;
+  }
+
+  // App-specific vars (prefix stripped — includes PREFIX__PORT when set)
+  const targetAppVars = appVars[targetPrefix] || {};
+  for (const [key, value] of Object.entries(targetAppVars)) {
+    envForApp[key] = value;
+  }
+
+  // ── PORT — explicit config only ─────────────────────────
+  // Platform-provided PORT (Hostinger, Railway, Docker, CI) always wins
+  if (platformPort) {
+    envForApp.PORT = platformPort;
+  }
+  // Otherwise PORT comes from PREFIX__PORT (already in envForApp via
+  // targetAppVars above) or is simply not set — the app uses its own default.
+
+  // ── BUILD_OUTPUT / BUILD_DIR — Next.js apps only ────────
+  // Strapi is not a Next.js app; these variables are irrelevant for it.
+  if (targetPrefix !== 'POS_STRAPI') {
+    // BUILD_OUTPUT: app-specific wins, then global, then omit (Next.js default)
+    if (!envForApp.BUILD_OUTPUT && globals.BUILD_OUTPUT) {
+      envForApp.BUILD_OUTPUT = globals.BUILD_OUTPUT;
+    }
+
+    // BUILD_DIR: app-specific wins, then global (computed as relative path
+    // from the app directory to <root>/<BUILD_DIR>/<app-dir>)
+    if (!envForApp.BUILD_DIR && globals.BUILD_DIR) {
+      envForApp.BUILD_DIR = path.join('..', globals.BUILD_DIR, targetDir);
+    }
+  }
+
+  // ── CORS_ORIGINS for pos-strapi ─────────────────────────
+  if (targetPrefix === 'POS_STRAPI') {
+    const strapiPort = envForApp.PORT || '4010';
+    const strapiOrigins = [
+      `http://localhost:${strapiPort}`,
+      `http://127.0.0.1:${strapiPort}`,
+    ];
+    const corsOrigins = [...allOrigins].filter(
+      (o) => !strapiOrigins.includes(o)
+    );
+    envForApp.CORS_ORIGINS = corsOrigins.join(',');
+  }
+
+  return envForApp;
+}
+
 /** Extract the origin (scheme + host + port) from a URL string. */
 function extractOrigin(value) {
   try {
@@ -236,9 +336,11 @@ module.exports = {
   ROOT,
   DELIM,
   parseEnvFile,
+  getAppDirs,
   getAppPrefixes,
   resolveAllVariables,
   splitVariables,
   validateVariables,
+  buildEnvForApp,
   extractOrigin,
 };
