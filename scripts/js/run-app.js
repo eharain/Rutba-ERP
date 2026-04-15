@@ -18,7 +18,7 @@ const { execSync, spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 
-const ROOT = path.resolve(__dirname, '..');
+const ROOT = path.resolve(__dirname, '..', '..');
 const action = process.argv[2];       // build | start
 const appName = process.argv[3];      // e.g. "auth", "web", "web-user", or undefined
 
@@ -35,12 +35,13 @@ const pkg = JSON.parse(
 
 if (appName) {
   const scriptKey = `${action}:${appName}`;
-  if (!pkg.scripts[scriptKey]) {
+  const SELF_REFERENCING = new Set([`${action}:all`, action]);
+  if (!pkg.scripts[scriptKey] || SELF_REFERENCING.has(scriptKey)) {
     console.error(`[run-app] Unknown script: "${scriptKey}"`);
     console.error(
       '  Available:',
       Object.keys(pkg.scripts)
-        .filter((k) => k.startsWith(`${action}:`))
+        .filter((k) => k.startsWith(`${action}:`) && !SELF_REFERENCING.has(k))
         .join(', ')
     );
     process.exit(1);
@@ -78,8 +79,8 @@ if (action === 'start') {
   return;
 }
 
-// action === 'build' — sequential build of all apps (excluding desk and strapi)
-const EXCLUDED = new Set(['build:all', 'build:desk']);
+// action === 'build' — sequential build of all apps (excluding desk, strapi, :all, and self-referencing scripts)
+const EXCLUDED = new Set(['build:all', 'build:desk', 'build']);
 const buildKeys = Object.keys(pkg.scripts)
   .filter((k) => k.startsWith('build:') && !EXCLUDED.has(k));
 

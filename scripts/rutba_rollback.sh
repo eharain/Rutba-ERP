@@ -139,7 +139,7 @@ get_active_build_dir() {
 ###########################################
 
 write_all_units() {
-    local BUILD_DIR="$1"
+    local BUILD_DEST_DIR="$1"
     local NODE_BIN
     NODE_BIN=$(which node)
     local NPM_BIN
@@ -159,8 +159,8 @@ After=network.target
 Type=simple
 User=${RUN_USER}
 Group=${RUN_GROUP}
-WorkingDirectory=${BUILD_DIR}
-ExecStart=${NODE_BIN} ${BUILD_DIR}/scripts/load-env.js -- ${NPM_BIN} ${CMD}
+WorkingDirectory=${BUILD_DEST_DIR}
+ExecStart=${NODE_BIN} ${BUILD_DEST_DIR}/scripts/load-env.js -- ${NPM_BIN} ${CMD}
 Restart=on-failure
 RestartSec=10
 StandardOutput=journal
@@ -175,7 +175,7 @@ EOF
         systemctl enable "${svc}.service" 2>/dev/null || true
     done
 
-    log_ok "Systemd units re-written → ${BUILD_DIR}"
+    log_ok "Systemd units re-written → ${BUILD_DEST_DIR}"
 }
 
 stop_services() {

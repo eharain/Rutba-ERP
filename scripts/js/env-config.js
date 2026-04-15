@@ -34,8 +34,8 @@ const GLOBAL_VARS = [
   { key: 'NEXT_PUBLIC_IMAGE_HOST_PROTOCOL',  severity: 'error', description: 'Image host protocol (http/https)' },
   { key: 'NEXT_PUBLIC_IMAGE_HOST_NAME',      severity: 'error', description: 'Image host name' },
   { key: 'NEXT_PUBLIC_IMAGE_HOST_PORT',      severity: 'error', description: 'Image host port' },
-  { key: 'BUILD_OUTPUT',                     severity: 'warn',  description: 'Next.js build output type (standalone, export). Omit for Next.js default.' },
-  { key: 'BUILD_DIR',                        severity: 'warn',  description: 'Common build output directory relative to workspace root (e.g. dist)' },
+  { key: 'NEXT_BUILD_OUTPUT',                     severity: 'warn',  description: 'Next.js build output type (standalone, export). Omit for Next.js default.' },
+  { key: 'BUILD_DEST_DIR',                        severity: 'warn',  description: 'Common build output directory relative to workspace root (e.g. dist)' },
 ];
 
 // ── App-specific variables (keyed by prefix, without PREFIX__) ──
@@ -75,8 +75,8 @@ const APP_VARS = {
 /** Default PORT-only entry for apps not explicitly listed above. */
 const DEFAULT_APP_VARS = [
   { key: 'PORT',         severity: 'warn', description: 'App listen port' },
-  { key: 'BUILD_OUTPUT', severity: 'warn', description: 'Next.js build output type override (standalone, export)' },
-  { key: 'BUILD_DIR',    severity: 'warn', description: 'Build output directory override' },
+  { key: 'NEXT_BUILD_OUTPUT', severity: 'warn', description: 'Next.js build output type override (standalone, export)' },
+  { key: 'BUILD_DEST_DIR',    severity: 'warn', description: 'Build output directory override' },
 ];
 
 module.exports = { GLOBAL_VARS, APP_VARS, DEFAULT_APP_VARS };
