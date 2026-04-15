@@ -58,6 +58,27 @@ function getWorkspaceDir(scriptKey) {
 
 /**
  * Copy the .next build output to BUILD_DEST_DIR/<workspace-dir>/.
+ * When the build is a standalone build (NEXT_BUILD_OUTPUT=standalone), the
+ * output is additionally "flattened" so the destination directory is a
+ * self-contained deployment folder that can be started with:
+ *
+ *   node server.js          (or)
+ *   npm run start
+ *
+ * Standalone layout produced by Next.js in a monorepo:
+ *   .next/standalone/node_modules/          — minimal node_modules
+ *   .next/standalone/<workspace>/server.js  — entry point
+ *   .next/standalone/<workspace>/.next/     — server chunks & manifests
+ *   .next/static/                           — client-side static assets (NOT in standalone)
+ *
+ * Flattened destination:
+ *   <dest>/server.js
+ *   <dest>/node_modules/
+ *   <dest>/.next/          (server chunks merged + static/)
+ *   <dest>/public/         (from source workspace)
+ *   <dest>/package.json    (with start script)
+ *   <dest>/next.config.js
+ *
  * Skips silently when BUILD_DEST_DIR is not set or the source doesn't exist.
  */
 function copyBuildOutput(scriptKey) {
@@ -71,19 +92,62 @@ function copyBuildOutput(scriptKey) {
 
   const destBase = path.resolve(ROOT, BUILD_DEST_DIR);
   const dest = path.join(destBase, wsDir);
+  const isStandalone = process.env.NEXT_BUILD_OUTPUT === 'standalone';
+  const standaloneSrc = path.join(src, 'standalone');
 
-  console.log(`\x1b[36m[run-app]\x1b[0m Copying build output → ${path.relative(ROOT, dest) || dest}`);
+  console.log(`\x1b[36m[run-app]\x1b[0m Copying build output → ${path.relative(ROOT, dest) || dest}${isStandalone ? ' (standalone)' : ''}`);
 
-  // Ensure destination exists, then copy recursively
+  // Ensure destination exists, then copy .next recursively
   fs.mkdirSync(dest, { recursive: true });
   fs.cpSync(src, path.join(dest, '.next'), { recursive: true, force: true });
 
-  // Also copy package.json and next.config.js for standalone deployments
+  // Also copy package.json and next.config.js
   for (const file of ['package.json', 'next.config.js']) {
     const fileSrc = path.join(ROOT, wsDir, file);
     if (fs.existsSync(fileSrc)) {
       fs.cpSync(fileSrc, path.join(dest, file), { force: true });
     }
+  }
+
+  // ── Standalone assembly ──────────────────────────────────
+  if (isStandalone && fs.existsSync(standaloneSrc)) {
+    console.log(`\x1b[36m[run-app]\x1b[0m Assembling standalone deployment…`);
+
+    // 1. Copy node_modules from standalone root
+    const standaloneModules = path.join(standaloneSrc, 'node_modules');
+    if (fs.existsSync(standaloneModules)) {
+      fs.cpSync(standaloneModules, path.join(dest, 'node_modules'), { recursive: true, force: true });
+    }
+
+    // 2. Copy server.js from standalone/<workspace>/
+    const standaloneApp = path.join(standaloneSrc, wsDir);
+    const serverJs = path.join(standaloneApp, 'server.js');
+    if (fs.existsSync(serverJs)) {
+      fs.cpSync(serverJs, path.join(dest, 'server.js'), { force: true });
+    }
+
+    // 3. Merge standalone server chunks (.next/server, manifests) into dest/.next
+    const standaloneNext = path.join(standaloneApp, '.next');
+    if (fs.existsSync(standaloneNext)) {
+      fs.cpSync(standaloneNext, path.join(dest, '.next'), { recursive: true, force: true });
+    }
+
+    // 4. Copy public/ from source workspace
+    const publicSrc = path.join(ROOT, wsDir, 'public');
+    if (fs.existsSync(publicSrc)) {
+      fs.cpSync(publicSrc, path.join(dest, 'public'), { recursive: true, force: true });
+    }
+
+    // 5. Rewrite package.json with a standalone start script
+    const destPkg = path.join(dest, 'package.json');
+    try {
+      const pkgData = JSON.parse(fs.readFileSync(destPkg, 'utf8'));
+      pkgData.scripts = { start: 'node server.js' };
+      delete pkgData.devDependencies;
+      fs.writeFileSync(destPkg, JSON.stringify(pkgData, null, 2) + '\n', 'utf8');
+    } catch { /* keep original package.json if parse fails */ }
+
+    console.log(`\x1b[32m[run-app]\x1b[0m Standalone ready → cd ${path.relative(ROOT, dest) || dest} && node server.js`);
   }
 }
 
