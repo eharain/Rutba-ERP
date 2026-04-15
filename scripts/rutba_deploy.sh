@@ -168,7 +168,7 @@ cleanup_legacy_wrapper_scripts() {
 # write_all_units <build_dir>
 # Re-writes every service file so paths point at <build_dir>.
 write_all_units() {
-    local BUILD_DIR="$1"
+    local BUILD_DEST_DIR="$1"
     local NODE_BIN
     NODE_BIN=$(which node)
     local NPM_BIN
@@ -188,8 +188,8 @@ After=network.target
 Type=simple
 User=${RUN_USER}
 Group=${RUN_GROUP}
-WorkingDirectory=${BUILD_DIR}
-ExecStart=${NODE_BIN} ${BUILD_DIR}/scripts/load-env.js -- ${NPM_BIN} ${CMD}
+WorkingDirectory=${BUILD_DEST_DIR}
+ExecStart=${NODE_BIN} ${BUILD_DEST_DIR}/scripts/load-env.js -- ${NPM_BIN} ${CMD}
 Restart=on-failure
 RestartSec=10
 StandardOutput=journal
@@ -204,7 +204,7 @@ EOF
         systemctl enable "${svc}.service" 2>/dev/null || true
     done
 
-    log_ok "Systemd units written → ${BUILD_DIR}"
+    log_ok "Systemd units written → ${BUILD_DEST_DIR}"
 }
 
 stop_services() {
@@ -416,9 +416,9 @@ fi
 
 mkdir -p "$BUILDS_DIR"
 TIMESTAMP=$(date '+%Y%m%d_%H%M%S')
-BUILD_DIR="${BUILDS_DIR}/build_${TIMESTAMP}_${BRANCH}"
+BUILD_DEST_DIR="${BUILDS_DIR}/build_${TIMESTAMP}_${BRANCH}"
 
-log "Cloning ${REPO_URL} (branch: ${BRANCH}) → ${BUILD_DIR} ..."
+log "Cloning ${REPO_URL} (branch: ${BRANCH}) → ${BUILD_DEST_DIR} ..."
 git clone --depth 1 -b "$BRANCH" "$REPO_URL" "$BUILD_DIR"
 
 cd "$BUILD_DIR"
@@ -553,7 +553,7 @@ fi
 # the systemd unit file — no wrapper scripts needed.
 cleanup_legacy_wrapper_scripts
 
-log "Writing systemd service units → ${BUILD_DIR} ..."
+log "Writing systemd service units → ${BUILD_DEST_DIR} ..."
 write_all_units "$BUILD_DIR"
 switch_active_link "$BUILD_DIR"
 
@@ -599,7 +599,7 @@ echo "  Date:    ${DEPLOY_DATE}"
 echo "  Branch:  ${BRANCH}"
 echo "  Commit:  ${COMMIT_HASH}"
 echo "  Build:   $(basename "$BUILD_DIR")"
-echo "  Active:  ${ACTIVE_LINK} → ${BUILD_DIR}"
+echo "  Active:  ${ACTIVE_LINK} → ${BUILD_DEST_DIR}"
 echo "  Env:     ${BUILDS_DIR}/.env*"
 echo "============================================"
 echo ""
@@ -620,11 +620,11 @@ echo ""
 echo "  Log rotation:"
 echo "    Cron: nightly at 02:00 (vacuums journal + rotates deploy log)"
 echo "    Log:  /var/log/rutba_log_rotate.log"
-echo "    Run:  sudo bash ${BUILD_DIR}/scripts/rutba_log_rotate.sh"
+echo "    Run:  sudo bash ${BUILD_DEST_DIR}/scripts/rutba_log_rotate.sh"
 echo ""
 echo "  To edit environment:"
 echo "    sudo nano ${BUILDS_DIR}/.env.production"
 echo ""
 echo "  To rollback:"
-echo "    sudo bash ${BUILD_DIR}/scripts/rutba_rollback.sh"
+echo "    sudo bash ${BUILD_DEST_DIR}/scripts/rutba_rollback.sh"
 echo "============================================"

@@ -16,7 +16,7 @@ const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 
-const ROOT = path.resolve(__dirname, '..');
+const ROOT = path.resolve(__dirname, '..', '..');
 const prefix = process.argv[2];
 
 if (!prefix) {

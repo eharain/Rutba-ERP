@@ -85,7 +85,7 @@ const allPrefixes = getAppPrefixes();
 
 const { mode, environment, vars } = resolveAllVariables();
 console.log(
-  `[env] Mode: ${mode} | Environment: ${environment} | Target: ${targetPrefix}`
+  `[env] Environment Mode: ${mode} | Environment: ${environment} | Target: ${targetPrefix}`
 );
 
 // ── 2. Split global vs app-specific ────────────────────────

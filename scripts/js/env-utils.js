@@ -23,7 +23,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const ROOT = path.resolve(__dirname, '..');
+const ROOT = path.resolve(__dirname, '..', '..');
 const DELIM = '__';
 
 // ── .env file parser ───────────────────────────────────────
@@ -131,7 +131,7 @@ function resolveAllVariables(opts = {}) {
 
     // Collect only relevant keys from process.env
     const GLOBAL_PASSTHROUGH = new Set([
-      'ENVIRONMENT', 'BUILD_OUTPUT', 'BUILD_DIR',
+      'ENVIRONMENT', 'NEXT_BUILD_OUTPUT', 'BUILD_DEST_DIR',
     ]);
     vars = {};
     for (const [key, value] of Object.entries(process.env)) {
@@ -247,7 +247,7 @@ function validateVariables(globals, appVars, allPrefixes, opts = {}) {
  * Replicates:
  *   Step 4 — globals + prefix-stripped app vars
  *   Step 5 — PORT pass-through (explicit config only, no auto-derivation)
- *   Step 6 — BUILD_OUTPUT / BUILD_DIR resolution for Next.js apps
+ *   Step 6 — NEXT_BUILD_OUTPUT / BUILD_DEST_DIR resolution for Next.js apps
  *   Step 7 — CORS_ORIGINS for POS_STRAPI
  *
  * PORT is only set when explicitly configured:
@@ -292,18 +292,18 @@ function buildEnvForApp(opts) {
   // Otherwise PORT comes from PREFIX__PORT (already in envForApp via
   // targetAppVars above) or is simply not set — the app uses its own default.
 
-  // ── BUILD_OUTPUT / BUILD_DIR — Next.js apps only ────────
+  // ── NEXT_BUILD_OUTPUT / BUILD_DEST_DIR — Next.js apps only ────────
   // Strapi is not a Next.js app; these variables are irrelevant for it.
   if (targetPrefix !== 'POS_STRAPI') {
-    // BUILD_OUTPUT: app-specific wins, then global, then omit (Next.js default)
-    if (!envForApp.BUILD_OUTPUT && globals.BUILD_OUTPUT) {
-      envForApp.BUILD_OUTPUT = globals.BUILD_OUTPUT;
+    // NEXT_BUILD_OUTPUT: app-specific wins, then global, then omit (Next.js default)
+    if (!envForApp.NEXT_BUILD_OUTPUT && globals.NEXT_BUILD_OUTPUT) {
+      envForApp.NEXT_BUILD_OUTPUT = globals.NEXT_BUILD_OUTPUT;
     }
 
-    // BUILD_DIR: app-specific wins, then global (computed as relative path
-    // from the app directory to <root>/<BUILD_DIR>/<app-dir>)
-    if (!envForApp.BUILD_DIR && globals.BUILD_DIR) {
-      envForApp.BUILD_DIR = path.join('..', globals.BUILD_DIR, targetDir);
+    // BUILD_DEST_DIR: app-specific wins, then global (computed as relative path
+    // from the app directory to <root>/<BUILD_DEST_DIR>/<app-dir>)
+    if (!envForApp.BUILD_DEST_DIR && globals.BUILD_DEST_DIR) {
+      envForApp.BUILD_DEST_DIR = path.join('..', globals.BUILD_DEST_DIR, targetDir);
     }
   }
 

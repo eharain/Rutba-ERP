@@ -5,8 +5,8 @@
  * scripts/next-config-base.js — Shared Next.js configuration factory
  *
  * Centralises the common config that every Next.js app in the monorepo needs:
- *   • BUILD_OUTPUT  →  output   (conditional — omitted when env var is absent)
- *   • BUILD_DIR     →  distDir  (conditional — omitted when env var is absent)
+ *   • NEXT_BUILD_OUTPUT  →  output   (conditional — omitted when env var is absent)
+ *   • BUILD_DEST_DIR     →  distDir  (conditional — omitted when env var is absent)
  *   • Default image remotePatterns derived from NEXT_PUBLIC_API_URL
  *   • transpilePackages: ['@rutba/pos-shared']
  *
@@ -69,8 +69,8 @@ const DEFAULT_IMAGE_URLS = [
 function createNextConfig(overrides = {}) {
   const base = {
     reactStrictMode: true,
-    ...(process.env.BUILD_OUTPUT ? { output: process.env.BUILD_OUTPUT } : {}),
-    ...(process.env.BUILD_DIR ? { distDir: process.env.BUILD_DIR } : {}),
+    ...(process.env.NEXT_BUILD_OUTPUT ? { output: process.env.NEXT_BUILD_OUTPUT } : {}),
+    ...(process.env.BUILD_DEST_DIR ? { distDir: process.env.BUILD_DEST_DIR } : {}),
     transpilePackages: ['@rutba/pos-shared'],
     images: {
       remotePatterns: generateRemotePatterns(DEFAULT_IMAGE_URLS),
