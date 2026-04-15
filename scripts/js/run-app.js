@@ -64,9 +64,12 @@ if (appName) {
 // ── All-apps mode ──────────────────────────────────────────
 
 if (action === 'start') {
-  // Delegate to run-all.js which handles parallel start + strapi-first delay
-  console.log('\x1b[36m[run-app]\x1b[0m Delegating to run-all.js for parallel start');
-  const child = spawn('node', [path.join(__dirname, 'run-all.js'), 'start'], {
+  // Delegate to run-all.js which handles parallel start + strapi-first delay.
+  // Pass the app name through so single-app mode is honoured there too.
+  console.log('\x1b[36m[run-app]\x1b[0m Delegating to run-all.js for start');
+  const runAllArgs = [path.join(__dirname, 'run-all.js'), 'start'];
+  if (appName) runAllArgs.push(appName);
+  const child = spawn('node', runAllArgs, {
     cwd: ROOT,
     stdio: 'inherit',
     shell: true,
