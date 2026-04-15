@@ -1,12 +1,9 @@
+const { createNextConfig } = require('../scripts/next-config-base');
+
 /** @type {import('next').NextConfig} */
-
-const nextConfig = {
-    reactStrictMode: true,
-    output: 'standalone',
-    transpilePackages: ['@rutba/pos-shared'],
-    experimental: {
-        disableOptimizedLoading: true,
-    },
-};
-
-module.exports = nextConfig;
+module.exports = createNextConfig({
+  images: false,
+  experimental: {
+    disableOptimizedLoading: true,
+  },
+});

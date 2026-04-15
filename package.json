@@ -42,7 +42,7 @@
     "start:payroll": "node scripts/load-env.js -- npm run start --workspace=rutba-payroll",
     "start:cms": "node scripts/load-env.js -- npm run start --workspace=rutba-cms",
     "start:social": "node scripts/load-env.js -- npm run start --workspace=rutba-social",
-    "start:all": "node scripts/run-all.js start",
+
     "build:strapi": "node scripts/load-env.js -- npm --prefix pos-strapi run build",
     "build:auth": "node scripts/load-env.js -- npm run build --workspace=pos-auth",
     "build:stock": "node scripts/load-env.js -- npm run build --workspace=pos-stock",
@@ -55,11 +55,16 @@
     "build:payroll": "node scripts/load-env.js -- npm run build --workspace=rutba-payroll",
     "build:cms": "node scripts/load-env.js -- npm run build --workspace=rutba-cms",
     "build:social": "node scripts/load-env.js -- npm run build --workspace=rutba-social",
-    "build": "npm run build:auth && npm run build:stock && npm run build:sale && npm run build:web && npm run build:web-user && npm run build:crm && npm run build:hr && npm run build:accounts && npm run build:payroll && npm run build:cms && npm run build:social",
-    "build:all": "npm run build:auth && npm run build:stock && npm run build:sale && npm run build:web && npm run build:web-user && npm run build:crm && npm run build:hr && npm run build:accounts && npm run build:payroll && npm run build:cms && npm run build:social",
-    
-    "docker:env": "node scripts/generate-docker-env.js"
-    
+
+    "build:all": "node scripts/run-app.js build",
+    "start:all": "node scripts/run-app.js start",
+
+    "docker:env": "node scripts/generate-docker-env.js",
+
+    "build": "node scripts/run-app.js build",
+    "start": "node scripts/run-app.js start"
+
+
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^7.2.0",

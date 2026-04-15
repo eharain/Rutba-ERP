@@ -1,21 +1,20 @@
+const { createNextConfig } = require('../scripts/next-config-base');
+
 /** @type {import('next').NextConfig} */
-const nextConfig = {
+module.exports = createNextConfig({
   reactStrictMode: false,
-  output: 'standalone',
   images: {
 	remotePatterns: [
 	  {
 		protocol: process.env.NEXT_PUBLIC_IMAGE_HOST_PROTOCOL || 'http',
 		hostname: process.env.NEXT_PUBLIC_IMAGE_HOST_NAME || 'localhost',
 		port: process.env.NEXT_PUBLIC_IMAGE_HOST_PORT || '4010',
-		pathname: "/**",
+		pathname: '/**',
 	  },
 	],
   },
   typescript: {
 	// TODO: fix pre-existing type errors surfaced by React 19 / TS 5.7 upgrade
-	ignoreBuildErrors: true
-  }
-};
-
-module.exports = nextConfig;
+	ignoreBuildErrors: true,
+  },
+});
