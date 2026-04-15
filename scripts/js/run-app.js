@@ -23,9 +23,29 @@ const fs = require('fs');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const action = process.argv[2];       // build | start
-// CLI arg takes priority; fall back to RUTBA_APP env var for per-installation mode
-const appName = process.argv[3] || process.env.RUTBA_APP || null;
+// CLI arg takes priority; fall back to RUTBA_APP env var; then .rutba-app file at repo root
+const appName = process.argv[3] || process.env.RUTBA_APP || readFallbackAppName();
 const BUILD_DEST_DIR = process.env.BUILD_DEST_DIR || null;
+
+/**
+ * Read a fallback app name from .rutba-app at the repo root.
+ * This file is checked into the repo so CI/hosting platforms that lose env vars
+ * (e.g. Hostinger) still build the correct single app.
+ * Format: a single line containing the short app name (e.g. "web").
+ */
+function readFallbackAppName() {
+  try {
+    const file = path.join(ROOT, '.rutba-app');
+    if (fs.existsSync(file)) {
+      const name = fs.readFileSync(file, 'utf8').trim();
+      if (name) {
+        console.log(`\x1b[36m[run-app]\x1b[0m Read app name from .rutba-app: ${name}`);
+        return name;
+      }
+    }
+  } catch { /* ignore */ }
+  return null;
+}
 
 if (!action || !['build', 'start'].includes(action)) {
   console.error('Usage: node scripts/run-app.js <build|start> [app-name]');

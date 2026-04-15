@@ -4,7 +4,7 @@
 	"private": true,
 	"scripts": {
 		"dev": "next dev",
-		"build": "next build",
+		"build": "next build && node ../scripts/js/flatten-standalone.js",
 		"start": "next start",
 		"prettier": "prettier --write --list-different .",
 		"lint:js": "eslint --ignore-path .gitignore .",
