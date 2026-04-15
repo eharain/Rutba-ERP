@@ -235,7 +235,8 @@ if (appName) {
     shell: true,
   });
   child.on('exit', (code) => {
-    if (code === 0 && action === 'build') copyBuildOutput(scriptKey);
+    // TODO: re-enable copyBuildOutput when BUILD_DEST_DIR workflow is tested
+    // if (code === 0 && action === 'build') copyBuildOutput(scriptKey);
     process.exit(code ?? 1);
   });
   child.on('error', (err) => {
@@ -283,7 +284,8 @@ for (const key of buildKeys) {
   console.log(`\x1b[36m[run-app]\x1b[0m ── ${key} ──`);
   try {
     execSync(`npm run ${key}`, { cwd: ROOT, stdio: 'inherit' });
-    copyBuildOutput(key);
+    // TODO: re-enable copyBuildOutput when BUILD_DEST_DIR workflow is tested
+    // copyBuildOutput(key);
   } catch (err) {
     console.error(`\x1b[31m[run-app]\x1b[0m ${key} failed`);
     failed = true;
