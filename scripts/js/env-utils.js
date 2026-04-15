@@ -121,6 +121,15 @@ function resolveAllVariables(opts = {}) {
     const envFileVars = parseEnvFile(envFilePath);
     // .env.<ENVIRONMENT> overrides .env base vars
     vars = { ...rootVars, ...envFileVars };
+
+    // Operational globals that may come from the platform / system environment
+    // even in file mode (same principle as ENVIRONMENT and PORT).
+    const FILE_MODE_OVERRIDES = ['NEXT_BUILD_OUTPUT', 'BUILD_DEST_DIR'];
+    for (const key of FILE_MODE_OVERRIDES) {
+      if (!vars[key] && process.env[key]) {
+        vars[key] = process.env[key];
+      }
+    }
   } else {
     // ── Env-var mode ───────────────────────────────────────
     mode = 'env';
