@@ -10,6 +10,9 @@
  *   node scripts/run-app.js start           → starts all apps in parallel (via run-all.js)
  *   node scripts/run-app.js start web       → starts only rutba-web
  *
+ * Single-app mode is also activated by the RUTBA_APP environment variable:
+ *   RUTBA_APP=auth   node scripts/run-app.js build   → builds only pos-auth
+ *
  * The app short-name is the suffix used in package.json scripts:
  *   auth, stock, sale, web, web-user, crm, hr, accounts, payroll, cms, social, strapi
  */
@@ -20,7 +23,8 @@ const fs = require('fs');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const action = process.argv[2];       // build | start
-const appName = process.argv[3];      // e.g. "auth", "web", "web-user", or undefined
+// CLI arg takes priority; fall back to RUTBA_APP env var for per-installation mode
+const appName = process.argv[3] || process.env.RUTBA_APP || null;
 
 if (!action || !['build', 'start'].includes(action)) {
   console.error('Usage: node scripts/run-app.js <build|start> [app-name]');
@@ -35,9 +39,10 @@ const pkg = JSON.parse(
 
 if (appName) {
   const scriptKey = `${action}:${appName}`;
+  const source = process.argv[3] ? 'arg' : `RUTBA_APP=${appName}`;
   const SELF_REFERENCING = new Set([`${action}:all`, action]);
   if (!pkg.scripts[scriptKey] || SELF_REFERENCING.has(scriptKey)) {
-    console.error(`[run-app] Unknown script: "${scriptKey}"`);
+    console.error(`[run-app] Unknown script: "${scriptKey}" (from ${source})`);
     console.error(
       '  Available:',
       Object.keys(pkg.scripts)
@@ -47,7 +52,7 @@ if (appName) {
     process.exit(1);
   }
 
-  console.log(`\x1b[36m[run-app]\x1b[0m Running ${scriptKey}`);
+  console.log(`\x1b[36m[run-app]\x1b[0m Single-app mode (${source}) → ${scriptKey}`);
   const child = spawn('npm', ['run', scriptKey], {
     cwd: ROOT,
     stdio: 'inherit',
