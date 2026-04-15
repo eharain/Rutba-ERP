@@ -77,53 +77,93 @@ function getWorkspaceDir(scriptKey) {
 }
 
 /**
- * Copy the .next build output to BUILD_DEST_DIR/<workspace-dir>/.
- * When the build is a standalone build (NEXT_BUILD_OUTPUT=standalone), the
- * output is additionally "flattened" so the destination directory is a
- * self-contained deployment folder that can be started with:
+ * Copy build output to BUILD_DEST_DIR/<workspace-dir>/.
  *
- *   node server.js          (or)
- *   npm run start
+ * Handles two app types:
  *
- * Standalone layout produced by Next.js in a monorepo:
- *   .next/standalone/node_modules/          — minimal node_modules
- *   .next/standalone/<workspace>/server.js  — entry point
- *   .next/standalone/<workspace>/.next/     — server chunks & manifests
- *   .next/static/                           — client-side static assets (NOT in standalone)
+ * ── Next.js apps (have .next/) ─────────────────────────────
+ * Copies .next, package.json, next.config.js.
+ * When NEXT_BUILD_OUTPUT=standalone the standalone directory is flattened
+ * so server.js and node_modules/ are siblings (see flatten-standalone.js
+ * which runs inside each workspace's build script for Hostinger parity).
  *
- * Flattened destination:
- *   <dest>/server.js
- *   <dest>/node_modules/
- *   <dest>/.next/          (server chunks merged + static/)
- *   <dest>/public/         (from source workspace)
- *   <dest>/package.json    (with start script)
- *   <dest>/next.config.js
+ * ── Non-Next.js apps (e.g. Strapi — no .next/) ────────────
+ * Copies the entire workspace directory (source, config, package.json)
+ * excluding runtime/dev artifacts (node_modules, .tmp, .vs, .strapi,
+ * database/).  The target environment runs:
+ *   npm install && npm run build && npm run start
  *
- * Skips silently when BUILD_DEST_DIR is not set or the source doesn't exist.
+ * Skips silently when BUILD_DEST_DIR is not set.
  */
+
+// Directories / files to skip when copying a non-Next.js app source tree.
+// "source" mode (default): excludes heavy/runtime dirs — destination needs npm install + build.
+// "standalone" mode: minimal excludes — destination is immediately runnable with npm run start.
+const NON_NEXTJS_EXCLUDE_SOURCE = new Set([
+  'node_modules', '.tmp', '.vs', '.strapi', 'database',
+  '.env', '.env.local', 'package-lock.json',
+]);
+const NON_NEXTJS_EXCLUDE_STANDALONE = new Set([
+  '.tmp', '.vs', 'database',
+  '.env', '.env.local',
+]);
+
 function copyBuildOutput(scriptKey) {
   if (!BUILD_DEST_DIR) return;
 
   const wsDir = getWorkspaceDir(scriptKey);
   if (!wsDir) return;
 
-  const src = path.join(ROOT, wsDir, '.next');
-  if (!fs.existsSync(src)) return;
-
+  const wsSrc = path.join(ROOT, wsDir);
   const destBase = path.resolve(ROOT, BUILD_DEST_DIR);
   const dest = path.join(destBase, wsDir);
+  const nextDir = path.join(wsSrc, '.next');
+  const isNextApp = fs.existsSync(nextDir);
+
+  // ── Non-Next.js app (Strapi, etc.) ───────────────────────
+  if (!isNextApp) {
+    if (!fs.existsSync(path.join(wsSrc, 'package.json'))) return;
+
+    const isStandaloneNonNext = process.env.NEXT_BUILD_OUTPUT === 'standalone';
+    const excludeSet = isStandaloneNonNext
+      ? NON_NEXTJS_EXCLUDE_STANDALONE
+      : NON_NEXTJS_EXCLUDE_SOURCE;
+
+    console.log(
+      `\x1b[36m[run-app]\x1b[0m Copying app source → ${path.relative(ROOT, dest) || dest}` +
+      (isStandaloneNonNext ? ' (standalone — includes node_modules & build)' : '')
+    );
+    fs.mkdirSync(dest, { recursive: true });
+
+    // Copy everything except excluded dirs/files
+    for (const entry of fs.readdirSync(wsSrc)) {
+      if (excludeSet.has(entry)) continue;
+      const entrySrc = path.join(wsSrc, entry);
+      const entryDest = path.join(dest, entry);
+      fs.cpSync(entrySrc, entryDest, { recursive: true, force: true });
+    }
+
+    if (isStandaloneNonNext) {
+      console.log(`\x1b[32m[run-app]\x1b[0m Standalone ready → cd ${path.relative(ROOT, dest) || dest} && npm run start`);
+    } else {
+      console.log(`\x1b[32m[run-app]\x1b[0m App ready → cd ${path.relative(ROOT, dest) || dest} && npm install && npm run build && npm run start`);
+    }
+    return;
+  }
+
+  // ── Next.js app ──────────────────────────────────────────
   const isStandalone = process.env.NEXT_BUILD_OUTPUT === 'standalone';
-  const standaloneSrc = path.join(src, 'standalone');
+  const standaloneSrc = path.join(nextDir, 'standalone');
 
   console.log(`\x1b[36m[run-app]\x1b[0m Copying build output → ${path.relative(ROOT, dest) || dest}${isStandalone ? ' (standalone)' : ''}`);
 
   // Ensure destination exists, then copy .next recursively
   fs.mkdirSync(dest, { recursive: true });
-  fs.cpSync(src, path.join(dest, '.next'), { recursive: true, force: true });
+  fs.cpSync(nextDir, path.join(dest, '.next'), { recursive: true, force: true });
 
   // Also copy package.json and next.config.js
   for (const file of ['package.json', 'next.config.js']) {
-    const fileSrc = path.join(ROOT, wsDir, file);
+    const fileSrc = path.join(wsSrc, file);
     if (fs.existsSync(fileSrc)) {
       fs.cpSync(fileSrc, path.join(dest, file), { force: true });
     }
@@ -153,7 +193,7 @@ function copyBuildOutput(scriptKey) {
     }
 
     // 4. Copy public/ from source workspace
-    const publicSrc = path.join(ROOT, wsDir, 'public');
+    const publicSrc = path.join(wsSrc, 'public');
     if (fs.existsSync(publicSrc)) {
       fs.cpSync(publicSrc, path.join(dest, 'public'), { recursive: true, force: true });
     }
