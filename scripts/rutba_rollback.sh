@@ -265,8 +265,8 @@ stop_services
 
 # 2. Re-write systemd units → selected build
 log "Re-pointing systemd services → $(basename "$SELECTED_BUILD") ..."
-write_all_units "$SELECTED_BUILD"
 switch_active_link "$SELECTED_BUILD"
+write_all_units
 
 # 3. Restore database if requested
 if [ "$RESTORE_DB" = true ]; then

@@ -366,9 +366,11 @@ fi
 # the systemd unit file — no wrapper scripts needed.
 cleanup_legacy_wrapper_scripts
 
-log "Writing systemd service units → ${BUILD_DIR} ..."
-write_all_units "$BUILD_DIR"
+log "Switching active link to new build..."
 switch_active_link "$BUILD_DIR"
+
+log "Writing systemd service units → ${ACTIVE_LINK} ..."
+write_all_units
 
 start_services
 show_service_status

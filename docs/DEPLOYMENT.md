@@ -47,7 +47,7 @@ This guide covers deploying Rutba ERP: full-stack on a Linux server with systemd
             │  from /etc/systemd/system/rutba_*.service
             ▼
 ┌──────────────────────────────────────────────────────────────────┐
-│  13 systemd services  (each runs: node scripts/load-env.js --)   │
+│  13 systemd services  (each runs: node scripts/js/load-env.js --)│
 │                                                                  │
 │  rutba_pos_strapi   :4010  ─── MySQL 8                          │
 │  rutba_pos_auth     :4003                                        │
@@ -70,7 +70,9 @@ This guide covers deploying Rutba ERP: full-stack on a Linux server with systemd
 - Each deploy is a **self-contained directory** — no files are overwritten in-place.
 - **Rollback** re-points systemd unit files at an older build directory. No rebuild needed.
 - **Environment files** (`~/.env`, `.env.production`) live *outside* every build under `~/rutba_builds/` and are copied in automatically. Secrets never enter the repo.
-- `scripts/load-env.js` reads the env files and injects per-app variables (e.g. `POS_STRAPI__PORT` → `PORT` for Strapi only) before spawning each service process.
+- `scripts/js/load-env.js` reads the env files and injects per-app variables (e.g. `POS_STRAPI__PORT` → `PORT` for Strapi only) before spawning each service process.
+- `scripts/rutba_deployed_environment.sh` centralizes directory paths, user/group, and config defaults for all deployment scripts.
+- `scripts/rutba_services.sh` provides a unified service manager (`start`, `stop`, `restart`, `status`, `rebuild`, `tail`, `diagnose`).
 
 ---
 
@@ -173,7 +175,7 @@ The deploy script creates these directories automatically if they don't exist, b
 
 ### 5.1 How the Env Loader Works
 
-`scripts/load-env.js` runs in one of two modes, detected automatically:
+`scripts/js/load-env.js` runs in one of two modes, detected automatically:
 
 | Mode | Trigger | Source |
 |---|---|---|
@@ -203,7 +205,7 @@ No PORT is auto-derived from URLs. If neither source provides a PORT, the app us
 
 > **Why does platform PORT win?** Managed platforms like Hostinger, Azure App Service, and Railway set `PORT` in the environment to tell your app which port to bind. The loader must respect this — the platform's reverse proxy forwards traffic to that specific port.
 
-**Required variables** are declared in `scripts/env-config.js`. The loader validates them at startup:
+**Required variables** are declared in `scripts/js/env-config.js`. The loader validates them at startup:
 - `severity: 'error'` → missing variable aborts the service
 - `severity: 'warn'`  → missing variable logs a warning but continues
 
@@ -384,46 +386,57 @@ git clone (depth 1)
 
 ## 7. Managing Services
 
-### Start / Stop / Restart
+### Using the Service Manager (`rutba_services.sh`)
+
+The preferred way to manage services is through the unified service manager:
 
 ```bash
-# Single service
-sudo systemctl start   rutba_pos_strapi
-sudo systemctl stop    rutba_pos_sale
-sudo systemctl restart rutba_web
+# Start / Stop / Restart all services (Strapi starts first automatically)
+sudo bash ~/rutba_active/scripts/rutba_services.sh start
+sudo bash ~/rutba_active/scripts/rutba_services.sh stop
+sudo bash ~/rutba_active/scripts/rutba_services.sh restart
 
-# Strapi must be running before other services on a cold start
-sudo systemctl start rutba_pos_strapi
-sleep 5
-sudo systemctl start rutba_pos_auth rutba_pos_stock rutba_pos_sale
-sudo systemctl start rutba_web rutba_web_user rutba_crm rutba_hr
-sudo systemctl start rutba_accounts rutba_payroll rutba_cms rutba_social
+# Single service
+sudo bash ~/rutba_active/scripts/rutba_services.sh start rutba_pos_strapi
+sudo bash ~/rutba_active/scripts/rutba_services.sh stop rutba_pos_sale
+sudo bash ~/rutba_active/scripts/rutba_services.sh restart rutba_web
+
+# Check status of all services
+sudo bash ~/rutba_active/scripts/rutba_services.sh status
+
+# Rebuild systemd unit files (after script updates, path fixes, etc.)
+sudo bash ~/rutba_active/scripts/rutba_services.sh rebuild
+sudo bash ~/rutba_active/scripts/rutba_services.sh rebuild /path/to/build_dir
 ```
 
 ### View Logs
 
 ```bash
-# Live log for a service (Ctrl+C to stop)
-sudo journalctl -fu rutba_pos_strapi
+# Recent journal logs for a service (default 50 lines)
+sudo bash ~/rutba_active/scripts/rutba_services.sh logs rutba_pos_strapi
+sudo bash ~/rutba_active/scripts/rutba_services.sh logs rutba_pos_auth 100
 
-# Last 100 lines
-sudo journalctl -n 100 -u rutba_pos_auth
-
-# All Rutba services since last boot
-sudo journalctl -b -u 'rutba_*'
+# Live-follow logs (Ctrl+C to stop)
+sudo bash ~/rutba_active/scripts/rutba_services.sh tail
+sudo bash ~/rutba_active/scripts/rutba_services.sh tail rutba_web
 
 # Deploy / rollback activity log
 tail -f /var/log/rutba_deploy.log
 ```
 
-### Check Status
+### Diagnose Problems
 
 ```bash
-# One service
-sudo systemctl status rutba_pos_strapi
+# Comprehensive diagnostic report — checks active build, service health,
+# crash loops, recent errors, disk, memory, and unit-file integrity
+sudo bash ~/rutba_active/scripts/rutba_services.sh diagnose
+```
 
-# All Rutba services at a glance
-sudo systemctl status 'rutba_*'
+### Direct systemctl (still works)
+
+```bash
+sudo systemctl start|stop|restart|status rutba_pos_strapi
+sudo journalctl -fu rutba_pos_strapi
 ```
 
 ### Service List
@@ -457,8 +470,8 @@ After=network.target
 Type=simple
 User=rutba-nvr
 Group=rutba-nvr
-WorkingDirectory=/home/rutba-nvr/rutba_builds/build_20250120_141500_main
-ExecStart=/usr/bin/node /home/rutba-nvr/rutba_builds/build_20250120_141500_main/scripts/load-env.js \
+WorkingDirectory=/home/rutba-nvr/rutba_active
+ExecStart=/usr/bin/node /home/rutba-nvr/rutba_active/scripts/js/load-env.js \
           -- /usr/bin/npm run start --workspace=pos-auth
 Restart=on-failure
 RestartSec=10
@@ -472,7 +485,7 @@ Environment=NODE_ENV=production
 WantedBy=multi-user.target
 ```
 
-The `ExecStart` always goes through `scripts/load-env.js`, which reads `.env.production` and injects the correct variables before starting the app. A rollback simply rewrites `WorkingDirectory` and the path in `ExecStart` to point at a different build directory.
+The `ExecStart` always goes through `scripts/js/load-env.js`, which reads `.env.production` and injects the correct variables before starting the app. Unit files reference the `~/rutba_active` **symlink** — not a specific build directory — so a rollback only needs to switch the symlink and restart services (no unit rewrite required).
 
 ---
 
@@ -578,23 +591,23 @@ sudo bash ~/rutba_active/scripts/rutba_build_cleanup.sh
 If systemd service files are missing or corrupted, regenerate them without a full deploy:
 
 ```bash
-# Auto-detect: uses ~/rutba_active symlink, or most recent build in ~/rutba_builds/
-sudo bash ~/rutba_active/scripts/setup-systemd-services.sh
+# Preferred: use the service manager
+sudo bash ~/rutba_active/scripts/rutba_services.sh rebuild
 
-# Explicit build path
+# Or with an explicit build path
+sudo bash ~/rutba_active/scripts/rutba_services.sh rebuild \
+    /home/rutba-nvr/rutba_builds/build_20250120_141500_main
+
+# Legacy standalone script (also works)
+sudo bash ~/rutba_active/scripts/setup-systemd-services.sh
 sudo bash ~/rutba_active/scripts/setup-systemd-services.sh \
     /home/rutba-nvr/rutba_builds/build_20250120_141500_main
 ```
 
-After running, reload systemd and start services:
+After running, start services:
 
 ```bash
-sudo systemctl daemon-reload
-sudo systemctl start rutba_pos_strapi
-sleep 5
-sudo systemctl start rutba_pos_auth rutba_pos_stock rutba_pos_sale rutba_web \
-    rutba_web_user rutba_crm rutba_hr rutba_accounts rutba_payroll rutba_cms \
-    rutba_social
+sudo bash ~/rutba_active/scripts/rutba_services.sh start
 ```
 
 ---
@@ -668,7 +681,7 @@ You can deploy individual Next.js apps (e.g. `rutba-web`) on managed Node.js pla
 - The repo root is an **npm workspace** — `npm install` at the root installs dependencies for all apps.
 - Each Next.js app has `output: 'standalone'` in `next.config.js`, producing a self-contained `.next/standalone/` directory.
 - Both `next dev` and `next start` natively read the **`PORT`** environment variable. The platform sets `PORT`; the app binds to it automatically.
-- `scripts/load-env.js` also respects `PORT` — if the platform provides it, the loader will **never** override it.
+- `scripts/js/load-env.js` also respects `PORT` — if the platform provides it, the loader will **never** override it.
 
 ### 13.2 Hostinger Setup
 
@@ -681,7 +694,7 @@ On Hostinger's Node.js hosting panel, configure:
 | **Build command** | `npm run build:web` |
 | **Start command** | `npm run start:web` |
 
-> `npm run build:web` and `npm run start:web` are defined in the root `package.json` and go through `scripts/load-env.js`, which handles all environment variable injection.
+> `npm run build:web` and `npm run start:web` are defined in the root `package.json` and go through `scripts/js/load-env.js`, which handles all environment variable injection.
 
 #### Environment Variables on Hostinger
 
@@ -765,7 +778,7 @@ npm run build --workspace=rutba-web
 npm run start --workspace=rutba-web
 ```
 
-In this case the app reads `NEXT_PUBLIC_*` vars at build time and `PORT` at runtime — no `load-env.js` required. However, app-specific vars like `NEXTAUTH_SECRET` must be set without the `RUTBA_WEB__` prefix (since `load-env.js` is not stripping prefixes):
+In this case the app reads `NEXT_PUBLIC_*` vars at build time and `PORT` at runtime — no `load-env.js` required. However, app-specific vars like `NEXTAUTH_SECRET` must be set without the `RUTBA_WEB__` prefix (since `scripts/js/load-env.js` is not stripping prefixes):
 
 ```ini
 # Without load-env.js — set bare variable names
@@ -782,22 +795,35 @@ GOOGLE_SECRET_KEY=<from Google Cloud Console>
 ### Service won't start
 
 ```bash
-# Full error output
-sudo journalctl -u rutba_pos_strapi -n 80 --no-pager
+# Run the built-in diagnostic first
+sudo bash ~/rutba_active/scripts/rutba_services.sh diagnose
+
+# Full error output for a specific service
+sudo bash ~/rutba_active/scripts/rutba_services.sh logs rutba_pos_strapi 80
 
 # Check the unit file points at a real directory
 grep -E 'WorkingDirectory|ExecStart' /etc/systemd/system/rutba_pos_strapi.service
 
 # Verify load-env.js can find its dependencies
-ls ~/rutba_active/scripts/env-utils.js ~/rutba_active/scripts/env-config.js
+ls ~/rutba_active/scripts/js/env-utils.js ~/rutba_active/scripts/js/env-config.js
 
 # Verify Node.js is on PATH for the service user
 sudo -u rutba-nvr which node
 ```
 
+### Build succeeded but site is unreachable
+
+This usually means systemd unit files are stale (pointing at an old path or the wrong `load-env.js` location). Rebuild and restart:
+
+```bash
+sudo bash ~/rutba_active/scripts/rutba_services.sh rebuild
+sudo bash ~/rutba_active/scripts/rutba_services.sh start
+sudo bash ~/rutba_active/scripts/rutba_services.sh status
+```
+
 ### Missing or invalid environment variables
 
-`scripts/load-env.js` logs validation errors to the journal before starting the app:
+`scripts/js/load-env.js` logs validation errors to the journal before starting the app:
 
 ```bash
 sudo journalctl -u rutba_pos_auth -n 20 --no-pager | grep '\[env\]'
@@ -859,10 +885,9 @@ cd /home/rutba-nvr/rutba_builds/build_20250115_093000_main
 npm install --production=false
 cd pos-strapi && npm install --production=false && cd ..
 
-# Then re-create service files and restart
-sudo bash ~/rutba_active/scripts/setup-systemd-services.sh
-sudo systemctl daemon-reload
-sudo systemctl restart 'rutba_*'
+# Then rebuild service files and restart
+sudo bash ~/rutba_active/scripts/rutba_services.sh rebuild
+sudo bash ~/rutba_active/scripts/rutba_services.sh start
 ```
 
 ### Nightly log rotation not running
@@ -887,17 +912,20 @@ cat /var/log/rutba_log_rotate.log
 |---|---|---|
 | `scripts/rutba_deploy.sh` | `sudo` | Full deploy: clone → build → backup → swap services |
 | `scripts/rutba_rollback.sh` | `sudo` | Rollback to any cached build; optional DB restore |
-| `scripts/setup-systemd-services.sh` | `sudo` | Re-create systemd unit files (no rebuild) |
+| `scripts/rutba_services.sh` | `sudo` | Service manager: start/stop/restart/status/rebuild/tail/diagnose |
+| `scripts/rutba_deployed_environment.sh` | sourced | Shared env bootstrap: directory paths, user/group, config defaults |
+| `scripts/setup-systemd-services.sh` | `sudo` | Standalone systemd unit installer (legacy; prefer `rutba_services.sh rebuild`) |
 | `scripts/rutba_prune_builds.sh` | `sudo` | Remove old builds, keep last N per-day bests |
 | `scripts/rutba_build_cleanup.sh` | `sudo` | Interactive: manage builds + download/delete DB dumps |
 | `scripts/rutba_log_rotate.sh` | `sudo` | Vacuum journal, rotate deploy log, clean Strapi logs |
 | `scripts/rutba_setup_log_cron.sh` | `sudo` | Install/update nightly log rotation cron (idempotent) |
-| `scripts/load-env.js` | service | Env loader: reads `.env.*`, validates, injects per-app vars, spawns app |
+| `scripts/js/load-env.js` | service | Env loader: reads `.env.*`, validates, injects per-app vars, spawns app |
+| `scripts/js/env-config.js` | internal | Registry of required variables with severity levels |
+| `scripts/js/env-utils.js` | internal | Shared env utilities: parser, two-mode resolver, validator |
+| `scripts/js/postinstall.js` | internal | Post-install hook: installs pos-strapi dependencies with recursion guard |
 | `scripts/generate-docker-env.js` | dev | Generate `.env.docker` for Docker Compose from env files |
-| `scripts/env-config.js` | internal | Registry of required variables with severity levels |
-| `scripts/env-utils.js` | internal | Shared env utilities: parser, two-mode resolver, validator |
 
-### Config Constants (edit in scripts to match your server)
+### Config Constants (in `scripts/rutba_deployed_environment.sh` — edit to match your server)
 
 | Variable | Default | Used In |
 |---|---|---|

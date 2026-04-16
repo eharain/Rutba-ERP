@@ -210,8 +210,8 @@ After=network.target
 Type=simple
 User=${RUN_USER}
 Group=${RUN_GROUP}
-WorkingDirectory=${APP_DIR}
-ExecStart=${NODE_BIN} ${APP_DIR}/scripts/load-env.js -- ${NPM_BIN} ${local_cmd}
+WorkingDirectory=${ACTIVE_LINK}
+ExecStart=${NODE_BIN} ${ACTIVE_LINK}/scripts/js/load-env.js -- ${NPM_BIN} ${local_cmd}
 Restart=on-failure
 RestartSec=10
 StandardOutput=journal
@@ -254,8 +254,9 @@ for svc in "${SERVICES[@]}"; do
 done
 echo ""
 echo "  Manage with:"
-echo "    sudo systemctl start|stop|restart|status <service>"
-echo "    sudo journalctl -fu <service>"
+echo "    sudo bash scripts/rutba_services.sh start|stop|restart|status"
+echo "    sudo bash scripts/rutba_services.sh tail [service]"
+echo "    sudo bash scripts/rutba_services.sh diagnose"
 echo ""
 echo "  Start everything:"
 echo "    sudo systemctl start rutba_pos_strapi"
