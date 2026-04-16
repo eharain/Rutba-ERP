@@ -26,13 +26,12 @@ set -euo pipefail
 ###########################################
 
 ###########################################
-# CONFIG — defaults; inherited env wins
+# CONFIG — source shared environment
 ###########################################
 
-BUILDS_DIR="${BUILDS_DIR:-/home/rutba-nvr/rutba_builds}"
-ACTIVE_LINK="${ACTIVE_LINK:-/home/rutba-nvr/rutba_active}"
-MAX_BUILDS="${MAX_BUILDS:-5}"
-LOG_FILE="${LOG_FILE:-/var/log/rutba_deploy.log}"
+RUTBA_ENV_QUIET=1
+_RUTBA_PRUNE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${_RUTBA_PRUNE_DIR}/rutba_deployed_environment.sh"
 
 # An extra build directory to protect (the just-deployed build
 # when called from the deploy script).
@@ -57,39 +56,8 @@ done
 ###########################################
 # HELPERS
 ###########################################
-
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-CYAN='\033[0;36m'
-NC='\033[0m'
-
-log()      { local m="$(date '+%Y-%m-%d %H:%M:%S') : $1";      echo -e "${CYAN}${m}${NC}";   echo "$m" >> "$LOG_FILE" 2>/dev/null || true; }
-log_ok()   { local m="$(date '+%Y-%m-%d %H:%M:%S') : ✅ $1";   echo -e "${GREEN}${m}${NC}";  echo "$m" >> "$LOG_FILE" 2>/dev/null || true; }
-log_warn() { local m="$(date '+%Y-%m-%d %H:%M:%S') : ⚠ $1";    echo -e "${YELLOW}${m}${NC}"; echo "$m" >> "$LOG_FILE" 2>/dev/null || true; }
-log_err()  { local m="$(date '+%Y-%m-%d %H:%M:%S') : ❌ $1";    echo -e "${RED}${m}${NC}";    echo "$m" >> "$LOG_FILE" 2>/dev/null || true; }
-
-format_build_date() {
-    local name
-    name=$(basename "$1")
-    local ts
-    ts=$(echo "$name" | sed -n 's/^build_\([0-9]\{8\}_[0-9]\{6\}\)_.*/\1/p')
-    if [ -n "$ts" ]; then
-        echo "${ts:0:4}-${ts:4:2}-${ts:6:2} ${ts:9:2}:${ts:11:2}:${ts:13:2}"
-    else
-        stat -c '%y' "$1" 2>/dev/null | cut -d'.' -f1 || echo "unknown"
-    fi
-}
-
-get_active_build_dir() {
-    if [ -L "$ACTIVE_LINK" ]; then
-        readlink -f "$ACTIVE_LINK"
-    elif [ -d "$ACTIVE_LINK" ]; then
-        echo "$ACTIVE_LINK"
-    else
-        echo ""
-    fi
-}
+# Colours, log functions, format_build_date, get_active_build_dir
+# are provided by rutba_env.sh (sourced above).
 
 # Returns true if a build is protected from deletion.
 is_protected() {
