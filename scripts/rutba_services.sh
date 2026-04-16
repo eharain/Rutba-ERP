@@ -1,4 +1,4 @@
-﻿#!/bin/bash
+#!/bin/bash
 set -euo pipefail
 
 ###########################################
@@ -99,8 +99,19 @@ _validate_svc() {
 ###########################################
 
 write_all_units() {
-    local BUILD_DEST_DIR="$1"
-    [ -d "$BUILD_DEST_DIR" ] || abort "Build directory does not exist: ${BUILD_DEST_DIR}"
+    local BUILD_DEST_DIR="${1:-}"
+
+    # If a specific build dir was passed, verify it exists.
+    # Otherwise default to the ACTIVE_LINK symlink.
+    if [ -n "$BUILD_DEST_DIR" ]; then
+        [ -d "$BUILD_DEST_DIR" ] || abort "Build directory does not exist: ${BUILD_DEST_DIR}"
+    fi
+
+    # Unit files always reference the ACTIVE_LINK symlink so that
+    # switching the symlink + restarting services picks up the new
+    # build without rewriting unit files.
+    local UNIT_DIR="${ACTIVE_LINK}"
+    [ -d "$UNIT_DIR" ] || [ -L "$UNIT_DIR" ] || abort "Active link does not exist: ${UNIT_DIR}"
 
     local NODE_BIN; NODE_BIN=$(which node)
     local NPM_BIN;  NPM_BIN=$(which npm)
@@ -119,8 +130,8 @@ After=network.target
 Type=simple
 User=${RUN_USER}
 Group=${RUN_GROUP}
-WorkingDirectory=${BUILD_DEST_DIR}
-ExecStart=${NODE_BIN} ${BUILD_DEST_DIR}/scripts/js/load-env.js -- ${NPM_BIN} ${CMD}
+WorkingDirectory=${UNIT_DIR}
+ExecStart=${NODE_BIN} ${UNIT_DIR}/scripts/js/load-env.js -- ${NPM_BIN} ${CMD}
 Restart=on-failure
 RestartSec=10
 StandardOutput=journal
@@ -136,7 +147,7 @@ UNIT_EOF
     done
 
     systemctl daemon-reload
-    log_ok "Systemd units written -> ${BUILD_DEST_DIR}"
+    log_ok "Systemd units written -> ${UNIT_DIR} (active link)"
 }
 
 ###########################################
@@ -498,13 +509,7 @@ case "$COMMAND" in
         show_service_status
         ;;
     rebuild)
-        BUILD_TARGET="${2:-}"
-        if [ -z "$BUILD_TARGET" ]; then
-            BUILD_TARGET=$(get_active_build_dir)
-            [ -z "$BUILD_TARGET" ] && abort "No active build found and no build directory specified."
-            log "Using active build: ${BUILD_TARGET}"
-        fi
-        write_all_units "$BUILD_TARGET"
+        write_all_units "${2:-}"
         show_service_status
         ;;
     logs)

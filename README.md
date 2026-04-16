@@ -139,8 +139,10 @@ docker compose down
 | `scripts/run_strapi_and_pos_custom_node.bat` | Same using local Node.js binary |
 | `scripts/rutba_deploy.sh` | Production deploy script — clone, build, swap systemd services |
 | `scripts/rutba_rollback.sh` | Rollback to a previous build (instant, no rebuild) |
-| `scripts/setup-systemd-services.sh` | Create & enable systemd unit files for all services (run once with `sudo`) |
-| `scripts/load-env.js` | Centralized env loader — reads `.env.<ENVIRONMENT>`, injects per-app vars |
+| `scripts/rutba_services.sh` | Service manager: start/stop/restart/status/rebuild/tail/diagnose |
+| `scripts/rutba_deployed_environment.sh` | Shared env bootstrap for all deployment scripts |
+| `scripts/setup-systemd-services.sh` | Standalone systemd unit installer (legacy; prefer `rutba_services.sh rebuild`) |
+| `scripts/js/load-env.js` | Centralized env loader — reads `.env.<ENVIRONMENT>`, injects per-app vars |
 
 > **📖 Full deployment guide:** [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
 
