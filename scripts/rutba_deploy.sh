@@ -35,115 +35,21 @@ set -euo pipefail
 ###########################################
 
 ###########################################
-# CONFIG — edit these to match your server
+# BOOTSTRAP
 ###########################################
+# Source shared environment (all paths, colours, log functions,
+# format_build_date, get_active_build_dir, switch_active_link).
+SCRIPT_DIR_DEPLOY="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR_DEPLOY}/rutba_deployed_environment.sh"
 
-BUILDS_DIR="/home/rutba-nvr/rutba_builds"
-ACTIVE_LINK="/home/rutba-nvr/rutba_active"   # symlink → currently active build
-DB_BACKUP_DIR="/home/rutba-nvr/db_dumps"
-REPO_URL="https://github.com/eharain/Rutba-ERP.git"
-MAX_BUILDS=5
-LOG_FILE="/var/log/rutba_deploy.log"
-
-RUN_USER="rutba-nvr"
-RUN_GROUP="rutba-nvr"
-SYSTEMD_DIR="/etc/systemd/system"
-
-SERVICES=(
-    rutba_pos_strapi
-    rutba_pos_auth
-    rutba_pos_stock
-    rutba_pos_sale
-    rutba_web
-    rutba_web_user
-    rutba_crm
-    rutba_hr
-    rutba_accounts
-    rutba_payroll
-    rutba_cms
-    rutba_social
-    rutba_pos_desk
-)
-
-# Map: service-name → ExecStart suffix (relative to build dir)
-# Strapi uses --prefix, everything else uses --workspace
-declare -A SVC_CMD=(
-    [rutba_pos_strapi]="--prefix pos-strapi run start"
-    [rutba_pos_auth]="run start --workspace=pos-auth"
-    [rutba_pos_stock]="run start --workspace=pos-stock"
-    [rutba_pos_sale]="run start --workspace=pos-sale"
-    [rutba_web]="run start --workspace=rutba-web"
-    [rutba_web_user]="run start --workspace=rutba-web-user"
-    [rutba_crm]="run start --workspace=rutba-crm"
-    [rutba_hr]="run start --workspace=rutba-hr"
-    [rutba_accounts]="run start --workspace=rutba-accounts"
-    [rutba_payroll]="run start --workspace=rutba-payroll"
-    [rutba_cms]="run start --workspace=rutba-cms"
-    [rutba_social]="run start --workspace=rutba-social"
-    [rutba_pos_desk]="run start --workspace=pos-desk"
-)
-
-declare -A SVC_DESC=(
-    [rutba_pos_strapi]="Rutba ERP — Strapi API"
-    [rutba_pos_auth]="Rutba ERP — Auth Portal (pos-auth)"
-    [rutba_pos_stock]="Rutba ERP — Stock Management (pos-stock)"
-    [rutba_pos_sale]="Rutba ERP — Point of Sale (pos-sale)"
-    [rutba_web]="Rutba ERP — Public Website (rutba-web)"
-    [rutba_web_user]="Rutba ERP — My Orders (rutba-web-user)"
-    [rutba_crm]="Rutba ERP — CRM (rutba-crm)"
-    [rutba_hr]="Rutba ERP — Human Resources (rutba-hr)"
-    [rutba_accounts]="Rutba ERP — Accounting (rutba-accounts)"
-    [rutba_payroll]="Rutba ERP — Payroll (rutba-payroll)"
-    [rutba_cms]="Rutba ERP — Content Management (rutba-cms)"
-    [rutba_social]="Rutba ERP — Social Media (rutba-social)"
-    [rutba_pos_desk]="Rutba ERP — Legacy Desk (pos-desk)"
-)
+# Source service manager (write_all_units, start/stop/status, etc.).
+RUTBA_SERVICES_SOURCED=1
+source "${SCRIPT_DIR_DEPLOY}/rutba_services.sh"
 
 ###########################################
 # HELPERS
 ###########################################
 
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-CYAN='\033[0;36m'
-NC='\033[0m'
-
-log()      { local m="$(date '+%Y-%m-%d %H:%M:%S') : $1";      echo -e "${CYAN}${m}${NC}";   echo "$m" >> "$LOG_FILE" 2>/dev/null || true; }
-log_ok()   { local m="$(date '+%Y-%m-%d %H:%M:%S') : ✅ $1";   echo -e "${GREEN}${m}${NC}";  echo "$m" >> "$LOG_FILE" 2>/dev/null || true; }
-log_warn() { local m="$(date '+%Y-%m-%d %H:%M:%S') : ⚠ $1";    echo -e "${YELLOW}${m}${NC}"; echo "$m" >> "$LOG_FILE" 2>/dev/null || true; }
-log_err()  { local m="$(date '+%Y-%m-%d %H:%M:%S') : ❌ $1";    echo -e "${RED}${m}${NC}";    echo "$m" >> "$LOG_FILE" 2>/dev/null || true; }
-abort()    { log_err "$1"; exit 1; }
-
-# Extract a human-readable date from a build directory name.
-# build_20250115_143022_main → "2025-01-15 14:30:22"
-format_build_date() {
-    local name
-    name=$(basename "$1")
-    local ts
-    ts=$(echo "$name" | sed -n 's/^build_\([0-9]\{8\}_[0-9]\{6\}\)_.*/\1/p')
-    if [ -n "$ts" ]; then
-        echo "${ts:0:4}-${ts:4:2}-${ts:6:2} ${ts:9:2}:${ts:11:2}:${ts:13:2}"
-    else
-        stat -c '%y' "$1" 2>/dev/null | cut -d'.' -f1 || echo "unknown"
-    fi
-}
-
-# Resolve the directory the ACTIVE_LINK symlink currently points to.
-# Returns empty string if no active build yet.
-get_active_build_dir() {
-    if [ -L "$ACTIVE_LINK" ]; then
-        readlink -f "$ACTIVE_LINK"
-    elif [ -d "$ACTIVE_LINK" ]; then
-        echo "$ACTIVE_LINK"
-    else
-        echo ""
-    fi
-}
-
-# Clean up old /usr/local/bin/rutba_*.sh wrapper scripts from the
-# legacy setup. The new approach embeds everything in the systemd
-# unit files directly — the wrappers are no longer needed.
 cleanup_legacy_wrapper_scripts() {
     local found=0
     for f in /usr/local/bin/rutba_*.sh; do
@@ -159,101 +65,6 @@ cleanup_legacy_wrapper_scripts() {
             log "  Removed $(basename "$f")"
         done
     fi
-}
-
-###########################################
-# SYSTEMD UNIT WRITER
-###########################################
-
-# write_all_units <build_dir>
-# Re-writes every service file so paths point at <build_dir>.
-write_all_units() {
-    local BUILD_DEST_DIR="$1"
-    local NODE_BIN
-    NODE_BIN=$(which node)
-    local NPM_BIN
-    NPM_BIN=$(which npm)
-
-    for svc in "${SERVICES[@]}"; do
-        local FILE="${SYSTEMD_DIR}/${svc}.service"
-        local DESC="${SVC_DESC[$svc]}"
-        local CMD="${SVC_CMD[$svc]}"
-
-        cat > "$FILE" <<EOF
-[Unit]
-Description=${DESC}
-After=network.target
-
-[Service]
-Type=simple
-User=${RUN_USER}
-Group=${RUN_GROUP}
-WorkingDirectory=${BUILD_DEST_DIR}
-ExecStart=${NODE_BIN} ${BUILD_DEST_DIR}/scripts/js/load-env.js -- ${NPM_BIN} ${CMD}
-Restart=on-failure
-RestartSec=10
-StandardOutput=journal
-StandardError=journal
-SyslogIdentifier=${svc}
-LimitNOFILE=65536
-Environment=NODE_ENV=production
-
-[Install]
-WantedBy=multi-user.target
-EOF
-        systemctl enable "${svc}.service" 2>/dev/null || true
-    done
-
-    log_ok "Systemd units written → ${BUILD_DEST_DIR}"
-}
-
-stop_services() {
-    log "Stopping all Rutba services..."
-    for svc in "${SERVICES[@]}"; do
-        systemctl stop "${svc}.service" 2>/dev/null || true
-    done
-    log_ok "All services stopped."
-}
-
-start_services() {
-    log "Reloading systemd daemon..."
-    systemctl daemon-reload
-
-    log "Starting all Rutba services..."
-    systemctl start rutba_pos_strapi.service
-    sleep 3
-
-    for svc in "${SERVICES[@]}"; do
-        if [ "$svc" != "rutba_pos_strapi" ]; then
-            systemctl start "${svc}.service" 2>/dev/null || log_warn "Failed to start ${svc}"
-        fi
-    done
-    log_ok "All services started."
-}
-
-show_service_status() {
-    echo ""
-    echo "============================================"
-    echo "  Service Status"
-    echo "============================================"
-    for svc in "${SERVICES[@]}"; do
-        local status
-        status=$(systemctl is-active "${svc}.service" 2>/dev/null || echo "inactive")
-        if [ "$status" = "active" ]; then
-            echo -e "  ${GREEN}● ${svc}: active${NC}"
-        else
-            echo -e "  ${RED}● ${svc}: ${status}${NC}"
-        fi
-    done
-    echo "============================================"
-    echo ""
-}
-
-# Switch the ACTIVE_LINK symlink to point at a build directory.
-switch_active_link() {
-    local target="$1"
-    ln -sfn "$target" "$ACTIVE_LINK"
-    log "Active link → ${target}"
 }
 
 ###########################################
@@ -566,8 +377,7 @@ show_service_status
 # PRUNE OLD BUILDS
 ###########################################
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-bash "${SCRIPT_DIR}/rutba_prune_builds.sh" --protect "$BUILD_DIR"
+bash "${SCRIPT_DIR_DEPLOY}/rutba_prune_builds.sh" --protect "$BUILD_DIR"
 
 # Re-read remaining builds for the summary
 mapfile -t REMAINING_BUILDS < <(
@@ -580,9 +390,9 @@ mapfile -t REMAINING_BUILDS < <(
 # Ensure the nightly log rotation cron job is installed.
 # The setup script is idempotent -- safe to run every deploy.
 
-if [ -f "${SCRIPT_DIR}/rutba_setup_log_cron.sh" ]; then
+if [ -f "${SCRIPT_DIR_DEPLOY}/rutba_setup_log_cron.sh" ]; then
     log "Setting up log rotation cron job..."
-    bash "${SCRIPT_DIR}/rutba_setup_log_cron.sh" && log_ok "Log rotation cron job configured." || log_warn "Failed to setup log rotation cron job."
+    bash "${SCRIPT_DIR_DEPLOY}/rutba_setup_log_cron.sh"
 else
     log_warn "rutba_setup_log_cron.sh not found -- skipping log rotation setup."
 fi
