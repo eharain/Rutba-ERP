@@ -416,9 +416,9 @@ fi
 
 mkdir -p "$BUILDS_DIR"
 TIMESTAMP=$(date '+%Y%m%d_%H%M%S')
-BUILD_DEST_DIR="${BUILDS_DIR}/build_${TIMESTAMP}_${BRANCH}"
+BUILD_DIR="${BUILDS_DIR}/build_${TIMESTAMP}_${BRANCH}"
 
-log "Cloning ${REPO_URL} (branch: ${BRANCH}) → ${BUILD_DEST_DIR} ..."
+log "Cloning ${REPO_URL} (branch: ${BRANCH}) → ${BUILD_DIR} ..."
 git clone --depth 1 -b "$BRANCH" "$REPO_URL" "$BUILD_DIR"
 
 cd "$BUILD_DIR"
@@ -510,7 +510,9 @@ if [ -n "$CURRENT_ACTIVE" ] && [ -d "$CURRENT_ACTIVE" ]; then
 fi
 
 log "Installing monorepo dependencies (npm install)..."
-npm install --production=false --prefer-offline --cache "$NPM_CACHE_DIR"
+# Set RUTBA_POSTINSTALL=1 so the root postinstall hook (scripts/js/postinstall.js)
+# skips installing pos-strapi — we handle it explicitly below with --prefer-offline.
+RUTBA_POSTINSTALL=1 npm install --production=false --prefer-offline --cache "$NPM_CACHE_DIR"
 
 log "Installing pos-strapi dependencies..."
 cd "$BUILD_DIR/pos-strapi"
@@ -553,7 +555,7 @@ fi
 # the systemd unit file — no wrapper scripts needed.
 cleanup_legacy_wrapper_scripts
 
-log "Writing systemd service units → ${BUILD_DEST_DIR} ..."
+log "Writing systemd service units → ${BUILD_DIR} ..."
 write_all_units "$BUILD_DIR"
 switch_active_link "$BUILD_DIR"
 
@@ -599,7 +601,7 @@ echo "  Date:    ${DEPLOY_DATE}"
 echo "  Branch:  ${BRANCH}"
 echo "  Commit:  ${COMMIT_HASH}"
 echo "  Build:   $(basename "$BUILD_DIR")"
-echo "  Active:  ${ACTIVE_LINK} → ${BUILD_DEST_DIR}"
+echo "  Active:  ${ACTIVE_LINK} → ${BUILD_DIR}"
 echo "  Env:     ${BUILDS_DIR}/.env*"
 echo "============================================"
 echo ""
@@ -620,11 +622,11 @@ echo ""
 echo "  Log rotation:"
 echo "    Cron: nightly at 02:00 (vacuums journal + rotates deploy log)"
 echo "    Log:  /var/log/rutba_log_rotate.log"
-echo "    Run:  sudo bash ${BUILD_DEST_DIR}/scripts/rutba_log_rotate.sh"
+echo "    Run:  sudo bash ${BUILD_DIR}/scripts/rutba_log_rotate.sh"
 echo ""
 echo "  To edit environment:"
 echo "    sudo nano ${BUILDS_DIR}/.env.production"
 echo ""
 echo "  To rollback:"
-echo "    sudo bash ${BUILD_DEST_DIR}/scripts/rutba_rollback.sh"
+echo "    sudo bash ${BUILD_DIR}/scripts/rutba_rollback.sh"
 echo "============================================"
