@@ -143,8 +143,37 @@ docker compose down
 | `scripts/rutba_deployed_environment.sh` | Shared env bootstrap for all deployment scripts |
 | `scripts/setup-systemd-services.sh` | Standalone systemd unit installer (legacy; prefer `rutba_services.sh rebuild`) |
 | `scripts/js/load-env.js` | Centralized env loader — reads `.env.<ENVIRONMENT>`, injects per-app vars |
+| `scripts/hostinger/deploy.js` | One-command Hostinger deploy orchestrator (build, upload, Passenger setup, restart) |
+| `scripts/hostinger/restart.js` | Restart Passenger for one or all Hostinger apps |
 
 > **📖 Full deployment guide:** [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
+
+## Hostinger Deployment (Shared Hosting)
+
+The `scripts/hostinger/` directory contains a full deployment toolkit for
+Hostinger Business Web Hosting (Passenger + Node.js 22). See
+[scripts/hostinger/README.md](scripts/hostinger/README.md) for details.
+
+### Setup Steps
+
+1. **Create domains** — In Hostinger hPanel, create the website/subdomain for each app (e.g. `rutba.pk`, `rutba.rutba.pk`, `stock.rutba.pk`, etc.)
+2. **Create MySQL database** — In hPanel → Databases, create a MySQL database and user for Strapi
+3. **Configure environment** — Copy `.env.example` to `.env.production` at the repo root and fill in all `NEXT_PUBLIC_*` URLs, Strapi DB credentials, and `NEXTAUTH_SECRET` values
+4. **Set SSH password** — Export the Hostinger SSH password: `set HOSTINGER_SSH_PASSWORD=<password>`
+5. **Deploy Strapi** — `node scripts/hostinger/deploy.js strapi` (uploads source, installs deps, builds, configures Passenger)
+6. **Deploy web apps** — `node scripts/hostinger/deploy.js web` (builds locally as standalone, uploads, configures Passenger)
+7. **Verify** — Visit `https://rutba.rutba.pk` (Strapi API) and `https://rutba.pk` (web app)
+
+### Common Commands
+
+```bash
+node scripts/hostinger/deploy.js web                # Full deploy (build + upload + restart)
+node scripts/hostinger/deploy.js strapi              # Full Strapi deploy
+node scripts/hostinger/deploy.js web --skip-build    # Re-upload existing build
+node scripts/hostinger/deploy.js strapi --env-only   # Update Strapi .env + restart
+node scripts/hostinger/restart.js web                # Restart single app
+node scripts/hostinger/restart.js --all              # Restart all apps
+```
 
 ## Strapi Content Types
 
