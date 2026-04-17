@@ -10,6 +10,7 @@ import { CmsPageInterface } from "@/types/api/cms-page";
 import { getPageUrl } from "@/lib/cms-page-types";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Head from "next/head";
+import { useSiteSettings } from "@/hooks/use-site-settings";
 
 const PAGE_TYPE = "info";
 
@@ -28,6 +29,7 @@ export default function InfoIndex({
   initialPages,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { getCmsPagesByType } = useCmsPagesService();
+  const settings = useSiteSettings();
 
   const {
     data: pages,
@@ -45,7 +47,7 @@ export default function InfoIndex({
     <LayoutMain>
       <>
         <Head>
-          <title>Information - Rutba.pk</title>
+          <title>Information - {settings.site_name}</title>
         </Head>
 
         <div className="container-fluid my-16">

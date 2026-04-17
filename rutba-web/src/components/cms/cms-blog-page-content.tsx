@@ -8,6 +8,7 @@ import { IMAGE_URL } from "@/static/const";
 import { CmsPageDetailInterface } from "@/types/api/cms-page";
 import { getPageUrl } from "@/lib/cms-page-types";
 import CmsArticleSidebar from "./cms-article-sidebar";
+import { useSiteSettings } from "@/hooks/use-site-settings";
 
 marked.use({ breaks: true, gfm: true });
 marked.use(markedVideoEmbed({ imageBaseUrl: IMAGE_URL }));
@@ -17,7 +18,8 @@ export default function CmsBlogPageContent({
 }: {
   page: CmsPageDetailInterface;
 }) {
-  const publishedDate = page.publishedAt
+  const settings = useSiteSettings();
+  const publishedDate
     ? new Date(page.publishedAt).toLocaleDateString("en-PK", {
         year: "numeric",
         month: "long",
@@ -28,7 +30,7 @@ export default function CmsBlogPageContent({
   return (
     <>
       <Head>
-        <title>{page.title} - Rutba.pk</title>
+        <title>{page.title} - {settings.site_name}</title>
         {page.excerpt && (
           <meta
             name="description"

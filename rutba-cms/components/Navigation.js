@@ -1,17 +1,36 @@
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
+import { authApi, IMAGE_URL } from "@rutba/pos-shared/lib/api";
 import { APP_URLS } from "@rutba/pos-shared/lib/roles";
 import AdminModeToggle from "@rutba/pos-shared/components/AdminModeToggle";
 import NavAppSwitcher from "@rutba/pos-shared/components/NavAppSwitcher";
 
 export default function Navigation() {
-    const { user, appAccess } = useAuth();
+    const { user, jwt, appAccess } = useAuth();
     const router = useRouter();
+    const [siteLogo, setSiteLogo] = useState(null);
+
+    useEffect(() => {
+        if (!jwt) return;
+        authApi.get("/site-setting", { status: "draft", populate: ["site_logo"] })
+            .then(res => {
+                const logo = (res.data || res)?.site_logo;
+                if (logo?.url) setSiteLogo(logo);
+            })
+            .catch(() => {});
+    }, [jwt]);
 
     return (
         <nav className="navbar navbar-expand-lg navbar-dark bg-dark px-3 text-white">
-            <Link className="navbar-brand fw-bold" href="/">Rutba CMS</Link>
+            <Link className="navbar-brand fw-bold d-flex align-items-center" href="/">
+                {siteLogo?.url ? (
+                    <img src={IMAGE_URL + siteLogo.url} alt="Rutba CMS" style={{ height: 32, objectFit: "contain" }} />
+                ) : (
+                    "Rutba CMS"
+                )}
+            </Link>
             <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav" aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span className="navbar-toggler-icon"></span>
             </button>
@@ -46,6 +65,9 @@ export default function Navigation() {
                     </li>
                     <li className="nav-item">
                         <Link className="nav-link" href="/media">Media</Link>
+                    </li>
+                    <li className="nav-item">
+                        <Link className="nav-link" href="/site-settings"><i className="fas fa-cog me-1"></i>Site Settings</Link>
                     </li>
                     </ul>
 

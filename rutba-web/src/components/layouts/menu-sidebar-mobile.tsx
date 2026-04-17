@@ -12,6 +12,7 @@ import { ArrowUpRightSquare, FileText, Search, User2 } from "lucide-react";
 import Link from "next/link";
 import { CmsPageInterface } from "@/types/api/cms-page";
 import { getPageUrl } from "@/lib/cms-page-types";
+import { useSiteSettings } from "@/hooks/use-site-settings";
 
 export interface propsInterface {
   trigger: React.JSX.Element;
@@ -20,6 +21,7 @@ export interface propsInterface {
 
 export default function MenuSideBarMobile(props: propsInterface) {
   const pinnedPages = props.pinnedPages ?? [];
+  const settings = useSiteSettings();
 
   return (
     <Sheet>
@@ -33,15 +35,14 @@ export default function MenuSideBarMobile(props: propsInterface) {
         <SearchModal
           trigger={
             <Button variant={"secondary"} className="flex justify-start">
-              <Search className="mr-2 h-5"></Search> Search Products
+              <Search className="mr-2 h-5"></Search> {settings.nav_search_placeholder || "Search Products"}
             </Button>
           }
         ></SearchModal>
 
         <Button variant={"secondary"} className="flex justify-start" asChild>
           <Link href="/product">
-            <ArrowUpRightSquare className="mr-2 h-5"></ArrowUpRightSquare>Explore
-            Products
+            <ArrowUpRightSquare className="mr-2 h-5"></ArrowUpRightSquare>{settings.nav_explore_products_label || "Explore Products"}
           </Link>
         </Button>
 
@@ -61,7 +62,7 @@ export default function MenuSideBarMobile(props: propsInterface) {
 
         <Button className="flex justify-start" asChild>
           <Link href="/login">
-            <User2 className="mr-2 h-5"></User2>Login or Register
+            <User2 className="mr-2 h-5"></User2>{settings.nav_login_label || "Login or Register"}
           </Link>
         </Button>
       </SheetContent>

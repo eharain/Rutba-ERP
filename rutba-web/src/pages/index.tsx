@@ -42,7 +42,7 @@ export default function Home() {
       <LayoutMain>
         <div className="container-fluid my-20 text-center">
           <p className="text-slate-500">
-            Create a CMS page with slug <code>index</code> to configure this
+            Create a CMS page with slug <code>home</code> to configure this
             page.
           </p>
         </div>

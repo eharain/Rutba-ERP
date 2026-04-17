@@ -250,9 +250,61 @@ Define these layouts for rendering a product group on the shop page:
 - If group has more products than the limit, slice to limit and pass `viewAllHref` to `GroupHeader`.
 - Links to `/product-groups/{slug}`.
 
-### Phase 6: Verification
+### Phase 6: Refinements & UX Polish
 
-**Step 22 — Test end-to-end**
+**Step 22 — Add `max_inline_products` field to product-group schema**
+- File: `pos-strapi/src/api/product-group/content-types/product-group/schema.json`
+- Add `max_inline_products` field: integer, default `12`.
+- Controls how many products are shown inline on a CMS page before showing a "View All" link.
+- File: `rutba-cms/pages/[documentId]/product-group.js` — add input in Advanced Settings.
+- File: `rutba-web/src/types/api/cms-page.ts` — add `max_inline_products?: number` to `CmsProductGroupInterface`.
+- File: `rutba-web/src/components/cms/ProductGroupRenderer.tsx` — use `group.max_inline_products` (fallback 12) to limit displayed products inline.
+
+**Step 23 — Hero slider: show multiple product images per slide**
+- File: `rutba-web/src/components/cms/layouts/HeroSliderLayout.tsx`
+- Each slide should display multiple images from the product's gallery/logo (not just one image per slide), matching the previous Swiper-based hero behavior.
+- Use image panels within each slide to show product gallery images side-by-side.
+
+**Step 24 — Add CMS page section priority fields**
+- File: `pos-strapi/src/api/cms-page/content-types/cms-page/schema.json`
+- Add integer fields: `excerpt_priority` (default 2), `featured_image_priority` (default 0), `content_priority` (default 98), `gallery_priority` (default 100), `related_pages_priority` (default 102).
+- These control where page-owned sections (excerpt, featured image, content, gallery, related pages) appear relative to product groups in the priority-sorted rendering order.
+- File: `rutba-cms/pages/[documentId]/cms-page.js` — add priority inputs to Settings sidebar.
+- File: `rutba-web/src/types/api/cms-page.ts` — add priority fields to `CmsPageDetailInterface`.
+
+**Step 25 — Unified priority-ordered page rendering**
+- File: `rutba-web/src/components/cms/cms-page-content.tsx`
+- Build a unified `sections` array that includes both product groups and page-owned sections (featured image, excerpt, content, gallery, related pages), each with their priority.
+- Sort all sections by priority ascending and render in that order.
+- This replaces the old fixed-order rendering (hero → excerpt → groups → content → gallery → related pages).
+
+**Step 26 — Remove dedicated hero slider section from CMS pages**
+- The old `hero_product_groups` relation is no longer used as a separate section. Any product group with `layout: 'hero-slider'` automatically renders as a slider in priority order alongside other groups.
+- File: `rutba-cms/pages/[documentId]/cms-page.js` — remove the Hero Slider card/picker.
+- File: `rutba-web/src/components/cms/cms-page-content.tsx` — merge `hero_product_groups` into `product_groups` (backward compat), with `product_groups` taking precedence for deduplication.
+
+**Step 27 — Conditional slider rendering on public pages**
+- File: `rutba-web/src/components/cms/cms-page-content.tsx`
+- The slider/hero section should only render when a CMS page actually contains a product group whose `layout` is `hero-slider`. No group with that layout = no slider on the page.
+- This is enforced naturally by the unified priority-ordered rendering: only groups present on the page are rendered, and each renders per its own layout field.
+
+**Step 28 — Upgrade CMS page editor: Product Groups & Related Pages pickers**
+- File: `rutba-cms/components/GroupPickerTabs.js` (**New**)
+- File: `rutba-cms/components/PagePickerTabs.js` (**New**)
+- File: `rutba-cms/pages/[documentId]/cms-page.js`
+- Replace the simple chip-button sections for Product Groups and Related Pages with tabbed picker components that match the `ProductPickerTabs` UX:
+  - **Connected** tab: shows selected items with count badge, "Clear All" button.
+  - **All** tab: searchable list of all available items with toggle buttons.
+  - Each item shows metadata badges (layout/priority for groups, page_type for pages) and a link to open the item's editor.
+
+**Step 29 — Make Quick Add searchable in ProductPickerTabs**
+- File: `rutba-cms/components/ProductPickerTabs.js`
+- Add search inputs to the Quick Add tab so categories and brands are filterable/searchable.
+- Show product counts per category/brand.
+
+### Phase 7: Verification
+
+**Step 30 — Test end-to-end**
 - Create a product group in CMS with `hero-slider` layout, priority `1`.
 - Create another with `grid-4` layout, priority `2`.
 - Create another with `carousel` layout, priority `3`.
@@ -293,6 +345,9 @@ Define these layouts for rendering a product group on the shop page:
 | `rutba-web/src/pages/product-groups/[slug].tsx` | **New** — dedicated product group page with pagination |
 | `rutba-web/src/components/cms/layouts/GroupHeader.tsx` | Add `viewAllHref` + `totalProducts` props |
 | `rutba-web/src/components/cms/ProductGroupRenderer.tsx` | Add `maxInlineProducts` prop, limit inline, pass View All link |
+| `pos-strapi/src/api/cms-page/content-types/cms-page/schema.json` | Add section priority integer fields |
+| `rutba-cms/components/GroupPickerTabs.js` | **New** — tabbed product group picker for CMS page editor |
+| `rutba-cms/components/PagePickerTabs.js` | **New** — tabbed related pages picker for CMS page editor |
 
 ---
 
@@ -305,3 +360,7 @@ Define these layouts for rendering a product group on the shop page:
 - **No Swiper dependency** on shop pages. The custom `<ScrollSlider>` uses native CSS scroll-snap which is supported in all modern browsers, is lighter, and gives full control over styling.
 - The `<ScrollSlider>` component lives in `components/ui/` following the shadcn/ui pattern — it's a low-level primitive that can be reused anywhere in the app (homepage, other pages) whenever a carousel is needed.
 - Visual cohesion is enforced through shared `<GroupHeader>`, consistent section wrappers in `<ProductGroupRenderer>`, and the same `ProductCard` across all layouts.
+- **Unified page rendering**: All page content (product groups + page-owned sections like excerpt, content, gallery, related pages) is rendered in a single priority-sorted sequence. Each section type has its own priority field.
+- **Conditional slider**: The hero/slider area only appears when a product group with `layout: 'hero-slider'` is assigned to the page. No fallback or always-on slider.
+- **CMS editor consistency**: Product Groups and Related Pages pickers on the CMS page editor use the same tabbed/searchable pattern as the product picker on the product-group editor (`ProductPickerTabs`), via `GroupPickerTabs` and `PagePickerTabs`.
+- **`max_inline_products`**: Each product group defines how many products to show inline on a CMS page. Excess products are accessible via a "View All" link to the dedicated product-group detail page.

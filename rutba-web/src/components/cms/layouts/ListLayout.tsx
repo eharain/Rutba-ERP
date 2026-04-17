@@ -19,19 +19,20 @@ export default function ListLayout({ group, sort = "default" }: ListLayoutProps)
   return (
     <div className="divide-y divide-slate-200">
       {products.map((item) => (
-        <ListRow key={"list-" + item.id} product={item} />
+        <ListRow key={"list-" + item.id} product={item} showBrand={group.show_brand} showCategory={group.show_category} />
       ))}
     </div>
   );
 }
 
-function ListRow({ product }: { product: ProductInterface }) {
+function ListRow({ product, showBrand, showCategory }: { product: ProductInterface; showBrand?: boolean; showCategory?: boolean }) {
   const thumbnail = product.gallery?.[0]?.url ?? product.logo?.url ?? null;
   const price =
     product.variants && product.variants.length > 0
       ? Math.min(...product.variants.map((v) => v.selling_price))
       : product.selling_price;
-  const brand = product.brands?.[0];
+  const brand = showBrand !== false ? product.brands?.[0] : undefined;
+  const category = showCategory !== false ? product.categories?.[0] : undefined;
 
   return (
     <Link
@@ -57,8 +58,10 @@ function ListRow({ product }: { product: ProductInterface }) {
         <h3 className="font-semibold text-slate-900 group-hover:text-blue-600 transition-colors truncate">
           {product.name}
         </h3>
-        {brand && (
-          <p className="text-xs text-slate-400 mt-0.5">{brand.name}</p>
+        {(brand || category) && (
+          <p className="text-xs text-slate-400 mt-0.5">
+            {category?.name}{category && brand ? ' - ' : ''}{brand?.name}
+          </p>
         )}
         {product.summary && (
           <p className="text-sm text-slate-500 mt-1 line-clamp-1">

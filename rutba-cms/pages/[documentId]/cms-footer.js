@@ -6,6 +6,7 @@ import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { authApi } from "@rutba/pos-shared/lib/api";
 import Link from "next/link";
 import { useToast } from "../../components/Toast";
+import PagePickerTabs from "../../components/PagePickerTabs";
 
 const DEFAULT_HOURS = [
     { day: "Monday", hours: "11am - 9pm" },
@@ -46,17 +47,19 @@ export default function CmsFooterDetail() {
     const [socialLinks, setSocialLinks] = useState(DEFAULT_SOCIALS);
     const [selectedPageIds, setSelectedPageIds] = useState([]);
     const [allPages, setAllPages] = useState([]);
+    const [assignedPageIds, setAssignedPageIds] = useState([]);
+    const [savingAssignment, setSavingAssignment] = useState(false);
 
     useEffect(() => {
         if (!jwt || !documentId || isNew) { setLoading(false); return; }
         Promise.all([
-            authApi.get(`/cms-footers/${documentId}`, { status: 'draft', populate: ["pinned_pages"] }),
+            authApi.get(`/cms-footers/${documentId}`, { status: 'draft', populate: ["pinned_pages", "cms_pages"] }),
             authApi.get(`/cms-footers/${documentId}`, { status: 'published', fields: ["documentId"] }).catch(() => ({ data: null })),
         ])
             .then(([draftRes, pubRes]) => {
                 const f = draftRes.data || draftRes;
                 setFooter(f);
-                setIsPublished(!!(pubRes.data));
+                setIsPublished(!!pubRes.data);
                 setName(f.name || "");
                 setSlug(f.slug || "");
                 setPhone(f.phone || "");
@@ -66,6 +69,7 @@ export default function CmsFooterDetail() {
                 setOpeningHours(f.opening_hours || DEFAULT_HOURS);
                 setSocialLinks(f.social_links || DEFAULT_SOCIALS);
                 setSelectedPageIds((f.pinned_pages || []).map(p => p.documentId));
+                setAssignedPageIds((f.cms_pages || []).map(p => p.documentId));
             })
             .catch(err => console.error("Failed to load footer", err))
             .finally(() => setLoading(false));
@@ -74,7 +78,7 @@ export default function CmsFooterDetail() {
     const loadPages = useCallback(async () => {
         if (!jwt) return;
         try {
-            const res = await authApi.get("/cms-pages", { status: 'draft', pagination: { pageSize: 100 }, sort: ["title:asc"] });
+            const res = await authApi.get("/cms-pages", { status: 'draft', pagination: { pageSize: 100 }, sort: ["title:asc"], populate: ["footer"] });
             setAllPages(res.data || []);
         } catch (err) {
             console.error("Failed to load pages", err);
@@ -103,6 +107,44 @@ export default function CmsFooterDetail() {
         setSelectedPageIds(prev =>
             prev.includes(docId) ? prev.filter(id => id !== docId) : [...prev, docId]
         );
+    };
+
+    const removeAllPinnedPages = () => setSelectedPageIds([]);
+
+    const toggleAssignedPage = async (pageDocId) => {
+        const isAssigned = assignedPageIds.includes(pageDocId);
+        setSavingAssignment(true);
+        try {
+            await authApi.put(`/cms-pages/${pageDocId}?status=draft`, {
+                data: { footer: isAssigned ? null : { set: [documentId] } },
+            });
+            setAssignedPageIds(prev =>
+                isAssigned ? prev.filter(id => id !== pageDocId) : [...prev, pageDocId]
+            );
+            toast(isAssigned ? "Page unassigned from footer." : "Page assigned to footer.", "success");
+        } catch (err) {
+            console.error("Failed to update page footer", err);
+            toast("Failed to update page assignment.", "danger");
+        } finally {
+            setSavingAssignment(false);
+        }
+    };
+
+    const removeAllAssignedPages = async () => {
+        if (!confirm(`Remove this footer from all ${assignedPageIds.length} assigned pages?`)) return;
+        setSavingAssignment(true);
+        try {
+            await Promise.all(assignedPageIds.map(pid =>
+                authApi.put(`/cms-pages/${pid}?status=draft`, { data: { footer: null } })
+            ));
+            setAssignedPageIds([]);
+            toast("All pages unassigned.", "success");
+        } catch (err) {
+            console.error("Failed to remove all assignments", err);
+            toast("Failed to remove some assignments.", "danger");
+        } finally {
+            setSavingAssignment(false);
+        }
     };
 
     const handleSave = async () => {
@@ -191,7 +233,7 @@ export default function CmsFooterDetail() {
                     pinned_pages: { set: selectedPageIds },
                 },
             });
-            const res = await authApi.get(`/cms-footers/${documentId}`, { status: 'published', populate: ["pinned_pages"] });
+            const res = await authApi.get(`/cms-footers/${documentId}`, { status: 'published', populate: ["pinned_pages", "cms_pages"] });
             const f = res.data || res;
             if (!f) { toast("No published version found.", "warning"); return; }
             setName(f.name || "");
@@ -203,6 +245,7 @@ export default function CmsFooterDetail() {
             setOpeningHours(f.opening_hours || DEFAULT_HOURS);
             setSocialLinks(f.social_links || DEFAULT_SOCIALS);
             setSelectedPageIds((f.pinned_pages || []).map(p => p.documentId));
+            setAssignedPageIds((f.cms_pages || []).map(p => p.documentId));
             toast("Draft saved. Showing published version — click Save Draft to overwrite.", "success");
         } catch (err) {
             console.error("Failed to load published version", err);
@@ -353,30 +396,28 @@ export default function CmsFooterDetail() {
                             </div>
 
                             {/* Pinned Pages */}
-                            <div className="card mb-3">
-                                <div className="card-header d-flex align-items-center">
-                                    <i className="fas fa-thumbtack me-2"></i>
-                                    <strong>Pinned Pages</strong>
-                                    <span className="badge bg-primary ms-2">{selectedPageIds.length}</span>
-                                </div>
-                                <div className="card-body">
-                                    <p className="text-muted small mb-2">Select pages to show as links in the footer.</p>
-                                    {allPages.length === 0 ? (
-                                        <p className="text-muted small">No pages available.</p>
-                                    ) : (
-                                        <div className="d-flex flex-wrap gap-2">
-                                            {allPages.map(p => {
-                                                const selected = selectedPageIds.includes(p.documentId);
-                                                return (
-                                                    <button key={p.documentId} type="button" className={`btn btn-sm ${selected ? "btn-info text-white" : "btn-outline-secondary"}`} onClick={() => togglePage(p.documentId)}>
-                                                        {selected && <i className="fas fa-check me-1"></i>}{p.title}
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
+                            <PagePickerTabs
+                                allPages={allPages}
+                                selectedPageIds={selectedPageIds}
+                                onToggle={togglePage}
+                                onRemoveAll={removeAllPinnedPages}
+                                title="Pinned Pages"
+                                icon="fas fa-thumbtack"
+                                description="Select pages to show as links in the footer."
+                            />
+
+                            {/* Assigned Pages — pages using this footer */}
+                            {!isNew && (
+                                <PagePickerTabs
+                                    allPages={allPages}
+                                    selectedPageIds={assignedPageIds}
+                                    onToggle={toggleAssignedPage}
+                                    onRemoveAll={removeAllAssignedPages}
+                                    title="Assigned Pages"
+                                    icon="fas fa-file-alt"
+                                    description="Pages that use this footer. Toggle to assign/unassign this footer from pages."
+                                />
+                            )}
                         </div>
 
                         <div className="col-md-4">

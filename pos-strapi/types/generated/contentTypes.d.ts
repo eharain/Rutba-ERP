@@ -1346,6 +1346,7 @@ export interface ApiCmsFooterCmsFooter extends Struct.CollectionTypeSchema {
   };
   attributes: {
     address: Schema.Attribute.Text;
+    cms_pages: Schema.Attribute.Relation<'oneToMany', 'api::cms-page.cms-page'>;
     copyright_text: Schema.Attribute.String;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
@@ -1395,16 +1396,22 @@ export interface ApiCmsPageCmsPage extends Struct.CollectionTypeSchema {
       'api::category-group.category-group'
     >;
     content: Schema.Attribute.RichText;
+    content_priority: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<98>;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     excerpt: Schema.Attribute.RichText;
+    excerpt_priority: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<2>;
     featured_image: Schema.Attribute.Media<'images'>;
+    featured_image_priority: Schema.Attribute.Integer &
+      Schema.Attribute.DefaultTo<0>;
     footer: Schema.Attribute.Relation<
       'manyToOne',
       'api::cms-footer.cms-footer'
     >;
     gallery: Schema.Attribute.Media<'images' | 'videos', true>;
+    gallery_priority: Schema.Attribute.Integer &
+      Schema.Attribute.DefaultTo<100>;
     hero_product_groups: Schema.Attribute.Relation<
       'manyToMany',
       'api::product-group.product-group'
@@ -1430,6 +1437,8 @@ export interface ApiCmsPageCmsPage extends Struct.CollectionTypeSchema {
       'manyToMany',
       'api::cms-page.cms-page'
     >;
+    related_pages_priority: Schema.Attribute.Integer &
+      Schema.Attribute.DefaultTo<102>;
     slug: Schema.Attribute.UID<'title'> & Schema.Attribute.Required;
     sort_order: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
     title: Schema.Attribute.String & Schema.Attribute.Required;
@@ -2117,6 +2126,8 @@ export interface ApiProductGroupProductGroup
     priority: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
     products: Schema.Attribute.Relation<'manyToMany', 'api::product.product'>;
     publishedAt: Schema.Attribute.DateTime;
+    show_brand: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    show_category: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
     slug: Schema.Attribute.UID<'name'> & Schema.Attribute.Required;
     title: Schema.Attribute.String;
     updatedAt: Schema.Attribute.DateTime;
@@ -2603,6 +2614,56 @@ export interface ApiSaleSale extends Struct.CollectionTypeSchema {
     subtotal: Schema.Attribute.Decimal;
     tax: Schema.Attribute.Decimal;
     total: Schema.Attribute.Decimal & Schema.Attribute.Required;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiSiteSettingSiteSetting extends Struct.SingleTypeSchema {
+  collectionName: 'site_settings';
+  info: {
+    description: 'Global site configuration: branding, SEO defaults, promo banner, navigation labels';
+    displayName: 'Site Settings';
+    pluralName: 'site-settings';
+    singularName: 'site-setting';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    favicon: Schema.Attribute.Media<'images'>;
+    header_promo_cta_text: Schema.Attribute.String;
+    header_promo_cta_url: Schema.Attribute.String;
+    header_promo_enabled: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<false>;
+    header_promo_text: Schema.Attribute.String;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::site-setting.site-setting'
+    > &
+      Schema.Attribute.Private;
+    nav_explore_brands_label: Schema.Attribute.String &
+      Schema.Attribute.DefaultTo<'Explore Brands'>;
+    nav_explore_products_label: Schema.Attribute.String &
+      Schema.Attribute.DefaultTo<'Explore Products'>;
+    nav_login_label: Schema.Attribute.String &
+      Schema.Attribute.DefaultTo<'Login or Register'>;
+    nav_search_placeholder: Schema.Attribute.String &
+      Schema.Attribute.DefaultTo<'Search Products'>;
+    publishedAt: Schema.Attribute.DateTime;
+    site_description: Schema.Attribute.Text &
+      Schema.Attribute.DefaultTo<'Your ultimate destination for premium products at exceptional prices'>;
+    site_logo: Schema.Attribute.Media<'images'>;
+    site_name: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'Rutba.pk'>;
+    site_tagline: Schema.Attribute.String &
+      Schema.Attribute.DefaultTo<'Premium Products at Exceptional Prices'>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -3619,6 +3680,7 @@ declare module '@strapi/strapi' {
       'api::sale-return-item.sale-return-item': ApiSaleReturnItemSaleReturnItem;
       'api::sale-return.sale-return': ApiSaleReturnSaleReturn;
       'api::sale.sale': ApiSaleSale;
+      'api::site-setting.site-setting': ApiSiteSettingSiteSetting;
       'api::social-account.social-account': ApiSocialAccountSocialAccount;
       'api::social-post.social-post': ApiSocialPostSocialPost;
       'api::social-reply.social-reply': ApiSocialReplySocialReply;

@@ -19,7 +19,7 @@ export default function CarouselLayout({ group, sort = "default" }: CarouselLayo
       slideClassName="w-[75vw] sm:w-[45vw] md:w-[30vw] lg:w-[18vw] pr-3"
     >
       {products.map((item) => (
-        <ProductCard key={"car-" + item.id} {...getProductCardProps(item)} />
+        <ProductCard key={"car-" + item.id} {...getProductCardProps(item, { showBrand: group.show_brand, showCategory: group.show_category })} />
       ))}
     </ScrollSlider>
   );

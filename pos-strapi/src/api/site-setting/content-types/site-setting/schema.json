@@ -1,0 +1,70 @@
+{
+  "kind": "singleType",
+  "collectionName": "site_settings",
+  "info": {
+    "singularName": "site-setting",
+    "pluralName": "site-settings",
+    "displayName": "Site Settings",
+    "description": "Global site configuration: branding, SEO defaults, promo banner, navigation labels"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "site_name": {
+      "type": "string",
+      "required": true,
+      "default": "Rutba.pk"
+    },
+    "site_tagline": {
+      "type": "string",
+      "default": "Premium Products at Exceptional Prices"
+    },
+    "site_description": {
+      "type": "text",
+      "default": "Your ultimate destination for premium products at exceptional prices"
+    },
+    "site_logo": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": ["images"]
+    },
+    "favicon": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": ["images"]
+    },
+    "header_promo_enabled": {
+      "type": "boolean",
+      "default": false
+    },
+    "header_promo_text": {
+      "type": "string"
+    },
+    "header_promo_cta_text": {
+      "type": "string"
+    },
+    "header_promo_cta_url": {
+      "type": "string"
+    },
+    "nav_explore_products_label": {
+      "type": "string",
+      "default": "Explore Products"
+    },
+    "nav_explore_brands_label": {
+      "type": "string",
+      "default": "Explore Brands"
+    },
+    "nav_login_label": {
+      "type": "string",
+      "default": "Login or Register"
+    },
+    "nav_search_placeholder": {
+      "type": "string",
+      "default": "Search Products"
+    }
+  }
+}

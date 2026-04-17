@@ -1,6 +1,7 @@
-// import HeaderTopPromo from "@/components/layouts/header-top-promo";
+import HeaderTopPromo from "@/components/layouts/header-top-promo";
 import Link from "next/link";
 import { getPageUrl } from "@/lib/cms-page-types";
+import { useSiteSettings } from "@/hooks/use-site-settings";
 
 import { ChevronRight, Menu, ShoppingBasket, User2 } from "lucide-react";
 
@@ -80,6 +81,7 @@ export default function Header() {
   const { cartItem } = useStoreCart();
   const session = useSession();
   const { getCmsHeaderData } = useCmsPagesService();
+  const settings = useSiteSettings();
 
   const {
     data: cmsPage,
@@ -99,13 +101,21 @@ export default function Header() {
 
   return (
     <>
-      {/* <HeaderTopPromo></HeaderTopPromo> */}
+      <HeaderTopPromo />
       <div className="border-b border-[#DEDEDE]">
         <div className="container-fluid py-6">
           <div className="flex justify-between">
             <div className="flex items-center">
-              <Link href={"/"}>
-                <p className="text-2xl font-bold mr-10">Rutba.pk</p>
+              <Link href="/">
+                {settings.site_logo?.url ? (
+                  <img
+                    src={IMAGE_URL + settings.site_logo.url}
+                    alt={settings.site_name}
+                    className="h-8 md:h-10 w-auto mr-10"
+                  />
+                ) : (
+                  <p className="text-2xl font-bold mr-10">{settings.site_name}</p>
+                )}
               </Link>
 
               <div className="flex items-center hidden md:block">
@@ -119,7 +129,7 @@ export default function Header() {
                   {categories.length > 0 && (
                     <NavigationMenuItem>
                       <NavigationMenuTrigger>
-                        Explore Products
+                        {settings.nav_explore_products_label || "Explore Products"}
                       </NavigationMenuTrigger>
                       <NavigationMenuContent>
                         {isCmsLoading ? (
@@ -138,7 +148,7 @@ export default function Header() {
                   {brands.length > 0 && (
                     <NavigationMenuItem>
                       <NavigationMenuTrigger>
-                        Explore Brands
+                        {settings.nav_explore_brands_label || "Explore Brands"}
                       </NavigationMenuTrigger>
                       <NavigationMenuContent>
                         {isCmsLoading ? (
@@ -200,7 +210,7 @@ export default function Header() {
                     <span className="md:visible lg:hidden">
                       <User2></User2>
                     </span>
-                    <span className="hidden lg:block">Login or Register</span>
+                    <span className="hidden lg:block">{settings.nav_login_label || "Login or Register"}</span>
                   </Link>
                 </Button>
               )}

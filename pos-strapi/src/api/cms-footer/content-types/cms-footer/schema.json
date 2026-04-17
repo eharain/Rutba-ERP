@@ -41,6 +41,12 @@
       "relation": "manyToMany",
       "target": "api::cms-page.cms-page"
     },
+    "cms_pages": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::cms-page.cms-page",
+      "mappedBy": "footer"
+    },
     "copyright_text": {
       "type": "string"
     }
