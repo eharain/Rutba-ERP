@@ -3,6 +3,12 @@
 module.exports = {
   routes: [
     {
+      method: 'GET',
+      path: '/product-groups/by-slug/:slug',
+      handler: 'product-group.findBySlug',
+      config: { auth: false },
+    },
+    {
       method: 'POST',
       path: '/product-groups/:id/publish',
       handler: 'product-group.publish',

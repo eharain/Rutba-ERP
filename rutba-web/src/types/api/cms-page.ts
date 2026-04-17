@@ -28,6 +28,12 @@ export interface CmsProductGroupInterface {
   content?: string;
   products?: ProductInterface[];
   cover_image?: ImageInterface;
+  layout?: 'hero-slider' | 'grid-4' | 'grid-6' | 'carousel' | 'banner-single' | 'list';
+  priority?: number;
+  default_sort?: 'default' | 'newest' | 'price_asc' | 'price_desc';
+  enable_sort_dropdown?: boolean;
+  enable_view_toggle?: boolean;
+  max_inline_products?: number;
 }
 
 export interface CmsBrandGroupInterface {

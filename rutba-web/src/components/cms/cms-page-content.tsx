@@ -1,44 +1,43 @@
 import NextImage from "@/components/next-image";
-import ProductCard from "@/components/product-list/product-card";
 import Link from "next/link";
 import Head from "next/head";
-import { Swiper, SwiperSlide } from "swiper/react";
-import { Navigation, Pagination, Autoplay } from "swiper/modules";
 import { marked } from "marked";
 import { markedVideoEmbed } from "@/lib/marked-video-embed";
 
-import "swiper/css";
-import "swiper/css/navigation";
-import "swiper/css/pagination";
-
 import { IMAGE_URL } from "@/static/const";
-import { CmsPageDetailInterface } from "@/types/api/cms-page";
-import { ProductInterface, getVariantTermSummary } from "@/types/api/product";
-import { BrandInterface } from "@/types/api/brand";
+import { CmsPageDetailInterface, CmsProductGroupInterface } from "@/types/api/cms-page";
 import { getPageUrl } from "@/lib/cms-page-types";
+import ProductGroupRenderer from "./ProductGroupRenderer";
 
 marked.use({ breaks: true, gfm: true });
 marked.use(markedVideoEmbed({ imageBaseUrl: IMAGE_URL }));
-import { CategoryInterface } from "@/types/api/category";
 
 export default function CmsPageContent({
   page,
 }: {
   page: CmsPageDetailInterface;
 }) {
-  const heroGroups = page.hero_product_groups ?? [];
-  const heroProducts = heroGroups.flatMap((g) => g.products ?? []);
-  const brandGroups = [...(page.brand_groups ?? [])].sort(
-    (a, b) => a.sort_order - b.sort_order
+  // Combine hero_product_groups and product_groups, deduplicate, sort by priority
+  const groupMap = new Map<string, CmsProductGroupInterface>();
+  for (const g of page.hero_product_groups ?? []) {
+    groupMap.set(g.documentId, g);
+  }
+  for (const g of page.product_groups ?? []) {
+    if (!groupMap.has(g.documentId)) {
+      groupMap.set(g.documentId, g);
+    }
+  }
+  const allGroups = Array.from(groupMap.values()).sort(
+    (a, b) => (a.priority ?? 0) - (b.priority ?? 0)
   );
-  const categoryGroups = [...(page.category_groups ?? [])].sort(
-    (a, b) => a.sort_order - b.sort_order
-  );
-  const productGroups = page.product_groups ?? [];
 
   const bgUrl = page.background_image?.url
     ? IMAGE_URL + page.background_image.url
     : null;
+
+  const hasHeroGroup = allGroups.some(
+    (g) => g.layout === "hero-slider" || g.layout === "banner-single"
+  );
 
   return (
     <>
@@ -61,55 +60,8 @@ export default function CmsPageContent({
         }
       >
 
-      {/* Hero Slider */}
-      {heroProducts.length > 0 && (
-        <div className="hero-swiper-container">
-          <Swiper
-            modules={[Navigation, Pagination, Autoplay]}
-            spaceBetween={0}
-            slidesPerView={1}
-            navigation={true}
-            pagination={{ clickable: true }}
-            loop={heroProducts.length > 1}
-            autoplay={{ delay: 5000, disableOnInteraction: false }}
-            className="w-full"
-          >
-            {heroProducts.map((item) => {
-              const heroImages =
-                item.gallery && item.gallery.length > 0
-                  ? item.gallery.map((g) => g.url)
-                  : item.logo?.url
-                  ? [item.logo.url]
-                  : [];
-              return (
-                <SwiperSlide key={"hero-" + item.id}>
-                  <Link href={`/product/${item.documentId}`}>
-                    <div className="relative w-full h-[30vh] md:h-[45vh] lg:h-[70vh] xl:h-[80vh] overflow-hidden flex">
-                      {heroImages.map((url, idx) => (
-                        <div
-                          key={idx}
-                          className="relative flex-1 h-full overflow-hidden"
-                        >
-                          <NextImage
-                            src={IMAGE_URL + url}
-                            fill
-                            className="object-contain"
-                            alt={`${item.name || "Rutba"} ${idx + 1}`}
-                            useSkeleton
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  </Link>
-                </SwiperSlide>
-              );
-            })}
-          </Swiper>
-        </div>
-      )}
-
-      {/* Featured Image (fallback when no hero slider) */}
-      {heroProducts.length === 0 && page.featured_image?.url && (
+      {/* Featured Image (fallback when no hero-style group) */}
+      {!hasHeroGroup && page.featured_image?.url && (
         <div className="relative w-full overflow-hidden" style={{ maxHeight: '60vh' }}>
           <img
             src={IMAGE_URL + page.featured_image.url}
@@ -134,41 +86,14 @@ export default function CmsPageContent({
         </div>
       )}
 
-      {/* Brand Groups */}
-      {brandGroups.map((group) =>
-        group.brands && group.brands.length > 0 ? (
-          <div key={"bg-" + group.id} className="my-20">
-            <div className="container-fluid">
-              <h2 className="text-3xl font-bold mb-7">{group.name}</h2>
-              <BrandSwiper brands={group.brands} />
-            </div>
-          </div>
-        ) : null
-      )}
-
-      {/* Category Groups */}
-      {categoryGroups.map((group) =>
-        group.categories && group.categories.length > 0 ? (
-          <div key={"cg-" + group.id} className="my-20">
-            <div className="container-fluid">
-              <h2 className="text-3xl font-bold mb-7">{group.name}</h2>
-              <CategorySwiper categories={group.categories} />
-            </div>
-          </div>
-        ) : null
-      )}
-
-      {/* Product Groups */}
-      {productGroups.map((group) =>
-        group.products && group.products.length > 0 ? (
-          <div key={"pg-" + group.id} className="my-20">
-            <div className="container-fluid">
-              <h2 className="text-3xl font-bold mb-7">{group.name}</h2>
-              <ProductGrid products={group.products} />
-            </div>
-          </div>
-        ) : null
-      )}
+      {/* Product Groups — sorted by priority, each rendered via its layout */}
+      {allGroups.map((group, idx) => (
+        <ProductGroupRenderer
+          key={"pg-" + group.documentId}
+          group={group}
+          even={idx % 2 === 1}
+        />
+      ))}
 
       {/* Content */}
       {page.content && (
@@ -253,105 +178,5 @@ export default function CmsPageContent({
       )}
       </div>
     </>
-  );
-}
-
-/* ── Brand Swiper (matches existing BrandList styling) ── */
-function BrandSwiper({ brands }: { brands: BrandInterface[] }) {
-  return (
-    <Swiper
-      spaceBetween={5}
-      grabCursor={true}
-      slidesPerView={3}
-      breakpoints={{
-        "620": { slidesPerView: 5 },
-        "1024": { slidesPerView: 9 },
-      }}
-    >
-      {brands.map((item) => (
-        <SwiperSlide key={"brand-" + item.id}>
-          <Link
-            href={{ pathname: "/product", query: { brand: item.slug } }}
-          >
-            <div className="bg-slate-100 px-3 w-full py-3 flex items-center justify-center flex-col rounded-md border border-transparent hover:shadow-sm hover:border-slate-300">
-              {item.logo && (
-                <NextImage
-                  src={IMAGE_URL + (item.logo.url ?? "")}
-                  height={50}
-                  width={50}
-                  alt={item.name}
-                />
-              )}
-              <p>{item.name}</p>
-            </div>
-          </Link>
-        </SwiperSlide>
-      ))}
-    </Swiper>
-  );
-}
-
-/* ── Category Swiper ── */
-function CategorySwiper({ categories }: { categories: CategoryInterface[] }) {
-  return (
-    <Swiper
-      spaceBetween={5}
-      grabCursor={true}
-      slidesPerView={3}
-      breakpoints={{
-        "620": { slidesPerView: 5 },
-        "1024": { slidesPerView: 9 },
-      }}
-    >
-      {categories.map((item) => (
-        <SwiperSlide key={"cat-" + item.id}>
-              <Link href={{ pathname: "/product", query: { category: item.slug } }}>
-
-            <div className="bg-slate-100 px-3 w-full py-3 flex items-center justify-center flex-col rounded-md border border-transparent hover:shadow-sm hover:border-slate-300">
-              {item.logo && (
-                <NextImage
-                  src={IMAGE_URL + (item.logo.url ?? "")}
-                  height={50}
-                  width={50}
-                  alt={item.name}
-                />
-              )}
-              <p>{item.name}</p>
-            </div>
-          </Link>
-        </SwiperSlide>
-      ))}
-    </Swiper>
-  );
-}
-
-/* ── Product Grid (matches existing FeaturedSneakers styling) ── */
-function ProductGrid({ products }: { products: ProductInterface[] }) {
-  return (
-    <div className="grid grid-cols-12 gap-[10px] lg:gap-[10px]">
-      {products.map((item) => {
-        const variantPrice =
-          item.variants && item.variants.length > 0
-            ? item.variants.map((v) => v.selling_price)
-            : [item.selling_price];
-
-        return (
-          <div
-            key={"product-" + item.id}
-            className="col-span-6 md:col-span-4 lg:col-span-2"
-          >
-            <ProductCard
-              name={item.name}
-              category={item.categories?.[0]}
-              brand={item.brands?.[0]}
-              thumbnail={item.gallery?.[0]?.url ?? null}
-              slug={item.documentId}
-              variantPrice={variantPrice}
-              variantTermSummary={getVariantTermSummary(item)}
-            />
-          </div>
-        );
-      })}
-    </div>
   );
 }

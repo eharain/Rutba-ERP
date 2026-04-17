@@ -373,7 +373,8 @@ export default function CmsPageDetail() {
                                 </div>
                             </div>
 
-                            {/* Brand Groups */}
+                            {/* Brand Groups (hidden for shop pages — use product groups with layouts instead) */}
+                            {pageType !== 'shop' && (
                             <div className="card mb-3">
                                 <div className="card-header d-flex align-items-center">
                                     <i className="fas fa-tags me-2"></i>
@@ -398,8 +399,10 @@ export default function CmsPageDetail() {
                                     )}
                                 </div>
                             </div>
+                            )}
 
-                            {/* Category Groups */}
+                            {/* Category Groups (hidden for shop pages — use product groups with layouts instead) */}
+                            {pageType !== 'shop' && (
                             <div className="card mb-3">
                                 <div className="card-header d-flex align-items-center">
                                     <i className="fas fa-folder me-2"></i>
@@ -424,6 +427,7 @@ export default function CmsPageDetail() {
                                     )}
                                 </div>
                             </div>
+                            )}
 
                             {/* Product Groups */}
                             <div className="card mb-3">
