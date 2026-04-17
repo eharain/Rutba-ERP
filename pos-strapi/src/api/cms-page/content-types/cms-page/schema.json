@@ -97,6 +97,26 @@
       "allowedTypes": [
         "images"
       ]
+    },
+    "excerpt_priority": {
+      "type": "integer",
+      "default": 2
+    },
+    "featured_image_priority": {
+      "type": "integer",
+      "default": 0
+    },
+    "content_priority": {
+      "type": "integer",
+      "default": 98
+    },
+    "gallery_priority": {
+      "type": "integer",
+      "default": 100
+    },
+    "related_pages_priority": {
+      "type": "integer",
+      "default": 102
     }
   }
 }

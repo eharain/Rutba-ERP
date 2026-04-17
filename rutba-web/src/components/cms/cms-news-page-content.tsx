@@ -3,6 +3,7 @@ import Link from "next/link";
 import Head from "next/head";
 import { marked } from "marked";
 import { markedVideoEmbed } from "@/lib/marked-video-embed";
+import { useSiteSettings } from "@/hooks/use-site-settings";
 
 import { IMAGE_URL } from "@/static/const";
 import { CmsPageDetailInterface } from "@/types/api/cms-page";
@@ -17,7 +18,8 @@ export default function CmsNewsPageContent({
 }: {
   page: CmsPageDetailInterface;
 }) {
-  const publishedDate = page.publishedAt
+  const settings = useSiteSettings();
+  const publishedDate
     ? new Date(page.publishedAt).toLocaleDateString("en-PK", {
         year: "numeric",
         month: "long",
@@ -28,7 +30,7 @@ export default function CmsNewsPageContent({
   return (
     <>
       <Head>
-        <title>{page.title} - Rutba.pk</title>
+        <title>{page.title} - {settings.site_name}</title>
         {page.excerpt && (
           <meta
             name="description"

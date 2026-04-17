@@ -8,6 +8,8 @@ import MarkdownEditor from "@rutba/pos-shared/components/MarkdownEditor";
 import FileView from "@rutba/pos-shared/components/FileView";
 import Link from "next/link";
 import { useToast } from "../../components/Toast";
+import GroupPickerTabs from "../../components/GroupPickerTabs";
+import PagePickerTabs from "../../components/PagePickerTabs";
 
 const PAGE_TYPES = ["shop", "blog", "news", "info"];
 
@@ -30,12 +32,17 @@ export default function CmsPageDetail() {
     const [pageType, setPageType] = useState("shop");
     const [sortOrder, setSortOrder] = useState(0);
 
-    const [selectedHeroGroupIds, setSelectedHeroGroupIds] = useState([]);
     const [selectedBrandGroupIds, setSelectedBrandGroupIds] = useState([]);
     const [selectedCategoryGroupIds, setSelectedCategoryGroupIds] = useState([]);
     const [selectedGroupIds, setSelectedGroupIds] = useState([]);
     const [selectedRelatedIds, setSelectedRelatedIds] = useState([]);
     const [footerId, setFooterId] = useState("");
+
+    const [excerptPriority, setExcerptPriority] = useState(2);
+    const [featuredImagePriority, setFeaturedImagePriority] = useState(0);
+    const [contentPriority, setContentPriority] = useState(98);
+    const [galleryPriority, setGalleryPriority] = useState(100);
+    const [relatedPagesPriority, setRelatedPagesPriority] = useState(102);
 
     const [featuredImageId, setFeaturedImageId] = useState(null);
     const [backgroundImageId, setBackgroundImageId] = useState(null);
@@ -66,12 +73,16 @@ export default function CmsPageDetail() {
                 setExcerpt(p.excerpt || "");
                 setPageType(p.page_type || "shop");
                 setSortOrder(p.sort_order ?? 0);
-                setSelectedHeroGroupIds((p.hero_product_groups || []).map(g => g.documentId));
                 setSelectedBrandGroupIds((p.brand_groups || []).map(bg => bg.documentId));
                 setSelectedCategoryGroupIds((p.category_groups || []).map(cg => cg.documentId));
                 setSelectedGroupIds((p.product_groups || []).map(g => g.documentId));
                 setSelectedRelatedIds((p.related_pages || []).map(rp => rp.documentId));
                 setFooterId(p.footer?.documentId || "");
+                setExcerptPriority(p.excerpt_priority ?? 2);
+                setFeaturedImagePriority(p.featured_image_priority ?? 0);
+                setContentPriority(p.content_priority ?? 98);
+                setGalleryPriority(p.gallery_priority ?? 100);
+                setRelatedPagesPriority(p.related_pages_priority ?? 102);
                 setFeaturedImageId(p.featured_image?.id || null);
                 setBackgroundImageId(p.background_image?.id || null);
                 setGalleryIds((p.gallery || []).map(g => g.id));
@@ -136,12 +147,16 @@ export default function CmsPageDetail() {
                     excerpt,
                     page_type: pageType,
                     sort_order: sortOrder,
-                    hero_product_groups: { set: selectedHeroGroupIds },
                     brand_groups: { set: selectedBrandGroupIds },
                     category_groups: { set: selectedCategoryGroupIds },
                     product_groups: { set: selectedGroupIds },
                     related_pages: { set: selectedRelatedIds },
                     footer: footerId || null,
+                    excerpt_priority: excerptPriority,
+                    featured_image_priority: featuredImagePriority,
+                    content_priority: contentPriority,
+                    gallery_priority: galleryPriority,
+                    related_pages_priority: relatedPagesPriority,
                 },
             };
             // Only include media when adding/keeping; omit when null to avoid affecting published
@@ -176,12 +191,16 @@ export default function CmsPageDetail() {
                     excerpt,
                     page_type: pageType,
                     sort_order: sortOrder,
-                    hero_product_groups: { set: selectedHeroGroupIds },
                     brand_groups: { set: selectedBrandGroupIds },
                     category_groups: { set: selectedCategoryGroupIds },
                     product_groups: { set: selectedGroupIds },
                     related_pages: { set: selectedRelatedIds },
                     footer: footerId || null,
+                    excerpt_priority: excerptPriority,
+                    featured_image_priority: featuredImagePriority,
+                    content_priority: contentPriority,
+                    gallery_priority: galleryPriority,
+                    related_pages_priority: relatedPagesPriority,
                     featured_image: featuredImageId || null,
                     background_image: backgroundImageId || null,
                     gallery: galleryIds.length > 0 ? galleryIds : null,
@@ -222,7 +241,6 @@ export default function CmsPageDetail() {
                 data: {
                     title, content, excerpt,
                     page_type: pageType, sort_order: sortOrder,
-                    hero_product_groups: { set: selectedHeroGroupIds },
                     brand_groups: { set: selectedBrandGroupIds },
                     category_groups: { set: selectedCategoryGroupIds },
                     product_groups: { set: selectedGroupIds },
@@ -246,12 +264,16 @@ export default function CmsPageDetail() {
             setExcerpt(p.excerpt || "");
             setPageType(p.page_type || "shop");
             setSortOrder(p.sort_order ?? 0);
-            setSelectedHeroGroupIds((p.hero_product_groups || []).map(g => g.documentId));
             setSelectedBrandGroupIds((p.brand_groups || []).map(bg => bg.documentId));
             setSelectedCategoryGroupIds((p.category_groups || []).map(cg => cg.documentId));
             setSelectedGroupIds((p.product_groups || []).map(g => g.documentId));
             setSelectedRelatedIds((p.related_pages || []).map(rp => rp.documentId));
             setFooterId(p.footer?.documentId || "");
+            setExcerptPriority(p.excerpt_priority ?? 2);
+            setFeaturedImagePriority(p.featured_image_priority ?? 0);
+            setContentPriority(p.content_priority ?? 98);
+            setGalleryPriority(p.gallery_priority ?? 100);
+            setRelatedPagesPriority(p.related_pages_priority ?? 102);
             setFeaturedImageId(p.featured_image?.id || null);
             setBackgroundImageId(p.background_image?.id || null);
             setGalleryIds((p.gallery || []).map(g => g.id));
@@ -347,33 +369,7 @@ export default function CmsPageDetail() {
                                 </div>
                             </div>
 
-                            {/* Hero Product Groups */}
-                            <div className="card mb-3">
-                                <div className="card-header d-flex align-items-center">
-                                    <i className="fas fa-image me-2"></i>
-                                    <strong>Hero Slider</strong>
-                                    <span className="badge bg-primary ms-2">{selectedHeroGroupIds.length}</span>
-                                </div>
-                                <div className="card-body">
-                                    <p className="text-muted small mb-2">Select product groups whose products will appear as the full-width hero banner slider.</p>
-                                    {allGroups.length === 0 ? (
-                                        <p className="text-muted small">No product groups available.</p>
-                                    ) : (
-                                        <div className="d-flex flex-wrap gap-2">
-                                            {allGroups.map(g => {
-                                                const selected = selectedHeroGroupIds.includes(g.documentId);
-                                                return (
-                                                    <button key={g.documentId} type="button" className={`btn btn-sm ${selected ? "btn-danger" : "btn-outline-secondary"}`} onClick={() => setSelectedHeroGroupIds(prev => prev.includes(g.documentId) ? prev.filter(id => id !== g.documentId) : [...prev, g.documentId])}>
-                                                        {selected && <i className="fas fa-check me-1"></i>}{g.name}
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Brand Groups (hidden for shop pages — use product groups with layouts instead) */}
+                            {/* Brand Groups
                             {pageType !== 'shop' && (
                             <div className="card mb-3">
                                 <div className="card-header d-flex align-items-center">
@@ -430,56 +426,20 @@ export default function CmsPageDetail() {
                             )}
 
                             {/* Product Groups */}
-                            <div className="card mb-3">
-                                <div className="card-header d-flex align-items-center">
-                                    <i className="fas fa-layer-group me-2"></i>
-                                    <strong>Product Groups</strong>
-                                    <span className="badge bg-primary ms-2">{selectedGroupIds.length}</span>
-                                </div>
-                                <div className="card-body">
-                                    <p className="text-muted small mb-2">Select product groups to display. Each group renders as a section using the group name as the heading.</p>
-                                    {allGroups.length === 0 ? (
-                                        <p className="text-muted small">No product groups available.</p>
-                                    ) : (
-                                        <div className="d-flex flex-wrap gap-2">
-                                            {allGroups.map(g => {
-                                                const selected = selectedGroupIds.includes(g.documentId);
-                                                return (
-                                                    <button key={g.documentId} type="button" className={`btn btn-sm ${selected ? "btn-success" : "btn-outline-secondary"}`} onClick={() => toggleGroup(g.documentId)}>
-                                                        {selected && <i className="fas fa-check me-1"></i>}{g.name}
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
+                            <GroupPickerTabs
+                                allGroups={allGroups}
+                                selectedGroupIds={selectedGroupIds}
+                                onToggle={toggleGroup}
+                                onRemoveAll={() => setSelectedGroupIds([])}
+                            />
 
                             {/* Related Pages */}
-                            <div className="card mb-3">
-                                <div className="card-header d-flex align-items-center">
-                                    <i className="fas fa-link me-2"></i>
-                                    <strong>Related Pages</strong>
-                                    <span className="badge bg-primary ms-2">{selectedRelatedIds.length}</span>
-                                </div>
-                                <div className="card-body">
-                                    <p className="text-muted small mb-2">Link other pages that visitors may find useful.</p>
-                                    {allPages.length === 0 ? (
-                                        <p className="text-muted small">No other pages available.</p>
-                                    ) : (
-                                        <div className="d-flex flex-wrap gap-2">
-                                            {allPages.map(p => {
-                                                const selected = selectedRelatedIds.includes(p.documentId);
-                                                return (
-                                                    <button key={p.documentId} type="button" className={`btn btn-sm ${selected ? "btn-info text-white" : "btn-outline-secondary"}`} onClick={() => toggleRelated(p.documentId)}>
-                                                        {selected && <i className="fas fa-check me-1"></i>}{p.title}
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
+                            <PagePickerTabs
+                                allPages={allPages}
+                                selectedPageIds={selectedRelatedIds}
+                                onToggle={toggleRelated}
+                                onRemoveAll={() => setSelectedRelatedIds([])}
+                            />
                         </div>
 
                         <div className="col-md-4">
@@ -497,6 +457,28 @@ export default function CmsPageDetail() {
                                     <div className="mb-3">
                                         <label className="form-label">Sort Order</label>
                                         <input type="number" className="form-control" value={sortOrder} onChange={e => setSortOrder(parseInt(e.target.value) || 0)} />
+                                    </div>
+                                    <hr />
+                                    <p className="text-muted small mb-2"><i className="fas fa-sort-numeric-down me-1"></i>Section Priorities <span className="text-muted">(lower = higher on page)</span></p>
+                                    <div className="row g-2 mb-2">
+                                        <div className="col-8"><small>Featured Image</small></div>
+                                        <div className="col-4"><input type="number" className="form-control form-control-sm" value={featuredImagePriority} onChange={e => setFeaturedImagePriority(parseInt(e.target.value) || 0)} /></div>
+                                    </div>
+                                    <div className="row g-2 mb-2">
+                                        <div className="col-8"><small>Excerpt</small></div>
+                                        <div className="col-4"><input type="number" className="form-control form-control-sm" value={excerptPriority} onChange={e => setExcerptPriority(parseInt(e.target.value) || 0)} /></div>
+                                    </div>
+                                    <div className="row g-2 mb-2">
+                                        <div className="col-8"><small>Content</small></div>
+                                        <div className="col-4"><input type="number" className="form-control form-control-sm" value={contentPriority} onChange={e => setContentPriority(parseInt(e.target.value) || 0)} /></div>
+                                    </div>
+                                    <div className="row g-2 mb-2">
+                                        <div className="col-8"><small>Gallery</small></div>
+                                        <div className="col-4"><input type="number" className="form-control form-control-sm" value={galleryPriority} onChange={e => setGalleryPriority(parseInt(e.target.value) || 0)} /></div>
+                                    </div>
+                                    <div className="row g-2 mb-2">
+                                        <div className="col-8"><small>Related Pages</small></div>
+                                        <div className="col-4"><input type="number" className="form-control form-control-sm" value={relatedPagesPriority} onChange={e => setRelatedPagesPriority(parseInt(e.target.value) || 0)} /></div>
                                     </div>
                                     {!isNew && page?.slug && (
                                         <div className="mb-3">

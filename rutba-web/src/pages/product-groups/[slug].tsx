@@ -13,6 +13,7 @@ import { ErrorCard } from "@/components/errors/error-card";
 import { IMAGE_URL } from "@/static/const";
 import { getProductGroupBySlug, ProductGroupDetailResponse } from "@/services/product-groups";
 import { sortProducts, getProductCardProps } from "@/components/cms/layouts/sort-products";
+import { useSiteSettings } from "@/hooks/use-site-settings";
 import type { SortOption } from "@/components/cms/layouts/GroupHeader";
 
 const PAGE_SIZE_OPTIONS = [12, 24, 48, 96];
@@ -44,6 +45,7 @@ export default function ProductGroupPage({
   slug: ssrSlug,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
+  const settings = useSiteSettings();
   const slug = (router.query.slug as string) ?? ssrSlug;
   const [page, setPage] = useState(
     parseInt(router.query.page as string, 10) || 1
@@ -112,7 +114,7 @@ export default function ProductGroupPage({
   return (
     <>
       <Head>
-        <title>{group.title || group.name} - Rutba.pk</title>
+        <title>{group.title || group.name} - {settings.site_name}</title>
         {group.excerpt && (
           <meta
             name="description"

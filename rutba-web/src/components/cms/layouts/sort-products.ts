@@ -29,7 +29,7 @@ function getMinPrice(p: ProductInterface): number {
   return p.selling_price;
 }
 
-export function getProductCardProps(item: ProductInterface) {
+export function getProductCardProps(item: ProductInterface, options?: { showBrand?: boolean; showCategory?: boolean }) {
   const variantPrice =
     item.variants && item.variants.length > 0
       ? item.variants.map((v) => v.selling_price)
@@ -37,8 +37,8 @@ export function getProductCardProps(item: ProductInterface) {
 
   return {
     name: item.name,
-    category: item.categories?.[0],
-    brand: item.brands?.[0],
+    category: (options?.showCategory !== false) ? item.categories?.[0] : undefined,
+    brand: (options?.showBrand !== false) ? item.brands?.[0] : undefined,
     thumbnail: item.gallery?.[0]?.url ?? null,
     slug: item.documentId,
     variantPrice,

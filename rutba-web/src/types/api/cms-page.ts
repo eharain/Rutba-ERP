@@ -34,6 +34,8 @@ export interface CmsProductGroupInterface {
   enable_sort_dropdown?: boolean;
   enable_view_toggle?: boolean;
   max_inline_products?: number;
+  show_brand?: boolean;
+  show_category?: boolean;
 }
 
 export interface CmsBrandGroupInterface {
@@ -77,4 +79,9 @@ export interface CmsPageDetailInterface extends CmsPageInterface {
   product_groups?: CmsProductGroupInterface[];
   related_pages?: CmsPageInterface[];
   footer?: CmsFooterInterface;
+  excerpt_priority?: number;
+  featured_image_priority?: number;
+  content_priority?: number;
+  gallery_priority?: number;
+  related_pages_priority?: number;
 }

@@ -32,6 +32,8 @@ export default function ProductGroupDetail() {
     const [enableSortDropdown, setEnableSortDropdown] = useState(true);
     const [enableViewToggle, setEnableViewToggle] = useState(true);
     const [maxInlineProducts, setMaxInlineProducts] = useState(12);
+    const [showBrand, setShowBrand] = useState(true);
+    const [showCategory, setShowCategory] = useState(true);
     const [selectedProductIds, setSelectedProductIds] = useState([]);
     const [connectedProducts, setConnectedProducts] = useState([]);
     const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -57,6 +59,8 @@ export default function ProductGroupDetail() {
                 setEnableSortDropdown(g.enable_sort_dropdown !== false);
                 setEnableViewToggle(g.enable_view_toggle !== false);
                 setMaxInlineProducts(g.max_inline_products ?? 12);
+                setShowBrand(g.show_brand !== false);
+                setShowCategory(g.show_category !== false);
                 const products = g.products || [];
                 setConnectedProducts(products);
                 setSelectedProductIds(products.map(p => p.documentId));
@@ -98,6 +102,8 @@ export default function ProductGroupDetail() {
                     enable_sort_dropdown: enableSortDropdown,
                     enable_view_toggle: enableViewToggle,
                     max_inline_products: maxInlineProducts,
+                    show_brand: showBrand,
+                    show_category: showCategory,
                     products: { set: selectedProductIds },
                 },
             };
@@ -133,6 +139,8 @@ export default function ProductGroupDetail() {
                     enable_sort_dropdown: enableSortDropdown,
                     enable_view_toggle: enableViewToggle,
                     max_inline_products: maxInlineProducts,
+                    show_brand: showBrand,
+                    show_category: showCategory,
                     products: { set: selectedProductIds },
                 },
             };
@@ -334,6 +342,18 @@ export default function ProductGroupDetail() {
                                                 <label className="form-label">Max Products Shown Inline</label>
                                                 <input type="number" className="form-control" value={maxInlineProducts} onChange={e => setMaxInlineProducts(parseInt(e.target.value) || 0)} min={0} placeholder="12" />
                                                 <small className="text-muted">0 = show all. Otherwise shows this many with a "View All" link.</small>
+                                            </div>
+                                            <div className="col-md-4 mb-3 d-flex align-items-center pt-4">
+                                                <div className="form-check">
+                                                    <input className="form-check-input" type="checkbox" id="showBrand" checked={showBrand} onChange={e => setShowBrand(e.target.checked)} />
+                                                    <label className="form-check-label" htmlFor="showBrand">Show Product Brand</label>
+                                                </div>
+                                            </div>
+                                            <div className="col-md-4 mb-3 d-flex align-items-center pt-4">
+                                                <div className="form-check">
+                                                    <input className="form-check-input" type="checkbox" id="showCategory" checked={showCategory} onChange={e => setShowCategory(e.target.checked)} />
+                                                    <label className="form-check-label" htmlFor="showCategory">Show Product Category</label>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>

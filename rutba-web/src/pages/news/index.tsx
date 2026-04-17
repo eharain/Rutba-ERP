@@ -10,6 +10,7 @@ import { CmsPageInterface } from "@/types/api/cms-page";
 import { getPageUrl } from "@/lib/cms-page-types";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Head from "next/head";
+import { useSiteSettings } from "@/hooks/use-site-settings";
 
 const PAGE_TYPE = "news";
 
@@ -28,6 +29,7 @@ export default function NewsIndex({
   initialPages,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { getCmsPagesByType } = useCmsPagesService();
+  const settings = useSiteSettings();
 
   const {
     data: pages,
@@ -45,7 +47,7 @@ export default function NewsIndex({
     <LayoutMain>
       <>
         <Head>
-          <title>News - Rutba.pk</title>
+          <title>News - {settings.site_name}</title>
         </Head>
 
         <div className="container-fluid my-16">

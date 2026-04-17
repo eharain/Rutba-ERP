@@ -88,6 +88,14 @@
     "max_inline_products": {
       "type": "integer",
       "default": 12
+    },
+    "show_brand": {
+      "type": "boolean",
+      "default": true
+    },
+    "show_category": {
+      "type": "boolean",
+      "default": true
     }
   }
 }

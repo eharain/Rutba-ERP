@@ -1,26 +1,23 @@
 import Link from "next/link";
 import { CmsFooterInterface } from "@/types/api/cms-page";
 import { getPageUrl } from "@/lib/cms-page-types";
+import { useSiteSettings } from "@/hooks/use-site-settings";
 
 interface FooterProps {
   footer?: CmsFooterInterface;
 }
 
 export default function Footer({ footer }: FooterProps) {
+  const settings = useSiteSettings();
   const phone = footer?.phone || "+923245303530";
   const openingHours = footer?.opening_hours || [
     { day: "Monday to Thursday", hours: "11am - 9pm" },
     { day: "Friday", hours: "Closed" },
     { day: "Saturday and Sunday", hours: "11am - 9pm" },
   ];
-  const socialLinks = footer?.social_links || [
-    { platform: "Facebook", url: "https://www.facebook.com/profile.php?id=61587364924242" },
-    { platform: "Instagram", url: "https://www.instagram.com/rutba.pakistan" },
-    { platform: "TikTok", url: "https://www.tiktok.com/@rutbapk" },
-    { platform: "Youtube", url: "https://www.youtube.com/@rutba-pk" },
-  ];
+  const socialLinks = footer?.social_links || [];
   const pinnedPages = footer?.pinned_pages || [];
-  const copyrightText = footer?.copyright_text || `© ${new Date().getFullYear()}. Rutba.pk`;
+  const copyrightText = footer?.copyright_text || `© ${new Date().getFullYear()}. ${settings.site_name}`;
 
   return (
     <footer className="bg-slate-100 lg:grid lg:grid-cols-5">

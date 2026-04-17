@@ -16,7 +16,7 @@ export default function Grid4Layout({ group, sort = "default" }: Grid4LayoutProp
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
       {products.map((item) => (
-        <ProductCard key={"g4-" + item.id} {...getProductCardProps(item)} />
+        <ProductCard key={"g4-" + item.id} {...getProductCardProps(item, { showBrand: group.show_brand, showCategory: group.show_category })} />
       ))}
     </div>
   );
