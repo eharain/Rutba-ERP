@@ -24,7 +24,9 @@ export default function ProductGroups() {
                 authApi.get("/product-groups", { status: 'published', fields: ["documentId"], pagination: { pageSize: 200 } }),
             ]);
             const pubIds = new Set((pubRes.data || []).map(g => g.documentId));
-            setGroups((draftRes.data || []).map(g => ({ ...g, _isPublished: pubIds.has(g.documentId) })));
+            const mapped = (draftRes.data || []).map(g => ({ ...g, _isPublished: pubIds.has(g.documentId) }));
+            mapped.sort((a, b) => (a.priority ?? 0) - (b.priority ?? 0));
+            setGroups(mapped);
         } catch (err) {
             console.error("Failed to load product groups", err);
         } finally {
@@ -61,6 +63,8 @@ export default function ProductGroups() {
                                 <tr>
                                     <th style={{ width: 50 }}></th>
                                     <th>Name</th>
+                                    <th>Layout</th>
+                                    <th>Priority</th>
                                     <th>Slug</th>
                                     <th>Products</th>
                                     <th>Published</th>
@@ -80,6 +84,8 @@ export default function ProductGroups() {
                                             )}
                                         </td>
                                         <td>{g.name}</td>
+                                        <td><span className="badge bg-info text-dark">{g.layout || 'grid-4'}</span></td>
+                                        <td>{g.priority ?? 0}</td>
                                         <td><code>{g.slug}</code></td>
                                         <td><span className="badge bg-primary">{(g.products || []).length}</span></td>
                                         <td>

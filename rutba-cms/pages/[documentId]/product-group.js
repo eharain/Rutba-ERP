@@ -26,8 +26,15 @@ export default function ProductGroupDetail() {
     const [slug, setSlug] = useState("");
     const [excerpt, setExcerpt] = useState("");
     const [content, setContent] = useState("");
+    const [layout, setLayout] = useState("grid-4");
+    const [priority, setPriority] = useState(0);
+    const [defaultSort, setDefaultSort] = useState("default");
+    const [enableSortDropdown, setEnableSortDropdown] = useState(true);
+    const [enableViewToggle, setEnableViewToggle] = useState(true);
+    const [maxInlineProducts, setMaxInlineProducts] = useState(12);
     const [selectedProductIds, setSelectedProductIds] = useState([]);
     const [connectedProducts, setConnectedProducts] = useState([]);
+    const [advancedOpen, setAdvancedOpen] = useState(false);
 
     useEffect(() => {
         if (!jwt || !documentId || isNew) { setLoading(false); return; }
@@ -44,6 +51,12 @@ export default function ProductGroupDetail() {
                 setSlug(g.slug || "");
                 setExcerpt(g.excerpt || "");
                 setContent(g.content || "");
+                setLayout(g.layout || "grid-4");
+                setPriority(g.priority ?? 0);
+                setDefaultSort(g.default_sort || "default");
+                setEnableSortDropdown(g.enable_sort_dropdown !== false);
+                setEnableViewToggle(g.enable_view_toggle !== false);
+                setMaxInlineProducts(g.max_inline_products ?? 12);
                 const products = g.products || [];
                 setConnectedProducts(products);
                 setSelectedProductIds(products.map(p => p.documentId));
@@ -58,6 +71,18 @@ export default function ProductGroupDetail() {
         );
     };
 
+    const bulkAddProducts = (docIds) => {
+        setSelectedProductIds(prev => {
+            const set = new Set(prev);
+            docIds.forEach(id => set.add(id));
+            return [...set];
+        });
+    };
+
+    const removeAllProducts = () => {
+        setSelectedProductIds([]);
+    };
+
     const handleSave = async () => {
         setSaving(true);
         try {
@@ -67,6 +92,12 @@ export default function ProductGroupDetail() {
                     title,
                     excerpt,
                     content,
+                    layout,
+                    priority,
+                    default_sort: defaultSort,
+                    enable_sort_dropdown: enableSortDropdown,
+                    enable_view_toggle: enableViewToggle,
+                    max_inline_products: maxInlineProducts,
                     products: { set: selectedProductIds },
                 },
             };
@@ -96,6 +127,12 @@ export default function ProductGroupDetail() {
                     title,
                     excerpt,
                     content,
+                    layout,
+                    priority,
+                    default_sort: defaultSort,
+                    enable_sort_dropdown: enableSortDropdown,
+                    enable_view_toggle: enableViewToggle,
+                    max_inline_products: maxInlineProducts,
                     products: { set: selectedProductIds },
                 },
             };
@@ -130,7 +167,7 @@ export default function ProductGroupDetail() {
         setSaving(true);
         try {
             await authApi.put(`/product-groups/${documentId}?status=draft`, {
-                data: { name, title, excerpt, content, products: { set: selectedProductIds } },
+                data: { name, title, excerpt, content, layout, priority, default_sort: defaultSort, enable_sort_dropdown: enableSortDropdown, enable_view_toggle: enableViewToggle, max_inline_products: maxInlineProducts, products: { set: selectedProductIds } },
             });
             const res = await authApi.get(`/product-groups/${documentId}`, { status: 'published', populate: ["gallery", "cover_image", "products.logo", "products.brands", "products.categories"] });
             const g = res.data || res;
@@ -140,6 +177,12 @@ export default function ProductGroupDetail() {
             setSlug(g.slug || "");
             setExcerpt(g.excerpt || "");
             setContent(g.content || "");
+            setLayout(g.layout || "grid-4");
+            setPriority(g.priority ?? 0);
+            setDefaultSort(g.default_sort || "default");
+            setEnableSortDropdown(g.enable_sort_dropdown !== false);
+            setEnableViewToggle(g.enable_view_toggle !== false);
+            setMaxInlineProducts(g.max_inline_products ?? 12);
             const pubProducts = g.products || [];
             setConnectedProducts(pubProducts);
             setSelectedProductIds(pubProducts.map(p => p.documentId));
@@ -212,9 +255,28 @@ export default function ProductGroupDetail() {
                         <div className="col-md-8">
                             <div className="card mb-3">
                                 <div className="card-body">
-                                    <div className="mb-3">
-                                        <label className="form-label">Name</label>
-                                        <input type="text" className="form-control" value={name} onChange={e => setName(e.target.value)} />
+                                    <div className="row">
+                                        <div className="col-md-4 mb-3">
+                                            <label className="form-label">Name</label>
+                                            <input type="text" className="form-control" value={name} onChange={e => setName(e.target.value)} placeholder="Group name" />
+                                        </div>
+                                        <div className="col-md-4 mb-3">
+                                            <label className="form-label">Layout</label>
+                                            <select className="form-select" value={layout} onChange={e => setLayout(e.target.value)}>
+                                                <option value="grid-4">Grid 4 Columns</option>
+                                                <option value="grid-6">Grid 6 Columns</option>
+                                                <option value="carousel">Carousel</option>
+                                                <option value="hero-slider">Hero Slider</option>
+                                                <option value="banner-single">Banner (Single Product)</option>
+                                                <option value="list">List</option>
+                                            </select>
+                                            <small className="text-muted">Choose how products display</small>
+                                        </div>
+                                        <div className="col-md-4 mb-3">
+                                            <label className="form-label">Priority</label>
+                                            <input type="number" className="form-control" value={priority} onChange={e => setPriority(parseInt(e.target.value) || 0)} placeholder="0 = highest" />
+                                            <small className="text-muted">Lower = appears first on page</small>
+                                        </div>
                                     </div>
                                     <div className="mb-3">
                                         <label className="form-label">Title</label>
@@ -237,10 +299,53 @@ export default function ProductGroupDetail() {
                                 </div>
                             </div>
 
+                            <div className="card mb-3">
+                                <div className="card-header d-flex align-items-center justify-content-between" style={{ cursor: "pointer" }} onClick={() => setAdvancedOpen(v => !v)}>
+                                    <span><i className={`fas fa-chevron-${advancedOpen ? "down" : "right"} me-2`}></i>Advanced Settings</span>
+                                    <small className="text-muted">Sort, view toggle defaults</small>
+                                </div>
+                                {advancedOpen && (
+                                    <div className="card-body">
+                                        <div className="row">
+                                            <div className="col-md-4 mb-3">
+                                                <label className="form-label">Default Sort</label>
+                                                <select className="form-select" value={defaultSort} onChange={e => setDefaultSort(e.target.value)}>
+                                                    <option value="default">Default</option>
+                                                    <option value="newest">Newest</option>
+                                                    <option value="price_asc">Price: Low → High</option>
+                                                    <option value="price_desc">Price: High → Low</option>
+                                                </select>
+                                            </div>
+                                            <div className="col-md-4 mb-3 d-flex align-items-center pt-4">
+                                                <div className="form-check">
+                                                    <input className="form-check-input" type="checkbox" id="enableSort" checked={enableSortDropdown} onChange={e => setEnableSortDropdown(e.target.checked)} />
+                                                    <label className="form-check-label" htmlFor="enableSort">Show Sort Dropdown</label>
+                                                </div>
+                                            </div>
+                                            <div className="col-md-4 mb-3 d-flex align-items-center pt-4">
+                                                <div className="form-check">
+                                                    <input className="form-check-input" type="checkbox" id="enableView" checked={enableViewToggle} onChange={e => setEnableViewToggle(e.target.checked)} />
+                                                    <label className="form-check-label" htmlFor="enableView">Show View Toggle</label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="row">
+                                            <div className="col-md-4 mb-3">
+                                                <label className="form-label">Max Products Shown Inline</label>
+                                                <input type="number" className="form-control" value={maxInlineProducts} onChange={e => setMaxInlineProducts(parseInt(e.target.value) || 0)} min={0} placeholder="12" />
+                                                <small className="text-muted">0 = show all. Otherwise shows this many with a "View All" link.</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
                             <ProductPickerTabs
                                 selectedProductIds={selectedProductIds}
                                 connectedProducts={connectedProducts}
                                 onToggle={toggleProduct}
+                                onBulkAdd={bulkAddProducts}
+                                onRemoveAll={removeAllProducts}
                             />
                         </div>
 

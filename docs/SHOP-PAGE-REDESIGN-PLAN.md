@@ -8,6 +8,8 @@ Replace the current shop page rendering (which uses brands, categories, and flat
 
 **Remove the `swiper` dependency.** All sliders/carousels will be built with a custom, lightweight component using CSS `scroll-snap` + minimal React state. No external carousel libraries. The result is simpler, faster, and visually consistent across all layouts.
 
+**Richtext fields respected.** Product group `excerpt` (markdown) is rendered as parsed HTML in `GroupHeader` and `BannerSingleLayout`. Product group `content` (markdown) is rendered below the products in every layout via `ProductGroupRenderer`. Both fields use the `marked` parser with prose styling.
+
 ---
 
 ## Design System & Visual Cohesion
@@ -191,9 +193,66 @@ Define these layouts for rendering a product group on the shop page:
 - If after steps 10-11 no remaining code imports from `swiper`, run `npm uninstall swiper` in the `rutba-web` workspace.
 - Keep `@radix-ui/react-slider` — that's a UI slider (range input), not a carousel.
 
-### Phase 4: Verification
+### Phase 4: CMS Authoring UX — Easier Product Group Creation & Bulk Add
 
-**Step 15 — Test end-to-end**
+**Step 15 — Add bulk "Add All" buttons to ProductPickerTabs for categories, brands, suppliers**
+- File: `rutba-cms/components/ProductPickerTabs.js`
+- In the "All Products" tab, next to each filter dropdown (Brand, Category, Supplier), add an **"Add All"** button that:
+  1. Fetches **all** product `documentId`s matching the current filter (not just the current page) using a dedicated unpaginated or high-limit API call.
+  2. Calls `onToggle` for each product not already in `selectedProductIds`, effectively bulk-adding the entire filtered set.
+  3. Shows a brief loading spinner while fetching, then a toast/badge confirming how many were added.
+- Also add a **"Remove All"** button on the "Connected" tab header to clear the selection quickly.
+- Add a summary line at the top of the Connected tab: "X products selected" with a small "Clear All" link.
+
+**Step 16 — Add a "Quick Add" tab/section for browsing by Category and Brand trees**
+- File: `rutba-cms/components/ProductPickerTabs.js` (extend) or new `rutba-cms/components/BulkProductPicker.js`
+- Add a third tab: **"Quick Add"** that shows:
+  - A list of all **categories** as collapsible sections. Each category row shows the category name, product count, and an **"Add All from [Category]"** button.
+  - Below categories, a list of all **brands** with the same pattern: brand name, count, **"Add All from [Brand]"** button.
+- Clicking "Add All from [X]" fetches all product documentIds for that category/brand and toggles them on.
+- This allows creating a product group like "All Perfumes" or "All Nike Products" in one click instead of manually selecting hundreds of products.
+
+**Step 17 — Streamline product-group creation flow in CMS**
+- File: `rutba-cms/pages/[documentId]/product-group.js`
+- Reorder the form so the most important fields come first: **Name → Layout → Priority** at the top in a compact row.
+- Move Display Settings (default_sort, enable_sort_dropdown, enable_view_toggle) into a collapsible "Advanced Settings" section so they don't clutter the initial creation experience.
+- Add placeholder/helper text to fields: e.g., Layout dropdown shows "Choose how products display", Priority input shows "Lower = appears first on page".
+- Ensure the product picker (`ProductPickerTabs`) appears prominently right after the basic fields, so the flow is: name the group → pick a layout → bulk-add products → save.
+
+### Phase 5: Product Group Paging & Detail Page
+
+**Step 18 — Add Strapi custom endpoint for paginated product-group detail by slug**
+- File: `pos-strapi/src/api/product-group/controllers/product-group.js`
+- File: `pos-strapi/src/api/product-group/routes/01-custom-product-group.js`
+- Add `GET /product-groups/by-slug/:slug` route that returns product group metadata + paginated products.
+- Accepts query params: `page` (default 1), `pageSize` (default 24, max 100), `sort`.
+- Uses knex to query the products link table for counting and pagination.
+
+**Step 19 — Create web service for fetching product-group with pagination**
+- File: `rutba-web/src/services/product-groups.ts` (new)
+- `getProductGroupBySlug(slug, page, pageSize)` → returns `{ data, meta: { pagination } }`.
+
+**Step 20 — Create dedicated product-group detail page**
+- File: `rutba-web/src/pages/product-groups/[slug].tsx` (new)
+- Full page at `/product-groups/[slug]` with SSR.
+- Shows cover image hero, group name, excerpt, content.
+- Product grid with pagination controls (page numbers, prev/next).
+- Page size selector (12, 24, 48, 96).
+- Sort dropdown (default, newest, price asc, price desc).
+- URL-synced page/pageSize via shallow routing.
+
+**Step 21 — Add "View All" link to inline product group sections**
+- File: `rutba-web/src/components/cms/layouts/GroupHeader.tsx`
+- Add `viewAllHref` and `totalProducts` optional props.
+- Render a "View All (N) →" link next to the group heading.
+- File: `rutba-web/src/components/cms/ProductGroupRenderer.tsx`
+- Add `maxInlineProducts` prop (default 12).
+- If group has more products than the limit, slice to limit and pass `viewAllHref` to `GroupHeader`.
+- Links to `/product-groups/{slug}`.
+
+### Phase 6: Verification
+
+**Step 22 — Test end-to-end**
 - Create a product group in CMS with `hero-slider` layout, priority `1`.
 - Create another with `grid-4` layout, priority `2`.
 - Create another with `carousel` layout, priority `3`.
@@ -226,6 +285,14 @@ Define these layouts for rendering a product group on the shop page:
 | `rutba-web/src/components/cms/ProductGroupRenderer.tsx` | **New** — layout resolver |
 | `rutba-web/src/components/cms/cms-page-content.tsx` | Refactor to use layout system, remove Swiper |
 | `rutba-web/src/services/cms-pages.ts` | Ensure populate includes new fields |
+| `rutba-cms/components/ProductPickerTabs.js` | Add bulk "Add All" buttons, "Quick Add" tab, "Remove All" |
+| `rutba-cms/pages/[documentId]/product-group.js` | Streamline creation form layout and field ordering |
+| `pos-strapi/src/api/product-group/controllers/product-group.js` | Add `findBySlug` paginated action |
+| `pos-strapi/src/api/product-group/routes/01-custom-product-group.js` | Add `by-slug/:slug` route |
+| `rutba-web/src/services/product-groups.ts` | **New** — product group detail service with pagination |
+| `rutba-web/src/pages/product-groups/[slug].tsx` | **New** — dedicated product group page with pagination |
+| `rutba-web/src/components/cms/layouts/GroupHeader.tsx` | Add `viewAllHref` + `totalProducts` props |
+| `rutba-web/src/components/cms/ProductGroupRenderer.tsx` | Add `maxInlineProducts` prop, limit inline, pass View All link |
 
 ---
 

@@ -2091,15 +2091,30 @@ export interface ApiProductGroupProductGroup
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    default_sort: Schema.Attribute.Enumeration<
+      ['default', 'newest', 'price_asc', 'price_desc']
+    > &
+      Schema.Attribute.DefaultTo<'default'>;
+    enable_sort_dropdown: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<true>;
+    enable_view_toggle: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<true>;
     excerpt: Schema.Attribute.RichText;
     gallery: Schema.Attribute.Media<'images'>;
+    layout: Schema.Attribute.Enumeration<
+      ['hero-slider', 'grid-4', 'grid-6', 'carousel', 'banner-single', 'list']
+    > &
+      Schema.Attribute.DefaultTo<'grid-4'>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
       'api::product-group.product-group'
     > &
       Schema.Attribute.Private;
+    max_inline_products: Schema.Attribute.Integer &
+      Schema.Attribute.DefaultTo<12>;
     name: Schema.Attribute.String & Schema.Attribute.Required;
+    priority: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
     products: Schema.Attribute.Relation<'manyToMany', 'api::product.product'>;
     publishedAt: Schema.Attribute.DateTime;
     slug: Schema.Attribute.UID<'name'> & Schema.Attribute.Required;
