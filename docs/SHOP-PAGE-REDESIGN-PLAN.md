@@ -16,10 +16,28 @@ All layouts share a unified visual language so the page feels like one designed 
 
 - **Consistent section spacing**: Every product group section uses the same vertical rhythm (`py-12` / `py-16` on desktop) with optional alternating subtle background tones (white / slate-50) for visual separation.
 - **Unified group header**: Every group renders with a shared `<GroupHeader>` component — group name as heading, optional excerpt as subtitle, consistent typography and spacing.
+- **Unified group controls**: Every group can render a consistent toolbar (right side of the header) with a **Sort dropdown** and **View mode toggle** (Summary / Detailed) so the UI feels coherent across layouts.
 - **Shared product card**: All layouts (grid, carousel, list) reuse the same `ProductCard` or a variant of it. No layout renders products with completely different card styles.
 - **Custom slider component**: A single `<ScrollSlider>` primitive replaces all Swiper usage. It uses CSS `overflow-x: auto` + `scroll-snap-type: x mandatory` + optional prev/next buttons. Clean, native-feeling, no JS-heavy carousel logic.
 - **Smooth transitions**: Hover states, card shadows, and interactive elements use consistent `transition-all duration-200` across all layouts.
 - **Responsive breakpoints**: All layouts follow the same breakpoint strategy (mobile-first: 1 col → sm: 2 col → md: 3 col → lg: varies by layout).
+
+---
+
+## User Controls (Dropdown + Summary/Detailed)
+
+Every product-group section should support the same interaction pattern:
+
+- **Sort dropdown** (right side of the group header):
+  - Options: `Default`, `Newest`, `Price: Low → High`, `Price: High → Low`.
+  - Sorting is applied **within that group only** (client-side).
+- **View mode toggle**:
+  - `Summary` = compact card view (grid / carousel)
+  - `Detailed` = list view (larger rows with more text)
+  - Default view is the group’s `layout`, but users can toggle per group.
+  - The view toggle should be hidden for layouts that don’t make sense (e.g., `hero-slider`, `banner-single`).
+
+Implementation note: keep it lightweight—local React state per group is fine. Optionally sync to URL query later if you want shareable states.
 
 ---
 
@@ -46,6 +64,10 @@ Define these layouts for rendering a product group on the shop page:
 - File: `pos-strapi/src/api/product-group/content-types/product-group/schema.json`
 - Add `layout` field: enumeration with values `hero-slider`, `grid-4`, `grid-6`, `carousel`, `banner-single`, `list`. Default: `grid-4`.
 - Add `priority` field: integer, default `0`.
+- (Optional, recommended) Add editor defaults for the new group toolbar:
+  - `default_sort`: enumeration `default | newest | price_asc | price_desc` (default: `default`)
+  - `enable_sort_dropdown`: boolean (default: `true`)
+  - `enable_view_toggle`: boolean (default: `true`)
 - After editing, restart Strapi so the DB migration runs.
 
 ### Phase 2: CMS Changes (rutba-cms)
@@ -54,6 +76,7 @@ Define these layouts for rendering a product group on the shop page:
 - File: `rutba-cms/pages/[documentId]/product-group.js`
 - Add a `<select>` dropdown for `layout` with all 6 layout options.
 - Add a number `<input>` for `priority`.
+- (If Step 1 optional fields are added) Add fields for `default_sort`, `enable_sort_dropdown`, and `enable_view_toggle`.
 - Include both in the save payload.
 - Load both from the fetched group data.
 
@@ -77,6 +100,12 @@ Define these layouts for rendering a product group on the shop page:
   layout?: 'hero-slider' | 'grid-4' | 'grid-6' | 'carousel' | 'banner-single' | 'list';
   priority?: number;
   ```
+- (If Step 1 optional fields are added) add:
+  ```ts
+  default_sort?: 'default' | 'newest' | 'price_asc' | 'price_desc';
+  enable_sort_dropdown?: boolean;
+  enable_view_toggle?: boolean;
+  ```
 
 **Step 6 — Build the custom `<ScrollSlider>` primitive component**
 - File: `rutba-web/src/components/ui/scroll-slider.tsx` (new)
@@ -91,10 +120,17 @@ Define these layouts for rendering a product group on the shop page:
 - Tailwind only, no external CSS files needed.
 - This single component replaces ALL Swiper usage across the shop page.
 
-**Step 7 — Build the shared `<GroupHeader>` component**
+**Step 7 — Build the shared `<GroupHeader>` + controls (sort dropdown + view toggle)**
 - File: `rutba-web/src/components/cms/layouts/GroupHeader.tsx` (new)
 - Renders the product group heading + optional subtitle/excerpt consistently across all layouts.
-- Props: `name: string`, `excerpt?: string`.
+- Also renders an optional right-side toolbar:
+  - Sort dropdown
+  - View toggle (Summary / Detailed)
+- Props (suggested):
+  - `name: string`, `excerpt?: string`
+  - `sort?: string`, `onSortChange?: (v) => void`
+  - `viewMode?: 'summary' | 'detailed'`, `onViewModeChange?: (v) => void`
+  - `showSort?: boolean`, `showViewToggle?: boolean`
 - Keeps typography and spacing identical for every section.
 
 **Step 8 — Create individual layout components for each product group layout type**
@@ -108,6 +144,10 @@ Define these layouts for rendering a product group on the shop page:
   - `ListLayout.tsx` — vertical stack of product rows: image left (fixed width), name + price + description right, clean divider between rows.
 - Each component receives `{ group: CmsProductGroupInterface }` as props.
 - Each component uses `<GroupHeader>` at the top.
+- Each component should apply the per-group **sort** (dropdown) before rendering products.
+- Layouts that support both modes should also support **Summary vs Detailed**:
+  - Summary: use the layout’s natural representation (grid / carousel)
+  - Detailed: reuse the `ListLayout` rendering (or share a small list-render helper)
 - All use consistent `container-fluid` width and section padding.
 
 **Step 9 — Create a layout resolver/renderer component**
@@ -115,6 +155,10 @@ Define these layouts for rendering a product group on the shop page:
 - Takes a `CmsProductGroupInterface` and renders the correct layout component based on `group.layout`.
 - Default fallback to `grid-4`.
 - Wraps each layout in a consistent section container with alternating background if desired.
+- Holds the per-group UI state for:
+  - selected sort
+  - selected view mode (summary/detailed)
+  - and passes state into `<GroupHeader>` and the selected layout.
 
 **Step 10 — Refactor `cms-page-content.tsx` to use the new layout system**
 - File: `rutba-web/src/components/cms/cms-page-content.tsx`
