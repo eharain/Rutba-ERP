@@ -6,6 +6,21 @@ Replace the current shop page rendering (which uses brands, categories, and flat
 
 **No more brand groups or category groups on shop pages.** Everything flows through product groups.
 
+**Remove the `swiper` dependency.** All sliders/carousels will be built with a custom, lightweight component using CSS `scroll-snap` + minimal React state. No external carousel libraries. The result is simpler, faster, and visually consistent across all layouts.
+
+---
+
+## Design System & Visual Cohesion
+
+All layouts share a unified visual language so the page feels like one designed surface, not a patchwork:
+
+- **Consistent section spacing**: Every product group section uses the same vertical rhythm (`py-12` / `py-16` on desktop) with optional alternating subtle background tones (white / slate-50) for visual separation.
+- **Unified group header**: Every group renders with a shared `<GroupHeader>` component — group name as heading, optional excerpt as subtitle, consistent typography and spacing.
+- **Shared product card**: All layouts (grid, carousel, list) reuse the same `ProductCard` or a variant of it. No layout renders products with completely different card styles.
+- **Custom slider component**: A single `<ScrollSlider>` primitive replaces all Swiper usage. It uses CSS `overflow-x: auto` + `scroll-snap-type: x mandatory` + optional prev/next buttons. Clean, native-feeling, no JS-heavy carousel logic.
+- **Smooth transitions**: Hover states, card shadows, and interactive elements use consistent `transition-all duration-200` across all layouts.
+- **Responsive breakpoints**: All layouts follow the same breakpoint strategy (mobile-first: 1 col → sm: 2 col → md: 3 col → lg: varies by layout).
+
 ---
 
 ## Layout Types
@@ -14,12 +29,12 @@ Define these layouts for rendering a product group on the shop page:
 
 | Layout Key | Description |
 |---|---|
-| `hero-slider` | Full-width swiper/carousel of products (like current hero). Good for featured/banner products. |
+| `hero-slider` | Full-width custom slider of product hero images. Uses `<ScrollSlider>` with auto-play and dot indicators. No external library. |
 | `grid-4` | 4-column product grid (2 on mobile, 4 on desktop). Standard product cards. |
 | `grid-6` | 6-column product grid (2 on mobile, 3 on tablet, 6 on desktop). Compact cards. |
-| `carousel` | Horizontal swiper of product cards. Scrollable row. |
-| `banner-single` | Single large product banner (first product in group). Full-width image + CTA. |
-| `list` | Vertical list of products with image on left, details on right. |
+| `carousel` | Horizontal `<ScrollSlider>` of product cards. CSS scroll-snap, prev/next arrows, drag-to-scroll. |
+| `banner-single` | Single large product banner (first product in group). Full-width image + overlay text + CTA button. |
+| `list` | Vertical list of products with image on left, details on right. Clean rows with dividers. |
 
 ---
 
@@ -63,52 +78,87 @@ Define these layouts for rendering a product group on the shop page:
   priority?: number;
   ```
 
-**Step 6 — Create individual layout components for each product group layout type**
+**Step 6 — Build the custom `<ScrollSlider>` primitive component**
+- File: `rutba-web/src/components/ui/scroll-slider.tsx` (new)
+- A reusable, zero-dependency slider/carousel built with:
+  - `overflow-x: auto` + `scroll-snap-type: x mandatory` on the container.
+  - `scroll-snap-align: start` on each child.
+  - Optional prev/next arrow buttons (absolute positioned, appear on hover).
+  - Optional dot indicators (computed from scroll position / child count).
+  - Optional `autoPlay` prop (uses `setInterval` to scroll to next child).
+  - `scrollBehavior: 'smooth'` for transitions.
+  - Props: `children`, `showArrows?: boolean`, `showDots?: boolean`, `autoPlay?: number` (ms interval, 0 = off), `className?: string`.
+- Tailwind only, no external CSS files needed.
+- This single component replaces ALL Swiper usage across the shop page.
+
+**Step 7 — Build the shared `<GroupHeader>` component**
+- File: `rutba-web/src/components/cms/layouts/GroupHeader.tsx` (new)
+- Renders the product group heading + optional subtitle/excerpt consistently across all layouts.
+- Props: `name: string`, `excerpt?: string`.
+- Keeps typography and spacing identical for every section.
+
+**Step 8 — Create individual layout components for each product group layout type**
 - File: `rutba-web/src/components/cms/layouts/` (new directory)
 - Create one component per layout:
-  - `HeroSliderLayout.tsx` — full-width swiper (extract from current hero logic in cms-page-content.tsx)
-  - `Grid4Layout.tsx` — 4-col grid of ProductCards
-  - `Grid6Layout.tsx` — 6-col grid of ProductCards (like current ProductGrid)
-  - `CarouselLayout.tsx` — horizontal swiper of ProductCards
-  - `BannerSingleLayout.tsx` — single product banner
-  - `ListLayout.tsx` — vertical product list
+  - `HeroSliderLayout.tsx` — full-width `<ScrollSlider autoPlay={5000} showDots>` with large product images. Each slide is a Link to the product. No Swiper.
+  - `Grid4Layout.tsx` — 4-col grid (`grid-cols-2 md:grid-cols-3 lg:grid-cols-4`) of ProductCards.
+  - `Grid6Layout.tsx` — 6-col grid (`grid-cols-2 md:grid-cols-3 lg:grid-cols-6`) of ProductCards.
+  - `CarouselLayout.tsx` — `<ScrollSlider showArrows>` with ProductCards as children. Horizontal scroll-snap row.
+  - `BannerSingleLayout.tsx` — first product rendered as a full-width banner with background image, overlay gradient, product name, price, and "Shop Now" CTA link.
+  - `ListLayout.tsx` — vertical stack of product rows: image left (fixed width), name + price + description right, clean divider between rows.
 - Each component receives `{ group: CmsProductGroupInterface }` as props.
+- Each component uses `<GroupHeader>` at the top.
+- All use consistent `container-fluid` width and section padding.
 
-**Step 7 — Create a layout resolver/renderer component**
+**Step 9 — Create a layout resolver/renderer component**
 - File: `rutba-web/src/components/cms/ProductGroupRenderer.tsx` (new)
 - Takes a `CmsProductGroupInterface` and renders the correct layout component based on `group.layout`.
 - Default fallback to `grid-4`.
+- Wraps each layout in a consistent section container with alternating background if desired.
 
-**Step 8 — Refactor `cms-page-content.tsx` to use the new layout system**
+**Step 10 — Refactor `cms-page-content.tsx` to use the new layout system**
 - File: `rutba-web/src/components/cms/cms-page-content.tsx`
 - Replace the current separate hero / brandGroups / categoryGroups / productGroups rendering with:
   1. Combine `hero_product_groups` and `product_groups` into one array.
   2. Sort by `priority` (ascending).
   3. Map each group through `<ProductGroupRenderer group={group} />`.
-- Remove `BrandSwiper` and `CategorySwiper` components (or keep them unused for now).
+- **Remove** `BrandSwiper` and `CategorySwiper` internal components entirely.
+- **Remove** all `swiper` and `swiper/css` imports from this file.
 - The page structure becomes: Background → Excerpt → [Sorted Product Groups] → Content → Gallery → Related Pages.
 
-**Step 9 — Update the shop index page (`/shop`)**
+**Step 11 — Remove Swiper from other shop-related components**
+- File: `rutba-web/src/components/home/hero-slider.tsx` — Refactor to use `<ScrollSlider>` instead of Swiper (if this component is used on shop pages). If it's only used on the homepage and not part of this redesign, leave it for a separate cleanup.
+- File: `rutba-web/src/components/brands/index.tsx` — If BrandSwiper is used on shop pages, refactor. Otherwise mark for future cleanup.
+- Goal: No Swiper imports remain in any shop-page-related code path.
+
+**Step 12 — Update the shop index page (`/shop`)**
 - File: `rutba-web/src/pages/shop/index.tsx`
 - Currently this lists CMS pages as cards. Decide:
   - **Option A**: Keep as-is (shop index lists sub-pages, each sub-page renders groups). No change needed.
   - **Option B**: Make `/shop` itself render product groups from a single "main shop" CMS page. Requires fetching a designated CMS page.
 - Recommend **Option A** for now (no change to index). The layout changes only affect `[slug].tsx` detail pages.
 
-**Step 10 — Update the CMS pages service to populate layout and priority on product groups**
+**Step 13 — Update the CMS pages service to populate layout and priority on product groups**
 - File: `rutba-web/src/services/cms-pages.ts`
 - Ensure the API call to fetch CMS page detail populates `product_groups.layout`, `product_groups.priority` (and same for `hero_product_groups`).
 - Check the `populate` parameter in the Strapi query.
 
+**Step 14 — (Optional) Remove `swiper` package from rutba-web**
+- If after steps 10-11 no remaining code imports from `swiper`, run `npm uninstall swiper` in the `rutba-web` workspace.
+- Keep `@radix-ui/react-slider` — that's a UI slider (range input), not a carousel.
+
 ### Phase 4: Verification
 
-**Step 11 — Test end-to-end**
+**Step 15 — Test end-to-end**
 - Create a product group in CMS with `hero-slider` layout, priority `1`.
 - Create another with `grid-4` layout, priority `2`.
-- Assign both to a shop CMS page.
-- Verify they render in order on the web frontend.
-- Verify the hero-slider group shows a full-width carousel.
-- Verify the grid-4 group shows a 4-column product grid.
+- Create another with `carousel` layout, priority `3`.
+- Assign all three to a shop CMS page.
+- Verify they render in priority order on the web frontend.
+- Verify the hero-slider uses the custom ScrollSlider with auto-play and dots.
+- Verify the carousel uses the custom ScrollSlider with arrows and scroll-snap.
+- Verify no Swiper CSS or JS is loaded on shop pages.
+- Verify all sections have consistent spacing, headers, and card styles.
 
 ---
 
@@ -121,9 +171,16 @@ Define these layouts for rendering a product group on the shop page:
 | `rutba-cms/pages/product-groups.js` | Show layout/priority in list |
 | `rutba-cms/pages/[documentId]/cms-page.js` (or similar) | Remove brand/category group pickers for shop |
 | `rutba-web/src/types/api/cms-page.ts` | Add layout/priority to interface |
-| `rutba-web/src/components/cms/layouts/*.tsx` | New layout components (6 files) |
-| `rutba-web/src/components/cms/ProductGroupRenderer.tsx` | New layout resolver |
-| `rutba-web/src/components/cms/cms-page-content.tsx` | Refactor to use layout system |
+| `rutba-web/src/components/ui/scroll-slider.tsx` | **New** — custom CSS scroll-snap slider primitive |
+| `rutba-web/src/components/cms/layouts/GroupHeader.tsx` | **New** — shared group heading component |
+| `rutba-web/src/components/cms/layouts/HeroSliderLayout.tsx` | **New** — hero slider layout |
+| `rutba-web/src/components/cms/layouts/Grid4Layout.tsx` | **New** — 4-col grid layout |
+| `rutba-web/src/components/cms/layouts/Grid6Layout.tsx` | **New** — 6-col grid layout |
+| `rutba-web/src/components/cms/layouts/CarouselLayout.tsx` | **New** — horizontal carousel layout |
+| `rutba-web/src/components/cms/layouts/BannerSingleLayout.tsx` | **New** — single product banner layout |
+| `rutba-web/src/components/cms/layouts/ListLayout.tsx` | **New** — vertical product list layout |
+| `rutba-web/src/components/cms/ProductGroupRenderer.tsx` | **New** — layout resolver |
+| `rutba-web/src/components/cms/cms-page-content.tsx` | Refactor to use layout system, remove Swiper |
 | `rutba-web/src/services/cms-pages.ts` | Ensure populate includes new fields |
 
 ---
@@ -134,3 +191,6 @@ Define these layouts for rendering a product group on the shop page:
 - The `hero-slider` layout replaces the old `hero_product_groups` concept. Eventually you can deprecate that relation and just use `product_groups` with `layout: 'hero-slider'`.
 - Brand and category groups are NOT removed from the Strapi schema (backward compatible). They are just no longer rendered on shop pages.
 - Each layout component should be self-contained and reusable.
+- **No Swiper dependency** on shop pages. The custom `<ScrollSlider>` uses native CSS scroll-snap which is supported in all modern browsers, is lighter, and gives full control over styling.
+- The `<ScrollSlider>` component lives in `components/ui/` following the shadcn/ui pattern — it's a low-level primitive that can be reused anywhere in the app (homepage, other pages) whenever a carousel is needed.
+- Visual cohesion is enforced through shared `<GroupHeader>`, consistent section wrappers in `<ProductGroupRenderer>`, and the same `ProductCard` across all layouts.
