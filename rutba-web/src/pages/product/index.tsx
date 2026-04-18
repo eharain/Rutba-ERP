@@ -6,6 +6,7 @@ import ProductFilter from "@/components/product-list/product-filter";
 import ProductSort from "@/components/product-list/product-sort";
 import { getHighestProductPrice } from "@/services/products";
 import { useRouter } from "next/router";
+import { useSiteSettings } from "@/hooks/use-site-settings";
 
 /**
  * Retrieves the highest product price from the server.
@@ -40,6 +41,7 @@ export default function ProductList({
   highestPrice: number;
 }) {
   const router = useRouter();
+  const settings = useSiteSettings();
 
   const { brand: activeBrand } = router.query;
 
@@ -47,7 +49,7 @@ export default function ProductList({
     <LayoutMain>
       <div className="container-fluid">
         <div className="my-10">
-          <h2 className="text-3xl font-bold mb-7">Explore Brands</h2>
+          <h2 className="text-3xl font-bold mb-7">{settings.nav_explore_brands_label || "Explore Brands"}</h2>
           <BrandList
             clearQuerySearch={true}
             activeBrand={activeBrand as string}
