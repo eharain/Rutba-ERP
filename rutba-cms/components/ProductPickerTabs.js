@@ -37,6 +37,10 @@ export default function ProductPickerTabs({ selectedProductIds, connectedProduct
         });
     }, [connectedProducts]);
 
+    // Connected tab pagination
+    const CONNECTED_PAGE_SIZE = 25;
+    const [connectedPage, setConnectedPage] = useState(1);
+
     // Picker state
     const [pickerProducts, setPickerProducts] = useState([]);
     const [pickerLoading, setPickerLoading] = useState(false);
@@ -229,8 +233,12 @@ export default function ProductPickerTabs({ selectedProductIds, connectedProduct
         .map(id => productCache[id])
         .filter(Boolean);
 
-    const renderProductButton = (p) => {
-        const selected = selectedProductIds.includes(p.documentId);
+    // Paginated connected products
+    const connectedPageCount = Math.max(1, Math.ceil(displayConnected.length / CONNECTED_PAGE_SIZE));
+    const connectedFrom = (connectedPage - 1) * CONNECTED_PAGE_SIZE;
+    const connectedSlice = displayConnected.slice(connectedFrom, connectedFrom + CONNECTED_PAGE_SIZE);
+
+    const renderProductButton = (p) => {        const selected = selectedProductIds.includes(p.documentId);
         return (
             <div key={p.documentId} className="d-inline-flex align-items-center gap-1">
                 {p.logo?.url ? (
@@ -314,9 +322,18 @@ export default function ProductPickerTabs({ selectedProductIds, connectedProduct
                         {displayConnected.length === 0 ? (
                             <p className="text-muted small">No products connected yet. Use the "All Products" tab to search and add products.</p>
                         ) : (
-                            <div className="d-flex flex-wrap gap-2">
-                                {displayConnected.map(p => renderProductButton(p))}
-                            </div>
+                            <>
+                                <div className="d-flex flex-wrap gap-2">
+                                    {connectedSlice.map(p => renderProductButton(p))}
+                                </div>
+                                {connectedPageCount > 1 && (
+                                    <nav className="mt-3 d-flex align-items-center gap-2">
+                                        <button className="btn btn-sm btn-outline-secondary" disabled={connectedPage <= 1} onClick={() => setConnectedPage(p => p - 1)}>&laquo; Prev</button>
+                                        <small className="text-muted">Page {connectedPage} of {connectedPageCount} ({displayConnected.length} products)</small>
+                                        <button className="btn btn-sm btn-outline-secondary" disabled={connectedPage >= connectedPageCount} onClick={() => setConnectedPage(p => p + 1)}>Next &raquo;</button>
+                                    </nav>
+                                )}
+                            </>
                         )}
                     </>
                 )}

@@ -37,11 +37,18 @@ export default function ProductGroupDetail() {
     const [selectedProductIds, setSelectedProductIds] = useState([]);
     const [connectedProducts, setConnectedProducts] = useState([]);
     const [advancedOpen, setAdvancedOpen] = useState(false);
+    const [selectedPageIds, setSelectedPageIds] = useState([]);
+    const [allCmsPages, setAllCmsPages] = useState([]);
+    const [cmsPageSearch, setCmsPageSearch] = useState("");
+    const [cmsPageTab, setCmsPageTab] = useState("connected");
+    const [cmsPageTypeFilter, setCmsPageTypeFilter] = useState("");
+    const CMS_PAGES_PAGE_SIZE = 25;
+    const [cmsAllPage, setCmsAllPage] = useState(1);
 
     useEffect(() => {
         if (!jwt || !documentId || isNew) { setLoading(false); return; }
         Promise.all([
-            authApi.get(`/product-groups/${documentId}`, { status: 'draft', populate: ["gallery", "cover_image", "products.logo", "products.brands", "products.categories"] }),
+            authApi.get(`/product-groups/${documentId}`, { status: 'draft', populate: ["gallery", "cover_image", "products", "cms_pages"] }),
             authApi.get(`/product-groups/${documentId}`, { status: 'published', fields: ["documentId"] }).catch(() => ({ data: null })),
         ])
             .then(([draftRes, pubRes]) => {
@@ -64,10 +71,19 @@ export default function ProductGroupDetail() {
                 const products = g.products || [];
                 setConnectedProducts(products);
                 setSelectedProductIds(products.map(p => p.documentId));
+                setSelectedPageIds((g.cms_pages || []).map(p => p.documentId));
             })
             .catch(err => console.error("Failed to load product group", err))
             .finally(() => setLoading(false));
     }, [jwt, documentId, isNew]);
+
+    // Load CMS pages for picker
+    useEffect(() => {
+        if (!jwt) return;
+        authApi.getAll("/cms-pages", { status: "draft", fields: ["documentId", "title", "slug", "page_type"], sort: ["title:asc"] })
+            .then(res => setAllCmsPages(res?.data || res || []))
+            .catch(err => console.error("Failed to load CMS pages", err));
+    }, [jwt]);
 
     const toggleProduct = (docId) => {
         setSelectedProductIds(prev =>
@@ -105,6 +121,7 @@ export default function ProductGroupDetail() {
                     show_brand: showBrand,
                     show_category: showCategory,
                     products: { set: selectedProductIds },
+                    cms_pages: { set: selectedPageIds },
                 },
             };
             if (isNew) {
@@ -142,6 +159,7 @@ export default function ProductGroupDetail() {
                     show_brand: showBrand,
                     show_category: showCategory,
                     products: { set: selectedProductIds },
+                    cms_pages: { set: selectedPageIds },
                 },
             };
             await authApi.put(`/product-groups/${documentId}?status=draft`, payload);
@@ -175,9 +193,9 @@ export default function ProductGroupDetail() {
         setSaving(true);
         try {
             await authApi.put(`/product-groups/${documentId}?status=draft`, {
-                data: { name, title, excerpt, content, layout, priority, default_sort: defaultSort, enable_sort_dropdown: enableSortDropdown, enable_view_toggle: enableViewToggle, max_inline_products: maxInlineProducts, products: { set: selectedProductIds } },
+                data: { name, title, excerpt, content, layout, priority, default_sort: defaultSort, enable_sort_dropdown: enableSortDropdown, enable_view_toggle: enableViewToggle, max_inline_products: maxInlineProducts, products: { set: selectedProductIds }, cms_pages: { set: selectedPageIds } },
             });
-            const res = await authApi.get(`/product-groups/${documentId}`, { status: 'published', populate: ["gallery", "cover_image", "products.logo", "products.brands", "products.categories"] });
+            const res = await authApi.get(`/product-groups/${documentId}`, { status: 'published', populate: ["gallery", "cover_image", "products", "cms_pages"] });
             const g = res.data || res;
             if (!g) { toast("No published version found.", "warning"); return; }
             setName(g.name || "");
@@ -194,6 +212,7 @@ export default function ProductGroupDetail() {
             const pubProducts = g.products || [];
             setConnectedProducts(pubProducts);
             setSelectedProductIds(pubProducts.map(p => p.documentId));
+            setSelectedPageIds((g.cms_pages || []).map(p => p.documentId));
             toast("Draft saved. Showing published version — click Save Draft to overwrite.", "success");
         } catch (err) {
             console.error("Failed to load published version", err);
@@ -295,6 +314,128 @@ export default function ProductGroupDetail() {
                                 onBulkAdd={bulkAddProducts}
                                 onRemoveAll={removeAllProducts}
                             />
+
+                            {/* CMS Pages Picker */}
+                            {(() => {
+                                const connectedPages = selectedPageIds.map(id => allCmsPages.find(p => p.documentId === id)).filter(Boolean);
+                                const pageTypes = [...new Set(allCmsPages.map(p => p.page_type).filter(Boolean))];
+                                const filteredAll = allCmsPages
+                                    .filter(p => !cmsPageTypeFilter || p.page_type === cmsPageTypeFilter)
+                                    .filter(p => !cmsPageSearch.trim() || p.title?.toLowerCase().includes(cmsPageSearch.toLowerCase()) || p.slug?.toLowerCase().includes(cmsPageSearch.toLowerCase()));
+                                const allPageCount = Math.max(1, Math.ceil(filteredAll.length / CMS_PAGES_PAGE_SIZE));
+                                const allPageFrom = (cmsAllPage - 1) * CMS_PAGES_PAGE_SIZE;
+                                const allPageSlice = filteredAll.slice(allPageFrom, allPageFrom + CMS_PAGES_PAGE_SIZE);
+
+                                const renderPageButton = (pg) => {
+                                    const selected = selectedPageIds.includes(pg.documentId);
+                                    return (
+                                        <div key={pg.documentId} className="d-inline-flex align-items-center gap-1">
+                                            <button
+                                                type="button"
+                                                className={`btn btn-sm ${selected ? "btn-success" : "btn-outline-secondary"}`}
+                                                onClick={() => {
+                                                    if (selected) setSelectedPageIds(prev => prev.filter(id => id !== pg.documentId));
+                                                    else setSelectedPageIds(prev => [...prev, pg.documentId]);
+                                                }}
+                                            >
+                                                {selected && <i className="fas fa-check me-1"></i>}
+                                                {pg.title}
+                                                {pg.page_type && <span className="badge bg-light text-dark ms-1" style={{ fontSize: '0.6rem' }}>{pg.page_type}</span>}
+                                            </button>
+                                            <Link href={`/${pg.documentId}/cms-page`} className="btn btn-sm btn-outline-primary" title="Open page">
+                                                <i className="fas fa-external-link-alt"></i>
+                                            </Link>
+                                        </div>
+                                    );
+                                };
+
+                                return (
+                                    <div className="card mb-3">
+                                        <div className="card-header d-flex align-items-center">
+                                            <i className="fas fa-file-alt me-2"></i>
+                                            <strong>Linked CMS Pages</strong>
+                                            <span className="badge bg-primary ms-2">{selectedPageIds.length}</span>
+                                        </div>
+                                        <div className="card-body">
+                                            <ul className="nav nav-tabs mb-3">
+                                                <li className="nav-item">
+                                                    <button className={`nav-link ${cmsPageTab === "connected" ? "active" : ""}`} onClick={() => setCmsPageTab("connected")}>
+                                                        <i className="fas fa-link me-1"></i>Connected <span className="badge bg-success ms-1">{selectedPageIds.length}</span>
+                                                    </button>
+                                                </li>
+                                                <li className="nav-item">
+                                                    <button className={`nav-link ${cmsPageTab === "all" ? "active" : ""}`} onClick={() => setCmsPageTab("all")}>
+                                                        <i className="fas fa-search me-1"></i>All Pages
+                                                    </button>
+                                                </li>
+                                            </ul>
+
+                                            {cmsPageTab === "connected" && (
+                                                <>
+                                                    <div className="d-flex align-items-center justify-content-between mb-2">
+                                                        <small className="text-muted">{selectedPageIds.length} page{selectedPageIds.length !== 1 ? "s" : ""} linked</small>
+                                                        {selectedPageIds.length > 0 && (
+                                                            <button className="btn btn-sm btn-outline-danger" onClick={() => setSelectedPageIds([])}>
+                                                                <i className="fas fa-times me-1"></i>Clear All
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                    {connectedPages.length === 0 ? (
+                                                        <p className="text-muted small">No pages linked yet. Use the "All Pages" tab to search and add pages.</p>
+                                                    ) : (
+                                                        <div className="d-flex flex-wrap gap-2">
+                                                            {connectedPages.map(pg => renderPageButton(pg))}
+                                                        </div>
+                                                    )}
+                                                </>
+                                            )}
+
+                                            {cmsPageTab === "all" && (
+                                                <>
+                                                    <div className="d-flex gap-2 mb-2">
+                                                        <input
+                                                            type="text"
+                                                            className="form-control form-control-sm"
+                                                            placeholder="Search pages..."
+                                                            value={cmsPageSearch}
+                                                            onChange={e => { setCmsPageSearch(e.target.value); setCmsAllPage(1); }}
+                                                        />
+                                                        <select
+                                                            className="form-select form-select-sm"
+                                                            style={{ width: 140 }}
+                                                            value={cmsPageTypeFilter}
+                                                            onChange={e => { setCmsPageTypeFilter(e.target.value); setCmsAllPage(1); }}
+                                                        >
+                                                            <option value="">All Types</option>
+                                                            {pageTypes.map(t => <option key={t} value={t}>{t}</option>)}
+                                                        </select>
+                                                    </div>
+                                                    <div className="d-flex align-items-center justify-content-between mb-2">
+                                                        <small className="text-muted">
+                                                            {filteredAll.length} page{filteredAll.length !== 1 ? "s" : ""} found
+                                                            {filteredAll.length > 0 ? ` · Showing ${allPageFrom + 1}-${Math.min(allPageFrom + CMS_PAGES_PAGE_SIZE, filteredAll.length)}` : ""}
+                                                        </small>
+                                                    </div>
+                                                    {filteredAll.length === 0 ? (
+                                                        <p className="text-muted small">No pages match the filters.</p>
+                                                    ) : (
+                                                        <div className="d-flex flex-wrap gap-2">
+                                                            {allPageSlice.map(pg => renderPageButton(pg))}
+                                                        </div>
+                                                    )}
+                                                    {allPageCount > 1 && (
+                                                        <nav className="mt-3 d-flex align-items-center gap-2">
+                                                            <button className="btn btn-sm btn-outline-secondary" disabled={cmsAllPage <= 1} onClick={() => setCmsAllPage(p => p - 1)}>&laquo; Prev</button>
+                                                            <small className="text-muted">Page {cmsAllPage} of {allPageCount}</small>
+                                                            <button className="btn btn-sm btn-outline-secondary" disabled={cmsAllPage >= allPageCount} onClick={() => setCmsAllPage(p => p + 1)}>Next &raquo;</button>
+                                                        </nav>
+                                                    )}
+                                                </>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })()}
                         </div>
 
                         <div className="col-md-4">

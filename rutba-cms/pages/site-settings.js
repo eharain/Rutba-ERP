@@ -240,36 +240,40 @@ export default function SiteSettingsPage() {
                         </div>
 
                         <div className="col-md-4">
-                            {record && (
-                                <>
-                                    <div className="card mb-3">
-                                        <div className="card-header">Site Logo</div>
-                                        <div className="card-body">
-                                            <FileView
-                                                single={record.site_logo}
-                                                refName="site-setting"
-                                                refId={record.id}
-                                                field="site_logo"
-                                                name="site-logo"
-                                            />
-                                            <small className="text-muted d-block mt-2">Displayed in the header. Falls back to site name text if not set.</small>
-                                        </div>
-                                    </div>
-                                    <div className="card mb-3">
-                                        <div className="card-header">Favicon</div>
-                                        <div className="card-body">
-                                            <FileView
-                                                single={record.favicon}
-                                                refName="site-setting"
-                                                refId={record.id}
-                                                field="favicon"
-                                                name="favicon"
-                                            />
-                                            <small className="text-muted d-block mt-2">Browser tab icon. Upload a .png or .ico file.</small>
-                                        </div>
-                                    </div>
-                                </>
-                            )}
+                            <div className="card mb-3">
+                                <div className="card-header">Site Logo</div>
+                                <div className="card-body">
+                                    {record ? (
+                                        <FileView
+                                            single={record.site_logo}
+                                            refName="site-setting"
+                                            refId={record.id}
+                                            field="site_logo"
+                                            name="site-logo"
+                                        />
+                                    ) : (
+                                        <p className="text-muted mb-0">Save a draft first to upload a logo.</p>
+                                    )}
+                                    <small className="text-muted d-block mt-2">Displayed in the header. Falls back to site name text if not set.</small>
+                                </div>
+                            </div>
+                            <div className="card mb-3">
+                                <div className="card-header">Favicon</div>
+                                <div className="card-body">
+                                    {record ? (
+                                        <FileView
+                                            single={record.favicon}
+                                            refName="site-setting"
+                                            refId={record.id}
+                                            field="favicon"
+                                            name="favicon"
+                                        />
+                                    ) : (
+                                        <p className="text-muted mb-0">Save a draft first to upload a favicon.</p>
+                                    )}
+                                    <small className="text-muted d-block mt-2">Browser tab icon. Upload a .png or .ico file.</small>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 )}
