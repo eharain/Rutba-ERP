@@ -14,6 +14,8 @@ export interface OrderInterface {
     subtotal: string | null | undefined;
     shipping_price: string | null | undefined;
     total: string | null | undefined;
+    original_subtotal?: string | null;
+    savings?: number | null;
     payment_status: string | null | undefined;
     createdAt: string;
     id: number;
@@ -35,6 +37,8 @@ export interface OrderInterface {
             id: number;
             quantity: number;
             price: number;
+            original_price?: number;
+            offer_price?: number;
             total: number;
             variant: string;
             variant_name: string;
@@ -42,6 +46,8 @@ export interface OrderInterface {
             product_name: string;
             product: string;
             image?: ImageInterface | null;
+            offer_id?: string;
+            source_group_id?: string;
         }[];
     };
 }
@@ -52,6 +58,8 @@ export interface CheckoutPayload {
         items: {
             quantity: number;
             price: number;
+            original_price?: number;
+            offer_price?: number;
             total: number;
             product_name: string;
             product: string;
@@ -59,10 +67,14 @@ export interface CheckoutPayload {
             variant_name?: string;
             variant_terms?: OrderTermInfo[];
             image?: number;
+            offer_id?: string;
+            source_group_id?: string;
         }[];
     };
     subtotal: number;
     total: number;
+    original_subtotal?: number;
+    savings?: number;
     customer_contact: {
         name: string;
         phone_number: string;
