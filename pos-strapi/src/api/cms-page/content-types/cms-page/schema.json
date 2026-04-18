@@ -48,7 +48,8 @@
         "shop",
         "blog",
         "news",
-        "info"
+        "info",
+        "page"
       ],
       "default": "shop"
     },

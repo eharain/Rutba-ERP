@@ -102,6 +102,11 @@
       "relation": "manyToMany",
       "target": "api::offer.offer",
       "mappedBy": "product_groups"
+    },
+    "cms_pages": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::cms-page.cms-page"
     }
   }
 }

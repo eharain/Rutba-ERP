@@ -45,7 +45,7 @@ export default function HeroSliderLayout({ group }: HeroSliderLayoutProps) {
                     src={IMAGE_URL + url}
                     fill
                     className="object-contain"
-                    alt={`${item.name || "Rutba"} ${idx + 1}`}
+                    alt={`${item.name || "Product"} ${idx + 1}`}
                     useSkeleton
                   />
                 </div>

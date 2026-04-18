@@ -1428,7 +1428,9 @@ export interface ApiCmsPageCmsPage extends Struct.CollectionTypeSchema {
       'manyToMany',
       'plugin::users-permissions.user'
     >;
-    page_type: Schema.Attribute.Enumeration<['shop', 'blog', 'news', 'info']> &
+    page_type: Schema.Attribute.Enumeration<
+      ['shop', 'blog', 'news', 'info', 'page']
+    > &
       Schema.Attribute.DefaultTo<'shop'>;
     product_groups: Schema.Attribute.Relation<
       'manyToMany',
@@ -2140,6 +2142,10 @@ export interface ApiProductGroupProductGroup
     draftAndPublish: true;
   };
   attributes: {
+    cms_pages: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::cms-page.cms-page'
+    >;
     content: Schema.Attribute.RichText;
     cover_image: Schema.Attribute.Media<'images'>;
     createdAt: Schema.Attribute.DateTime;
