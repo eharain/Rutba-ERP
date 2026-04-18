@@ -98,6 +98,12 @@
         "images"
       ]
     },
+    "offers": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::offer.offer",
+      "mappedBy": "cms_pages"
+    },
     "excerpt_priority": {
       "type": "integer",
       "default": 2

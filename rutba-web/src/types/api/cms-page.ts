@@ -18,6 +18,16 @@ export interface CmsPageInterface {
   background_image?: ImageInterface;
 }
 
+export interface OfferInterface {
+  id: number;
+  documentId: string;
+  name: string;
+  active: boolean;
+  start_date?: string;
+  end_date?: string;
+  description?: string;
+}
+
 export interface CmsProductGroupInterface {
   id: number;
   documentId: string;
@@ -36,10 +46,7 @@ export interface CmsProductGroupInterface {
   max_inline_products?: number;
   show_brand?: boolean;
   show_category?: boolean;
-  offer_active?: boolean;
-  offer_name?: string;
-  offer_start_date?: string;
-  offer_end_date?: string;
+  offers?: OfferInterface[];
 }
 
 export interface CmsBrandGroupInterface {

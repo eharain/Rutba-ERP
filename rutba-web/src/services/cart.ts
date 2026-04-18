@@ -9,6 +9,9 @@ export interface cartLocalStorage {
   qty: number | null;
   variantTerms?: CartTermInfo[];
   selectedImage?: string | null;
+  offerPrice?: number;
+  offerId?: string;
+  sourceGroupId?: string;
 }
 
 export const useCartService = () => {
@@ -28,7 +31,10 @@ export const useCartService = () => {
     variantId: number | null,
     qty: number,
     variantTerms?: CartTermInfo[],
-    selectedImage?: string | null
+    selectedImage?: string | null,
+    offerPrice?: number,
+    offerId?: string,
+    sourceGroupId?: string
   ) => {
     const cart = localStorage.getItem("cart");
 
@@ -54,6 +60,9 @@ export const useCartService = () => {
           qty: qty,
           variantTerms: variantTerms,
           selectedImage: selectedImage,
+          offerPrice: offerPrice,
+          offerId: offerId,
+          sourceGroupId: sourceGroupId,
         });
       }
 
@@ -67,6 +76,9 @@ export const useCartService = () => {
           qty: qty,
           variantTerms: variantTerms,
           selectedImage: selectedImage,
+          offerPrice: offerPrice,
+          offerId: offerId,
+          sourceGroupId: sourceGroupId,
         },
       ];
 
@@ -186,6 +198,9 @@ export const useCartService = () => {
           variant_id: productVariant?.id,
           variant_name: productVariant?.name,
           price: productVariant?.selling_price ?? productData?.selling_price,
+          offerPrice: item.offerPrice,
+          offerId: item.offerId,
+          sourceGroupId: item.sourceGroupId,
           documentId: productData?.documentId,
           qty: item.qty,
           variant_terms: apiTerms.length > 0 ? apiTerms : (item.variantTerms || []),

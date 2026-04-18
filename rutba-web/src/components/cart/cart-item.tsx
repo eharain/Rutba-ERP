@@ -11,6 +11,7 @@ interface CartItem {
   variant_id?: number;
   variant_name?: string;
   price?: number;
+  offerPrice?: number;
   qty?: number | null;
   variant_terms?: CartTermInfo[];
   selectedImage?: string | null;
@@ -44,7 +45,14 @@ export default function CartItem({
               <a href="#">{cartItem.name}</a>
             </h3>
             <p className="ml-4 text-sm">
-              {currencyFormat(cartItem.price ?? 0)}
+              {cartItem.offerPrice && cartItem.offerPrice > 0 ? (
+                <>
+                  <span className="text-red-600 font-semibold">{currencyFormat(cartItem.offerPrice)}</span>
+                  <span className="text-xs text-slate-400 line-through ml-1">{currencyFormat(cartItem.price ?? 0)}</span>
+                </>
+              ) : (
+                currencyFormat(cartItem.price ?? 0)
+              )}
             </p>
           </div>
           {cartItem.variant_terms && cartItem.variant_terms.length > 0 ? (

@@ -38,18 +38,24 @@ export default function ProductGroupRenderer({
   const allProducts = group.products ?? [];
   if (allProducts.length === 0) return null;
 
-  // Compute effective offer-active status respecting date range
+  // Resolve active offer from offers relation
   const now = Date.now();
-  const offerActive = (() => {
-    if (!group.offer_active) return false;
-    if (group.offer_start_date && new Date(group.offer_start_date).getTime() > now) return false;
-    if (group.offer_end_date && new Date(group.offer_end_date).getTime() < now) return false;
+  const activeOffer = (group.offers ?? []).find(o => {
+    if (!o.active) return false;
+    if (o.start_date && new Date(o.start_date).getTime() > now) return false;
+    if (o.end_date && new Date(o.end_date).getTime() < now) return false;
     return true;
-  })();
+  });
 
-  // Upcoming: offer_active is on but start date is in the future
-  const offerUpcoming = !offerActive && group.offer_active === true
-    && !!group.offer_start_date && new Date(group.offer_start_date).getTime() > now;
+  const upcomingOffer = !activeOffer
+    ? (group.offers ?? []).find(o =>
+        o.active && !!o.start_date && new Date(o.start_date).getTime() > now
+      )
+    : undefined;
+
+  const offerActive = !!activeOffer;
+  const activeOfferId = activeOffer?.documentId;
+  const groupDocId = group.documentId;
 
   const totalProducts = allProducts.length;
   const hasMore = effectiveMax > 0 && totalProducts > effectiveMax;
@@ -62,24 +68,24 @@ export default function ProductGroupRenderer({
 
   const renderLayout = () => {
     if (viewMode === "detailed" && !hideControls) {
-      return <ListLayout group={limitedGroup} sort={sort} offerActive={offerActive} />;
+      return <ListLayout group={limitedGroup} sort={sort} offerActive={offerActive} offerId={activeOfferId} sourceGroupId={groupDocId} />;
     }
 
     switch (layout) {
       case "hero-slider":
         return <HeroSliderLayout group={limitedGroup} />;
       case "grid-4":
-        return <Grid4Layout group={limitedGroup} sort={sort} offerActive={offerActive} />;
+        return <Grid4Layout group={limitedGroup} sort={sort} offerActive={offerActive} offerId={activeOfferId} sourceGroupId={groupDocId} />;
       case "grid-6":
-        return <Grid6Layout group={limitedGroup} sort={sort} offerActive={offerActive} />;
+        return <Grid6Layout group={limitedGroup} sort={sort} offerActive={offerActive} offerId={activeOfferId} sourceGroupId={groupDocId} />;
       case "carousel":
-        return <CarouselLayout group={limitedGroup} sort={sort} offerActive={offerActive} />;
+        return <CarouselLayout group={limitedGroup} sort={sort} offerActive={offerActive} offerId={activeOfferId} sourceGroupId={groupDocId} />;
       case "banner-single":
         return <BannerSingleLayout group={limitedGroup} />;
       case "list":
-        return <ListLayout group={limitedGroup} sort={sort} offerActive={offerActive} />;
+        return <ListLayout group={limitedGroup} sort={sort} offerActive={offerActive} offerId={activeOfferId} sourceGroupId={groupDocId} />;
       default:
-        return <Grid4Layout group={limitedGroup} sort={sort} offerActive={offerActive} />;
+        return <Grid4Layout group={limitedGroup} sort={sort} offerActive={offerActive} offerId={activeOfferId} sourceGroupId={groupDocId} />;
     }
   };
 
@@ -92,12 +98,12 @@ export default function ProductGroupRenderer({
       }
     >
       <div className={isFullWidth ? "" : "container-fluid"}>
-        {(offerActive || offerUpcoming) && (
+        {(activeOffer || upcomingOffer) && (
           <OfferBanner
-            name={group.offer_name}
-            active={offerActive}
-            startDate={group.offer_start_date}
-            endDate={group.offer_end_date}
+            name={(activeOffer || upcomingOffer)!.name}
+            active={!!activeOffer}
+            startDate={(activeOffer || upcomingOffer)!.start_date}
+            endDate={(activeOffer || upcomingOffer)!.end_date}
           />
         )}
         {!hideControls && (

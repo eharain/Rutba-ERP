@@ -1,0 +1,56 @@
+{
+  "kind": "collectionType",
+  "collectionName": "offers",
+  "info": {
+    "singularName": "offer",
+    "pluralName": "offers",
+    "displayName": "Offer",
+    "description": "Reusable offer entity that can be linked to product groups, CMS pages, and categories"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "active": {
+      "type": "boolean",
+      "default": false
+    },
+    "start_date": {
+      "type": "datetime"
+    },
+    "end_date": {
+      "type": "datetime"
+    },
+    "description": {
+      "type": "richtext"
+    },
+    "banner_image": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": ["images"]
+    },
+    "product_groups": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::product-group.product-group",
+      "inversedBy": "offers"
+    },
+    "cms_pages": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::cms-page.cms-page",
+      "inversedBy": "offers"
+    },
+    "categories": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::category.category",
+      "inversedBy": "offers"
+    }
+  }
+}

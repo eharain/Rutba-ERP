@@ -58,7 +58,12 @@
     },
     "keywords": {
       "type": "json"
-
+    },
+    "offers": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::offer.offer",
+      "mappedBy": "categories"
     }
   }
 }

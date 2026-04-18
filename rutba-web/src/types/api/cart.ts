@@ -11,6 +11,9 @@ export interface CartInterface {
   variant_id: number;
   variant_name: string;
   price: number;
+  offerPrice?: number;
+  offerId?: string;
+  sourceGroupId?: string;
   width: number;
   length: number;
   height: number;

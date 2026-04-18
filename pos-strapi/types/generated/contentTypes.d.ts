@@ -1323,6 +1323,7 @@ export interface ApiCategoryCategory extends Struct.CollectionTypeSchema {
       Schema.Attribute.Private;
     logo: Schema.Attribute.Media<'images' | 'files' | 'videos' | 'audios'>;
     name: Schema.Attribute.String & Schema.Attribute.Required;
+    offers: Schema.Attribute.Relation<'manyToMany', 'api::offer.offer'>;
     parent: Schema.Attribute.Relation<'manyToOne', 'api::category.category'>;
     publishedAt: Schema.Attribute.DateTime;
     slug: Schema.Attribute.UID<'name'> & Schema.Attribute.Required;
@@ -1422,6 +1423,7 @@ export interface ApiCmsPageCmsPage extends Struct.CollectionTypeSchema {
       'api::cms-page.cms-page'
     > &
       Schema.Attribute.Private;
+    offers: Schema.Attribute.Relation<'manyToMany', 'api::offer.offer'>;
     owners: Schema.Attribute.Relation<
       'manyToMany',
       'plugin::users-permissions.user'
@@ -1873,6 +1875,49 @@ export interface ApiHrLeaveRequestHrLeaveRequest
   };
 }
 
+export interface ApiOfferOffer extends Struct.CollectionTypeSchema {
+  collectionName: 'offers';
+  info: {
+    description: 'Reusable offer entity that can be linked to product groups, CMS pages, and categories';
+    displayName: 'Offer';
+    pluralName: 'offers';
+    singularName: 'offer';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    banner_image: Schema.Attribute.Media<'images'>;
+    categories: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::category.category'
+    >;
+    cms_pages: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::cms-page.cms-page'
+    >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    description: Schema.Attribute.RichText;
+    end_date: Schema.Attribute.DateTime;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::offer.offer'> &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    product_groups: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::product-group.product-group'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    start_date: Schema.Attribute.DateTime;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiOrderOrder extends Struct.CollectionTypeSchema {
   collectionName: 'orders';
   info: {
@@ -2123,10 +2168,7 @@ export interface ApiProductGroupProductGroup
     max_inline_products: Schema.Attribute.Integer &
       Schema.Attribute.DefaultTo<12>;
     name: Schema.Attribute.String & Schema.Attribute.Required;
-    offer_active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
-    offer_end_date: Schema.Attribute.DateTime;
-    offer_name: Schema.Attribute.String;
-    offer_start_date: Schema.Attribute.DateTime;
+    offers: Schema.Attribute.Relation<'manyToMany', 'api::offer.offer'>;
     priority: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
     products: Schema.Attribute.Relation<'manyToMany', 'api::product.product'>;
     publishedAt: Schema.Attribute.DateTime;
@@ -3669,6 +3711,7 @@ declare module '@strapi/strapi' {
       'api::hr-department.hr-department': ApiHrDepartmentHrDepartment;
       'api::hr-employee.hr-employee': ApiHrEmployeeHrEmployee;
       'api::hr-leave-request.hr-leave-request': ApiHrLeaveRequestHrLeaveRequest;
+      'api::offer.offer': ApiOfferOffer;
       'api::order.order': ApiOrderOrder;
       'api::pay-payroll-run.pay-payroll-run': ApiPayPayrollRunPayPayrollRun;
       'api::pay-payslip.pay-payslip': ApiPayPayslipPayPayslip;

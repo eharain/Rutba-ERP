@@ -11,22 +11,24 @@ interface ListLayoutProps {
   group: CmsProductGroupInterface;
   sort?: SortOption;
   offerActive?: boolean;
+  offerId?: string;
+  sourceGroupId?: string;
 }
 
-export default function ListLayout({ group, sort = "default", offerActive }: ListLayoutProps) {
+export default function ListLayout({ group, sort = "default", offerActive, offerId, sourceGroupId }: ListLayoutProps) {
   const products = sortProducts(group.products ?? [], sort);
   if (products.length === 0) return null;
 
   return (
     <div className="divide-y divide-slate-200">
       {products.map((item) => (
-        <ListRow key={"list-" + item.id} product={item} showBrand={group.show_brand} showCategory={group.show_category} offerActive={offerActive} />
+        <ListRow key={"list-" + item.id} product={item} showBrand={group.show_brand} showCategory={group.show_category} offerActive={offerActive} offerId={offerId} sourceGroupId={sourceGroupId} />
       ))}
     </div>
   );
 }
 
-function ListRow({ product, showBrand, showCategory, offerActive }: { product: ProductInterface; showBrand?: boolean; showCategory?: boolean; offerActive?: boolean }) {
+function ListRow({ product, showBrand, showCategory, offerActive, offerId, sourceGroupId }: { product: ProductInterface; showBrand?: boolean; showCategory?: boolean; offerActive?: boolean; offerId?: string; sourceGroupId?: string }) {
   const thumbnail = product.gallery?.[0]?.url ?? product.logo?.url ?? null;
   const price =
     product.variants && product.variants.length > 0
@@ -40,9 +42,13 @@ function ListRow({ product, showBrand, showCategory, offerActive }: { product: P
   const brand = showBrand !== false ? product.brands?.[0] : undefined;
   const category = showCategory !== false ? product.categories?.[0] : undefined;
 
+  const productHref = offerActive && offerId && sourceGroupId
+    ? `/product/${product.documentId}?offerId=${offerId}&groupId=${sourceGroupId}`
+    : `/product/${product.documentId}`;
+
   return (
     <Link
-      href={`/product/${product.documentId}`}
+      href={productHref}
       className="flex items-center gap-4 py-4 group hover:bg-slate-50 transition-colors rounded-md px-2 -mx-2"
     >
       <div className="relative w-20 h-20 md:w-24 md:h-24 shrink-0 rounded-md overflow-hidden bg-slate-100">
