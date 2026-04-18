@@ -42,6 +42,49 @@ const HomePage = () => {
         {activeTab === 'content-types' && <ContentTypesTab />}
         {activeTab === 'sync' && <SyncTab />}
         {activeTab === 'logs' && <LogsTab />}
+
+        <Box paddingTop={8} borderColor="neutral200" borderStyle="solid" borderWidth="1px 0 0 0">
+          <Box paddingTop={4}>
+            <Typography variant="sigma" textColor="neutral600">
+              Need help with this plugin?
+            </Typography>
+            <Box paddingTop={2}>
+              <Typography variant="pi" textColor="neutral500">
+                Contact:{' '}
+                <Typography
+                  variant="pi"
+                  textColor="primary600"
+                  tag="a"
+                  href="mailto:eharain@yahoo.com"
+                >
+                  eharain@yahoo.com
+                </Typography>
+                {' · '}
+                <Typography
+                  variant="pi"
+                  textColor="primary600"
+                  tag="a"
+                  href="https://github.com/eharain/strapi-to-strapi-data-sync"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  GitHub
+                </Typography>
+                {' · '}
+                <Typography
+                  variant="pi"
+                  textColor="primary600"
+                  tag="a"
+                  href="https://www.linkedin.com/in/ejazarain/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  LinkedIn
+                </Typography>
+              </Typography>
+            </Box>
+          </Box>
+        </Box>
       </Box>
     </Main>
   );
