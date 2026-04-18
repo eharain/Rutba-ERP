@@ -58,6 +58,8 @@ export default function Navigation() {
                             <li><Link className="dropdown-item" href="/category-groups">Category Groups</Link></li>
                             <li><hr className="dropdown-divider" /></li>
                             <li><Link className="dropdown-item" href="/footers">Footers</Link></li>
+                            <li><hr className="dropdown-divider" /></li>
+                            <li><Link className="dropdown-item" href="/offers"><i className="fas fa-tags me-1"></i>Offers</Link></li>
                         </ul>
                     </li>
                     <li className="nav-item">

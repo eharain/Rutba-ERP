@@ -111,16 +111,20 @@ export default function ProductGroupPage({
 
   const products = sortProducts(group.products ?? [], sort);
 
-  // Compute effective offer-active status respecting date range
+  // Resolve active offer from offers relation
   const now = Date.now();
-  const offerActive = (() => {
-    if (!group.offer_active) return false;
-    if (group.offer_start_date && new Date(group.offer_start_date).getTime() > now) return false;
-    if (group.offer_end_date && new Date(group.offer_end_date).getTime() < now) return false;
+  const activeOffer = (group.offers ?? []).find(o => {
+    if (!o.active) return false;
+    if (o.start_date && new Date(o.start_date).getTime() > now) return false;
+    if (o.end_date && new Date(o.end_date).getTime() < now) return false;
     return true;
-  })();
-  const offerUpcoming = !offerActive && group.offer_active === true
-    && !!group.offer_start_date && new Date(group.offer_start_date).getTime() > now;
+  });
+  const upcomingOffer = !activeOffer
+    ? (group.offers ?? []).find(o =>
+        o.active && !!o.start_date && new Date(o.start_date).getTime() > now
+      )
+    : undefined;
+  const offerActive = !!activeOffer;
 
   const formatOfferDate = (iso?: string) => {
     if (!iso) return null;
@@ -172,25 +176,25 @@ export default function ProductGroupPage({
         )}
 
         {/* Offer Banner */}
-        {offerActive && (
+        {activeOffer && (
           <div className="mb-6 rounded-lg bg-gradient-to-r from-red-500 to-rose-600 text-white px-5 py-3 flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <span className="text-lg">🔥</span>
-              <span className="font-semibold">{group.offer_name || "Special Offer"}</span>
+              <span className="font-semibold">{activeOffer.name || "Special Offer"}</span>
             </div>
-            {group.offer_end_date && (
-              <span className="text-sm opacity-90">Ends {formatOfferDate(group.offer_end_date)}</span>
+            {activeOffer.end_date && (
+              <span className="text-sm opacity-90">Ends {formatOfferDate(activeOffer.end_date)}</span>
             )}
           </div>
         )}
-        {offerUpcoming && (
+        {upcomingOffer && (
           <div className="mb-6 rounded-lg bg-gradient-to-r from-amber-400 to-orange-500 text-white px-5 py-3 flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <span className="text-lg">⏳</span>
-              <span className="font-semibold">{group.offer_name || "Upcoming Offer"}</span>
+              <span className="font-semibold">{upcomingOffer.name || "Upcoming Offer"}</span>
             </div>
-            {group.offer_start_date && (
-              <span className="text-sm opacity-90">Starts {formatOfferDate(group.offer_start_date)}</span>
+            {upcomingOffer.start_date && (
+              <span className="text-sm opacity-90">Starts {formatOfferDate(upcomingOffer.start_date)}</span>
             )}
           </div>
         )}
@@ -244,7 +248,7 @@ export default function ProductGroupPage({
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
             {products.map((item) => (
-              <ProductCard key={"pg-" + item.id} {...getProductCardProps(item, { offerActive })} />
+              <ProductCard key={"pg-" + item.id} {...getProductCardProps(item, { offerActive, offerId: activeOffer?.documentId, sourceGroupId: group.documentId })} />
             ))}
           </div>
         )}

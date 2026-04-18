@@ -22,5 +22,6 @@ export function isValidPageType(value: string): value is PageType {
 }
 
 export function getPageUrl(page: Pick<CmsPageInterface, "page_type" | "slug">) {
-  return `/${page.page_type}/${page.slug}`;
+  const type = page.page_type || "info";
+  return `/${type}/${page.slug}`;
 }

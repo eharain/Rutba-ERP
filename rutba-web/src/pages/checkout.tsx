@@ -68,11 +68,23 @@ export default function CheckoutPage() {
   // To get the quantity of the product use this.
   const countSubTotal = () => {
     return cart?.reduce(
+      (total, item) => {
+        const unitPrice = (item?.offerPrice && item.offerPrice > 0) ? item.offerPrice : (item?.price ?? 0);
+        return total + unitPrice * getQuantity(item.id, item.variant_id, item.selectedImage);
+      },
+      0
+    );
+  };
+
+  const countOriginalTotal = () => {
+    return cart?.reduce(
       (total, item) =>
         total + (item?.price ?? 0) * getQuantity(item.id, item.variant_id, item.selectedImage),
       0
     );
   };
+
+  const savings = (countOriginalTotal() ?? 0) - (countSubTotal() ?? 0);
 
   const countTotal = () => {
     return (
@@ -118,6 +130,7 @@ export default function CheckoutPage() {
                         variant_id: item.variant_id,
                         variant_name: item.variant_name,
                         price: item.price,
+                        offerPrice: item.offerPrice,
                         qty: getQuantity(item?.id, item?.variant_id, item?.selectedImage),
                         variant_terms: item.variant_terms,
                         selectedImage: item.selectedImage,

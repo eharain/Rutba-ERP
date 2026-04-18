@@ -19,7 +19,7 @@ export default function CmsNewsPageContent({
   page: CmsPageDetailInterface;
 }) {
   const settings = useSiteSettings();
-  const publishedDate
+  const publishedDate = page.publishedAt
     ? new Date(page.publishedAt).toLocaleDateString("en-PK", {
         year: "numeric",
         month: "long",

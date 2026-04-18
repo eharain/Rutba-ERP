@@ -8,9 +8,11 @@ interface CarouselLayoutProps {
   group: CmsProductGroupInterface;
   sort?: SortOption;
   offerActive?: boolean;
+  offerId?: string;
+  sourceGroupId?: string;
 }
 
-export default function CarouselLayout({ group, sort = "default", offerActive }: CarouselLayoutProps) {
+export default function CarouselLayout({ group, sort = "default", offerActive, offerId, sourceGroupId }: CarouselLayoutProps) {
   const products = sortProducts(group.products ?? [], sort);
   if (products.length === 0) return null;
 
@@ -20,7 +22,7 @@ export default function CarouselLayout({ group, sort = "default", offerActive }:
       slideClassName="w-[75vw] sm:w-[45vw] md:w-[30vw] lg:w-[18vw] pr-3"
     >
       {products.map((item) => (
-        <ProductCard key={"car-" + item.id} {...getProductCardProps(item, { showBrand: group.show_brand, showCategory: group.show_category, offerActive })} />
+        <ProductCard key={"car-" + item.id} {...getProductCardProps(item, { showBrand: group.show_brand, showCategory: group.show_category, offerActive, offerId, sourceGroupId })} />
       ))}
     </ScrollSlider>
   );

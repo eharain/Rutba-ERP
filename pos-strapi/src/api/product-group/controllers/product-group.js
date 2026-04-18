@@ -35,7 +35,7 @@ module.exports = createCoreController('api::product-group.product-group', ({ str
     const groups = await strapi.documents('api::product-group.product-group').findMany({
       filters: { slug: { $eq: slug } },
       status: 'published',
-      populate: ['cover_image', 'gallery'],
+      populate: ['cover_image', 'gallery', 'offers'],
     });
 
     if (!groups || groups.length === 0) {

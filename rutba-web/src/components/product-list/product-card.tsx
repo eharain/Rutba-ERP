@@ -15,6 +15,8 @@ export interface ProductCardInterface {
   variantOfferPrice?: number[];
   slug: string;
   variantTermSummary?: VariantTermSummary[];
+  offerId?: string;
+  sourceGroupId?: string;
 }
 
 export default function ProductCard({
@@ -26,6 +28,8 @@ export default function ProductCard({
   variantOfferPrice,
   slug,
   variantTermSummary,
+  offerId,
+  sourceGroupId,
 }: ProductCardInterface) {
   const getCheapestPrice = () => {
     if (variantPrice.length <= 0) {
@@ -45,8 +49,12 @@ export default function ProductCard({
   const offerMin = hasOffer ? Math.min(...variantOfferPrice) : 0;
   const offerMax = hasOffer ? Math.max(...variantOfferPrice) : 0;
 
+  const productHref = offerId && sourceGroupId
+    ? `/product/${slug}?offerId=${offerId}&groupId=${sourceGroupId}`
+    : `/product/${slug}`;
+
   return (
-    <Link href={`/product/${slug}`}>
+    <Link href={productHref}>
       <NextImage
         src={IMAGE_URL + (thumbnail ?? "")}
         height={500}

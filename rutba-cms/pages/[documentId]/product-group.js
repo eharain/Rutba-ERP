@@ -34,10 +34,6 @@ export default function ProductGroupDetail() {
     const [maxInlineProducts, setMaxInlineProducts] = useState(12);
     const [showBrand, setShowBrand] = useState(true);
     const [showCategory, setShowCategory] = useState(true);
-    const [offerActive, setOfferActive] = useState(false);
-    const [offerName, setOfferName] = useState("");
-    const [offerStartDate, setOfferStartDate] = useState("");
-    const [offerEndDate, setOfferEndDate] = useState("");
     const [selectedProductIds, setSelectedProductIds] = useState([]);
     const [connectedProducts, setConnectedProducts] = useState([]);
     const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -65,10 +61,6 @@ export default function ProductGroupDetail() {
                 setMaxInlineProducts(g.max_inline_products ?? 12);
                 setShowBrand(g.show_brand !== false);
                 setShowCategory(g.show_category !== false);
-                setOfferActive(g.offer_active === true);
-                setOfferName(g.offer_name || "");
-                setOfferStartDate(g.offer_start_date ? g.offer_start_date.slice(0, 16) : "");
-                setOfferEndDate(g.offer_end_date ? g.offer_end_date.slice(0, 16) : "");
                 const products = g.products || [];
                 setConnectedProducts(products);
                 setSelectedProductIds(products.map(p => p.documentId));
@@ -112,10 +104,6 @@ export default function ProductGroupDetail() {
                     max_inline_products: maxInlineProducts,
                     show_brand: showBrand,
                     show_category: showCategory,
-                    offer_active: offerActive,
-                    offer_name: offerName || null,
-                    offer_start_date: offerStartDate || null,
-                    offer_end_date: offerEndDate || null,
                     products: { set: selectedProductIds },
                 },
             };
@@ -153,10 +141,6 @@ export default function ProductGroupDetail() {
                     max_inline_products: maxInlineProducts,
                     show_brand: showBrand,
                     show_category: showCategory,
-                    offer_active: offerActive,
-                    offer_name: offerName || null,
-                    offer_start_date: offerStartDate || null,
-                    offer_end_date: offerEndDate || null,
                     products: { set: selectedProductIds },
                 },
             };
@@ -366,27 +350,6 @@ export default function ProductGroupDetail() {
                                         <div className="form-check mb-3">
                                             <input className="form-check-input" type="checkbox" id="showCategory" checked={showCategory} onChange={e => setShowCategory(e.target.checked)} />
                                             <label className="form-check-label" htmlFor="showCategory">Show Product Category</label>
-                                        </div>
-                                        <hr className="my-2" />
-                                        <h6 className="mb-2">Offer Settings</h6>
-                                        <div className="form-check mb-2">
-                                            <input className="form-check-input" type="checkbox" id="offerActive" checked={offerActive} onChange={e => setOfferActive(e.target.checked)} />
-                                            <label className="form-check-label" htmlFor="offerActive">Offer Active</label>
-                                        </div>
-                                        <div className="mb-2">
-                                            <label className="form-label mb-1">Offer Name</label>
-                                            <input type="text" className="form-control form-control-sm" value={offerName} onChange={e => setOfferName(e.target.value)} placeholder="e.g. Summer Sale 50% Off" disabled={!offerActive} />
-                                            <small className="text-muted">Displayed as banner on the group</small>
-                                        </div>
-                                        <div className="mb-2">
-                                            <label className="form-label mb-1">Start Date</label>
-                                            <input type="datetime-local" className="form-control form-control-sm" value={offerStartDate} onChange={e => setOfferStartDate(e.target.value)} disabled={!offerActive} />
-                                            <small className="text-muted">Empty = immediate</small>
-                                        </div>
-                                        <div className="mb-2">
-                                            <label className="form-label mb-1">End Date</label>
-                                            <input type="datetime-local" className="form-control form-control-sm" value={offerEndDate} onChange={e => setOfferEndDate(e.target.value)} disabled={!offerActive} />
-                                            <small className="text-muted">Empty = indefinite</small>
                                         </div>
                                     </div>
                                 )}

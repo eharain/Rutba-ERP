@@ -356,6 +356,7 @@ const ENTRIES = [
       { uid: 'api::brand-group.brand-group',                       actions: CMS_WRITE },
       { uid: 'api::category-group.category-group',                 actions: CMS_WRITE },
       { uid: 'api::cms-footer.cms-footer',                         actions: CMS_WRITE },
+      { uid: 'api::offer.offer',                                   actions: CMS_WRITE },
       { uid: 'api::category.category',                             actions: CMS_WRITE },
       { uid: 'api::brand.brand',                                   actions: CMS_WRITE },
       // cross-app read-only
@@ -498,6 +499,8 @@ const PUBLIC_PERMISSIONS = [
   'api::cms-page.cms-page.findOne',
   'api::cms-footer.cms-footer.find',
   'api::cms-footer.cms-footer.findOne',
+  'api::offer.offer.find',
+  'api::offer.offer.findOne',
   'api::order.order.find',
   'api::order.order.findOne',
   'api::order.order.create',

@@ -516,7 +516,49 @@ Review of what is implemented so far across Phases 1–7 and the site-settings l
 - Allow two `layout` values on a group (A and B); assign 50/50 split via cookie; report conversion via existing analytics.
 
 **F5. Homepage as a first-class CMS page**
-- Today `/` may still use a dedicated index with hardcoded sections. Let editors designate a cms-page as the home via site-settings (`homepage_cms_page` relation) and render it the same way as any other page.
+- If `/` may still use a dedicated index with hardcoded sections. Let editors designate a cms-page as the home via site-settings (`homepage_cms_page` relation) and render it the same way as any other page.
+
+---
+
+## G. Offer Entity Architecture (Implemented)
+
+Offers are a first-class Strapi entity (`api::offer.offer`) that can be linked uniformly to **product groups**, **CMS pages**, and **categories** via `manyToMany` relations.
+
+### Schema: `pos-strapi/src/api/offer/content-types/offer/schema.json`
+
+| Field | Type | Notes |
+|---|---|---|
+| `name` | string (required) | Display name shown in banners |
+| `active` | boolean | Master on/off switch |
+| `start_date` | datetime | Optional; empty = immediate |
+| `end_date` | datetime | Optional; empty = indefinite |
+| `description` | richtext | Optional terms/details |
+| `banner_image` | media (single) | Optional banner image |
+| `product_groups` | manyToMany → product-group | `inversedBy: offers` |
+| `cms_pages` | manyToMany → cms-page | `inversedBy: offers` |
+| `categories` | manyToMany → category | `inversedBy: offers` |
+
+### Relation sides
+- **Offer** owns the relation (`inversedBy`).
+- **Product Group / CMS Page / Category** carry a `offers` field (`mappedBy`).
+
+### Resolution logic (frontend)
+```ts
+const activeOffer = (entity.offers ?? []).find(o => {
+  if (!o.active) return false;
+  if (o.start_date && new Date(o.start_date).getTime() > now) return false;
+  if (o.end_date && new Date(o.end_date).getTime() < now) return false;
+  return true;
+});
+```
+
+### CMS management
+- **List page**: `rutba-cms/pages/offers.js` — shows all offers with status (Active/Upcoming/Expired/Inactive), linked entity counts, and publish state.
+- **Editor page**: `rutba-cms/pages/[documentId]/offer.js` — full editor with entity pickers for product groups, CMS pages, and categories.
+- **Navigation**: Offers link added under Content dropdown.
+
+### Migration from group-level offers
+The old `offer_active`, `offer_name`, `offer_start_date`, `offer_end_date` fields were **removed** from the product-group schema. Any existing offer data on product groups should be recreated as offer entities linked to the relevant groups.
 
 ---
 

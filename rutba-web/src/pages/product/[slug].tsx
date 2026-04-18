@@ -25,8 +25,9 @@ import useProductsService from "@/services/products";
 import { currencyFormat } from "@/lib/use-currency";
 import { marked } from "marked";
 import { markedVideoEmbed } from "@/lib/marked-video-embed";
-import { IMAGE_URL } from "@/static/const";
+import { IMAGE_URL, BASE_URL } from "@/static/const";
 import { CartTermInfo } from "@/types/api/cart";
+import axios from "axios";
 
 marked.use({ breaks: true, gfm: true });
 marked.use(markedVideoEmbed({ imageBaseUrl: IMAGE_URL }));
@@ -37,6 +38,8 @@ export default function ProductDetail() {
   const { getProductDetail } = useProductsService();
 
   const { slug } = router.query;
+  const offerId = router.query.offerId as string | undefined;
+  const sourceGroupId = router.query.groupId as string | undefined;
 
   const { addToCart } = useCartService();
 
@@ -51,6 +54,27 @@ export default function ProductDetail() {
       return getProductDetail(slug as string);
     },
     enabled: !!slug,
+  });
+
+  // Validate offer is still active
+  const { data: offerActive } = useQuery({
+    queryKey: ["offer-validate", offerId],
+    queryFn: async () => {
+      if (!offerId) return false;
+      try {
+        const res = await axios.get(`${BASE_URL}offers/${offerId}`, { params: { fields: ["active", "start_date", "end_date"] } });
+        const offer = res.data?.data ?? res.data;
+        if (!offer?.active) return false;
+        const now = Date.now();
+        if (offer.start_date && new Date(offer.start_date).getTime() > now) return false;
+        if (offer.end_date && new Date(offer.end_date).getTime() < now) return false;
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    enabled: !!offerId,
+    staleTime: 60_000,
   });
 
   // Extract variant term types (is_variant: true) used across all variants
@@ -191,6 +215,27 @@ export default function ProductDetail() {
     }
     return product?.selling_price;
   }, [resolvedVariant, hasTermVariants, matchedVariants, product]);
+
+  // Offer price display
+  const getOfferPrice = useMemo(() => {
+    if (!offerActive) return null;
+    if (resolvedVariant) return resolvedVariant.offer_price > 0 ? resolvedVariant.offer_price : null;
+    if (hasTermVariants && matchedVariants.length > 1) {
+      const prices = matchedVariants.map((v) => v.offer_price).filter((p) => p > 0);
+      if (prices.length === 0) return null;
+      const min = Math.min(...prices);
+      const max = Math.max(...prices);
+      return min === max ? min : null;
+    }
+    return product?.offer_price && product.offer_price > 0 ? product.offer_price : null;
+  }, [offerActive, resolvedVariant, hasTermVariants, matchedVariants, product]);
+
+  const offerPriceRange = useMemo(() => {
+    if (!offerActive || !hasTermVariants || matchedVariants.length <= 1) return null;
+    const prices = matchedVariants.map((v) => v.offer_price).filter((p) => p > 0);
+    if (prices.length === 0) return null;
+    return { min: Math.min(...prices), max: Math.max(...prices) };
+  }, [offerActive, hasTermVariants, matchedVariants]);
 
   const priceRange = useMemo(() => {
     if (hasTermVariants && matchedVariants.length > 1) {
@@ -459,7 +504,19 @@ export default function ProductDetail() {
               disabled={!canAddToCart}
               onClick={() => {
                 const variantId = resolvedVariant?.id ?? selectVariant;
-                addToCart(product?.id ?? null, variantId, 1, selectedTermsForCart, selectedImageUrl);
+                const resolvedOfferPrice = offerActive && resolvedVariant
+                  ? (resolvedVariant.offer_price > 0 ? resolvedVariant.offer_price : undefined)
+                  : undefined;
+                addToCart(
+                  product?.id ?? null,
+                  variantId,
+                  1,
+                  selectedTermsForCart,
+                  selectedImageUrl,
+                  resolvedOfferPrice,
+                  offerActive ? offerId : undefined,
+                  offerActive ? sourceGroupId : undefined
+                );
                 cartStore.setIsCartOpen(true);
               }}
             >
@@ -469,7 +526,18 @@ export default function ProductDetail() {
                   {canAddToCart ? "Add to Cart" : "Select Options"}
                 </span>
                 <span className="font-bold">
-                  {getPrice != null
+                  {getOfferPrice != null ? (
+                    <>
+                      <span className="text-red-400">{currencyFormat(getOfferPrice)}</span>
+                      {getPrice != null && (
+                        <span className="text-xs line-through text-slate-400 ml-2">{currencyFormat(getPrice as number)}</span>
+                      )}
+                    </>
+                  ) : offerPriceRange ? (
+                    <>
+                      <span className="text-red-400">{currencyFormat(offerPriceRange.min)} – {currencyFormat(offerPriceRange.max)}</span>
+                    </>
+                  ) : getPrice != null
                     ? currencyFormat(getPrice as number)
                     : priceRange
                     ? `${currencyFormat(priceRange.min)} – ${currencyFormat(priceRange.max)}`

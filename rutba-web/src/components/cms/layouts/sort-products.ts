@@ -29,7 +29,7 @@ function getMinPrice(p: ProductInterface): number {
   return p.selling_price;
 }
 
-export function getProductCardProps(item: ProductInterface, options?: { showBrand?: boolean; showCategory?: boolean; offerActive?: boolean }) {
+export function getProductCardProps(item: ProductInterface, options?: { showBrand?: boolean; showCategory?: boolean; offerActive?: boolean; offerId?: string; sourceGroupId?: string }) {
   const variantPrice =
     item.variants && item.variants.length > 0
       ? item.variants.map((v) => v.selling_price)
@@ -51,5 +51,7 @@ export function getProductCardProps(item: ProductInterface, options?: { showBran
     variantPrice,
     variantOfferPrice: offerActive && variantOfferPrice.length > 0 ? variantOfferPrice : undefined,
     variantTermSummary: getVariantTermSummary(item),
+    offerId: offerActive ? options?.offerId : undefined,
+    sourceGroupId: offerActive ? options?.sourceGroupId : undefined,
   };
 }

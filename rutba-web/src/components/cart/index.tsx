@@ -71,11 +71,23 @@ export default function Cart(props: propsInterface) {
   // To get the quantity of the product use this.
   const countSubTotal = () => {
     return cart?.reduce(
+      (total, item) => {
+        const unitPrice = (item?.offerPrice && item.offerPrice > 0) ? item.offerPrice : (item?.price ?? 0);
+        return total + unitPrice * getQuantity(item.id, item.variant_id, item.selectedImage);
+      },
+      0
+    );
+  };
+
+  const countOriginalTotal = () => {
+    return cart?.reduce(
       (total, item) =>
         total + (item?.price ?? 0) * getQuantity(item.id, item.variant_id, item.selectedImage),
       0
     );
   };
+
+  const savings = (countOriginalTotal() ?? 0) - (countSubTotal() ?? 0);
 
   if (!isMounted) {
     return null;
@@ -111,6 +123,7 @@ export default function Cart(props: propsInterface) {
                         variant_id: item.variant_id,
                         variant_name: item.variant_name,
                         price: item.price,
+                        offerPrice: item.offerPrice,
                         qty: getQuantity(item?.id, item?.variant_id, item?.selectedImage),
                         variant_terms: item.variant_terms,
                         selectedImage: item.selectedImage,
@@ -123,7 +136,19 @@ export default function Cart(props: propsInterface) {
           </div>
 
           <div className="border-t border-gray-200 px-5 py-6">
-            <div className="flex justify-between text-base font-medium text-gray-900">
+            {savings > 0 && (
+              <>
+                <div className="flex justify-between text-sm text-slate-500">
+                  <p>Original Total</p>
+                  <p className="line-through">{currencyFormat(countOriginalTotal() ?? 0)}</p>
+                </div>
+                <div className="flex justify-between text-sm text-green-600 font-medium mt-1">
+                  <p>You Save</p>
+                  <p>-{currencyFormat(savings)}</p>
+                </div>
+              </>
+            )}
+            <div className="flex justify-between text-base font-medium text-gray-900 mt-1">
               <p>Subtotal</p>
               <p>{currencyFormat(countSubTotal() ?? 0 as number)}</p>
             </div>
