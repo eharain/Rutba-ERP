@@ -16,6 +16,10 @@ function toSeconds(value, fallback) {
 }
 
 module.exports = ({ env }) => ({
+    "strapi-to-strapi-data-sync": {
+        enabled: true,
+        resolve: "./src/plugins/strapi-to-strapi-data-sync",
+    },
     'users-permissions': {
         config: {
             register: {
