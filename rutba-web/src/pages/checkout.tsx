@@ -144,6 +144,22 @@ export default function CheckoutPage() {
             <Card className="md:mx-[15px] lg:mx-[60px] mt-5">
               <CardContent className="my-6 pb-0">
                 <div className="flex flex-col gap-2">
+                  {savings > 0 && (
+                    <>
+                      <div className="flex justify-between">
+                        <p className="text-sm text-slate-500">Original Total</p>
+                        <p className="text-sm text-slate-500 line-through">
+                          {currencyFormat(countOriginalTotal() ?? 0)}
+                        </p>
+                      </div>
+                      <div className="flex justify-between">
+                        <p className="text-sm text-green-600 font-medium">You Save</p>
+                        <p className="text-sm text-green-600 font-medium">
+                          -{currencyFormat(savings)}
+                        </p>
+                      </div>
+                    </>
+                  )}
                   <div className="flex justify-between">
                     <p className="text-sm">Subtotal</p>
                     <p className="font-bold text-sm">

@@ -55,16 +55,20 @@ export default function FormCheckoutShippingInformation() {
           (item, i) => {
             const line = `${i + 1}. ${item.product_name || "Item"}` +
               (item.variant_name ? ` (${item.variant_name})` : "") +
-              ` × ${item.quantity} = Rs. ${item.total}`;
+              ` × ${item.quantity}` +
+              (item.offer_price ? ` = Rs. ${item.total} (was Rs. ${(item.original_price || item.price) * item.quantity})` : ` = Rs. ${item.total}`);
             return line;
           }
         );
+
+        const orderSavings = response?.savings || 0;
 
         const message =
           `Asalam u Alikum! 🛒\n\n` +
           `*Order ID:* ${orderId}\n` +
           (customerName ? `*Name:* ${customerName}\n` : "") +
           `\n*Items:*\n${itemLines.join("\n")}\n` +
+          (orderSavings > 0 ? `\n*Savings: Rs. ${orderSavings}* 🎉\n` : "") +
           `\n*Total: Rs. ${total}*\n\n` +
           `Please confirm my order. JazakAllah!`;
 
@@ -95,24 +99,39 @@ export default function FormCheckoutShippingInformation() {
     const cartItems = await getCart();
 
     const calculatedSubtotal = cartItems.reduce(
-      (acc, item) => acc + (Number(item.price) * Number(item.qty || 1)), 
+      (acc, item) => {
+        const unitPrice = (item.offerPrice && item.offerPrice > 0) ? item.offerPrice : Number(item.price);
+        return acc + (unitPrice * Number(item.qty || 1));
+      },
       0
     );
 
+    const originalSubtotal = cartItems.reduce(
+      (acc, item) => acc + (Number(item.price) * Number(item.qty || 1)),
+      0
+    );
+
+    const totalSavings = originalSubtotal - calculatedSubtotal;
+
     const formattedItems = cartItems.map((item) => {
       const itemQty = Number(item.qty || 1);
-      const itemPrice = Number(item.price || 0);
+      const unitPrice = (item.offerPrice && item.offerPrice > 0) ? item.offerPrice : Number(item.price || 0);
+      const originalPrice = Number(item.price || 0);
 
       return {
         quantity: itemQty,
-        price: itemPrice,
-        total: itemPrice * itemQty,
+        price: unitPrice,
+        original_price: originalPrice,
+        offer_price: (item.offerPrice && item.offerPrice > 0) ? item.offerPrice : undefined,
+        total: unitPrice * itemQty,
         product_name: item.name,
         product: item.documentId, 
         variant: item.variant_id ? String(item.variant_id) : undefined,
         variant_name: item.variant_name,
         variant_terms: item.variant_terms,
         image: item.imageId ?? undefined,
+        offer_id: item.offerId,
+        source_group_id: item.sourceGroupId,
       };
     });
 
@@ -128,6 +147,8 @@ export default function FormCheckoutShippingInformation() {
       order_id: `ORD-${Date.now()}`,
       subtotal: calculatedSubtotal,
       total: calculatedSubtotal,
+      original_subtotal: totalSavings > 0 ? originalSubtotal : undefined,
+      savings: totalSavings > 0 ? totalSavings : undefined,
     });
   };
 
