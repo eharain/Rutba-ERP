@@ -38,6 +38,19 @@ export default function ProductGroupRenderer({
   const allProducts = group.products ?? [];
   if (allProducts.length === 0) return null;
 
+  // Compute effective offer-active status respecting date range
+  const now = Date.now();
+  const offerActive = (() => {
+    if (!group.offer_active) return false;
+    if (group.offer_start_date && new Date(group.offer_start_date).getTime() > now) return false;
+    if (group.offer_end_date && new Date(group.offer_end_date).getTime() < now) return false;
+    return true;
+  })();
+
+  // Upcoming: offer_active is on but start date is in the future
+  const offerUpcoming = !offerActive && group.offer_active === true
+    && !!group.offer_start_date && new Date(group.offer_start_date).getTime() > now;
+
   const totalProducts = allProducts.length;
   const hasMore = effectiveMax > 0 && totalProducts > effectiveMax;
   const viewAllHref = group.slug ? `/product-groups/${group.slug}` : undefined;
@@ -49,24 +62,24 @@ export default function ProductGroupRenderer({
 
   const renderLayout = () => {
     if (viewMode === "detailed" && !hideControls) {
-      return <ListLayout group={limitedGroup} sort={sort} />;
+      return <ListLayout group={limitedGroup} sort={sort} offerActive={offerActive} />;
     }
 
     switch (layout) {
       case "hero-slider":
         return <HeroSliderLayout group={limitedGroup} />;
       case "grid-4":
-        return <Grid4Layout group={limitedGroup} sort={sort} />;
+        return <Grid4Layout group={limitedGroup} sort={sort} offerActive={offerActive} />;
       case "grid-6":
-        return <Grid6Layout group={limitedGroup} sort={sort} />;
+        return <Grid6Layout group={limitedGroup} sort={sort} offerActive={offerActive} />;
       case "carousel":
-        return <CarouselLayout group={limitedGroup} sort={sort} />;
+        return <CarouselLayout group={limitedGroup} sort={sort} offerActive={offerActive} />;
       case "banner-single":
         return <BannerSingleLayout group={limitedGroup} />;
       case "list":
-        return <ListLayout group={limitedGroup} sort={sort} />;
+        return <ListLayout group={limitedGroup} sort={sort} offerActive={offerActive} />;
       default:
-        return <Grid4Layout group={limitedGroup} sort={sort} />;
+        return <Grid4Layout group={limitedGroup} sort={sort} offerActive={offerActive} />;
     }
   };
 
@@ -79,6 +92,14 @@ export default function ProductGroupRenderer({
       }
     >
       <div className={isFullWidth ? "" : "container-fluid"}>
+        {(offerActive || offerUpcoming) && (
+          <OfferBanner
+            name={group.offer_name}
+            active={offerActive}
+            startDate={group.offer_start_date}
+            endDate={group.offer_end_date}
+          />
+        )}
         {!hideControls && (
           <GroupHeader
             name={group.title || group.name}
@@ -105,5 +126,61 @@ export default function ProductGroupRenderer({
         )}
       </div>
     </section>
+  );
+}
+
+/* ── Offer Banner ── */
+
+function OfferBanner({
+  name,
+  active,
+  startDate,
+  endDate,
+}: {
+  name?: string;
+  active: boolean;
+  startDate?: string;
+  endDate?: string;
+}) {
+  const label = name || (active ? "Special Offer" : "Upcoming Offer");
+
+  const formatDate = (iso?: string) => {
+    if (!iso) return null;
+    return new Date(iso).toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
+
+  if (active) {
+    return (
+      <div className="mb-4 rounded-lg bg-gradient-to-r from-red-500 to-rose-600 text-white px-4 py-3 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span className="text-lg">🔥</span>
+          <span className="font-semibold text-sm md:text-base">{label}</span>
+        </div>
+        {endDate && (
+          <span className="text-xs md:text-sm opacity-90">
+            Ends {formatDate(endDate)}
+          </span>
+        )}
+      </div>
+    );
+  }
+
+  // Upcoming
+  return (
+    <div className="mb-4 rounded-lg bg-gradient-to-r from-amber-400 to-orange-500 text-white px-4 py-3 flex flex-wrap items-center justify-between gap-2">
+      <div className="flex items-center gap-2">
+        <span className="text-lg">⏳</span>
+        <span className="font-semibold text-sm md:text-base">{label}</span>
+      </div>
+      {startDate && (
+        <span className="text-xs md:text-sm opacity-90">
+          Starts {formatDate(startDate)}
+        </span>
+      )}
+    </div>
   );
 }

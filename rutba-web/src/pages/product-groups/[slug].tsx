@@ -111,6 +111,22 @@ export default function ProductGroupPage({
 
   const products = sortProducts(group.products ?? [], sort);
 
+  // Compute effective offer-active status respecting date range
+  const now = Date.now();
+  const offerActive = (() => {
+    if (!group.offer_active) return false;
+    if (group.offer_start_date && new Date(group.offer_start_date).getTime() > now) return false;
+    if (group.offer_end_date && new Date(group.offer_end_date).getTime() < now) return false;
+    return true;
+  })();
+  const offerUpcoming = !offerActive && group.offer_active === true
+    && !!group.offer_start_date && new Date(group.offer_start_date).getTime() > now;
+
+  const formatOfferDate = (iso?: string) => {
+    if (!iso) return null;
+    return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  };
+
   return (
     <>
       <Head>
@@ -153,6 +169,30 @@ export default function ProductGroupPage({
             className="prose prose-slate max-w-none prose-sm mb-6"
             dangerouslySetInnerHTML={{ __html: marked.parse(group.excerpt) as string }}
           />
+        )}
+
+        {/* Offer Banner */}
+        {offerActive && (
+          <div className="mb-6 rounded-lg bg-gradient-to-r from-red-500 to-rose-600 text-white px-5 py-3 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="text-lg">🔥</span>
+              <span className="font-semibold">{group.offer_name || "Special Offer"}</span>
+            </div>
+            {group.offer_end_date && (
+              <span className="text-sm opacity-90">Ends {formatOfferDate(group.offer_end_date)}</span>
+            )}
+          </div>
+        )}
+        {offerUpcoming && (
+          <div className="mb-6 rounded-lg bg-gradient-to-r from-amber-400 to-orange-500 text-white px-5 py-3 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="text-lg">⏳</span>
+              <span className="font-semibold">{group.offer_name || "Upcoming Offer"}</span>
+            </div>
+            {group.offer_start_date && (
+              <span className="text-sm opacity-90">Starts {formatOfferDate(group.offer_start_date)}</span>
+            )}
+          </div>
         )}
 
         {/* Controls Bar */}
@@ -204,7 +244,7 @@ export default function ProductGroupPage({
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
             {products.map((item) => (
-              <ProductCard key={"pg-" + item.id} {...getProductCardProps(item)} />
+              <ProductCard key={"pg-" + item.id} {...getProductCardProps(item, { offerActive })} />
             ))}
           </div>
         )}

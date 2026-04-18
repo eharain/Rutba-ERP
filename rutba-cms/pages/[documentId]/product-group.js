@@ -34,6 +34,10 @@ export default function ProductGroupDetail() {
     const [maxInlineProducts, setMaxInlineProducts] = useState(12);
     const [showBrand, setShowBrand] = useState(true);
     const [showCategory, setShowCategory] = useState(true);
+    const [offerActive, setOfferActive] = useState(false);
+    const [offerName, setOfferName] = useState("");
+    const [offerStartDate, setOfferStartDate] = useState("");
+    const [offerEndDate, setOfferEndDate] = useState("");
     const [selectedProductIds, setSelectedProductIds] = useState([]);
     const [connectedProducts, setConnectedProducts] = useState([]);
     const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -61,6 +65,10 @@ export default function ProductGroupDetail() {
                 setMaxInlineProducts(g.max_inline_products ?? 12);
                 setShowBrand(g.show_brand !== false);
                 setShowCategory(g.show_category !== false);
+                setOfferActive(g.offer_active === true);
+                setOfferName(g.offer_name || "");
+                setOfferStartDate(g.offer_start_date ? g.offer_start_date.slice(0, 16) : "");
+                setOfferEndDate(g.offer_end_date ? g.offer_end_date.slice(0, 16) : "");
                 const products = g.products || [];
                 setConnectedProducts(products);
                 setSelectedProductIds(products.map(p => p.documentId));
@@ -104,6 +112,10 @@ export default function ProductGroupDetail() {
                     max_inline_products: maxInlineProducts,
                     show_brand: showBrand,
                     show_category: showCategory,
+                    offer_active: offerActive,
+                    offer_name: offerName || null,
+                    offer_start_date: offerStartDate || null,
+                    offer_end_date: offerEndDate || null,
                     products: { set: selectedProductIds },
                 },
             };
@@ -141,6 +153,10 @@ export default function ProductGroupDetail() {
                     max_inline_products: maxInlineProducts,
                     show_brand: showBrand,
                     show_category: showCategory,
+                    offer_active: offerActive,
+                    offer_name: offerName || null,
+                    offer_start_date: offerStartDate || null,
+                    offer_end_date: offerEndDate || null,
                     products: { set: selectedProductIds },
                 },
             };
@@ -263,28 +279,9 @@ export default function ProductGroupDetail() {
                         <div className="col-md-8">
                             <div className="card mb-3">
                                 <div className="card-body">
-                                    <div className="row">
-                                        <div className="col-md-4 mb-3">
-                                            <label className="form-label">Name</label>
-                                            <input type="text" className="form-control" value={name} onChange={e => setName(e.target.value)} placeholder="Group name" />
-                                        </div>
-                                        <div className="col-md-4 mb-3">
-                                            <label className="form-label">Layout</label>
-                                            <select className="form-select" value={layout} onChange={e => setLayout(e.target.value)}>
-                                                <option value="grid-4">Grid 4 Columns</option>
-                                                <option value="grid-6">Grid 6 Columns</option>
-                                                <option value="carousel">Carousel</option>
-                                                <option value="hero-slider">Hero Slider</option>
-                                                <option value="banner-single">Banner (Single Product)</option>
-                                                <option value="list">List</option>
-                                            </select>
-                                            <small className="text-muted">Choose how products display</small>
-                                        </div>
-                                        <div className="col-md-4 mb-3">
-                                            <label className="form-label">Priority</label>
-                                            <input type="number" className="form-control" value={priority} onChange={e => setPriority(parseInt(e.target.value) || 0)} placeholder="0 = highest" />
-                                            <small className="text-muted">Lower = appears first on page</small>
-                                        </div>
+                                    <div className="mb-3">
+                                        <label className="form-label">Name</label>
+                                        <input type="text" className="form-control" value={name} onChange={e => setName(e.target.value)} placeholder="Group name" />
                                     </div>
                                     <div className="mb-3">
                                         <label className="form-label">Title</label>
@@ -307,59 +304,6 @@ export default function ProductGroupDetail() {
                                 </div>
                             </div>
 
-                            <div className="card mb-3">
-                                <div className="card-header d-flex align-items-center justify-content-between" style={{ cursor: "pointer" }} onClick={() => setAdvancedOpen(v => !v)}>
-                                    <span><i className={`fas fa-chevron-${advancedOpen ? "down" : "right"} me-2`}></i>Advanced Settings</span>
-                                    <small className="text-muted">Sort, view toggle defaults</small>
-                                </div>
-                                {advancedOpen && (
-                                    <div className="card-body">
-                                        <div className="row">
-                                            <div className="col-md-4 mb-3">
-                                                <label className="form-label">Default Sort</label>
-                                                <select className="form-select" value={defaultSort} onChange={e => setDefaultSort(e.target.value)}>
-                                                    <option value="default">Default</option>
-                                                    <option value="newest">Newest</option>
-                                                    <option value="price_asc">Price: Low → High</option>
-                                                    <option value="price_desc">Price: High → Low</option>
-                                                </select>
-                                            </div>
-                                            <div className="col-md-4 mb-3 d-flex align-items-center pt-4">
-                                                <div className="form-check">
-                                                    <input className="form-check-input" type="checkbox" id="enableSort" checked={enableSortDropdown} onChange={e => setEnableSortDropdown(e.target.checked)} />
-                                                    <label className="form-check-label" htmlFor="enableSort">Show Sort Dropdown</label>
-                                                </div>
-                                            </div>
-                                            <div className="col-md-4 mb-3 d-flex align-items-center pt-4">
-                                                <div className="form-check">
-                                                    <input className="form-check-input" type="checkbox" id="enableView" checked={enableViewToggle} onChange={e => setEnableViewToggle(e.target.checked)} />
-                                                    <label className="form-check-label" htmlFor="enableView">Show View Toggle</label>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div className="row">
-                                            <div className="col-md-4 mb-3">
-                                                <label className="form-label">Max Products Shown Inline</label>
-                                                <input type="number" className="form-control" value={maxInlineProducts} onChange={e => setMaxInlineProducts(parseInt(e.target.value) || 0)} min={0} placeholder="12" />
-                                                <small className="text-muted">0 = show all. Otherwise shows this many with a "View All" link.</small>
-                                            </div>
-                                            <div className="col-md-4 mb-3 d-flex align-items-center pt-4">
-                                                <div className="form-check">
-                                                    <input className="form-check-input" type="checkbox" id="showBrand" checked={showBrand} onChange={e => setShowBrand(e.target.checked)} />
-                                                    <label className="form-check-label" htmlFor="showBrand">Show Product Brand</label>
-                                                </div>
-                                            </div>
-                                            <div className="col-md-4 mb-3 d-flex align-items-center pt-4">
-                                                <div className="form-check">
-                                                    <input className="form-check-input" type="checkbox" id="showCategory" checked={showCategory} onChange={e => setShowCategory(e.target.checked)} />
-                                                    <label className="form-check-label" htmlFor="showCategory">Show Product Category</label>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-
                             <ProductPickerTabs
                                 selectedProductIds={selectedProductIds}
                                 connectedProducts={connectedProducts}
@@ -370,6 +314,84 @@ export default function ProductGroupDetail() {
                         </div>
 
                         <div className="col-md-4">
+                            <div className="card mb-3">
+                                <div className="card-header d-flex align-items-center justify-content-between" style={{ cursor: "pointer" }} onClick={() => setAdvancedOpen(v => !v)}>
+                                    <span><i className={`fas fa-chevron-${advancedOpen ? "down" : "right"} me-2`}></i>Advanced Settings</span>
+                                </div>
+                                {advancedOpen && (
+                                    <div className="card-body">
+                                        <div className="mb-3">
+                                            <label className="form-label">Layout</label>
+                                            <select className="form-select" value={layout} onChange={e => setLayout(e.target.value)}>
+                                                <option value="grid-4">Grid 4 Columns</option>
+                                                <option value="grid-6">Grid 6 Columns</option>
+                                                <option value="carousel">Carousel</option>
+                                                <option value="hero-slider">Hero Slider</option>
+                                                <option value="banner-single">Banner (Single Product)</option>
+                                                <option value="list">List</option>
+                                            </select>
+                                            <small className="text-muted">Choose how products display</small>
+                                        </div>
+                                        <div className="mb-3">
+                                            <label className="form-label">Priority</label>
+                                            <input type="number" className="form-control" value={priority} onChange={e => setPriority(parseInt(e.target.value) || 0)} placeholder="0 = highest" />
+                                            <small className="text-muted">Lower = appears first on page</small>
+                                        </div>
+                                        <div className="mb-3">
+                                            <label className="form-label">Default Sort</label>
+                                            <select className="form-select" value={defaultSort} onChange={e => setDefaultSort(e.target.value)}>
+                                                <option value="default">Default</option>
+                                                <option value="newest">Newest</option>
+                                                <option value="price_asc">Price: Low → High</option>
+                                                <option value="price_desc">Price: High → Low</option>
+                                            </select>
+                                        </div>
+                                        <div className="mb-3">
+                                            <label className="form-label">Max Inline Products</label>
+                                            <input type="number" className="form-control" value={maxInlineProducts} onChange={e => setMaxInlineProducts(parseInt(e.target.value) || 0)} min={0} placeholder="12" />
+                                            <small className="text-muted">0 = show all</small>
+                                        </div>
+                                        <div className="form-check mb-2">
+                                            <input className="form-check-input" type="checkbox" id="enableSort" checked={enableSortDropdown} onChange={e => setEnableSortDropdown(e.target.checked)} />
+                                            <label className="form-check-label" htmlFor="enableSort">Show Sort Dropdown</label>
+                                        </div>
+                                        <div className="form-check mb-2">
+                                            <input className="form-check-input" type="checkbox" id="enableView" checked={enableViewToggle} onChange={e => setEnableViewToggle(e.target.checked)} />
+                                            <label className="form-check-label" htmlFor="enableView">Show View Toggle</label>
+                                        </div>
+                                        <div className="form-check mb-2">
+                                            <input className="form-check-input" type="checkbox" id="showBrand" checked={showBrand} onChange={e => setShowBrand(e.target.checked)} />
+                                            <label className="form-check-label" htmlFor="showBrand">Show Product Brand</label>
+                                        </div>
+                                        <div className="form-check mb-3">
+                                            <input className="form-check-input" type="checkbox" id="showCategory" checked={showCategory} onChange={e => setShowCategory(e.target.checked)} />
+                                            <label className="form-check-label" htmlFor="showCategory">Show Product Category</label>
+                                        </div>
+                                        <hr className="my-2" />
+                                        <h6 className="mb-2">Offer Settings</h6>
+                                        <div className="form-check mb-2">
+                                            <input className="form-check-input" type="checkbox" id="offerActive" checked={offerActive} onChange={e => setOfferActive(e.target.checked)} />
+                                            <label className="form-check-label" htmlFor="offerActive">Offer Active</label>
+                                        </div>
+                                        <div className="mb-2">
+                                            <label className="form-label mb-1">Offer Name</label>
+                                            <input type="text" className="form-control form-control-sm" value={offerName} onChange={e => setOfferName(e.target.value)} placeholder="e.g. Summer Sale 50% Off" disabled={!offerActive} />
+                                            <small className="text-muted">Displayed as banner on the group</small>
+                                        </div>
+                                        <div className="mb-2">
+                                            <label className="form-label mb-1">Start Date</label>
+                                            <input type="datetime-local" className="form-control form-control-sm" value={offerStartDate} onChange={e => setOfferStartDate(e.target.value)} disabled={!offerActive} />
+                                            <small className="text-muted">Empty = immediate</small>
+                                        </div>
+                                        <div className="mb-2">
+                                            <label className="form-label mb-1">End Date</label>
+                                            <input type="datetime-local" className="form-control form-control-sm" value={offerEndDate} onChange={e => setOfferEndDate(e.target.value)} disabled={!offerActive} />
+                                            <small className="text-muted">Empty = indefinite</small>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
                             {!isNew && group && (
                                 <>
                                     <div className="card mb-3">

@@ -36,38 +36,38 @@ export default function Navigation() {
             </button>
             <div className="collapse navbar-collapse" id="mainNav">
                 <ul className="navbar-nav me-auto mb-2 mb-lg-0">
-                    <li className="nav-item">
-                        <Link className="nav-link" href="/products">Products</Link>
+                    <li className="nav-item dropdown">
+                        <a className="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i className="fas fa-box me-1"></i>Catalog
+                        </a>
+                        <ul className="dropdown-menu">
+                            <li><Link className="dropdown-item" href="/products">Products</Link></li>
+                            <li><Link className="dropdown-item" href="/categories">Categories</Link></li>
+                            <li><Link className="dropdown-item" href="/brands">Brands</Link></li>
+                        </ul>
+                    </li>
+                    <li className="nav-item dropdown">
+                        <a className="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i className="fas fa-layer-group me-1"></i>Content
+                        </a>
+                        <ul className="dropdown-menu">
+                            <li><Link className="dropdown-item" href="/pages">Pages</Link></li>
+                            <li><Link className="dropdown-item" href="/product-groups">Product Groups</Link></li>
+                            <li><hr className="dropdown-divider" /></li>
+                            <li><Link className="dropdown-item" href="/brand-groups">Brand Groups</Link></li>
+                            <li><Link className="dropdown-item" href="/category-groups">Category Groups</Link></li>
+                            <li><hr className="dropdown-divider" /></li>
+                            <li><Link className="dropdown-item" href="/footers">Footers</Link></li>
+                        </ul>
                     </li>
                     <li className="nav-item">
-                        <Link className="nav-link" href="/categories">Categories</Link>
+                        <Link className="nav-link" href="/orders"><i className="fas fa-shopping-bag me-1"></i>Orders</Link>
                     </li>
                     <li className="nav-item">
-                        <Link className="nav-link" href="/brands">Brands</Link>
+                        <Link className="nav-link" href="/media"><i className="fas fa-photo-video me-1"></i>Media</Link>
                     </li>
                     <li className="nav-item">
-                        <Link className="nav-link" href="/product-groups">Product Groups</Link>
-                    </li>
-                    <li className="nav-item">
-                        <Link className="nav-link" href="/brand-groups">Brand Groups</Link>
-                    </li>
-                    <li className="nav-item">
-                        <Link className="nav-link" href="/category-groups">Category Groups</Link>
-                    </li>
-                    <li className="nav-item">
-                        <Link className="nav-link" href="/pages">Pages</Link>
-                    </li>
-                    <li className="nav-item">
-                        <Link className="nav-link" href="/footers">Footers</Link>
-                    </li>
-                    <li className="nav-item">
-                        <Link className="nav-link" href="/orders">Orders</Link>
-                    </li>
-                    <li className="nav-item">
-                        <Link className="nav-link" href="/media">Media</Link>
-                    </li>
-                    <li className="nav-item">
-                        <Link className="nav-link" href="/site-settings"><i className="fas fa-cog me-1"></i>Site Settings</Link>
+                        <Link className="nav-link" href="/site-settings"><i className="fas fa-cog me-1"></i>Settings</Link>
                     </li>
                     </ul>
 

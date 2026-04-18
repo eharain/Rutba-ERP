@@ -96,6 +96,19 @@
     "show_category": {
       "type": "boolean",
       "default": true
+    },
+    "offer_active": {
+      "type": "boolean",
+      "default": false
+    },
+    "offer_name": {
+      "type": "string"
+    },
+    "offer_start_date": {
+      "type": "datetime"
+    },
+    "offer_end_date": {
+      "type": "datetime"
     }
   }
 }
