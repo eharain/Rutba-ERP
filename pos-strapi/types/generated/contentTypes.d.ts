@@ -2123,6 +2123,10 @@ export interface ApiProductGroupProductGroup
     max_inline_products: Schema.Attribute.Integer &
       Schema.Attribute.DefaultTo<12>;
     name: Schema.Attribute.String & Schema.Attribute.Required;
+    offer_active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    offer_end_date: Schema.Attribute.DateTime;
+    offer_name: Schema.Attribute.String;
+    offer_start_date: Schema.Attribute.DateTime;
     priority: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
     products: Schema.Attribute.Relation<'manyToMany', 'api::product.product'>;
     publishedAt: Schema.Attribute.DateTime;

@@ -29,11 +29,18 @@ function getMinPrice(p: ProductInterface): number {
   return p.selling_price;
 }
 
-export function getProductCardProps(item: ProductInterface, options?: { showBrand?: boolean; showCategory?: boolean }) {
+export function getProductCardProps(item: ProductInterface, options?: { showBrand?: boolean; showCategory?: boolean; offerActive?: boolean }) {
   const variantPrice =
     item.variants && item.variants.length > 0
       ? item.variants.map((v) => v.selling_price)
       : [item.selling_price];
+
+  const offerActive = options?.offerActive === true;
+  const variantOfferPrice = offerActive
+    ? (item.variants && item.variants.length > 0
+        ? item.variants.map((v) => v.offer_price).filter((p) => p > 0)
+        : (item.offer_price > 0 ? [item.offer_price] : []))
+    : [];
 
   return {
     name: item.name,
@@ -42,6 +49,7 @@ export function getProductCardProps(item: ProductInterface, options?: { showBran
     thumbnail: item.gallery?.[0]?.url ?? null,
     slug: item.documentId,
     variantPrice,
+    variantOfferPrice: offerActive && variantOfferPrice.length > 0 ? variantOfferPrice : undefined,
     variantTermSummary: getVariantTermSummary(item),
   };
 }

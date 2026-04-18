@@ -12,6 +12,7 @@ export interface ProductCardInterface {
   brand?: Pick<BrandInterface, "name" | "slug">;
   thumbnail: string | null;
   variantPrice: number[];
+  variantOfferPrice?: number[];
   slug: string;
   variantTermSummary?: VariantTermSummary[];
 }
@@ -22,6 +23,7 @@ export default function ProductCard({
   brand,
   thumbnail,
   variantPrice,
+  variantOfferPrice,
   slug,
   variantTermSummary,
 }: ProductCardInterface) {
@@ -38,6 +40,10 @@ export default function ProductCard({
     }
     return Math.max(...variantPrice);
   };
+
+  const hasOffer = variantOfferPrice && variantOfferPrice.length > 0;
+  const offerMin = hasOffer ? Math.min(...variantOfferPrice) : 0;
+  const offerMax = hasOffer ? Math.max(...variantOfferPrice) : 0;
 
   return (
     <Link href={`/product/${slug}`}>
@@ -63,10 +69,25 @@ export default function ProductCard({
         </div>
         <p className="font-bold">{name}</p>
 
-        <div className="flex">
-          <p className="text-sm">{currencyFormat(getCheapestPrice())}</p>
-          {getCheapestPrice() !== getHighestPrice() && (
-            <p className="text-sm"> - {currencyFormat(getHighestPrice())}</p>
+        <div className="flex flex-wrap items-center gap-1">
+          {hasOffer ? (
+            <>
+              <p className="text-sm font-semibold text-red-600">{currencyFormat(offerMin)}</p>
+              {offerMin !== offerMax && (
+                <p className="text-sm font-semibold text-red-600"> - {currencyFormat(offerMax)}</p>
+              )}
+              <p className="text-xs text-slate-400 line-through ml-1">{currencyFormat(getCheapestPrice())}</p>
+              {getCheapestPrice() !== getHighestPrice() && (
+                <p className="text-xs text-slate-400 line-through"> - {currencyFormat(getHighestPrice())}</p>
+              )}
+            </>
+          ) : (
+            <>
+              <p className="text-sm">{currencyFormat(getCheapestPrice())}</p>
+              {getCheapestPrice() !== getHighestPrice() && (
+                <p className="text-sm"> - {currencyFormat(getHighestPrice())}</p>
+              )}
+            </>
           )}
         </div>
 

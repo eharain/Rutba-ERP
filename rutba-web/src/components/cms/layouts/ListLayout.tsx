@@ -10,27 +10,33 @@ import type { SortOption } from "./GroupHeader";
 interface ListLayoutProps {
   group: CmsProductGroupInterface;
   sort?: SortOption;
+  offerActive?: boolean;
 }
 
-export default function ListLayout({ group, sort = "default" }: ListLayoutProps) {
+export default function ListLayout({ group, sort = "default", offerActive }: ListLayoutProps) {
   const products = sortProducts(group.products ?? [], sort);
   if (products.length === 0) return null;
 
   return (
     <div className="divide-y divide-slate-200">
       {products.map((item) => (
-        <ListRow key={"list-" + item.id} product={item} showBrand={group.show_brand} showCategory={group.show_category} />
+        <ListRow key={"list-" + item.id} product={item} showBrand={group.show_brand} showCategory={group.show_category} offerActive={offerActive} />
       ))}
     </div>
   );
 }
 
-function ListRow({ product, showBrand, showCategory }: { product: ProductInterface; showBrand?: boolean; showCategory?: boolean }) {
+function ListRow({ product, showBrand, showCategory, offerActive }: { product: ProductInterface; showBrand?: boolean; showCategory?: boolean; offerActive?: boolean }) {
   const thumbnail = product.gallery?.[0]?.url ?? product.logo?.url ?? null;
   const price =
     product.variants && product.variants.length > 0
       ? Math.min(...product.variants.map((v) => v.selling_price))
       : product.selling_price;
+  const offerPrice = offerActive
+    ? (product.variants && product.variants.length > 0
+        ? Math.min(...product.variants.map((v) => v.offer_price).filter((p) => p > 0))
+        : (product.offer_price > 0 ? product.offer_price : 0)) || 0
+    : 0;
   const brand = showBrand !== false ? product.brands?.[0] : undefined;
   const category = showCategory !== false ? product.categories?.[0] : undefined;
 
@@ -70,11 +76,20 @@ function ListRow({ product, showBrand, showCategory }: { product: ProductInterfa
         )}
       </div>
       <div className="text-right shrink-0">
-        {price > 0 && (
+        {offerPrice > 0 ? (
+          <>
+            <p className="font-semibold text-red-600">
+              {currencyFormat(offerPrice)}
+            </p>
+            <p className="text-xs text-slate-400 line-through">
+              {currencyFormat(price)}
+            </p>
+          </>
+        ) : price > 0 ? (
           <p className="font-semibold text-slate-900">
             {currencyFormat(price)}
           </p>
-        )}
+        ) : null}
       </div>
     </Link>
   );

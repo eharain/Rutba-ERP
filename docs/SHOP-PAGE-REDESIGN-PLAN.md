@@ -364,3 +364,170 @@ Define these layouts for rendering a product group on the shop page:
 - **Conditional slider**: The hero/slider area only appears when a product group with `layout: 'hero-slider'` is assigned to the page. No fallback or always-on slider.
 - **CMS editor consistency**: Product Groups and Related Pages pickers on the CMS page editor use the same tabbed/searchable pattern as the product picker on the product-group editor (`ProductPickerTabs`), via `GroupPickerTabs` and `PagePickerTabs`.
 - **`max_inline_products`**: Each product group defines how many products to show inline on a CMS page. Excess products are accessible via a "View All" link to the dedicated product-group detail page.
+
+---
+
+## Next Stage Improvements (Proposed)
+
+Review of what is implemented so far across Phases 1–7 and the site-settings layer. Below are concrete, scoped improvements grouped by area. Each item lists the problem, the proposed change, and the files likely affected. These are **proposals** — not executed yet.
+
+### A. Web Frontend — Performance & UX
+
+**A1. Server-render priority-ordered sections (SSR/ISR)**
+- Problem: `ProductGroupRenderer` and `cms-page-content.tsx` compute the unified priority `sections` array client-side. This delays first meaningful paint and hurts SEO/LCP on heavy CMS pages.
+- Change: Compute the unified, priority-sorted sections array during SSR in the page file (`pages/[slug].tsx`, `pages/shop/[slug].tsx`, `pages/product-groups/[slug].tsx`) and pass a flat `sections` prop into the renderer. Keep per-group sort/view state client-side.
+- Files: `rutba-web/src/pages/[slug].tsx`, `rutba-web/src/components/cms/cms-page-content.tsx`, `rutba-web/src/components/cms/ProductGroupRenderer.tsx`.
+
+**A2. Image optimization across layouts**
+- Problem: Several layout components use `<img>` with `IMAGE_URL + ...` directly. That bypasses Next.js image optimization (no responsive `srcset`, no lazy priority tuning).
+- Change: Migrate hero/banner/grid images to `next/image` with explicit `sizes` per layout (hero: `100vw`, grid-4: `(min-width:1024px) 25vw, 50vw`, grid-6: `(min-width:1024px) 16vw, 50vw`). Add `priority` only to the first hero slide and above-the-fold banner.
+- Files: `HeroSliderLayout.tsx`, `BannerSingleLayout.tsx`, `Grid4Layout.tsx`, `Grid6Layout.tsx`, `CarouselLayout.tsx`, `ListLayout.tsx`, `product-card.tsx`.
+
+**A3. `ScrollSlider` accessibility & polish**
+- Problem: The custom slider primitive replaces Swiper but likely lacks ARIA semantics, keyboard support, and reduced-motion handling.
+- Change: Add `role="region"` + `aria-roledescription="carousel"`, slide `aria-label="N of M"`, keyboard arrow navigation, focus-visible ring on prev/next, `prefers-reduced-motion` to disable autoplay, and pause-on-hover/focus for autoplay hero.
+- Files: `rutba-web/src/components/ui/scroll-slider.tsx`.
+
+**A4. Per-group URL-synced sort & view mode**
+- Problem: Sort and view mode are local state only; they reset on navigation and aren't shareable.
+- Change: Mirror sort/view per group into query params keyed by group slug (e.g., `?abayas_sort=price_asc&abayas_view=detailed`) via shallow routing. Keep defaults from `default_sort` and layout.
+- Files: `ProductGroupRenderer.tsx`, `GroupHeader.tsx`.
+
+**A5. `useSiteSettings` SSR hydration**
+- Problem: The hook uses React Query with `staleTime: Infinity`, but since it fetches on the client, each first visit briefly renders with defaults (flash of fallback branding / `Rutba.pk`).
+- Change: Fetch site settings once in `getStaticProps`/`getServerSideProps` at the top-level layout (or via `_app.tsx` with `getInitialProps` only for this one request) and hydrate the React Query cache on the client.
+- Files: `rutba-web/src/pages/_app.tsx`, `rutba-web/src/hooks/use-site-settings.ts`, `rutba-web/src/services/site-settings.ts`.
+
+**A6. Remove remaining `Rutba.pk` / hardcoded branding**
+- Problem: `site_name` default is still hardcoded as `"Rutba.pk"` in the Strapi schema and in frontend fallbacks. Some `alt` texts, open-graph tags, and JSON-LD may still reference it.
+- Change: Audit `rutba-web/src` for remaining string literals (`Rutba`, `Rutba.pk`, hardcoded phone numbers, email). Route them all through `useSiteSettings` and add `site_email`, `site_phone`, `site_address`, `og_default_image` to the `site-setting` schema.
+- Files: `pos-strapi/src/api/site-setting/content-types/site-setting/schema.json`, `rutba-cms/pages/site-settings.js`, `rutba-web/src/services/site-settings.ts`, footer/header/meta components.
+
+**A7. Skeleton loading for product groups**
+- Problem: When `useQuery` loads product data, groups briefly render empty sections causing layout shift.
+- Change: Add lightweight skeleton card/list placeholders to each layout component keyed off a `loading?: boolean` prop.
+- Files: All `rutba-web/src/components/cms/layouts/*Layout.tsx`.
+
+### B. Web Frontend — SEO & Meta
+
+**B1. Per-page OpenGraph & Twitter cards**
+- Problem: `_app.tsx` sets title/description from site settings, but CMS pages likely don't emit OG image/URL, canonical, or Twitter card tags.
+- Change: Extend `cms-page-content.tsx` and friends to output `<meta property="og:*">`, `<meta name="twitter:*">`, canonical `<link>`, and JSON-LD (`BreadcrumbList`, `ItemList` for product groups, `Product` for detail). Pull defaults from site settings.
+- Files: `cms-page-content.tsx`, `cms-blog-page-content.tsx`, `cms-news-page-content.tsx`, `cms-info-page-content.tsx`, `product-groups/[slug].tsx`.
+
+**B2. Sitemap & robots driven by CMS**
+- Problem: No clear CMS-driven sitemap for pages + product groups + products.
+- Change: Add `pages/sitemap.xml.ts` that queries Strapi for all published cms-pages, product-groups (by slug), and products; emit XML. Add `robots.txt` derived from site settings (indexable flag).
+- Files: New `rutba-web/src/pages/sitemap.xml.ts`, new `rutba-web/src/pages/robots.txt.ts`.
+
+### C. CMS Authoring UX
+
+**C1. Auto-slug with collision check on product-group create**
+- Problem: `handleSave` for new group uses `name.toLowerCase().replace(/\s+/g, "-")`, which ignores punctuation/non-ASCII and doesn't check for collisions.
+- Change: Normalize via a shared `slugify()` helper (strip accents, remove non-alphanum, collapse dashes); before save, query `/product-groups?filters[slug][$eq]=...` and append `-2`, `-3` on collision.
+- Files: `rutba-cms/pages/[documentId]/product-group.js`, new `rutba-cms/lib/slugify.js` or reuse one from `pos-shared`.
+
+**C2. Draft/published diff badge**
+- Problem: Editors can see Published vs Draft but can't see if the draft differs from the published version.
+- Change: On load, compare draft vs published JSON (ignoring timestamps) and show a "Unpublished changes" badge with a "View changes" modal listing changed fields.
+- Files: `rutba-cms/pages/[documentId]/product-group.js`, `cms-page.js`, `cms-footer.js`, `site-settings.js`.
+
+**C3. Autosave draft every 30s**
+- Problem: Large product-group edits (hundreds of products) risk loss if the tab closes.
+- Change: Debounced autosave to `PUT /...?status=draft` every 30s when the form is dirty; show subtle "Saved at HH:MM" indicator.
+- Files: same editor pages above; extract to a reusable hook `useAutoSaveDraft`.
+
+**C4. Confirm before navigating with unsaved changes**
+- Problem: Editors can click Back / change route and lose unsaved draft state silently.
+- Change: Track `isDirty` and use Next.js `router.events.routeChangeStart` + `beforeunload` to prompt.
+- Files: all CMS editor pages (product-group, cms-page, cms-footer, site-settings).
+
+**C5. Bulk operations on product-groups list**
+- Problem: `rutba-cms/pages/product-groups.js` likely doesn't support multi-select bulk publish/unpublish/delete/reorder by priority.
+- Change: Add row checkboxes, a bulk action bar (Publish, Unpublish, Delete, Set Priority Range), and drag-to-reorder priority with optimistic update.
+- Files: `rutba-cms/pages/product-groups.js`.
+
+**C6. Product-group preview link**
+- Problem: No quick way to preview how a group will render for a given layout without opening the public web app and navigating there manually.
+- Change: Add a "Preview" button on the product-group edit page that opens `rutba-web`'s `/product-groups/{slug}?preview=1` in a new tab, passing a draft token.
+- Files: `rutba-cms/pages/[documentId]/product-group.js`, `rutba-web/src/pages/product-groups/[slug].tsx` (accept `preview` query + draft populate).
+
+### D. Strapi / Backend
+
+**D1. Proper populate strategy on public endpoints**
+- Problem: CMS page and product-group fetches on the web use broad `populate` arrays which over-fetch and can be slow. No field-level selection.
+- Change: Introduce explicit `populate` objects (Strapi v5 granular populate) per endpoint that only load the fields each layout actually needs (e.g., `products.logo`, `products.price`, `products.slug`, omit description/content from list queries).
+- Files: `rutba-web/src/services/cms-pages.ts`, `rutba-web/src/services/product-groups.ts`, `rutba-web/src/services/site-settings.ts`.
+
+**D2. Cache CMS responses at the edge**
+- Problem: Strapi hits on every request for relatively static content.
+- Change: Set `Cache-Control: s-maxage=60, stale-while-revalidate=600` on custom controllers (cms-page detail, product-group by-slug, site-setting, cms-footer). Combine with Next.js ISR for page-level caching.
+- Files: custom controllers in `pos-strapi/src/api/*/controllers/*.js`.
+
+**D3. Site-setting record bootstrap**
+- Problem: The singleType fails to save the first time if the record doesn't exist (needed the `PUT` without `?status=draft` fix). This is fragile.
+- Change: Add a `bootstrap` step in `pos-strapi/src/index.js` that creates a default site-setting record on first start if missing, using defaults from the schema.
+- Files: `pos-strapi/src/index.js` (or a dedicated bootstrap script).
+
+**D4. Consistent publish/unpublish/discard routes on singleTypes**
+- Problem: Collection types use `/{plural}/{documentId}/publish`; the new site-setting uses `/site-setting/publish` (no documentId, controller resolves internally). The asymmetry is confusing.
+- Change: Pick one convention across all content types — either always look up `documentId` in the controller, or always pass it in the URL. Document the chosen convention in `.github/copilot-instructions.md` and refactor outliers.
+- Files: all `*/routes/01-custom-*.js` and corresponding CMS editor pages.
+
+**D5. Input validation on custom endpoints**
+- Problem: `product-group.findBySlug` paginated action accepts `page`/`pageSize` from query without explicit bounds enforcement beyond a documented max.
+- Change: Add zod/strapi `validateQuery` schema (int coercion, min/max, allowed `sort` enum) and return `400` on invalid input.
+- Files: `pos-strapi/src/api/product-group/controllers/product-group.js`.
+
+### E. Architecture & Code Health
+
+**E1. Shared type generation from Strapi schema**
+- Problem: TypeScript interfaces in `rutba-web/src/types/api/*.ts` are hand-maintained and can drift from Strapi schemas.
+- Change: Introduce `strapi-plugin-ts-types` or a small codegen script that reads `schema.json` files and emits matching interfaces. Commit the generated file.
+- Files: new script in `pos-strapi/scripts/generate-ts-types.js`; consumer imports in `rutba-web/src/types/api/`.
+
+**E2. Split `cms-page-content.tsx`**
+- Problem: That file likely has grown large (unified sections array, group map, page-owned section rendering). Hard to reason about.
+- Change: Extract: (a) `useCmsPageSections` hook that returns the sorted sections, (b) `PageOwnedSection` renderer (excerpt/featured/content/gallery/related), leaving the main component as pure composition.
+- Files: `rutba-web/src/components/cms/cms-page-content.tsx`, new `rutba-web/src/components/cms/useCmsPageSections.ts`, new `rutba-web/src/components/cms/PageOwnedSection.tsx`.
+
+**E3. Consolidate picker components**
+- Problem: `ProductPickerTabs`, `GroupPickerTabs`, `PagePickerTabs` share a lot of UI (Connected/All tabs, search, chip list, counts). Likely divergent small details.
+- Change: Extract a generic `<EntityPickerTabs entities, selectedIds, renderItem, searchFields, filters />` primitive, and make the three existing components thin wrappers that configure it.
+- Files: new `rutba-cms/components/EntityPickerTabs.js`; refactor the three existing pickers.
+
+**E4. Testing coverage**
+- Problem: No mention of tests for layout resolver, priority sorting, slider behavior, or picker logic.
+- Change: Add a small vitest/jest setup to `rutba-web` and snapshot-test `ProductGroupRenderer` for each layout; unit-test the priority sort combining groups + page-owned sections.
+- Files: new `rutba-web/vitest.config.ts` (or `jest.config.js`), tests under `rutba-web/src/**/*.test.tsx`.
+
+### F. Future Feature Candidates
+
+**F1. Personalized "Recently viewed" and "Recommended" groups**
+- Virtual product groups driven by localStorage history and co-purchase data, rendered via `ProductGroupRenderer` with a `virtual: true` source.
+
+**F2. Scheduled publish for product-groups and CMS pages**
+- Add `scheduled_publish_at` datetime field; a Strapi cron job publishes records at their scheduled time. Useful for campaigns and launches.
+
+**F3. Multi-language support**
+- If Urdu/English is in scope, enable Strapi i18n on site-setting, cms-page, product-group, product, and thread `locale` through fetchers and URL prefixes.
+
+**F4. A/B testing on layouts**
+- Allow two `layout` values on a group (A and B); assign 50/50 split via cookie; report conversion via existing analytics.
+
+**F5. Homepage as a first-class CMS page**
+- Today `/` may still use a dedicated index with hardcoded sections. Let editors designate a cms-page as the home via site-settings (`homepage_cms_page` relation) and render it the same way as any other page.
+
+---
+
+## Prioritization Suggestion
+
+If you want a short execution order for the next pass:
+
+1. D3 Site-setting bootstrap + A5 SSR hydration + A6 branding audit (finishes the site-settings layer cleanly).
+2. A1 SSR of priority sections + A2 image optimization (biggest performance / LCP wins).
+3. B1 per-page meta/JSON-LD + B2 sitemap (SEO foundation).
+4. C1/C2/C3/C4 editor safety-net improvements (editor trust & productivity).
+5. E3 picker consolidation + E2 `cms-page-content` split (reduces ongoing maintenance cost).
+6. D1 granular populate + D2 caching (back-end efficiency).
+7. Remaining CMS UX (C5, C6) and feature candidates (F1–F5).

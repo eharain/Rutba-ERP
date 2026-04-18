@@ -36,6 +36,10 @@ export interface CmsProductGroupInterface {
   max_inline_products?: number;
   show_brand?: boolean;
   show_category?: boolean;
+  offer_active?: boolean;
+  offer_name?: string;
+  offer_start_date?: string;
+  offer_end_date?: string;
 }
 
 export interface CmsBrandGroupInterface {
