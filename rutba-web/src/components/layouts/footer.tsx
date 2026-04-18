@@ -66,11 +66,11 @@ export default function Footer({ footer }: FooterProps) {
                     href="/product"
                     className="text-gray-700 transition hover:opacity-75"
                   >
-                    Explore Products
-                  </Link>
-                </li>
+                        {settings.nav_explore_products_label || "Explore Products"}
+                      </Link>
+                    </li>
 
-                {pinnedPages.map((pp) => (
+                    {pinnedPages.map((pp) => (
                   <li key={pp.documentId}>
                     <Link
                       href={getPageUrl(pp)}
