@@ -3356,7 +3356,7 @@ export interface PluginReviewWorkflowsWorkflowStage
   };
 }
 
-export interface PluginStrapiToStrapiDataSyncSyncLog
+export interface PluginStrapiContentSyncProSyncLog
   extends Struct.CollectionTypeSchema {
   collectionName: 'sync_logs';
   info: {
@@ -3386,7 +3386,7 @@ export interface PluginStrapiToStrapiDataSyncSyncLog
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
-      'plugin::strapi-to-strapi-data-sync.sync-log'
+      'plugin::strapi-content-sync-pro.sync-log'
     > &
       Schema.Attribute.Private;
     message: Schema.Attribute.Text;
@@ -3791,7 +3791,7 @@ declare module '@strapi/strapi' {
       'plugin::i18n.locale': PluginI18NLocale;
       'plugin::review-workflows.workflow': PluginReviewWorkflowsWorkflow;
       'plugin::review-workflows.workflow-stage': PluginReviewWorkflowsWorkflowStage;
-      'plugin::strapi-to-strapi-data-sync.sync-log': PluginStrapiToStrapiDataSyncSyncLog;
+      'plugin::strapi-content-sync-pro.sync-log': PluginStrapiContentSyncProSyncLog;
       'plugin::upload.file': PluginUploadFile;
       'plugin::upload.folder': PluginUploadFolder;
       'plugin::users-permissions.me': PluginUsersPermissionsMe;
