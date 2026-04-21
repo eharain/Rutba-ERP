@@ -1,5 +1,8 @@
 import { Box, Typography, Tabs, Divider } from '@strapi/design-system';
 
+const INTRO_VIDEO_URL = 'https://www.youtube.com/watch?v=hr3dD6dLgLQ';
+const INTRO_VIDEO_THUMBNAIL = 'https://img.youtube.com/vi/hr3dD6dLgLQ/hqdefault.jpg';
+
 const HelpSection = ({ title, children }) => (
   <Box paddingBottom={6}>
     <Typography variant="delta" tag="h3" paddingBottom={2}>{title}</Typography>
@@ -35,7 +38,7 @@ export const HelpTab = () => {
       <Box paddingBottom={4}>
         <Typography variant="beta" tag="h2">Plugin Documentation</Typography>
         <Typography variant="omega" textColor="neutral600">
-          Complete guide for configuring and using the Content Sync Pro plugin.
+          End-to-end guide for configuring, securing, and operating Content Sync Pro across Strapi environments.
         </Typography>
       </Box>
 
@@ -47,6 +50,7 @@ export const HelpTab = () => {
           <Tabs.Trigger value="sync-profiles">Sync Profiles</Tabs.Trigger>
           <Tabs.Trigger value="execution">Sync Execution</Tabs.Trigger>
           <Tabs.Trigger value="media">Media</Tabs.Trigger>
+          <Tabs.Trigger value="stats">Stats</Tabs.Trigger>
           <Tabs.Trigger value="enforcement">Enforcement</Tabs.Trigger>
           <Tabs.Trigger value="alerts">Alerts</Tabs.Trigger>
           <Tabs.Trigger value="troubleshooting">Troubleshooting</Tabs.Trigger>
@@ -55,6 +59,61 @@ export const HelpTab = () => {
         {/* Overview Tab */}
         <Tabs.Content value="overview">
           <Box paddingTop={4}>
+            <HelpSection title="Video walkthrough">
+              <Typography variant="omega" paddingBottom={3}>
+                Watch the help video to get started:
+              </Typography>
+
+              <Box
+                background="neutral100"
+                hasRadius
+                padding={3}
+                style={{ maxWidth: '960px' }}
+              >
+                <a href={INTRO_VIDEO_URL} target="_blank" rel="noopener noreferrer" style={{ display: 'block', textDecoration: 'none' }}>
+                  <Box style={{ position: 'relative', paddingTop: '56.25%', overflow: 'hidden', borderRadius: '4px' }}>
+                    <img
+                      src={INTRO_VIDEO_THUMBNAIL}
+                      alt="Content Sync Pro — plugin intro"
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                      }}
+                    />
+                    <Box
+                      style={{
+                        position: 'absolute',
+                        top: '50%',
+                        left: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        width: '68px',
+                        height: '48px',
+                        backgroundColor: 'rgba(255,0,0,0.85)',
+                        borderRadius: '12px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+                        <polygon points="8,5 20,12 8,19" />
+                      </svg>
+                    </Box>
+                  </Box>
+                </a>
+                <Box paddingTop={2}>
+                  <Typography variant="pi" textColor="neutral500">
+                    ▶ Watch the help video on{' '}
+                    <DocLink href={INTRO_VIDEO_URL}>YouTube</DocLink>
+                  </Typography>
+                </Box>
+              </Box>
+            </HelpSection>
+
             <HelpSection title="What is Content Sync Pro?">
               <Typography variant="omega">
                 This plugin enables data synchronization between two Strapi v5 instances. It provides a complete
@@ -66,9 +125,10 @@ export const HelpTab = () => {
               <ul style={{ paddingLeft: '20px', marginTop: '8px', lineHeight: '1.8' }}>
                 <li><Typography variant="omega">Bi-directional sync (push, pull, or both)</Typography></li>
                 <li><Typography variant="omega">Sync Profiles for defining WHAT to sync</Typography></li>
-                <li><Typography variant="omega">Execution modes: On-demand, Scheduled, or Live (real-time)</Typography></li>
+                <li><Typography variant="omega">Execution modes: On-demand, Scheduled, Live, or External scheduler</Typography></li>
                 <li><Typography variant="omega">Field-level sync policies (Advanced mode)</Typography></li>
                 <li><Typography variant="omega">Conflict resolution strategies (Latest, Local, Remote wins)</Typography></li>
+                <li><Typography variant="omega">Pagination support for large datasets with bounded memory usage</Typography></li>
                 <li><Typography variant="omega">Dependency resolution - sync related entities automatically</Typography></li>
                 <li><Typography variant="omega">Enforcement checks - schema, version, and time validation</Typography></li>
                 <li><Typography variant="omega">Configurable alerts via email, webhook, or Strapi logs</Typography></li>
@@ -90,10 +150,10 @@ export const HelpTab = () => {
 
             <HelpSection title="Quick Start">
               <ol style={{ paddingLeft: '20px', lineHeight: '2' }}>
-                <li><Typography variant="omega"><strong>Configuration Tab</strong> - Set up remote server URL, API token, and shared secret</Typography></li>
+                <li><Typography variant="omega"><strong>Configuration Tab</strong> - Set up remote server URL, API token, instance ID, and shared secret</Typography></li>
                 <li><Typography variant="omega"><strong>Content Types Tab</strong> - Enable content types for sync (auto-generates default profiles)</Typography></li>
                 <li><Typography variant="omega"><strong>Sync Profiles Tab</strong> - Customize sync behavior or use defaults</Typography></li>
-                <li><Typography variant="omega"><strong>Sync Tab</strong> - Configure execution settings and run sync operations</Typography></li>
+                <li><Typography variant="omega"><strong>Sync Execution Tab</strong> - Configure execution settings, page size, and run sync operations</Typography></li>
               </ol>
             </HelpSection>
 
@@ -111,6 +171,14 @@ export const HelpTab = () => {
             <HelpSection title="Connection Settings">
               <Typography variant="omega" paddingBottom={2}>
                 Configure the connection to the remote Strapi instance in the <strong>Connection</strong> sub-tab.
+              </Typography>
+              <Typography variant="omega" paddingBottom={2}>
+                <strong>Deployment modes:</strong> Use <strong>Paired</strong> mode when the plugin is installed on both servers,
+                or <strong>Single-side</strong> mode when the plugin is installed only on local server.
+              </Typography>
+              <Typography variant="omega" paddingBottom={2}>
+                In paired mode, connection test validates remote plugin reachability and token access. In single-side mode,
+                test validates remote reachability and content API token access without requiring remote plugin endpoints.
               </Typography>
 
               <Box background="neutral100" padding={4} hasRadius marginBottom={4}>
@@ -236,6 +304,9 @@ http://localhost:1337</CodeBlock>
               <Typography variant="omega">
                 Sync Profiles define <strong>WHAT</strong> to sync and <strong>HOW</strong> conflicts are resolved.
                 They do NOT control when sync runs - that's configured in the Sync tab (Execution).
+              </Typography>
+              <Typography variant="omega" paddingTop={2}>
+                In <strong>Single-side</strong> mode, profiles are automatically restricted to <strong>Pull Only</strong>.
               </Typography>
               <Typography variant="omega" paddingTop={2}>
                 Each profile specifies:
@@ -467,7 +538,7 @@ http://localhost:1337</CodeBlock>
                   Uses lifecycle hooks to detect changes.
                 </Typography>
                 <Typography variant="pi" textColor="warning600" paddingTop={2}>
-                  Note: Increases server load. Use for critical content only.
+                  Note: Increases server load. Use for critical content only. Live mode is available in paired mode and disabled in single-side mode.
                 </Typography>
               </Box>
             </HelpSection>
@@ -574,6 +645,10 @@ http://localhost:1337</CodeBlock>
               <Typography variant="omega">
                 Each profile can sync two distinct aspects of media:
               </Typography>
+              <Typography variant="omega" paddingTop={2}>
+                For entity-linked media consistency, this plugin also syncs media morph links using <strong>documentId-based remapping</strong>
+                (file documentId and related entity documentId are resolved to local numeric ids before insert).
+              </Typography>
               <Box background="neutral100" padding={4} hasRadius marginTop={2} marginBottom={2}>
                 <Typography variant="sigma" textColor="neutral800">DB Rows (Metadata)</Typography>
                 <Typography variant="omega" paddingTop={1}>
@@ -593,6 +668,11 @@ http://localhost:1337</CodeBlock>
                 For complete media synchronization, enable <strong>both</strong> DB rows and file bytes.
                 If you only need metadata references (e.g., both sides use the same S3 bucket), you can
                 sync DB rows only.
+              </Typography>
+              <Typography variant="pi" textColor="neutral600" paddingTop={2}>
+                Note: Strapi components, repeatable components, and dynamic zones are already tracked by
+                document service sync using stable documentIds, so they do not require id-to-documentId remapping
+                like upload morph tables do.
               </Typography>
             </HelpSection>
 
@@ -657,6 +737,61 @@ http://localhost:1337</CodeBlock>
                 bytes (rsync passes <code>--dry-run</code>; URL strategy skips the actual
                 upload/download). Use <strong>Test connection</strong> to quickly verify the remote
                 token (URL) or the rsync binary (rsync) before a real run.
+              </Typography>
+            </HelpSection>
+          </Box>
+        </Tabs.Content>
+
+        {/* Stats Tab */}
+        <Tabs.Content value="stats">
+          <Box paddingTop={4}>
+            <HelpSection title="Database Stats Overview">
+              <Typography variant="omega">
+                The Stats tab compares local and remote data state per content type, including content
+                entries, media files, and media morph (relation) links. The view is split into two
+                sub-tabs: <strong>Current Snapshot</strong> and <strong>Run Reports</strong>.
+              </Typography>
+            </HelpSection>
+
+            <HelpSection title="Current Snapshot Tab">
+              <Typography variant="omega">
+                Shows the latest live counts and newest timestamps per content type, with the newest
+                side (local / remote / equal) highlighted. Use the controls above the table to drill in:
+              </Typography>
+              <ul style={{ paddingLeft: '20px', marginTop: '8px', lineHeight: '1.8' }}>
+                <li><Typography variant="omega"><strong>Search</strong> - Filter rows by UID substring.</Typography></li>
+                <li><Typography variant="omega"><strong>Type</strong> - Filter by Content, Media, or Media Morph.</Typography></li>
+                <li><Typography variant="omega"><strong>Newest side</strong> - Show only rows where local, remote, or both are newest.</Typography></li>
+                <li><Typography variant="omega"><strong>Page size / pagination</strong> - Browse large snapshots without scrolling.</Typography></li>
+              </ul>
+            </HelpSection>
+
+            <HelpSection title="Run Reports Tab (Before vs After)">
+              <Typography variant="omega">
+                Before every sync run, the plugin captures a pre-run snapshot. After the run completes,
+                it captures a post-run snapshot and stores both in a report so you can review sync impact
+                and trends over time.
+              </Typography>
+              <ul style={{ paddingLeft: '20px', marginTop: '8px', lineHeight: '1.8' }}>
+                <li><Typography variant="omega"><strong>Status filter</strong> - Show all runs, or only success / failed.</Typography></li>
+                <li><Typography variant="omega"><strong>Page size / pagination</strong> - Reports are paginated server-side.</Typography></li>
+                <li><Typography variant="omega"><strong>Show details</strong> - Expand a report card to see the before/after row tables (first {25} rows per side).</Typography></li>
+              </ul>
+            </HelpSection>
+
+            <HelpSection title="Top Action Row: Refresh, Clear & Retention">
+              <Typography variant="omega">
+                The top of the Stats tab exposes the controls that apply to both sub-tabs:
+              </Typography>
+              <ul style={{ paddingLeft: '20px', marginTop: '8px', lineHeight: '1.8' }}>
+                <li><Typography variant="omega"><strong>Refresh Stats</strong> - Reload the snapshot and reports.</Typography></li>
+                <li><Typography variant="omega"><strong>Clear Logs</strong> - Remove stored sync logs.</Typography></li>
+                <li><Typography variant="omega"><strong>Clear Stats Reports</strong> - Remove all before/after run reports.</Typography></li>
+                <li><Typography variant="omega"><strong>Max Logs / Max Reports</strong> - Retention limits; older entries are pruned when exceeded.</Typography></li>
+                <li><Typography variant="omega"><strong>Save &amp; Apply Retention</strong> - Persists the limits and immediately prunes old data.</Typography></li>
+              </ul>
+              <Typography variant="pi" textColor="neutral600" paddingTop={2}>
+                Retention is also enforced automatically after each sync run.
               </Typography>
             </HelpSection>
           </Box>
@@ -839,10 +974,10 @@ http://localhost:1337</CodeBlock>
               </Box>
 
               <Box background="danger100" padding={4} hasRadius marginBottom={4}>
-                <Typography variant="sigma" textColor="danger700">401 Unauthorized</Typography>
+                <Typography variant="sigma" textColor="danger700">401 Unauthorized / 403 Forbidden</Typography>
                 <Typography variant="omega" paddingTop={1}>
-                  The API token is invalid or expired. Generate a new token on the remote server and update
-                  Configuration → Connection → API Token.
+                  The API token is invalid, expired, or missing required permissions. Generate a new token on the remote
+                  server and ensure it can access the synced content types (and Upload permissions for media sync).
                 </Typography>
               </Box>
 
@@ -855,10 +990,10 @@ http://localhost:1337</CodeBlock>
               </Box>
 
               <Box background="danger100" padding={4} hasRadius marginBottom={4}>
-                <Typography variant="sigma" textColor="danger700">Content type not found on remote</Typography>
+                <Typography variant="sigma" textColor="danger700">Content type endpoint not found on remote</Typography>
                 <Typography variant="omega" paddingTop={1}>
-                  The content type exists locally but not on the remote server. Ensure both instances
-                  have matching content type definitions.
+                  The content type exists locally but the remote REST endpoint is missing or named differently.
+                  Ensure both instances have matching content type definitions and API routes are enabled.
                 </Typography>
               </Box>
 

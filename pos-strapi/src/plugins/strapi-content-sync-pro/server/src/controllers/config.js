@@ -38,8 +38,50 @@ module.exports = {
       };
     }
 
-    // Step 1: Basic reachability via public ping endpoint
+    const syncMode = config.syncMode || 'paired';
+
+    // Step 1: Basic reachability
     const startTime = Date.now();
+    if (syncMode === 'single_side') {
+      try {
+        const reachRes = await fetch(`${config.baseUrl}/api`, {
+          method: 'GET',
+          headers: { Authorization: `Bearer ${config.apiToken}` },
+        });
+
+        if (reachRes.status === 401 || reachRes.status === 403) {
+          return ctx.body = {
+            data: {
+              success: false,
+              stage: 'auth',
+              message: `API token rejected by remote server (${reachRes.status}). Verify the token is valid and can read target content APIs.`,
+              latency: Date.now() - startTime,
+            },
+          };
+        }
+      } catch (err) {
+        return ctx.body = {
+          data: {
+            success: false,
+            stage: 'network',
+            message: `Cannot reach remote server in single-side mode: ${err.message}`,
+            latency: Date.now() - startTime,
+          },
+        };
+      }
+
+      return ctx.body = {
+        data: {
+          success: true,
+          stage: 'complete',
+          message: 'Connection successful in single-side mode. Remote plugin endpoints are not required; only remote content APIs and token access are validated.',
+          latency: Date.now() - startTime,
+          remoteInfo: null,
+          mode: syncMode,
+        },
+      };
+    }
+
     let pingStatus = null;
     try {
       const pingRes = await fetch(`${config.baseUrl}/api/${PLUGIN_ID}/ping`, {
@@ -69,7 +111,7 @@ module.exports = {
 
     const pingLatency = Date.now() - startTime;
 
-    // Step 2: Verify API token works against an authenticated endpoint
+    // Step 2: Verify API token works against an authenticated plugin endpoint
     let authWorks = false;
     let remoteInfo = null;
     try {
@@ -116,10 +158,11 @@ module.exports = {
         success: true,
         stage: 'complete',
         message: authWorks
-          ? 'Connection successful and API token validated'
+          ? 'Connection successful: remote plugin is reachable and API token is valid. Ensure matching sync settings (content types, active profiles, execution mode, and shared secret) on both servers before running sync.'
           : 'Reachable but API token could not be validated',
         latency: pingLatency,
         remoteInfo,
+        mode: syncMode,
       },
     };
   },
@@ -251,10 +294,10 @@ module.exports = {
       // Step 4: Optionally get remote instance ID if plugin is installed
       let remoteInstanceId = null;
       try {
-        const remoteConfigResponse = await fetch(`${baseUrl}/api/${PLUGIN_ID}/config`, {
+        const remoteConfigResponse = await fetch(`${baseUrl}/strapi-content-sync-pro/config`, {
           method: 'GET',
           headers: {
-            Authorization: `Bearer ${apiToken}`,
+            Authorization: `Bearer ${adminJwt}`,
           },
         });
 
