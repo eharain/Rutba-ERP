@@ -3400,6 +3400,52 @@ export interface PluginStrapiContentSyncProSyncLog
   };
 }
 
+export interface PluginStrapiContentSyncProSyncRunReport
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'sync_run_reports';
+  info: {
+    displayName: 'Sync Run Report';
+    pluralName: 'sync-run-reports';
+    singularName: 'sync-run-report';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  pluginOptions: {
+    'content-manager': {
+      visible: false;
+    };
+    'content-type-builder': {
+      visible: false;
+    };
+  };
+  attributes: {
+    afterStats: Schema.Attribute.JSON;
+    beforeStats: Schema.Attribute.JSON;
+    completedAt: Schema.Attribute.DateTime;
+    contentTypes: Schema.Attribute.JSON;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    error: Schema.Attribute.Text;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'plugin::strapi-content-sync-pro.sync-run-report'
+    > &
+      Schema.Attribute.Private;
+    publishedAt: Schema.Attribute.DateTime;
+    runType: Schema.Attribute.String;
+    startedAt: Schema.Attribute.DateTime;
+    status: Schema.Attribute.String;
+    summary: Schema.Attribute.JSON;
+    trigger: Schema.Attribute.String;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface PluginUploadFile extends Struct.CollectionTypeSchema {
   collectionName: 'files';
   info: {
@@ -3792,6 +3838,7 @@ declare module '@strapi/strapi' {
       'plugin::review-workflows.workflow': PluginReviewWorkflowsWorkflow;
       'plugin::review-workflows.workflow-stage': PluginReviewWorkflowsWorkflowStage;
       'plugin::strapi-content-sync-pro.sync-log': PluginStrapiContentSyncProSyncLog;
+      'plugin::strapi-content-sync-pro.sync-run-report': PluginStrapiContentSyncProSyncRunReport;
       'plugin::upload.file': PluginUploadFile;
       'plugin::upload.folder': PluginUploadFolder;
       'plugin::users-permissions.me': PluginUsersPermissionsMe;

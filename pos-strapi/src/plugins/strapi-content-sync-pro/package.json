@@ -1,6 +1,6 @@
 {
   "name": "strapi-content-sync-pro",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "Strapi v5 plugin to copy, migrate, and live-sync content, media, and data between multiple Strapi environments with bi-directional sync, field-level policies, scheduling, and alerts.",
   "license": "MIT",
   "author": {
@@ -14,6 +14,10 @@
   },
   "bugs": {
     "url": "https://github.com/eharain/strapi-content-sync-pro/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
   },
   "homepage": "https://github.com/eharain/strapi-content-sync-pro#readme",
   "keywords": [
@@ -55,6 +59,7 @@
   "files": [
     "admin/",
     "server/",
+    "docs/",
     "README.md",
     "LICENSE"
   ],

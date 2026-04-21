@@ -19,7 +19,7 @@ async function fetchLocalPage(strapi, uid, { fields, lastSyncAt, page = 1, pageS
   }
 
   if (fields && fields.length > 0) {
-    params.fields = [...new Set([...fields, 'syncId', 'updatedAt'])];
+    params.fields = [...new Set([...fields, 'documentId', 'syncId', 'updatedAt'])];
   }
 
   const records = (await strapi.documents(uid).findMany(params)) || [];
@@ -37,7 +37,7 @@ async function fetchRemotePage(remoteConfig, uid, { fields, lastSyncAt, page = 1
   const url = new URL(`/api/${pluralName}`, baseUrl);
 
   if (fields && fields.length > 0) {
-    const allFields = [...new Set([...fields, 'syncId', 'updatedAt'])];
+    const allFields = [...new Set([...fields, 'documentId', 'syncId', 'updatedAt'])];
     allFields.forEach((f, i) => {
       url.searchParams.set(`fields[${i}]`, f);
     });
@@ -123,10 +123,19 @@ async function fetchRemoteRecords(remoteConfig, uid, options = {}) {
  * e.g. "api::product.product" → "products"
  */
 function uidToPluralEndpoint(uid) {
+  const contentType = global.strapi?.contentTypes?.[uid];
+  const configuredPlural = contentType?.info?.pluralName;
+  if (configuredPlural) {
+    return configuredPlural;
+  }
+
   const parts = uid.split('.');
   const modelName = parts[parts.length - 1];
   if (modelName.endsWith('s')) return modelName;
   if (modelName.endsWith('y')) return modelName.slice(0, -1) + 'ies';
+  if (modelName.endsWith('ch') || modelName.endsWith('sh') || modelName.endsWith('x') || modelName.endsWith('z')) {
+    return modelName + 'es';
+  }
   return modelName + 's';
 }
 
