@@ -15,10 +15,9 @@ function toSeconds(value, fallback) {
     }
 }
 
-module.exports = ({ env }) => ({
+module.exports = ({ env}) => ({
     "strapi-content-sync-pro": {
         enabled: true,
-        resolve: "./src/plugins/strapi-content-sync-pro",
     },
     'users-permissions': {
         config: {
