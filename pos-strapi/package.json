@@ -31,7 +31,8 @@
     "react-router-dom": "^6.30.3",
     "stripe": "^21.0.1",
     "styled-components": "^6.3.12",
-    "xlsx": "^0.18.5"
+    "xlsx": "^0.18.5",
+    "strapi-content-sync-pro": "latest"
   },
   "devDependencies": {
     "baseline-browser-mapping": "^2.10.11"
