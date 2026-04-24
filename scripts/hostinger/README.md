@@ -45,6 +45,7 @@ node scripts/hostinger/restart.js --all
 | `strapi`   | strapi  | pos-strapi       | rutba.rutba.pk     |
 | `web`      | nextjs  | rutba-web        | rutba.pk           |
 | `web-user` | nextjs  | rutba-web-user   | user.rutba.pk      |
+| `rider`    | nextjs  | rutba-rider      | rider.rutba.pk     |
 | `auth`     | nextjs  | pos-auth         | auth.rutba.pk      |
 | `stock`    | nextjs  | pos-stock        | stock.rutba.pk     |
 | `sale`     | nextjs  | pos-sale         | sale.rutba.pk      |

@@ -16,6 +16,11 @@ An open-source, modular business management system built as an **npm workspaces 
   │ Auth Portal│ │ Stock    │ │:3002 │ │user  │ │ Public   │
   └────────────┘ └──────────┘ └──────┘ │:3004 │ │ Website  │
                                        └──────┘ └──────────┘
+             ┌────────────┐
+             │rutba-rider │
+             │ :3012      │
+             │ Rider App  │
+             └────────────┘
   ┌──────────┐ ┌──────────┐ ┌────────────┐ ┌────────────┐
   │ rutba-crm│ │ rutba-hr │ │ rutba-     │ │ rutba-     │
   │ :3005    │ │ :3006    │ │ accounts   │ │ payroll    │
@@ -34,6 +39,7 @@ An open-source, modular business management system built as an **npm workspaces 
 | `pos-sale/` | **Point of Sale** | 3002 | Sales, cart, returns, cash register, reports |
 | `rutba-web/` | **Public Website** | 3000 | Customer-facing store (Next.js 15, TypeScript, Tailwind CSS) |
 | `rutba-web-user/` | **My Orders** | 3004 | Customer order tracking, returns, account management |
+| `rutba-rider/` | **Rider App** | 3012 | Rider offers, active deliveries, status updates, buyer messaging |
 | `rutba-crm/` | **CRM** | 3005 | Contacts, leads, activities, customer relationship management |
 | `rutba-hr/` | **Human Resources** | 3006 | Employees, departments, attendance, leave requests |
 | `rutba-accounts/` | **Accounting** | 3007 | Chart of accounts, journal entries, invoices, expenses |
@@ -43,6 +49,7 @@ An open-source, modular business management system built as an **npm workspaces 
 ## Tech Stack
 
 - **Frontend:** Next.js 15, React 19, Bootstrap 5 (POS apps), Tailwind CSS (rutba-web)
+- **Frontend:** Next.js 16, React 19, Bootstrap 5 (POS apps), Tailwind CSS (rutba-web)
 - **Backend:** Strapi 5.x (MySQL)
 - **Auth:** OAuth-like flow via `pos-auth` with JWT, per-app localStorage
 - **Monorepo:** npm workspaces
@@ -76,6 +83,7 @@ npm run dev:stock      # Stock Mgmt    → http://localhost:4001
 npm run dev:sale       # Point of Sale → http://localhost:4002
 npm run dev:web        # Public Website→ http://localhost:4000
 npm run dev:web-user   # My Orders     → http://localhost:4004
+npm run dev:rider      # Rider App     → http://localhost:4012
 npm run dev:crm        # CRM           → http://localhost:4005
 npm run dev:hr         # HR            → http://localhost:4006
 npm run dev:accounts   # Accounts      → http://localhost:4007
@@ -101,7 +109,7 @@ npm run build:all
 # 1. Copy and fill in environment variables
 cp .env.example .env
 
-# 2. Build and start all services (MySQL + Strapi + 9 Next.js apps)
+# 2. Build and start all services (MySQL + Strapi + all configured Next.js apps)
 docker compose up -d --build
 
 # 3. View logs
@@ -123,10 +131,13 @@ docker compose down
 | Point of Sale | http://localhost:4002 |
 | Auth Portal | http://localhost:4003 |
 | My Orders | http://localhost:4004 |
+| Rider App | http://localhost:4012 |
 | CRM | http://localhost:4005 |
 | HR | http://localhost:4006 |
 | Accounts | http://localhost:4007 |
 | Payroll | http://localhost:4008 |
+| CMS | http://localhost:4009 |
+| Social | http://localhost:4011 |
 
 ## Scripts Directory
 
