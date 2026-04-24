@@ -37,7 +37,8 @@ export default function Orders() {
                                     <th>Order #</th>
                                     <th>Date</th>
                                     <th>Items</th>
-                                    <th>Status</th>
+                                    <th>Order Status</th>
+                                    <th>Payment</th>
                                     <th>Total</th>
                                     <th></th>
                                 </tr>
@@ -70,15 +71,31 @@ export default function Orders() {
                                                 )}
                                             </td>
                                             <td>
-                                                <span className={`badge bg-${statusColor(order.status || order.payment_status)}`}>
-                                                    {order.status || order.payment_status || "Pending"}
+                                                <span className={`badge bg-${statusColor(order.order_status)}`}>
+                                                    {labelStatus(order.order_status)}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span className={`badge bg-${statusColor(order.payment_status)}`}>
+                                                    {labelStatus(order.payment_status || "pending")}
                                                 </span>
                                             </td>
                                             <td>{order.total != null ? Number(order.total).toFixed(2) : "—"}</td>
                                             <td>
-                                                <Link className="btn btn-sm btn-outline-primary" href={`/${order.documentId || order.id}/order`}>
-                                                    View
-                                                </Link>
+                                                <div className="d-flex gap-2 flex-wrap">
+                                                    <Link className="btn btn-sm btn-outline-primary" href={`/${order.documentId || order.id}/order`}>
+                                                        View
+                                                    </Link>
+                                                    {order.documentId && order.order_secret && (
+                                                        <Link
+                                                            className="btn btn-sm btn-outline-info"
+                                                            href={`${process.env.NEXT_PUBLIC_WEB_URL || "https://rutba.pk"}/order-tracking/${order.documentId}?secret=${order.order_secret}`}
+                                                            target="_blank"
+                                                        >
+                                                            Track
+                                                        </Link>
+                                                    )}
+                                                </div>
                                             </td>
                                         </tr>
                                     );
@@ -93,13 +110,31 @@ export default function Orders() {
 }
 
 function statusColor(status) {
+    const key = String(status || '').toUpperCase();
     switch (status) {
         case "completed": return "success";
         case "shipped": return "info";
         case "cancelled": return "danger";
         case "returned": return "warning";
         case "processing": return "primary";
+        case "PENDING_PAYMENT": return "secondary";
+        case "PAYMENT_CONFIRMED": return "primary";
+        case "PREPARING": return "info";
+        case "AWAITING_PICKUP": return "warning";
+        case "OUT_FOR_DELIVERY": return "primary";
+        case "DELIVERED": return "success";
+        case "FAILED_DELIVERY": return "danger";
+        case "CANCELLED": return "danger";
+        case "SUCCEEDED": return "success";
+        case "FAILED": return "danger";
+        case "EXPIRED": return "warning";
+        case "ORDERED": return "info";
         default: return "secondary";
     }
+}
+
+function labelStatus(status) {
+    const key = String(status || "").replace(/_/g, " ");
+    return key.length ? key.charAt(0).toUpperCase() + key.slice(1).toLowerCase() : "Pending";
 }
 

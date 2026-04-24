@@ -107,6 +107,12 @@
       "type": "relation",
       "relation": "manyToMany",
       "target": "api::cms-page.cms-page"
+    },
+    "delivery_methods": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::delivery-method.delivery-method",
+      "inversedBy": "product_groups"
     }
   }
 }

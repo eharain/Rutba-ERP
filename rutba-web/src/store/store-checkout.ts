@@ -1,23 +1,21 @@
 import { create } from "zustand";
 import { ValidationShippingInformationSchema } from "@/validations/shipping-information-validation";
+import { DeliveryMethodOption } from "@/types/api/delivery";
 
 type CheckoutStateInterface = {
   currentForm: string;
   setCurrentForm: (value: string) => void;
   formShippingInformation: ValidationShippingInformationSchema;
-  setFormShippingInformation: (
-    value: ValidationShippingInformationSchema
-  ) => void;
-  formShippingService: {
-    id: string | null;
-    name: string | null;
-    price: string | null;
-  };
-  setFormShippingService: (value: {
-    id: string | null;
-    name: string | null;
-    price: string | null;
-  }) => void;
+  setFormShippingInformation: (value: ValidationShippingInformationSchema) => void;
+  formShippingService: { id: string | null; name: string | null; price: string | null };
+  setFormShippingService: (value: { id: string | null; name: string | null; price: string | null }) => void;
+  // Delivery method selection
+  availableDeliveryMethods: DeliveryMethodOption[];
+  setAvailableDeliveryMethods: (methods: DeliveryMethodOption[]) => void;
+  selectedDeliveryMethod: DeliveryMethodOption | null;
+  setSelectedDeliveryMethod: (method: DeliveryMethodOption | null) => void;
+  isLoadingDeliveryMethods: boolean;
+  setIsLoadingDeliveryMethods: (v: boolean) => void;
 };
 
 // Creates a custom Zustand store for managing the checkout state.
@@ -55,5 +53,12 @@ export const useStoreCheckout = create<CheckoutStateInterface>(
     // This function is used to update the value of formShippingService.
     setFormShippingService: (value) =>
       set(() => ({ formShippingService: value })),
+
+    availableDeliveryMethods: [],
+    setAvailableDeliveryMethods: (methods) => set(() => ({ availableDeliveryMethods: methods })),
+    selectedDeliveryMethod: null,
+    setSelectedDeliveryMethod: (method) => set(() => ({ selectedDeliveryMethod: method })),
+    isLoadingDeliveryMethods: false,
+    setIsLoadingDeliveryMethods: (v) => set(() => ({ isLoadingDeliveryMethods: v })),
   })
 );

@@ -1,0 +1,15 @@
+﻿{
+  "kind": "collectionType",
+  "collectionName": "order_messages",
+  "info": { "singularName": "order-message", "pluralName": "order-messages", "displayName": "Order Message" },
+  "options": { "draftAndPublish": false },
+  "pluginOptions": {},
+  "attributes": {
+    "order": { "type": "relation", "relation": "manyToOne", "target": "api::order.order" },
+    "sender_type": { "type": "enumeration", "enum": ["rider","customer","staff"], "required": true },
+    "sender_id": { "type": "string" },
+    "message": { "type": "text", "required": true },
+    "sent_at": { "type": "datetime" },
+    "is_read": { "type": "boolean", "default": false }
+  }
+}

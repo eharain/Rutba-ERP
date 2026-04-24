@@ -1,0 +1,17 @@
+﻿{
+  "kind": "collectionType",
+  "collectionName": "delivery_offers",
+  "info": { "singularName": "delivery-offer", "pluralName": "delivery-offers", "displayName": "Delivery Offer" },
+  "options": { "draftAndPublish": false },
+  "pluginOptions": {},
+  "attributes": {
+    "order": { "type": "relation", "relation": "manyToOne", "target": "api::order.order" },
+    "rider": { "type": "relation", "relation": "manyToOne", "target": "api::rider.rider", "inversedBy": "delivery_offers" },
+    "status": { "type": "enumeration", "enum": ["pending","accepted","rejected","expired"], "default": "pending", "required": true },
+    "offered_at": { "type": "datetime" },
+    "responded_at": { "type": "datetime" },
+    "expires_at": { "type": "datetime" },
+    "delivery_fee": { "type": "decimal" },
+    "estimated_distance_km": { "type": "decimal" }
+  }
+}

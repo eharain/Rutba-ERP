@@ -40,6 +40,7 @@ COPY pos-sale/package.json             pos-sale/
 COPY pos-desk/package.json             pos-desk/
 COPY rutba-web/package.json            rutba-web/
 COPY rutba-web-user/package.json       rutba-web-user/
+COPY rutba-rider/package.json          rutba-rider/
 COPY rutba-crm/package.json            rutba-crm/
 COPY rutba-hr/package.json             rutba-hr/
 COPY rutba-accounts/package.json       rutba-accounts/
@@ -86,6 +87,7 @@ ARG NEXT_PUBLIC_STOCK_URL
 ARG NEXT_PUBLIC_SALE_URL
 ARG NEXT_PUBLIC_WEB_URL
 ARG NEXT_PUBLIC_WEB_USER_URL
+ARG NEXT_PUBLIC_RIDER_URL
 ARG NEXT_PUBLIC_CRM_URL
 ARG NEXT_PUBLIC_HR_URL
 ARG NEXT_PUBLIC_ACCOUNTS_URL
@@ -106,6 +108,7 @@ ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
     NEXT_PUBLIC_SALE_URL=$NEXT_PUBLIC_SALE_URL \
     NEXT_PUBLIC_WEB_URL=$NEXT_PUBLIC_WEB_URL \
     NEXT_PUBLIC_WEB_USER_URL=$NEXT_PUBLIC_WEB_USER_URL \
+    NEXT_PUBLIC_RIDER_URL=$NEXT_PUBLIC_RIDER_URL \
     NEXT_PUBLIC_CRM_URL=$NEXT_PUBLIC_CRM_URL \
     NEXT_PUBLIC_HR_URL=$NEXT_PUBLIC_HR_URL \
     NEXT_PUBLIC_ACCOUNTS_URL=$NEXT_PUBLIC_ACCOUNTS_URL \
@@ -194,6 +197,20 @@ COPY --from=web-user-build /app/rutba-web-user/.next/standalone ./
 COPY --from=web-user-build /app/rutba-web-user/.next/static     ./rutba-web-user/.next/static
 COPY --from=web-user-build /app/rutba-web-user/public            ./rutba-web-user/public
 CMD ["node", "rutba-web-user/server.js"]
+
+# ----------------------------------------------------------
+#  rutba-rider
+# ----------------------------------------------------------
+FROM build-env AS rider-build
+RUN mkdir -p rutba-rider/public && npm run build --workspace=rutba-rider
+
+FROM base AS rider
+WORKDIR /app
+ENV NODE_ENV=production HOSTNAME=0.0.0.0
+COPY --from=rider-build /app/rutba-rider/.next/standalone ./
+COPY --from=rider-build /app/rutba-rider/.next/static     ./rutba-rider/.next/static
+COPY --from=rider-build /app/rutba-rider/public            ./rutba-rider/public
+CMD ["node", "rutba-rider/server.js"]
 
 # ----------------------------------------------------------
 #  rutba-crm

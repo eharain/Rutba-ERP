@@ -19,6 +19,23 @@ module.exports = ({ env}) => ({
     "strapi-content-sync-pro": {
         enabled: true,
     },
+    email: {
+        config: {
+            provider: 'nodemailer',
+            providerOptions: {
+                host: env('EMAIL_HOST', 'smtp.gmail.com'),
+                port: env.int('EMAIL_PORT', 587),
+                auth: {
+                    user: env('EMAIL_USER', ''),
+                    pass: env('EMAIL_PASS', ''),
+                },
+            },
+            settings: {
+                defaultFrom: env('EMAIL_FROM', 'noreply@rutba.pk'),
+                defaultReplyTo: env('EMAIL_FROM', 'noreply@rutba.pk'),
+            },
+        },
+    },
     'users-permissions': {
         config: {
             register: {

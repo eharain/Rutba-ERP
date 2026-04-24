@@ -1,0 +1,35 @@
+{
+  "kind": "collectionType",
+  "collectionName": "delivery_zones",
+  "info": {
+    "singularName": "delivery-zone",
+    "pluralName": "delivery-zones",
+    "displayName": "Delivery Zone"
+  },
+  "options": { "draftAndPublish": false },
+  "pluginOptions": {},
+  "attributes": {
+    "name": { "type": "string", "required": true },
+    "zone_type": {
+      "type": "enumeration",
+      "enum": ["domestic_own_rider", "domestic_courier", "international"],
+      "required": true
+    },
+    "cities": { "type": "json" },
+    "countries": { "type": "json" },
+    "postal_code_patterns": { "type": "text" },
+    "is_active": { "type": "boolean", "default": true },
+    "delivery_methods": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::delivery-method.delivery-method",
+      "mappedBy": "delivery_zones"
+    },
+    "riders": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::rider.rider",
+      "mappedBy": "assigned_zones"
+    }
+  }
+}

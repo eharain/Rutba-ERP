@@ -1,4 +1,4 @@
-import { Input } from "@/components/ui/input";
+﻿import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import SelectSearch from "@/components/input-custom/select-search";
@@ -11,24 +11,25 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect } from "react";
 import { countryList } from "@/static/country";
 import { useStoreCheckout } from "@/store/store-checkout";
-import { useRouter } from "next/router";
-import { useMutation } from "@tanstack/react-query";
 import useErrorHandler from "@/hooks/useErrorHandler";
 import Spinner from "@/components/ui/spinner";
-import useCheckoutService from "@/services/checkout";
+import useDeliveryService from "@/services/delivery";
 import { useCartService } from "@/services/cart";
-import { useSession } from "next-auth/react";
 
-export default function FormCheckoutShippingInformation() {
-  const router = useRouter();
+interface Props {
+  onDeliveryMethodsReady: () => void;
+}
+
+export default function FormCheckoutShippingInformation({ onDeliveryMethodsReady }: Props) {
   const { showError } = useErrorHandler();
-  const { checkoutItem } = useCheckoutService();
-  const { getCart, clearCart } = useCartService();
-  const session = useSession();
+  const { getDeliveryMethods } = useDeliveryService();
+  const { getCart } = useCartService();
   const {
-    // setCurrentForm,
     formShippingInformation,
     setFormShippingInformation,
+    setAvailableDeliveryMethods,
+    setIsLoadingDeliveryMethods,
+    setSelectedDeliveryMethod,
   } = useStoreCheckout();
 
   const {
@@ -36,120 +37,42 @@ export default function FormCheckoutShippingInformation() {
     handleSubmit,
     setValue,
     getValues,
-    formState: { errors },
+    formState: { errors, isSubmitting },
   } = useForm<ValidationShippingInformationSchema>({
     resolver: zodResolver(ValidationShippingInformation),
     defaultValues: formShippingInformation,
   });
 
-  const { mutate: orderCheckout, isPending: isLoading } = useMutation({
-    mutationFn: checkoutItem,
-    onSuccess: (response) => {
-        const phoneNumber = "+923245303530";
-        const orderId = response?.order_id || "N/A";
-        const customerName = response?.customer_contact?.name || "";
-        const total = response?.total || response?.subtotal || 0;
-
-        const items = response?.products?.items ?? [];
-        const itemLines = items.map(
-          (item, i) => {
-            const line = `${i + 1}. ${item.product_name || "Item"}` +
-              (item.variant_name ? ` (${item.variant_name})` : "") +
-              ` × ${item.quantity}` +
-              (item.offer_price ? ` = Rs. ${item.total} (was Rs. ${(item.original_price || item.price) * item.quantity})` : ` = Rs. ${item.total}`);
-            return line;
-          }
-        );
-
-        const orderSavings = response?.savings || 0;
-
-        const message =
-          `Asalam u Alikum! 🛒\n\n` +
-          `*Order ID:* ${orderId}\n` +
-          (customerName ? `*Name:* ${customerName}\n` : "") +
-          `\n*Items:*\n${itemLines.join("\n")}\n` +
-          (orderSavings > 0 ? `\n*Savings: Rs. ${orderSavings}* 🎉\n` : "") +
-          `\n*Total: Rs. ${total}*\n\n` +
-          `Please confirm my order. JazakAllah!`;
-
-        const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
-
-        clearCart();
-
-        window.open(whatsappUrl, "_blank");
-        router.push("/");
-      },
-      onError: (err) => {
-        showError("Error Placing Order: " + (err as Error).message);
-      },
-    }
-  );
-
-  const onSubmitShippingInformation: SubmitHandler<
-  ValidationShippingInformationSchema
-  > = async (data) => {
+  const onSubmitShippingInformation: SubmitHandler<ValidationShippingInformationSchema> = async (data) => {
     setFormShippingInformation(data);
-    
-    const userEmail = session?.data?.user?.email;
-    if (!userEmail) {
-      showError("User must be logged in to checkout");
-      return;
+    setSelectedDeliveryMethod(null);
+
+    setIsLoadingDeliveryMethods(true);
+    try {
+      const cartItems = await getCart();
+
+      const cartTotal = cartItems.reduce((acc, item) => {
+        const unitPrice = item.offerPrice && item.offerPrice > 0 ? item.offerPrice : Number(item.price);
+        return acc + unitPrice * Number(item.qty || 1);
+      }, 0);
+
+      const productGroupDocumentIds = [
+        ...new Set(cartItems.map((i) => i.sourceGroupId).filter(Boolean) as string[]),
+      ];
+
+      const options = await getDeliveryMethods({
+        productGroupDocumentIds,
+        destination: { city: data.city, country: data.country },
+        cartTotal,
+      });
+
+      setAvailableDeliveryMethods(options);
+      onDeliveryMethodsReady();
+    } catch (err) {
+      showError("Could not load delivery options. Please try again.");
+    } finally {
+      setIsLoadingDeliveryMethods(false);
     }
-
-    const cartItems = await getCart();
-
-    const calculatedSubtotal = cartItems.reduce(
-      (acc, item) => {
-        const unitPrice = (item.offerPrice && item.offerPrice > 0) ? item.offerPrice : Number(item.price);
-        return acc + (unitPrice * Number(item.qty || 1));
-      },
-      0
-    );
-
-    const originalSubtotal = cartItems.reduce(
-      (acc, item) => acc + (Number(item.price) * Number(item.qty || 1)),
-      0
-    );
-
-    const totalSavings = originalSubtotal - calculatedSubtotal;
-
-    const formattedItems = cartItems.map((item) => {
-      const itemQty = Number(item.qty || 1);
-      const unitPrice = (item.offerPrice && item.offerPrice > 0) ? item.offerPrice : Number(item.price || 0);
-      const originalPrice = Number(item.price || 0);
-
-      return {
-        quantity: itemQty,
-        price: unitPrice,
-        original_price: originalPrice,
-        offer_price: (item.offerPrice && item.offerPrice > 0) ? item.offerPrice : undefined,
-        total: unitPrice * itemQty,
-        product_name: item.name,
-        product: item.documentId, 
-        variant: item.variant_id ? String(item.variant_id) : undefined,
-        variant_name: item.variant_name,
-        variant_terms: item.variant_terms,
-        image: item.imageId ?? undefined,
-        offer_id: item.offerId,
-        source_group_id: item.sourceGroupId,
-      };
-    });
-
-    orderCheckout({
-      products: {
-        items: formattedItems,
-      },
-      customer_contact: {
-        ...data,
-      },
-      payment_status: "Ordered",
-      user_id: userEmail,
-      order_id: `ORD-${Date.now()}`,
-      subtotal: calculatedSubtotal,
-      total: calculatedSubtotal,
-      original_subtotal: totalSavings > 0 ? originalSubtotal : undefined,
-      savings: totalSavings > 0 ? totalSavings : undefined,
-    });
   };
 
   useEffect(() => {
@@ -301,22 +224,13 @@ export default function FormCheckoutShippingInformation() {
       </div>
 
       <div className="flex justify-between flex-wrap">
-        {/* <Button
-          onClick={() => router.push("/")}
-          variant={"outline"}
-          type="button"
-          className="mt-4 flex items-center gap-2"
-        >
-          <ArrowLeftCircle></ArrowLeftCircle>
-          Back
-        </Button> */}
-        <Button className="mt-4" type="submit" disabled={isLoading}>
-          {isLoading && (
+        <Button className="mt-4" type="submit" disabled={isSubmitting}>
+          {isSubmitting && (
             <div className="mr-2">
               <Spinner></Spinner>
             </div>
           )}
-          <span>Place Order</span>
+          <span>Continue to Delivery</span>
         </Button>
       </div>
     </form>

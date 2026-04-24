@@ -1664,6 +1664,144 @@ export interface ApiCustomerCustomer extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiDeliveryMethodDeliveryMethod
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'delivery_methods';
+  info: {
+    displayName: 'Delivery Method';
+    pluralName: 'delivery-methods';
+    singularName: 'delivery-method';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    base_cost: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    delivery_zones: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::delivery-zone.delivery-zone'
+    >;
+    description: Schema.Attribute.Text;
+    estimated_days_max: Schema.Attribute.Integer &
+      Schema.Attribute.DefaultTo<3>;
+    estimated_days_min: Schema.Attribute.Integer &
+      Schema.Attribute.DefaultTo<1>;
+    free_shipping_threshold: Schema.Attribute.Decimal;
+    is_active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::delivery-method.delivery-method'
+    > &
+      Schema.Attribute.Private;
+    max_riders_to_offer: Schema.Attribute.Integer &
+      Schema.Attribute.DefaultTo<10>;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    offer_timeout_minutes: Schema.Attribute.Integer &
+      Schema.Attribute.DefaultTo<5>;
+    per_kg_rate: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    priority: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    product_groups: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::product-group.product-group'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    service_provider: Schema.Attribute.Enumeration<
+      ['own_rider', 'easypost', 'custom']
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'own_rider'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiDeliveryOfferDeliveryOffer
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'delivery_offers';
+  info: {
+    displayName: 'Delivery Offer';
+    pluralName: 'delivery-offers';
+    singularName: 'delivery-offer';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    delivery_fee: Schema.Attribute.Decimal;
+    estimated_distance_km: Schema.Attribute.Decimal;
+    expires_at: Schema.Attribute.DateTime;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::delivery-offer.delivery-offer'
+    > &
+      Schema.Attribute.Private;
+    offered_at: Schema.Attribute.DateTime;
+    order: Schema.Attribute.Relation<'manyToOne', 'api::order.order'>;
+    publishedAt: Schema.Attribute.DateTime;
+    responded_at: Schema.Attribute.DateTime;
+    rider: Schema.Attribute.Relation<'manyToOne', 'api::rider.rider'>;
+    status: Schema.Attribute.Enumeration<
+      ['pending', 'accepted', 'rejected', 'expired']
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'pending'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiDeliveryZoneDeliveryZone
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'delivery_zones';
+  info: {
+    displayName: 'Delivery Zone';
+    pluralName: 'delivery-zones';
+    singularName: 'delivery-zone';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    cities: Schema.Attribute.JSON;
+    countries: Schema.Attribute.JSON;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    delivery_methods: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::delivery-method.delivery-method'
+    >;
+    is_active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::delivery-zone.delivery-zone'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    postal_code_patterns: Schema.Attribute.Text;
+    publishedAt: Schema.Attribute.DateTime;
+    riders: Schema.Attribute.Relation<'manyToMany', 'api::rider.rider'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    zone_type: Schema.Attribute.Enumeration<
+      ['domestic_own_rider', 'domestic_courier', 'international']
+    > &
+      Schema.Attribute.Required;
+  };
+}
+
 export interface ApiEmployeeEmployee extends Struct.CollectionTypeSchema {
   collectionName: 'employees';
   info: {
@@ -1877,6 +2015,101 @@ export interface ApiHrLeaveRequestHrLeaveRequest
   };
 }
 
+export interface ApiNotificationLogNotificationLog
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'notification_logs';
+  info: {
+    displayName: 'Notification Log';
+    pluralName: 'notification-logs';
+    singularName: 'notification-log';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    error_message: Schema.Attribute.Text;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::notification-log.notification-log'
+    > &
+      Schema.Attribute.Private;
+    order: Schema.Attribute.Relation<'manyToOne', 'api::order.order'>;
+    publishedAt: Schema.Attribute.DateTime;
+    recipient_email: Schema.Attribute.String;
+    rendered_body: Schema.Attribute.Text;
+    rendered_subject: Schema.Attribute.String;
+    sent_at: Schema.Attribute.DateTime;
+    status: Schema.Attribute.Enumeration<['sent', 'failed', 'pending']> &
+      Schema.Attribute.DefaultTo<'pending'>;
+    template: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::notification-template.notification-template'
+    >;
+    trigger_event: Schema.Attribute.String;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiNotificationTemplateNotificationTemplate
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'notification_templates';
+  info: {
+    displayName: 'Notification Template';
+    pluralName: 'notification-templates';
+    singularName: 'notification-template';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    available_variables: Schema.Attribute.JSON;
+    body_template: Schema.Attribute.Text;
+    branch: Schema.Attribute.Relation<'manyToOne', 'api::branch.branch'>;
+    channel: Schema.Attribute.Enumeration<['email', 'sms', 'both']> &
+      Schema.Attribute.DefaultTo<'email'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    is_active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::notification-template.notification-template'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    publishedAt: Schema.Attribute.DateTime;
+    scope: Schema.Attribute.Enumeration<['global', 'per_branch']> &
+      Schema.Attribute.DefaultTo<'global'>;
+    send_to: Schema.Attribute.Enumeration<
+      ['customer', 'rider', 'staff', 'admin']
+    > &
+      Schema.Attribute.DefaultTo<'customer'>;
+    subject: Schema.Attribute.String;
+    trigger_event: Schema.Attribute.Enumeration<
+      [
+        'order_placed',
+        'payment_confirmed',
+        'offer_accepted',
+        'out_for_delivery',
+        'delivered',
+        'cancelled',
+        'refund_initiated',
+      ]
+    > &
+      Schema.Attribute.Required;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiOfferOffer extends Struct.CollectionTypeSchema {
   collectionName: 'offers';
   info: {
@@ -1920,6 +2153,41 @@ export interface ApiOfferOffer extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiOrderMessageOrderMessage
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'order_messages';
+  info: {
+    displayName: 'Order Message';
+    pluralName: 'order-messages';
+    singularName: 'order-message';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    is_read: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::order-message.order-message'
+    > &
+      Schema.Attribute.Private;
+    message: Schema.Attribute.Text & Schema.Attribute.Required;
+    order: Schema.Attribute.Relation<'manyToOne', 'api::order.order'>;
+    publishedAt: Schema.Attribute.DateTime;
+    sender_id: Schema.Attribute.String;
+    sender_type: Schema.Attribute.Enumeration<['rider', 'customer', 'staff']> &
+      Schema.Attribute.Required;
+    sent_at: Schema.Attribute.DateTime;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiOrderOrder extends Struct.CollectionTypeSchema {
   collectionName: 'orders';
   info: {
@@ -1932,16 +2200,53 @@ export interface ApiOrderOrder extends Struct.CollectionTypeSchema {
     draftAndPublish: false;
   };
   attributes: {
+    actual_delivery_time: Schema.Attribute.DateTime;
+    assigned_rider: Schema.Attribute.Relation<'manyToOne', 'api::rider.rider'>;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     customer_contact: Schema.Attribute.Component<'order.order-contact', false>;
+    delivery_cost: Schema.Attribute.Decimal;
+    delivery_cost_breakdown: Schema.Attribute.JSON;
+    delivery_method: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::delivery-method.delivery-method'
+    >;
+    delivery_offers: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::delivery-offer.delivery-offer'
+    >;
+    delivery_zone: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::delivery-zone.delivery-zone'
+    >;
+    estimated_delivery_time: Schema.Attribute.DateTime;
     label_image: Schema.Attribute.Text;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<'oneToMany', 'api::order.order'> &
       Schema.Attribute.Private;
     order_id: Schema.Attribute.UID & Schema.Attribute.Required;
+    order_messages: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::order-message.order-message'
+    >;
     order_secret: Schema.Attribute.String;
+    order_status: Schema.Attribute.Enumeration<
+      [
+        'PENDING_PAYMENT',
+        'PAYMENT_CONFIRMED',
+        'PREPARING',
+        'AWAITING_PICKUP',
+        'OUT_FOR_DELIVERY',
+        'DELIVERED',
+        'CANCELLED',
+        'FAILED_DELIVERY',
+        'REFUND_INITIATED',
+        'REFUNDED',
+      ]
+    > &
+      Schema.Attribute.DefaultTo<'PENDING_PAYMENT'>;
+    original_subtotal: Schema.Attribute.Decimal;
     owners: Schema.Attribute.Relation<
       'manyToMany',
       'plugin::users-permissions.user'
@@ -1950,6 +2255,8 @@ export interface ApiOrderOrder extends Struct.CollectionTypeSchema {
     products: Schema.Attribute.Component<'order.order-products', false>;
     publishedAt: Schema.Attribute.DateTime;
     rate_id: Schema.Attribute.String;
+    rider_notes: Schema.Attribute.Text;
+    savings: Schema.Attribute.Decimal;
     shipping_id: Schema.Attribute.String;
     shipping_label: Schema.Attribute.JSON;
     shipping_name: Schema.Attribute.String;
@@ -2155,6 +2462,10 @@ export interface ApiProductGroupProductGroup
       ['default', 'newest', 'price_asc', 'price_desc']
     > &
       Schema.Attribute.DefaultTo<'default'>;
+    delivery_methods: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::delivery-method.delivery-method'
+    >;
     enable_sort_dropdown: Schema.Attribute.Boolean &
       Schema.Attribute.DefaultTo<true>;
     enable_view_toggle: Schema.Attribute.Boolean &
@@ -2454,6 +2765,56 @@ export interface ApiPurchasePurchase extends Struct.CollectionTypeSchema {
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+  };
+}
+
+export interface ApiRiderRider extends Struct.CollectionTypeSchema {
+  collectionName: 'riders';
+  info: {
+    displayName: 'Rider';
+    pluralName: 'riders';
+    singularName: 'rider';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    assigned_zones: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::delivery-zone.delivery-zone'
+    >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    delivery_offers: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::delivery-offer.delivery-offer'
+    >;
+    full_name: Schema.Attribute.String & Schema.Attribute.Required;
+    license_number: Schema.Attribute.String;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::rider.rider'> &
+      Schema.Attribute.Private;
+    max_concurrent_deliveries: Schema.Attribute.Integer &
+      Schema.Attribute.DefaultTo<2>;
+    phone: Schema.Attribute.String;
+    profile_picture: Schema.Attribute.Media<'images'>;
+    publishedAt: Schema.Attribute.DateTime;
+    rating: Schema.Attribute.Decimal;
+    status: Schema.Attribute.Enumeration<
+      ['available', 'on_delivery', 'off_duty', 'suspended']
+    > &
+      Schema.Attribute.DefaultTo<'off_duty'>;
+    total_deliveries_completed: Schema.Attribute.Integer &
+      Schema.Attribute.DefaultTo<0>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    user: Schema.Attribute.Relation<
+      'oneToOne',
+      'plugin::users-permissions.user'
+    >;
+    vehicle_type: Schema.Attribute.Enumeration<['bike', 'car', 'van']>;
   };
 }
 
@@ -3802,12 +4163,18 @@ declare module '@strapi/strapi' {
       'api::crm-lead.crm-lead': ApiCrmLeadCrmLead;
       'api::currency.currency': ApiCurrencyCurrency;
       'api::customer.customer': ApiCustomerCustomer;
+      'api::delivery-method.delivery-method': ApiDeliveryMethodDeliveryMethod;
+      'api::delivery-offer.delivery-offer': ApiDeliveryOfferDeliveryOffer;
+      'api::delivery-zone.delivery-zone': ApiDeliveryZoneDeliveryZone;
       'api::employee.employee': ApiEmployeeEmployee;
       'api::hr-attendance.hr-attendance': ApiHrAttendanceHrAttendance;
       'api::hr-department.hr-department': ApiHrDepartmentHrDepartment;
       'api::hr-employee.hr-employee': ApiHrEmployeeHrEmployee;
       'api::hr-leave-request.hr-leave-request': ApiHrLeaveRequestHrLeaveRequest;
+      'api::notification-log.notification-log': ApiNotificationLogNotificationLog;
+      'api::notification-template.notification-template': ApiNotificationTemplateNotificationTemplate;
       'api::offer.offer': ApiOfferOffer;
+      'api::order-message.order-message': ApiOrderMessageOrderMessage;
       'api::order.order': ApiOrderOrder;
       'api::pay-payroll-run.pay-payroll-run': ApiPayPayrollRunPayPayrollRun;
       'api::pay-payslip.pay-payslip': ApiPayPayslipPayPayslip;
@@ -3819,6 +4186,7 @@ declare module '@strapi/strapi' {
       'api::purchase-return-item.purchase-return-item': ApiPurchaseReturnItemPurchaseReturnItem;
       'api::purchase-return.purchase-return': ApiPurchaseReturnPurchaseReturn;
       'api::purchase.purchase': ApiPurchasePurchase;
+      'api::rider.rider': ApiRiderRider;
       'api::sale-item.sale-item': ApiSaleItemSaleItem;
       'api::sale-return-item.sale-return-item': ApiSaleReturnItemSaleReturnItem;
       'api::sale-return.sale-return': ApiSaleReturnSaleReturn;
