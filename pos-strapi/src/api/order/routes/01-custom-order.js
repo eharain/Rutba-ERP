@@ -52,6 +52,56 @@ const config = {
       handler: 'api::order.order.myOrderDetail',
       config: { auth: false },
     },
+
+    // ── Delivery method calculation ──────────────────────────
+    {
+      method: 'POST',
+      path: '/orders/calculate-delivery',
+      handler: 'api::order.order.calculateDelivery',
+      config: { auth: false },
+    },
+
+    // ── Public order tracking (secret-based) ─────────────────
+    {
+      method: 'GET',
+      path: '/orders/tracking/:documentId',
+      handler: 'api::order.order.trackOrder',
+      config: { auth: false },
+    },
+
+    // ── Order messages ────────────────────────────────────────
+    {
+      method: 'GET',
+      path: '/orders/:documentId/messages',
+      handler: 'api::order.order.getMessages',
+      config: { auth: false },
+    },
+    {
+      method: 'POST',
+      path: '/orders/:documentId/messages',
+      handler: 'api::order.order.sendMessage',
+      config: { auth: false },
+    },
+
+    // ── CMS order management ─────────────────────────────────
+    {
+      method: 'POST',
+      path: '/orders/:documentId/update-status',
+      handler: 'api::order.order.updateOrderStatus',
+      config: { auth: false },
+    },
+    {
+      method: 'POST',
+      path: '/orders/:documentId/assign-rider',
+      handler: 'api::order.order.assignRider',
+      config: { auth: false },
+    },
+    {
+      method: 'POST',
+      path: '/orders/:documentId/cancel',
+      handler: 'api::order.order.cancelOrder',
+      config: { auth: false },
+    },
   ]
 };
 

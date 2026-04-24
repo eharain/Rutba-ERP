@@ -2,7 +2,7 @@
   "name": "rutba-strapi",
   "version": "0.1.0",
   "private": true,
-  "description": "A Strapi application",
+  "description": "Rutba ERP API Provider",
   "scripts": {
     "build": "strapi build",
     "console": "strapi console",

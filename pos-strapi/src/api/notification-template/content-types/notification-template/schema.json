@@ -1,0 +1,19 @@
+﻿{
+  "kind": "collectionType",
+  "collectionName": "notification_templates",
+  "info": { "singularName": "notification-template", "pluralName": "notification-templates", "displayName": "Notification Template" },
+  "options": { "draftAndPublish": false },
+  "pluginOptions": {},
+  "attributes": {
+    "name": { "type": "string", "required": true },
+    "trigger_event": { "type": "enumeration", "enum": ["order_placed","payment_confirmed","offer_accepted","out_for_delivery","delivered","cancelled","refund_initiated"], "required": true },
+    "channel": { "type": "enumeration", "enum": ["email","sms","both"], "default": "email" },
+    "subject": { "type": "string" },
+    "body_template": { "type": "text" },
+    "available_variables": { "type": "json" },
+    "scope": { "type": "enumeration", "enum": ["global","per_branch"], "default": "global" },
+    "branch": { "type": "relation", "relation": "manyToOne", "target": "api::branch.branch" },
+    "send_to": { "type": "enumeration", "enum": ["customer","rider","staff","admin"], "default": "customer" },
+    "is_active": { "type": "boolean", "default": true }
+  }
+}

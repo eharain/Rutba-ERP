@@ -1,0 +1,42 @@
+{
+  "kind": "collectionType",
+  "collectionName": "delivery_methods",
+  "info": {
+    "singularName": "delivery-method",
+    "pluralName": "delivery-methods",
+    "displayName": "Delivery Method"
+  },
+  "options": { "draftAndPublish": false },
+  "pluginOptions": {},
+  "attributes": {
+    "name": { "type": "string", "required": true },
+    "description": { "type": "text" },
+    "base_cost": { "type": "decimal", "default": 0 },
+    "per_kg_rate": { "type": "decimal", "default": 0 },
+    "free_shipping_threshold": { "type": "decimal" },
+    "service_provider": {
+      "type": "enumeration",
+      "enum": ["own_rider", "easypost", "custom"],
+      "required": true,
+      "default": "own_rider"
+    },
+    "estimated_days_min": { "type": "integer", "default": 1 },
+    "estimated_days_max": { "type": "integer", "default": 3 },
+    "priority": { "type": "integer", "default": 0 },
+    "is_active": { "type": "boolean", "default": true },
+    "offer_timeout_minutes": { "type": "integer", "default": 5 },
+    "max_riders_to_offer": { "type": "integer", "default": 10 },
+    "delivery_zones": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::delivery-zone.delivery-zone",
+      "inversedBy": "delivery_methods"
+    },
+    "product_groups": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::product-group.product-group",
+      "mappedBy": "delivery_methods"
+    }
+  }
+}

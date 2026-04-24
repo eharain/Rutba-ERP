@@ -17,6 +17,7 @@ export const APP_URLS = {
     stock:     process.env.NEXT_PUBLIC_STOCK_URL     || 'http://localhost:4001',
     sale:      process.env.NEXT_PUBLIC_SALE_URL      || 'http://localhost:4002',
     'web-user': process.env.NEXT_PUBLIC_WEB_USER_URL || 'http://localhost:4004',
+    rider:     process.env.NEXT_PUBLIC_RIDER_URL     || 'http://localhost:4012',
     crm:       process.env.NEXT_PUBLIC_CRM_URL       || 'http://localhost:4005',
     hr:        process.env.NEXT_PUBLIC_HR_URL        || 'http://localhost:4006',
     accounts:  process.env.NEXT_PUBLIC_ACCOUNTS_URL  || 'http://localhost:4007',
@@ -26,7 +27,7 @@ export const APP_URLS = {
 };
 
 /** All recognised app keys */
-const VALID_APP_KEYS = ['stock', 'sale', 'auth', 'web-user', 'crm', 'hr', 'accounts', 'payroll', 'cms', 'social'];
+const VALID_APP_KEYS = ['stock', 'sale', 'auth', 'web-user', 'rider', 'crm', 'hr', 'accounts', 'payroll', 'cms', 'social'];
 
 /**
  * Metadata for each app — icon (FontAwesome class), display label,
@@ -39,6 +40,7 @@ export const APP_META = {
     stock:      { icon: 'fa-solid fa-boxes-stacked',      label: 'Stock Management',   description: 'Products, purchases, inventory',              border: 'border-primary',   color: 'text-primary' },
     sale:       { icon: 'fa-solid fa-cash-register',      label: 'Point of Sale',      description: 'Sales, cart, returns, reports',               border: 'border-success',   color: 'text-success' },
     'web-user': { icon: 'fa-solid fa-bag-shopping',       label: 'My Orders',          description: 'Track orders, manage returns',                border: 'border-info',      color: 'text-info' },
+    rider:      { icon: 'fa-solid fa-motorcycle',         label: 'Rider App',          description: 'Manage offers, deliveries, and rider updates', border: 'border-primary',   color: 'text-primary' },
     crm:        { icon: 'fa-solid fa-handshake',          label: 'CRM',                description: 'Contacts, leads, activities',                 border: 'border-warning',   color: 'text-warning' },
     hr:         { icon: 'fa-solid fa-users',              label: 'Human Resources',    description: 'Employees, departments, attendance, leave',   border: 'border-secondary', color: 'text-secondary' },
     accounts:   { icon: 'fa-solid fa-chart-line',         label: 'Accounts',           description: 'Chart of accounts, journals, invoices',       border: 'border-dark',      color: 'text-dark' },

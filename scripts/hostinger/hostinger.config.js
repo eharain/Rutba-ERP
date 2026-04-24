@@ -57,6 +57,12 @@ const APPS = {
     domain: 'user.rutba.pk',
     prefix: 'RUTBA_WEB_USER',
   },
+  rider: {
+    type: 'nextjs',
+    workspace: 'rutba-rider',
+    domain: 'rider.rutba.pk',
+    prefix: 'RUTBA_RIDER',
+  },
   auth: {
     type: 'nextjs',
     workspace: 'pos-auth',

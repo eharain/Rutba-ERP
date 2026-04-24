@@ -1,0 +1,11 @@
+{
+  "name": "rutba-rider",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 4012 --turbopack",
+    "build": "next build",
+    "start": "next start -p 4012",
+    "lint": "next lint"
+  }
+}

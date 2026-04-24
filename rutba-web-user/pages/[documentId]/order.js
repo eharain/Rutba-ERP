@@ -11,7 +11,19 @@ export default function OrderDetail() {
     const { documentId } = router.query;
     const { jwt } = useAuth();
     const [order, setOrder] = useState(null);
+    const [messages, setMessages] = useState([]);
+    const [messageInput, setMessageInput] = useState("");
+    const [sendingMessage, setSendingMessage] = useState(false);
     const [loading, setLoading] = useState(true);
+
+    const STATUS_ORDER = [
+        "PENDING_PAYMENT",
+        "PAYMENT_CONFIRMED",
+        "PREPARING",
+        "AWAITING_PICKUP",
+        "OUT_FOR_DELIVERY",
+        "DELIVERED",
+    ];
 
     useEffect(() => {
         if (!jwt || !documentId) return;
@@ -20,6 +32,34 @@ export default function OrderDetail() {
             .catch((err) => console.error("Failed to load order", err))
             .finally(() => setLoading(false));
     }, [jwt, documentId]);
+
+    const fetchMessages = () => {
+        if (!jwt || !documentId) return;
+        authApi.get(`/orders/${documentId}/messages`, {}, jwt)
+            .then((res) => setMessages(res.data || []))
+            .catch((err) => console.error("Failed to load order messages", err));
+    };
+
+    useEffect(() => {
+        fetchMessages();
+        const interval = setInterval(fetchMessages, 10000);
+        return () => clearInterval(interval);
+    }, [jwt, documentId]);
+
+    const handleSendMessage = async () => {
+        const message = messageInput.trim();
+        if (!message || !jwt || !documentId) return;
+        try {
+            setSendingMessage(true);
+            await authApi.post(`/orders/${documentId}/messages`, { message }, jwt);
+            setMessageInput("");
+            fetchMessages();
+        } catch (err) {
+            console.error("Failed to send message", err);
+        } finally {
+            setSendingMessage(false);
+        }
+    };
 
     return (
         <ProtectedRoute>
@@ -42,14 +82,65 @@ export default function OrderDetail() {
                         <div className="col-md-8">
                             <div className="card mb-3">
                                 <div className="card-header d-flex justify-content-between">
-                                    <strong>Order #{order.orderNumber || order.id}</strong>
-                                    <span className={`badge bg-${statusColor(order.status)}`}>
-                                        {order.status || "Pending"}
-                                    </span>
+                                    <strong>Order #{order.orderNumber || order.order_id || order.id}</strong>
+                                    <div className="d-flex gap-2">
+                                        <span className={`badge bg-${statusColor(order.order_status)}`}>
+                                            {labelStatus(order.order_status || "PENDING_PAYMENT")}
+                                        </span>
+                                        <span className={`badge bg-${statusColor(order.payment_status)}`}>
+                                            {labelStatus(order.payment_status || "pending")}
+                                        </span>
+                                    </div>
                                 </div>
                                 <div className="card-body">
                                     <p><strong>Date:</strong> {new Date(order.createdAt).toLocaleDateString()}</p>
                                     <p><strong>Total:</strong> {order.total != null ? order.total.toFixed(2) : "—"}</p>
+
+                                    <div className="mb-3">
+                                        <p className="fw-bold mb-2">Delivery Timeline</p>
+                                        <div className="d-flex flex-column gap-2">
+                                            {STATUS_ORDER.map((status, idx) => {
+                                                const currentIndex = STATUS_ORDER.indexOf(order.order_status);
+                                                const done = currentIndex >= idx;
+                                                return (
+                                                    <div key={status} className="d-flex align-items-center gap-2">
+                                                        <span
+                                                            style={{ width: 10, height: 10, borderRadius: 9999 }}
+                                                            className={done ? "bg-success" : "bg-secondary"}
+                                                        />
+                                                        <span className={done ? "text-dark" : "text-muted"}>
+                                                            {labelStatus(status)}
+                                                        </span>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+
+                                    {order.delivery_method && (
+                                        <p>
+                                            <strong>Delivery Method:</strong> {order.delivery_method.name} ({order.delivery_method.service_provider})
+                                        </p>
+                                    )}
+
+                                    {order.assigned_rider && (
+                                        <div className="alert alert-info py-2">
+                                            <p className="mb-1 fw-bold">Assigned Rider</p>
+                                            <p className="mb-0">{order.assigned_rider.full_name} • {order.assigned_rider.phone}</p>
+                                        </div>
+                                    )}
+
+                                    {order.documentId && order.order_secret && (
+                                        <div className="mb-3">
+                                            <Link
+                                                className="btn btn-sm btn-outline-info"
+                                                href={`${process.env.NEXT_PUBLIC_WEB_URL || "https://rutba.pk"}/order-tracking/${order.documentId}?secret=${order.order_secret}`}
+                                                target="_blank"
+                                            >
+                                                Track on Web
+                                            </Link>
+                                        </div>
+                                    )}
 
                                     {order.items && order.items.length > 0 && (
                                         <table className="table table-sm mt-3">
@@ -196,6 +287,40 @@ export default function OrderDetail() {
                                     )}
                                 </div>
                             </div>
+
+                            <div className="card mt-3">
+                                <div className="card-header d-flex justify-content-between align-items-center">
+                                    <strong>Messages</strong>
+                                    <button className="btn btn-sm btn-outline-secondary" onClick={fetchMessages}>Refresh</button>
+                                </div>
+                                <div className="card-body">
+                                    <div className="mb-3" style={{ maxHeight: 220, overflowY: 'auto' }}>
+                                        {messages.length === 0 && <p className="text-muted small mb-0">No messages yet.</p>}
+                                        {messages.map((m) => (
+                                            <div key={m.documentId || m.id} className="border rounded p-2 mb-2">
+                                                <div className="small text-muted text-uppercase">{m.sender_type}</div>
+                                                <div className="small">{m.message}</div>
+                                                <div className="small text-muted">{new Date(m.sent_at).toLocaleString()}</div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div className="input-group">
+                                        <input
+                                            className="form-control"
+                                            value={messageInput}
+                                            onChange={(e) => setMessageInput(e.target.value)}
+                                            placeholder="Message rider/support"
+                                        />
+                                        <button
+                                            className="btn btn-primary"
+                                            disabled={sendingMessage || !messageInput.trim()}
+                                            onClick={handleSendMessage}
+                                        >
+                                            {sendingMessage ? 'Sending...' : 'Send'}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 )}
@@ -205,13 +330,31 @@ export default function OrderDetail() {
 }
 
 function statusColor(status) {
+    const key = String(status || '').toUpperCase();
     switch (status) {
         case "completed": return "success";
         case "shipped": return "info";
         case "cancelled": return "danger";
         case "returned": return "warning";
         case "processing": return "primary";
+        case "PENDING_PAYMENT": return "secondary";
+        case "PAYMENT_CONFIRMED": return "primary";
+        case "PREPARING": return "info";
+        case "AWAITING_PICKUP": return "warning";
+        case "OUT_FOR_DELIVERY": return "primary";
+        case "DELIVERED": return "success";
+        case "FAILED_DELIVERY": return "danger";
+        case "CANCELLED": return "danger";
+        case "SUCCEEDED": return "success";
+        case "FAILED": return "danger";
+        case "EXPIRED": return "warning";
+        case "ORDERED": return "info";
         default: return "secondary";
     }
+}
+
+function labelStatus(status) {
+    const key = String(status || "").replace(/_/g, " ");
+    return key.length ? key.charAt(0).toUpperCase() + key.slice(1).toLowerCase() : "Pending";
 }
 

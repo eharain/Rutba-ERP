@@ -1,0 +1,50 @@
+{
+  "kind": "collectionType",
+  "collectionName": "riders",
+  "info": {
+    "singularName": "rider",
+    "pluralName": "riders",
+    "displayName": "Rider"
+  },
+  "options": { "draftAndPublish": false },
+  "pluginOptions": {},
+  "attributes": {
+    "full_name": { "type": "string", "required": true },
+    "phone": { "type": "string" },
+    "vehicle_type": {
+      "type": "enumeration",
+      "enum": ["bike", "car", "van"]
+    },
+    "license_number": { "type": "string" },
+    "profile_picture": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": ["images"]
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": ["available", "on_delivery", "off_duty", "suspended"],
+      "default": "off_duty"
+    },
+    "max_concurrent_deliveries": { "type": "integer", "default": 2 },
+    "total_deliveries_completed": { "type": "integer", "default": 0 },
+    "rating": { "type": "decimal" },
+    "user": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "assigned_zones": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::delivery-zone.delivery-zone",
+      "inversedBy": "riders"
+    },
+    "delivery_offers": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::delivery-offer.delivery-offer",
+      "mappedBy": "rider"
+    }
+  }
+}

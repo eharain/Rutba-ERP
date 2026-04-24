@@ -87,4 +87,20 @@ export interface CheckoutPayload {
     };
     payment_status: string;
     user_id: string;
+    delivery_method_id?: string;
+    delivery_zone_id?: string;
+    delivery_cost?: number;
+    delivery_cost_breakdown?: Record<string, unknown>;
 }
+
+export type OrderStatus =
+    | 'PENDING_PAYMENT'
+    | 'PAYMENT_CONFIRMED'
+    | 'PREPARING'
+    | 'AWAITING_PICKUP'
+    | 'OUT_FOR_DELIVERY'
+    | 'DELIVERED'
+    | 'CANCELLED'
+    | 'FAILED_DELIVERY'
+    | 'REFUND_INITIATED'
+    | 'REFUNDED';

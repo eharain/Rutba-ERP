@@ -65,6 +65,17 @@ export default function Navigation() {
                     <li className="nav-item">
                         <Link className="nav-link" href="/orders"><i className="fas fa-shopping-bag me-1"></i>Orders</Link>
                     </li>
+                    <li className="nav-item dropdown">
+                        <a className="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i className="fas fa-truck me-1"></i>Delivery Ops
+                        </a>
+                        <ul className="dropdown-menu">
+                            <li><Link className="dropdown-item" href="/riders">Riders</Link></li>
+                            <li><Link className="dropdown-item" href="/delivery-methods">Delivery Methods</Link></li>
+                            <li><Link className="dropdown-item" href="/delivery-zones">Delivery Zones</Link></li>
+                            <li><Link className="dropdown-item" href="/notification-templates">Notification Templates</Link></li>
+                        </ul>
+                    </li>
                     <li className="nav-item">
                         <Link className="nav-link" href="/media"><i className="fas fa-photo-video me-1"></i>Media</Link>
                     </li>

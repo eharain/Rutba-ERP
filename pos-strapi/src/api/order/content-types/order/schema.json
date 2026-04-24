@@ -82,6 +82,56 @@
       "type": "relation",
       "relation": "manyToMany",
       "target": "plugin::users-permissions.user"
+    },
+    "order_status": {
+      "type": "enumeration",
+      "enum": [
+        "PENDING_PAYMENT",
+        "PAYMENT_CONFIRMED",
+        "PREPARING",
+        "AWAITING_PICKUP",
+        "OUT_FOR_DELIVERY",
+        "DELIVERED",
+        "CANCELLED",
+        "FAILED_DELIVERY",
+        "REFUND_INITIATED",
+        "REFUNDED"
+      ],
+      "default": "PENDING_PAYMENT"
+    },
+    "delivery_method": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::delivery-method.delivery-method"
+    },
+    "delivery_zone": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::delivery-zone.delivery-zone"
+    },
+    "assigned_rider": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::rider.rider"
+    },
+    "delivery_cost": { "type": "decimal" },
+    "delivery_cost_breakdown": { "type": "json" },
+    "estimated_delivery_time": { "type": "datetime" },
+    "actual_delivery_time": { "type": "datetime" },
+    "rider_notes": { "type": "text" },
+    "original_subtotal": { "type": "decimal" },
+    "savings": { "type": "decimal" },
+    "delivery_offers": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::delivery-offer.delivery-offer",
+      "mappedBy": "order"
+    },
+    "order_messages": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::order-message.order-message",
+      "mappedBy": "order"
     }
   }
 }
