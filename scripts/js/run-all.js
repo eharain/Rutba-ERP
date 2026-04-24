@@ -95,25 +95,17 @@ if (appArg) {
 
 // ── All-apps mode ──────────────────────────────────────────
 
-// Self-referencing and desk scripts are excluded from the parallel run
-const EXCLUDED = new Set([`${prefix}:all`, `${prefix}:desk`, prefix]);
-const strapiKey = `${prefix}:strapi`;
+// Self-referencing, desk, and strapi scripts are excluded from the parallel run
+// Strapi must be started separately via start:strapi
+const EXCLUDED = new Set([`${prefix}:all`, `${prefix}:desk`, `${prefix}:strapi`, prefix]);
 const allKeys = Object.keys(pkg.scripts)
-  .filter((k) => k.startsWith(`${prefix}:`) && !EXCLUDED.has(k) && k !== strapiKey);
+  .filter((k) => k.startsWith(`${prefix}:`) && !EXCLUDED.has(k));
 
-if (!pkg.scripts[strapiKey] && allKeys.length === 0) {
+if (allKeys.length === 0) {
   console.error(`[run-all] No scripts found matching "${prefix}:*"`);
   process.exit(1);
 }
 
-// Start strapi first, then all other apps after a short delay
-if (pkg.scripts[strapiKey]) {
-  runScript(strapiKey);
+for (const key of allKeys) {
+  runScript(key);
 }
-
-const delay = pkg.scripts[strapiKey] ? 3000 : 0;
-setTimeout(() => {
-  for (const key of allKeys) {
-    runScript(key);
-  }
-}, delay);

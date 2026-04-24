@@ -9,25 +9,30 @@
     "deploy": "strapi deploy",
     "dev": "strapi develop",
     "develop": "strapi develop",
+    "build-start": "strapi build && strapi start",
     "start": "strapi start",
     "startjs": "node server.js",
     "strapi": "strapi",
     "upgrade": "npx @strapi/upgrade latest",
-    "upgrade:dry": "npx @strapi/upgrade latest --dry"
+    "upgrade:dry": "npx @strapi/upgrade latest --dry",
+    "link:sync-pro": "npm link ../../strapi-plugins/strapi-content-sync-pro",
+    "unlink:sync-pro": "npm unlink strapi-content-sync-pro && npm install"
   },
   "dependencies": {
     "@easypost/api": "^8.8.0",
-    "@strapi/plugin-cloud": "5.40.0",
-    "@strapi/plugin-users-permissions": "5.40.0",
-    "@strapi/strapi": "5.40.0",
+    "@strapi/plugin-cloud": "5.43.0",
+    "@strapi/plugin-users-permissions": "5.43.0",
+    "@strapi/strapi": "5.43.0",
+    "strapi-content-sync-pro": "1.0.5",
     "mysql2": "3.20.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.30.3",
-    "strapi-content-sync-pro": "^1.0.3",
+
     "stripe": "^21.0.1",
     "styled-components": "^6.3.12",
     "xlsx": "^0.18.5"
+
   },
   "devDependencies": {
     "baseline-browser-mapping": "^2.10.11"
