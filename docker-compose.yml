@@ -87,6 +87,8 @@ services:
         NEXT_PUBLIC_SALE_URL: ${NEXT_PUBLIC_SALE_URL}
         NEXT_PUBLIC_WEB_URL: ${NEXT_PUBLIC_WEB_URL}
         NEXT_PUBLIC_WEB_USER_URL: ${NEXT_PUBLIC_WEB_USER_URL}
+        NEXT_PUBLIC_RIDER_URL: ${NEXT_PUBLIC_RIDER_URL}
+        NEXT_PUBLIC_SOCIAL_URL: ${NEXT_PUBLIC_SOCIAL_URL}
         NEXT_PUBLIC_CRM_URL: ${NEXT_PUBLIC_CRM_URL}
         NEXT_PUBLIC_HR_URL: ${NEXT_PUBLIC_HR_URL}
         NEXT_PUBLIC_ACCOUNTS_URL: ${NEXT_PUBLIC_ACCOUNTS_URL}
@@ -181,6 +183,23 @@ services:
       HOSTNAME: 0.0.0.0
 
   # --------------------------------------------------------
+  # Rider App
+  # --------------------------------------------------------
+  rider:
+    build:
+      context: .
+      target: rider
+      args: *global-build-args
+    restart: unless-stopped
+    depends_on:
+      - strapi
+    ports:
+      - "${PORT_RIDER:-4012}:${PORT_RIDER:-4012}"
+    environment:
+      PORT: ${PORT_RIDER:-4012}
+      HOSTNAME: 0.0.0.0
+
+  # --------------------------------------------------------
   # CRM
   # --------------------------------------------------------
   crm:
@@ -246,6 +265,23 @@ services:
       - "${PORT_PAYROLL}:${PORT_PAYROLL}"
     environment:
       PORT: ${PORT_PAYROLL}
+      HOSTNAME: 0.0.0.0
+
+  # --------------------------------------------------------
+  # Social
+  # --------------------------------------------------------
+  social:
+    build:
+      context: .
+      target: social
+      args: *global-build-args
+    restart: unless-stopped
+    depends_on:
+      - strapi
+    ports:
+      - "${PORT_SOCIAL:-4011}:${PORT_SOCIAL:-4011}"
+    environment:
+      PORT: ${PORT_SOCIAL:-4011}
       HOSTNAME: 0.0.0.0
 
   # --------------------------------------------------------

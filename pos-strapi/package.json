@@ -22,17 +22,17 @@
     "@easypost/api": "^8.8.0",
     "@strapi/plugin-cloud": "5.43.0",
     "@strapi/plugin-users-permissions": "5.43.0",
+    "@strapi/provider-email-nodemailer": "^5.43.0",
     "@strapi/strapi": "5.43.0",
-    "strapi-content-sync-pro": "1.0.5",
     "mysql2": "3.20.0",
+    "nodemailer": "^8.0.6",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.30.3",
-
+    "strapi-content-sync-pro": "1.0.5",
     "stripe": "^21.0.1",
     "styled-components": "^6.3.12",
     "xlsx": "^0.18.5"
-
   },
   "devDependencies": {
     "baseline-browser-mapping": "^2.10.11"

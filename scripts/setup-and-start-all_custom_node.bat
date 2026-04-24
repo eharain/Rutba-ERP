@@ -51,6 +51,9 @@ start "Point of Sale" cmd /k "npm run dev:sale"
 echo Starting Web User...
 start "Web User" cmd /k "npm run dev:web-user"
 
+echo Starting Rider...
+start "Rider" cmd /k "npm run dev:rider"
+
 echo Starting CRM...
 start "CRM" cmd /k "npm run dev:crm"
 

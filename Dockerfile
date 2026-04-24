@@ -41,6 +41,7 @@ COPY pos-desk/package.json             pos-desk/
 COPY rutba-web/package.json            rutba-web/
 COPY rutba-web-user/package.json       rutba-web-user/
 COPY rutba-rider/package.json          rutba-rider/
+COPY rutba-social/package.json         rutba-social/
 COPY rutba-crm/package.json            rutba-crm/
 COPY rutba-hr/package.json             rutba-hr/
 COPY rutba-accounts/package.json       rutba-accounts/
@@ -88,6 +89,7 @@ ARG NEXT_PUBLIC_SALE_URL
 ARG NEXT_PUBLIC_WEB_URL
 ARG NEXT_PUBLIC_WEB_USER_URL
 ARG NEXT_PUBLIC_RIDER_URL
+ARG NEXT_PUBLIC_SOCIAL_URL
 ARG NEXT_PUBLIC_CRM_URL
 ARG NEXT_PUBLIC_HR_URL
 ARG NEXT_PUBLIC_ACCOUNTS_URL
@@ -109,12 +111,13 @@ ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
     NEXT_PUBLIC_WEB_URL=$NEXT_PUBLIC_WEB_URL \
     NEXT_PUBLIC_WEB_USER_URL=$NEXT_PUBLIC_WEB_USER_URL \
     NEXT_PUBLIC_RIDER_URL=$NEXT_PUBLIC_RIDER_URL \
+    NEXT_PUBLIC_SOCIAL_URL=$NEXT_PUBLIC_SOCIAL_URL \
     NEXT_PUBLIC_CRM_URL=$NEXT_PUBLIC_CRM_URL \
     NEXT_PUBLIC_HR_URL=$NEXT_PUBLIC_HR_URL \
     NEXT_PUBLIC_ACCOUNTS_URL=$NEXT_PUBLIC_ACCOUNTS_URL \
     NEXT_PUBLIC_PAYROLL_URL=$NEXT_PUBLIC_PAYROLL_URL \
     NEXT_PUBLIC_CMS_URL=$NEXT_PUBLIC_CMS_URL \
-    NEXT_PUBLIC_IMAGE_HOST_PROTOCOL=$NEXT_PUBLIC_IMAGE_HOST_PROTOCOL
+    NEXT_PUBLIC_IMAGE_HOST_PROTOCOL=$NEXT_PUBLIC_IMAGE_HOST_PROTOCOL \
     NEXT_PUBLIC_IMAGE_HOST_NAME=$NEXT_PUBLIC_IMAGE_HOST_NAME \
     NEXT_PUBLIC_IMAGE_HOST_PORT=$NEXT_PUBLIC_IMAGE_HOST_PORT \
     NEXTAUTH_SECRET=$WEB_NEXTAUTH_SECRET \
@@ -281,3 +284,17 @@ COPY --from=cms-build /app/rutba-cms/.next/standalone ./
 COPY --from=cms-build /app/rutba-cms/.next/static     ./rutba-cms/.next/static
 COPY --from=cms-build /app/rutba-cms/public            ./rutba-cms/public
 CMD ["node", "rutba-cms/server.js"]
+
+# ----------------------------------------------------------
+#  rutba-social
+# ----------------------------------------------------------
+FROM build-env AS social-build
+RUN mkdir -p rutba-social/public && npm run build --workspace=rutba-social
+
+FROM base AS social
+WORKDIR /app
+ENV NODE_ENV=production HOSTNAME=0.0.0.0
+COPY --from=social-build /app/rutba-social/.next/standalone ./
+COPY --from=social-build /app/rutba-social/.next/static     ./rutba-social/.next/static
+COPY --from=social-build /app/rutba-social/public            ./rutba-social/public
+CMD ["node", "rutba-social/server.js"]

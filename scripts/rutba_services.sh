@@ -39,6 +39,7 @@ SERVICES=(
     rutba_pos_sale
     rutba_web
     rutba_web_user
+    rutba_rider
     rutba_crm
     rutba_hr
     rutba_accounts
@@ -55,6 +56,7 @@ declare -A SVC_CMD=(
     [rutba_pos_sale]="run start --workspace=pos-sale"
     [rutba_web]="run start --workspace=rutba-web"
     [rutba_web_user]="run start --workspace=rutba-web-user"
+    [rutba_rider]="run start --workspace=rutba-rider"
     [rutba_crm]="run start --workspace=rutba-crm"
     [rutba_hr]="run start --workspace=rutba-hr"
     [rutba_accounts]="run start --workspace=rutba-accounts"
@@ -71,6 +73,7 @@ declare -A SVC_DESC=(
     [rutba_pos_sale]="Rutba ERP - Point of Sale (pos-sale)"
     [rutba_web]="Rutba ERP - Public Website (rutba-web)"
     [rutba_web_user]="Rutba ERP - My Orders (rutba-web-user)"
+    [rutba_rider]="Rutba ERP - Rider App (rutba-rider)"
     [rutba_crm]="Rutba ERP - CRM (rutba-crm)"
     [rutba_hr]="Rutba ERP - Human Resources (rutba-hr)"
     [rutba_accounts]="Rutba ERP - Accounting (rutba-accounts)"

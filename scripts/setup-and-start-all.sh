@@ -52,6 +52,9 @@ npm run dev:sale &
 echo "Starting Web User..."
 npm run dev:web-user &
 
+echo "Starting Rider..."
+npm run dev:rider &
+
 echo "Starting CRM..."
 npm run dev:crm &
 
