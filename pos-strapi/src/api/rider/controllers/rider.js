@@ -7,15 +7,28 @@ const stateMachine         = require('../../sale-order/services/sale-order-state
 const notificationService  = require('../../sale-order/services/notification-service');
 
 async function requireRider(ctx, strapi, user) {
-    const rider = await strapi.documents('api::rider.rider').findFirst({
-        filters: { user: { id: { $eq: user.id } } },
+    const baseQuery = {
         fields: ['id', 'documentId', 'full_name', 'phone', 'status', 'max_concurrent_deliveries', 'total_deliveries_completed'],
         populate: ['assigned_zones'],
-    });
-    if (!rider) {
-        ctx.forbidden('No rider profile linked to this account.');
-        return null;
+    };
+
+    let rider = null;
+    const candidateFilters = [
+        user?.id ? { user: { id: { $eq: user.id } } } : null,
+        user?.documentId ? { user: { documentId: { $eq: user.documentId } } } : null,
+        user?.email ? { user: { email: { $eq: user.email } } } : null,
+        user?.username ? { user: { username: { $eq: user.username } } } : null,
+    ].filter(Boolean);
+
+    for (const filters of candidateFilters) {
+        rider = await strapi.documents('api::rider.rider').findFirst({
+            ...baseQuery,
+            filters,
+        });
+        if (rider) break;
     }
+
+    if (!rider) return null;
     return rider;
 }
 
@@ -25,7 +38,7 @@ module.exports = factories.createCoreController('api::rider.rider', ({ strapi })
         const user = await ensureUser(ctx, strapi);
         if (!user) return;
         const rider = await requireRider(ctx, strapi, user);
-        if (!rider) return;
+        if (!rider) return ctx.send({ data: null });
         const full = await strapi.documents('api::rider.rider').findOne({
             documentId: rider.documentId,
             populate: ['assigned_zones', 'profile_picture', 'user'],
@@ -37,7 +50,7 @@ module.exports = factories.createCoreController('api::rider.rider', ({ strapi })
         const user = await ensureUser(ctx, strapi);
         if (!user) return;
         const rider = await requireRider(ctx, strapi, user);
-        if (!rider) return;
+        if (!rider) return ctx.notFound('Rider profile not found');
         const { status } = ctx.request.body;
         if (!['available', 'off_duty'].includes(status)) return ctx.badRequest('Status must be available or off_duty');
         const updated = await strapi.documents('api::rider.rider').update({ documentId: rider.documentId, data: { status } });
@@ -48,7 +61,7 @@ module.exports = factories.createCoreController('api::rider.rider', ({ strapi })
         const user = await ensureUser(ctx, strapi);
         if (!user) return;
         const rider = await requireRider(ctx, strapi, user);
-        if (!rider) return;
+        if (!rider) return ctx.send({ data: [] });
         const now = new Date();
         const offers = await strapi.documents('api::delivery-offer.delivery-offer').findMany({
             filters: { rider: { id: { $eq: rider.id } }, status: { $eq: 'pending' }, expires_at: { $gt: now } },
@@ -102,7 +115,7 @@ module.exports = factories.createCoreController('api::rider.rider', ({ strapi })
         const user = await ensureUser(ctx, strapi);
         if (!user) return;
         const rider = await requireRider(ctx, strapi, user);
-        if (!rider) return;
+        if (!rider) return ctx.send({ data: [] });
         const { status = 'active' } = ctx.query;
         const filterStatuses = status === 'active' ? ['AWAITING_PICKUP', 'OUT_FOR_DELIVERY'] : ['DELIVERED', 'FAILED_DELIVERY', 'CANCELLED'];
         const orders = await strapi.documents('api::sale-order.sale-order').findMany({

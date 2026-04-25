@@ -47,7 +47,7 @@ export default function NotificationTemplatesPage() {
         </div>
 
         <p className="text-muted small mb-3">
-          Email/SMS templates used by order and delivery lifecycle notifications.
+          Manage notification templates used by order and delivery lifecycle events.
         </p>
 
         {loading && <p>Loading templates...</p>}
@@ -103,4 +103,8 @@ export default function NotificationTemplatesPage() {
       </Layout>
     </ProtectedRoute>
   );
+}
+
+export async function getServerSideProps() {
+  return { props: {} };
 }
