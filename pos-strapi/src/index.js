@@ -31,6 +31,14 @@ function buildAllPermissionActions() {
             for (const action of BASE_CRUD) {
                 all.add(`${def.uid}.${action}`);
             }
+            // also include any custom actions beyond CRUD
+            for (const action of def.actions) {
+                all.add(`${def.uid}.${action}`);
+            }
+        }
+    }
+    return [...all].sort();
+}
 
 const ROLE_BOOTSTRAP_META = {
     rutba_app_user: {
@@ -81,14 +89,6 @@ async function ensureConfiguredRole(knex, strapi, roleType) {
     }
 
     return role;
-}
-            // also include any custom actions beyond CRUD
-            for (const action of def.actions) {
-                all.add(`${def.uid}.${action}`);
-            }
-        }
-    }
-    return [...all].sort();
 }
 
 function hashCode(s) {
