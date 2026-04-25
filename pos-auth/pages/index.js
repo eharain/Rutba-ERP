@@ -72,11 +72,11 @@ export default function Home() {
                             </Link>
                         </div>
                         <div className="col-md-4">
-                            <Link href="/app-access" className="text-decoration-none">
+                            <Link href="/users/access-assignment" className="text-decoration-none">
                                 <div className="card shadow-sm">
                                     <div className="card-body text-center p-3">
-                                        <i className="fas fa-key fa-2x text-dark mb-2"></i>
-                                        <h5>App Access</h5>
+                                        <i className="fas fa-user-shield fa-2x text-dark mb-2"></i>
+                                        <h5>Access Assignment</h5>
                                     </div>
                                 </div>
                             </Link>

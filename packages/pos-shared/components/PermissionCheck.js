@@ -50,9 +50,6 @@ export function PermissionCheck({ required, has, showIf, adminOnly, appKey, chil
         if (!required && !has) return children;
     }
 
-    // ── admin bypass — app admins skip granular permission checks
-    if (userIsAdmin) return children;
-
     // ── permission checks ───────────────────────────────────
     function findMissing(requiredString) {
         if (!requiredString) return [];

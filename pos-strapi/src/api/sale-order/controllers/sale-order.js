@@ -12,16 +12,19 @@ const deliveryOfferService   = require('../services/delivery-offer-service');
 const easypostService        = require('../services/easypost-service');
 
 /**
- * Verify the authenticated user has the rutba_web_user role.
+ * Verify the authenticated user can access customer order views.
+ * Allows rutba_web_user and rutba_app_user.
  * Returns the full user record or null (after sending 403).
  */
-async function requireWebUser(ctx, strapi, user) {
+async function requireOrderAccessUser(ctx, strapi, user) {
     const fullUser = await strapi.query('plugin::users-permissions.user').findOne({
         where: { id: user.id },
         populate: { role: { select: ['type'] } },
     });
-    if (!fullUser || fullUser.role?.type !== 'rutba_web_user') {
-        ctx.forbidden('Only Rutba Web Users can access this resource.');
+    const roleType = fullUser?.role?.type;
+    const allowed = roleType === 'rutba_web_user' || roleType === 'rutba_app_user';
+    if (!fullUser || !allowed) {
+        ctx.forbidden('Only Rutba Web Users or Rutba App Users can access this resource.');
         return null;
     }
     return fullUser;
@@ -366,10 +369,21 @@ module.exports = factories.createCoreController(
         async myOrders(ctx) {
             const user = await ensureUser(ctx, strapi);
             if (!user) return;
-            const webUser = await requireWebUser(ctx, strapi, user);
-            if (!webUser) return;
+            const accessUser = await requireOrderAccessUser(ctx, strapi, user);
+            if (!accessUser) return;
+
+            const roleType = accessUser.role?.type;
+            const webUserFilter = roleType === 'rutba_web_user'
+                ? { owners: { id: { $eq: user.id } } }
+                : null;
+
+            const queryFilters = ctx.query?.filters || null;
+            const mergedFilters = webUserFilter && queryFilters
+                ? { $and: [queryFilters, webUserFilter] }
+                : (queryFilters || webUserFilter || undefined);
+
             const orders = await strapi.documents('api::sale-order.sale-order').findMany({
-                filters: { owners: { id: { $eq: user.id } } },
+                filters: mergedFilters,
                 sort: ctx.query.sort || 'createdAt:desc',
                 populate: ['products', 'customer_contact', 'delivery_method'],
             });
@@ -380,15 +394,17 @@ module.exports = factories.createCoreController(
         async myOrderDetail(ctx) {
             const user = await ensureUser(ctx, strapi);
             if (!user) return;
-            const webUser = await requireWebUser(ctx, strapi, user);
-            if (!webUser) return;
+            const accessUser = await requireOrderAccessUser(ctx, strapi, user);
+            if (!accessUser) return;
             const { documentId } = ctx.params;
             const order = await strapi.documents('api::sale-order.sale-order').findOne({
                 documentId, populate: ['products', 'customer_contact', 'owners', 'delivery_method', 'assigned_rider'],
             });
             if (!order) return ctx.notFound('Order not found');
-            const isOwner = (order.owners || []).some((o) => o.id === user.id);
-            if (!isOwner) return ctx.forbidden('You can only view your own orders.');
+            if (accessUser.role?.type === 'rutba_web_user') {
+                const isOwner = (order.owners || []).some((o) => o.id === user.id);
+                if (!isOwner) return ctx.forbidden('You can only view your own orders.');
+            }
             delete order.owners;
             ctx.send({ data: order });
         },

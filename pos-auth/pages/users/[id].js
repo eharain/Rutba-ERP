@@ -35,8 +35,8 @@ export default function EditUserPage() {
         setLoading(true);
         try {
             const [userData, rolesRes, aaRes] = await Promise.all([
-                authApi.get(`/users/${id}`, { populate: ["role", "app_accesses"] }),
-                authApi.get("/users-permissions/roles"),
+                authApi.get(`/auth-admin/users/${id}`),
+                authApi.get("/auth-admin/roles"),
                 authApi.get("/app-accesses"),
             ]);
 
@@ -94,7 +94,7 @@ export default function EditUserPage() {
             if (form.password) {
                 payload.password = form.password;
             }
-            await authApi.put(`/users/${id}`, payload);
+            await authApi.put(`/auth-admin/users/${id}`, payload);
             setSuccess("User updated successfully.");
         } catch (err) {
             const msg = err?.response?.data?.error?.message || err.message || "Failed to update user";
@@ -107,7 +107,7 @@ export default function EditUserPage() {
     async function handleDelete() {
         if (!confirm("Are you sure you want to delete this user? This cannot be undone.")) return;
         try {
-            await authApi.del(`/users/${id}`);
+            await authApi.del(`/auth-admin/users/${id}`);
             router.push("/users");
         } catch (err) {
             setError("Failed to delete user: " + (err.message || ""));
@@ -200,6 +200,9 @@ export default function EditUserPage() {
                     <div className="d-flex gap-2 mt-4">
                         <button type="submit" className="btn btn-success" disabled={saving}>
                             {saving ? "Saving..." : "Save Changes"}
+                        </button>
+                        <button type="button" className="btn btn-outline-primary" onClick={() => router.push("/users/access-assignment") }>
+                            Access Assignment
                         </button>
                         <button type="button" className="btn btn-outline-secondary" onClick={() => router.push("/users")}>
                             Back to Users

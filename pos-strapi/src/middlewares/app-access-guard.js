@@ -34,7 +34,10 @@
  *              only if the app-access permissions are listed.
  */
 
-const { permissionsByKey } = require('../../config/app-access-permissions');
+const {
+  getPermissionsForAppGroups,
+  canGroupElevateToAdmin,
+} = require('../../config/app-access-permissions');
 
 // Temporary compatibility aliases for transitioned apps.
 // Allows users with legacy app-access keys to continue working while
@@ -87,17 +90,9 @@ function normaliseAction(action, method = 'GET') {
   return action;
 }
 
-function hasPermissionViaKeys(keys, uid, action) {
-  for (const key of keys) {
-    const defs = permissionsByKey[key];
-    if (!defs) continue;
-    for (const def of defs) {
-      if (def.uid === uid && def.actions.includes(action)) {
-        return true;
-      }
-    }
-  }
-  return false;
+function hasPermissionInDefs(defs, uid, action) {
+  if (!Array.isArray(defs)) return false;
+  return defs.some((def) => def.uid === uid && def.actions.includes(action));
 }
 
 // ───────────────────── middleware ────────────────────────────
@@ -242,7 +237,7 @@ module.exports = (config, { strapi }) => {
       elevationHeader,
       ...((APP_ACCESS_ALIASES[elevationHeader] || [])),
     ].filter(Boolean);
-    const isElevated = elevatedCandidates.some((k) => adminKeys.includes(k));
+    const isElevated = elevatedCandidates.some((k) => adminKeys.includes(k)) && canGroupElevateToAdmin('admin');
 
 
     const model = strapi.contentTypes[uid];
@@ -252,10 +247,17 @@ module.exports = (config, { strapi }) => {
 
     // -- Permission check (b.3.a & b.3.b) --------------------
     {
-      const permissionKeys = accessibleAppKeys;
-      const hasFind = hasPermissionViaKeys(permissionKeys, uid, 'find');
-      const hasFindOne = hasPermissionViaKeys(permissionKeys, uid, 'findOne');
-      const hasExact = hasPermissionViaKeys(permissionKeys, uid, action);
+      const permissionDefs = accessibleAppKeys.flatMap((appKey) => {
+        const groups = [
+          ...(appKeys.includes(appKey) ? ['user'] : []),
+          ...(adminKeys.includes(appKey) ? ['admin'] : []),
+        ];
+        return getPermissionsForAppGroups(appKey, groups);
+      });
+
+      const hasFind = hasPermissionInDefs(permissionDefs, uid, 'find');
+      const hasFindOne = hasPermissionInDefs(permissionDefs, uid, 'findOne');
+      const hasExact = hasPermissionInDefs(permissionDefs, uid, action);
 
       // Elevated admins get full CRUD on entities that have no owners
       // relation (shared reference data like terms, branches, currencies),

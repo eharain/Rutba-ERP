@@ -15,9 +15,7 @@ export default function UsersPage() {
     async function loadUsers() {
         setLoading(true);
         try {
-            const data = await authApi.get("/users", {
-                populate: ["role", "app_accesses"],
-            });
+            const data = await authApi.get("/auth-admin/users");
             setUsers(Array.isArray(data) ? data : data?.data || []);
         } catch (err) {
             console.error("Failed to load users", err);
@@ -40,9 +38,14 @@ export default function UsersPage() {
                 <AppAccessGate appKey="auth">
                 <div className="d-flex justify-content-between align-items-center mb-3">
                     <h2><i className="fas fa-users me-2"></i>Users</h2>
-                    <Link href="/users/new" className="btn btn-primary">
-                        <i className="fas fa-plus me-1"></i> New User
-                    </Link>
+                    <div className="d-flex gap-2">
+                        <Link href="/users/access-assignment" className="btn btn-outline-primary">
+                            <i className="fas fa-user-shield me-1"></i> Access Assignment
+                        </Link>
+                        <Link href="/users/new" className="btn btn-primary">
+                            <i className="fas fa-plus me-1"></i> New User
+                        </Link>
+                    </div>
                 </div>
 
                 <div className="mb-3">

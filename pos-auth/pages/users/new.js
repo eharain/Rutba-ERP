@@ -29,7 +29,7 @@ export default function NewUserPage() {
 
     async function loadOptions() {
         try {
-            const rolesRes = await authApi.get("/users-permissions/roles");
+            const rolesRes = await authApi.get("/auth-admin/roles");
             setRoles(rolesRes?.roles || []);
 
             const aaRes = await authApi.get("/app-accesses");
@@ -72,7 +72,7 @@ export default function NewUserPage() {
                 role: form.role || undefined,
                 app_accesses: form.app_accesses,
             };
-            await authApi.post("/users", payload);
+            await authApi.post("/auth-admin/users", payload);
             router.push("/users");
         } catch (err) {
             const msg = err?.response?.data?.error?.message || err.message || "Failed to create user";

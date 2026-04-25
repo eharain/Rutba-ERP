@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import AppAccessGate from "../components/AppAccessGate";
+import PermissionCheck from "@rutba/pos-shared/components/PermissionCheck";
 import { authApi } from "@rutba/pos-shared/lib/api";
 
 export default function AppAccessPage() {
@@ -76,12 +77,18 @@ export default function AppAccessPage() {
         <Layout>
             <ProtectedRoute>
                 <AppAccessGate appKey="auth">
+                <PermissionCheck adminOnly appKey="auth" required="api::app-access.app-access.update">
                 <div className="d-flex justify-content-between align-items-center mb-3">
                     <h2><i className="fas fa-key me-2"></i>App Access</h2>
                     <button className="btn btn-primary" onClick={() => setShowForm(!showForm)}>
                         <i className={`fas ${showForm ? 'fa-times' : 'fa-plus'} me-1`}></i>
                         {showForm ? 'Cancel' : 'New Entry'}
                     </button>
+                </div>
+
+                <div className="alert alert-info">
+                    For user assignment, use <strong>Users → Access Assignment</strong>.
+                    This page is intended for app catalog maintenance only.
                 </div>
 
                 {error && <div className="alert alert-danger">{error}</div>}
@@ -159,11 +166,12 @@ export default function AppAccessPage() {
                     <h6>How it works</h6>
                     <ul className="mb-0 small text-muted">
                         <li>Each entry represents an application in the POS system.</li>
-                        <li>Assign entries to users via <strong>Users → Edit → App Access</strong> checkboxes.</li>
+                        <li>Assign entries to users via <strong>Users → Access Assignment</strong> matrix controls.</li>
                         <li>The <code>key</code> must match the app key in <code>packages/pos-shared/lib/roles.js</code>.</li>
                         <li>After creating a new entry here, add its key to <code>VALID_APP_KEYS</code> and <code>APP_URLS</code> in <code>roles.js</code>.</li>
                     </ul>
                 </div>
+                </PermissionCheck>
                     </AppAccessGate>
                 </ProtectedRoute>
             </Layout>

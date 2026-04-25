@@ -1,6 +1,12 @@
 'use strict';
 const { createCoreController } = require('@strapi/strapi').factories;
-const { permissionsByKey, settingsByKey, DEFAULT_SESSION_TIMEOUT, CLIENT_PLUGIN_PERMISSIONS } = require('../../../../config/app-access-permissions');
+const {
+    getPermissionsForAppGroups,
+    settingsByKey,
+    DEFAULT_SESSION_TIMEOUT,
+    CLIENT_PLUGIN_PERMISSIONS,
+    canGroupElevateToAdmin,
+} = require('../../../../config/app-access-permissions');
 
 const APP_ACCESS_ALIASES = {
     rider: ['delivery'],
@@ -40,15 +46,15 @@ module.exports = createCoreController('plugin::users-permissions.me', ({ strapi 
                     .filter((k, i, a) => a.indexOf(k) === i);
                 const accessibleKeys = candidateKeys.filter((k) => appAccess.includes(k) || adminAppAccess.includes(k));
 
-                for (const key of accessibleKeys) {
-                    const defs = permissionsByKey[key];
-                    if (!defs) continue;
-                    for (const def of defs) {
-                        for (const action of def.actions) {
-                            permissions.push(`${def.uid}.${action}`);
-                        }
-                    }
-                }
+                permissions = accessibleKeys
+                    .flatMap((key) => {
+                        const groups = [
+                            ...(appAccess.includes(key) ? ['user'] : []),
+                            ...(adminAppAccess.includes(key) ? ['admin'] : []),
+                        ];
+                        return getPermissionsForAppGroups(key, groups);
+                    })
+                    .flatMap((def) => (def.actions || []).map((action) => `${def.uid}.${action}`));
             }
 
             if (roleType !== 'rutba_app_user') {
@@ -58,9 +64,7 @@ module.exports = createCoreController('plugin::users-permissions.me', ({ strapi 
                     populate: false,
                     select: ['action'],
                 });
-                for (const p of rolePerms) {
-                    permissions.push(p.action);
-                }
+                permissions.push(...rolePerms.map((p) => p.action));
             }
 
             permissions = [...new Set([...permissions, ...CLIENT_PLUGIN_PERMISSIONS])].sort();
@@ -70,6 +74,10 @@ module.exports = createCoreController('plugin::users-permissions.me', ({ strapi 
                 roleType,
                 appAccess,
                 adminAppAccess,
+                permissionGroups: ['user', 'admin'].map((g) => ({
+                    key: g,
+                    canElevateToAdmin: canGroupElevateToAdmin(g),
+                })),
                 permissions,
                 sessionTimeout: (settingsByKey[appName] || {}).sessionTimeout || DEFAULT_SESSION_TIMEOUT,
             };
