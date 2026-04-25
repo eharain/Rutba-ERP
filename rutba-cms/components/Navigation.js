@@ -78,6 +78,9 @@ export default function Navigation() {
                     <li className="nav-item">
                         <Link className="nav-link" href="/site-settings"><i className="fas fa-cog me-1"></i>Settings</Link>
                     </li>
+                    <li className="nav-item">
+                        <Link className="nav-link" href="/notification-templates"><i className="fas fa-bell me-1"></i>Notification Templates</Link>
+                    </li>
                     </ul>
 
                 <div className="d-flex align-items-center">

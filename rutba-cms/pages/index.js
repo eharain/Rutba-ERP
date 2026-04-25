@@ -57,6 +57,15 @@ export default function Home() {
                             </div>
                         </div>
                     </div>
+                    <div className="col-md-4">
+                        <div className="card border-dark h-100">
+                            <div className="card-body">
+                                <h5 className="card-title"><i className="fas fa-bell me-2 text-dark"></i>Notification Templates</h5>
+                                <p className="card-text text-muted">Create and manage order lifecycle notification templates.</p>
+                                <Link className="btn btn-outline-dark btn-sm" href="/notification-templates">Manage Templates</Link>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </Layout>
         </ProtectedRoute>
