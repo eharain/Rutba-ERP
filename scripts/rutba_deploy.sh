@@ -67,6 +67,82 @@ cleanup_legacy_wrapper_scripts() {
     fi
 }
 
+run_npm_install() {
+    local workdir="$1"
+    local mode="${2:-offline}"
+    local prefer_flag="--prefer-offline"
+
+    if [ "$mode" = "online" ]; then
+        prefer_flag="--prefer-online"
+    fi
+
+    (
+        cd "$workdir"
+        npm install --production=false "$prefer_flag" --cache "$NPM_CACHE_DIR" --registry "$NPM_REGISTRY"
+    )
+}
+
+###########################################
+# FAILURE HANDLING
+###########################################
+
+BUILD_DIR=""
+DEPLOY_SUCCEEDED=0
+DEPLOY_STATUS_FILE_NAME=".deploy_status"
+
+write_build_status() {
+    local status="$1"
+    local message="${2:-}"
+
+    [ -n "${BUILD_DIR:-}" ] || return 0
+    [ -d "${BUILD_DIR}" ] || return 0
+
+    local status_file="${BUILD_DIR}/${DEPLOY_STATUS_FILE_NAME}"
+    {
+        echo "timestamp=$(date '+%Y-%m-%d %H:%M:%S %z')"
+        echo "status=${status}"
+        echo "branch=${BRANCH:-unknown}"
+        echo "commit=${COMMIT_HASH:-unknown}"
+        echo "message=${message}"
+    } > "$status_file"
+}
+
+on_deploy_failure() {
+    local line_no="${1:-unknown}"
+    local exit_code=$?
+
+    # Prevent recursive trap execution while we clean up.
+    trap - ERR
+    set +e
+
+    log_err "Deployment failed at line ${line_no} (exit=${exit_code})."
+
+    write_build_status "failed" "line=${line_no};exit=${exit_code}"
+
+    # Remove the partially created build directory if deploy did not complete.
+    if [ "$DEPLOY_SUCCEEDED" -ne 1 ] && [ -n "${BUILD_DIR:-}" ] && [ -d "${BUILD_DIR}" ]; then
+        # Never delete the active build by mistake.
+        local active_now
+        active_now=$(get_active_build_dir || true)
+        if [ -n "$active_now" ] && [ "$BUILD_DIR" = "$active_now" ]; then
+            log_warn "Failed build directory is active; skipping delete: ${BUILD_DIR}"
+        else
+            log_warn "Removing failed build directory: ${BUILD_DIR}"
+            rm -rf "$BUILD_DIR"
+        fi
+    fi
+
+    # Best-effort prune so failed/superseded build dirs stay under control.
+    if [ -f "${SCRIPT_DIR_DEPLOY}/rutba_prune_builds.sh" ]; then
+        log "Running failure-time build prune..."
+        bash "${SCRIPT_DIR_DEPLOY}/rutba_prune_builds.sh" || true
+    fi
+
+    exit "$exit_code"
+}
+
+trap 'on_deploy_failure $LINENO' ERR
+
 ###########################################
 # DATABASE HELPERS
 ###########################################
@@ -226,6 +302,12 @@ fi
 ###########################################
 
 mkdir -p "$BUILDS_DIR"
+
+# Pre-deploy prune: clean old/superseded builds before cloning a new one
+# to reduce disk pressure during install/build steps.
+log "Running pre-deploy build prune..."
+bash "${SCRIPT_DIR_DEPLOY}/rutba_prune_builds.sh"
+
 TIMESTAMP=$(date '+%Y%m%d_%H%M%S')
 BUILD_DIR="${BUILDS_DIR}/build_${TIMESTAMP}_${BRANCH}"
 
@@ -235,6 +317,7 @@ git clone --depth 1 -b "$BRANCH" "$REPO_URL" "$BUILD_DIR"
 cd "$BUILD_DIR"
 COMMIT_HASH=$(git rev-parse --short HEAD)
 log_ok "Cloned commit: ${COMMIT_HASH}"
+write_build_status "in_progress" "clone complete"
 
 ###########################################
 # COPY ENV FILES FROM BUILDS_DIR ROOT
@@ -302,6 +385,7 @@ done
 # across deploys.  Combined with --prefer-offline, npm will skip
 # network fetches for anything already cached.
 NPM_CACHE_DIR="${BUILDS_DIR}/.npm_cache"
+NPM_REGISTRY="${RUTBA_NPM_REGISTRY:-https://registry.npmjs.org/}"
 mkdir -p "$NPM_CACHE_DIR"
 
 # Copy node_modules from the previous active build so npm install
@@ -323,12 +407,14 @@ fi
 log "Installing monorepo dependencies (npm install)..."
 # Set RUTBA_POSTINSTALL=1 so the root postinstall hook (scripts/js/postinstall.js)
 # skips installing pos-strapi — we handle it explicitly below with --prefer-offline.
-RUTBA_POSTINSTALL=1 npm install --production=false --prefer-offline --cache "$NPM_CACHE_DIR"
+RUTBA_POSTINSTALL=1 run_npm_install "$BUILD_DIR" offline
 
 log "Installing pos-strapi dependencies..."
-cd "$BUILD_DIR/pos-strapi"
-npm install --production=false --prefer-offline --cache "$NPM_CACHE_DIR"
-cd "$BUILD_DIR"
+if ! run_npm_install "$BUILD_DIR/pos-strapi" offline; then
+    log_warn "pos-strapi npm install failed in offline mode. Retrying with online metadata refresh from ${NPM_REGISTRY} ..."
+    npm cache verify >/dev/null 2>&1 || true
+    run_npm_install "$BUILD_DIR/pos-strapi" online
+fi
 
 ###########################################
 # BUILD EVERYTHING
@@ -442,3 +528,6 @@ echo ""
 echo "  To rollback:"
 echo "    sudo bash ${BUILD_DIR}/scripts/rutba_rollback.sh"
 echo "============================================"
+
+DEPLOY_SUCCEEDED=1
+write_build_status "success" "deployment completed"
