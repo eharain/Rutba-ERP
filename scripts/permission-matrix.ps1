@@ -151,6 +151,23 @@ foreach ($m in $matrix) {
   $userJwt = Login -identifier "$uName@example.test" -password $pwd
   $adminJwtLocal = Login -identifier "$aName@example.test" -password $pwd
 
+  if ($m.app -eq 'web-user') {
+    $uOrder = Invoke-Api -Method 'GET' -Path '/sale-orders?pagination[pageSize]=1' -Headers @{ Authorization = "Bearer $userJwt"; 'X-Rutba-App' = 'web-user' }
+    Assert-Status -Name "sale-orders user $($m.app)" -Expected 200 -Result $uOrder
+
+    $aOrder = Invoke-Api -Method 'GET' -Path '/sale-orders?pagination[pageSize]=1' -Headers @{ Authorization = "Bearer $adminJwtLocal"; 'X-Rutba-App' = 'web-user'; 'X-Rutba-App-Admin' = 'web-user' }
+    Assert-Status -Name "sale-orders admin $($m.app)" -Expected 200 -Result $aOrder
+
+    $uDenied = Invoke-Api -Method 'GET' -Path '/auth-admin/roles' -Headers @{ Authorization = "Bearer $userJwt"; 'X-Rutba-App' = 'web-user' }
+    Assert-Status -Name "deny auth-admin user $($m.app)" -Expected 403 -Result $uDenied
+
+    $aDenied = Invoke-Api -Method 'GET' -Path '/auth-admin/roles' -Headers @{ Authorization = "Bearer $adminJwtLocal"; 'X-Rutba-App' = 'web-user'; 'X-Rutba-App-Admin' = 'web-user' }
+    Assert-Status -Name "deny auth-admin admin $($m.app)" -Expected 403 -Result $aDenied
+
+    Write-Host "PASS [web-user $($m.app)] access boundaries"
+    continue
+  }
+
   $uPerm = Invoke-Api -Method 'POST' -Path '/me/permissions' -Headers @{ Authorization = "Bearer $userJwt"; 'X-Rutba-App' = $m.app } -Body @{ time=[DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() }
   Assert-Status -Name "me perms user $($m.app)" -Expected 200 -Result $uPerm
   $uList = @($uPerm.data.permissions)

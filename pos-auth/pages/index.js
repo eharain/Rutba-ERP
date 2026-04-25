@@ -4,7 +4,7 @@ import Link from "next/link";
 import Layout from "../components/Layout";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import { getAllowedApps, canAccessApp, APP_URLS, APP_META } from "@rutba/pos-shared/lib/roles";
+import { getAllowedApps, APP_URLS, APP_META, isAppAdmin } from "@rutba/pos-shared/lib/roles";
 
 export default function Home() {
     const { user, role, appAccess, adminAppAccess, loading } = useAuth();
@@ -14,7 +14,7 @@ export default function Home() {
 
     const effectiveAccess = [...new Set([...(appAccess || []), ...(adminAppAccess || [])])];
     const apps = getAllowedApps(effectiveAccess);
-    const hasAuthAccess = canAccessApp(effectiveAccess, 'auth');
+    const hasAuthAdminAccess = isAppAdmin(adminAppAccess || [], 'auth');
 
     // App keys that should show as launchable cards (exclude 'auth' itself)
     const launchableApps = apps.filter(k => k !== 'auth' && APP_META[k]);
@@ -58,8 +58,8 @@ export default function Home() {
                     </div>
                 )}
 
-                {/* Admin quick links — only if user has auth access */}
-                {hasAuthAccess && (
+                {/* Admin quick links — only if user has auth admin access */}
+                {hasAuthAdminAccess && (
                     <div className="row justify-content-center g-3">
                         <div className="col-md-4">
                             <Link href="/users" className="text-decoration-none">

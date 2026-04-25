@@ -16,19 +16,18 @@ export default function NavAppSwitcher({ currentApp }) {
     const effectiveAccess = [...new Set([...(appAccess || []), ...(adminAppAccess || [])])];
     const links = getCrossAppLinks(effectiveAccess, currentApp)
         .sort((a, b) => String(a.label || '').localeCompare(String(b.label || '')));
-
-    if (links.length === 0) return null;
-
     const currentMeta = APP_META[currentApp] || {};
 
     useEffect(() => {
-        if (!open) return;
+        if (!open || links.length === 0) return;
         const onKeyDown = (e) => {
             if (e.key === "Escape") setOpen(false);
         };
         window.addEventListener("keydown", onKeyDown);
         return () => window.removeEventListener("keydown", onKeyDown);
-    }, [open]);
+    }, [open, links.length]);
+
+    if (links.length === 0) return null;
 
     return (
         <div className="d-inline-block ms-2 order-last">
