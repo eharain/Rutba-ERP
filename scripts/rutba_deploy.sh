@@ -108,12 +108,16 @@ write_build_status() {
 }
 
 on_deploy_failure() {
+    local exit_code="$?"
     local line_no="${1:-unknown}"
-    local exit_code=$?
 
     # Prevent recursive trap execution while we clean up.
     trap - ERR
     set +e
+
+    # Move out of the build directory before any cleanup.
+    # This avoids getcwd/chdir errors if the failed build is deleted.
+    cd "${SCRIPT_DIR_DEPLOY}" 2>/dev/null || cd /
 
     log_err "Deployment failed at line ${line_no} (exit=${exit_code})."
 
@@ -135,6 +139,7 @@ on_deploy_failure() {
     # Best-effort prune so failed/superseded build dirs stay under control.
     if [ -f "${SCRIPT_DIR_DEPLOY}/rutba_prune_builds.sh" ]; then
         log "Running failure-time build prune..."
+        cd "${SCRIPT_DIR_DEPLOY}" 2>/dev/null || cd /
         bash "${SCRIPT_DIR_DEPLOY}/rutba_prune_builds.sh" || true
     fi
 
