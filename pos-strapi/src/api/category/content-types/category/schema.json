@@ -62,7 +62,7 @@
     "offers": {
       "type": "relation",
       "relation": "manyToMany",
-      "target": "api::offer.offer",
+      "target": "api::sale-offer.sale-offer",
       "mappedBy": "categories"
     }
   }

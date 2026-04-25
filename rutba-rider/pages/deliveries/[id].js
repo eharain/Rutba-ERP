@@ -19,7 +19,7 @@ export default function DeliveryDetailPage() {
     if (!jwt) return;
     Promise.all([
       authApi.get('/rider/deliveries?status=active', {}, jwt),
-      id ? authApi.get(`/orders/${id}/messages`, {}, jwt) : Promise.resolve({ data: [] }),
+      id ? authApi.get(`/sale-orders/${id}/messages`, {}, jwt) : Promise.resolve({ data: [] }),
     ])
       .then(([dRes, mRes]) => {
         setDeliveries(dRes.data || []);
@@ -55,7 +55,7 @@ export default function DeliveryDetailPage() {
     if (!msg || !jwt || !id) return;
     try {
       setActionLoading(true);
-      await authApi.post(`/orders/${id}/messages`, { message: msg }, jwt);
+      await authApi.post(`/sale-orders/${id}/messages`, { message: msg }, jwt);
       setMessageInput('');
       load();
     } catch (err) {

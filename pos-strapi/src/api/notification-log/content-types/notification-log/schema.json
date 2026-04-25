@@ -1,11 +1,11 @@
-﻿{
+{
   "kind": "collectionType",
   "collectionName": "notification_logs",
   "info": { "singularName": "notification-log", "pluralName": "notification-logs", "displayName": "Notification Log" },
   "options": { "draftAndPublish": false },
   "pluginOptions": {},
   "attributes": {
-    "order": { "type": "relation", "relation": "manyToOne", "target": "api::order.order" },
+    "order": { "type": "relation", "relation": "manyToOne", "target": "api::sale-order.sale-order" },
     "template": { "type": "relation", "relation": "manyToOne", "target": "api::notification-template.notification-template" },
     "trigger_event": { "type": "string" },
     "recipient_email": { "type": "string" },

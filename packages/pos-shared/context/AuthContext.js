@@ -210,13 +210,39 @@ export function AuthProvider({ children }) {
      * Fetches the user profile and permissions from the API.
      */
     const loginWithToken = useCallback(async (token, refreshToken) => {
-        const user = await fetchMe(token);
+        const toScalar = (v) => Array.isArray(v) ? v[0] : v;
+
+        let effectiveJwt = toScalar(token);
+        let effectiveRefreshToken = toScalar(refreshToken) || storage.getItem('refreshToken') || null;
+
+        let user = await fetchMe(effectiveJwt);
+
+        // If callback token is expired/invalid but a refresh token exists,
+        // try one refresh cycle before failing the login callback.
+        if (!user && effectiveRefreshToken) {
+            try {
+                const refreshRes = await axios.post(`${API_URL}/auth/refresh`, {
+                    refreshToken: effectiveRefreshToken,
+                });
+                const nextJwt = refreshRes?.data?.jwt;
+                const nextRefresh = refreshRes?.data?.refreshToken;
+
+                if (nextJwt) {
+                    effectiveJwt = nextJwt;
+                    if (nextRefresh) effectiveRefreshToken = nextRefresh;
+                    user = await fetchMe(effectiveJwt);
+                }
+            } catch {
+                // fall through to invalid token error
+            }
+        }
+
         if (!user) throw new Error('Invalid token');
 
-        const me = await fetchPermissions(token);
+        const me = await fetchPermissions(effectiveJwt);
         const authData = {
-            jwt: token,
-            refreshToken,
+            jwt: effectiveJwt,
+            refreshToken: effectiveRefreshToken,
             user,
             role: me?.role || null,
             roleType: me?.roleType || null,

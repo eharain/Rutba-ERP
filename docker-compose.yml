@@ -87,6 +87,7 @@ services:
         NEXT_PUBLIC_SALE_URL: ${NEXT_PUBLIC_SALE_URL}
         NEXT_PUBLIC_WEB_URL: ${NEXT_PUBLIC_WEB_URL}
         NEXT_PUBLIC_WEB_USER_URL: ${NEXT_PUBLIC_WEB_USER_URL}
+        NEXT_PUBLIC_ORDER_MANAGEMENT_URL: ${NEXT_PUBLIC_ORDER_MANAGEMENT_URL}
         NEXT_PUBLIC_RIDER_URL: ${NEXT_PUBLIC_RIDER_URL}
         NEXT_PUBLIC_SOCIAL_URL: ${NEXT_PUBLIC_SOCIAL_URL}
         NEXT_PUBLIC_CRM_URL: ${NEXT_PUBLIC_CRM_URL}
@@ -180,6 +181,23 @@ services:
       - "${PORT_WEB_USER}:${PORT_WEB_USER}"
     environment:
       PORT: ${PORT_WEB_USER}
+      HOSTNAME: 0.0.0.0
+
+  # --------------------------------------------------------
+  # Order Management
+  # --------------------------------------------------------
+  order-management:
+    build:
+      context: .
+      target: order-management
+      args: *global-build-args
+    restart: unless-stopped
+    depends_on:
+      - strapi
+    ports:
+      - "${PORT_ORDER_MANAGEMENT:-4013}:${PORT_ORDER_MANAGEMENT:-4013}"
+    environment:
+      PORT: ${PORT_ORDER_MANAGEMENT:-4013}
       HOSTNAME: 0.0.0.0
 
   # --------------------------------------------------------

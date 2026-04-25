@@ -47,7 +47,7 @@ This guide covers deploying Rutba ERP: full-stack on a Linux server with systemd
             │  from /etc/systemd/system/rutba_*.service
             ▼
 ┌──────────────────────────────────────────────────────────────────┐
-│  14 systemd services  (each runs: node scripts/js/load-env.js --)│
+│  15 systemd services  (each runs: node scripts/js/load-env.js --)│
 │                                                                  │
 │  rutba_pos_strapi   :4010  ─── MySQL 8                          │
 │  rutba_pos_auth     :4003                                        │
@@ -55,6 +55,7 @@ This guide covers deploying Rutba ERP: full-stack on a Linux server with systemd
 │  rutba_pos_sale     :4002                                        │
 │  rutba_web          :4000                                        │
 │  rutba_web_user     :4004                                        │
+│  rutba_order_management :4013                                    │
 │  rutba_rider        :4012                                        │
 │  rutba_crm          :4005                                        │
 │  rutba_hr           :4006                                        │
@@ -251,6 +252,7 @@ NEXT_PUBLIC_AUTH_URL=https://auth.rutba.pk
 NEXT_PUBLIC_STOCK_URL=https://stock.rutba.pk
 NEXT_PUBLIC_SALE_URL=https://sale.rutba.pk
 NEXT_PUBLIC_WEB_USER_URL=https://my.rutba.pk
+NEXT_PUBLIC_ORDER_MANAGEMENT_URL=https://orders.rutba.pk
 NEXT_PUBLIC_RIDER_URL=https://rider.rutba.pk
 NEXT_PUBLIC_CRM_URL=https://crm.rutba.pk
 NEXT_PUBLIC_HR_URL=https://hr.rutba.pk
@@ -299,6 +301,7 @@ POS_STOCK__PORT=4001
 POS_SALE__PORT=4002
 RUTBA_WEB__PORT=4000
 RUTBA_WEB_USER__PORT=4004
+RUTBA_ORDER_MANAGEMENT__PORT=4013
 RUTBA_RIDER__PORT=4012
 RUTBA_CRM__PORT=4005
 RUTBA_HR__PORT=4006
@@ -452,6 +455,7 @@ sudo journalctl -fu rutba_pos_strapi
 | `rutba_pos_sale` | Point of sale | `pos-sale/` | 4002 |
 | `rutba_web` | Public storefront | `rutba-web/` | 4000 |
 | `rutba_web_user` | Customer orders | `rutba-web-user/` | 4004 |
+| `rutba_order_management` | Order management | `rutba-order-management/` | 4013 |
 | `rutba_rider` | Rider app | `rutba-rider/` | 4012 |
 | `rutba_crm` | CRM | `rutba-crm/` | 4005 |
 | `rutba_hr` | Human resources | `rutba-hr/` | 4006 |

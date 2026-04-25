@@ -326,7 +326,24 @@ function buildEnvForApp(opts) {
     const corsOrigins = [...allOrigins].filter(
       (o) => !strapiOrigins.includes(o)
     );
-    envForApp.CORS_ORIGINS = corsOrigins.join(',');
+
+    // Expand localhost/127.0.0.1 variants so browser requests from either
+    // host are accepted by Strapi CORS in local development.
+    const expanded = new Set(corsOrigins);
+    for (const origin of corsOrigins) {
+      try {
+        const u = new URL(origin);
+        if (u.hostname === 'localhost' || u.hostname === '127.0.0.1') {
+          const alt = new URL(origin);
+          alt.hostname = u.hostname === 'localhost' ? '127.0.0.1' : 'localhost';
+          expanded.add(alt.origin);
+        }
+      } catch {
+        // ignore invalid origins
+      }
+    }
+
+    envForApp.CORS_ORIGINS = [...expanded].join(',');
   }
 
   return envForApp;

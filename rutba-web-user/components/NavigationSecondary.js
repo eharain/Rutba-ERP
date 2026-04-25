@@ -6,7 +6,7 @@ export default function NavigationSecondary() {
             <ul className="navbar-nav align-items-center gap-2">
                 <li className="nav-item fw-semibold text-uppercase small text-muted me-1">Quick:</li>
                 <li className="nav-item">
-                    <Link className="btn btn-sm btn-outline-primary" href="/orders">My Orders</Link>
+                    <Link className="btn btn-sm btn-outline-primary" href="/sale-orders">My Orders</Link>
                 </li>
                 <li className="nav-item">
                     <Link className="btn btn-sm btn-outline-warning" href="/returns">Request Return</Link>

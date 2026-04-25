@@ -26,6 +26,12 @@ module.exports = {
       config: { auth: false },
     },
     {
+      method: 'GET',
+      path: '/rider/delivery-offers',
+      handler: 'api::rider.rider.myDeliveryOffers',
+      config: { auth: false },
+    },
+    {
       method: 'POST',
       path: '/rider/offers/:offerDocumentId/accept',
       handler: 'api::rider.rider.acceptOffer',
@@ -33,8 +39,20 @@ module.exports = {
     },
     {
       method: 'POST',
+      path: '/rider/delivery-offers/:offerDocumentId/accept',
+      handler: 'api::rider.rider.acceptDeliveryOffer',
+      config: { auth: false },
+    },
+    {
+      method: 'POST',
       path: '/rider/offers/:offerDocumentId/reject',
       handler: 'api::rider.rider.rejectOffer',
+      config: { auth: false },
+    },
+    {
+      method: 'POST',
+      path: '/rider/delivery-offers/:offerDocumentId/reject',
+      handler: 'api::rider.rider.rejectDeliveryOffer',
       config: { auth: false },
     },
 

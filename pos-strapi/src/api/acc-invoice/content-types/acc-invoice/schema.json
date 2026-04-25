@@ -37,7 +37,7 @@
     "order": {
       "type": "relation",
       "relation": "oneToOne",
-      "target": "api::order.order"
+      "target": "api::sale-order.sale-order"
     },
     "subtotal": {
       "type": "decimal",

@@ -17,6 +17,7 @@ export const APP_URLS = {
     stock:     process.env.NEXT_PUBLIC_STOCK_URL     || 'http://localhost:4001',
     sale:      process.env.NEXT_PUBLIC_SALE_URL      || 'http://localhost:4002',
     'web-user': process.env.NEXT_PUBLIC_WEB_USER_URL || 'http://localhost:4004',
+    'order-management': process.env.NEXT_PUBLIC_ORDER_MANAGEMENT_URL || 'http://localhost:4013',
     rider:     process.env.NEXT_PUBLIC_RIDER_URL     || 'http://localhost:4012',
     crm:       process.env.NEXT_PUBLIC_CRM_URL       || 'http://localhost:4005',
     hr:        process.env.NEXT_PUBLIC_HR_URL        || 'http://localhost:4006',
@@ -27,7 +28,7 @@ export const APP_URLS = {
 };
 
 /** All recognised app keys */
-const VALID_APP_KEYS = ['stock', 'sale', 'auth', 'web-user', 'rider', 'crm', 'hr', 'accounts', 'payroll', 'cms', 'social'];
+const VALID_APP_KEYS = ['stock', 'sale', 'auth', 'web-user', 'order-management', 'rider', 'crm', 'hr', 'accounts', 'payroll', 'cms', 'social'];
 
 /**
  * Metadata for each app — icon (FontAwesome class), display label,
@@ -39,13 +40,14 @@ export const APP_META = {
     auth:       { icon: 'fa-solid fa-users',              label: 'User Management',    description: 'Users, roles, app access',                    border: 'border-dark',      color: 'text-dark' },
     stock:      { icon: 'fa-solid fa-boxes-stacked',      label: 'Stock Management',   description: 'Products, purchases, inventory',              border: 'border-primary',   color: 'text-primary' },
     sale:       { icon: 'fa-solid fa-cash-register',      label: 'Point of Sale',      description: 'Sales, cart, returns, reports',               border: 'border-success',   color: 'text-success' },
-    'web-user': { icon: 'fa-solid fa-bag-shopping',       label: 'My Orders',          description: 'Track orders, manage returns',                border: 'border-info',      color: 'text-info' },
-    rider:      { icon: 'fa-solid fa-motorcycle',         label: 'Rider App',          description: 'Manage offers, deliveries, and rider updates', border: 'border-primary',   color: 'text-primary' },
+    'web-user': { icon: 'fa-solid fa-bag-shopping',       label: 'Web Orders',         description: 'Track customer orders, delivery status, and returns', border: 'border-info',      color: 'text-info' },
+    'order-management': { icon: 'fa-solid fa-truck-fast', label: 'Order Management',   description: 'Customer orders, delivery offers, riders, and notifications', border: 'border-warning', color: 'text-warning' },
+    rider:      { icon: 'fa-solid fa-motorcycle',         label: 'Rider App',          description: 'Delivery offers, active deliveries, history, and profile', border: 'border-primary',   color: 'text-primary' },
     crm:        { icon: 'fa-solid fa-handshake',          label: 'CRM',                description: 'Contacts, leads, activities',                 border: 'border-warning',   color: 'text-warning' },
     hr:         { icon: 'fa-solid fa-users',              label: 'Human Resources',    description: 'Employees, departments, attendance, leave',   border: 'border-secondary', color: 'text-secondary' },
     accounts:   { icon: 'fa-solid fa-chart-line',         label: 'Accounts',           description: 'Chart of accounts, journals, invoices',       border: 'border-dark',      color: 'text-dark' },
     payroll:    { icon: 'fa-solid fa-money-check-dollar', label: 'Payroll',            description: 'Salary structures, payroll runs, payslips',   border: 'border-danger',    color: 'text-danger' },
-    cms:        { icon: 'fa-solid fa-pen-nib',            label: 'Content Management', description: 'Website content, pages, banners',             border: 'border-purple',    color: 'text-purple' },
+    cms:        { icon: 'fa-solid fa-pen-nib',            label: 'Content Management', description: 'Website content, pages, banners, and sales offers', border: 'border-purple',    color: 'text-purple' },
     social:     { icon: 'fa-solid fa-share-nodes',         label: 'Social Media',       description: 'Posts, replies, multi-platform publishing',   border: 'border-info',      color: 'text-info' },
 };
 

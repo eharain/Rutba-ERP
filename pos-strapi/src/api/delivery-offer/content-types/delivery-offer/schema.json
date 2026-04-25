@@ -1,11 +1,11 @@
-﻿{
+{
   "kind": "collectionType",
   "collectionName": "delivery_offers",
-  "info": { "singularName": "delivery-offer", "pluralName": "delivery-offers", "displayName": "Delivery Offer" },
+  "info": { "singularName": "delivery-offer", "pluralName": "delivery-offers", "displayName": "Delivery Offer", "description": "Rider assignment offer for delivering customer orders" },
   "options": { "draftAndPublish": false },
   "pluginOptions": {},
   "attributes": {
-    "order": { "type": "relation", "relation": "manyToOne", "target": "api::order.order" },
+    "order": { "type": "relation", "relation": "manyToOne", "target": "api::sale-order.sale-order" },
     "rider": { "type": "relation", "relation": "manyToOne", "target": "api::rider.rider", "inversedBy": "delivery_offers" },
     "status": { "type": "enumeration", "enum": ["pending","accepted","rejected","expired"], "default": "pending", "required": true },
     "offered_at": { "type": "datetime" },

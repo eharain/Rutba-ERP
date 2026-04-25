@@ -40,6 +40,7 @@ COPY pos-sale/package.json             pos-sale/
 COPY pos-desk/package.json             pos-desk/
 COPY rutba-web/package.json            rutba-web/
 COPY rutba-web-user/package.json       rutba-web-user/
+COPY rutba-order-management/package.json rutba-order-management/
 COPY rutba-rider/package.json          rutba-rider/
 COPY rutba-social/package.json         rutba-social/
 COPY rutba-crm/package.json            rutba-crm/
@@ -88,6 +89,7 @@ ARG NEXT_PUBLIC_STOCK_URL
 ARG NEXT_PUBLIC_SALE_URL
 ARG NEXT_PUBLIC_WEB_URL
 ARG NEXT_PUBLIC_WEB_USER_URL
+ARG NEXT_PUBLIC_ORDER_MANAGEMENT_URL
 ARG NEXT_PUBLIC_RIDER_URL
 ARG NEXT_PUBLIC_SOCIAL_URL
 ARG NEXT_PUBLIC_CRM_URL
@@ -110,6 +112,7 @@ ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
     NEXT_PUBLIC_SALE_URL=$NEXT_PUBLIC_SALE_URL \
     NEXT_PUBLIC_WEB_URL=$NEXT_PUBLIC_WEB_URL \
     NEXT_PUBLIC_WEB_USER_URL=$NEXT_PUBLIC_WEB_USER_URL \
+    NEXT_PUBLIC_ORDER_MANAGEMENT_URL=$NEXT_PUBLIC_ORDER_MANAGEMENT_URL \
     NEXT_PUBLIC_RIDER_URL=$NEXT_PUBLIC_RIDER_URL \
     NEXT_PUBLIC_SOCIAL_URL=$NEXT_PUBLIC_SOCIAL_URL \
     NEXT_PUBLIC_CRM_URL=$NEXT_PUBLIC_CRM_URL \
@@ -200,6 +203,20 @@ COPY --from=web-user-build /app/rutba-web-user/.next/standalone ./
 COPY --from=web-user-build /app/rutba-web-user/.next/static     ./rutba-web-user/.next/static
 COPY --from=web-user-build /app/rutba-web-user/public            ./rutba-web-user/public
 CMD ["node", "rutba-web-user/server.js"]
+
+# ----------------------------------------------------------
+#  rutba-order-management
+# ----------------------------------------------------------
+FROM build-env AS order-management-build
+RUN mkdir -p rutba-order-management/public && npm run build --workspace=rutba-order-management
+
+FROM base AS order-management
+WORKDIR /app
+ENV NODE_ENV=production HOSTNAME=0.0.0.0
+COPY --from=order-management-build /app/rutba-order-management/.next/standalone ./
+COPY --from=order-management-build /app/rutba-order-management/.next/static     ./rutba-order-management/.next/static
+COPY --from=order-management-build /app/rutba-order-management/public            ./rutba-order-management/public
+CMD ["node", "rutba-order-management/server.js"]
 
 # ----------------------------------------------------------
 #  rutba-rider
