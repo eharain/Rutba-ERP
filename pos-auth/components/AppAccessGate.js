@@ -6,11 +6,12 @@ import { canAccessApp } from "@rutba/pos-shared/lib/roles";
  * Shows an access-denied message otherwise.
  */
 export default function AppAccessGate({ appKey, children }) {
-    const { appAccess, loading } = useAuth();
+    const { appAccess, adminAppAccess, loading } = useAuth();
+    const effectiveAccess = [...new Set([...(appAccess || []), ...(adminAppAccess || [])])];
 
     if (loading) return <p>Loading...</p>;
 
-    if (!canAccessApp(appAccess, appKey)) {
+    if (!canAccessApp(effectiveAccess, appKey)) {
         return (
             <div className="alert alert-danger mt-4 text-center">
                 <i className="fas fa-lock me-2"></i>

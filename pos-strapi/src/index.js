@@ -1,6 +1,13 @@
 'use strict';
 
-const { ENTRIES, PLUGIN_PERMISSIONS, PUBLIC_PERMISSIONS, WEB_USER_PLUGIN_PERMISSIONS } = require('../config/app-access-permissions');
+const {
+    ENTRIES,
+    permissionsByKey,
+    getPermissionsForAppGroups,
+    PLUGIN_PERMISSIONS,
+    PUBLIC_PERMISSIONS,
+    WEB_USER_PLUGIN_PERMISSIONS,
+} = require('../config/app-access-permissions');
 const seedAccounting = require('./seed/accounting-seed');
 
 // ── helpers ─────────────────────────────────────────────────
@@ -28,8 +35,9 @@ function buildAllPermissionActions() {
     const BASE_CRUD = ['find', 'findOne', 'create', 'update', 'delete'];
     const all = new Set();
     for (const entry of ENTRIES) {
-        if (!entry.permissions) continue;
-        for (const def of entry.permissions) {
+        const defs = permissionsByKey[entry.key] || [];
+        if (!defs.length) continue;
+        for (const def of defs) {
             for (const action of BASE_CRUD) {
                 all.add(`${def.uid}.${action}`);
             }
@@ -275,10 +283,6 @@ module.exports = {
 
         // ─── a.2  Ensure all app-access entries exist ─────────────
         for (const entry of ENTRIES) {
-            const permJson = entry.permissions
-                ? JSON.stringify(buildPermissionActions(entry.permissions))
-                : null;
-
             const existing = await knex('app_accesses').where('key', entry.key).first();
 
             if (!existing) {
@@ -287,7 +291,6 @@ module.exports = {
                     key: entry.key,
                     name: entry.name,
                     description: entry.description,
-                    permissions: permJson,
                     created_at: new Date(),
                     updated_at: new Date(),
                     published_at: new Date(),
@@ -297,7 +300,6 @@ module.exports = {
                 await knex('app_accesses').where('key', entry.key).update({
                     name: entry.name,
                     description: entry.description,
-                    permissions: permJson,
                     updated_at: new Date(),
                 });
                 strapi.log.info(`[bootstrap] Updated app-access "${entry.key}"`);
@@ -348,10 +350,9 @@ module.exports = {
         // ─── a.3c  Sync permissions for rutba_web_user role ──────
         //    Build permissions from the "web-user" app-access entry
         //    plus the minimal web-user plugin permissions.
-        const webUserEntry = ENTRIES.find(e => e.key === 'web-user');
-        const webUserContentActions = webUserEntry && webUserEntry.permissions
-            ? buildPermissionActions(webUserEntry.permissions)
-            : [];
+        const webUserContentActions = buildPermissionActions(
+            getPermissionsForAppGroups('web-user', ['user'])
+        );
         const webUserRequiredActions = [...new Set([...webUserContentActions, ...WEB_USER_PLUGIN_PERMISSIONS])].sort();
 
         try {

@@ -22,7 +22,7 @@ export default function Navigation() {
                                 <Link className="nav-link" href="/users">Users</Link>
                             </li>
                             <li className="nav-item">
-                                <Link className="nav-link" href="/app-access">App Access</Link>
+                                <Link className="nav-link" href="/users/access-assignment">Access Assignment</Link>
                             </li>
                         </>
                     )}
