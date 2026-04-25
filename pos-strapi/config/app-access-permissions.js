@@ -66,6 +66,25 @@ const ENTRIES = [
     ],
   },
 
+  // ── Order Management ───────────────────────────────────
+  {
+    key: 'order-management',
+    name: 'Order Management',
+    description: 'Customer order operations, rider assignment, delivery offers, delivery methods/zones, and delivery notifications',
+    sessionTimeout: 180,
+    permissions: [
+      { uid: 'api::sale-order.sale-order',                         actions: NO_DEL },
+      { uid: 'api::customer.customer',                             actions: READ },
+      { uid: 'api::delivery-method.delivery-method',               actions: READ },
+      { uid: 'api::delivery-zone.delivery-zone',                   actions: READ },
+      { uid: 'api::rider.rider',                                   actions: READ },
+      { uid: 'api::delivery-offer.delivery-offer',                 actions: WRITE },
+      { uid: 'api::order-message.order-message',                   actions: WRITE },
+      { uid: 'api::notification-template.notification-template',    actions: READ },
+      { uid: 'api::notification-log.notification-log',             actions: READ },
+    ],
+  },
+
   // ── Point of Sale ─────────────────────────────────────────
   {
     key: 'sale',
@@ -81,7 +100,7 @@ const ENTRIES = [
       { uid: 'api::cash-register.cash-register',                   actions: CASH_REG },
       { uid: 'api::cash-register-transaction.cash-register-transaction', actions: WRITE },
       { uid: 'api::customer.customer',                             actions: WRITE },
-      { uid: 'api::order.order',                                   actions: WRITE },
+      { uid: 'api::sale-order.sale-order',                         actions: WRITE },
       // cross-app read-only
       { uid: 'api::product.product',                               actions: READ },
       { uid: 'api::category.category',                             actions: READ },
@@ -202,7 +221,7 @@ const ENTRIES = [
       { uid: 'api::sale-return.sale-return',                       actions: READ },
       { uid: 'api::sale-return-item.sale-return-item',             actions: READ },
       { uid: 'api::payment.payment',                               actions: READ },
-      { uid: 'api::order.order',                                   actions: READ },
+      { uid: 'api::sale-order.sale-order',                         actions: READ },
       // shared / read
       { uid: 'api::branch.branch',                                 actions: READ },
       { uid: 'api::currency.currency',                             actions: READ },
@@ -252,10 +271,10 @@ const ENTRIES = [
   {
     key: 'delivery',
     name: 'Delivery',
-    description: 'Delivery Management',
+    description: 'Legacy delivery operations access (delivery offers and rider assignment)',
     sessionTimeout: 180,
     permissions: [
-      { uid: 'api::order.order',                                   actions: NO_DEL },
+      { uid: 'api::sale-order.sale-order',                         actions: NO_DEL },
       { uid: 'api::customer.customer',                             actions: READ },
       { uid: 'api::delivery-method.delivery-method',               actions: READ },
       { uid: 'api::delivery-zone.delivery-zone',                   actions: READ },
@@ -271,12 +290,12 @@ const ENTRIES = [
   {
     key: 'rider',
     name: 'Rider App',
-    description: 'Rider profile, delivery offers, active deliveries and delivery updates',
+    description: 'Rider profile, delivery offers, active deliveries, delivery history and delivery status updates',
     sessionTimeout: 180,
     permissions: [
       { uid: 'api::rider.rider',                                   actions: NO_DEL },
       { uid: 'api::delivery-offer.delivery-offer',                 actions: NO_DEL },
-      { uid: 'api::order.order',                                   actions: NO_DEL },
+      { uid: 'api::sale-order.sale-order',                         actions: NO_DEL },
       { uid: 'api::order-message.order-message',                   actions: WRITE },
       { uid: 'api::delivery-method.delivery-method',               actions: READ },
       { uid: 'api::delivery-zone.delivery-zone',                   actions: READ },
@@ -320,13 +339,13 @@ const ENTRIES = [
     ],
   },
 
-  // ── My Orders (web-user) ──────────────────────────────────
+  // ── Web Orders (web-user) ─────────────────────────────────
   {
     key: 'web-user',
-    name: 'My Orders',
-    description: 'Track web orders, manage orders and request returns',
+    name: 'Web Orders',
+    description: 'Track customer web orders, view order details, and request returns',
     permissions: [
-      { uid: 'api::order.order',                                   actions: NO_DEL },
+      { uid: 'api::sale-order.sale-order',                         actions: NO_DEL },
       { uid: 'api::product.product',                               actions: READ },
       { uid: 'api::category.category',                             actions: READ },
       { uid: 'api::brand.brand',                                   actions: READ },
@@ -372,7 +391,7 @@ const ENTRIES = [
   {
     key: 'cms',
     name: 'Content Management',
-    description: 'Manage website content — products, categories, brands, pages & banners',
+    description: 'Manage website content — products, categories, brands, pages, banners, and sales offers',
     sessionTimeout: 120,
     permissions: [
       { uid: 'api::cms-page.cms-page',                             actions: CMS_WRITE },
@@ -381,7 +400,7 @@ const ENTRIES = [
       { uid: 'api::brand-group.brand-group',                       actions: CMS_WRITE },
       { uid: 'api::category-group.category-group',                 actions: CMS_WRITE },
       { uid: 'api::cms-footer.cms-footer',                         actions: CMS_WRITE },
-      { uid: 'api::offer.offer',                                   actions: CMS_WRITE },
+      { uid: 'api::sale-offer.sale-offer',                         actions: CMS_WRITE },
       { uid: 'api::site-setting.site-setting',                     actions: CMS_WRITE },
       { uid: 'api::category.category',                             actions: CMS_WRITE },
       { uid: 'api::brand.brand',                                   actions: CMS_WRITE },
@@ -391,7 +410,7 @@ const ENTRIES = [
       { uid: 'api::notification-template.notification-template',    actions: READ },
       { uid: 'api::notification-log.notification-log',             actions: READ },
       // cross-app read-only
-      { uid: 'api::order.order',                                   actions: READ },
+      { uid: 'api::sale-order.sale-order',                         actions: READ },
       { uid: 'api::customer.customer',                             actions: READ },
     ],
   },
@@ -530,12 +549,12 @@ const PUBLIC_PERMISSIONS = [
   'api::cms-page.cms-page.findOne',
   'api::cms-footer.cms-footer.find',
   'api::cms-footer.cms-footer.findOne',
-  'api::offer.offer.find',
-  'api::offer.offer.findOne',
+  'api::sale-offer.sale-offer.find',
+  'api::sale-offer.sale-offer.findOne',
   'api::site-setting.site-setting.find',
-  'api::order.order.find',
-  'api::order.order.findOne',
-  'api::order.order.create',
+  'api::sale-order.sale-order.find',
+  'api::sale-order.sale-order.findOne',
+  'api::sale-order.sale-order.create',
   'api::customer.customer.find',
   'api::customer.customer.findOne',
   'api::customer.customer.create',

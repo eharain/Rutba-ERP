@@ -1,4 +1,4 @@
-﻿{
+{
   "kind": "collectionType",
   "collectionName": "cms_pages",
   "info": {
@@ -102,7 +102,7 @@
     "offers": {
       "type": "relation",
       "relation": "manyToMany",
-      "target": "api::offer.offer",
+      "target": "api::sale-offer.sale-offer",
       "mappedBy": "cms_pages"
     },
     "excerpt_priority": {

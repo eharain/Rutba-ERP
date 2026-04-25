@@ -20,13 +20,13 @@ export default function useTransactionService() {
     secret: string;
   }) => {
     const req = await axios.get(
-      `${BASE_URL}orders/transaction/${data.code}?secret=${data.secret}`
+      `${BASE_URL}sale-orders/tracking/${data.code}?secret=${data.secret}`
     );
     return req.data as OrderInterface;
   };
 
   const getMyTransaction = async () => {
-    const req = await axios.get(`${BASE_URL}orders`, {
+    const req = await axios.get(`${BASE_URL}sale-orders`, {
       params: {
         filters: {
           user_id: {$eq: session?.data?.user?.email},
@@ -59,7 +59,7 @@ export default function useTransactionService() {
   };
 
   const getMyTransactionById = async (id?: string) => {
-    const req = await axios.get(`${BASE_URL}orders/me/transaction/${id}`, {
+    const req = await axios.get(`${BASE_URL}sale-orders/${id}`, {
       params: {
         populate: {
           products: {

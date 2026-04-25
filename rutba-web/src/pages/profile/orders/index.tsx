@@ -63,7 +63,7 @@ export default function Transaction() {
               >
                 <Link
                   className="h-full"
-                  href={`#`}
+                  href={`/profile/orders/${item.documentId || item.id}`}
                 >
                   <Card className="h-full flex flex-col justify-between">
                     <CardHeader>

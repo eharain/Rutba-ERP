@@ -36,11 +36,54 @@
 
 const { permissionsByKey } = require('../../config/app-access-permissions');
 
+// Temporary compatibility aliases for transitioned apps.
+// Allows users with legacy app-access keys to continue working while
+// assignments are migrated in auth/admin.
+const APP_ACCESS_ALIASES = {
+  rider: ['delivery'],
+  'order-management': ['delivery', 'cms'],
+  'web-orders': ['web-user'],
+};
+
 // ───────────────────── helpers ──────────────────────────────
-function normaliseAction(action) {
+function normaliseAction(action, method = 'GET') {
   if (!action) return null;
   if (action === 'findOne' || action === 'search') return 'find';
   if (action === 'destroy') return 'delete';
+
+  // Map custom controller actions to base CRUD-style permission actions
+  // so app-access permissions continue to work for custom routes.
+  const customActionMap = {
+    me: 'findOne',
+    myOrderDetail: 'findOne',
+    trackOrder: 'findOne',
+    getMessages: 'find',
+    myOrders: 'find',
+    myDeliveryOffers: 'find',
+    myOffers: 'find',
+    myDeliveries: 'find',
+    updateStatus: 'update',
+    updateOrderStatus: 'update',
+    updateDeliveryStatus: 'update',
+    assignRider: 'update',
+    rejectDeliveryOffer: 'update',
+    acceptDeliveryOffer: 'update',
+    rejectOffer: 'update',
+    acceptOffer: 'update',
+    cancelOrder: 'update',
+    sendMessage: 'create',
+    calculateDelivery: 'find',
+    validateAddress: 'find',
+  };
+
+  if (customActionMap[action]) return customActionMap[action];
+
+  // Fallback for unknown custom handlers
+  const m = String(method || 'GET').toUpperCase();
+  if (m === 'GET' || m === 'HEAD') return 'find';
+  if (m === 'DELETE') return 'delete';
+  if (m === 'PUT' || m === 'PATCH') return 'update';
+  return 'create';
   return action;
 }
 
@@ -102,7 +145,7 @@ module.exports = (config, { strapi }) => {
     // (e.g. plugin::users-permissions.me.mePermissions)
     if (!uid.startsWith('api::')) return next();
     const rawAction = parts[2];
-    const action = normaliseAction(rawAction);
+    const action = normaliseAction(rawAction, ctx.request?.method);
 
       // ── b.1  Non-rutba_app_user → let Strapi decide ──────────
     const { roleType, appKeys, adminKeys } = await getUserAccess(user.id);
@@ -175,7 +218,14 @@ module.exports = (config, { strapi }) => {
     }
 
     // Ã¢â€â‚¬Ã¢â€â‚¬ b.3  Resolve access level Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
-    const hasAppAccess = appKeys.includes(appName);
+    const allowedAppKeys = [
+      appName,
+      ...(APP_ACCESS_ALIASES[appName] || []),
+    ];
+
+    const effectiveAppKeys = allowedAppKeys.filter((k, i) => allowedAppKeys.indexOf(k) === i);
+    const accessibleAppKeys = effectiveAppKeys.filter((k) => appKeys.includes(k) || adminKeys.includes(k));
+    const hasAppAccess = accessibleAppKeys.length > 0;
 
     if (!hasAppAccess) {
       return ctx.forbidden(
@@ -188,7 +238,11 @@ module.exports = (config, { strapi }) => {
     //        the X-Rutba-App-Admin header AND the user actually
     //        has admin_app_accesses for that specific app key.
     const elevationHeader = (ctx.request.headers['x-rutba-app-admin'] || '').trim().toLowerCase();
-    const isElevated = elevationHeader && adminKeys.includes(elevationHeader);
+    const elevatedCandidates = [
+      elevationHeader,
+      ...((APP_ACCESS_ALIASES[elevationHeader] || [])),
+    ].filter(Boolean);
+    const isElevated = elevatedCandidates.some((k) => adminKeys.includes(k));
 
 
     const model = strapi.contentTypes[uid];
@@ -198,9 +252,10 @@ module.exports = (config, { strapi }) => {
 
     // -- Permission check (b.3.a & b.3.b) --------------------
     {
-      const hasFind = hasPermissionViaKeys(appKeys, uid, 'find');
-      const hasFindOne = hasPermissionViaKeys(appKeys, uid, 'findOne');
-      const hasExact = hasPermissionViaKeys(appKeys, uid, action);
+      const permissionKeys = accessibleAppKeys;
+      const hasFind = hasPermissionViaKeys(permissionKeys, uid, 'find');
+      const hasFindOne = hasPermissionViaKeys(permissionKeys, uid, 'findOne');
+      const hasExact = hasPermissionViaKeys(permissionKeys, uid, action);
 
       // Elevated admins get full CRUD on entities that have no owners
       // relation (shared reference data like terms, branches, currencies),

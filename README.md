@@ -1,6 +1,6 @@
 # Rutba ERP — Modular Business Management Platform
 
-An open-source, modular business management system built as an **npm workspaces monorepo**. Each domain (stock, sales, CRM, HR, accounting, payroll) lives in its own Next.js 15 app, sharing authentication and UI through a common library. Strapi 5 provides the headless API backend.
+An open-source, modular business management system built as an **npm workspaces monorepo**. Each domain (stock, sales, order operations, CRM, HR, accounting, payroll) lives in its own Next.js 16 app, sharing authentication and UI through a common library. Strapi 5 provides the headless API backend.
 
 ## Architecture
 
@@ -16,6 +16,11 @@ An open-source, modular business management system built as an **npm workspaces 
   │ Auth Portal│ │ Stock    │ │:3002 │ │user  │ │ Public   │
   └────────────┘ └──────────┘ └──────┘ │:3004 │ │ Website  │
                                        └──────┘ └──────────┘
+             ┌────────────┐
+             │rutba-order-│
+             │management  │
+             │ :3013      │
+             └────────────┘
              ┌────────────┐
              │rutba-rider │
              │ :3012      │
@@ -39,6 +44,7 @@ An open-source, modular business management system built as an **npm workspaces 
 | `pos-sale/` | **Point of Sale** | 3002 | Sales, cart, returns, cash register, reports |
 | `rutba-web/` | **Public Website** | 3000 | Customer-facing store (Next.js 15, TypeScript, Tailwind CSS) |
 | `rutba-web-user/` | **My Orders** | 3004 | Customer order tracking, returns, account management |
+| `rutba-order-management/` | **Order Management** | 3013 | Delivery operations, rider assignment, order status workflows, notification templates |
 | `rutba-rider/` | **Rider App** | 3012 | Rider offers, active deliveries, status updates, buyer messaging |
 | `rutba-crm/` | **CRM** | 3005 | Contacts, leads, activities, customer relationship management |
 | `rutba-hr/` | **Human Resources** | 3006 | Employees, departments, attendance, leave requests |
@@ -48,7 +54,6 @@ An open-source, modular business management system built as an **npm workspaces 
 
 ## Tech Stack
 
-- **Frontend:** Next.js 15, React 19, Bootstrap 5 (POS apps), Tailwind CSS (rutba-web)
 - **Frontend:** Next.js 16, React 19, Bootstrap 5 (POS apps), Tailwind CSS (rutba-web)
 - **Backend:** Strapi 5.x (MySQL)
 - **Auth:** OAuth-like flow via `pos-auth` with JWT, per-app localStorage
@@ -83,6 +88,7 @@ npm run dev:stock      # Stock Mgmt    → http://localhost:4001
 npm run dev:sale       # Point of Sale → http://localhost:4002
 npm run dev:web        # Public Website→ http://localhost:4000
 npm run dev:web-user   # My Orders     → http://localhost:4004
+npm run dev:order-management # Order Mgmt   → http://localhost:4013
 npm run dev:rider      # Rider App     → http://localhost:4012
 npm run dev:crm        # CRM           → http://localhost:4005
 npm run dev:hr         # HR            → http://localhost:4006
@@ -131,6 +137,7 @@ docker compose down
 | Point of Sale | http://localhost:4002 |
 | Auth Portal | http://localhost:4003 |
 | My Orders | http://localhost:4004 |
+| Order Management | http://localhost:4013 |
 | Rider App | http://localhost:4012 |
 | CRM | http://localhost:4005 |
 | HR | http://localhost:4006 |

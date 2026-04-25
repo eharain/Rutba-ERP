@@ -2,9 +2,9 @@
 
 const { factories } = require('@strapi/strapi');
 const { ensureUser } = require('../../../utils/ensure-user');
-const deliveryOfferService = require('../../order/services/delivery-offer-service');
-const stateMachine         = require('../../order/services/order-state-machine');
-const notificationService  = require('../../order/services/notification-service');
+const deliveryOfferService = require('../../sale-order/services/delivery-offer-service');
+const stateMachine         = require('../../sale-order/services/sale-order-state-machine');
+const notificationService  = require('../../sale-order/services/notification-service');
 
 async function requireRider(ctx, strapi, user) {
     const rider = await strapi.documents('api::rider.rider').findFirst({
@@ -58,6 +58,10 @@ module.exports = factories.createCoreController('api::rider.rider', ({ strapi })
         ctx.send({ data: offers });
     },
 
+    async myDeliveryOffers(ctx) {
+        return this.myOffers(ctx);
+    },
+
     async acceptOffer(ctx) {
         const user = await ensureUser(ctx, strapi);
         if (!user) return;
@@ -70,6 +74,10 @@ module.exports = factories.createCoreController('api::rider.rider', ({ strapi })
             ctx.status = err.status || 400;
             ctx.send({ error: { message: err.message } });
         }
+    },
+
+    async acceptDeliveryOffer(ctx) {
+        return this.acceptOffer(ctx);
     },
 
     async rejectOffer(ctx) {
@@ -86,6 +94,10 @@ module.exports = factories.createCoreController('api::rider.rider', ({ strapi })
         }
     },
 
+    async rejectDeliveryOffer(ctx) {
+        return this.rejectOffer(ctx);
+    },
+
     async myDeliveries(ctx) {
         const user = await ensureUser(ctx, strapi);
         if (!user) return;
@@ -93,7 +105,7 @@ module.exports = factories.createCoreController('api::rider.rider', ({ strapi })
         if (!rider) return;
         const { status = 'active' } = ctx.query;
         const filterStatuses = status === 'active' ? ['AWAITING_PICKUP', 'OUT_FOR_DELIVERY'] : ['DELIVERED', 'FAILED_DELIVERY', 'CANCELLED'];
-        const orders = await strapi.documents('api::order.order').findMany({
+        const orders = await strapi.documents('api::sale-order.sale-order').findMany({
             filters: { assigned_rider: { id: { $eq: rider.id } }, order_status: { $in: filterStatuses } },
             sort: 'updatedAt:desc',
             populate: ['customer_contact', 'products', 'delivery_method', 'delivery_zone'],
@@ -108,7 +120,7 @@ module.exports = factories.createCoreController('api::rider.rider', ({ strapi })
         if (!rider) return;
         const { orderDocumentId } = ctx.params;
         const { status, notes } = ctx.request.body;
-        const order = await strapi.documents('api::order.order').findOne({ documentId: orderDocumentId, populate: ['assigned_rider'], fields: ['id', 'documentId', 'order_status'] });
+        const order = await strapi.documents('api::sale-order.sale-order').findOne({ documentId: orderDocumentId, populate: ['assigned_rider'], fields: ['id', 'documentId', 'order_status'] });
         if (!order) return ctx.notFound('Order not found');
         if (order.assigned_rider?.id !== rider.id) return ctx.forbidden('Not your delivery');
         try {

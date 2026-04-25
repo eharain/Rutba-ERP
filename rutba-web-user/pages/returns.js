@@ -57,7 +57,7 @@ export default function Returns() {
                 {!orderId && (
                     <div className="alert alert-info">
                         Please select an order to request a return. Go to{" "}
-                        <a href="/orders">My Orders</a> and click &quot;Request Return&quot; on the order.
+                        <a href="/sale-orders">My Orders</a> and click &quot;Request Return&quot; on the order.
                     </div>
                 )}
 
@@ -66,7 +66,7 @@ export default function Returns() {
                         <i className="fas fa-check-circle me-2"></i>
                         Your return request has been submitted. We will review it shortly.
                         <div className="mt-2">
-                            <a href="/orders" className="btn btn-sm btn-outline-success">Back to Orders</a>
+                            <a href="/sale-orders" className="btn btn-sm btn-outline-success">Back to Orders</a>
                         </div>
                     </div>
                 )}

@@ -7,13 +7,14 @@ import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { getAllowedApps, canAccessApp, APP_URLS, APP_META } from "@rutba/pos-shared/lib/roles";
 
 export default function Home() {
-    const { user, role, appAccess, loading } = useAuth();
+    const { user, role, appAccess, adminAppAccess, loading } = useAuth();
     const router = useRouter();
 
     if (loading) return <p className="text-center mt-5">Loading...</p>;
 
-    const apps = getAllowedApps(appAccess);
-    const hasAuthAccess = canAccessApp(appAccess, 'auth');
+    const effectiveAccess = [...new Set([...(appAccess || []), ...(adminAppAccess || [])])];
+    const apps = getAllowedApps(effectiveAccess);
+    const hasAuthAccess = canAccessApp(effectiveAccess, 'auth');
 
     // App keys that should show as launchable cards (exclude 'auth' itself)
     const launchableApps = apps.filter(k => k !== 'auth' && APP_META[k]);

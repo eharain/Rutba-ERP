@@ -40,8 +40,8 @@ module.exports = {
   'api::payment.payment':                    { find: ['sale', 'accounts'], create: ['sale'], update: ['sale'], delete: ['sale', 'auth'] },
   'api::cash-register.cash-register':        { find: ['sale', 'accounts'], create: ['sale'], update: ['sale'], delete: ['sale', 'auth'] },
   'api::cash-register-transaction.cash-register-transaction': { find: ['sale', 'accounts'], create: ['sale'], update: ['sale'], delete: ['sale', 'auth'] },
-  'api::customer.customer':                  ['sale', 'crm', 'accounts'],
-  'api::order.order':                        ['sale', 'web-user', 'cms'],
+  'api::customer.customer':                  ['sale', 'crm', 'accounts', 'order-management', 'delivery', 'rider', 'web-user'],
+  'api::sale-order.sale-order':              ['sale', 'web-user', 'cms', 'order-management', 'delivery', 'rider'],
 
   // ── CRM ───────────────────────────────────────────────────
   'api::crm-contact.crm-contact':            'crm',
@@ -70,6 +70,14 @@ module.exports = {
   'api::brand-group.brand-group':            'cms',
   'api::category-group.category-group':      'cms',
   'api::cms-footer.cms-footer':              'cms',
+  'api::sale-offer.sale-offer':              'cms',
+  'api::delivery-offer.delivery-offer':      ['order-management', 'delivery', 'rider'],
+  'api::delivery-method.delivery-method':    ['order-management', 'delivery', 'rider', 'cms'],
+  'api::delivery-zone.delivery-zone':        ['order-management', 'delivery', 'rider', 'cms'],
+  'api::rider.rider':                        ['order-management', 'delivery', 'rider', 'cms'],
+  'api::order-message.order-message':        ['order-management', 'delivery', 'rider'],
+  'api::notification-template.notification-template': ['order-management', 'delivery', 'cms'],
+  'api::notification-log.notification-log':  ['order-management', 'delivery', 'cms'],
 
   // ── Shared / system ───────────────────────────────────────
   'api::branch.branch':                      ['stock', 'sale', 'hr', 'accounts'],

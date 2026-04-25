@@ -100,7 +100,7 @@
     "offers": {
       "type": "relation",
       "relation": "manyToMany",
-      "target": "api::offer.offer",
+      "target": "api::sale-offer.sale-offer",
       "mappedBy": "product_groups"
     },
     "cms_pages": {

@@ -59,22 +59,18 @@ export default function Navigation() {
                             <li><hr className="dropdown-divider" /></li>
                             <li><Link className="dropdown-item" href="/footers">Footers</Link></li>
                             <li><hr className="dropdown-divider" /></li>
-                            <li><Link className="dropdown-item" href="/offers"><i className="fas fa-tags me-1"></i>Offers</Link></li>
+                            <li><Link className="dropdown-item" href="/sale-offers"><i className="fas fa-tags me-1"></i>Sale Offers</Link></li>
                         </ul>
                     </li>
                     <li className="nav-item">
-                        <Link className="nav-link" href="/orders"><i className="fas fa-shopping-bag me-1"></i>Orders</Link>
-                    </li>
-                    <li className="nav-item dropdown">
-                        <a className="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i className="fas fa-truck me-1"></i>Delivery Ops
+                        <a
+                            className="nav-link"
+                            href={APP_URLS['order-management']}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                        >
+                            <i className="fas fa-shopping-bag me-1"></i>Order Management
                         </a>
-                        <ul className="dropdown-menu">
-                            <li><Link className="dropdown-item" href="/riders">Riders</Link></li>
-                            <li><Link className="dropdown-item" href="/delivery-methods">Delivery Methods</Link></li>
-                            <li><Link className="dropdown-item" href="/delivery-zones">Delivery Zones</Link></li>
-                            <li><Link className="dropdown-item" href="/notification-templates">Notification Templates</Link></li>
-                        </ul>
                     </li>
                     <li className="nav-item">
                         <Link className="nav-link" href="/media"><i className="fas fa-photo-video me-1"></i>Media</Link>

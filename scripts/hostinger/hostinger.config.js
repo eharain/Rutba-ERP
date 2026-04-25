@@ -57,6 +57,12 @@ const APPS = {
     domain: 'user.rutba.pk',
     prefix: 'RUTBA_WEB_USER',
   },
+  'order-management': {
+    type: 'nextjs',
+    workspace: 'rutba-order-management',
+    domain: 'orders.rutba.pk',
+    prefix: 'RUTBA_ORDER_MANAGEMENT',
+  },
   rider: {
     type: 'nextjs',
     workspace: 'rutba-rider',

@@ -2,6 +2,12 @@
 const { createCoreController } = require('@strapi/strapi').factories;
 const { permissionsByKey, settingsByKey, DEFAULT_SESSION_TIMEOUT, CLIENT_PLUGIN_PERMISSIONS } = require('../../../../config/app-access-permissions');
 
+const APP_ACCESS_ALIASES = {
+    rider: ['delivery'],
+    'order-management': ['delivery', 'cms'],
+    'web-orders': ['web-user'],
+};
+
 module.exports = createCoreController('plugin::users-permissions.me', ({ strapi }) => ({
     mePermissions: async (ctx) => {
         try {
@@ -29,9 +35,14 @@ module.exports = createCoreController('plugin::users-permissions.me', ({ strapi 
             // ── Build app-access permissions from the X-Rutba-App header ──
             // Applicable to ANY role whose user holds the corresponding
             // app_access (or admin_app_access).
-            if (appName && (appAccess.includes(appName) || adminAppAccess.includes(appName))) {
-                const defs = permissionsByKey[appName];
-                if (defs) {
+            if (appName) {
+                const candidateKeys = [appName, ...(APP_ACCESS_ALIASES[appName] || [])]
+                    .filter((k, i, a) => a.indexOf(k) === i);
+                const accessibleKeys = candidateKeys.filter((k) => appAccess.includes(k) || adminAppAccess.includes(k));
+
+                for (const key of accessibleKeys) {
+                    const defs = permissionsByKey[key];
+                    if (!defs) continue;
                     for (const def of defs) {
                         for (const action of def.actions) {
                             permissions.push(`${def.uid}.${action}`);
