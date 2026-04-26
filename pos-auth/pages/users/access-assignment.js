@@ -6,7 +6,7 @@ import AppAccessGate from "../../components/AppAccessGate";
 import PermissionCheck from "@rutba/pos-shared/components/PermissionCheck";
 import { authApi } from "@rutba/pos-shared/lib/api";
 import UserAccessFilters from "../../components/UserAccessFilters";
-import UserAccessMatrix from "../../components/UserAccessMatrix";
+import UserAccessCard from "../../components/UserAccessCard";
 
 function getStatus(user) {
   if (user.blocked) return "blocked";
@@ -166,7 +166,7 @@ export default function AccessAssignmentPage() {
           </div>
 
           <p className="text-muted small mb-3">
-            Assign app access quickly. Each app has two controls: <strong>User</strong> (base access) and <strong>Admin</strong> (elevated access). Admin always implies User.
+            Assign app access for each user. <strong>User</strong> access grants basic permissions, while <strong>Admin</strong> access provides elevated privileges (and automatically includes user access).
           </p>
 
           {error && <div className="alert alert-danger">{error}</div>}
@@ -182,15 +182,30 @@ export default function AccessAssignmentPage() {
           />
 
           {loading ? (
-            <p>Loading access matrix...</p>
+            <div className="text-center py-5">
+              <div className="spinner-border text-primary" role="status">
+                <span className="visually-hidden">Loading...</span>
+              </div>
+              <p className="mt-2 text-muted">Loading access data...</p>
+            </div>
+          ) : filteredUsers.length === 0 ? (
+            <div className="alert alert-info">
+              <i className="fas fa-info-circle me-2"></i>
+              No users match the current filters.
+            </div>
           ) : (
-            <UserAccessMatrix
-              apps={apps}
-              filteredUsers={filteredUsers}
-              savingMap={savingMap}
-              isChecked={isChecked}
-              updateAccess={updateAccess}
-            />
+            <div>
+              {filteredUsers.map((user) => (
+                <UserAccessCard
+                  key={user.id}
+                  user={user}
+                  apps={apps}
+                  savingMap={savingMap}
+                  isChecked={isChecked}
+                  updateAccess={updateAccess}
+                />
+              ))}
+            </div>
           )}
           </PermissionCheck>
         </AppAccessGate>
