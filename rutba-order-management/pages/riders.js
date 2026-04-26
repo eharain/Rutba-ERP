@@ -14,6 +14,13 @@ export default function RidersPage() {
   const [loading, setLoading] = useState(true);
   const [statusDraft, setStatusDraft] = useState({});
   const [saving, setSaving] = useState({});
+  const [creating, setCreating] = useState(false);
+  const [newRider, setNewRider] = useState({
+    full_name: "",
+    phone: "",
+    vehicle_type: "bike",
+    status: "off_duty",
+  });
 
   const load = useCallback(async () => {
     if (!jwt) return;
@@ -53,6 +60,39 @@ export default function RidersPage() {
     }
   };
 
+  const createRider = async (e) => {
+    e.preventDefault();
+    if (!newRider.full_name.trim()) {
+      toast("Rider name is required.", "warning");
+      return;
+    }
+
+    setCreating(true);
+    try {
+      await authApi.post("/riders", {
+        data: {
+          full_name: newRider.full_name.trim(),
+          phone: newRider.phone.trim() || null,
+          vehicle_type: newRider.vehicle_type,
+          status: newRider.status,
+        },
+      });
+      toast("Rider created.", "success");
+      setNewRider({
+        full_name: "",
+        phone: "",
+        vehicle_type: "bike",
+        status: "off_duty",
+      });
+      await load();
+    } catch (err) {
+      console.error("Failed to create rider", err);
+      toast("Failed to create rider.", "danger");
+    } finally {
+      setCreating(false);
+    }
+  };
+
   return (
     <ProtectedRoute>
       <Layout>
@@ -62,6 +102,65 @@ export default function RidersPage() {
           <button className="btn btn-sm btn-outline-secondary" onClick={load}>
             <i className="fas fa-rotate me-1" />Refresh
           </button>
+        </div>
+
+        <div className="card mb-4">
+          <div className="card-header bg-light fw-semibold">
+            <i className="fas fa-user-plus me-2"></i>
+            Add Rider
+          </div>
+          <div className="card-body">
+            <form onSubmit={createRider}>
+              <div className="row g-2 align-items-end">
+                <div className="col-md-4">
+                  <label className="form-label">Full Name</label>
+                  <input
+                    className="form-control"
+                    value={newRider.full_name}
+                    onChange={(e) => setNewRider((p) => ({ ...p, full_name: e.target.value }))}
+                    required
+                  />
+                </div>
+                <div className="col-md-3">
+                  <label className="form-label">Phone</label>
+                  <input
+                    className="form-control"
+                    value={newRider.phone}
+                    onChange={(e) => setNewRider((p) => ({ ...p, phone: e.target.value }))}
+                  />
+                </div>
+                <div className="col-md-2">
+                  <label className="form-label">Vehicle</label>
+                  <select
+                    className="form-select"
+                    value={newRider.vehicle_type}
+                    onChange={(e) => setNewRider((p) => ({ ...p, vehicle_type: e.target.value }))}
+                  >
+                    <option value="bike">bike</option>
+                    <option value="car">car</option>
+                    <option value="van">van</option>
+                  </select>
+                </div>
+                <div className="col-md-2">
+                  <label className="form-label">Status</label>
+                  <select
+                    className="form-select"
+                    value={newRider.status}
+                    onChange={(e) => setNewRider((p) => ({ ...p, status: e.target.value }))}
+                  >
+                    {STATUS_OPTIONS.map((s) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="col-md-1 d-grid">
+                  <button className="btn btn-primary" type="submit" disabled={creating}>
+                    {creating ? "..." : "Add"}
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
         </div>
 
         {loading && <p>Loading riders...</p>}

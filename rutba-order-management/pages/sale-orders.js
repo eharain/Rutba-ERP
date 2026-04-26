@@ -50,8 +50,23 @@ export default function SaleOrdersPage() {
     const [riderDraft, setRiderDraft] = useState({});
     const [actionLoading, setActionLoading] = useState({});
     const [loading, setLoading] = useState(true);
+    const [creating, setCreating] = useState(false);
     const [page, setPage] = useState(1);
     const [pageCount, setPageCount] = useState(1);
+    const [newOrder, setNewOrder] = useState({
+        customer_name: "",
+        phone_number: "",
+        email: "",
+        address: "",
+        state: "",
+        city: "",
+        zip_code: "",
+        country: "PK",
+        product_name: "",
+        quantity: "1",
+        price: "0",
+        payment_status: "COD",
+    });
 
     const load = useCallback(async () => {
         if (!jwt) return;
@@ -96,6 +111,88 @@ export default function SaleOrdersPage() {
         }
     };
 
+    const createOrder = async (e) => {
+        e.preventDefault();
+        const required = [
+            "customer_name",
+            "phone_number",
+            "email",
+            "address",
+            "state",
+            "city",
+            "zip_code",
+            "country",
+            "product_name",
+        ];
+
+        const missing = required.find((field) => !String(newOrder[field] || "").trim());
+        if (missing) {
+            toast("Please fill all required order fields.", "warning");
+            return;
+        }
+
+        const quantity = Number(newOrder.quantity || 0);
+        const price = Number(newOrder.price || 0);
+        if (quantity <= 0 || price < 0) {
+            toast("Quantity and price must be valid numbers.", "warning");
+            return;
+        }
+
+        setCreating(true);
+        try {
+            const subtotal = quantity * price;
+            await authApi.post("/sale-orders", {
+                data: {
+                    order_id: `ADM-${Date.now()}`,
+                    customer_contact: {
+                        name: newOrder.customer_name.trim(),
+                        phone_number: newOrder.phone_number.trim(),
+                        email: newOrder.email.trim(),
+                        address: newOrder.address.trim(),
+                        state: newOrder.state.trim(),
+                        city: newOrder.city.trim(),
+                        zip_code: newOrder.zip_code.trim(),
+                        country: newOrder.country.trim(),
+                    },
+                    products: {
+                        items: [
+                            {
+                                quantity,
+                                price,
+                                total: subtotal,
+                                product_name: newOrder.product_name.trim(),
+                            },
+                        ],
+                    },
+                    subtotal,
+                    total: subtotal,
+                    payment_status: newOrder.payment_status || "COD",
+                },
+            });
+            toast("Order created.", "success");
+            setNewOrder({
+                customer_name: "",
+                phone_number: "",
+                email: "",
+                address: "",
+                state: "",
+                city: "",
+                zip_code: "",
+                country: "PK",
+                product_name: "",
+                quantity: "1",
+                price: "0",
+                payment_status: "COD",
+            });
+            await load();
+        } catch (err) {
+            console.error("Failed to create order", err);
+            toast("Failed to create order.", "danger");
+        } finally {
+            setCreating(false);
+        }
+    };
+
     const assignRider = async (documentId) => {
         const rider_document_id = riderDraft[documentId];
         if (!rider_document_id) return;
@@ -117,6 +214,80 @@ export default function SaleOrdersPage() {
             <Layout>
                 <ToastContainer />
                 <h2 className="mb-3">Web Orders</h2>
+                <div className="alert alert-info">
+                    <i className="fas fa-circle-info me-2"></i>
+                    <strong>Processing flow:</strong> Create or receive an order, update status from the actions column, and assign a rider when ready for pickup/delivery.
+                </div>
+
+                <div className="card mb-4">
+                    <div className="card-header bg-light fw-semibold">
+                        <i className="fas fa-plus-circle me-2"></i>
+                        Create Order
+                    </div>
+                    <div className="card-body">
+                        <form onSubmit={createOrder}>
+                            <div className="row g-2">
+                                <div className="col-md-3">
+                                    <label className="form-label">Customer Name</label>
+                                    <input className="form-control" value={newOrder.customer_name} onChange={(e) => setNewOrder((p) => ({ ...p, customer_name: e.target.value }))} required />
+                                </div>
+                                <div className="col-md-2">
+                                    <label className="form-label">Phone</label>
+                                    <input className="form-control" value={newOrder.phone_number} onChange={(e) => setNewOrder((p) => ({ ...p, phone_number: e.target.value }))} required />
+                                </div>
+                                <div className="col-md-3">
+                                    <label className="form-label">Email</label>
+                                    <input className="form-control" type="email" value={newOrder.email} onChange={(e) => setNewOrder((p) => ({ ...p, email: e.target.value }))} required />
+                                </div>
+                                <div className="col-md-4">
+                                    <label className="form-label">Address</label>
+                                    <input className="form-control" value={newOrder.address} onChange={(e) => setNewOrder((p) => ({ ...p, address: e.target.value }))} required />
+                                </div>
+                                <div className="col-md-2">
+                                    <label className="form-label">State</label>
+                                    <input className="form-control" value={newOrder.state} onChange={(e) => setNewOrder((p) => ({ ...p, state: e.target.value }))} required />
+                                </div>
+                                <div className="col-md-2">
+                                    <label className="form-label">City</label>
+                                    <input className="form-control" value={newOrder.city} onChange={(e) => setNewOrder((p) => ({ ...p, city: e.target.value }))} required />
+                                </div>
+                                <div className="col-md-2">
+                                    <label className="form-label">Zip Code</label>
+                                    <input className="form-control" value={newOrder.zip_code} onChange={(e) => setNewOrder((p) => ({ ...p, zip_code: e.target.value }))} required />
+                                </div>
+                                <div className="col-md-2">
+                                    <label className="form-label">Country</label>
+                                    <input className="form-control" value={newOrder.country} onChange={(e) => setNewOrder((p) => ({ ...p, country: e.target.value }))} required />
+                                </div>
+                                <div className="col-md-2">
+                                    <label className="form-label">Item Name</label>
+                                    <input className="form-control" value={newOrder.product_name} onChange={(e) => setNewOrder((p) => ({ ...p, product_name: e.target.value }))} required />
+                                </div>
+                                <div className="col-md-1">
+                                    <label className="form-label">Qty</label>
+                                    <input className="form-control" type="number" min="1" value={newOrder.quantity} onChange={(e) => setNewOrder((p) => ({ ...p, quantity: e.target.value }))} required />
+                                </div>
+                                <div className="col-md-2">
+                                    <label className="form-label">Unit Price</label>
+                                    <input className="form-control" type="number" min="0" step="0.01" value={newOrder.price} onChange={(e) => setNewOrder((p) => ({ ...p, price: e.target.value }))} required />
+                                </div>
+                                <div className="col-md-2">
+                                    <label className="form-label">Payment Status</label>
+                                    <select className="form-select" value={newOrder.payment_status} onChange={(e) => setNewOrder((p) => ({ ...p, payment_status: e.target.value }))}>
+                                        <option value="COD">COD</option>
+                                        <option value="SUCCEEDED">SUCCEEDED</option>
+                                        <option value="PENDING">PENDING</option>
+                                    </select>
+                                </div>
+                                <div className="col-md-2 d-grid">
+                                    <button className="btn btn-primary" type="submit" disabled={creating}>
+                                        {creating ? "Creating..." : "Create Order"}
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
 
                 {loading && <p>Loading orders...</p>}
 
@@ -137,7 +308,7 @@ export default function SaleOrdersPage() {
                                     <th>Payment</th>
                                     <th>Tracking</th>
                                     <th>Date</th>
-                                    <th style={{ minWidth: 300 }}>Actions</th>
+                                    <th style={{ minWidth: 320 }}>Processing Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
