@@ -85,9 +85,13 @@ EXISTING_CRONTAB=$(crontab -u "$CRON_USER" -l 2>/dev/null || true)
 if echo "$EXISTING_CRONTAB" | grep -qF "$CRON_TAG"; then
     # Entry exists -- replace it
     log "Existing cron entry found. Updating..."
-    NEW_CRONTAB=$(echo "$EXISTING_CRONTAB" | grep -vF "$CRON_TAG")
-    NEW_CRONTAB="${NEW_CRONTAB}
+    NEW_CRONTAB=$(echo "$EXISTING_CRONTAB" | grep -vF "$CRON_TAG" || true)
+    if [ -n "$NEW_CRONTAB" ]; then
+        NEW_CRONTAB="${NEW_CRONTAB}
 ${CRON_LINE}"
+    else
+        NEW_CRONTAB="$CRON_LINE"
+    fi
     echo "$NEW_CRONTAB" | crontab -u "$CRON_USER" -
     log_ok "Cron entry updated."
 else
