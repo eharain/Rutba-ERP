@@ -8,6 +8,7 @@ import { useSiteSettings } from "@/hooks/use-site-settings";
 import { IMAGE_URL } from "@/static/const";
 import { CmsPageDetailInterface } from "@/types/api/cms-page";
 import { getPageUrl } from "@/lib/cms-page-types";
+import CmsContactFormSection from "./cms-contact-form-section";
 
 marked.use({ breaks: true, gfm: true });
 marked.use(markedVideoEmbed({ imageBaseUrl: IMAGE_URL }));
@@ -152,6 +153,8 @@ export default function CmsInfoPageContent({
             </div>
           </div>
         )}
+
+        {page.enable_contact_form && <CmsContactFormSection title={page.title} />}
       </article>
     </>
   );

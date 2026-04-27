@@ -4,6 +4,102 @@ const fs = require('fs');
 const path = require('path');
 
 const SEED_DATA_DIR = path.join(__dirname, 'data');
+const WORKSPACE_ROOT = path.join(__dirname, '..', '..', '..');
+
+function getMimeTypeFromFileName(fileName) {
+    const ext = path.extname(fileName).toLowerCase();
+    const mimeByExt = {
+        '.png': 'image/png',
+        '.jpg': 'image/jpeg',
+        '.jpeg': 'image/jpeg',
+        '.webp': 'image/webp',
+        '.gif': 'image/gif',
+        '.svg': 'image/svg+xml',
+        '.ico': 'image/x-icon',
+        '.avif': 'image/avif',
+        '.mp4': 'video/mp4',
+        '.webm': 'video/webm',
+    };
+
+    return mimeByExt[ext] || 'application/octet-stream';
+}
+
+function resolveSeedFilePath(seedPath) {
+    if (!seedPath || typeof seedPath !== 'string') {
+        throw new Error('Invalid $seedMedia.path.');
+    }
+
+    const trimmed = seedPath.trim();
+    if (!trimmed) {
+        throw new Error('Invalid $seedMedia.path: empty value.');
+    }
+
+    if (path.isAbsolute(trimmed)) {
+        return trimmed;
+    }
+
+    const fromWorkspace = path.join(WORKSPACE_ROOT, trimmed);
+    if (fs.existsSync(fromWorkspace)) {
+        return fromWorkspace;
+    }
+
+    const fromSeedDir = path.join(SEED_DATA_DIR, trimmed);
+    return fromSeedDir;
+}
+
+async function findExistingUploadedFile(strapi, fileName) {
+    const existing = await strapi.db.query('plugin::upload.file').findMany({
+        where: { name: fileName },
+        orderBy: { id: 'desc' },
+        limit: 1,
+    });
+
+    return existing?.[0] || null;
+}
+
+async function ensureSeedMediaFile(strapi, mediaDef, fileName) {
+    if (!mediaDef || typeof mediaDef !== 'object') {
+        throw new Error(`Invalid $seedMedia definition in ${fileName}.`);
+    }
+
+    const filePath = resolveSeedFilePath(mediaDef.path);
+    if (!fs.existsSync(filePath)) {
+        throw new Error(`[json-seed] Media file not found for ${fileName}: ${mediaDef.path}`);
+    }
+
+    const absolutePath = path.resolve(filePath);
+    const baseName = path.basename(absolutePath);
+    const existing = await findExistingUploadedFile(strapi, baseName);
+    if (existing?.id) {
+        return existing.id;
+    }
+
+    const stats = fs.statSync(absolutePath);
+    const mimeType = getMimeTypeFromFileName(baseName);
+
+    const uploadService = strapi.plugin('upload').service('upload');
+    const uploaded = await uploadService.upload({
+        data: {
+            fileInfo: {
+                name: mediaDef.name || baseName,
+                alternativeText: mediaDef.alternativeText || mediaDef.name || baseName,
+                caption: mediaDef.caption || '',
+            },
+        },
+        files: {
+            filepath: absolutePath,
+            originalFilename: baseName,
+            mimetype: mimeType,
+            size: stats.size,
+        },
+    });
+
+    if (!uploaded?.[0]?.id) {
+        throw new Error(`[json-seed] Upload failed for media file ${mediaDef.path} in ${fileName}.`);
+    }
+
+    return uploaded[0].id;
+}
 
 function listSeedFiles() {
     if (!fs.existsSync(SEED_DATA_DIR)) {
@@ -65,14 +161,32 @@ function getRecordLocator(record) {
     throw new Error('Each seed record must define a valid locate.value (string | number | boolean).');
 }
 
+function isSingleTypeUid(strapi, uid) {
+    const model = strapi.contentType(uid);
+    return model?.kind === 'singleType';
+}
+
 async function findExistingDocument(strapi, uid, locator) {
+    if (isSingleTypeUid(strapi, uid)) {
+        const single = await strapi.documents(uid).findFirst({
+            status: 'draft',
+            fields: ['id', 'documentId'],
+        });
+        return single || null;
+    }
+
     const filters = {
         [locator.by]: { $eq: locator.value },
     };
 
+    const fields = ['id', 'documentId'];
+    if (locator.by !== 'documentId') {
+        fields.push(locator.by);
+    }
+
     const existing = await strapi.documents(uid).findMany({
         filters,
-        fields: ['id', 'documentId', 'slug'],
+        fields,
         pagination: { pageSize: 1 },
     });
 
@@ -116,9 +230,14 @@ async function resolveSeedLink(strapi, link, fileName) {
         ? { documentId: { $eq: value } }
         : { slug: { $eq: value } };
 
+    const fields = ['id', 'documentId'];
+    if (by === 'slug') {
+        fields.push('slug');
+    }
+
     const target = await strapi.documents(uid).findMany({
         filters,
-        fields: ['id', 'documentId', 'slug'],
+        fields,
         pagination: { pageSize: 1 },
     });
 
@@ -160,6 +279,10 @@ async function resolveSeedLinksInValue(strapi, value, fileName) {
         return resolveSeedLink(strapi, value.$seedLink, fileName);
     }
 
+    if (Object.prototype.hasOwnProperty.call(value, '$seedMedia')) {
+        return ensureSeedMediaFile(strapi, value.$seedMedia, fileName);
+    }
+
     const resolvedObject = {};
     const keys = Object.keys(value);
 
@@ -171,7 +294,10 @@ async function resolveSeedLinksInValue(strapi, value, fileName) {
 }
 
 async function applyRecord(strapi, uid, record, fileName) {
-    const locator = getRecordLocator(record);
+    const isSingleType = isSingleTypeUid(strapi, uid);
+    const locator = isSingleType
+        ? { by: 'singleType', value: 'singleton' }
+        : getRecordLocator(record);
     const policy = getRecordPolicy(record);
     const data = await resolveSeedLinksInValue(strapi, getRecordData(record), fileName);
     const existing = await findExistingDocument(strapi, uid, locator);

@@ -9,6 +9,7 @@ import { CmsPageDetailInterface, CmsProductGroupInterface } from "@/types/api/cm
 import { getPageUrl } from "@/lib/cms-page-types";
 import ProductGroupRenderer from "./ProductGroupRenderer";
 import { useSiteSettings } from "@/hooks/use-site-settings";
+import CmsContactFormSection from "./cms-contact-form-section";
 
 marked.use({ breaks: true, gfm: true });
 marked.use(markedVideoEmbed({ imageBaseUrl: IMAGE_URL }));
@@ -208,6 +209,8 @@ export default function CmsPageContent({
               return null;
           }
         })}
+
+        {page.enable_contact_form && <CmsContactFormSection title={page.title} />}
       </div>
     </>
   );

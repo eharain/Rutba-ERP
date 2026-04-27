@@ -24,6 +24,10 @@
     "content": {
       "type": "richtext"
     },
+    "enable_contact_form": {
+      "type": "boolean",
+      "default": false
+    },
     "excerpt": {
       "type": "richtext"
     },

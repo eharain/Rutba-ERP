@@ -14,8 +14,8 @@
       "data": {
         "name": "Standard delivery",
         "description": "6–12 Working Days",
-        "base_cost": 0,
-        "per_kg_rate": 0,
+        "base_cost": 150,
+        "per_kg_rate": 250,
         "service_provider": "custom",
         "estimated_days_min": 6,
         "estimated_days_max": 12,
@@ -37,8 +37,8 @@
       "data": {
         "name": "Express delivery",
         "description": "3–10 Working Days",
-        "base_cost": 0,
-        "per_kg_rate": 0,
+        "base_cost": 450,
+        "per_kg_rate": 250,
         "service_provider": "custom",
         "estimated_days_min": 3,
         "estimated_days_max": 10,
@@ -60,8 +60,8 @@
       "data": {
         "name": "International Standard delivery",
         "description": "7–21 Working Days",
-        "base_cost": 0,
-        "per_kg_rate": 0,
+        "base_cost": 8050,
+        "per_kg_rate": 500,
         "service_provider": "easypost",
         "estimated_days_min": 7,
         "estimated_days_max": 21,
@@ -83,8 +83,8 @@
       "data": {
         "name": "International Express delivery",
         "description": "2–7 Working Days",
-        "base_cost": 0,
-        "per_kg_rate": 0,
+        "base_cost": 9000,
+        "per_kg_rate": 650,
         "service_provider": "easypost",
         "estimated_days_min": 2,
         "estimated_days_max": 7,

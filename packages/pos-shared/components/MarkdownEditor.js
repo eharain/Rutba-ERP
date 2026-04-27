@@ -26,6 +26,13 @@ const TOOLBAR = [
     { type: 'sep' },
     { icon: 'fa-ruler-horizontal', label: 'Horizontal Rule', md: () => `\n---\n`, wrap: false },
     { icon: 'fa-table', label: 'Table', md: () => `| Header | Header |\n| ------ | ------ |\n| Cell   | Cell   |`, wrap: false },
+    { type: 'sep' },
+    {
+        icon: 'fa-circle-question',
+        label: 'FAQ Q&A',
+        md: (s) => `### Q: ${s || 'Your question here?'}\n\nA: Your answer here.\n`,
+        wrap: false,
+    },
 ];
 
 export default function MarkdownEditor({ value = '', onChange, name, rows = 12, placeholder = 'Write markdown...' }) {

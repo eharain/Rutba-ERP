@@ -186,6 +186,24 @@ export default function SaleOrderDetailPage() {
         },
       };
 
+      if (isNew) {
+        payload.data.order_id = `ADM-${Date.now()}`;
+        const res = await authApi.post("/sale-orders", payload);
+        const created = res.data || res;
+        toast("Order created.", "success");
+        router.push(`/${created.documentId}/sale-order`);
+      } else {
+        await authApi.put(`/sale-orders/${documentId}`, payload);
+        toast("Order updated.", "success");
+      }
+    } catch (err) {
+      console.error("Failed to save order", err);
+      toast("Failed to save order.", "danger");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const updateItemField = (index, field, value) => {
     setOrderItems((prev) => prev.map((item, i) => (i === index ? { ...item, [field]: value } : item)));
   };
@@ -212,24 +230,6 @@ export default function SaleOrderDetailPage() {
       if (prev.length <= 1) return prev;
       return prev.filter((_, i) => i !== index);
     });
-  };
-
-      if (isNew) {
-        payload.data.order_id = `ADM-${Date.now()}`;
-        const res = await authApi.post("/sale-orders", payload);
-        const created = res.data || res;
-        toast("Order created.", "success");
-        router.push(`/${created.documentId}/sale-order`);
-      } else {
-        await authApi.put(`/sale-orders/${documentId}`, payload);
-        toast("Order updated.", "success");
-      }
-    } catch (err) {
-      console.error("Failed to save order", err);
-      toast("Failed to save order.", "danger");
-    } finally {
-      setSaving(false);
-    }
   };
 
   const handleUpdateStatus = async () => {

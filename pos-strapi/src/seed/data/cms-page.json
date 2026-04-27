@@ -91,6 +91,43 @@
         "excerpt": "Understand eligibility, timelines, and process for returns and exchanges.",
         "content": "## Return & Exchange Policy\n\nWe aim for a smooth and fair post-purchase experience.\n\n### Eligibility\n\n- Items must be unused and in original condition\n- Return/exchange requests should be initiated within the allowed policy window\n- Certain categories may be non-returnable for hygiene or safety reasons\n\n### Process\n\n1. Contact support with order details\n2. Follow pickup/drop-off instructions\n3. Receive replacement or refund after inspection\n\nFor policy-specific exceptions, contact customer support."
       }
+    },
+    {
+      "locate": {
+        "by": "slug",
+        "value": "contact-us"
+      },
+      "policy": {
+        "editable": true,
+        "revertOnSeed": false
+      },
+      "data": {
+        "title": "Contact Us",
+        "slug": "contact-us",
+        "page_type": "info",
+        "enable_contact_form": true,
+        "sort_order": 50,
+        "excerpt": "Need help? Reach out to Rutba support and sales teams.",
+        "content": "## Contact Us\n\nWe're here to help with orders, support, and partnership queries.\n\n### Typical response times\n\n- Sales and product inquiries: within 1 business day\n- Order and delivery support: within 24 hours\n\nPlease share as much detail as possible in your message so we can assist quickly."
+      }
+    },
+    {
+      "locate": {
+        "by": "slug",
+        "value": "faq"
+      },
+      "policy": {
+        "editable": true,
+        "revertOnSeed": false
+      },
+      "data": {
+        "title": "FAQ",
+        "slug": "faq",
+        "page_type": "info",
+        "sort_order": 60,
+        "excerpt": "Frequently asked questions about orders, delivery, and returns.",
+        "content": "## Frequently Asked Questions\n\n### Q: How long does delivery take?\n\nA: Delivery timelines vary by method and destination. Standard and express options are shown during checkout.\n\n### Q: Can I return an item after delivery?\n\nA: Yes, eligible items can be returned within the policy window in original condition.\n\n### Q: How can I contact support?\n\nA: Use the contact-us page form or reach out through the support channels listed in site footer."
+      }
     }
   ]
 }

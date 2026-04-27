@@ -30,6 +30,7 @@ Place one JSON file per entity/content-type in this directory.
 
 - `locate.by`: any unique field used to find existing records (`slug`, `documentId`, `name`, ...)
 - `locate.value`: unique value to find an existing draft document
+- For Strapi **single types**, `locate` is optional and ignored (the single draft document is used).
 - `policy.editable`:
   - `true`: seeded record can be edited manually
   - `false`: seed owns the record data
@@ -62,3 +63,23 @@ Use `$seedLink` anywhere inside `data`:
 - `id` → numeric id
 
 If a target cannot be found, the link resolves to `null` and a warning is logged.
+
+## Media file seeding and linking
+
+Use `$seedMedia` for media fields. The runner uploads the file to Strapi uploads (if not already uploaded) and links the returned numeric media `id` to the entity field.
+
+```json
+{
+  "site_logo": {
+    "$seedMedia": {
+      "path": "rutba-web/public/rutba_erp_logo.png",
+      "alternativeText": "Rutba ERP Logo"
+    }
+  }
+}
+```
+
+Notes:
+- `path` can be relative to workspace root or `src/seed/data`.
+- Existing uploads are reused by file name.
+- Media fields are linked by numeric `id` (Strapi v5-safe).
