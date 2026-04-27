@@ -109,6 +109,12 @@
       "target": "api::sale-offer.sale-offer",
       "mappedBy": "cms_pages"
     },
+    "delivery_methods": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::delivery-method.delivery-method",
+      "mappedBy": "cms_pages"
+    },
     "excerpt_priority": {
       "type": "integer",
       "default": 2

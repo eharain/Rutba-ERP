@@ -35,6 +35,7 @@ rutba-web/src/
 - Maintain default app behavior: keep list pages separate from create/edit pages.
 - Implement create and edit on dedicated routes (for example: `/products`, `/products/create`, `/products/[id]/edit`).
 - Avoid combining listing and create/edit functionality on the same page or route.
+- For order-management entities (sales, purchase_returns, sale_returns, purchases, etc.), enforce a strict separate-page pattern: list pages are listing/navigation only; implement create on `/orders/create` (or the entity-specific `/entity/create`) and edit on `/orders/[documentId]/edit` (use the Strapi `documentId` in the route). Do not implement inline table editing for order-management workflows.
 
 ## Coding Conventions
 

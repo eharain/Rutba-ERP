@@ -173,7 +173,7 @@ const ENTRIES = [
                 grants: [
                     { uid: 'api::sale-order.sale-order', actions: NO_DEL },
                     { uid: 'api::customer.customer', actions: READ },
-                    { uid: 'api::delivery-method.delivery-method', actions: READ },
+                    { uid: 'api::delivery-method.delivery-method', actions: CMS_WRITE },
                     { uid: 'api::delivery-zone.delivery-zone', actions: READ },
                     { uid: 'api::rider.rider', actions: READ },
                     { uid: 'api::delivery-offer.delivery-offer', actions: WRITE },

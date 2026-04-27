@@ -1316,6 +1316,10 @@ export interface ApiCategoryCategory extends Struct.CollectionTypeSchema {
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    delivery_methods: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::delivery-method.delivery-method'
+    >;
     description: Schema.Attribute.Text;
     gallery: Schema.Attribute.Media<
       'images' | 'files' | 'videos' | 'audios',
@@ -1411,6 +1415,10 @@ export interface ApiCmsPageCmsPage extends Struct.CollectionTypeSchema {
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    delivery_methods: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::delivery-method.delivery-method'
+    >;
     enable_contact_form: Schema.Attribute.Boolean &
       Schema.Attribute.DefaultTo<false>;
     excerpt: Schema.Attribute.RichText;
@@ -1692,6 +1700,14 @@ export interface ApiDeliveryMethodDeliveryMethod
   };
   attributes: {
     base_cost: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    categories: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::category.category'
+    >;
+    cms_pages: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::cms-page.cms-page'
+    >;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
