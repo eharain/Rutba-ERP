@@ -64,6 +64,12 @@
       "relation": "manyToMany",
       "target": "api::sale-offer.sale-offer",
       "mappedBy": "categories"
+    },
+    "delivery_methods": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::delivery-method.delivery-method",
+      "mappedBy": "categories"
     }
   }
 }

@@ -37,6 +37,18 @@
       "relation": "manyToMany",
       "target": "api::product-group.product-group",
       "mappedBy": "delivery_methods"
+    },
+    "cms_pages": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::cms-page.cms-page",
+      "inversedBy": "delivery_methods"
+    },
+    "categories": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::category.category",
+      "inversedBy": "delivery_methods"
     }
   }
 }

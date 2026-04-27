@@ -60,6 +60,7 @@ export default function Navigation() {
                             <li><Link className="dropdown-item" href="/footers">Footers</Link></li>
                             <li><hr className="dropdown-divider" /></li>
                             <li><Link className="dropdown-item" href="/sale-offers"><i className="fas fa-tags me-1"></i>Sale Offers</Link></li>
+                            <li><Link className="dropdown-item" href="/delivery-methods"><i className="fas fa-truck me-1"></i>Delivery Methods</Link></li>
                         </ul>
                     </li>
                     <li className="nav-item">
