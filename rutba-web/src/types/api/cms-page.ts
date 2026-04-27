@@ -10,6 +10,7 @@ export interface CmsPageInterface {
   slug: string;
   excerpt?: string;
   page_type: "shop" | "blog" | "news" | "info";
+  enable_contact_form?: boolean;
   sort_order: number;
   createdAt: string;
   updatedAt: string;

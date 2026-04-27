@@ -7,6 +7,7 @@ export default function useCmsPagesService() {
     const req = await axios.get(BASE_URL + "cms-pages", {
       params: {
         sort: ["sort_order:asc", "createdAt:desc"],
+        fields: ["title", "slug", "excerpt", "page_type", "sort_order", "enable_contact_form", "createdAt", "updatedAt", "publishedAt"],
         populate: ["featured_image", "background_image"],
         pagination: { pageSize: 50 },
       },
@@ -19,6 +20,7 @@ export default function useCmsPagesService() {
     const req = await axios.get(BASE_URL + "cms-pages", {
       params: {
         filters: { slug: { $eq: slug } },
+        fields: ["title", "slug", "excerpt", "content", "page_type", "sort_order", "enable_contact_form", "createdAt", "updatedAt", "publishedAt", "excerpt_priority", "featured_image_priority", "content_priority", "gallery_priority", "related_pages_priority"],
         populate: [
           "featured_image",
           "background_image",
@@ -57,6 +59,7 @@ export default function useCmsPagesService() {
     const req = await axios.get(BASE_URL + "cms-pages", {
       params: {
         filters: { slug: { $eq: "index" } },
+        fields: ["title", "slug", "excerpt", "content", "page_type", "sort_order", "enable_contact_form", "createdAt", "updatedAt", "publishedAt"],
         populate: [
           "brand_groups.brands.logo",
           "category_groups.categories",
@@ -74,6 +77,7 @@ export default function useCmsPagesService() {
       params: {
         filters: { page_type: { $eq: pageType } },
         sort: ["sort_order:asc", "createdAt:desc"],
+        fields: ["title", "slug", "excerpt", "page_type", "sort_order", "enable_contact_form", "createdAt", "updatedAt", "publishedAt"],
         populate: ["featured_image", "background_image"],
         pagination: { pageSize: 50 },
       },
@@ -94,6 +98,7 @@ export const getCmsPagesSSR = async () => {
   const req = await axios.get(BASE_URL + "cms-pages", {
     params: {
       sort: ["sort_order:asc", "createdAt:desc"],
+      fields: ["title", "slug", "excerpt", "page_type", "sort_order", "enable_contact_form", "createdAt", "updatedAt", "publishedAt"],
       populate: ["featured_image", "background_image"],
       pagination: { pageSize: 50 },
     },
@@ -107,6 +112,7 @@ export const getCmsPagesByTypeSSR = async (pageType: string) => {
     params: {
       filters: { page_type: { $eq: pageType } },
       sort: ["sort_order:asc", "createdAt:desc"],
+      fields: ["title", "slug", "excerpt", "page_type", "sort_order", "enable_contact_form", "createdAt", "updatedAt", "publishedAt"],
       populate: ["featured_image", "background_image"],
       pagination: { pageSize: 50 },
     },
@@ -119,6 +125,7 @@ export const getCmsPageBySlugSSR = async (slug: string) => {
   const req = await axios.get(BASE_URL + "cms-pages", {
     params: {
       filters: { slug: { $eq: slug } },
+      fields: ["title", "slug", "excerpt", "content", "page_type", "sort_order", "enable_contact_form", "createdAt", "updatedAt", "publishedAt", "excerpt_priority", "featured_image_priority", "content_priority", "gallery_priority", "related_pages_priority"],
       populate: [
         "featured_image",
         "background_image",

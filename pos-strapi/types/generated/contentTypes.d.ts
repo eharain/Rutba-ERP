@@ -1411,6 +1411,8 @@ export interface ApiCmsPageCmsPage extends Struct.CollectionTypeSchema {
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    enable_contact_form: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<false>;
     excerpt: Schema.Attribute.RichText;
     excerpt_priority: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<2>;
     featured_image: Schema.Attribute.Media<'images'>;

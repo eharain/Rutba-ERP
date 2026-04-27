@@ -31,6 +31,7 @@ export default function CmsPageDetail() {
     const [excerpt, setExcerpt] = useState("");
     const [pageType, setPageType] = useState("shop");
     const [sortOrder, setSortOrder] = useState(0);
+    const [enableContactForm, setEnableContactForm] = useState(false);
 
     const [selectedBrandGroupIds, setSelectedBrandGroupIds] = useState([]);
     const [selectedCategoryGroupIds, setSelectedCategoryGroupIds] = useState([]);
@@ -73,6 +74,7 @@ export default function CmsPageDetail() {
                 setExcerpt(p.excerpt || "");
                 setPageType(p.page_type || "shop");
                 setSortOrder(p.sort_order ?? 0);
+                setEnableContactForm(!!p.enable_contact_form);
                 setSelectedBrandGroupIds((p.brand_groups || []).map(bg => bg.documentId));
                 setSelectedCategoryGroupIds((p.category_groups || []).map(cg => cg.documentId));
                 setSelectedGroupIds((p.product_groups || []).map(g => g.documentId));
@@ -147,6 +149,7 @@ export default function CmsPageDetail() {
                     excerpt,
                     page_type: pageType,
                     sort_order: sortOrder,
+                    enable_contact_form: !!enableContactForm,
                     brand_groups: { set: selectedBrandGroupIds },
                     category_groups: { set: selectedCategoryGroupIds },
                     product_groups: { set: selectedGroupIds },
@@ -191,6 +194,7 @@ export default function CmsPageDetail() {
                     excerpt,
                     page_type: pageType,
                     sort_order: sortOrder,
+                    enable_contact_form: !!enableContactForm,
                     brand_groups: { set: selectedBrandGroupIds },
                     category_groups: { set: selectedCategoryGroupIds },
                     product_groups: { set: selectedGroupIds },
@@ -241,6 +245,7 @@ export default function CmsPageDetail() {
                 data: {
                     title, content, excerpt,
                     page_type: pageType, sort_order: sortOrder,
+                    enable_contact_form: !!enableContactForm,
                     brand_groups: { set: selectedBrandGroupIds },
                     category_groups: { set: selectedCategoryGroupIds },
                     product_groups: { set: selectedGroupIds },
@@ -264,6 +269,7 @@ export default function CmsPageDetail() {
             setExcerpt(p.excerpt || "");
             setPageType(p.page_type || "shop");
             setSortOrder(p.sort_order ?? 0);
+            setEnableContactForm(!!p.enable_contact_form);
             setSelectedBrandGroupIds((p.brand_groups || []).map(bg => bg.documentId));
             setSelectedCategoryGroupIds((p.category_groups || []).map(cg => cg.documentId));
             setSelectedGroupIds((p.product_groups || []).map(g => g.documentId));
@@ -365,6 +371,9 @@ export default function CmsPageDetail() {
                                     <div className="mb-3">
                                         <label className="form-label">Content (Markdown)</label>
                                         <MarkdownEditor value={content} onChange={e => setContent(e.target.value)} name="content" rows={12} />
+                                        <div className="form-text mt-2">
+                                            Tip for FAQ pages: use <code>### Q:</code> for questions and <code>A:</code> for answers, or insert FAQ blocks from the editor toolbar.
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -457,6 +466,19 @@ export default function CmsPageDetail() {
                                     <div className="mb-3">
                                         <label className="form-label">Sort Order</label>
                                         <input type="number" className="form-control" value={sortOrder} onChange={e => setSortOrder(parseInt(e.target.value) || 0)} />
+                                    </div>
+                                    <div className="mb-3">
+                                        <label className="form-label" htmlFor="enable-contact-form">Contact Form</label>
+                                        <select
+                                            id="enable-contact-form"
+                                            className="form-select"
+                                            value={enableContactForm ? "true" : "false"}
+                                            onChange={(e) => setEnableContactForm(e.target.value === "true")}
+                                        >
+                                            <option value="false">Disabled</option>
+                                            <option value="true">Enabled</option>
+                                        </select>
+                                        <div className="form-text">Useful for contact-us pages and support landing pages.</div>
                                     </div>
                                     <hr />
                                     <p className="text-muted small mb-2"><i className="fas fa-sort-numeric-down me-1"></i>Section Priorities <span className="text-muted">(lower = higher on page)</span></p>
