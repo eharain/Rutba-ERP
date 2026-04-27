@@ -7,8 +7,10 @@ const {
     permissionsByKey,
     PLUGIN_PERMISSIONS,
     PUBLIC_PERMISSIONS,
+    getAppRoleOptions,
 } = require('../config/app-access-permissions');
 const seedAccounting = require('./seed/accounting-seed');
+const runJsonSeeds = require('./seed/json-seed-runner');
 
 // ── helpers ─────────────────────────────────────────────────
 
@@ -31,13 +33,92 @@ function buildAllPermissionActions() {
             for (const action of BASE_CRUD) {
                 all.add(`${def.uid}.${action}`);
             }
-            // also include any custom actions beyond CRUD
             for (const action of def.actions) {
                 all.add(`${def.uid}.${action}`);
             }
         }
     }
     return [...all].sort();
+}
+
+async function seedHrDepartmentsFromConfig(strapi, appRoleOptions = []) {
+    const departmentNames = [...new Set((appRoleOptions || [])
+        .map((opt) => String(opt.departmentName || '').trim())
+        .filter(Boolean))];
+
+    const departmentByName = new Map();
+
+    for (const departmentName of departmentNames) {
+        const existing = await strapi.documents('api::hr-department.hr-department').findMany({
+            filters: { name: { $eq: departmentName } },
+            fields: ['documentId', 'name'],
+            pagination: { pageSize: 1 },
+        });
+
+        if (!existing?.[0]) {
+            const created = await strapi.documents('api::hr-department.hr-department').create({
+                data: {
+                    name: departmentName,
+                    description: `${departmentName} department (seeded from app-access config)`,
+                },
+                fields: ['documentId', 'name'],
+            });
+            departmentByName.set(departmentName, created.documentId);
+            strapi.log.info(`[bootstrap] Seeded HR department: ${departmentName}`);
+        } else {
+            departmentByName.set(departmentName, existing[0].documentId);
+        }
+    }
+
+    return departmentByName;
+}
+
+async function seedHrTeamsFromAppAccess(strapi, options = [], departmentByName = new Map()) {
+    if (!Array.isArray(options) || options.length === 0) return;
+
+    for (const opt of options) {
+        const teamSlug = String(opt.teamSlug || '').trim();
+        if (!teamSlug) continue;
+        const departmentName = String(opt.departmentName || '').trim();
+        const departmentDocumentId = departmentByName.get(departmentName);
+        if (!departmentDocumentId) {
+            strapi.log.warn(`[bootstrap] Skipping HR team seed for app "${opt.appKey}" because department "${departmentName}" was not found.`);
+            continue;
+        }
+
+        const existing = await strapi.documents('api::hr-team.hr-team').findMany({
+            filters: { team_slug: { $eq: teamSlug } },
+            fields: ['documentId', 'team_slug', 'app_roles'],
+            pagination: { pageSize: 1 },
+        });
+
+        const appRoles = { [opt.appKey]: Array.isArray(opt.enabledGroups) ? opt.enabledGroups : [] };
+        const teamName = `${opt.appName} Team`;
+
+        if (!existing?.[0]) {
+            await strapi.documents('api::hr-team.hr-team').create({
+                data: {
+                    name: teamName,
+                    team_slug: teamSlug,
+                    department: { documentId: departmentDocumentId },
+                    app_roles: appRoles,
+                    seeded_from_app_access: true,
+                },
+            });
+            strapi.log.info(`[bootstrap] Seeded HR team from app-access: ${opt.appKey} (${teamSlug})`);
+        } else {
+            await strapi.documents('api::hr-team.hr-team').update({
+                documentId: existing[0].documentId,
+                data: {
+                    name: teamName,
+                    department: { documentId: departmentDocumentId },
+                    app_roles: appRoles,
+                    seeded_from_app_access: true,
+                },
+            });
+            strapi.log.info(`[bootstrap] Synced HR team app roles from app-access: ${opt.appKey} (${teamSlug})`);
+        }
+    }
 }
 
 const ROLE_BOOTSTRAP_META = {
@@ -263,6 +344,24 @@ module.exports = {
             await seedAccounting(strapi);
         } catch (err) {
             strapi.log.error('[bootstrap] Accounting seed failed: ' + err.message);
+            strapi.log.error(err.stack);
+        }
+
+        // ─── Phase 4: Seed HR teams from app-access definitions ───
+        try {
+            const appRoleOptions = getAppRoleOptions();
+            const departmentByName = await seedHrDepartmentsFromConfig(strapi, appRoleOptions);
+            await seedHrTeamsFromAppAccess(strapi, appRoleOptions, departmentByName);
+        } catch (err) {
+            strapi.log.error('[bootstrap] HR team seed failed: ' + err.message);
+            strapi.log.error(err.stack);
+        }
+
+        // ─── Phase 5: Run generic JSON seeds from src/seed/data ───
+        try {
+            await runJsonSeeds(strapi);
+        } catch (err) {
+            strapi.log.error('[bootstrap] JSON seed failed: ' + err.message);
             strapi.log.error(err.stack);
         }
     },

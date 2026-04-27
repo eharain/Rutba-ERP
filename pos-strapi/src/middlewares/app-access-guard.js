@@ -37,6 +37,7 @@
 const {
   getPermissionsForAppGroups,
   canGroupElevateToAdmin,
+  getEnabledPermissionGroups,
 } = require('../../config/app-access-permissions');
 
 // Temporary compatibility aliases for transitioned apps.
@@ -62,6 +63,10 @@ function normaliseAction(action, method = 'GET') {
     trackOrder: 'findOne',
     getMessages: 'find',
     myOrders: 'find',
+    myRequests: 'find',
+    teamQueue: 'find',
+    approve: 'update',
+    reject: 'update',
     myDeliveryOffers: 'find',
     myOffers: 'find',
     myDeliveries: 'find',
@@ -248,11 +253,21 @@ module.exports = (config, { strapi }) => {
     // -- Permission check (b.3.a & b.3.b) --------------------
     {
       const permissionDefs = accessibleAppKeys.flatMap((appKey) => {
-        const groups = [
-          ...(appKeys.includes(appKey) ? ['user'] : []),
-          ...(adminKeys.includes(appKey) ? ['admin'] : []),
-        ];
-        return getPermissionsForAppGroups(appKey, groups);
+        const enabledGroups = getEnabledPermissionGroups(appKey);
+        const resolvedGroups = [];
+
+        if (appKeys.includes(appKey) && enabledGroups.includes('staff')) {
+          resolvedGroups.push('staff');
+          if (enabledGroups.includes('manager') && adminKeys.includes(appKey)) {
+            resolvedGroups.push('manager');
+          }
+        }
+
+        if (adminKeys.includes(appKey) && enabledGroups.includes('admin')) {
+          resolvedGroups.push('admin');
+        }
+
+        return getPermissionsForAppGroups(appKey, resolvedGroups);
       });
 
       const hasFind = hasPermissionInDefs(permissionDefs, uid, 'find');

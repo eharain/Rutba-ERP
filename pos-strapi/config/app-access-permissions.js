@@ -54,15 +54,30 @@ const DEFAULT_SESSION_TIMEOUT = 60;
 /**
  * Permission groups for app-access users.
  * 
- * user  – base app user permissions (no elevation)
- * admin – additive app admin permissions + can elevate to admin mode
+ * staff   – base app staff permissions (no elevation)
+ * manager – team-manager scoped permissions (no elevation by default)
+ * admin   – additive app admin permissions + can elevate to admin mode
+ * user    – backward-compatible alias of staff
  */
 const PERMISSION_GROUPS = {
+    staff: {
+        key: 'staff',
+        label: 'Staff',
+        roleType: 'rutba_app_user',
+        canElevateToAdmin: false,
+    },
+    manager: {
+        key: 'manager',
+        label: 'Manager',
+        roleType: 'rutba_app_user',
+        canElevateToAdmin: false,
+    },
     user: {
         key: 'user',
         label: 'User',
         roleType: 'rutba_app_user',
         canElevateToAdmin: false,
+        aliasOf: 'staff',
     },
     admin: {
         key: 'admin',
@@ -70,6 +85,35 @@ const PERMISSION_GROUPS = {
         roleType: 'rutba_app_user',
         canElevateToAdmin: true,
     },
+};
+
+const PERMISSION_GROUP_ALIASES = {
+    user: 'staff',
+};
+
+const DEFAULT_APP_GROUP_FLAGS = {
+    staff: true,
+    manager: false,
+    admin: true,
+};
+
+const APP_DEPARTMENT_SEED_MAP = {
+    stock: 'Stock & Procurement',
+    'order-management': 'Order Operations',
+    sale: 'Sales (POS)',
+    accounts: 'Accounts',
+    'accounts-ap': 'Accounts Payable',
+    'accounts-ar': 'Accounts Receivable',
+    'accounts-viewer': 'Accounts Viewer',
+    delivery: 'Delivery Operations',
+    rider: 'Rider Operations',
+    crm: 'CRM & Social',
+    auth: 'IT / User Management',
+    'web-user': 'Web Orders',
+    hr: 'Human Resources',
+    payroll: 'Payroll',
+    cms: 'CMS & Content',
+    social: 'Social Media',
 };
 
 // ============================================================================
@@ -528,16 +572,31 @@ const ENTRIES = [
         name: 'Human Resources',
         description: 'Employees, departments, attendance and leave management',
         sessionTimeout: 120,
+        enabledGroups: {
+            staff: true,
+            manager: true,
+            admin: true,
+        },
         permissions: [
             {
-                role: PERMISSION_GROUPS.user,
+                role: PERMISSION_GROUPS.staff,
                 grants: [
                     { uid: 'api::hr-employee.hr-employee', actions: WRITE },
                     { uid: 'api::hr-department.hr-department', actions: WRITE },
+                    { uid: 'api::hr-team.hr-team', actions: WRITE },
                     { uid: 'api::hr-attendance.hr-attendance', actions: WRITE },
-                    { uid: 'api::hr-leave-request.hr-leave-request', actions: WRITE },
+                    { uid: 'api::hr-leave-request.hr-leave-request', actions: [...WRITE, 'myRequests', 'submit'] },
                     { uid: 'api::branch.branch', actions: READ },
                     { uid: 'api::employee.employee', actions: READ },
+                ],
+            },
+            {
+                role: PERMISSION_GROUPS.manager,
+                grants: [
+                    { uid: 'api::hr-leave-request.hr-leave-request', actions: ['find', 'findOne', 'update', 'teamQueue', 'approve', 'reject'] },
+                    { uid: 'api::hr-employee.hr-employee', actions: READ },
+                    { uid: 'api::hr-department.hr-department', actions: READ },
+                    { uid: 'api::hr-team.hr-team', actions: READ },
                 ],
             },
             {
@@ -656,20 +715,37 @@ const ENTRIES = [
 // DERIVED PERMISSION MAPS
 // ============================================================================
 
-// Group permissions by app key and permission group (user/admin)
+function getEnabledGroupKeysForEntry(entry) {
+    const mergedFlags = {
+        ...DEFAULT_APP_GROUP_FLAGS,
+        ...(entry?.enabledGroups || {}),
+    };
+
+    return Object.entries(mergedFlags)
+        .filter(([, enabled]) => !!enabled)
+        .map(([groupKey]) => normalizePermissionGroupKey(groupKey))
+        .filter((key, idx, arr) => !!key && arr.indexOf(key) === idx);
+}
+
+// Group permissions by app key and permission group (staff/manager/admin)
 const permissionGroupsByKey = Object.fromEntries(
-    ENTRIES.map((entry) => [
-        entry.key,
-        {
-            user: entry.permissions?.find(p => p.role.key === 'user')?.grants || [],
-            admin: entry.permissions?.find(p => p.role.key === 'admin')?.grants || [],
-        },
-    ])
+    ENTRIES.map((entry) => {
+        const enabledKeys = getEnabledGroupKeysForEntry(entry);
+        const groups = Object.fromEntries(enabledKeys.map((k) => [k, []]));
+
+        for (const permissionDef of entry.permissions || []) {
+            const key = normalizePermissionGroupKey(permissionDef?.role?.key);
+            if (!key || !enabledKeys.includes(key)) continue;
+            groups[key] = [...(groups[key] || []), ...(permissionDef.grants || [])];
+        }
+
+        return [entry.key, groups];
+    })
 );
 
-// User-only permissions by app key
+// Staff-only permissions by app key (legacy export name retained)
 const userPermissionsByKey = Object.fromEntries(
-    Object.entries(permissionGroupsByKey).map(([appKey, groups]) => [appKey, groups.user || []])
+    Object.entries(permissionGroupsByKey).map(([appKey, groups]) => [appKey, groups.staff || []])
 );
 
 // Admin-only permissions by app key
@@ -681,25 +757,21 @@ const adminPermissionsByKey = Object.fromEntries(
 const permissionsByKey = Object.fromEntries(
     Object.entries(permissionGroupsByKey).map(([appKey, groups]) => [
         appKey,
-        [...(groups.user || []), ...(groups.admin || [])],
+        Object.values(groups).flatMap((groupGrants) => groupGrants || []),
     ])
 );
 
 // Flat array of all permissions with metadata
-const FLAT_PERMISSIONS = Object.entries(permissionGroupsByKey).flatMap(([appKey, groups]) => [
-    ...(groups.user || []).map((grant) => ({
-        appKey,
-        group: 'user',
-        uid: grant.uid,
-        actions: [...(grant.actions || [])],
-    })),
-    ...(groups.admin || []).map((grant) => ({
-        appKey,
-        group: 'admin',
-        uid: grant.uid,
-        actions: [...(grant.actions || [])],
-    })),
-]);
+const FLAT_PERMISSIONS = Object.entries(permissionGroupsByKey).flatMap(([appKey, groups]) =>
+    Object.entries(groups).flatMap(([groupKey, grants]) =>
+        (grants || []).map((grant) => ({
+            appKey,
+            group: groupKey,
+            uid: grant.uid,
+            actions: [...(grant.actions || [])],
+        }))
+    )
+);
 
 // ============================================================================
 // HELPER FUNCTIONS
@@ -708,12 +780,34 @@ const FLAT_PERMISSIONS = Object.entries(permissionGroupsByKey).flatMap(([appKey,
 /**
  * Get permissions for specific app and permission groups
  * @param {string} appKey - The app key
- * @param {string[]} groupKeys - Array of permission group keys (e.g., ['user', 'admin'])
+ * @param {string[]} groupKeys - Array of permission group keys (e.g., ['staff', 'manager', 'admin'])
  * @returns {Array} Array of grant objects
  */
 function getPermissionsForAppGroups(appKey, groupKeys = []) {
     const appGroups = permissionGroupsByKey[appKey] || {};
-    return (groupKeys || []).flatMap((key) => appGroups[key] || []);
+    const normalizedKeys = [...new Set((groupKeys || []).map(normalizePermissionGroupKey).filter(Boolean))];
+    return normalizedKeys.flatMap((key) => appGroups[key] || []);
+}
+
+/**
+ * Normalize group keys with backward-compatible aliases.
+ * @param {string} groupKey
+ * @returns {string | null}
+ */
+function normalizePermissionGroupKey(groupKey) {
+    if (!groupKey) return null;
+    const normalized = String(groupKey).trim().toLowerCase();
+    return PERMISSION_GROUP_ALIASES[normalized] || normalized;
+}
+
+/**
+ * Get metadata for a permission group key.
+ * @param {string} groupKey
+ * @returns {object | null}
+ */
+function getPermissionGroup(groupKey) {
+    const key = normalizePermissionGroupKey(groupKey);
+    return key ? (PERMISSION_GROUPS[key] || null) : null;
 }
 
 /**
@@ -722,7 +816,7 @@ function getPermissionsForAppGroups(appKey, groupKeys = []) {
  * @returns {boolean} Whether the group can elevate to admin
  */
 function canGroupElevateToAdmin(groupKey) {
-    return !!PERMISSION_GROUPS[groupKey]?.canElevateToAdmin;
+    return !!getPermissionGroup(groupKey)?.canElevateToAdmin;
 }
 
 /**
@@ -734,8 +828,35 @@ function canGroupElevateToAdmin(groupKey) {
 function getGrantsForAppRole(appKey, roleKey) {
     const entry = ENTRIES.find(e => e.key === appKey);
     if (!entry) return [];
-    const rolePermission = entry.permissions?.find(p => p.role.key === roleKey);
+    const normalizedRoleKey = normalizePermissionGroupKey(roleKey);
+    const rolePermission = entry.permissions?.find(p => normalizePermissionGroupKey(p.role.key) === normalizedRoleKey);
     return rolePermission?.grants || [];
+}
+
+/**
+ * Get enabled permission groups for an app key.
+ * @param {string} appKey
+ * @returns {string[]}
+ */
+function getEnabledPermissionGroups(appKey) {
+    const entry = ENTRIES.find(e => e.key === appKey);
+    if (!entry) return [];
+    return getEnabledGroupKeysForEntry(entry);
+}
+
+/**
+ * Build role options per app from permission config.
+ * Useful for dynamic forms (e.g. HR Team app role matrix).
+ * @returns {Array<{appKey:string, appName:string, enabledGroups:string[]}>}
+ */
+function getAppRoleOptions() {
+    return ENTRIES.map((entry) => ({
+        appKey: entry.key,
+        teamSlug: `team-${entry.key}`,
+        appName: entry.name,
+        departmentName: APP_DEPARTMENT_SEED_MAP[entry.key] || entry.name,
+        enabledGroups: getEnabledGroupKeysForEntry(entry),
+    }));
 }
 
 // ============================================================================
@@ -913,6 +1034,11 @@ const __exports = {
     permissionsByKey,
     getPermissionsForAppGroups,
     canGroupElevateToAdmin,
+    normalizePermissionGroupKey,
+    getPermissionGroup,
+    getEnabledPermissionGroups,
+    getAppRoleOptions,
+    APP_DEPARTMENT_SEED_MAP,
     getGrantsForAppRole,
     SYSTEM_PERMISSION_GROUPS,
     PLUGIN_PERMISSION_ENTRIES,

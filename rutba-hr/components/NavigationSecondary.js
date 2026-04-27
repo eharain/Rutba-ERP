@@ -12,6 +12,15 @@ export default function NavigationSecondary() {
                     <Link className="btn btn-sm btn-outline-info" href="/departments">Departments</Link>
                 </li>
                 <li className="nav-item">
+                    <Link className="btn btn-sm btn-outline-success" href="/teams">Teams</Link>
+                </li>
+                <li className="nav-item">
+                    <Link className="btn btn-sm btn-outline-dark" href="/hr-team-management">Team Mgmt</Link>
+                </li>
+                <li className="nav-item">
+                    <Link className="btn btn-sm btn-outline-secondary" href="/hr-employee-management">Employee Mgmt</Link>
+                </li>
+                <li className="nav-item">
                     <Link className="btn btn-sm btn-outline-warning" href="/leave-requests">Leave Requests</Link>
                 </li>
             </ul>

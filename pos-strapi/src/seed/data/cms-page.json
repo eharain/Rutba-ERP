@@ -1,0 +1,96 @@
+{
+  "enabled": true,
+  "uid": "api::cms-page.cms-page",
+  "records": [
+    {
+      "locate": {
+        "by": "slug",
+        "value": "index"
+      },
+      "policy": {
+        "editable": true,
+        "revertOnSeed": false
+      },
+      "data": {
+        "title": "Home",
+        "slug": "index",
+        "page_type": "info",
+        "sort_order": 1,
+        "excerpt": "Welcome to Rutba — quality products, fair pricing, and reliable delivery.",
+        "content": "## Welcome to Rutba\n\nDiscover products curated for everyday needs with trusted quality and transparent pricing.\n\n### Why shop with us\n\n- Quality-first sourcing\n- Fast and reliable delivery\n- Responsive customer support\n\nStart exploring categories and featured offers from the home page."
+      }
+    },
+    {
+      "locate": {
+        "by": "slug",
+        "value": "about-us"
+      },
+      "policy": {
+        "editable": true,
+        "revertOnSeed": false
+      },
+      "data": {
+        "title": "About Us",
+        "slug": "about-us",
+        "page_type": "info",
+        "sort_order": 10,
+        "excerpt": "Learn who we are, what we value, and how we serve customers across Pakistan.",
+        "content": "## About Rutba\n\nRutba is building a dependable commerce experience focused on quality, trust, and service excellence.\n\n### Our mission\n\nTo make daily shopping simple and reliable through strong supplier partnerships and customer-first operations.\n\n### Our promise\n\n- Honest product descriptions\n- Fair return and exchange support\n- Continuous improvement through customer feedback"
+      }
+    },
+    {
+      "locate": {
+        "by": "slug",
+        "value": "terms-and-conditions"
+      },
+      "policy": {
+        "editable": true,
+        "revertOnSeed": false
+      },
+      "data": {
+        "title": "Terms & Conditions",
+        "slug": "terms-and-conditions",
+        "page_type": "info",
+        "sort_order": 20,
+        "excerpt": "Please review the terms governing use of Rutba services and purchases.",
+        "content": "## Terms & Conditions\n\nBy using Rutba services, you agree to these terms.\n\n### Orders\n\n- Orders are confirmed after successful processing.\n- We may cancel orders affected by pricing or stock errors.\n\n### Payments\n\n- Payments must be completed using approved methods.\n- Refund timing depends on payment provider processing windows.\n\n### Account responsibilities\n\nYou are responsible for maintaining accurate account and delivery information."
+      }
+    },
+    {
+      "locate": {
+        "by": "slug",
+        "value": "privacy-policy"
+      },
+      "policy": {
+        "editable": true,
+        "revertOnSeed": false
+      },
+      "data": {
+        "title": "Privacy Policy",
+        "slug": "privacy-policy",
+        "page_type": "info",
+        "sort_order": 30,
+        "excerpt": "How we collect, use, and protect your personal information.",
+        "content": "## Privacy Policy\n\nRutba respects your privacy and protects your personal data.\n\n### Data we collect\n\n- Account details (name, email, phone)\n- Order and delivery information\n- Support communication records\n\n### How we use data\n\n- Process and deliver orders\n- Improve services and customer support\n- Comply with legal obligations\n\nWe do not sell personal data."
+      }
+    },
+    {
+      "locate": {
+        "by": "slug",
+        "value": "return-and-exchange-policy"
+      },
+      "policy": {
+        "editable": true,
+        "revertOnSeed": false
+      },
+      "data": {
+        "title": "Return & Exchange Policy",
+        "slug": "return-and-exchange-policy",
+        "page_type": "info",
+        "sort_order": 40,
+        "excerpt": "Understand eligibility, timelines, and process for returns and exchanges.",
+        "content": "## Return & Exchange Policy\n\nWe aim for a smooth and fair post-purchase experience.\n\n### Eligibility\n\n- Items must be unused and in original condition\n- Return/exchange requests should be initiated within the allowed policy window\n- Certain categories may be non-returnable for hygiene or safety reasons\n\n### Process\n\n1. Contact support with order details\n2. Follow pickup/drop-off instructions\n3. Receive replacement or refund after inspection\n\nFor policy-specific exceptions, contact customer support."
+      }
+    }
+  ]
+}

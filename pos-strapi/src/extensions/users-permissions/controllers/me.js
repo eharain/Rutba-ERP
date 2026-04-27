@@ -6,6 +6,7 @@ const {
     DEFAULT_SESSION_TIMEOUT,
     CLIENT_PLUGIN_PERMISSIONS,
     canGroupElevateToAdmin,
+    getEnabledPermissionGroups,
 } = require('../../../../config/app-access-permissions');
 
 const APP_ACCESS_ALIASES = {
@@ -48,10 +49,20 @@ module.exports = createCoreController('plugin::users-permissions.me', ({ strapi 
 
                 permissions = accessibleKeys
                     .flatMap((key) => {
-                        const groups = [
-                            ...(appAccess.includes(key) ? ['user'] : []),
-                            ...(adminAppAccess.includes(key) ? ['admin'] : []),
-                        ];
+                        const enabledGroups = getEnabledPermissionGroups(key);
+                        const groups = [];
+
+                        if (appAccess.includes(key) && enabledGroups.includes('staff')) {
+                            groups.push('staff');
+                            if (enabledGroups.includes('manager') && adminAppAccess.includes(key)) {
+                                groups.push('manager');
+                            }
+                        }
+
+                        if (adminAppAccess.includes(key) && enabledGroups.includes('admin')) {
+                            groups.push('admin');
+                        }
+
                         return getPermissionsForAppGroups(key, groups);
                     })
                     .flatMap((def) => (def.actions || []).map((action) => `${def.uid}.${action}`));
@@ -74,10 +85,11 @@ module.exports = createCoreController('plugin::users-permissions.me', ({ strapi 
                 roleType,
                 appAccess,
                 adminAppAccess,
-                permissionGroups: ['user', 'admin'].map((g) => ({
+                permissionGroups: ['staff', 'manager', 'admin'].map((g) => ({
                     key: g,
                     canElevateToAdmin: canGroupElevateToAdmin(g),
                 })),
+                enabledPermissionGroups: appName ? getEnabledPermissionGroups(appName) : [],
                 permissions,
                 sessionTimeout: (settingsByKey[appName] || {}).sessionTimeout || DEFAULT_SESSION_TIMEOUT,
             };

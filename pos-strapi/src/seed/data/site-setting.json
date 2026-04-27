@@ -1,0 +1,21 @@
+{
+  "enabled": false,
+  "uid": "api::site-setting.site-setting",
+  "records": [
+    {
+      "locate": {
+        "by": "slug",
+        "value": "default-site"
+      },
+      "policy": {
+        "editable": true,
+        "revertOnSeed": false
+      },
+      "data": {
+        "slug": "default-site",
+        "title": "Rutba Default Site",
+        "is_active": true
+      }
+    }
+  ]
+}

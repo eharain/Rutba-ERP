@@ -1,0 +1,63 @@
+{
+  "kind": "collectionType",
+  "collectionName": "hr_teams",
+  "info": {
+    "singularName": "hr-team",
+    "pluralName": "hr-teams",
+    "displayName": "HR Team",
+    "description": "Management teams with hierarchy, manager and members"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "team_slug": {
+      "type": "uid",
+      "targetField": "name",
+      "required": true,
+      "unique": true
+    },
+    "department": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-department.hr-department",
+      "inversedBy": "teams"
+    },
+    "team_manager": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-employee.hr-employee",
+      "inversedBy": "managed_teams"
+    },
+    "members": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::hr-employee.hr-employee",
+      "inversedBy": "teams"
+    },
+    "parent_team": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-team.hr-team",
+      "inversedBy": "child_teams"
+    },
+    "child_teams": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::hr-team.hr-team",
+      "mappedBy": "parent_team"
+    },
+    "app_roles": {
+      "type": "json"
+    },
+    "seeded_from_app_access": {
+      "type": "boolean",
+      "default": false
+    }
+  }
+}

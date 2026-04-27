@@ -24,6 +24,15 @@ export default function Navigation() {
                         <Link className="nav-link" href="/departments">Departments</Link>
                     </li>
                     <li className="nav-item">
+                        <Link className="nav-link" href="/teams">Teams</Link>
+                    </li>
+                    <li className="nav-item">
+                        <Link className="nav-link" href="/hr-team-management">Team Management</Link>
+                    </li>
+                    <li className="nav-item">
+                        <Link className="nav-link" href="/hr-employee-management">Employee Management</Link>
+                    </li>
+                    <li className="nav-item">
                         <Link className="nav-link" href="/attendance">Attendance</Link>
                     </li>
                     <li className="nav-item">

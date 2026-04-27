@@ -12,6 +12,9 @@ export default function EmployeeDetail() {
     const { jwt } = useAuth();
     const [employee, setEmployee] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [users, setUsers] = useState([]);
+    const [linkDraft, setLinkDraft] = useState("");
+    const [savingLink, setSavingLink] = useState(false);
 
     useEffect(() => {
         if (!jwt || !documentId) return;
@@ -20,6 +23,43 @@ export default function EmployeeDetail() {
             .catch((err) => console.error("Failed to load employee", err))
             .finally(() => setLoading(false));
     }, [jwt, documentId]);
+
+    useEffect(() => {
+        if (!jwt) return;
+        authApi.get("/auth-admin/users", {}, jwt)
+            .then((res) => {
+                const rows = Array.isArray(res) ? res : res?.data || [];
+                setUsers(rows);
+            })
+            .catch((err) => console.error("Failed to load users", err));
+    }, [jwt]);
+
+    useEffect(() => {
+        if (employee?.user?.id) {
+            setLinkDraft(String(employee.user.id));
+        } else {
+            setLinkDraft("");
+        }
+    }, [employee]);
+
+    async function saveUserLink() {
+        if (!employee?.documentId) return;
+        setSavingLink(true);
+        try {
+            await authApi.put(`/hr-employees/${employee.documentId}`, {
+                data: {
+                    user: linkDraft ? { id: Number(linkDraft) } : null,
+                },
+            }, jwt);
+
+            const res = await authApi.get(`/hr-employees/${employee.documentId}?populate=*`, {}, jwt);
+            setEmployee(res.data || res);
+        } catch (err) {
+            console.error("Failed to save employee-user link", err);
+        } finally {
+            setSavingLink(false);
+        }
+    }
 
     return (
         <ProtectedRoute>
@@ -47,6 +87,7 @@ export default function EmployeeDetail() {
                                     <p><strong>Phone:</strong> {employee.phone || "—"}</p>
                                     <p><strong>Department:</strong> {employee.department?.name || "—"}</p>
                                     <p><strong>Designation:</strong> {employee.designation || "—"}</p>
+                                    <p><strong>Linked User:</strong> {employee.user?.username || employee.user?.email || "—"}</p>
                                     <p><strong>Date of Joining:</strong> {employee.date_of_joining ? new Date(employee.date_of_joining).toLocaleDateString() : "—"}</p>
                                     <p><strong>Status:</strong>{" "}
                                         <span className={`badge bg-${employee.status === "Active" ? "success" : "secondary"}`}>
@@ -54,6 +95,27 @@ export default function EmployeeDetail() {
                                         </span>
                                     </p>
                                     <p><strong>Address:</strong> {employee.address || "—"}</p>
+
+                                    <div className="border-top pt-3 mt-3">
+                                        <label className="form-label fw-semibold">Link Auth User</label>
+                                        <div className="d-flex gap-2">
+                                            <select
+                                                className="form-select"
+                                                value={linkDraft}
+                                                onChange={(e) => setLinkDraft(e.target.value)}
+                                            >
+                                                <option value="">— Not Linked —</option>
+                                                {users.map((u) => (
+                                                    <option key={u.id} value={u.id}>
+                                                        {u.displayName || u.username} ({u.email})
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <button className="btn btn-primary" onClick={saveUserLink} disabled={savingLink}>
+                                                {savingLink ? "Saving..." : "Save Link"}
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>

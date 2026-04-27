@@ -7,7 +7,8 @@ export default function Home() {
             <Layout>
                 <h2>Welcome to Rutba HR 👥</h2>
                 <h3>
-                    Manage employees, departments, attendance, and leave requests.
+                    Manage employees, departments, teams, attendance, and leave requests.
+                    Team and employee maintenance pages are available from navigation.
                     Use the navigation to browse the HR modules.
                 </h3>
             </Layout>
