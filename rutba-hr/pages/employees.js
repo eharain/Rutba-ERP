@@ -12,7 +12,7 @@ export default function Employees() {
 
     useEffect(() => {
         if (!jwt) return;
-        authApi.get("/hr-employees?sort=name:asc&populate=department", {}, jwt)
+        authApi.get("/hr-employees?sort=name:asc&populate=department,user", {}, jwt)
             .then((res) => setEmployees(res.data || []))
             .catch((err) => console.error("Failed to load employees", err))
             .finally(() => setLoading(false));
@@ -39,6 +39,7 @@ export default function Employees() {
                                     <th>Phone</th>
                                     <th>Department</th>
                                     <th>Designation</th>
+                                    <th>User Link</th>
                                     <th></th>
                                 </tr>
                             </thead>
@@ -50,6 +51,13 @@ export default function Employees() {
                                         <td>{e.phone || "—"}</td>
                                         <td>{e.department?.name || "—"}</td>
                                         <td>{e.designation || "—"}</td>
+                                        <td>
+                                            {e.user ? (
+                                                <span className="badge bg-success">Linked</span>
+                                            ) : (
+                                                <span className="badge bg-secondary">Not Linked</span>
+                                            )}
+                                        </td>
                                         <td>
                                             <Link className="btn btn-sm btn-outline-primary" href={`/${e.documentId || e.id}/employee`}>
                                                 View

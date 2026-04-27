@@ -985,7 +985,7 @@ export interface ApiAppAccessAppAccess extends Struct.CollectionTypeSchema {
   };
   pluginOptions: {
     'content-manager': {
-      visible: false;
+      visible: true;
     };
     'content-type-builder': {
       visible: false;
@@ -1923,6 +1923,7 @@ export interface ApiHrDepartmentHrDepartment
       Schema.Attribute.Private;
     name: Schema.Attribute.String & Schema.Attribute.Required;
     publishedAt: Schema.Attribute.DateTime;
+    teams: Schema.Attribute.Relation<'oneToMany', 'api::hr-team.hr-team'>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -1966,6 +1967,10 @@ export interface ApiHrEmployeeHrEmployee extends Struct.CollectionTypeSchema {
       'api::hr-employee.hr-employee'
     > &
       Schema.Attribute.Private;
+    managed_teams: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::hr-team.hr-team'
+    >;
     name: Schema.Attribute.String & Schema.Attribute.Required;
     phone: Schema.Attribute.String;
     publishedAt: Schema.Attribute.DateTime;
@@ -1977,9 +1982,14 @@ export interface ApiHrEmployeeHrEmployee extends Struct.CollectionTypeSchema {
       ['Active', 'Inactive', 'Terminated', 'On Leave']
     > &
       Schema.Attribute.DefaultTo<'Active'>;
+    teams: Schema.Attribute.Relation<'manyToMany', 'api::hr-team.hr-team'>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    user: Schema.Attribute.Relation<
+      'oneToOne',
+      'plugin::users-permissions.user'
+    >;
   };
 }
 
@@ -2023,6 +2033,55 @@ export interface ApiHrLeaveRequestHrLeaveRequest
     start_date: Schema.Attribute.Date & Schema.Attribute.Required;
     status: Schema.Attribute.Enumeration<['Pending', 'Approved', 'Rejected']> &
       Schema.Attribute.DefaultTo<'Pending'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiHrTeamHrTeam extends Struct.CollectionTypeSchema {
+  collectionName: 'hr_teams';
+  info: {
+    description: 'Management teams with hierarchy, manager and members';
+    displayName: 'HR Team';
+    pluralName: 'hr-teams';
+    singularName: 'hr-team';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    app_roles: Schema.Attribute.JSON;
+    child_teams: Schema.Attribute.Relation<'oneToMany', 'api::hr-team.hr-team'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    department: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::hr-department.hr-department'
+    >;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::hr-team.hr-team'
+    > &
+      Schema.Attribute.Private;
+    members: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::hr-employee.hr-employee'
+    >;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    parent_team: Schema.Attribute.Relation<'manyToOne', 'api::hr-team.hr-team'>;
+    publishedAt: Schema.Attribute.DateTime;
+    seeded_from_app_access: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<false>;
+    team_manager: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::hr-employee.hr-employee'
+    >;
+    team_slug: Schema.Attribute.UID<'name'> &
+      Schema.Attribute.Required &
+      Schema.Attribute.Unique;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -4119,6 +4178,10 @@ export interface PluginUsersPermissionsUser
       Schema.Attribute.SetMinMaxLength<{
         minLength: 6;
       }>;
+    hr_employee: Schema.Attribute.Relation<
+      'oneToOne',
+      'api::hr-employee.hr-employee'
+    >;
     isStaff: Schema.Attribute.Boolean;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
@@ -4194,6 +4257,7 @@ declare module '@strapi/strapi' {
       'api::hr-department.hr-department': ApiHrDepartmentHrDepartment;
       'api::hr-employee.hr-employee': ApiHrEmployeeHrEmployee;
       'api::hr-leave-request.hr-leave-request': ApiHrLeaveRequestHrLeaveRequest;
+      'api::hr-team.hr-team': ApiHrTeamHrTeam;
       'api::notification-log.notification-log': ApiNotificationLogNotificationLog;
       'api::notification-template.notification-template': ApiNotificationTemplateNotificationTemplate;
       'api::order-message.order-message': ApiOrderMessageOrderMessage;

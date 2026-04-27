@@ -47,6 +47,12 @@
       "target": "api::hr-department.hr-department",
       "inversedBy": "employees"
     },
+    "user": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "plugin::users-permissions.user",
+      "inversedBy": "hr_employee"
+    },
     "attendances": {
       "type": "relation",
       "relation": "oneToMany",
@@ -58,6 +64,18 @@
       "relation": "oneToMany",
       "target": "api::hr-leave-request.hr-leave-request",
       "mappedBy": "employee"
+    },
+    "managed_teams": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::hr-team.hr-team",
+      "mappedBy": "team_manager"
+    },
+    "teams": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::hr-team.hr-team",
+      "mappedBy": "members"
     },
     "salary_structure": {
       "type": "relation",

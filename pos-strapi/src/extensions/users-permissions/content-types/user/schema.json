@@ -87,6 +87,12 @@
       "relation": "manyToMany",
       "target": "api::app-access.app-access",
       "inversedBy": "admin_users"
+    },
+    "hr_employee": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::hr-employee.hr-employee",
+      "mappedBy": "user"
     }
   }
 }

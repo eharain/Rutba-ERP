@@ -27,6 +27,12 @@
       "relation": "oneToMany",
       "target": "api::hr-employee.hr-employee",
       "mappedBy": "department"
+    },
+    "teams": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::hr-team.hr-team",
+      "mappedBy": "department"
     }
   }
 }

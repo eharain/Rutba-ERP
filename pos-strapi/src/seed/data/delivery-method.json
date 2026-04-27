@@ -1,0 +1,98 @@
+{
+  "enabled": true,
+  "uid": "api::delivery-method.delivery-method",
+  "records": [
+    {
+      "locate": {
+        "by": "name",
+        "value": "Standard delivery"
+      },
+      "policy": {
+        "editable": true,
+        "revertOnSeed": false
+      },
+      "data": {
+        "name": "Standard delivery",
+        "description": "6–12 Working Days",
+        "base_cost": 0,
+        "per_kg_rate": 0,
+        "service_provider": "custom",
+        "estimated_days_min": 6,
+        "estimated_days_max": 12,
+        "priority": 10,
+        "is_active": true,
+        "offer_timeout_minutes": 5,
+        "max_riders_to_offer": 10
+      }
+    },
+    {
+      "locate": {
+        "by": "name",
+        "value": "Express delivery"
+      },
+      "policy": {
+        "editable": true,
+        "revertOnSeed": false
+      },
+      "data": {
+        "name": "Express delivery",
+        "description": "3–10 Working Days",
+        "base_cost": 0,
+        "per_kg_rate": 0,
+        "service_provider": "custom",
+        "estimated_days_min": 3,
+        "estimated_days_max": 10,
+        "priority": 20,
+        "is_active": true,
+        "offer_timeout_minutes": 5,
+        "max_riders_to_offer": 10
+      }
+    },
+    {
+      "locate": {
+        "by": "name",
+        "value": "International Standard delivery"
+      },
+      "policy": {
+        "editable": true,
+        "revertOnSeed": false
+      },
+      "data": {
+        "name": "International Standard delivery",
+        "description": "7–21 Working Days",
+        "base_cost": 0,
+        "per_kg_rate": 0,
+        "service_provider": "easypost",
+        "estimated_days_min": 7,
+        "estimated_days_max": 21,
+        "priority": 30,
+        "is_active": true,
+        "offer_timeout_minutes": 5,
+        "max_riders_to_offer": 10
+      }
+    },
+    {
+      "locate": {
+        "by": "name",
+        "value": "International Express delivery"
+      },
+      "policy": {
+        "editable": true,
+        "revertOnSeed": false
+      },
+      "data": {
+        "name": "International Express delivery",
+        "description": "2–7 Working Days",
+        "base_cost": 0,
+        "per_kg_rate": 0,
+        "service_provider": "easypost",
+        "estimated_days_min": 2,
+        "estimated_days_max": 7,
+        "priority": 40,
+        "is_active": true,
+        "offer_timeout_minutes": 5,
+        "max_riders_to_offer": 10
+      }
+    }
+  ]
+}
