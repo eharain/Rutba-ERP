@@ -32,7 +32,13 @@ export default function Navigation() {
                     <AdminModeToggle />
                     {user ? (
                         <>
-                            <span className="me-3">Hello, {user.username || user.email}</span>
+                            {user.id ? (
+                                <Link className="me-3 text-white text-decoration-none" href={`/users/${user.id}`}>
+                                    Hello, {user.username || user.email}
+                                </Link>
+                            ) : (
+                                <span className="me-3">Hello, {user.username || user.email}</span>
+                            )}
                             <button className="btn btn-outline-light btn-sm" onClick={() => { window.location.href = '/logout'; }}>
                                 Logout
                             </button>

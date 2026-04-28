@@ -23,6 +23,8 @@ export default function AccessAssignmentPage() {
   const [roleFilter, setRoleFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [savingMap, setSavingMap] = useState({});
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   useEffect(() => {
     loadData();
@@ -69,6 +71,12 @@ export default function AccessAssignmentPage() {
         || (u.email || "").toLowerCase().includes(q);
     });
   }, [users, search, roleFilter, statusFilter]);
+
+  const pageCount = Math.max(1, Math.ceil(filteredUsers.length / pageSize));
+  const safePage = Math.min(page, pageCount);
+  const startIndex = filteredUsers.length === 0 ? 0 : (safePage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, filteredUsers.length);
+  const pagedUsers = filteredUsers.slice(startIndex, endIndex);
 
   function getIds(user, field) {
     return new Set((user[field] || []).map((a) => a.id));
@@ -173,13 +181,44 @@ export default function AccessAssignmentPage() {
 
           <UserAccessFilters
             search={search}
-            setSearch={setSearch}
+            setSearch={(value) => {
+              setSearch(value);
+              setPage(1);
+            }}
             roleFilter={roleFilter}
-            setRoleFilter={setRoleFilter}
+            setRoleFilter={(value) => {
+              setRoleFilter(value);
+              setPage(1);
+            }}
             statusFilter={statusFilter}
-            setStatusFilter={setStatusFilter}
+            setStatusFilter={(value) => {
+              setStatusFilter(value);
+              setPage(1);
+            }}
             roleOptions={roleOptions}
           />
+
+          <div className="d-flex justify-content-between align-items-center mb-2">
+            <small className="text-muted">
+              Showing {filteredUsers.length === 0 ? 0 : startIndex + 1}–{endIndex} of {filteredUsers.length}
+            </small>
+            <div className="d-flex align-items-center gap-2">
+              <label className="small text-muted mb-0">Page size</label>
+              <select
+                className="form-select form-select-sm"
+                style={{ width: 90 }}
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setPage(1);
+                }}
+              >
+                {[10, 25, 50, 100].map((size) => (
+                  <option key={size} value={size}>{size}</option>
+                ))}
+              </select>
+            </div>
+          </div>
 
           {loading ? (
             <div className="text-center py-5">
@@ -195,7 +234,7 @@ export default function AccessAssignmentPage() {
             </div>
           ) : (
             <div>
-              {filteredUsers.map((user) => (
+              {pagedUsers.map((user) => (
                 <UserAccessCard
                   key={user.id}
                   user={user}
@@ -205,6 +244,28 @@ export default function AccessAssignmentPage() {
                   updateAccess={updateAccess}
                 />
               ))}
+
+              <div className="d-flex justify-content-between align-items-center mt-3">
+                <small className="text-muted">Page {safePage} of {pageCount}</small>
+                <div className="btn-group btn-group-sm" role="group" aria-label="User access pagination">
+                  <button
+                    type="button"
+                    className="btn btn-outline-secondary"
+                    disabled={safePage <= 1}
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  >
+                    Previous
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-outline-secondary"
+                    disabled={safePage >= pageCount}
+                    onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
             </div>
           )}
           </PermissionCheck>

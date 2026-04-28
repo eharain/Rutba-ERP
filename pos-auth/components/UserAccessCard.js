@@ -1,3 +1,6 @@
+import { useState } from "react";
+import Link from "next/link";
+
 export default function UserAccessCard({
   user,
   apps,
@@ -5,12 +8,20 @@ export default function UserAccessCard({
   isChecked,
   updateAccess,
 }) {
+  const [expanded, setExpanded] = useState(false);
+  const userAccessCount = (user.app_accesses || []).length;
+  const adminAccessCount = (user.admin_app_accesses || []).length;
+
   return (
     <div className="card mb-3">
       <div className="card-header bg-light">
         <div className="row align-items-center">
-          <div className="col-md-6">
-            <div className="fw-bold">{user.displayName || "—"}</div>
+          <div className="col-md-7">
+            <div className="fw-bold">
+              <Link href={`/users/${user.id}`} className="text-decoration-none">
+                {user.displayName || user.username || user.email || "—"}
+              </Link>
+            </div>
             <div className="small text-muted">
               <span className="me-3">
                 <i className="fas fa-user me-1"></i>
@@ -44,10 +55,27 @@ export default function UserAccessCard({
               </span>
             )}
           </div>
+          <div className="col-md-2 text-md-end mt-2 mt-md-0">
+            <button
+              type="button"
+              className="btn btn-sm btn-outline-primary"
+              onClick={() => setExpanded((prev) => !prev)}
+            >
+              <i className={`fas ${expanded ? "fa-chevron-up" : "fa-chevron-down"} me-1`}></i>
+              Apps ({apps.length})
+            </button>
+          </div>
         </div>
       </div>
       <div className="card-body">
-        {apps.length === 0 ? (
+        {!expanded && (
+          <div className="small text-muted">
+            <span className="me-3"><strong>User:</strong> {userAccessCount}</span>
+            <span><strong>Admin:</strong> {adminAccessCount}</span>
+          </div>
+        )}
+
+        {expanded && (apps.length === 0 ? (
           <p className="text-muted mb-0">No applications configured</p>
         ) : (
           <div className="table-responsive">
@@ -124,7 +152,7 @@ export default function UserAccessCard({
               </tbody>
             </table>
           </div>
-        )}
+        ))}
       </div>
     </div>
   );

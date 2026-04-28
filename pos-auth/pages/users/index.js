@@ -9,6 +9,8 @@ export default function UsersPage() {
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
 
     useEffect(() => { loadUsers(); }, []);
 
@@ -32,6 +34,12 @@ export default function UsersPage() {
             || (u.displayName || "").toLowerCase().includes(q);
     });
 
+    const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
+    const safePage = Math.min(page, pageCount);
+    const startIndex = filtered.length === 0 ? 0 : (safePage - 1) * pageSize;
+    const endIndex = Math.min(startIndex + pageSize, filtered.length);
+    const pagedUsers = filtered.slice(startIndex, endIndex);
+
     return (
         <Layout>
             <ProtectedRoute>
@@ -53,29 +61,55 @@ export default function UsersPage() {
                         className="form-control"
                         placeholder="Search by name, email, or username..."
                         value={search}
-                        onChange={e => setSearch(e.target.value)}
+                        onChange={e => {
+                            setSearch(e.target.value);
+                            setPage(1);
+                        }}
                     />
+                </div>
+
+                <div className="d-flex justify-content-between align-items-center mb-2">
+                    <small className="text-muted">
+                        Showing {filtered.length === 0 ? 0 : startIndex + 1}–{endIndex} of {filtered.length}
+                    </small>
+                    <div className="d-flex align-items-center gap-2">
+                        <label className="small text-muted mb-0">Page size</label>
+                        <select
+                            className="form-select form-select-sm"
+                            style={{ width: 90 }}
+                            value={pageSize}
+                            onChange={(e) => {
+                                setPageSize(Number(e.target.value));
+                                setPage(1);
+                            }}
+                        >
+                            {[10, 25, 50, 100].map((size) => (
+                                <option key={size} value={size}>{size}</option>
+                            ))}
+                        </select>
+                    </div>
                 </div>
 
                 {loading ? (
                     <p>Loading users...</p>
                 ) : (
-                    <div className="table-responsive">
-                        <table className="table table-hover align-middle">
-                            <thead className="table-dark">
-                                <tr>
-                                    <th>User</th>
-                                    <th>Role</th>
-                                    <th>App Access</th>
-                                    <th>Status</th>
-                                    <th style={{ width: "120px" }}>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {filtered.length === 0 && (
-                                    <tr><td colSpan="5" className="text-center text-muted py-4">No users found</td></tr>
-                                )}
-                                {filtered.map(u => {
+                    <>
+                        <div className="table-responsive">
+                            <table className="table table-hover align-middle">
+                                <thead className="table-dark">
+                                    <tr>
+                                        <th>User</th>
+                                        <th>Role</th>
+                                        <th>App Access</th>
+                                        <th>Status</th>
+                                        <th style={{ width: "120px" }}>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {filtered.length === 0 && (
+                                        <tr><td colSpan="5" className="text-center text-muted py-4">No users found</td></tr>
+                                    )}
+                                    {pagedUsers.map(u => {
                                     const regularApps = (u.app_accesses || []).filter(
                                         a => !(u.admin_app_accesses || []).some(aa => aa.id === a.id)
                                     );
@@ -84,7 +118,11 @@ export default function UsersPage() {
                                     return (
                                         <tr key={u.id}>
                                             <td>
-                                                <div className="fw-semibold">{u.displayName || '—'}</div>
+                                                <div className="fw-semibold">
+                                                    <Link href={`/users/${u.id}`} className="text-decoration-none">
+                                                        {u.displayName || u.username || u.email || '—'}
+                                                    </Link>
+                                                </div>
                                                 <div className="small text-muted">
                                                     <i className="fas fa-user me-1"></i>
                                                     {u.username}
@@ -136,10 +174,33 @@ export default function UsersPage() {
                                             </td>
                                         </tr>
                                     );
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div className="d-flex justify-content-between align-items-center mt-3">
+                            <small className="text-muted">Page {safePage} of {pageCount}</small>
+                            <div className="btn-group btn-group-sm" role="group" aria-label="Users pagination">
+                                <button
+                                    type="button"
+                                    className="btn btn-outline-secondary"
+                                    disabled={safePage <= 1}
+                                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                                >
+                                    Previous
+                                </button>
+                                <button
+                                    type="button"
+                                    className="btn btn-outline-secondary"
+                                    disabled={safePage >= pageCount}
+                                    onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+                                >
+                                    Next
+                                </button>
+                            </div>
+                        </div>
+                    </>
                 )}
                     </AppAccessGate>
                 </ProtectedRoute>

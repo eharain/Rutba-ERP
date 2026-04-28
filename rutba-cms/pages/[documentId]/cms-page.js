@@ -11,7 +11,7 @@ import { useToast } from "../../components/Toast";
 import GroupPickerTabs from "../../components/GroupPickerTabs";
 import PagePickerTabs from "../../components/PagePickerTabs";
 
-const PAGE_TYPES = ["shop", "blog", "news", "info"];
+const PAGE_TYPES = ["shop", "blog", "news", "info", "page"];
 
 export default function CmsPageDetail() {
     const router = useRouter();

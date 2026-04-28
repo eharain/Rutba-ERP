@@ -7,7 +7,7 @@ import { authApi } from "@rutba/pos-shared/lib/api";
 import Link from "next/link";
 import { useToast } from "../components/Toast";
 
-const PAGE_TYPES = ["shop", "blog", "news", "info"];
+const PAGE_TYPES = ["shop", "blog", "news", "info", "page"];
 
 const PAGE_EXPORT_COLUMNS = ["slug", "title", "excerpt", "content", "page_type", "sort_order"];
 
