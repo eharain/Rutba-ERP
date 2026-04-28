@@ -85,3 +85,11 @@ rutba-web/src/
 
 - Keep access logic domain-driven and centralized in services/middleware — do not scatter permission checks across components.
 - When adding new workflows that require approvals, register the workflow’s required approval scopes and reuse the same manager-scoped guard.
+
+### pos-auth: User Management Screens
+
+- Show app access in expandable sections per user (accordion/expandable row).
+- Add pagination controls and a page-size selector to both Users and Access Assignment lists.
+- Make user names link to their edit user pages (use dedicated edit routes).
+
+- Ensure UI visibility follows authorization: hide actions the current user cannot perform and enforce the same rules server-side.
