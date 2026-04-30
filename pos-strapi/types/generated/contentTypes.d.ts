@@ -3719,6 +3719,276 @@ export interface PluginI18NLocale extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface PluginPermissionManagerProPermissionDomain
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'permission_domains';
+  info: {
+    displayName: 'Permission App Domain';
+    pluralName: 'permission-domains';
+    singularName: 'permission-domain';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  pluginOptions: {
+    'content-manager': {
+      visible: false;
+    };
+    'content-type-builder': {
+      visible: false;
+    };
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    description: Schema.Attribute.Text;
+    isActive: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    key: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.Unique;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'plugin::permission-manager-pro.permission-domain'
+    > &
+      Schema.Attribute.Private;
+    matchKey: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'x-rutba-app'>;
+    matchMode: Schema.Attribute.Enumeration<['header', 'query', 'both']> &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'header'>;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    publishedAt: Schema.Attribute.DateTime;
+    strapiRoleType: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'authenticated'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface PluginPermissionManagerProPermissionGrant
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'permission_grants';
+  info: {
+    displayName: 'Permission Grant';
+    pluralName: 'permission-grants';
+    singularName: 'permission-grant';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  pluginOptions: {
+    'content-manager': {
+      visible: false;
+    };
+    'content-type-builder': {
+      visible: false;
+    };
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    key: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.Unique;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'plugin::permission-manager-pro.permission-grant'
+    > &
+      Schema.Attribute.Private;
+    policy: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::permission-manager-pro.permission-policy'
+    > &
+      Schema.Attribute.Required;
+    publishedAt: Schema.Attribute.DateTime;
+    role: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::permission-manager-pro.permission-role'
+    > &
+      Schema.Attribute.Required;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface PluginPermissionManagerProPermissionPolicy
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'permission_policies';
+  info: {
+    displayName: 'Permission Policy';
+    pluralName: 'permission-policies';
+    singularName: 'permission-policy';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  pluginOptions: {
+    'content-manager': {
+      visible: false;
+    };
+    'content-type-builder': {
+      visible: false;
+    };
+  };
+  attributes: {
+    actions: Schema.Attribute.JSON & Schema.Attribute.Required;
+    conditions: Schema.Attribute.JSON & Schema.Attribute.DefaultTo<[]>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    effect: Schema.Attribute.Enumeration<['allow', 'deny']> &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'allow'>;
+    fields: Schema.Attribute.JSON & Schema.Attribute.DefaultTo<[]>;
+    key: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.Unique;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'plugin::permission-manager-pro.permission-policy'
+    > &
+      Schema.Attribute.Private;
+    publishedAt: Schema.Attribute.DateTime;
+    resource: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::permission-manager-pro.permission-resource'
+    >;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface PluginPermissionManagerProPermissionResource
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'permission_resources';
+  info: {
+    displayName: 'Permission Route Resource';
+    pluralName: 'permission-resources';
+    singularName: 'permission-resource';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  pluginOptions: {
+    'content-manager': {
+      visible: false;
+    };
+    'content-type-builder': {
+      visible: false;
+    };
+  };
+  attributes: {
+    aliasPath: Schema.Attribute.String;
+    conditions: Schema.Attribute.JSON & Schema.Attribute.DefaultTo<[]>;
+    contentTypeUid: Schema.Attribute.String;
+    controllerAction: Schema.Attribute.String;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    effect: Schema.Attribute.Enumeration<['allow', 'deny']> &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'allow'>;
+    isActive: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    isPublic: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    key: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.Unique;
+    label: Schema.Attribute.String & Schema.Attribute.Required;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'plugin::permission-manager-pro.permission-resource'
+    > &
+      Schema.Attribute.Private;
+    method: Schema.Attribute.Enumeration<
+      ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']
+    > &
+      Schema.Attribute.Required;
+    pathPattern: Schema.Attribute.String & Schema.Attribute.Required;
+    publishedAt: Schema.Attribute.DateTime;
+    requestRules: Schema.Attribute.JSON & Schema.Attribute.DefaultTo<{}>;
+    resourceType: Schema.Attribute.Enumeration<
+      ['standard', 'extended', 'alias']
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'standard'>;
+    responseRules: Schema.Attribute.JSON & Schema.Attribute.DefaultTo<{}>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface PluginPermissionManagerProPermissionRole
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'permission_roles';
+  info: {
+    displayName: 'Permission App Domain Group';
+    pluralName: 'permission-roles';
+    singularName: 'permission-role';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  pluginOptions: {
+    'content-manager': {
+      visible: false;
+    };
+    'content-type-builder': {
+      visible: false;
+    };
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    domain: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::permission-manager-pro.permission-domain'
+    > &
+      Schema.Attribute.Required;
+    isActive: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    isBundle: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    key: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.Unique;
+    label: Schema.Attribute.String & Schema.Attribute.Required;
+    level: Schema.Attribute.Enumeration<
+      ['staff', 'manager', 'admin', 'super-admin']
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'staff'>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'plugin::permission-manager-pro.permission-role'
+    > &
+      Schema.Attribute.Private;
+    publishedAt: Schema.Attribute.DateTime;
+    resources: Schema.Attribute.Relation<
+      'manyToMany',
+      'plugin::permission-manager-pro.permission-resource'
+    >;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    users: Schema.Attribute.Relation<
+      'manyToMany',
+      'plugin::users-permissions.user'
+    >;
+  };
+}
+
 export interface PluginReviewWorkflowsWorkflow
   extends Struct.CollectionTypeSchema {
   collectionName: 'strapi_workflows';
@@ -4212,6 +4482,10 @@ export interface PluginUsersPermissionsUser
       Schema.Attribute.SetMinMaxLength<{
         minLength: 6;
       }>;
+    permission_roles: Schema.Attribute.Relation<
+      'manyToMany',
+      'plugin::permission-manager-pro.permission-role'
+    >;
     provider: Schema.Attribute.String;
     publishedAt: Schema.Attribute.DateTime;
     resetPasswordToken: Schema.Attribute.String & Schema.Attribute.Private;
@@ -4308,6 +4582,11 @@ declare module '@strapi/strapi' {
       'plugin::content-releases.release': PluginContentReleasesRelease;
       'plugin::content-releases.release-action': PluginContentReleasesReleaseAction;
       'plugin::i18n.locale': PluginI18NLocale;
+      'plugin::permission-manager-pro.permission-domain': PluginPermissionManagerProPermissionDomain;
+      'plugin::permission-manager-pro.permission-grant': PluginPermissionManagerProPermissionGrant;
+      'plugin::permission-manager-pro.permission-policy': PluginPermissionManagerProPermissionPolicy;
+      'plugin::permission-manager-pro.permission-resource': PluginPermissionManagerProPermissionResource;
+      'plugin::permission-manager-pro.permission-role': PluginPermissionManagerProPermissionRole;
       'plugin::review-workflows.workflow': PluginReviewWorkflowsWorkflow;
       'plugin::review-workflows.workflow-stage': PluginReviewWorkflowsWorkflowStage;
       'plugin::strapi-content-sync-pro.sync-log': PluginStrapiContentSyncProSyncLog;

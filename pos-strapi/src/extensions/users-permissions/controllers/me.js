@@ -29,12 +29,31 @@ module.exports = createCoreController('plugin::users-permissions.me', ({ strapi 
                     role: { select: ['type', 'name'] },
                     app_accesses: { select: ['key'] },
                     admin_app_accesses: { select: ['key'] },
+                    permission_roles: {
+                        select: ['key', 'level'],
+                        populate: {
+                            domain: { select: ['key'] },
+                        },
+                    },
                 },
             });
 
             const roleType = fullUser?.role?.type;
             const appAccess = (fullUser?.app_accesses || []).map(a => a.key);
             const adminAppAccess = (fullUser?.admin_app_accesses || []).map(a => a.key);
+            const permissionRoles = fullUser?.permission_roles || [];
+
+            const roleDerivedAppAccess = permissionRoles
+                .map((r) => r?.domain?.key)
+                .filter(Boolean);
+
+            const roleDerivedAdminAccess = permissionRoles
+                .filter((r) => r.level === 'admin')
+                .map((r) => r?.domain?.key)
+                .filter(Boolean);
+
+            const effectiveAppAccess = [...new Set([...appAccess, ...roleDerivedAppAccess])];
+            const effectiveAdminAppAccess = [...new Set([...adminAppAccess, ...roleDerivedAdminAccess])];
             const appName = (ctx.request.headers['x-rutba-app'] || '').trim().toLowerCase();
 
             let permissions = [];
@@ -45,21 +64,21 @@ module.exports = createCoreController('plugin::users-permissions.me', ({ strapi 
             if (appName) {
                 const candidateKeys = [appName, ...(APP_ACCESS_ALIASES[appName] || [])]
                     .filter((k, i, a) => a.indexOf(k) === i);
-                const accessibleKeys = candidateKeys.filter((k) => appAccess.includes(k) || adminAppAccess.includes(k));
+                const accessibleKeys = candidateKeys.filter((k) => effectiveAppAccess.includes(k) || effectiveAdminAppAccess.includes(k));
 
                 permissions = accessibleKeys
                     .flatMap((key) => {
                         const enabledGroups = getEnabledPermissionGroups(key);
                         const groups = [];
 
-                        if (appAccess.includes(key) && enabledGroups.includes('staff')) {
+                        if (effectiveAppAccess.includes(key) && enabledGroups.includes('staff')) {
                             groups.push('staff');
-                            if (enabledGroups.includes('manager') && adminAppAccess.includes(key)) {
+                            if (enabledGroups.includes('manager') && effectiveAdminAppAccess.includes(key)) {
                                 groups.push('manager');
                             }
                         }
 
-                        if (adminAppAccess.includes(key) && enabledGroups.includes('admin')) {
+                        if (effectiveAdminAppAccess.includes(key) && enabledGroups.includes('admin')) {
                             groups.push('admin');
                         }
 
@@ -83,8 +102,8 @@ module.exports = createCoreController('plugin::users-permissions.me', ({ strapi 
             const data = {
                 role: fullUser.role.name,
                 roleType,
-                appAccess,
-                adminAppAccess,
+                appAccess: effectiveAppAccess,
+                adminAppAccess: effectiveAdminAppAccess,
                 permissionGroups: ['staff', 'manager', 'admin'].map((g) => ({
                     key: g,
                     canElevateToAdmin: canGroupElevateToAdmin(g),

@@ -19,6 +19,9 @@ module.exports = ({ env}) => ({
     "strapi-content-sync-pro": {
         enabled: true,
     },
+    "permission-manager-pro": {
+        enabled: true,
+    },
     email: {
         config: {
             provider: 'nodemailer',

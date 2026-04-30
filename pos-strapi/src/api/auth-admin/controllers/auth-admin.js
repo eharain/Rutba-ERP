@@ -1,6 +1,7 @@
 'use strict';
 
 const { ensureUser } = require('../../../utils/ensure-user');
+const { mapLegacyAccessToPermissionRoles } = require('../../../utils/permission-role-migration');
 
 const AUTH_APP_KEY = 'auth';
 
@@ -48,6 +49,11 @@ async function fetchUserById(strapi, id) {
       role: true,
       app_accesses: true,
       admin_app_accesses: true,
+      permission_roles: {
+        populate: {
+          domain: true,
+        },
+      },
     },
   });
 }
@@ -88,6 +94,13 @@ module.exports = {
 
     const payload = ctx.request.body || {};
     const userService = strapi.plugin('users-permissions').service('user');
+    const appAccesses = payload.app_accesses || [];
+    const adminAppAccesses = payload.admin_app_accesses || [];
+
+    const { roleIds } = await mapLegacyAccessToPermissionRoles(strapi, {
+      appKeys: appAccesses,
+      adminKeys: adminAppAccesses,
+    });
 
     const created = await userService.add({
       username: payload.username,
@@ -98,8 +111,9 @@ module.exports = {
       confirmed: payload.confirmed,
       blocked: payload.blocked,
       role: payload.role,
-      app_accesses: payload.app_accesses || [],
-      admin_app_accesses: payload.admin_app_accesses || [],
+      app_accesses: appAccesses,
+      admin_app_accesses: adminAppAccesses,
+      permission_roles: roleIds,
     });
 
     const user = await fetchUserById(strapi, created.id);
@@ -115,6 +129,13 @@ module.exports = {
 
     const payload = ctx.request.body || {};
     const userService = strapi.plugin('users-permissions').service('user');
+    const appAccesses = Array.isArray(payload.app_accesses) ? payload.app_accesses : [];
+    const adminAppAccesses = Array.isArray(payload.admin_app_accesses) ? payload.admin_app_accesses : [];
+
+    const { roleIds } = await mapLegacyAccessToPermissionRoles(strapi, {
+      appKeys: appAccesses,
+      adminKeys: adminAppAccesses,
+    });
 
     const nextData = {
       username: payload.username,
@@ -124,8 +145,9 @@ module.exports = {
       confirmed: payload.confirmed,
       blocked: payload.blocked,
       role: payload.role,
-      app_accesses: payload.app_accesses,
-      admin_app_accesses: payload.admin_app_accesses,
+      app_accesses: appAccesses,
+      admin_app_accesses: adminAppAccesses,
+      permission_roles: roleIds,
     };
 
     if (payload.password) {
