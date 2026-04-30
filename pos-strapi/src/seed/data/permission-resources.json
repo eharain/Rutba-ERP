@@ -1,0 +1,2492 @@
+{
+  "enabled": true,
+  "uid": "plugin::permission-manager-pro.permission-resource",
+  "records": [
+    {
+      "locate": {
+        "by": "key",
+        "value": "product"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "product",
+        "uid": "api::product.product",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "stock",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "product-group"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "product-group",
+        "uid": "api::product-group.product-group",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "stock",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "category"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "category",
+        "uid": "api::category.category",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "stock",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "brand"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "brand",
+        "uid": "api::brand.brand",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "stock",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "supplier"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "supplier",
+        "uid": "api::supplier.supplier",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "stock",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "purchase"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "purchase",
+        "uid": "api::purchase.purchase",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "stock",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "purchase-item"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "purchase-item",
+        "uid": "api::purchase-item.purchase-item",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "stock",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "purchase-return"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "purchase-return",
+        "uid": "api::purchase-return.purchase-return",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "stock",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "purchase-return-item"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "purchase-return-item",
+        "uid": "api::purchase-return-item.purchase-return-item",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "stock",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "stock-item"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "stock-item",
+        "uid": "api::stock-item.stock-item",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "stock",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "stock-input"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "stock-input",
+        "uid": "api::stock-input.stock-input",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "stock",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "branch"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "branch",
+        "uid": "api::branch.branch",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "stock",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "currency"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "currency",
+        "uid": "api::currency.currency",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "stock",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "employee"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "employee",
+        "uid": "api::employee.employee",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "stock",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "term"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "term",
+        "uid": "api::term.term",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "stock",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "term-type"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "term-type",
+        "uid": "api::term-type.term-type",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "stock",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "stock-report"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "stock-report",
+        "uid": "api::stock-report.stock-report",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "stock",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "stock-adjustment"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "stock-adjustment",
+        "uid": "api::stock-adjustment.stock-adjustment",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "stock",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "stock-transfer"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "stock-transfer",
+        "uid": "api::stock-transfer.stock-transfer",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "stock",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "sale-order"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "sale-order",
+        "uid": "api::sale-order.sale-order",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "order-management",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "customer"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "customer",
+        "uid": "api::customer.customer",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "order-management",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "delivery-method"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "delivery-method",
+        "uid": "api::delivery-method.delivery-method",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "order-management",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "delivery-zone"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "delivery-zone",
+        "uid": "api::delivery-zone.delivery-zone",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "order-management",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "rider"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "rider",
+        "uid": "api::rider.rider",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "order-management",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "delivery-offer"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "delivery-offer",
+        "uid": "api::delivery-offer.delivery-offer",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "order-management",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "order-message"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "order-message",
+        "uid": "api::order-message.order-message",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "order-management",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "notification-template"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "notification-template",
+        "uid": "api::notification-template.notification-template",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "order-management",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "notification-log"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "notification-log",
+        "uid": "api::notification-log.notification-log",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "order-management",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "delivery-config"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "delivery-config",
+        "uid": "api::delivery-config.delivery-config",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "order-management",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "rider-commission"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "rider-commission",
+        "uid": "api::rider-commission.rider-commission",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "order-management",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "order-cancellation"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "order-cancellation",
+        "uid": "api::order-cancellation.order-cancellation",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "order-management",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "sale"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "sale",
+        "uid": "api::sale.sale",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "sale",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "sale-item"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "sale-item",
+        "uid": "api::sale-item.sale-item",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "sale",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "sale-return"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "sale-return",
+        "uid": "api::sale-return.sale-return",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "sale",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "sale-return-item"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "sale-return-item",
+        "uid": "api::sale-return-item.sale-return-item",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "sale",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "payment"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "payment",
+        "uid": "api::payment.payment",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "sale",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "cash-register"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "cash-register",
+        "uid": "api::cash-register.cash-register",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "sale",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "cash-register-transaction"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "cash-register-transaction",
+        "uid": "api::cash-register-transaction.cash-register-transaction",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "sale",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "crm-lead"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "crm-lead",
+        "uid": "api::crm-lead.crm-lead",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "sale",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "sale-report"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "sale-report",
+        "uid": "api::sale-report.sale-report",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "sale",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "cash-register-audit"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "cash-register-audit",
+        "uid": "api::cash-register-audit.cash-register-audit",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "sale",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "discount-rule"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "discount-rule",
+        "uid": "api::discount-rule.discount-rule",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "sale",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "tax-rate"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "tax-rate",
+        "uid": "api::tax-rate.tax-rate",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "sale",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "acc-account"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "acc-account",
+        "uid": "api::acc-account.acc-account",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "accounts",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "acc-journal-entry"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "acc-journal-entry",
+        "uid": "api::acc-journal-entry.acc-journal-entry",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "accounts",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "acc-journal-line"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "acc-journal-line",
+        "uid": "api::acc-journal-line.acc-journal-line",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "accounts",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "acc-invoice"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "acc-invoice",
+        "uid": "api::acc-invoice.acc-invoice",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "accounts",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "acc-expense"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "acc-expense",
+        "uid": "api::acc-expense.acc-expense",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "accounts",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "acc-bill"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "acc-bill",
+        "uid": "api::acc-bill.acc-bill",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "accounts",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "acc-fiscal-period"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "acc-fiscal-period",
+        "uid": "api::acc-fiscal-period.acc-fiscal-period",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "accounts",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "acc-account-mapping"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "acc-account-mapping",
+        "uid": "api::acc-account-mapping.acc-account-mapping",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "accounts",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "acc-tax-rate"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "acc-tax-rate",
+        "uid": "api::acc-tax-rate.acc-tax-rate",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "accounts",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "acc-bank-account"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "acc-bank-account",
+        "uid": "api::acc-bank-account.acc-bank-account",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "accounts",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "acc-settings"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "acc-settings",
+        "uid": "api::acc-settings.acc-settings",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "accounts",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "acc-report"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "acc-report",
+        "uid": "api::acc-report.acc-report",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "accounts",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "acc-reconciliation"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "acc-reconciliation",
+        "uid": "api::acc-reconciliation.acc-reconciliation",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "accounts",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "acc-audit-log"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "acc-audit-log",
+        "uid": "api::acc-audit-log.acc-audit-log",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "accounts",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "acc-bill-approval"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "acc-bill-approval",
+        "uid": "api::acc-bill-approval.acc-bill-approval",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "accounts-ap",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "acc-payment-batch"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "acc-payment-batch",
+        "uid": "api::acc-payment-batch.acc-payment-batch",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "accounts-ap",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "acc-vendor-credit"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "acc-vendor-credit",
+        "uid": "api::acc-vendor-credit.acc-vendor-credit",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "accounts-ap",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "acc-invoice-approval"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "acc-invoice-approval",
+        "uid": "api::acc-invoice-approval.acc-invoice-approval",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "accounts-ar",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "acc-collection"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "acc-collection",
+        "uid": "api::acc-collection.acc-collection",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "accounts-ar",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "acc-customer-credit"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "acc-customer-credit",
+        "uid": "api::acc-customer-credit.acc-customer-credit",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "accounts-ar",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "acc-aging-report"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "acc-aging-report",
+        "uid": "api::acc-aging-report.acc-aging-report",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "accounts-ar",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "delivery-settings"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "delivery-settings",
+        "uid": "api::delivery-settings.delivery-settings",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "delivery",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "rider-document"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "rider-document",
+        "uid": "api::rider-document.rider-document",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "delivery",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "delivery-analytics"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "delivery-analytics",
+        "uid": "api::delivery-analytics.delivery-analytics",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "delivery",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "rider-settings"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "rider-settings",
+        "uid": "api::rider-settings.rider-settings",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "rider",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "rider-payout"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "rider-payout",
+        "uid": "api::rider-payout.rider-payout",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "rider",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "rider-rating"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "rider-rating",
+        "uid": "api::rider-rating.rider-rating",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "rider",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "crm-contact"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "crm-contact",
+        "uid": "api::crm-contact.crm-contact",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "crm",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "crm-activity"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "crm-activity",
+        "uid": "api::crm-activity.crm-activity",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "crm",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "crm-segment"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "crm-segment",
+        "uid": "api::crm-segment.crm-segment",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "crm",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "crm-campaign"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "crm-campaign",
+        "uid": "api::crm-campaign.crm-campaign",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "crm",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "crm-automation"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "crm-automation",
+        "uid": "api::crm-automation.crm-automation",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "crm",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "crm-analytics"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "crm-analytics",
+        "uid": "api::crm-analytics.crm-analytics",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "crm",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "auth-admin"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "auth-admin",
+        "uid": "api::auth-admin.auth-admin",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "auth",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "app-access"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "app-access",
+        "uid": "api::app-access.app-access",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "auth",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "hr-employee"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "hr-employee",
+        "uid": "api::hr-employee.hr-employee",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "auth",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "hr-department"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "hr-department",
+        "uid": "api::hr-department.hr-department",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "auth",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "role-permission"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "role-permission",
+        "uid": "api::role-permission.role-permission",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "auth",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "system-audit-log"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "system-audit-log",
+        "uid": "api::system-audit-log.system-audit-log",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "auth",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "backup-config"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "backup-config",
+        "uid": "api::backup-config.backup-config",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "auth",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "hr-team"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "hr-team",
+        "uid": "api::hr-team.hr-team",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "hr",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "hr-attendance"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "hr-attendance",
+        "uid": "api::hr-attendance.hr-attendance",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "hr",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "hr-leave-request"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "hr-leave-request",
+        "uid": "api::hr-leave-request.hr-leave-request",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "hr",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "hr-policy"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "hr-policy",
+        "uid": "api::hr-policy.hr-policy",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "hr",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "hr-recruitment"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "hr-recruitment",
+        "uid": "api::hr-recruitment.hr-recruitment",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "hr",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "hr-training"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "hr-training",
+        "uid": "api::hr-training.hr-training",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "hr",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "hr-report"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "hr-report",
+        "uid": "api::hr-report.hr-report",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "hr",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "pay-salary-structure"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "pay-salary-structure",
+        "uid": "api::pay-salary-structure.pay-salary-structure",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "payroll",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "pay-payroll-run"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "pay-payroll-run",
+        "uid": "api::pay-payroll-run.pay-payroll-run",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "payroll",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "pay-payslip"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "pay-payslip",
+        "uid": "api::pay-payslip.pay-payslip",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "payroll",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "pay-settings"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "pay-settings",
+        "uid": "api::pay-settings.pay-settings",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "payroll",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "pay-tax-config"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "pay-tax-config",
+        "uid": "api::pay-tax-config.pay-tax-config",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "payroll",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "pay-bonus"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "pay-bonus",
+        "uid": "api::pay-bonus.pay-bonus",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "payroll",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "pay-report"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "pay-report",
+        "uid": "api::pay-report.pay-report",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "payroll",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "cms-page"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "cms-page",
+        "uid": "api::cms-page.cms-page",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "cms",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "brand-group"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "brand-group",
+        "uid": "api::brand-group.brand-group",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "cms",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "category-group"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "category-group",
+        "uid": "api::category-group.category-group",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "cms",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "cms-footer"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "cms-footer",
+        "uid": "api::cms-footer.cms-footer",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "cms",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "sale-offer"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "sale-offer",
+        "uid": "api::sale-offer.sale-offer",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "cms",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "site-setting"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "site-setting",
+        "uid": "api::site-setting.site-setting",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "cms",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "cms-workflow"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "cms-workflow",
+        "uid": "api::cms-workflow.cms-workflow",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "cms",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "cms-seo"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "cms-seo",
+        "uid": "api::cms-seo.cms-seo",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "cms",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "cms-analytics"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "cms-analytics",
+        "uid": "api::cms-analytics.cms-analytics",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "cms",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "cms-template"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "cms-template",
+        "uid": "api::cms-template.cms-template",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "cms",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "social-post"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "social-post",
+        "uid": "api::social-post.social-post",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "social",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "social-reply"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "social-reply",
+        "uid": "api::social-reply.social-reply",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "social",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "social-account"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "social-account",
+        "uid": "api::social-account.social-account",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "social",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "social-analytics"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "social-analytics",
+        "uid": "api::social-analytics.social-analytics",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "social",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "social-settings"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "social-settings",
+        "uid": "api::social-settings.social-settings",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "social",
+            "return": "documentRef"
+          }
+        }
+      }
+    },
+    {
+      "locate": {
+        "by": "key",
+        "value": "social-automation"
+      },
+      "policy": {
+        "editable": false,
+        "revertOnSeed": true
+      },
+      "data": {
+        "key": "social-automation",
+        "uid": "api::social-automation.social-automation",
+        "domain": {
+          "$seedLink": {
+            "uid": "plugin::permission-manager-pro.permission-domain",
+            "by": "key",
+            "value": "social",
+            "return": "documentRef"
+          }
+        }
+      }
+    }
+  ]
+}

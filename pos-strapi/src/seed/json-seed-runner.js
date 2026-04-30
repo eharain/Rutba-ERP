@@ -5,6 +5,26 @@ const path = require('path');
 
 const SEED_DATA_DIR = path.join(__dirname, 'data');
 const WORKSPACE_ROOT = path.join(__dirname, '..', '..', '..');
+const SEED_DEBUG = false;
+const MAX_REPORTED_ERRORS = 5;
+
+function debugLog(strapi, message) {
+    if (SEED_DEBUG) {
+        strapi.log.info(message);
+    }
+}
+
+function toErrorMessage(error) {
+    if (!error) {
+        return 'Unknown error';
+    }
+
+    if (typeof error.message === 'string' && error.message.trim()) {
+        return error.message.trim();
+    }
+
+    return String(error);
+}
 
 function getMimeTypeFromFileName(fileName) {
     const ext = path.extname(fileName).toLowerCase();
@@ -175,19 +195,31 @@ async function findExistingDocument(strapi, uid, locator) {
         return single || null;
     }
 
-    const filters = {
-        [locator.by]: { $eq: locator.value },
-    };
+    if (locator.by === 'slug' || locator.by === 'documentId') {
+        const filters = {
+            [locator.by]: { $eq: locator.value },
+        };
 
-    const fields = ['id', 'documentId'];
-    if (locator.by !== 'documentId') {
-        fields.push(locator.by);
+        const fields = ['id', 'documentId'];
+        if (locator.by === 'slug') {
+            fields.push('slug');
+        }
+
+        const existing = await strapi.documents(uid).findMany({
+            filters,
+            fields,
+            pagination: { pageSize: 1 },
+        });
+
+        return existing?.[0] || null;
     }
 
-    const existing = await strapi.documents(uid).findMany({
-        filters,
-        fields,
-        pagination: { pageSize: 1 },
+    const existing = await strapi.db.query(uid).findMany({
+        where: {
+            [locator.by]: locator.value,
+        },
+        select: ['id', 'documentId', locator.by],
+        limit: 1,
     });
 
     return existing?.[0] || null;
@@ -222,24 +254,36 @@ async function resolveSeedLink(strapi, link, fileName) {
     const value = typeof link.value === 'string' ? link.value.trim() : '';
     const returnMode = typeof link.return === 'string' ? link.return.trim() : 'documentRef';
 
-    if (!uid || (by !== 'slug' && by !== 'documentId') || !value) {
-        throw new Error(`Invalid $seedLink in ${fileName}. Required: uid, by("slug"|"documentId"), value.`);
+    if (!uid || !by || !value) {
+        throw new Error(`Invalid $seedLink in ${fileName}. Required: uid, by, value.`);
     }
 
-    const filters = by === 'documentId'
-        ? { documentId: { $eq: value } }
-        : { slug: { $eq: value } };
+    let target;
 
-    const fields = ['id', 'documentId'];
-    if (by === 'slug') {
-        fields.push('slug');
+    if (by === 'slug' || by === 'documentId') {
+        const filters = {
+            [by]: { $eq: value },
+        };
+
+        const fields = ['id', 'documentId'];
+        if (by === 'slug') {
+            fields.push('slug');
+        }
+
+        target = await strapi.documents(uid).findMany({
+            filters,
+            fields,
+            pagination: { pageSize: 1 },
+        });
+    } else {
+        target = await strapi.db.query(uid).findMany({
+            where: {
+                [by]: value,
+            },
+            select: ['id', 'documentId', by],
+            limit: 1,
+        });
     }
-
-    const target = await strapi.documents(uid).findMany({
-        filters,
-        fields,
-        pagination: { pageSize: 1 },
-    });
 
     if (!target?.[0]) {
         strapi.log.warn(`[json-seed] Missing relation target for ${uid} (${by}: ${value}) in ${fileName}`);
@@ -304,13 +348,13 @@ async function applyRecord(strapi, uid, record, fileName) {
 
     if (!existing) {
         await strapi.documents(uid).create({ data });
-        strapi.log.info(`[json-seed] Created ${uid} from ${fileName} (${locator.by}: ${locator.value})`);
-        return;
+        debugLog(strapi, `[json-seed] Created ${uid} from ${fileName} (${locator.by}: ${locator.value})`);
+        return 'created';
     }
 
     if (!policy.revertOnSeed && policy.editable) {
-        strapi.log.info(`[json-seed] Kept existing ${uid} from ${fileName} (${locator.by}: ${locator.value}) because editable=true and revertOnSeed=false`);
-        return;
+        debugLog(strapi, `[json-seed] Kept existing ${uid} from ${fileName} (${locator.by}: ${locator.value}) because editable=true and revertOnSeed=false`);
+        return 'kept';
     }
 
     await strapi.documents(uid).update({
@@ -318,7 +362,8 @@ async function applyRecord(strapi, uid, record, fileName) {
         data,
     });
 
-    strapi.log.info(`[json-seed] Updated ${uid} from ${fileName} (${locator.by}: ${locator.value})`);
+    debugLog(strapi, `[json-seed] Updated ${uid} from ${fileName} (${locator.by}: ${locator.value})`);
+    return 'updated';
 }
 
 async function runJsonSeeds(strapi) {
@@ -331,19 +376,79 @@ async function runJsonSeeds(strapi) {
 
     strapi.log.info(`[json-seed] Loading ${files.length} seed file(s) from src/seed/data`);
 
-    for (const fileName of files) {
-        const seedFile = parseSeedFile(fileName);
-        if (!seedFile.enabled) {
-            strapi.log.info(`[json-seed] Skipped disabled seed file ${fileName}`);
-            continue;
-        }
+    const report = {
+        filesTotal: files.length,
+        filesProcessed: 0,
+        filesSkipped: 0,
+        recordsTotal: 0,
+        created: 0,
+        updated: 0,
+        kept: 0,
+        failed: 0,
+        errors: [],
+    };
 
-        for (const record of seedFile.records) {
-            await applyRecord(strapi, seedFile.uid, record, fileName);
+    for (const fileName of files) {
+        try {
+            const seedFile = parseSeedFile(fileName);
+            if (!seedFile.enabled) {
+                report.filesSkipped += 1;
+                debugLog(strapi, `[json-seed] Skipped disabled seed file ${fileName}`);
+                continue;
+            }
+
+            report.filesProcessed += 1;
+
+            for (const record of seedFile.records) {
+                report.recordsTotal += 1;
+
+                try {
+                    const result = await applyRecord(strapi, seedFile.uid, record, fileName);
+                    if (result === 'created') {
+                        report.created += 1;
+                    } else if (result === 'updated') {
+                        report.updated += 1;
+                    } else if (result === 'kept') {
+                        report.kept += 1;
+                    }
+                } catch (error) {
+                    report.failed += 1;
+                    report.errors.push(`${fileName}: ${toErrorMessage(error)}`);
+
+                    if (SEED_DEBUG) {
+                        strapi.log.error(`[json-seed][debug] Record failed in ${fileName}: ${toErrorMessage(error)}`);
+                    }
+                }
+            }
+        } catch (error) {
+            report.failed += 1;
+            report.errors.push(`${fileName}: ${toErrorMessage(error)}`);
+
+            if (SEED_DEBUG) {
+                strapi.log.error(`[json-seed][debug] Seed file failed ${fileName}: ${toErrorMessage(error)}`);
+            }
         }
     }
 
-    strapi.log.info('[json-seed] Complete.');
+    strapi.log.info(
+        `[json-seed] Complete. files=${report.filesProcessed}/${report.filesTotal}, records=${report.recordsTotal}, created=${report.created}, updated=${report.updated}, kept=${report.kept}, failed=${report.failed}`
+    );
+
+    if (report.errors.length > 0) {
+        const shown = report.errors.slice(0, MAX_REPORTED_ERRORS);
+
+        for (const err of shown) {
+            strapi.log.error(`[json-seed] ${err}`);
+        }
+
+        if (report.errors.length > shown.length) {
+            strapi.log.error(`[json-seed] ...and ${report.errors.length - shown.length} more error(s).`);
+        }
+
+        throw new Error(
+            `[json-seed] Seeding finished with ${report.errors.length} error(s). Set SEED_DEBUG=true in json-seed-runner.js for detailed logs.`
+        );
+    }
 }
 
 module.exports = runJsonSeeds;

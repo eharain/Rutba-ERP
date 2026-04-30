@@ -114,13 +114,38 @@ module.exports = (config, { strapi }) => {
         role: { select: ['type'] },
         app_accesses: { select: ['key'] },
         admin_app_accesses: { select: ['key'] },
+        permission_roles: {
+          select: ['key', 'level'],
+          populate: {
+            domain: { select: ['key'] },
+          },
+        },
       },
     });
 
+    const roleDerivedAppKeys = (user?.permission_roles || [])
+      .map((r) => r?.domain?.key)
+      .filter(Boolean);
+
+    const roleDerivedAdminKeys = (user?.permission_roles || [])
+      .filter((r) => r.level === 'admin')
+      .map((r) => r?.domain?.key)
+      .filter(Boolean);
+
+    const appKeys = [...new Set([
+      ...(user?.app_accesses || []).map((a) => a.key),
+      ...roleDerivedAppKeys,
+    ])];
+
+    const adminKeys = [...new Set([
+      ...(user?.admin_app_accesses || []).map((a) => a.key),
+      ...roleDerivedAdminKeys,
+    ])];
+
     const result = {
       roleType: user?.role?.type || null,
-      appKeys: (user?.app_accesses || []).map((a) => a.key),
-      adminKeys: (user?.admin_app_accesses || []).map((a) => a.key),
+      appKeys,
+      adminKeys,
     };
     accessCache.set(userId, result);
     setTimeout(() => accessCache.delete(userId), 60_000);

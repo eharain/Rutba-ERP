@@ -16,7 +16,9 @@
     "upgrade": "npx @strapi/upgrade latest",
     "upgrade:dry": "npx @strapi/upgrade latest --dry",
     "link:sync-pro": "npm link ../../strapi-plugins/strapi-content-sync-pro",
-    "unlink:sync-pro": "npm unlink strapi-content-sync-pro && npm install"
+    "unlink:sync-pro": "npm unlink strapi-content-sync-pro && npm install",
+    "link:strapi-permission-manager-pro": "npm link ../../strapi-plugins/strapi-permission-manager-pro",
+    "unlink:strapi-permission-manager-pro": "npm unlink strapi-permission-manager-pro && npm install"
   },
   "dependencies": {
     "@easypost/api": "^8.8.0",
@@ -32,12 +34,12 @@
     "strapi-content-sync-pro": "1.0.6",
     "stripe": "^21.0.1",
     "styled-components": "^6.3.12",
-    "xlsx": "^0.18.5"
+    "xlsx": "^0.18.5",
+    "strapi-permission-manager-pro": "0.1.0"
   },
   "devDependencies": {
     "baseline-browser-mapping": "^2.10.11"
   },
-
   "engines": {
     "node": ">=18.0.0 <=22.x.x",
     "npm": ">=6.0.0"
