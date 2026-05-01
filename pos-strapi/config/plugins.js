@@ -19,7 +19,7 @@ module.exports = ({ env}) => ({
     "strapi-content-sync-pro": {
         enabled: true,
     },
-    "permission-manager-pro": {
+    "api-guard-pro": {
         enabled: true,
     },
     email: {
