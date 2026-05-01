@@ -88,12 +88,6 @@
       "target": "api::app-access.app-access",
       "inversedBy": "admin_users"
     },
-    "permission_roles": {
-      "type": "relation",
-      "relation": "manyToMany",
-      "target": "plugin::permission-manager-pro.permission-role",
-      "inversedBy": "users"
-    },
     "hr_employee": {
       "type": "relation",
       "relation": "oneToOne",

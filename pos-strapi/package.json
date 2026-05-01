@@ -17,8 +17,8 @@
     "upgrade:dry": "npx @strapi/upgrade latest --dry",
     "link:sync-pro": "npm link ../../strapi-plugins/strapi-content-sync-pro",
     "unlink:sync-pro": "npm unlink strapi-content-sync-pro && npm install",
-    "link:strapi-permission-manager-pro": "npm link ../../strapi-plugins/strapi-permission-manager-pro",
-    "unlink:strapi-permission-manager-pro": "npm unlink strapi-permission-manager-pro && npm install"
+    "link:strapi-api-guard-pro": "npm link ../../strapi-plugins/strapi-api-guard-pro",
+    "unlink:strapi-api-guard-pro": "npm unlink strapi-api-guard-pro && npm install"
   },
   "dependencies": {
     "@easypost/api": "^8.8.0",
@@ -32,10 +32,10 @@
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.30.3",
     "strapi-content-sync-pro": "1.0.6",
+    "strapi-api-guard-pro": "file:../../strapi-plugins/strapi-api-guard-pro",
     "stripe": "^21.0.1",
     "styled-components": "^6.3.12",
-    "xlsx": "^0.18.5",
-    "strapi-permission-manager-pro": "0.1.0"
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "baseline-browser-mapping": "^2.10.11"

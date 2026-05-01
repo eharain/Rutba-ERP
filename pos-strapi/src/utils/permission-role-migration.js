@@ -48,7 +48,7 @@ async function findPermissionRoleIds(strapi, roleKeys = []) {
     return [];
   }
 
-  const roles = await strapi.db.query('plugin::permission-manager-pro.permission-role').findMany({
+  const roles = await strapi.db.query('plugin::api-guard-pro.role').findMany({
     where: { key: { $in: roleKeys } },
     select: ['id', 'key'],
   });
