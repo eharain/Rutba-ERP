@@ -6,4 +6,8 @@ module.exports = createNextConfig({
   experimental: {
     disableOptimizedLoading: true,
   },
+  webpack(config) {
+    config.experiments = { ...config.experiments, topLevelAwait: true };
+    return config;
+  },
 });
