@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { authApi } from '@rutba/pos-shared/lib/api';
+import { CustomersEndpoints } from '@rutba/pos-shared/lib/endpoints';
 
 export default function CustomerForm({
     customer,
@@ -38,13 +39,8 @@ export default function CustomerForm({
         lastCheckRef.current = key;
 
         try {
-            const qs = [
-                email && `filters[email][$eq]=${encodeURIComponent(email)}`,
-                phone && `filters[phone][$eq]=${encodeURIComponent(phone)}`,
-                'pagination[pageSize]=1'
-            ].join('&');
-
-            const res = await authApi.get(`/customers?${qs}`);
+            const ep = CustomersEndpoints.findByContact({ email: email || undefined, phone: phone || undefined });
+            const res = await authApi.get(ep.path, ep.params);
             const found = res.data?.data?.[0];
 
             if (found && found.documentId !== customer?.documentId) {

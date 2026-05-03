@@ -4,6 +4,7 @@ import Link from 'next/link';
 import Layout from '../../components/Layout';
 import ProtectedRoute from '@rutba/pos-shared/components/ProtectedRoute';
 import { authApi, relationConnects } from '@rutba/pos-shared/lib/api';
+import { TermTypesEndpoints } from '@rutba/pos-shared/lib/endpoints';
 import { saveProduct } from '@rutba/pos-shared/lib/pos/save';
 
 function getEntryId(entry) {
@@ -100,12 +101,7 @@ export default function CatalogueImportPage() {
 
     async function loadTermTypes() {
         try {
-            const res = await authApi.fetch('/term-types', {
-                filters: { is_variant: true },
-                populate: { terms: true },
-                pagination: { page: 1, pageSize: 500 },
-                sort: ['name:asc']
-            });
+            const res = await TermTypesEndpoints.fetchVariants();
             setTermTypes(res?.data ?? res ?? []);
         } catch (err) {
             console.error('Failed to load term types', err);

@@ -3,6 +3,7 @@ import { authApi } from '@rutba/pos-shared/lib/api';
 import { useUtil } from '@rutba/pos-shared/context/UtilContext';
 import { QRCodeSVG } from 'qrcode.react';
 import Barcode from 'react-barcode'; // renders linear barcodes (Code39/Code128)
+import { StockItemsEndpoints } from '@rutba/pos-shared/lib/endpoints';
 
 const BulkBarcodePrint = ({
     storageKey,
@@ -54,11 +55,12 @@ const BulkBarcodePrint = ({
                 const documentIds = storedData.documentIds || [];
 
                 const results = await Promise.all(
-                    documentIds.map(id =>
-                        authApi.get(`/stock-items/${id}`, { populate: ['product'] })
+                    documentIds.map(id => {
+                        const ep = StockItemsEndpoints.byId(id, { populate: ['product'] });
+                        return authApi.get(ep.path, ep.params)
                             .then(res => res.data)
-                            .catch(() => null)
-                    )
+                            .catch(() => null);
+                    })
                 );
 
                 setItems(results.filter(Boolean));

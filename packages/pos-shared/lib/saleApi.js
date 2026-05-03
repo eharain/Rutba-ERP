@@ -2,6 +2,17 @@ import { authApi } from './api';
 import { fetchSaleByIdOrInvoice, searchStockItems } from './pos';
 import SaleModel from '../domain/sale/SaleModel';
 import { getCashRegister, getBranch, getBranchDesk, getUser } from "../lib/utils";
+import {
+    SalesEndpoints,
+    SaleItemsEndpoints,
+    SaleReturnsEndpoints,
+    SaleReturnItemsEndpoints,
+    CustomersEndpoints,
+    PaymentsEndpoints,
+    StockItemsEndpoints,
+    BranchesEndpoints,
+    CashRegisterTransactionEndpoints,
+} from './endpoints/index.js';
 
 export default class SaleApi {
 
@@ -58,12 +69,14 @@ export default class SaleApi {
     ===================================================== */
 
     static async cancelSale(documentId) {
-        const res = await authApi.put(`/sales/${documentId}/cancel`);
+        const ep = SalesEndpoints.cancel(documentId);
+        const res = await authApi.put(ep.path);
         return res?.data ?? res;
     }
 
     static async saveNotes(documentId, notes) {
-        const res = await authApi.put(`/sales/${documentId}`, { data: { notes: notes || '' } });
+        const ep = SalesEndpoints.saveNotes(documentId);
+        const res = await authApi.put(ep.path, { data: { notes: notes || '' } });
         return res?.data ?? res;
     }
 
@@ -92,7 +105,8 @@ export default class SaleApi {
                 ...payloadNoItems,
                 ...(activeRegisterId ? { cash_register: { connect: [activeRegisterId] } } : {}),
             };
-            const res = await authApi.post('/sales', { data: createPayload });
+            const createEp = SalesEndpoints.create();
+            const res = await authApi.post(createEp.path, { data: createPayload });
             const created = res?.data ?? res;
 
             saleModel.id = created.id;
@@ -102,7 +116,8 @@ export default class SaleApi {
         }
         // UPDATE
         else {
-            const res = await authApi.put(`/sales/${documentId}`, { data: payloadNoItems });
+            const updateEp = SalesEndpoints.update(documentId);
+            const res = await authApi.put(updateEp.path, { data: payloadNoItems });
             saleResponse = res?.data ?? res;
             documentId = saleResponse.documentId
         }
@@ -165,7 +180,8 @@ export default class SaleApi {
         const data = this.removeNullAttributes({ name, email, phone });
 
         if (!documentId) {
-            const res = await authApi.post('/customers', {
+            const custEp = CustomersEndpoints.create();
+            const res = await authApi.post(custEp.path, {
                 data: {
                     ...data,
                     ...saleId ? { sales: { connect: [saleId] } } : {}
@@ -176,7 +192,8 @@ export default class SaleApi {
             customer.id = created.id;
         }
         else {
-            await authApi.put(`/customers/${documentId}`, {
+            const custUpdEp = CustomersEndpoints.update(documentId);
+            await authApi.put(custUpdEp.path, {
                 data: {
                     ...data,
                     ...saleId ? { sales: { connect: [saleId] } } : {}
@@ -215,7 +232,8 @@ export default class SaleApi {
 
         for (const p of payments) {
             if (!p.documentId) {
-                const res = await authApi.post('/payments', {
+                const pymtEp = PaymentsEndpoints.create();
+                const res = await authApi.post(pymtEp.path, {
                     data: {
                         ...paymentFields(p),
                         ...saleId ? { sale: { connect: [saleId] } } : {},
@@ -225,7 +243,8 @@ export default class SaleApi {
                 const created = res?.data ?? res;
                 p.documentId = created.documentId ?? created.id;
             } else {
-                await authApi.put(`/payments/${p.documentId}`, {
+                const pymtUpdEp = PaymentsEndpoints.update(p.documentId);
+                await authApi.put(pymtUpdEp.path, {
                     data: {
                         ...paymentFields(p),
                         ...saleId ? { sale: { connect: [saleId] } } : {},
@@ -265,11 +284,13 @@ export default class SaleApi {
             let saleItemId;
 
             if (item.documentId) {
-                const res = await authApi.put(`/sale-items/${item.documentId}`, { data: saleItemPayload });
+                const siUpdEp = SaleItemsEndpoints.update(item.documentId);
+                const res = await authApi.put(siUpdEp.path, { data: saleItemPayload });
                 saleItemId = item.documentId;
                 results.push(res?.data ?? res);
             } else {
-                const res = await authApi.post('/sale-items', { data: saleItemPayload });
+                const siEp = SaleItemsEndpoints.create();
+                const res = await authApi.post(siEp.path, { data: saleItemPayload });
                 const created = res?.data ?? res;
                 item.documentId = created.documentId;
                 saleItemId = created.documentId;
@@ -334,7 +355,8 @@ export default class SaleApi {
             if (Array.isArray(removed.items)) {
                 for (const stockItem of removed.items) {
                     if (!stockItem?.documentId) continue;
-                    await authApi.put(`/stock-items/${stockItem.documentId}`, {
+                    const remStEp = StockItemsEndpoints.update(stockItem.documentId);
+                    await authApi.put(remStEp.path, {
                         data: {
                             status: 'InStock',
                             sale_items: { disconnect: [removed.documentId] },
@@ -347,7 +369,8 @@ export default class SaleApi {
             }
 
             // Disconnect the sale item from the sale
-            await authApi.put(`/sale-items/${removed.documentId}`, {
+            const remSiEp = SaleItemsEndpoints.disconnect(removed.documentId);
+            await authApi.put(remSiEp.path, {
                 data: {
                     sale: { set: [] },
                     product: { set: [] }
@@ -395,7 +418,8 @@ export default class SaleApi {
         //    NOTE: `branches` on sale-return is mappedBy (inverse side) —
         //    Strapi v5 rejects connect on the inverse side, so we link
         //    from the owning side (branch) in step 1b.
-        const retRes = await authApi.post('/sale-returns', {
+        const srEp = SaleReturnsEndpoints.create();
+        const retRes = await authApi.post(srEp.path, {
             data: {
                 return_no: returnNo,
                 return_date: new Date().toISOString(),
@@ -418,10 +442,12 @@ export default class SaleApi {
             const updates = {};
             if (newSaleDocId) updates.exchange_sale = { connect: [newSaleDocId] };
             if (Object.keys(updates).length > 0) {
-                await authApi.put(`/sale-returns/${saleReturnDocId}`, { data: updates });
-            }
+                    const srUpdEp = SaleReturnsEndpoints.update(saleReturnDocId);
+                    await authApi.put(srUpdEp.path, { data: updates });
+                }
             if (branchDocId) {
-                await authApi.put(`/branches/${branchDocId}`, {
+                const brEp = BranchesEndpoints.update(branchDocId);
+                await authApi.put(brEp.path, {
                     data: { sale_returns: { connect: [saleReturnDocId] } }
                 });
             }
@@ -441,7 +467,8 @@ export default class SaleApi {
             const total = items.reduce((s, i) => s + (i.refundPrice ?? i.price), 0);
             const productDocId = items[0].productDocId;
 
-            const returnItemRes = await authApi.post('/sale-return-items', {
+            const sriEp = SaleReturnItemsEndpoints.create();
+            const returnItemRes = await authApi.post(sriEp.path, {
                 data: {
                     quantity,
                     price,
@@ -454,7 +481,8 @@ export default class SaleApi {
             const returnItemDocId = returnItem.documentId || returnItem.id;
 
             for (const ri of items) {
-                await authApi.put(`/stock-items/${ri.stockItemDocId}`, {
+                const riStEp = StockItemsEndpoints.update(ri.stockItemDocId);
+                await authApi.put(riStEp.path, {
                     data: {
                         status: ri.status,
                         ...(returnItemDocId ? { sale_return_items: { connect: [returnItemDocId] } } : {})
@@ -464,7 +492,8 @@ export default class SaleApi {
         }
 
         // 4) Create payout payment linked to the return, original sale, and cash register
-        await authApi.post('/payments', {
+        const excPymtEp = PaymentsEndpoints.createRefund();
+        await authApi.post(excPymtEp.path, {
             data: {
                 payment_method: 'Exchange Return',
                 amount: -returnTotal,
@@ -478,7 +507,8 @@ export default class SaleApi {
 
         // 5) Record refund transaction on the active cash register
         if (registerDocId) {
-            await authApi.post('/cash-register-transactions', {
+            const crtEp = CashRegisterTransactionEndpoints.create();
+            await authApi.post(crtEp.path, {
                 data: {
                     type: 'Refund',
                     amount: returnTotal,

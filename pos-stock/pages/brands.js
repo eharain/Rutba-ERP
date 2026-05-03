@@ -3,6 +3,7 @@ import Link from "next/link";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { authApi } from "@rutba/pos-shared/lib/api";
+import { BrandsEndpoints, ProductsEndpoints } from "@rutba/pos-shared/lib/endpoints/index.js";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
 import FileView from "@rutba/pos-shared/components/FileView";
 
@@ -57,17 +58,10 @@ export default function BrandsPage() {
         const timer = setTimeout(async () => {
             setProductSearchLoading(true);
             try {
-                const res = await authApi.fetch("/products", {
-                    sort: ["name:asc"],
-                    filters: {
-                        $or: [
-                            { name: { $containsi: searchValue } },
-                            { sku: { $containsi: searchValue } },
-                            { barcode: { $containsi: searchValue } }
-                        ]
-                    },
+                const ep = ProductsEndpoints.searchInRelation(searchValue, 1, 20);
+                const res = await authApi.fetch(ep.path, {
+                    ...ep.params,
                     populate: { brands: true },
-                    pagination: { page: 1, pageSize: 20 }
                 });
                 const data = res?.data ?? res;
                 if (isActive) setProductSearchResults(data || []);
@@ -96,11 +90,8 @@ export default function BrandsPage() {
             let page = 1;
             let totalPages = 1;
             do {
-                const res = await authApi.fetch("/brands", {
-                    sort: ["name:asc"],
-                    populate: { logo: true, gallery: true },
-                    pagination: { page, pageSize: 100 }
-                });
+                const ep = BrandsEndpoints.listPaged(page, 100);
+                const res = await authApi.fetch(ep.path, ep.params);
                 const data = res?.data ?? res;
                 allBrands = [...allBrands, ...(data || [])];
                 totalPages = res?.meta?.pagination?.pageCount || 1;
@@ -130,11 +121,11 @@ export default function BrandsPage() {
             let page = 1;
             let totalPages = 1;
             do {
-                const res = await authApi.fetch("/products", {
+                const ep = ProductsEndpoints.list(page, 100, { sort: 'name:asc' });
+                const res = await authApi.fetch(ep.path, {
+                    ...ep.params,
                     filters: { brands: { documentId: selectedBrandId } },
                     populate: { brands: true },
-                    pagination: { page, pageSize: 100 },
-                    sort: ["name:asc"]
                 });
                 const data = res?.data ?? res;
                 allProducts = [...allProducts, ...(data || [])];
@@ -176,9 +167,11 @@ export default function BrandsPage() {
                 slug: brandForm.slug.trim() || undefined
             };
             if (isEditing && selectedBrandId) {
-                await authApi.put(`/brands/${selectedBrandId}`, { data: payload });
+                const ep = BrandsEndpoints.update(selectedBrandId);
+                await authApi.put(ep.path, { data: payload });
             } else {
-                const res = await authApi.post("/brands", { data: payload });
+                const ep = BrandsEndpoints.create();
+                const res = await authApi.post(ep.path, { data: payload });
                 const created = res?.data ?? res;
                 setSelectedBrandId(getEntryId(created));
             }
@@ -201,7 +194,8 @@ export default function BrandsPage() {
         if (!confirm("Are you sure you want to delete this brand?")) return;
         setLoading(true);
         try {
-            await authApi.del(`/brands/${selectedBrandId}`);
+            const delEp = BrandsEndpoints.del(selectedBrandId);
+            await authApi.del(delEp.path);
             setSelectedBrandId("");
             await loadBrands();
         } catch (error) {
@@ -236,17 +230,19 @@ export default function BrandsPage() {
                 let page = 1;
                 let totalPages = 1;
                 do {
-                    const res = await authApi.fetch("/products", {
+                    const mergeEp = ProductsEndpoints.list(page, 100, {});
+                    const res = await authApi.fetch(mergeEp.path, {
+                        ...mergeEp.params,
                         filters: { brands: { documentId: sourceBrandId } },
                         populate: { brands: true },
-                        pagination: { page, pageSize: 100 }
                     });
                     const sourceProducts = res?.data ?? res ?? [];
                     totalPages = res?.meta?.pagination?.pageCount || 1;
 
                     for (const product of sourceProducts) {
                         const productDocId = getEntryId(product);
-                        await authApi.put(`/products/${productDocId}`, {
+                        const pEp = ProductsEndpoints.update(productDocId);
+                        await authApi.put(pEp.path, {
                             data: {
                                 brands: {
                                     connect: [selectedBrandId],
@@ -258,7 +254,8 @@ export default function BrandsPage() {
                     page++;
                 } while (page <= totalPages);
 
-                await authApi.del(`/brands/${sourceBrandId}`);
+                const srcDelEp = BrandsEndpoints.del(sourceBrandId);
+                await authApi.del(srcDelEp.path);
             }
 
             setMergeSelection(new Set());
@@ -302,7 +299,8 @@ export default function BrandsPage() {
         setLoading(true);
         try {
             for (const productDocId of selectedProductIds) {
-                await authApi.put(`/products/${productDocId}`, {
+                const mvEp = ProductsEndpoints.update(productDocId);
+                await authApi.put(mvEp.path, {
                     data: {
                         brands: {
                             connect: [moveTargetBrandId],
@@ -329,7 +327,8 @@ export default function BrandsPage() {
         setLoading(true);
         try {
             for (const productDocId of selectedProductIds) {
-                await authApi.put(`/products/${productDocId}`, {
+                const cpEp = ProductsEndpoints.update(productDocId);
+                await authApi.put(cpEp.path, {
                     data: {
                         brands: {
                             connect: [moveTargetBrandId]
@@ -352,7 +351,8 @@ export default function BrandsPage() {
         if (!confirm("Remove this product from the brand?")) return;
         setLoading(true);
         try {
-            await authApi.put(`/products/${productDocId}`, {
+            const remEp = ProductsEndpoints.update(productDocId);
+            await authApi.put(remEp.path, {
                 data: {
                     brands: { disconnect: [selectedBrandId] }
                 }
@@ -370,7 +370,8 @@ export default function BrandsPage() {
         if (!selectedBrandId) return alert("Select a brand first");
         setLoading(true);
         try {
-            await authApi.put(`/products/${productDocId}`, {
+            const addEp = ProductsEndpoints.update(productDocId);
+            await authApi.put(addEp.path, {
                 data: {
                     brands: { connect: [selectedBrandId] }
                 }

@@ -2,6 +2,7 @@ import axios from "axios";
 import { BASE_URL } from "@/static/const";
 import { FilterProductInterface, ProductInterface } from "@/types/api/product";
 import { CollectionInterface } from "@/types/api/collection";
+import { WebProductsEndpoints, WebCollectionsEndpoints } from "@/endpoints";
 
 import _ from "lodash";
 import { MetaInterface } from "@/types/api/meta";
@@ -13,26 +14,8 @@ export default function useProductsService() {
    * @return {ProductInterface} The featured sneakers.
    */
   const getFeaturedSneakers = async () => {
-    const req = await axios.get(BASE_URL + "product-groups", {
-      params: {
-        populate: {
-          products: {
-            populate: {
-              gallery: true,
-              logo: true,
-              brands: true,
-              categories: true,
-              variants: {
-                populate: {
-                  terms: { populate: { term_types: true } },
-                },
-              },
-            },
-          },
-        },
-      },
-    });
-
+    const ep = WebProductsEndpoints.featured();
+    const req = await axios.get(BASE_URL + ep.path, { params: ep.params });
     return req.data.data[0].products as ProductInterface[];
   };
 
@@ -42,15 +25,8 @@ export default function useProductsService() {
    * @return {Promise<CollectionInterface[]>} An array of collections.
    */
   const getCollections = async () => {
-    const req = await axios.get(BASE_URL + "collections", {
-      params: {
-        pagination: {
-          limit: -1,
-        },
-        populate: ["image"],
-      },
-    });
-
+    const ep = WebCollectionsEndpoints.list();
+    const req = await axios.get(BASE_URL + ep.path, { params: ep.params });
     return req.data.data as CollectionInterface[];
   };
 
@@ -63,65 +39,8 @@ export default function useProductsService() {
     filter?: FilterProductInterface,
     page: string = "1"
   ) => {
-    const req = await axios.get(BASE_URL + "products", {
-      params: {
-        pagination: {
-          pageSize: 24,
-          page,
-        },
-        populate: {
-          gallery: true,
-          logo: true,
-          brands: true,
-          categories: true,
-          variants: {
-            populate: {
-              terms: { populate: { term_types: true } },
-            },
-          },
-        },
-        sort: (() => {
-          if (filter?.sort === "price-low-high") {
-            return ["selling_price:ASC", "name:ASC"];
-          } else if (filter?.sort === "price-high-low") {
-            return ["selling_price:DESC", "name:ASC"];
-          } else {
-            return ["createdAt:DESC"];
-          }
-        })(),
-        filters: {
-          $and: [
-            {
-              collections: {
-                slug: {
-                  $eq: filter?.collection ?? undefined,
-                },
-              },
-            },
-            { 
-              selling_price: {
-                $gte: filter?.minPrice ?? undefined,
-                $lte: filter?.maxPrice ?? undefined,
-              },
-            },
-            {
-              brands: {
-                slug: {
-                  $eq: filter?.brand ?? undefined,
-                },
-              },
-            },
-            {
-              categories: {
-                slug: {
-                  $eq: filter?.category ?? undefined,
-                },
-              },
-            }
-          ],
-        },
-      },
-    });
+    const ep = WebProductsEndpoints.list(filter, page);
+    const req = await axios.get(BASE_URL + ep.path, { params: ep.params });
 
     const data = req.data.data;
 
@@ -145,51 +64,8 @@ export default function useProductsService() {
    * @return {ProductInterface} The product details.
    */
   const getProductDetail = async (slug: string) => {
-    const req = await axios.get(BASE_URL + "products/" + slug, {
-      params: {
-        fields: [
-          "name",
-          "sku",
-          "barcode",
-          "selling_price",
-          "cost_price",
-          "offer_price",
-          "stock_quantity",
-          "summary",
-          "description",
-          "is_variant",
-          "is_active",
-          "keywords",
-        ],
-        populate: {
-          gallery: true,
-          logo: true,
-          brands: true,
-          categories: true,
-          terms: { populate: { term_types: true } },
-          variants: {
-            fields: [
-              "name",
-              "sku",
-              "barcode",
-              "selling_price",
-              "cost_price",
-              "offer_price",
-              "stock_quantity",
-              "summary",
-              "description",
-              "is_variant",
-            ],
-            populate: {
-              gallery: true,
-              logo: true,
-              terms: { populate: { term_types: true } },
-            },
-          },
-        },
-      },
-    });
-
+    const ep = WebProductsEndpoints.detail(slug);
+    const req = await axios.get(BASE_URL + ep.path, { params: ep.params });
     return req.data.data as ProductInterface;
   };
 
@@ -200,30 +76,8 @@ export default function useProductsService() {
    * @return {ProductInterface[]} - An array of product data.
    */
   const productInArrayId = async (idProducts: number[]) => {
-
-    const req = await axios.get(BASE_URL + "products", {
-      params: {
-        populate: {
-          gallery: true,
-          logo: true,
-          brands: true,
-          categories: true,
-          variants: {
-            populate: {
-              gallery: true,
-              logo: true,
-              terms: { populate: { term_types: true } },
-            },
-          },
-        },
-        filters: {
-          id: {
-            $in: idProducts
-          },
-        },
-      },
-    });
-
+    const ep = WebProductsEndpoints.byIds(idProducts);
+    const req = await axios.get(BASE_URL + ep.path, { params: ep.params });
     return req.data.data as ProductInterface[];
   };
 
@@ -237,31 +91,8 @@ export default function useProductsService() {
     if (search.length <= 0) {
       return [] as ProductInterface[];
     }
-
-    const req = await axios.get(BASE_URL + "products", {
-      params: {
-        populate: {
-          gallery: true,
-          logo: true,
-          brands: true,
-          categories: true,
-          variants: {
-            populate: {
-              terms: { populate: { term_types: true } },
-            },
-          },
-        },
-        pagination: {
-          limit: 5,
-        },
-        filters: {
-          name: {
-            $contains: search,
-          },
-        },
-      },
-    });
-
+    const ep = WebProductsEndpoints.search(search);
+    const req = await axios.get(BASE_URL + ep.path, { params: ep.params });
     return req.data.data as ProductInterface[];
   };
 
@@ -281,15 +112,7 @@ export default function useProductsService() {
  * @return {ProductInterface} The highest priced product.
  */
 export const getHighestProductPrice = async () => {
-  const req = await axios.get(BASE_URL + "products", {
-    params: {
-      pagination: {
-        limit: 1,
-      },
-      sort: [ "selling_price:DESC" , "id:ASC"],
-      populate: ["gallery", "variants", "brands", "categories", "logo"]
-    },
-  });
-
+  const ep = WebProductsEndpoints.highestPrice();
+  const req = await axios.get(BASE_URL + ep.path, { params: ep.params });
   return req.data.data[0] as ProductInterface;
 };

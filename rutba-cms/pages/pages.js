@@ -4,6 +4,7 @@ import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { authApi } from "@rutba/pos-shared/lib/api";
+import { CmsPagesEndpoints } from "@rutba/pos-shared/lib/endpoints/index.js";
 import Link from "next/link";
 import { useToast } from "../components/Toast";
 
@@ -99,7 +100,8 @@ export default function Pages() {
     const publishOne = async (docId) => {
         setPublishing(prev => ({ ...prev, [docId]: true }));
         try {
-            await authApi.post(`/cms-pages/${docId}/publish`, {});
+            const ep = CmsPagesEndpoints.publish(docId);
+            await authApi.post(ep.path, {});
             setPages(prev => prev.map(p => p.documentId === docId ? { ...p, _isPublished: true } : p));
             toast("Published!", "success");
         } catch (err) {
@@ -113,7 +115,8 @@ export default function Pages() {
     const unpublishOne = async (docId) => {
         setPublishing(prev => ({ ...prev, [docId]: true }));
         try {
-            await authApi.post(`/cms-pages/${docId}/unpublish`, {});
+            const ep = CmsPagesEndpoints.unpublish(docId);
+            await authApi.post(ep.path, {});
             setPages(prev => prev.map(p => p.documentId === docId ? { ...p, _isPublished: false } : p));
             toast("Unpublished.", "success");
         } catch (err) {
@@ -131,7 +134,7 @@ export default function Pages() {
         let ok = 0, fail = 0;
         for (const docId of ids) {
             setPublishing(prev => ({ ...prev, [docId]: true }));
-            try { await authApi.post(`/cms-pages/${docId}/publish`, {}); ok++; setPages(prev => prev.map(p => p.documentId === docId ? { ...p, _isPublished: true } : p)); }
+            try { const bpEp = CmsPagesEndpoints.publish(docId); await authApi.post(bpEp.path, {}); ok++; setPages(prev => prev.map(p => p.documentId === docId ? { ...p, _isPublished: true } : p)); }
             catch { fail++; }
             finally { setPublishing(prev => ({ ...prev, [docId]: false })); }
         }
@@ -146,7 +149,7 @@ export default function Pages() {
         let ok = 0, fail = 0;
         for (const docId of ids) {
             setPublishing(prev => ({ ...prev, [docId]: true }));
-            try { await authApi.post(`/cms-pages/${docId}/unpublish`, {}); ok++; setPages(prev => prev.map(p => p.documentId === docId ? { ...p, _isPublished: false } : p)); }
+            try { const buEp = CmsPagesEndpoints.unpublish(docId); await authApi.post(buEp.path, {}); ok++; setPages(prev => prev.map(p => p.documentId === docId ? { ...p, _isPublished: false } : p)); }
             catch { fail++; }
             finally { setPublishing(prev => ({ ...prev, [docId]: false })); }
         }
@@ -159,20 +162,11 @@ export default function Pages() {
         setLoading(true);
         setError("");
         try {
-            const params = {
-                status: 'draft',
-                sort: ["sort_order:asc", "createdAt:desc"],
-                populate: ["featured_image"],
-                pagination: { pageSize: 50 },
-            };
-            const filters = {};
-            if (search.trim()) filters.title = { $containsi: search.trim() };
-            if (typeFilter) filters.page_type = { $eq: typeFilter };
-            if (Object.keys(filters).length > 0) params.filters = filters;
-
+            const draftEp = CmsPagesEndpoints.listDraft({ search: search.trim() || undefined, typeFilter: typeFilter || undefined, pageSize: 50 });
+            const pubEp = CmsPagesEndpoints.listPublished({ pageSize: 200 });
             const [draftRes, pubRes] = await Promise.all([
-                authApi.get("/cms-pages", params),
-                authApi.get("/cms-pages", { status: 'published', fields: ["documentId"], pagination: { pageSize: 200 } }),
+                authApi.fetch(draftEp.path, draftEp.params),
+                authApi.fetch(pubEp.path, pubEp.params),
             ]);
             const pubIds = new Set((pubRes.data || []).map(p => p.documentId));
             setPages((draftRes.data || []).map(p => ({ ...p, _isPublished: pubIds.has(p.documentId) })));
@@ -206,18 +200,16 @@ export default function Pages() {
             const log = [];
             for (const row of rows) {
                 try {
-                    const existing = await authApi.get("/cms-pages", {
-                        status: "draft",
-                        filters: { slug: { $eq: row.slug } },
-                        fields: ["documentId"],
-                        pagination: { pageSize: 1 },
-                    });
+                    const chkEp = CmsPagesEndpoints.bySlugCheck(row.slug);
+                    const existing = await authApi.fetch(chkEp.path, chkEp.params);
                     const doc = existing.data?.[0];
                     if (doc) {
-                        await authApi.put(`/cms-pages/${doc.documentId}`, { data: row });
+                        const upEp = CmsPagesEndpoints.update(doc.documentId);
+                        await authApi.put(upEp.path, { data: row });
                         log.push({ type: "success", text: `Updated: ${row.slug}` });
                     } else {
-                        await authApi.post("/cms-pages", { data: row });
+                        const crEp = CmsPagesEndpoints.create();
+                        await authApi.post(crEp.path, { data: row });
                         log.push({ type: "success", text: `Created: ${row.slug}` });
                     }
                 } catch (err) {

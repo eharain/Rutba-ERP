@@ -1,7 +1,6 @@
-import qs from 'qs';
 import { authApi } from '../api';
-import { urlAndRelations } from './queries';
 import { dataNode } from './search';
+import { SalesEndpoints, SaleReturnsEndpoints, PurchasesEndpoints, CategoriesEndpoints, BrandsEndpoints, ProductsEndpoints, EnumsEndpoints } from '../endpoints/index.js';
 
 // Fetch sales and returns for reports
 export async function fetchEntities(entities, page, rowsPerPage = 100) {
@@ -10,50 +9,39 @@ export async function fetchEntities(entities, page, rowsPerPage = 100) {
     },);
 }
 export async function fetchSales(page, rowsPerPage = 200, { sort, filters, populate } = {}) {
-    return await authApi.fetch("/sales", {
-        sort: sort || ['createdAt:desc'],
-        filters: filters || undefined,
-        pagination: { page, pageSize: rowsPerPage },
-        populate: populate || { customer: true, employee: true, cash_register: true },
-    });
+    const ep = SalesEndpoints.list(page, rowsPerPage, { sort, filters, populate });
+    return await authApi.fetch(ep.path, ep.params);
 }
 
 export async function fetchReturns(page, rowsPerPage = 100) {
-    return await authApi.fetch("/sale-returns", { pagination: { page, pageSize: rowsPerPage } });
+    const ep = SaleReturnsEndpoints.list(page, rowsPerPage);
+    return await authApi.fetch(ep.path, ep.params);
 }
 
 // Fetch purchases for reports
 export async function fetchPurchases(page, rowsPerPage = 100) {
-    return await authApi.fetch("/purchases", { sort: ['createdAt:desc'], pagination: { page, pageSize: rowsPerPage }, populate: { suppliers: true } });
+    const ep = PurchasesEndpoints.list(page, rowsPerPage);
+    return await authApi.fetch(ep.path, ep.params);
 }
 
-//fetchCategories 
+//fetchCategories
 export async function fetchCategories(page, rowsPerPage) {
-    return await authApi.fetch("/categories", { sort: ["name:asc"], pagination: { page, pageSize: rowsPerPage ?? 100 } });
+    const ep = CategoriesEndpoints.list({ page, pageSize: rowsPerPage ?? 100 });
+    return await authApi.fetch(ep.path, ep.params);
 }
 
 //fetchBrands
 export async function fetchBrands(page, rowsPerPage) {
-    return await authApi.fetch("/brands", { sort: ["name:asc"], pagination: { page, pageSize: rowsPerPage ?? 100 } });
+    const ep = BrandsEndpoints.list({ page, pageSize: rowsPerPage ?? 100 });
+    return await authApi.fetch(ep.path, ep.params);
 }
 
 
 // Fetch a sale or purchase by id or invoice_no
 export async function fetchSaleByIdOrInvoice(id) {
     let res;
-    res = await authApi.get("/sales/", {
-        filters: {
-            $or: [{ invoice_no: id }, { id }, { documentId: id }]
-        },
-        populate: {
-            payments: true,
-            customer: true,
-            cash_register: { fields: ['id', 'documentId', 'desk_id', 'desk_name', 'branch_name', 'opened_by', 'opened_at', 'status'] },
-            items: { populate: { product: true, items: { populate: ['product'] } } },
-            sale_returns: { populate: { items: { populate: { product: true, items: { populate: ['product'] } } }, exchange_sale: { fields: ['id', 'documentId', 'invoice_no'] } } },
-            exchange_returns: { populate: { items: { populate: { product: true, items: { populate: ['product'] } } }, sale: { fields: ['id', 'documentId', 'invoice_no'] } } }
-        }
-    });
+    const byIdEp = SalesEndpoints.byId(id);
+    res = await authApi.get(byIdEp.path, byIdEp.params);
     let data = res?.data ?? res;
     const sale = Array.isArray(data) ? data[0] : data;
 
@@ -71,13 +59,8 @@ export async function fetchSaleByIdOrInvoice(id) {
         if (!sale._exchangeReturns?.length) {
             const saleDocId = sale.documentId || sale.id;
             try {
-                const excRes = await authApi.get("/sale-returns/", {
-                    filters: {
-                        type: { $eq: 'Exchange' },
-                        exchange_sale: saleDocId
-                    },
-                    populate: { items: { populate: ['product'] }, sale: true }
-                });
+                const excEp = SalesEndpoints.exchangeReturns(saleDocId);
+                const excRes = await authApi.get(excEp.path, excEp.params);
                 const excData = excRes?.data ?? excRes;
                 const excReturns = Array.isArray(excData) ? excData : excData ? [excData] : [];
                 if (excReturns.length > 0) {
@@ -93,84 +76,47 @@ export async function fetchSaleByIdOrInvoice(id) {
 }
 
 export async function fetchPurchaseByIdDocumentIdOrPO(id) {
-    let res;
-    let { url, relations } = urlAndRelations('purchases', id)
-
-    res = await authApi.get(url);
+    const ep = PurchasesEndpoints.byId(id);
+    const res = await authApi.get(ep.path, ep.params);
     let data = dataNode(res);
     return Array.isArray(data) ? data[0] : data;
 }
 
 
 export async function fetchEnumsValues(name, field) {
-
-    const res = await authApi.fetch(`/enums/${name}/${field}`);
-    console.log('res', res)
+    const ep = EnumsEndpoints.values(name, field);
+    const res = await authApi.fetch(ep.path);
+    console.log('res', res);
     let data = dataNode(res);
     return data?.values;
 }
 
 
 export async function fetchProducts(filters, page, rowsPerPage, sort) {
-    const { brands, categories, suppliers, terms, purchases, stockStatus, searchText } = filters;
+    const { searchText } = filters;
 
-
-
-    const entity = 'products';
-    const documentId = null;
-
-    let { query, relations, url } = urlAndRelations(entity, documentId, searchText, page, rowsPerPage)
-
-    for (const [field, values] of Object.entries(filters)) {
-        if (field === 'stockStatus' || field === 'searchText' || field === 'parentOnly' || field === 'status') {
-            continue;
-        }
-        if (Array.isArray(values) && values.length > 0) {
-            if (field === 'purchases') {
-                values.forEach((val, index) => {
-                    url += `&filters[purchase_items][purchase][documentId][$in][${index}]=${val}`;
-                });
-            } else {
-                values.forEach((val, index) => {
-                    url += `&filters[${field}][documentId][$in][${index}]=${val}`;
-                });
-            }
-        }
+    // If there is a search term, use the full-text search endpoint shape.
+    // Otherwise, use the parameterised list builder which handles relation filters cleanly.
+    if (searchText && searchText.trim().length > 0) {
+        const ep = ProductsEndpoints.search(searchText.trim(), page, rowsPerPage);
+        return await authApi.get(ep.path, ep.params);
     }
 
-    if (filters.parentOnly) {
-        url += `&filters[parent][$null]=true`;
-    }
-
-    if (filters.status) {
-        url += `&status=${encodeURIComponent(filters.status)}`;
-    }
-
-    if (sort) {
-        url += `&sort=${encodeURIComponent(sort)}`;
-    }
-
-    console.log('products search url', url);
-    const res = await authApi.get(url);
-    return res;
+    const ep = ProductsEndpoints.list(page, rowsPerPage, {
+        brands: filters.brands,
+        categories: filters.categories,
+        suppliers: filters.suppliers,
+        purchases: filters.purchases,
+        parentOnly: filters.parentOnly,
+        status: filters.status,
+        sort,
+    });
+    return await authApi.get(ep.path, ep.params);
 }
 
 export async function loadProduct(id) {
-
-    const query = {
-      //  filters: { documentId: id },
-        populate: {
-            categories: true,
-            brands: true,
-            suppliers: true,
-            logo: true,
-            gallery: true,
-            terms: true,
-            parent: true,
-        }
-    }
-
-    let res = await authApi.get(`/products/${id}`, query);
+    const byIdEp = ProductsEndpoints.byId(id);
+    let res = await authApi.get(byIdEp.path, byIdEp.params);
     let prod = res.data || res;
     //let data = {
     //    id: prod.id || '',

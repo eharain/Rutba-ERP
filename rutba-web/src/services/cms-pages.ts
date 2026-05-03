@@ -1,88 +1,32 @@
 import axios from "axios";
 import { BASE_URL } from "@/static/const";
 import { CmsPageInterface, CmsPageDetailInterface } from "@/types/api/cms-page";
+import { WebCmsPagesEndpoints } from "@/endpoints";
 
 export default function useCmsPagesService() {
   const getCmsPages = async () => {
-    const req = await axios.get(BASE_URL + "cms-pages", {
-      params: {
-        sort: ["sort_order:asc", "createdAt:desc"],
-        fields: ["title", "slug", "excerpt", "page_type", "sort_order", "enable_contact_form", "createdAt", "updatedAt", "publishedAt"],
-        populate: ["featured_image", "background_image"],
-        pagination: { pageSize: 50 },
-      },
-    });
-
+    const ep = WebCmsPagesEndpoints.list();
+    const req = await axios.get(BASE_URL + ep.path, { params: ep.params });
     return req.data.data as CmsPageInterface[];
   };
 
   const getCmsPageBySlug = async (slug: string) => {
-    const req = await axios.get(BASE_URL + "cms-pages", {
-      params: {
-        filters: { slug: { $eq: slug } },
-        fields: ["title", "slug", "excerpt", "content", "page_type", "sort_order", "enable_contact_form", "createdAt", "updatedAt", "publishedAt", "excerpt_priority", "featured_image_priority", "content_priority", "gallery_priority", "related_pages_priority"],
-        populate: [
-          "featured_image",
-          "background_image",
-          "gallery",
-          "hero_product_groups.products.gallery",
-          "hero_product_groups.products.logo",
-          "hero_product_groups.products.brands",
-          "hero_product_groups.products.categories",
-          "hero_product_groups.products.variants",
-          "hero_product_groups.products.variants.terms",
-          "hero_product_groups.products.variants.terms.term_types",
-          "hero_product_groups.cover_image",
-          "hero_product_groups.offers",
-          "brand_groups.brands.logo",
-          "category_groups.categories.logo",
-          "product_groups.products.gallery",
-          "product_groups.products.logo",
-          "product_groups.products.brands",
-          "product_groups.products.categories",
-          "product_groups.products.variants",
-          "product_groups.products.variants.terms",
-          "product_groups.products.variants.terms.term_types",
-          "product_groups.cover_image",
-          "product_groups.offers",
-          "related_pages.featured_image",
-          "footer.pinned_pages",
-        ],
-      },
-    });
-
+    const ep = WebCmsPagesEndpoints.bySlug(slug);
+    const req = await axios.get(BASE_URL + ep.path, { params: ep.params });
     const pages = req.data.data as CmsPageDetailInterface[];
     return pages.length > 0 ? pages[0] : null;
   };
 
   const getCmsHeaderData = async () => {
-    const req = await axios.get(BASE_URL + "cms-pages", {
-      params: {
-        filters: { slug: { $eq: "index" } },
-        fields: ["title", "slug", "excerpt", "content", "page_type", "sort_order", "enable_contact_form", "createdAt", "updatedAt", "publishedAt"],
-        populate: [
-          "brand_groups.brands.logo",
-          "category_groups.categories",
-          "footer.pinned_pages",
-        ],
-      },
-    });
-
+    const ep = WebCmsPagesEndpoints.header();
+    const req = await axios.get(BASE_URL + ep.path, { params: ep.params });
     const pages = req.data.data as CmsPageDetailInterface[];
     return pages.length > 0 ? pages[0] : null;
   };
 
   const getCmsPagesByType = async (pageType: string) => {
-    const req = await axios.get(BASE_URL + "cms-pages", {
-      params: {
-        filters: { page_type: { $eq: pageType } },
-        sort: ["sort_order:asc", "createdAt:desc"],
-        fields: ["title", "slug", "excerpt", "page_type", "sort_order", "enable_contact_form", "createdAt", "updatedAt", "publishedAt"],
-        populate: ["featured_image", "background_image"],
-        pagination: { pageSize: 50 },
-      },
-    });
-
+    const ep = WebCmsPagesEndpoints.listByType(pageType);
+    const req = await axios.get(BASE_URL + ep.path, { params: ep.params });
     return req.data.data as CmsPageInterface[];
   };
 
@@ -95,65 +39,20 @@ export default function useCmsPagesService() {
 }
 
 export const getCmsPagesSSR = async () => {
-  const req = await axios.get(BASE_URL + "cms-pages", {
-    params: {
-      sort: ["sort_order:asc", "createdAt:desc"],
-      fields: ["title", "slug", "excerpt", "page_type", "sort_order", "enable_contact_form", "createdAt", "updatedAt", "publishedAt"],
-      populate: ["featured_image", "background_image"],
-      pagination: { pageSize: 50 },
-    },
-  });
-
+  const ep = WebCmsPagesEndpoints.list();
+  const req = await axios.get(BASE_URL + ep.path, { params: ep.params });
   return req.data.data as CmsPageInterface[];
 };
 
 export const getCmsPagesByTypeSSR = async (pageType: string) => {
-  const req = await axios.get(BASE_URL + "cms-pages", {
-    params: {
-      filters: { page_type: { $eq: pageType } },
-      sort: ["sort_order:asc", "createdAt:desc"],
-      fields: ["title", "slug", "excerpt", "page_type", "sort_order", "enable_contact_form", "createdAt", "updatedAt", "publishedAt"],
-      populate: ["featured_image", "background_image"],
-      pagination: { pageSize: 50 },
-    },
-  });
-
+  const ep = WebCmsPagesEndpoints.listByType(pageType);
+  const req = await axios.get(BASE_URL + ep.path, { params: ep.params });
   return req.data.data as CmsPageInterface[];
 };
 
 export const getCmsPageBySlugSSR = async (slug: string) => {
-  const req = await axios.get(BASE_URL + "cms-pages", {
-    params: {
-      filters: { slug: { $eq: slug } },
-      fields: ["title", "slug", "excerpt", "content", "page_type", "sort_order", "enable_contact_form", "createdAt", "updatedAt", "publishedAt", "excerpt_priority", "featured_image_priority", "content_priority", "gallery_priority", "related_pages_priority"],
-      populate: [
-        "featured_image",
-        "background_image",
-        "gallery",
-        "hero_product_groups.products.gallery",
-        "hero_product_groups.products.logo",
-        "hero_product_groups.products.brands",
-        "hero_product_groups.products.categories",
-        "hero_product_groups.products.variants",
-        "hero_product_groups.products.variants.terms",
-        "hero_product_groups.products.variants.terms.term_types",
-        "hero_product_groups.cover_image",
-        "brand_groups.brands.logo",
-        "category_groups.categories.logo",
-        "product_groups.products.gallery",
-        "product_groups.products.logo",
-        "product_groups.products.brands",
-        "product_groups.products.categories",
-        "product_groups.products.variants",
-        "product_groups.products.variants.terms",
-        "product_groups.products.variants.terms.term_types",
-        "product_groups.cover_image",
-        "related_pages.featured_image",
-        "footer.pinned_pages",
-      ],
-    },
-  });
-
+  const ep = WebCmsPagesEndpoints.bySlug(slug);
+  const req = await axios.get(BASE_URL + ep.path, { params: ep.params });
   const pages = req.data.data as CmsPageDetailInterface[];
   return pages.length > 0 ? pages[0] : null;
 };

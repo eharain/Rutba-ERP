@@ -3,6 +3,7 @@ import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { authApi, StraipImageUrl } from "@rutba/pos-shared/lib/api";
+import { BrandsEndpoints } from "@rutba/pos-shared/lib/endpoints/index.js";
 import Link from "next/link";
 import { useToast } from "../components/Toast";
 
@@ -36,7 +37,8 @@ export default function Brands() {
     const publishOne = async (docId) => {
         setPublishing(prev => ({ ...prev, [docId]: true }));
         try {
-            await authApi.post(`/brands/${docId}/publish`, {});
+            const ep = BrandsEndpoints.publish(docId);
+            await authApi.post(ep.path, {});
             setBrands(prev => prev.map(b => b.documentId === docId ? { ...b, _isPublished: true } : b));
             toast("Published!", "success");
         } catch (err) {
@@ -50,7 +52,8 @@ export default function Brands() {
     const unpublishOne = async (docId) => {
         setPublishing(prev => ({ ...prev, [docId]: true }));
         try {
-            await authApi.post(`/brands/${docId}/unpublish`, {});
+            const ep = BrandsEndpoints.unpublish(docId);
+            await authApi.post(ep.path, {});
             setBrands(prev => prev.map(b => b.documentId === docId ? { ...b, _isPublished: false } : b));
             toast("Unpublished.", "success");
         } catch (err) {
@@ -68,7 +71,7 @@ export default function Brands() {
         let ok = 0, fail = 0;
         for (const docId of ids) {
             setPublishing(prev => ({ ...prev, [docId]: true }));
-            try { await authApi.post(`/brands/${docId}/publish`, {}); ok++; setBrands(prev => prev.map(b => b.documentId === docId ? { ...b, _isPublished: true } : b)); }
+            try { const bpEp = BrandsEndpoints.publish(docId); await authApi.post(bpEp.path, {}); ok++; setBrands(prev => prev.map(b => b.documentId === docId ? { ...b, _isPublished: true } : b)); }
             catch { fail++; }
             finally { setPublishing(prev => ({ ...prev, [docId]: false })); }
         }
@@ -83,7 +86,7 @@ export default function Brands() {
         let ok = 0, fail = 0;
         for (const docId of ids) {
             setPublishing(prev => ({ ...prev, [docId]: true }));
-            try { await authApi.post(`/brands/${docId}/unpublish`, {}); ok++; setBrands(prev => prev.map(b => b.documentId === docId ? { ...b, _isPublished: false } : b)); }
+            try { const buEp = BrandsEndpoints.unpublish(docId); await authApi.post(buEp.path, {}); ok++; setBrands(prev => prev.map(b => b.documentId === docId ? { ...b, _isPublished: false } : b)); }
             catch { fail++; }
             finally { setPublishing(prev => ({ ...prev, [docId]: false })); }
         }
@@ -95,18 +98,11 @@ export default function Brands() {
         if (!jwt) return;
         setLoading(true);
         try {
-            const params = {
-                status: 'draft',
-                sort: ["name:asc"],
-                populate: ["logo"],
-                pagination: { pageSize: 100 },
-            };
-            if (search.trim()) {
-                params.filters = { name: { $containsi: search.trim() } };
-            }
+            const draftEp = BrandsEndpoints.listDraft(search.trim() ? { search: search.trim() } : {});
+            const pubEp = BrandsEndpoints.listPublished();
             const [draftRes, pubRes] = await Promise.all([
-                authApi.get("/brands", params),
-                authApi.get("/brands", { status: 'published', fields: ["documentId"], pagination: { pageSize: 500 } }),
+                authApi.fetch(draftEp.path, draftEp.params),
+                authApi.fetch(pubEp.path, pubEp.params),
             ]);
             const pubIds = new Set((pubRes.data || []).map(b => b.documentId));
             setBrands((draftRes.data || []).map(b => ({ ...b, _isPublished: pubIds.has(b.documentId) })));

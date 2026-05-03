@@ -4,6 +4,7 @@ import Link from "next/link";
 import Layout from "../../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { authApi, getAppName } from "@rutba/pos-shared/lib/api";
+import { CashRegistersEndpoints, PaymentsEndpoints, CashRegisterTransactionEndpoints } from "@rutba/pos-shared/lib/endpoints";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { isAppAdmin } from "@rutba/pos-shared/lib/roles";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
@@ -29,27 +30,17 @@ export default function CashRegisterDetailPage() {
     const loadRegister = async () => {
         setLoading(true);
         try {
-            const res = await authApi.fetch(`/cash-registers/${documentId}`, {
-                populate: ["opened_by_user", "closed_by_user", "branch"]
-            });
+            const res = await CashRegistersEndpoints.fetchById(documentId, { populate: ["opened_by_user", "closed_by_user", "branch"] });
             const reg = res?.data ?? res;
             setRegister(reg);
 
-            // Load payments with linked sale / sale_return
-            const paymentsRes = await authApi.fetch("/payments", {
-                filters: { cash_register: { documentId: { $eq: documentId } } },
+            const paymentsRes = await PaymentsEndpoints.fetchByRegister(documentId, {
                 populate: { sale: { fields: ["documentId", "invoice_no"] }, sale_return: { fields: ["documentId", "return_no"] } },
-                sort: ["payment_date:asc"],
-                pagination: { page: 1, pageSize: 500 }
             });
             setPayments(paymentsRes?.data ?? []);
 
             // Load transactions
-            const txnRes = await authApi.fetch("/cash-register-transactions", {
-                filters: { cash_register: { documentId: { $eq: documentId } } },
-                sort: ["transaction_date:asc"],
-                pagination: { page: 1, pageSize: 500 }
-            });
+            const txnRes = await CashRegisterTransactionEndpoints.fetchByRegister(documentId);
             setTransactions(txnRes?.data ?? []);
         } catch (err) {
             console.error("Failed to load register detail", err);

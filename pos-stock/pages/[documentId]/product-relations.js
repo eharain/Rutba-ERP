@@ -4,6 +4,7 @@ import Link from 'next/link';
 import Layout from '../../components/Layout';
 import ProtectedRoute from '@rutba/pos-shared/components/ProtectedRoute';
 import { authApi } from '@rutba/pos-shared/lib/api';
+import { StockItemsEndpoints, PurchaseItemsEndpoints, ProductsEndpoints } from '@rutba/pos-shared/lib/endpoints';
 import { loadProduct } from '@rutba/pos-shared/lib/pos';
 import { useUtil } from '@rutba/pos-shared/context/UtilContext';
 import StrapiImage from '@rutba/pos-shared/components/StrapiImage';
@@ -49,17 +50,13 @@ export default function ProductRelationsPage() {
             setProduct(prod);
 
             // Load stock items count
-            const itemsRes = await authApi.fetch('/stock-items', {
-                filters: { product: { documentId } },
-                pagination: { page: 1, pageSize: 1 },
-            });
+            const siEp = StockItemsEndpoints.byProduct(documentId, { pageSize: 1 });
+            const itemsRes = await authApi.fetch(siEp.path, siEp.params);
             prod._stockItemsCount = itemsRes?.meta?.pagination?.total ?? 0;
 
             // Load purchase items count
-            const purchaseItemsRes = await authApi.fetch('/purchase-items', {
-                filters: { product: { documentId } },
-                pagination: { page: 1, pageSize: 1 },
-            });
+            const piEp = PurchaseItemsEndpoints.byProduct(documentId, { pageSize: 1 });
+            const purchaseItemsRes = await authApi.fetch(piEp.path, piEp.params);
             prod._purchaseItemsCount = purchaseItemsRes?.meta?.pagination?.total ?? 0;
 
             setProduct({ ...prod });
@@ -83,19 +80,8 @@ export default function ProductRelationsPage() {
         const timer = setTimeout(async () => {
             setMergeSearchLoading(true);
             try {
-                const res = await authApi.fetch('/products', {
-                    sort: ['name:asc'],
-                    filters: {
-                        documentId: { $ne: documentId },
-                        $or: [
-                            { name: { $containsi: searchValue } },
-                            { sku: { $containsi: searchValue } },
-                            { barcode: { $containsi: searchValue } },
-                        ],
-                    },
-                    populate: { categories: true, brands: true, suppliers: true, terms: true, logo: true },
-                    pagination: { page: 1, pageSize: 20 },
-                });
+                const ep = ProductsEndpoints.search(searchValue, { excludeDocId: documentId });
+                const res = await authApi.fetch(ep.path, ep.params);
                 const data = res?.data ?? res;
                 if (isActive) setMergeResults(data || []);
             } catch (err) {
@@ -143,10 +129,8 @@ export default function ProductRelationsPage() {
                     let totalPages = 1;
                     let itemCount = 0;
                     do {
-                        const res = await authApi.fetch('/stock-items', {
-                            filters: { product: { documentId: sourceDocId } },
-                            pagination: { page, pageSize: 100 },
-                        });
+                        const siEp = StockItemsEndpoints.byProduct(sourceDocId, { page, pageSize: 100 });
+                        const res = await authApi.fetch(siEp.path, siEp.params);
                         const items = res?.data ?? res ?? [];
                         totalPages = res?.meta?.pagination?.pageCount || 1;
                         for (const item of items) {
@@ -166,10 +150,8 @@ export default function ProductRelationsPage() {
                     let totalPages = 1;
                     let itemCount = 0;
                     do {
-                        const res = await authApi.fetch('/purchase-items', {
-                            filters: { product: { documentId: sourceDocId } },
-                            pagination: { page, pageSize: 100 },
-                        });
+                        const piEp = PurchaseItemsEndpoints.byProduct(sourceDocId, { page, pageSize: 100 });
+                        const res = await authApi.fetch(piEp.path, piEp.params);
                         const items = res?.data ?? res ?? [];
                         totalPages = res?.meta?.pagination?.pageCount || 1;
                         for (const item of items) {
@@ -203,10 +185,8 @@ export default function ProductRelationsPage() {
                 }
 
                 // 4) Transfer variants (child products)
-                const variantsRes = await authApi.fetch('/products', {
-                    filters: { parent: { documentId: sourceDocId } },
-                    pagination: { page: 1, pageSize: 500 },
-                });
+                const variantsEp = ProductsEndpoints.byParent(sourceDocId);
+                const variantsRes = await authApi.fetch(variantsEp.path, variantsEp.params);
                 const variants = variantsRes?.data ?? variantsRes ?? [];
                 if (variants.length > 0) {
                     for (const variant of variants) {

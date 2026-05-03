@@ -1,5 +1,6 @@
 import axios from "axios";
 import { BASE_URL, IMAGE_URL } from "@/static/const";
+import { WebSiteSettingsEndpoints } from "@/endpoints";
 
 export interface SiteSettingsInterface {
   id: number;
@@ -37,11 +38,8 @@ const DEFAULTS: SiteSettingsInterface = {
 
 export async function getSiteSettings(): Promise<SiteSettingsInterface> {
   try {
-    const res = await axios.get(BASE_URL + "site-setting", {
-      params: {
-        populate: ["site_logo", "favicon"],
-      },
-    });
+    const ep = WebSiteSettingsEndpoints.get();
+    const res = await axios.get(BASE_URL + ep.path, { params: ep.params });
     const data = res.data?.data;
     if (!data) return DEFAULTS;
     return { ...DEFAULTS, ...data };

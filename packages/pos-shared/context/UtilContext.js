@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useMemo, useState, useEffect, useCallback } from "react";
 import { storage } from "../lib/storage";
 import { authApi } from "../lib/api";
+import { BranchesEndpoints } from "../lib/endpoints";
 
 const UtilContext = createContext(null);
 
@@ -71,7 +72,8 @@ export function UtilProvider({ children }) {
         if (!hydrated || !branch?.documentId) return;
         (async () => {
             try {
-                const response = await authApi.get(`/branches/${branch.documentId}?populate[0]=desks&populate[1]=currency`);
+                const ep = BranchesEndpoints.byId(branch.documentId);
+                const response = await authApi.get(ep.path, ep.params);
                 const fresh = response?.data ?? response;
                 if (fresh && fresh.documentId) {
                     setBranchState(fresh);

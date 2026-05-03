@@ -4,6 +4,7 @@ import Link from 'next/link';
 import Layout from '../../components/Layout';
 import ProtectedRoute from '@rutba/pos-shared/components/ProtectedRoute';
 import { authApi, relationConnects, getStockStatus } from '@rutba/pos-shared/lib/api';
+import { StockItemsEndpoints, ProductsEndpoints, CategoriesEndpoints, BrandsEndpoints, SuppliersEndpoints } from '@rutba/pos-shared/lib/endpoints/index.js';
 import { saveProduct, loadProduct } from '@rutba/pos-shared/lib/pos';
 import { useUtil } from '@rutba/pos-shared/context/UtilContext';
 import { printStorage } from '@rutba/pos-shared/lib/printStorage';
@@ -108,9 +109,9 @@ export default function EditProduct() {
 
                 // Fetch categories, brands, suppliers, and stock statuses
                 const [categoriesRes, brandsRes, suppliersRes, statusRes] = await Promise.all([
-                    fetchAllRecords('/categories'),
-                    fetchAllRecords('/brands'),
-                    fetchAllRecords('/suppliers'),
+                    fetchAllRecords(p => CategoriesEndpoints.listPaged(p, 100)),
+                    fetchAllRecords(p => BrandsEndpoints.listPaged(p, 100)),
+                    fetchAllRecords(p => SuppliersEndpoints.listPaged(p, 100)),
                     getStockStatus()
                 ]);
 
@@ -130,10 +131,9 @@ export default function EditProduct() {
 
                     // Override with most recent stock item's barcode prefix if available
                     try {
-                        const res = await authApi.get('/stock-items', {
-                            filters: { product: { documentId } },
-                            sort: ['createdAt:desc'],
-                            pagination: { pageSize: 5 },
+                        const prefEp = StockItemsEndpoints.listByProduct(documentId, { page: 1, pageSize: 5 });
+                        const res = await authApi.fetch(prefEp.path, {
+                            ...prefEp.params,
                             fields: ['barcode'],
                         });
                         const items = res?.data || [];
@@ -165,16 +165,8 @@ export default function EditProduct() {
         if (!documentId || documentId === 'new') return;
         setStockItemsLoading(true);
         try {
-            const filters = {
-                product: { documentId: documentId },
-                ...(statusFilter ? { status: statusFilter } : {})
-            };
-            const response = await authApi.get('/me/stock-items-search', {
-                populate: { product: true },
-                filters,
-                pagination: { page: 1, pageSize: 1000 },
-                sort: ['createdAt:desc']
-            });
+            const ep = StockItemsEndpoints.listByProduct(documentId, { statusFilter, page: 1, pageSize: 1000 });
+            const response = await authApi.fetch(ep.path, ep.params);
             const data = response.data || [];
             setStockItems(data);
             setStockItemsTotal(response.meta?.pagination?.total || 0);
@@ -227,7 +219,8 @@ export default function EditProduct() {
 
             const ids = Array.from(selectedStockItems);
             for (const id of ids) {
-                await authApi.put(`/stock-items/${id}`, { data: updates });
+                const siEp = StockItemsEndpoints.update(id);
+                await authApi.put(siEp.path, { data: updates });
             }
 
             setSuccess(`Applied changes to ${ids.length} stock item(s)`);
@@ -284,7 +277,8 @@ export default function EditProduct() {
                     branch: branch?.documentId || branch?.id || undefined,
                 };
 
-                await authApi.post('/stock-items', { data });
+                const siEp = StockItemsEndpoints.create();
+                await authApi.post(siEp.path, { data });
             }
 
             setSuccess(`Created ${addQty} new stock item(s)`);
@@ -305,10 +299,8 @@ export default function EditProduct() {
         setScanAdding(true);
         setError('');
         try {
-            const existing = await authApi.get('/stock-items', {
-                filters: { barcode: { $eq: code } },
-                pagination: { pageSize: 1 }
-            });
+            const chkEp = StockItemsEndpoints.checkBarcode(code);
+            const existing = await authApi.fetch(chkEp.path, chkEp.params);
             if (existing?.data?.length > 0) {
                 setError(`Barcode "${code}" is already in use by another stock item`);
                 setScanAdding(false);
@@ -330,7 +322,8 @@ export default function EditProduct() {
                 branch: branch?.documentId || branch?.id || undefined,
             };
 
-            await authApi.post('/stock-items', { data });
+            const createEp = StockItemsEndpoints.create();
+            await authApi.post(createEp.path, { data });
             setSuccess(`Stock item created with barcode "${code}"`);
             setScanBarcode('');
             if (scanInputRef.current) scanInputRef.current.focus();
@@ -350,11 +343,8 @@ export default function EditProduct() {
         setAttachLoading(true);
         setError('');
         try {
-            const res = await authApi.get('/stock-items', {
-                filters: { barcode: { $eq: code } },
-                populate: { product: true },
-                pagination: { pageSize: 1 }
-            });
+            const bcEp = StockItemsEndpoints.listByBarcode(code);
+            const res = await authApi.fetch(bcEp.path, { ...bcEp.params, populate: { product: true } });
             const items = res?.data || [];
             if (items.length === 0) {
                 setError(`No stock item found with barcode "${code}"`);
@@ -365,7 +355,8 @@ export default function EditProduct() {
             const item = items[0];
             const itemId = item.documentId || item.id;
 
-            await authApi.put(`/stock-items/${itemId}`, {
+            const attEp = StockItemsEndpoints.update(itemId);
+            await authApi.put(attEp.path, {
                 data: {
                     product: documentId,
                     name: product.name,
@@ -395,7 +386,8 @@ export default function EditProduct() {
         try {
             const ids = Array.from(selectedStockItems);
             for (const id of ids) {
-                await authApi.put(`/stock-items/${id}`, { data: { barcode: product.barcode } });
+                const bpEp = StockItemsEndpoints.update(id);
+                await authApi.put(bpEp.path, { data: { barcode: product.barcode } });
             }
             setSuccess(`Assigned product barcode "${product.barcode}" to ${ids.length} stock item(s)`);
             fetchStockItems(stockStatusFilter);
@@ -414,10 +406,8 @@ export default function EditProduct() {
         setMultiScanAdding(true);
         setError('');
         try {
-            const existing = await authApi.get('/stock-items', {
-                filters: { barcode: { $eq: code } },
-                pagination: { pageSize: 1 }
-            });
+            const mchkEp = StockItemsEndpoints.checkBarcode(code);
+            const existing = await authApi.fetch(mchkEp.path, mchkEp.params);
             if (existing?.data?.length > 0) {
                 setError(`Barcode "${code}" is already in use by another stock item`);
                 setMultiScanAdding(false);
@@ -439,7 +429,8 @@ export default function EditProduct() {
                 branch: branch?.documentId || branch?.id || undefined,
             };
 
-            const res = await authApi.post('/stock-items', { data });
+            const msEp = StockItemsEndpoints.create();
+            const res = await authApi.post(msEp.path, { data });
             setMultiScanItems(prev => [
                 { barcode: code, sku: data.sku, id: res.data?.documentId || res.data?.id, time: new Date().toLocaleTimeString() },
                 ...prev

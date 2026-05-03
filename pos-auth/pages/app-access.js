@@ -4,6 +4,7 @@ import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import AppAccessGate from "../components/AppAccessGate";
 import PermissionCheck from "@rutba/pos-shared/components/PermissionCheck";
 import { authApi } from "@rutba/pos-shared/lib/api";
+import { AppAccessesEndpoints } from "../lib/endpoints";
 
 export default function AppAccessPage() {
     const [entries, setEntries] = useState([]);

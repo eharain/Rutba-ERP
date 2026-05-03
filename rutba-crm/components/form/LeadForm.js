@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { authApi } from '@rutba/pos-shared/lib/api';
+import { CustomersEndpoints } from '@rutba/pos-shared/lib/endpoints';
 
 const SOURCES = ['Website', 'Referral', 'Social Media', 'Cold Call', 'Advertisement', 'Other'];
 const STATUSES = ['New', 'Contacted', 'Qualified', 'Negotiation', 'Won', 'Lost'];
@@ -46,14 +47,8 @@ export default function LeadForm({ lead, onSaved, onCancel }) {
         const timer = setTimeout(async () => {
             setSearchingCustomer(true);
             try {
-                const eq = encodeURIComponent(customerQuery);
-                const qs = [
-                    `filters[$or][0][name][$containsi]=${eq}`,
-                    `filters[$or][1][email][$containsi]=${eq}`,
-                    `filters[$or][2][phone][$containsi]=${eq}`,
-                    'pagination[pageSize]=10',
-                ].join('&');
-                const res = await authApi.get(`/customers?${qs}`);
+                const ep = CustomersEndpoints.search(customerQuery, 10);
+                const res = await authApi.get(ep.path, ep.params);
                 setCustomerResults(res?.data || []);
             } catch {
                 setCustomerResults([]);

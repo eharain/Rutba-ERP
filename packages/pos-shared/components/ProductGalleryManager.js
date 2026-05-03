@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { authApi, StraipImageUrl, isImage, relationConnects } from '../lib/api';
+import { TermTypesEndpoints } from '../lib/endpoints';
 import { saveProduct } from '../lib/pos/save';
 import StrapiMediaLibrary from './StrapiMediaLibrary';
 import TermTypeTermDialog from './TermTypeTermDialog';
@@ -552,12 +553,7 @@ export default function ProductGalleryManager({ productId, onUpdate }) {
 
     const loadTermTypes = useCallback(async () => {
         try {
-            const res = await authApi.fetch('/term-types', {
-                filters: { is_variant: true },
-                populate: { terms: true },
-                pagination: { page: 1, pageSize: 500 },
-                sort: ['name:asc']
-            });
+            const res = await TermTypesEndpoints.fetchVariants();
             const types = res?.data ?? res;
             setTermTypes(types || []);
         } catch (err) {

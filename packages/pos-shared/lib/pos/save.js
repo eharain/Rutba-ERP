@@ -1,15 +1,16 @@
 
-import qs from 'qs';
 import { authApi } from '../api';
 import { prepareForPut } from '../utils';
 import { dataNode } from './search';
-import { urlAndRelations } from './queries';
+import { SaleItemsEndpoints, PurchasesEndpoints, PurchaseItemsEndpoints, ProductsEndpoints, StockItemsEndpoints } from '../endpoints/index.js';
 
 
 // Save changes to sale items
 export async function saveSaleItems(id, items) {
     const promises = items.map(async (i) => {
-        [await authApi.post(`/sale-items`, {
+        const siEp = SaleItemsEndpoints.create();
+        const stockEp = StockItemsEndpoints.update(i.documentId);
+        [await authApi.post(siEp.path, {
             data: {
                 items: [i.documentId],
                 quantity: i.quantity,
@@ -18,7 +19,7 @@ export async function saveSaleItems(id, items) {
                 sale: id
             }
         }),
-        await authApi.put(`/stock-items/${i.documentId}`, {
+        await authApi.put(stockEp.path, {
             data: {
                 status: 'Sold'
             }
@@ -33,7 +34,8 @@ export async function saveSaleItems(id, items) {
 // Save changes to purchase items
 export async function savePurchaseItems(id, items) {
 
-    return await authApi.put(`/purchases/${id}`, {
+    const ep = PurchasesEndpoints.update(id);
+    return await authApi.put(ep.path, {
         data: {
             items: items.map((i) => ({
                 stock_item: i.stock_item.id,
@@ -46,7 +48,8 @@ export async function savePurchaseItems(id, items) {
 
 //saveProductItems
 export async function saveProductItems(id, items) {
-    return await authApi.put(`/products/${id}`, {
+    const ep = ProductsEndpoints.update(id);
+    return await authApi.put(ep.path, {
         data: {
             items: items.map((i) => ({
                 stock_item: i.stock_item.id,
@@ -58,8 +61,8 @@ export async function saveProductItems(id, items) {
 }
 //prepareForPut()
 export async function saveProduct(id, formData) {
-    const url = id && id !== 'new' ? `/products/${id}` : '/products';
-    const method = id && id !== 'new' ? 'PUT' : 'POST';
+    const isUpdate = id && id !== 'new';
+    const ep = isUpdate ? ProductsEndpoints.update(id) : ProductsEndpoints.create();
 
     ;
     /**the relations like category, brand, owners, term-types, terms should be added as connect and disconnect paramter */
@@ -90,9 +93,9 @@ export async function saveProduct(id, formData) {
         ? { ...convertedFormData }
         : { ...convertedFormData, id };
 
-    const response = (method === 'PUT')
-        ? await authApi.put(url, { data })
-        : authApi.post(url, { data });
+    const response = isUpdate
+        ? await authApi.put(ep.path, { data })
+        : authApi.post(ep.path, { data });
     return response;
 }
 function containsAlphabet(str) {
@@ -123,13 +126,16 @@ export async function savePurchase(idx, purchase) {
 
     purchaseData.items = { connect: saveItems.map(i => i.documentId) };
 
-    const { url, relations } = urlAndRelations('purchases', purchaseData.id > -1 ? purchaseData.documentId : null, null, 1, 1);
+    const isExisting = purchaseData.id > 0;
+    const ep = isExisting
+        ? PurchasesEndpoints.update(purchaseData.documentId)
+        : PurchasesEndpoints.create();
 
-    if (purchaseData.id > 0) {
-        const res = await authApi.put(url, { data: prepareForPut(purchaseData, relations) });
+    if (isExisting) {
+        const res = await authApi.put(ep.path, { data: prepareForPut(purchaseData, []) });
         return dataNode(res);
     } else {
-        const res = await authApi.post(url, { data: prepareForPut(purchaseData, relations) });
+        const res = await authApi.post(ep.path, { data: prepareForPut(purchaseData, []) });
         return dataNode(res);
     }
 }
@@ -142,13 +148,13 @@ export async function savePurchase(idx, purchase) {
 * @returns {Promise<Object>} The saved item response.
 */
 export async function savePurchaseItem(item) {
-    const { url, relations } = urlAndRelations('purchase-items', item.id > -1 ? item.documentId : null, null, 1, 1);
-
     if (item.id > -1) {
-        const res = await authApi.put(url, { data: prepareForPut(item, relations) });
-        return dataNode(res);//?.data?.data ?? res?.data ?? res;
+        const ep = PurchaseItemsEndpoints.update(item.documentId);
+        const res = await authApi.put(ep.path, { data: prepareForPut(item, []) });
+        return dataNode(res);
     } else {
-        const res = await authApi.post(url, { data: prepareForPut(item, relations) });
-        return dataNode(res);//?.data?.data ?? res?.data ?? res;
+        const ep = PurchaseItemsEndpoints.create();
+        const res = await authApi.post(ep.path, { data: prepareForPut(item, []) });
+        return dataNode(res);
     }
 }

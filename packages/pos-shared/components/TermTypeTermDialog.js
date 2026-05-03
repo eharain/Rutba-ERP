@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { authApi } from '../lib/api';
+import { TermTypesEndpoints } from '../lib/endpoints';
 
 function getEntryId(entry) {
     return entry?.documentId || entry?.id;
@@ -46,15 +47,9 @@ export default function TermTypeTermDialog({
         if (!show) return;
         setLoading(true);
         try {
-            const params = {
-                populate: { terms: true },
-                pagination: { page: 1, pageSize: 500 },
-                sort: ['name:asc'],
-            };
-            if (variantOnly) {
-                params.filters = { is_variant: true };
-            }
-            const res = await authApi.fetch('/term-types', params);
+            const res = await (variantOnly
+                ? TermTypesEndpoints.fetchVariants()
+                : TermTypesEndpoints.fetchWithTerms());
             const types = res?.data ?? res;
             setTermTypes(types || []);
         } catch (err) {

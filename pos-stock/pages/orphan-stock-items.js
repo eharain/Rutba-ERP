@@ -3,6 +3,7 @@ import Layout from "../components/Layout";
 import ProductPickerModal from "../components/ProductPickerModal";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { authApi } from "@rutba/pos-shared/lib/api";
+import { StockItemsEndpoints, ProductsEndpoints } from "@rutba/pos-shared/lib/endpoints/index.js";
 
 const STATUS_OPTIONS = [
     "InStock", "Sold", "Received", "Reserved",
@@ -55,16 +56,8 @@ export default function OrphanStockItemsPage() {
         setError("");
         setGroupExtras({});
         try {
-            const params = {
-                page,
-                pageSize,
-                search,
-                statusFilter,
-                skuFilter,
-                sortField,
-                sortDir,
-            };
-            const res = await authApi.get("/stock-items/orphan-groups", params);
+            const ep = StockItemsEndpoints.orphanGroups({ page, pageSize, search, statusFilter, skuFilter, sortField, sortDir });
+            const res = await authApi.get(ep.path, ep.params);
             const groups = res.data || [];
             const sampleItems = groups
                 .map(g => ({
@@ -101,7 +94,8 @@ export default function OrphanStockItemsPage() {
     async function handleCreateProduct(item) {
         setBusyId(item.documentId);
         try {
-            const prodRes = await authApi.post("/products", {
+            const pEp = ProductsEndpoints.create();
+            const prodRes = await authApi.post(pEp.path, {
                 data: {
                     name: item.name,
                     selling_price: item.selling_price,
@@ -112,7 +106,8 @@ export default function OrphanStockItemsPage() {
             });
             const newProductDocId = prodRes.data?.documentId;
             if (newProductDocId) {
-                await authApi.put(`/stock-items/${item.documentId}`, {
+                const siEp = StockItemsEndpoints.update(item.documentId);
+                await authApi.put(siEp.path, {
                     data: { product: { connect: [newProductDocId] } },
                 });
             }
@@ -129,7 +124,8 @@ export default function OrphanStockItemsPage() {
         if (!productDocId) return;
         setBusyId(item.documentId);
         try {
-            await authApi.put(`/stock-items/${item.documentId}`, {
+            const siEp = StockItemsEndpoints.update(item.documentId);
+            await authApi.put(siEp.path, {
                 data: { product: { connect: [productDocId] } },
             });
             await loadOrphans();
@@ -188,17 +184,8 @@ export default function OrphanStockItemsPage() {
         const groupKey = group.key;
         setGroupLoading(prev => ({ ...prev, [groupKey]: true }));
         try {
-            const params = {
-                page: 1,
-                pageSize: 10000,
-                name: group.name,
-                selling_price: group.selling_price == null ? "__null__" : String(group.selling_price),
-                statusFilter,
-                skuFilter,
-                sortField,
-                sortDir,
-            };
-            const res = await authApi.get("/stock-items/orphan-groups/items", params);
+            const ep = StockItemsEndpoints.orphanGroupItems({ page: 1, pageSize: 10000, name: group.name, selling_price: group.selling_price == null ? "__null__" : String(group.selling_price), statusFilter, skuFilter, sortField, sortDir });
+            const res = await authApi.get(ep.path, ep.params);
             const exactGroupItems = (res.data || []).filter(item =>
                 makeGroupKey(item.name, item.selling_price) === groupKey
             );
@@ -241,7 +228,8 @@ export default function OrphanStockItemsPage() {
         try {
             const first = selectedItems[0];
             setBulkProgress("Creating product...");
-            const prodRes = await authApi.post("/products", {
+            const pEp = ProductsEndpoints.create();
+            const prodRes = await authApi.post(pEp.path, {
                 data: {
                     name: first.name,
                     selling_price: first.selling_price,
@@ -257,7 +245,8 @@ export default function OrphanStockItemsPage() {
             for (const item of selectedItems) {
                 done++;
                 setBulkProgress(`Linking item ${done} of ${selectedItems.length}...`);
-                await authApi.put(`/stock-items/${item.documentId}`, {
+                const siEp = StockItemsEndpoints.update(item.documentId);
+                await authApi.put(siEp.path, {
                     data: { product: { connect: [newProductDocId] } },
                 });
             }
@@ -283,7 +272,8 @@ export default function OrphanStockItemsPage() {
             for (const item of selectedItems) {
                 done++;
                 setBulkProgress(`Attaching item ${done} of ${selectedItems.length}...`);
-                await authApi.put(`/stock-items/${item.documentId}`, {
+                const siEp = StockItemsEndpoints.update(item.documentId);
+                await authApi.put(siEp.path, {
                     data: { product: { connect: [productDocId] } },
                 });
             }
@@ -308,7 +298,8 @@ export default function OrphanStockItemsPage() {
             const shouldRenameItems = applyNameToItems.has(groupKey);
 
             setBulkProgress("Creating product...");
-            const prodRes = await authApi.post("/products", {
+            const gpEp = ProductsEndpoints.create();
+            const prodRes = await authApi.post(gpEp.path, {
                 data: {
                     name: editedName,
                     selling_price: first.selling_price,
@@ -326,7 +317,8 @@ export default function OrphanStockItemsPage() {
                 setBulkProgress(`Linking item ${done} of ${groupItems.length}...`);
                 const updateData = { product: { connect: [newProductDocId] } };
                 if (shouldRenameItems) updateData.name = editedName;
-                await authApi.put(`/stock-items/${item.documentId}`, { data: updateData });
+                const gsiEp = StockItemsEndpoints.update(item.documentId);
+                await authApi.put(gsiEp.path, { data: updateData });
             }
             setGroupNames(prev => { const next = { ...prev }; delete next[groupKey]; return next; });
             setApplyNameToItems(prev => { const next = new Set(prev); next.delete(groupKey); return next; });
@@ -349,7 +341,8 @@ export default function OrphanStockItemsPage() {
             for (const item of groupItems) {
                 done++;
                 setBulkProgress(`Attaching item ${done} of ${groupItems.length}...`);
-                await authApi.put(`/stock-items/${item.documentId}`, {
+                const siEp = StockItemsEndpoints.update(item.documentId);
+                await authApi.put(siEp.path, {
                     data: { product: { connect: [productDocId] } },
                 });
             }
