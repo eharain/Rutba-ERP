@@ -4,6 +4,7 @@ import Link from 'next/link';
 import Layout from '../../components/Layout';
 import ProtectedRoute from '@rutba/pos-shared/components/ProtectedRoute';
 import { authApi, relationConnects } from '@rutba/pos-shared/lib/api';
+import { TermTypesEndpoints, StockItemsEndpoints } from '@rutba/pos-shared/lib/endpoints';
 import { saveProduct } from '@rutba/pos-shared/lib/pos/save';
 import ProductGalleryManager from '@rutba/pos-shared/components/ProductGalleryManager';
 import ProductVariantManager from '@rutba/pos-shared/components/ProductVariantManager';
@@ -62,11 +63,7 @@ export default function ProductVariantsPage() {
             setVariants(loadedVariants);
             setVariantBaseName(prod?.name || '');
 
-            const itemsRes = await authApi.fetch('/stock-items', {
-                filters: { product: { documentId: id } },
-                pagination: { page: 1, pageSize: 500 },
-                sort: ['createdAt:desc']
-            });
+            const itemsRes = await StockItemsEndpoints.fetchByProduct(id, { pageSize: 500, sort: ['createdAt:desc'] });
             const items = itemsRes?.data ?? itemsRes;
             setStockItems(items || []);
             setSelectedItems(new Set());
@@ -75,10 +72,7 @@ export default function ProductVariantsPage() {
             for (const v of loadedVariants) {
                 const vId = getEntryId(v);
                 try {
-                    const countRes = await authApi.fetch('/stock-items', {
-                        filters: { product: { documentId: vId } },
-                        pagination: { page: 1, pageSize: 1 },
-                    });
+                    const countRes = await StockItemsEndpoints.fetchByProduct(vId, { pageSize: 1 });
                     counts[vId] = countRes?.meta?.pagination?.total ?? 0;
                 } catch { counts[vId] = 0; }
             }
@@ -93,12 +87,7 @@ export default function ProductVariantsPage() {
 
     async function loadTermTypes() {
         try {
-            const res = await authApi.fetch('/term-types', {
-                filters: { is_variant: true },
-                populate: { terms: true },
-                pagination: { page: 1, pageSize: 500 },
-                sort: ['name:asc']
-            });
+            const res = await TermTypesEndpoints.fetchVariants();
             const types = res?.data ?? res;
             setTermTypes(types || []);
         } catch (err) {
@@ -222,11 +211,7 @@ export default function ProductVariantsPage() {
                 const createdVariantId = getEntryId(createdVariant);
                 const createdVariantName = createdVariant?.name || name;
                 if (formValues.move_count > 0 && createdVariantId) {
-                    const currentItems = await authApi.fetch('/stock-items', {
-                        filters: { product: { documentId: parentDocumentId } },
-                        pagination: { page: 1, pageSize: formValues.move_count },
-                        sort: ['createdAt:desc']
-                    });
+                    const currentItems = await StockItemsEndpoints.fetchByProduct(parentDocumentId, { pageSize: formValues.move_count, sort: ['createdAt:desc'] });
                     const items = currentItems?.data ?? currentItems ?? [];
                     for (const item of items) {
                         await authApi.put(`/stock-items/${getEntryId(item)}`, { data: { product: { set: [createdVariantId] }, name: createdVariantName } });
@@ -257,10 +242,8 @@ export default function ProductVariantsPage() {
                 let page = 1;
                 let totalPages = 1;
                 do {
-                    const res = await authApi.fetch('/stock-items', {
-                        filters: { product: { documentId: vId } },
-                        pagination: { page, pageSize: 100 },
-                    });
+                    const dEp = StockItemsEndpoints.byProduct(vId, { page, pageSize: 100 });
+                    const res = await authApi.fetch(dEp.path, dEp.params);
                     const items = res?.data ?? res ?? [];
                     totalPages = res?.meta?.pagination?.pageCount || 1;
                     for (const item of items) {
@@ -297,10 +280,8 @@ export default function ProductVariantsPage() {
                     let page = 1;
                     let totalPages = 1;
                     do {
-                        const res = await authApi.fetch('/stock-items', {
-                            filters: { product: { documentId: vId } },
-                            pagination: { page, pageSize: 100 },
-                        });
+                        const bdEp = StockItemsEndpoints.byProduct(vId, { page, pageSize: 100 });
+                        const res = await authApi.fetch(bdEp.path, bdEp.params);
                         const items = res?.data ?? res ?? [];
                         totalPages = res?.meta?.pagination?.pageCount || 1;
                         for (const item of items) {

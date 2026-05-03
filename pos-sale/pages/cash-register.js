@@ -4,6 +4,7 @@ import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { authApi } from "@rutba/pos-shared/lib/api";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
+import { CashRegistersEndpoints, PaymentsEndpoints, CashRegisterTransactionEndpoints } from "@rutba/pos-shared/lib/endpoints";
 
 const EXPIRY_HOURS = 20;
 
@@ -115,11 +116,8 @@ export default function CashRegisterPage() {
         setError(null);
         try {
             const userId = user?.documentId ?? user?.id;
-            const params = new URLSearchParams();
-            if (desk?.id) params.set('desk_id', desk.id);
-            if (userId) params.set('user_id', userId);
-
-            const res = await authApi.get(`/cash-registers/active?${params.toString()}`);
+            const ep = CashRegistersEndpoints.active({ deskId: desk?.id, userId });
+            const res = await authApi.get(ep.path);
             const register = res?.data ?? null;
 
             if (res?.meta?.expired) {
@@ -144,13 +142,8 @@ export default function CashRegisterPage() {
         setPaymentsLoading(true);
         setPaymentsError(null);
         try {
-            const filters = register?.documentId
-                ? { cash_register: { documentId: { $eq: id } } }
-                : { cash_register: { id: { $eq: id } } };
-            const res = await authApi.fetch("/payments", {
-                filters,
-                sort: ["payment_date:asc"],
-                pagination: { page: 1, pageSize: 500 }
+            const res = await PaymentsEndpoints.fetchByRegister(id, {
+                useDocumentId: !!register?.documentId,
             });
             setRegisterPayments(res?.data ?? []);
         } catch (err) {
@@ -165,11 +158,7 @@ export default function CashRegisterPage() {
         const id = register?.documentId ?? register?.id;
         if (!id) return;
         try {
-            const res = await authApi.fetch("/cash-register-transactions", {
-                filters: { cash_register: { documentId: { $eq: id } } },
-                sort: ["transaction_date:asc"],
-                pagination: { page: 1, pageSize: 500 }
-            });
+            const res = await CashRegisterTransactionEndpoints.fetchByRegister(id);
             setRegisterTransactions(res?.data ?? []);
         } catch (err) {
             console.error("Failed to load transactions", err);

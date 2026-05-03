@@ -1,6 +1,7 @@
 import qs from 'qs';
 import { authApi } from '../api';
 import { buildQueries } from './queries';
+import { StockItemsEndpoints } from '../endpoints';
 
 //export function buildSearchQueries(searchText, page = 1, rowsPerPage = 5) {
 
@@ -88,13 +89,15 @@ export async function featchSearch(searchTerm, page, rowsPerPage) {
 
 // Search stock items by name
 export async function searchStockItemsByName(searchTerm) {
-    const res = await authApi.get(`/stock-items?filters[name][$containsi]=${searchTerm}`);
+    const ep = StockItemsEndpoints.searchByName(searchTerm);
+    const res = await authApi.get(ep.path, ep.params);
     return dataNode(res);
 }
 
 // Search stock items by barcode and add to sale
 export async function searchStockItemsByBarcode(barcode) {
-    const res = await authApi.get(`/stock-items?filters[barcode][$eq]=${barcode}`);
+    const ep = StockItemsEndpoints.searchByBarcode(barcode);
+    const res = await authApi.get(ep.path, ep.params);
     return dataNode(res);
 }
 

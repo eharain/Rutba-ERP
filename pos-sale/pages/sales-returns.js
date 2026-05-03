@@ -2,6 +2,7 @@
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { authApi } from "@rutba/pos-shared/lib/api";
+import { SaleReturnsEndpoints } from "@rutba/pos-shared/lib/endpoints";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
 import Link from "next/link";
 import { Table, TableHead, TableRow, TableCell, TableBody, TablePagination } from "@rutba/pos-shared/components/Table";
@@ -25,10 +26,8 @@ export default function SalesReturnsPage() {
     async function loadReturns() {
         setLoading(true);
         try {
-            const res = await authApi.fetch("/sale-returns", {
-                sort: ["createdAt:desc"],
+            const res = await SaleReturnsEndpoints.fetchList(page + 1, rowsPerPage, {
                 populate: { sale: true, items: { populate: { product: true } } },
-                pagination: { page: page + 1, pageSize: rowsPerPage }
             });
             setReturns(res?.data ?? []);
             setTotal(res?.meta?.pagination?.total ?? 0);

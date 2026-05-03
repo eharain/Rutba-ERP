@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, useCallback, useRef } f
 import Link from 'next/link';
 import { useUtil } from '@rutba/pos-shared/context/UtilContext';
 import { authApi } from '@rutba/pos-shared/lib/api';
+import { CashRegistersEndpoints } from '@rutba/pos-shared/lib/endpoints';
 
 const EXPIRY_HOURS = 20;
 
@@ -79,11 +80,8 @@ export default function CashRegisterGuard({ children }) {
         }
 
         try {
-            const params = new URLSearchParams();
-            if (desk?.id) params.set('desk_id', desk.id);
-            if (userId) params.set('user_id', userId);
-
-            const res = await authApi.get(`/cash-registers/active?${params.toString()}`);
+            const ep = CashRegistersEndpoints.active({ deskId: desk?.id, userId });
+            const res = await authApi.get(ep.path);
             const register = res?.data ?? null;
 
             if (res?.meta?.expired) {

@@ -32,7 +32,7 @@
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.30.3",
     "strapi-content-sync-pro": "1.0.6",
-    "strapi-api-guard-pro": "file:../../strapi-plugins/strapi-api-guard-pro",
+    "strapi-api-guard-pro": "latest",
     "stripe": "^21.0.1",
     "styled-components": "^6.3.12",
     "xlsx": "^0.18.5"

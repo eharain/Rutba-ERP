@@ -6,6 +6,7 @@ import { fetchSales } from "@rutba/pos-shared/lib/pos";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { isAppAdmin } from "@rutba/pos-shared/lib/roles";
 import { getBranches, getAdminMode, authApi } from "@rutba/pos-shared/lib/api";
+import { SalesEndpoints } from "@rutba/pos-shared/lib/endpoints";
 import SaleApi from "@rutba/pos-shared/lib/saleApi";
 import Link from "next/link";
 import { Table, TableHead, TableRow, TableCell, TableBody, CircularProgress, TablePagination } from "@rutba/pos-shared/components/Table";
@@ -181,7 +182,7 @@ export default function Sales() {
 
                 // Stock item search: resolve matching sale documentIds via custom endpoint
                 if (searchField === "stock_item" && searchText.trim()) {
-                    const stockRes = await authApi.fetch(`/sales/search-by-stock-item?term=${encodeURIComponent(searchText.trim())}`);
+                    const stockRes = await SalesEndpoints.fetchByStockItem(searchText.trim());
                     const matchedIds = stockRes?.data ?? [];
                     if (matchedIds.length === 0) {
                         if (!cancelled) { setSales([]); setTotal(0); setLoading(false); }
@@ -192,10 +193,7 @@ export default function Sales() {
 
                 // Item price range: resolve matching sale documentIds via custom endpoint
                 if (priceByItem && (totalMin !== "" || totalMax !== "")) {
-                    const params = new URLSearchParams();
-                    if (totalMin !== "") params.set("min", totalMin);
-                    if (totalMax !== "") params.set("max", totalMax);
-                    const priceRes = await authApi.fetch(`/sales/search-by-item-price?${params.toString()}`);
+                    const priceRes = await SalesEndpoints.fetchByItemPrice({ min: totalMin, max: totalMax });
                     const priceMatchedIds = priceRes?.data ?? [];
                     if (priceMatchedIds.length === 0) {
                         if (!cancelled) { setSales([]); setTotal(0); setLoading(false); }

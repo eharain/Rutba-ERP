@@ -1,6 +1,6 @@
-import qs from 'qs';
 import { authApi } from '../api';
 import { generateNextInvoiceNumber, generateNextPONumber, getBranch, getUser } from '../utils';
+import { SalesEndpoints, PurchasesEndpoints, ProductsEndpoints, StockItemsEndpoints } from '../endpoints/index.js';
 
 // Create a new sale or purchase entity
 export async function createNewEntity(name) {
@@ -44,7 +44,10 @@ export async function createNewEntity(name) {
             },
         };
     }
-    const res = await authApi.post(`/${namePlural}`, { data });
+    const ep = name === 'sales' || name === 'sale' ? SalesEndpoints.create()
+        : name === 'purchases' || name === 'purchase' ? PurchasesEndpoints.create()
+        : ProductsEndpoints.create();
+    const res = await authApi.post(ep.path, { data });
     const rdata = res?.data || {};
     const id = /*rdata.orderId ?? rdata.invoice_no ??*/ rdata.documentId ?? rdata.id;
     return { data: rdata, id, nameSinglar, namePlural };
@@ -83,7 +86,8 @@ export async function generateStockItems(purchase, purchaseItem, quantity) {
         };
 
         try {
-            const response = await authApi.post('/stock-items', { data: stockItem });
+            const siEp = StockItemsEndpoints.create();
+            const response = await authApi.post(siEp.path, { data: stockItem });
             stockItems.push(response.data);
         } catch (error) {
             console.error('Error creating stock item:', error);

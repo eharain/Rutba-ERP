@@ -3,6 +3,7 @@ import { BASE_URL } from "@/static/const";
 import { OrderInterface } from "@/types/api/order";
 import { useSession } from "next-auth/react";
 import { MetaInterface } from "@/types/api/meta";
+import { WebOrdersEndpoints } from "@/endpoints";
 
 export default function useTransactionService() {
   const session = useSession();
@@ -19,39 +20,21 @@ export default function useTransactionService() {
     code: string;
     secret: string;
   }) => {
-    const req = await axios.get(
-      `${BASE_URL}sale-orders/tracking/${data.code}?secret=${data.secret}`
-    );
+    const ep = WebOrdersEndpoints.tracking(data.code, data.secret);
+    const req = await axios.get(BASE_URL + ep.path, { params: ep.params });
     return req.data as OrderInterface;
   };
 
   const getMyTransaction = async () => {
-    const req = await axios.get(`${BASE_URL}sale-orders`, {
-      params: {
-        filters: {
-          user_id: {$eq: session?.data?.user?.email},
-        },
-        populate: {
-          customer_contact: true,
-          products: {
-            populate: {
-              items: {
-                fields: ['quantity', 'product_name', 'variant', 'variant_name', 'variant_terms'],
-                populate: {
-                  image: true
-                }
-              }
-            }
-          }
-        },
-      },
+    const ep = WebOrdersEndpoints.myOrders(session?.data?.user?.email ?? '');
+    const req = await axios.get(BASE_URL + ep.path, {
+      params: ep.params,
       headers: {
         Authorization: session?.data?.jwt
           ? "Bearer " + session?.data?.jwt
           : undefined,
       },
     });
-    
     return {
       data: req.data?.data as OrderInterface[],
       pagination: req.data?.meta?.pagination as MetaInterface,
@@ -59,27 +42,15 @@ export default function useTransactionService() {
   };
 
   const getMyTransactionById = async (id?: string) => {
-    const req = await axios.get(`${BASE_URL}sale-orders/${id}`, {
-      params: {
-        populate: {
-          products: {
-            populate: {
-              items: {
-                populate: {
-                  image: true
-                }
-              }
-            }
-          }
-        },
-      },
+    const ep = WebOrdersEndpoints.byId(id ?? '');
+    const req = await axios.get(BASE_URL + ep.path, {
+      params: ep.params,
       headers: {
         Authorization: session?.data?.jwt
           ? "Bearer " + session?.data?.jwt
           : undefined,
       },
     });
-
     return req.data as OrderInterface;
   };
 

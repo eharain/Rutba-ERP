@@ -1,6 +1,7 @@
 import axios from "axios";
 import { storage } from "./storage";
 import qs from 'qs';
+import { BranchesEndpoints } from './endpoints';
 
 //const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4010/api";
 //export const IMAGE_URL = API_URL.substring(0, API_URL.length - 4)
@@ -306,6 +307,21 @@ export const authApi = {
     del: (path) => authCall(del, path),
     uploadFile: (file, ref, field, refId, info) => authCall(uploadFile, file, ref, field, refId, info),
     deleteFile: (fileId) => authCall(deleteFile, fileId),
+    /**
+     * Fire a request described by an endpoint descriptor `{ path, params?, method? }`.
+     * Defaults to GET (same channel as `authApi.fetch`).
+     * @param {{ path: string, params?: object, method?: 'GET'|'POST'|'PUT'|'DELETE' }} ep
+     * @param {object} [body]   Only used for POST / PUT.
+     */
+    call: (ep, body) => {
+        const method = (ep.method ?? 'GET').toUpperCase();
+        switch (method) {
+            case 'POST':   return authCall(post, ep.path, body ?? ep.params);
+            case 'PUT':    return authCall(put,  ep.path, body ?? ep.params);
+            case 'DELETE': return authCall(del,  ep.path);
+            default:       return authCall(get,  ep.path, ep.params);
+        }
+    },
 };
 
 export const authAPI = authApi;
@@ -340,7 +356,8 @@ export async function getStockStatus() {
 }
 
 export async function getBranches() {
-    return await authApi.fetch("/branches");
+    const ep = BranchesEndpoints.list();
+    return await authApi.fetch(ep.path, ep.params);
 }
 
 

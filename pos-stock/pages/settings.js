@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { authApi, api } from "@rutba/pos-shared/lib/api";
+import { BranchesEndpoints } from "@rutba/pos-shared/lib/endpoints/index.js";
 import Layout from "../components/Layout";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext"
 export default function SettingsPage() {
@@ -10,7 +11,8 @@ export default function SettingsPage() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const response = await api.get("/branches?populate[0]=desks&populate[1]=currency");
+                const ep = BranchesEndpoints.listWithDesks();
+                const response = await api.get(ep.path, ep.params);
                 setBranches(response.data || []);
                 setSelectedBranch(branch);
                 setSelectedDesk(desk)

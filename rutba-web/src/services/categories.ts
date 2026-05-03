@@ -1,6 +1,7 @@
 import axios from "axios";
 import { BASE_URL } from "@/static/const";
 import { CategoryInterface } from "@/types/api/category";
+import { WebCategoriesEndpoints } from "@/endpoints";
 
 export default function useCategoriesService() {
   /**
@@ -9,7 +10,8 @@ export default function useCategoriesService() {
    * @return {Promise<CategoryInterface[]>} An array of CategoryInterface objects representing the categories.
    */
   const getCategories = async () => {
-    const req = await axios.get(BASE_URL + "categories");
+    const ep = WebCategoriesEndpoints.list();
+    const req = await axios.get(BASE_URL + ep.path);
 
     return req.data.data as CategoryInterface[];
   };

@@ -3,6 +3,7 @@ import Link from "next/link";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { authApi } from "@rutba/pos-shared/lib/api";
+import { CategoriesEndpoints, ProductsEndpoints } from "@rutba/pos-shared/lib/endpoints/index.js";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
 import FileView from "@rutba/pos-shared/components/FileView";
 
@@ -57,17 +58,10 @@ export default function CategoriesPage() {
         const timer = setTimeout(async () => {
             setProductSearchLoading(true);
             try {
-                const res = await authApi.fetch("/products", {
-                    sort: ["name:asc"],
-                    filters: {
-                        $or: [
-                            { name: { $containsi: searchValue } },
-                            { sku: { $containsi: searchValue } },
-                            { barcode: { $containsi: searchValue } }
-                        ]
-                    },
+                const ep = ProductsEndpoints.searchInRelation(searchValue, 1, 20);
+                const res = await authApi.fetch(ep.path, {
+                    ...ep.params,
                     populate: { categories: true },
-                    pagination: { page: 1, pageSize: 20 }
                 });
                 const data = res?.data ?? res;
                 if (isActive) setProductSearchResults(data || []);
@@ -96,11 +90,8 @@ export default function CategoriesPage() {
             let page = 1;
             let totalPages = 1;
             do {
-                const res = await authApi.fetch("/categories", {
-                    sort: ["name:asc"],
-                    populate: { parent: true, childern: true, logo: true, gallery: true },
-                    pagination: { page, pageSize: 100 }
-                });
+                const ep = CategoriesEndpoints.listPaged(page, 100);
+                const res = await authApi.fetch(ep.path, ep.params);
                 const data = res?.data ?? res;
                 allCategories = [...allCategories, ...(data || [])];
                 totalPages = res?.meta?.pagination?.pageCount || 1;
@@ -130,11 +121,11 @@ export default function CategoriesPage() {
             let page = 1;
             let totalPages = 1;
             do {
-                const res = await authApi.fetch("/products", {
+                const ep = ProductsEndpoints.list(page, 100, { sort: 'name:asc' });
+                const res = await authApi.fetch(ep.path, {
+                    ...ep.params,
                     filters: { categories: { documentId: selectedCategoryId } },
                     populate: { categories: true },
-                    pagination: { page, pageSize: 100 },
-                    sort: ["name:asc"]
                 });
                 const data = res?.data ?? res;
                 allProducts = [...allProducts, ...(data || [])];
@@ -180,9 +171,11 @@ export default function CategoriesPage() {
                 parent: categoryForm.parent ? { connect: [categoryForm.parent] } : { disconnect: true }
             };
             if (isEditing && selectedCategoryId) {
-                await authApi.put(`/categories/${selectedCategoryId}`, { data: payload });
+                const ep = CategoriesEndpoints.update(selectedCategoryId);
+                await authApi.put(ep.path, { data: payload });
             } else {
-                const res = await authApi.post("/categories", { data: payload });
+                const ep = CategoriesEndpoints.create();
+                const res = await authApi.post(ep.path, { data: payload });
                 const created = res?.data ?? res;
                 setSelectedCategoryId(getEntryId(created));
             }
@@ -205,7 +198,8 @@ export default function CategoriesPage() {
         if (!confirm("Are you sure you want to delete this category?")) return;
         setLoading(true);
         try {
-            await authApi.del(`/categories/${selectedCategoryId}`);
+            const delEp = CategoriesEndpoints.del(selectedCategoryId);
+            await authApi.del(delEp.path);
             setSelectedCategoryId("");
             await loadCategories();
         } catch (error) {
@@ -241,17 +235,19 @@ export default function CategoriesPage() {
                 let page = 1;
                 let totalPages = 1;
                 do {
-                    const res = await authApi.fetch("/products", {
+                    const mergeEp = ProductsEndpoints.list(page, 100, {});
+                    const res = await authApi.fetch(mergeEp.path, {
+                        ...mergeEp.params,
                         filters: { categories: { documentId: sourceCatId } },
                         populate: { categories: true },
-                        pagination: { page, pageSize: 100 }
                     });
                     const sourceProducts = res?.data ?? res ?? [];
                     totalPages = res?.meta?.pagination?.pageCount || 1;
 
                     for (const product of sourceProducts) {
                         const productDocId = getEntryId(product);
-                        await authApi.put(`/products/${productDocId}`, {
+                        const prodEp = ProductsEndpoints.update(productDocId);
+                        await authApi.put(prodEp.path, {
                             data: {
                                 categories: {
                                     connect: [selectedCategoryId],
@@ -268,13 +264,15 @@ export default function CategoriesPage() {
                 const sourceChildren = sourceCat?.childern || [];
                 for (const child of sourceChildren) {
                     const childId = getEntryId(child);
-                    await authApi.put(`/categories/${childId}`, {
+                    const childEp = CategoriesEndpoints.update(childId);
+                    await authApi.put(childEp.path, {
                         data: { parent: { connect: [selectedCategoryId] } }
                     });
                 }
 
                 // Delete the source category
-                await authApi.del(`/categories/${sourceCatId}`);
+                const srcDelEp = CategoriesEndpoints.del(sourceCatId);
+                await authApi.del(srcDelEp.path);
             }
 
             setMergeSelection(new Set());
@@ -318,7 +316,8 @@ export default function CategoriesPage() {
         setLoading(true);
         try {
             for (const productDocId of selectedProductIds) {
-                await authApi.put(`/products/${productDocId}`, {
+                const mvEp = ProductsEndpoints.update(productDocId);
+                await authApi.put(mvEp.path, {
                     data: {
                         categories: {
                             connect: [moveTargetCategoryId],
@@ -328,6 +327,7 @@ export default function CategoriesPage() {
                 });
             }
             setSelectedProductIds(new Set());
+
             setMoveTargetCategoryId("");
             await loadProducts();
         } catch (error) {
@@ -345,7 +345,8 @@ export default function CategoriesPage() {
         setLoading(true);
         try {
             for (const productDocId of selectedProductIds) {
-                await authApi.put(`/products/${productDocId}`, {
+                const cpEp = ProductsEndpoints.update(productDocId);
+                await authApi.put(cpEp.path, {
                     data: {
                         categories: {
                             connect: [moveTargetCategoryId]
@@ -368,7 +369,8 @@ export default function CategoriesPage() {
         if (!confirm("Remove this product from the category?")) return;
         setLoading(true);
         try {
-            await authApi.put(`/products/${productDocId}`, {
+            const remEp = ProductsEndpoints.update(productDocId);
+            await authApi.put(remEp.path, {
                 data: {
                     categories: { disconnect: [selectedCategoryId] }
                 }
@@ -386,7 +388,8 @@ export default function CategoriesPage() {
         if (!selectedCategoryId) return alert("Select a category first");
         setLoading(true);
         try {
-            await authApi.put(`/products/${productDocId}`, {
+            const addEp = ProductsEndpoints.update(productDocId);
+            await authApi.put(addEp.path, {
                 data: {
                     categories: { connect: [selectedCategoryId] }
                 }

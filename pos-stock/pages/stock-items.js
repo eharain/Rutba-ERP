@@ -14,6 +14,7 @@ import {
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { authApi, getStockStatus, getBranches } from "@rutba/pos-shared/lib/api";
+import { StockItemsEndpoints } from "@rutba/pos-shared/lib/endpoints/index.js";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
 import { loadProduct } from "@rutba/pos-shared/lib/pos/fetchs";
 import { searchStockItems } from "@rutba/pos-shared/lib/pos";
@@ -110,27 +111,13 @@ export default function StockItemsPage() {
         setLoading(true);
         try {
 
-            const response = await authApi.get("/me/stock-items-search", {
-                populate: {
-                    product: true,
-                    purchase_item: {
-                        populate: {
-                            purchase: true
-                        }
-                    }
-                },
-                filters: {
-                    ...(statusFilter ? { status: statusFilter } : {}),
-                    ...(selectedBranch ? { branch: { documentId: selectedBranch } } : {}),
-                    ...(productFilter ? { product: { documentId: productFilter } } : {}),
-                    ...(showArchived ? { archived: true } : {}),
-                },
-                pagination: {
-                    page: page + 1,
-                    pageSize: rowsPerPage
-                },
-                sort: ["createdAt:desc"]
+            const ep = StockItemsEndpoints.list(page + 1, rowsPerPage, {
+                statusFilter,
+                branchDocId: selectedBranch || undefined,
+                productDocId: productFilter || undefined,
+                showArchived,
             });
+            const response = await authApi.get(ep.path, ep.params);
             const data = response.data || [];
             setStockItems(data);
             setFilteredItems(data);
@@ -153,7 +140,8 @@ export default function StockItemsPage() {
         const documentIdsToUpdate = Array.from(selectedItems);
         try {
             for (const id of documentIdsToUpdate) {
-                await authApi.put(`/stock-items/${id}`, { data: { status: 'InStock', branch: destinationBranch } });
+                const ep = StockItemsEndpoints.update(id);
+                await authApi.put(ep.path, { data: { status: 'InStock', branch: destinationBranch } });
             }
             alert(`Stock sent to ${destinationBranch} successfully for ${documentIdsToUpdate.length} items`);
             loadStockItems();

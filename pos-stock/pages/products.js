@@ -7,6 +7,7 @@ import ProductCard from "@rutba/pos-shared/components/ProductCard";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import PermissionCheck from "@rutba/pos-shared/components/PermissionCheck";
 import { authApi, StraipImageUrl } from "@rutba/pos-shared/lib/api";
+import { BrandsEndpoints, CategoriesEndpoints, SuppliersEndpoints, PurchasesEndpoints } from "@rutba/pos-shared/lib/endpoints/index.js";
 import { fetchProducts } from "@rutba/pos-shared/lib/pos";
 import { ProductFilter } from "@rutba/pos-shared/components/filter/product-filter";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
@@ -124,12 +125,16 @@ export default function Products() {
     }, [page, rowsPerPage, filters, filtersInitialized, sortString]);
 
     useEffect(() => {
+        const brandsEp = BrandsEndpoints.listAll();
+        const catsEp = CategoriesEndpoints.listAll();
+        const suppEp = SuppliersEndpoints.listAll();
+        const purchEp = PurchasesEndpoints.list(1, 1000, { sort: ['createdAt:desc'] });
         Promise.all([
-            authApi.getAll("/brands"),
-            authApi.getAll("/categories"),
-            authApi.getAll("/suppliers"),
+            authApi.getAll(brandsEp.path, brandsEp.params),
+            authApi.getAll(catsEp.path, catsEp.params),
+            authApi.getAll(suppEp.path, suppEp.params),
             authApi.getAll("/term-types", { populate: ["terms"] }),
-            authApi.getAll("/purchases", { sort: ["createdAt:desc"] }),
+            authApi.getAll(purchEp.path, purchEp.params),
         ]).then(([b, c, s, t, p]) => {
             setBrands(b?.data || b || []);
             setCategories(c?.data || c || []);

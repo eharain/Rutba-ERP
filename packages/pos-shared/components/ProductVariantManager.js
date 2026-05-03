@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { authApi } from '../lib/api';
+import { TermTypesEndpoints } from '../lib/endpoints';
 import TermTypeTermDialog from './TermTypeTermDialog';
 
 function getEntryId(entry) {
@@ -64,13 +65,7 @@ export default function ProductVariantManager({ productId, onUpdate }) {
 
     const loadTermTypes = useCallback(async () => {
         try {
-            const res = await authApi.fetch('/term-types', {
-                filters: { is_variant: true },
-                populate: { terms: true },
-                pagination: { page: 1, pageSize: 500 },
-                sort: ['name:asc'],
-            });
-            setTermTypes((res?.data ?? res) || []);
+            setTermTypes(((await TermTypesEndpoints.fetchVariants())?.data ?? []) || []);
         } catch (err) {
             console.error('Failed to load term types', err);
         }

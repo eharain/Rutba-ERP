@@ -3,6 +3,7 @@ import * as XLSX from 'xlsx';
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { authApi } from "@rutba/pos-shared/lib/api";
+import { TermTypesEndpoints, TermsEndpoints } from "@rutba/pos-shared/lib/endpoints";
 
 export default function TermTypesPage() {
     const [termTypes, setTermTypes] = useState([]);
@@ -51,10 +52,7 @@ export default function TermTypesPage() {
         const timer = setTimeout(async () => {
             setIsTermSearchLoading(true);
             try {
-                const res = await authApi.fetch("/terms", {
-                    sort: ["name:asc"],
-                    filters: { name: { $containsi: searchValue } }
-                });
+                const res = await TermsEndpoints.fetchList({ filters: { name: { $containsi: searchValue } } });
                 const data = res?.data ?? res;
                 if (isActive) {
                     setTermSearchResults(data || []);
@@ -86,8 +84,8 @@ export default function TermTypesPage() {
         setLoading(true);
         try {
             const [termTypesRes, termsRes] = await Promise.all([
-                authApi.fetch("/term-types", { sort: ["name:asc"], populate: { terms: true } }),
-                authApi.fetch("/terms", { sort: ["name:asc"] })
+                TermTypesEndpoints.fetchWithTerms(),
+                TermsEndpoints.fetchList(),
             ]);
             const termTypesData = termTypesRes?.data ?? termTypesRes;
             const termsData = termsRes?.data ?? termsRes;

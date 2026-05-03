@@ -3,6 +3,7 @@ import Link from "next/link";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { authApi, getAppName } from "@rutba/pos-shared/lib/api";
+import { CashRegistersEndpoints } from "@rutba/pos-shared/lib/endpoints";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { isAppAdmin } from "@rutba/pos-shared/lib/roles";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
@@ -53,11 +54,12 @@ export default function CashRegisterHistoryPage() {
                 }
             }
 
-            const res = await authApi.fetch("/cash-registers", {
+            const res = await CashRegistersEndpoints.fetchList({
                 filters,
                 sort: ["opened_at:desc"],
-                pagination: { page: page + 1, pageSize: rowsPerPage },
-                populate: ["opened_by_user", "closed_by_user"]
+                page: page + 1,
+                pageSize: rowsPerPage,
+                populate: ["opened_by_user", "closed_by_user"],
             });
             setRegisters(res?.data ?? []);
             setTotal(res?.meta?.pagination?.total ?? 0);
