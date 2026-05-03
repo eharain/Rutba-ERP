@@ -19,7 +19,7 @@ export default function useErrorHandler() {
     if (typeof error === "string") {
       showError(error);
     } else if (error.response) {
-      showError(error.response.data.message);
+      showError(error.response?.data?.message ?? error.message ?? "Something went wrong.");
     } else {
       if (error.message) {
         showError(error.message);
