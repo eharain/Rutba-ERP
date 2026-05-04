@@ -1,4 +1,5 @@
 import { authApi } from '../api.js';
+import { buildEndpointMeta } from './access-metadata.js';
 
 /**
  * CashRegisterTransactionEndpoints
@@ -35,4 +36,9 @@ export const CashRegisterTransactionEndpoints = {
         return authApi.post(ep.path, { data });
     },
 };
+
+export const CashRegisterTransactionEndpointsMeta = buildEndpointMeta('api::cash-register-transaction.cash-register-transaction', '/cash-register-transactions', {
+    create: 'create',
+    byRegister: 'find',
+});
 

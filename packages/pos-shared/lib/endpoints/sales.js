@@ -1,4 +1,5 @@
 import { authApi } from '../api.js';
+import { buildEndpointMeta } from './access-metadata.js';
 
 /**
  * SalesEndpoints
@@ -163,3 +164,14 @@ export const SalesEndpoints = {
         return authApi.put(ep.path, { data: { notes: notes || '' } });
     },
 };
+
+export const SalesEndpointsMeta = buildEndpointMeta('api::sale.sale', '/sales', {
+    list: 'find',
+    byId: 'findOne',
+    create: 'create',
+    update: 'update',
+    cancel: 'update',
+    saveNotes: 'update',
+    searchByStockItem: 'find',
+    searchByItemPrice: 'find',
+});

@@ -1,4 +1,5 @@
 import { authApi } from '../api.js';
+import { buildEndpointMeta } from './access-metadata.js';
 
 export const StockInputsEndpoints = {
     list: () => ({ path: '/stock-inputs' }),
@@ -25,3 +26,12 @@ export const StockInputsEndpoints = {
         return res;
     },
 };
+
+export const StockInputsEndpointsMeta = buildEndpointMeta('api::stock-input.stock-input', '/stock-inputs', {
+    list: 'find',
+    byId: 'findOne',
+    create: 'create',
+    update: 'update',
+    del: 'delete',
+    process: 'process',
+});

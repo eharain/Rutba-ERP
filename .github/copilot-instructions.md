@@ -84,6 +84,11 @@ rutba-web/src/
 ## Team & Access Notes
 
 - Keep access logic domain-driven and centralized in services/middleware — do not scatter permission checks across components.
+- Distribute app-access metadata across endpoint definitions and aggregate it for Strapi/plugin consumption instead of maintaining a separate central Strapi-first map:
+  - Define a consistent metadata shape and attach it to route handlers, service functions, or endpoint definition objects.
+  - Create a small aggregator utility or build-step script that collects metadata from endpoints and emits the consolidated definition for Strapi plugins or admin tooling.
+  - Ensure metadata includes required approval scopes, visible UI actions, and branch constraints using numeric branch IDs.
+  - Keep authorization enforcement in server-side guards; use metadata primarily for discovery, UI visibility, and plugin integration.
 - When adding new workflows that require approvals, register the workflow’s required approval scopes and reuse the same manager-scoped guard.
 
 ### pos-auth: User Management Screens
@@ -91,5 +96,4 @@ rutba-web/src/
 - Show app access in expandable sections per user (accordion/expandable row).
 - Add pagination controls and a page-size selector to both Users and Access Assignment lists.
 - Make user names link to their edit user pages (use dedicated edit routes).
-
 - Ensure UI visibility follows authorization: hide actions the current user cannot perform and enforce the same rules server-side.

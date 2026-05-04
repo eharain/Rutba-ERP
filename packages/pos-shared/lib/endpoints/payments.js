@@ -1,4 +1,5 @@
 import { authApi } from '../api.js';
+import { buildEndpointMeta } from './access-metadata.js';
 
 /**
  * PaymentsEndpoints
@@ -80,3 +81,11 @@ export const PaymentsEndpoints = {
         return authApi.post(ep.path, { data });
     },
 };
+
+export const PaymentsEndpointsMeta = buildEndpointMeta('api::payment.payment', '/payments', {
+    byRegister: 'find',
+    create: 'create',
+    byId: 'findOne',
+    update: 'update',
+    createRefund: 'create',
+});

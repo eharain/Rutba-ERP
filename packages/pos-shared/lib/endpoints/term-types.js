@@ -1,4 +1,5 @@
 import { authApi } from '../api.js';
+import { buildEndpointMeta } from './access-metadata.js';
 
 /**
  * TermTypesEndpoints + TermsEndpoints
@@ -79,6 +80,15 @@ export const TermTypesEndpoints = {
     putDelete: (id) => authApi.del(`/term-types/${id}`),
 };
 
+export const TermTypesEndpointsMeta = buildEndpointMeta('api::term-type.term-type', '/term-types', {
+    listVariants: 'find',
+    listWithTerms: 'find',
+    list: 'find',
+    create: 'create',
+    update: 'update',
+    putDelete: 'delete',
+});
+
 export const TermsEndpoints = {
     /**
      * List terms.
@@ -116,3 +126,10 @@ export const TermsEndpoints = {
     /** Async: delete a term by id/documentId. */
     putDelete: (id) => authApi.del(`/terms/${id}`),
 };
+
+export const TermsEndpointsMeta = buildEndpointMeta('api::term.term', '/terms', {
+    list: 'find',
+    create: 'create',
+    update: 'update',
+    putDelete: 'delete',
+});

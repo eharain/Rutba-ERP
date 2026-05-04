@@ -1,4 +1,5 @@
 import { authApi } from '../api.js';
+import { buildEndpointMeta } from './access-metadata.js';
 
 /**
  * StockItemsEndpoints
@@ -237,3 +238,19 @@ export const StockItemsEndpoints = {
         return authApi.put(ep.path, { data });
     },
 };
+
+export const StockItemsEndpointsMeta = buildEndpointMeta('api::stock-item.stock-item', '/stock-items', {
+    list: 'find',
+    listByProduct: 'find',
+    listByBarcode: 'find',
+    checkBarcode: 'find',
+    orphanGroups: 'orphanGroups',
+    orphanGroupItems: 'orphanGroupItems',
+    create: 'create',
+    searchByBarcode: 'find',
+    searchByName: 'find',
+    byId: 'findOne',
+    update: 'update',
+    byProduct: 'find',
+    transfer: 'update',
+});
