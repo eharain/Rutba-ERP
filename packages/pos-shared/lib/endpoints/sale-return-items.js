@@ -1,6 +1,8 @@
+import { authApi } from '../api.js';
+
 /**
  * SaleReturnItemsEndpoints
- * Centralised path + params definitions for the /sale-return-items content-type.
+ * Each `post*` / `put*` method owns the full async call — callers use a single await.
  */
 export const SaleReturnItemsEndpoints = {
 
@@ -12,4 +14,16 @@ export const SaleReturnItemsEndpoints = {
      * @param {string} documentId
      */
     update: (documentId) => ({ path: `/sale-return-items/${documentId}` }),
+
+    /** Async: create a new sale return item. */
+    postCreate: (data) => {
+        const ep = SaleReturnItemsEndpoints.create();
+        return authApi.post(ep.path, { data });
+    },
+
+    /** Async: update a sale return item by documentId. */
+    putUpdate: (documentId, data) => {
+        const ep = SaleReturnItemsEndpoints.update(documentId);
+        return authApi.put(ep.path, { data });
+    },
 };

@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import { authApi } from "@rutba/pos-shared/lib/api";
 import { CategoriesEndpoints, ProductsEndpoints } from "@rutba/pos-shared/lib/endpoints/index.js";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
 import FileView from "@rutba/pos-shared/components/FileView";
@@ -171,11 +170,9 @@ export default function CategoriesPage() {
                 parent: categoryForm.parent ? { connect: [categoryForm.parent] } : { disconnect: true }
             };
             if (isEditing && selectedCategoryId) {
-                const ep = CategoriesEndpoints.update(selectedCategoryId);
-                await authApi.put(ep.path, { data: payload });
+                await CategoriesEndpoints.putUpdate(selectedCategoryId, payload);
             } else {
-                const ep = CategoriesEndpoints.create();
-                const res = await authApi.post(ep.path, { data: payload });
+                const res = await CategoriesEndpoints.postCreate(payload);
                 const created = res?.data ?? res;
                 setSelectedCategoryId(getEntryId(created));
             }
@@ -198,8 +195,7 @@ export default function CategoriesPage() {
         if (!confirm("Are you sure you want to delete this category?")) return;
         setLoading(true);
         try {
-            const delEp = CategoriesEndpoints.del(selectedCategoryId);
-            await authApi.del(delEp.path);
+            await CategoriesEndpoints.putDelete(selectedCategoryId);
             setSelectedCategoryId("");
             await loadCategories();
         } catch (error) {
@@ -246,15 +242,12 @@ export default function CategoriesPage() {
 
                     for (const product of sourceProducts) {
                         const productDocId = getEntryId(product);
-                        const prodEp = ProductsEndpoints.update(productDocId);
-                        await authApi.put(prodEp.path, {
-                            data: {
+                        await ProductsEndpoints.putUpdate(productDocId, {
                                 categories: {
                                     connect: [selectedCategoryId],
                                     disconnect: [sourceCatId]
                                 }
-                            }
-                        });
+                            });
                     }
                     page++;
                 } while (page <= totalPages);
@@ -264,15 +257,10 @@ export default function CategoriesPage() {
                 const sourceChildren = sourceCat?.childern || [];
                 for (const child of sourceChildren) {
                     const childId = getEntryId(child);
-                    const childEp = CategoriesEndpoints.update(childId);
-                    await authApi.put(childEp.path, {
-                        data: { parent: { connect: [selectedCategoryId] } }
-                    });
+                    await CategoriesEndpoints.putUpdate(childId, { parent: { connect: [selectedCategoryId] } });
                 }
 
-                // Delete the source category
-                const srcDelEp = CategoriesEndpoints.del(sourceCatId);
-                await authApi.del(srcDelEp.path);
+                await CategoriesEndpoints.putDelete(sourceCatId);
             }
 
             setMergeSelection(new Set());
@@ -316,15 +304,12 @@ export default function CategoriesPage() {
         setLoading(true);
         try {
             for (const productDocId of selectedProductIds) {
-                const mvEp = ProductsEndpoints.update(productDocId);
-                await authApi.put(mvEp.path, {
-                    data: {
+                await ProductsEndpoints.putUpdate(productDocId, {
                         categories: {
                             connect: [moveTargetCategoryId],
                             disconnect: [selectedCategoryId]
                         }
-                    }
-                });
+                    });
             }
             setSelectedProductIds(new Set());
 
@@ -345,14 +330,11 @@ export default function CategoriesPage() {
         setLoading(true);
         try {
             for (const productDocId of selectedProductIds) {
-                const cpEp = ProductsEndpoints.update(productDocId);
-                await authApi.put(cpEp.path, {
-                    data: {
+                await ProductsEndpoints.putUpdate(productDocId, {
                         categories: {
                             connect: [moveTargetCategoryId]
                         }
-                    }
-                });
+                    });
             }
             setSelectedProductIds(new Set());
             setMoveTargetCategoryId("");
@@ -369,12 +351,9 @@ export default function CategoriesPage() {
         if (!confirm("Remove this product from the category?")) return;
         setLoading(true);
         try {
-            const remEp = ProductsEndpoints.update(productDocId);
-            await authApi.put(remEp.path, {
-                data: {
+            await ProductsEndpoints.putUpdate(productDocId, {
                     categories: { disconnect: [selectedCategoryId] }
-                }
-            });
+                });
             await loadProducts();
         } catch (error) {
             console.error("Failed to remove product from category", error);
@@ -388,12 +367,9 @@ export default function CategoriesPage() {
         if (!selectedCategoryId) return alert("Select a category first");
         setLoading(true);
         try {
-            const addEp = ProductsEndpoints.update(productDocId);
-            await authApi.put(addEp.path, {
-                data: {
+            await ProductsEndpoints.putUpdate(productDocId, {
                     categories: { connect: [selectedCategoryId] }
-                }
-            });
+                });
             await loadProducts();
         } catch (error) {
             console.error("Failed to add product to category", error);

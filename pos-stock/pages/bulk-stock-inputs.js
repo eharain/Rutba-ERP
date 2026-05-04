@@ -4,6 +4,7 @@ import Layout from '../components/Layout';
 import ProtectedRoute from '@rutba/pos-shared/components/ProtectedRoute';
 import PermissionCheck from '@rutba/pos-shared/components/PermissionCheck';
 import { authApi } from '@rutba/pos-shared/lib/api';
+import { StockInputsEndpoints } from '@rutba/pos-shared/lib/endpoints';
 import { useUtil } from '@rutba/pos-shared/context/UtilContext';
 
 // ── Column mapping (mirrors export-catalog/utils/excel-helper.js) ──
@@ -221,8 +222,7 @@ export default function BulkStockInputs() {
         const errors = [];
         for (const r of validRows) {
             try {
-                await authApi.post('/stock-inputs', {
-                    data: {
+                await StockInputsEndpoints.postCreate({
                         productName: String(r.productName).trim(),
                         quantity: toNum(r.quantity) || 1,
                         sellableUnits: toNum(r.sellableUnits) || 1,
@@ -237,8 +237,7 @@ export default function BulkStockInputs() {
                         importName: r.importName || null,
                         process: false,
                         processed: false,
-                    },
-                });
+                    });
                 created++;
             } catch (err) {
                 failed++;
@@ -263,8 +262,7 @@ export default function BulkStockInputs() {
         setProcessing(true);
         setAlert(null);
         try {
-            const body = documentIds ? { data: { documentIds } } : {};
-            const res = await authApi.post('/stock-inputs/process', body);
+            const res = await StockInputsEndpoints.postProcess(documentIds);
             setAlert({
                 type: res.failed > 0 ? 'warning' : 'success',
                 message: `Processed ${res.processed} input(s): ${res.ok} succeeded, ${res.failed} failed.`,
@@ -280,7 +278,7 @@ export default function BulkStockInputs() {
 
     const handleToggleProcess = async (documentId, currentValue) => {
         try {
-            await authApi.put(`/stock-inputs/${documentId}`, { data: { process: !currentValue } });
+            await StockInputsEndpoints.putUpdate(documentId, { process: !currentValue });
             setPending((prev) => prev.map((si) =>
                 si.documentId === documentId ? { ...si, process: !currentValue } : si
             ));
@@ -293,7 +291,7 @@ export default function BulkStockInputs() {
         if (selected.size === 0) return;
         for (const docId of selected) {
             try {
-                await authApi.put(`/stock-inputs/${docId}`, { data: { process: markAs } });
+                await StockInputsEndpoints.putUpdate(docId, { process: markAs });
             } catch (err) {
                 console.error('Mark error for', docId, err);
             }
@@ -305,7 +303,7 @@ export default function BulkStockInputs() {
 
     const handleDeletePending = async (documentId) => {
         try {
-            await authApi.del(`/stock-inputs/${documentId}`);
+            await StockInputsEndpoints.putDelete(documentId);
             setSelected((prev) => { const next = new Set(prev); next.delete(documentId); return next; });
             await loadPending();
         } catch (err) {
@@ -320,7 +318,7 @@ export default function BulkStockInputs() {
         let deleted = 0;
         for (const docId of selected) {
             try {
-                await authApi.del(`/stock-inputs/${docId}`);
+                await StockInputsEndpoints.putDelete(docId);
                 deleted++;
             } catch (err) {
                 console.error('Delete error for', docId, err);
@@ -338,7 +336,7 @@ export default function BulkStockInputs() {
         let deleted = 0;
         for (const si of pending) {
             try {
-                await authApi.del(`/stock-inputs/${si.documentId}`);
+                await StockInputsEndpoints.putDelete(si.documentId);
                 deleted++;
             } catch (err) {
                 console.error('Delete error for', si.documentId, err);

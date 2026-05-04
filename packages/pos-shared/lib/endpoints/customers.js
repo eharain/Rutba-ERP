@@ -59,4 +59,16 @@ export const CustomersEndpoints = {
         const ep = CustomersEndpoints.findByContact(opts);
         return authApi.fetch(ep.path, ep.params);
     },
+
+    /** Async: create a new customer. */
+    postCreate: (data) => {
+        const ep = CustomersEndpoints.create();
+        return authApi.post(ep.path, { data });
+    },
+
+    /** Async: update a customer by documentId. */
+    putUpdate: (documentId, data) => {
+        const ep = CustomersEndpoints.update(documentId);
+        return authApi.put(ep.path, { data });
+    },
 };

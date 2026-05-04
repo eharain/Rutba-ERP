@@ -28,5 +28,11 @@ export const CashRegisterTransactionEndpoints = {
         const ep = CashRegisterTransactionEndpoints.byRegister(registerDocumentId, opts);
         return authApi.fetch(ep.path, ep.params);
     },
+
+    /** Async: create a new cash register transaction. */
+    postCreate: (data) => {
+        const ep = CashRegisterTransactionEndpoints.create();
+        return authApi.post(ep.path, { data });
+    },
 };
 

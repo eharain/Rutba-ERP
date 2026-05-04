@@ -1,6 +1,6 @@
 // /pos-desk/components/purchase-receive.js
 import React, { useEffect, useState } from 'react';
-import { authApi } from '@rutba/pos-shared/lib/api';
+import { PurchaseItemsEndpoints, PurchasesEndpoints } from '@rutba/pos-shared/lib/endpoints';
 import { Table, TableHead, TableBody, TableRow, TableCell } from '@rutba/pos-shared/components/Table';
 import {generateStockItems} from '@rutba/pos-shared/lib/pos/create';
 import { useUtil } from '@rutba/pos-shared/context/UtilContext';
@@ -43,11 +43,9 @@ const PurchaseReceiveList = ({ purchase, onComplete }) => {
             const generatedStockItems = await generateStockItems(purchase,item, item.received_quantity);
 
             // Update purchase item with received quantity
-            await authApi.put(`/purchase-items/${item.documentId}`, {
-                data: {
-                    received_quantity: item.received_quantity,
-                    status: 'Received'
-                }
+            await PurchaseItemsEndpoints.putUpdate(item.documentId, {
+                received_quantity: item.received_quantity,
+                status: 'Received'
             });
 
             // Update received items state
@@ -70,11 +68,9 @@ const PurchaseReceiveList = ({ purchase, onComplete }) => {
         setLoading(true);
         try {
             // Update purchase status to "Received"
-            await authApi.put(`/purchases/${purchase.documentId}`, {
-                data: {
-                    status: 'Received',
-                    order_recieved_date: new Date().toISOString()
-                }
+            await PurchasesEndpoints.putUpdate(purchase.documentId, {
+                status: 'Received',
+                order_recieved_date: new Date().toISOString()
             });
 
             onComplete && onComplete();

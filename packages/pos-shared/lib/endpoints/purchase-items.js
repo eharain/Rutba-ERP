@@ -52,4 +52,13 @@ export const PurchaseItemsEndpoints = {
         const ep = PurchaseItemsEndpoints.list(purchaseDocId, opts);
         return authApi.fetch(ep.path, ep.params);
     },
+
+    /** Async: create a new purchase item. */
+    postCreate: (data) => authApi.post('/purchase-items', { data }),
+
+    /** Async: update a purchase item by documentId. */
+    putUpdate: (documentId, data) => authApi.put(`/purchase-items/${documentId}`, { data }),
+
+    /** Async: delete a purchase item by documentId. */
+    putDelete: (documentId) => authApi.del(`/purchase-items/${documentId}`),
 };

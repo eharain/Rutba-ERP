@@ -138,4 +138,28 @@ export const SalesEndpoints = {
         const ep = SalesEndpoints.searchByItemPrice(opts);
         return authApi.fetch(ep.path);
     },
+
+    /** Async: create a new sale. */
+    postCreate: (data) => {
+        const ep = SalesEndpoints.create();
+        return authApi.post(ep.path, { data });
+    },
+
+    /** Async: update a sale by documentId. */
+    putUpdate: (documentId, data) => {
+        const ep = SalesEndpoints.update(documentId);
+        return authApi.put(ep.path, { data });
+    },
+
+    /** Async: cancel a sale. */
+    putCancel: (documentId) => {
+        const ep = SalesEndpoints.cancel(documentId);
+        return authApi.put(ep.path);
+    },
+
+    /** Async: save notes on a sale. */
+    putSaveNotes: (documentId, notes) => {
+        const ep = SalesEndpoints.saveNotes(documentId);
+        return authApi.put(ep.path, { data: { notes: notes || '' } });
+    },
 };

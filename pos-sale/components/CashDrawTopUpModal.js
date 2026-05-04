@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useUtil } from '@rutba/pos-shared/context/UtilContext';
-import { authApi } from '@rutba/pos-shared/lib/api';
+import { CashRegisterTransactionEndpoints } from '@rutba/pos-shared/lib/endpoints';
 
 /**
  * CashDrawTopUpModal
@@ -50,16 +50,14 @@ export default function CashDrawTopUpModal({ isOpen, onClose, onComplete, saleRe
         setSuccess(null);
 
         try {
-            await authApi.post('/cash-register-transactions', {
-                data: {
+            await CashRegisterTransactionEndpoints.postCreate({
                     type: txnType,
                     amount: Number(amount),
                     description: description || (txnType === 'CashDrop' ? 'Cash Draw' : 'Cash Top-Up'),
                     transaction_date: new Date().toISOString(),
                     performed_by: user?.username || user?.email || '',
                     cash_register: { connect: [registerId] }
-                }
-            });
+                });
 
             const label = txnType === 'CashDrop' ? 'Cash Draw' : 'Cash Top-Up';
             setSuccess(`${label} of ${currency}${Number(amount).toFixed(2)} recorded successfully.`);

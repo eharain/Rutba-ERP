@@ -11,6 +11,8 @@ module.exports = {
         method: 'GET',
         path: '/hr-teams/app-role-options',
         handler: 'api::hr-team.hr-team.appRoleOptions',
+        info: { apiName: 'hr-team', type: 'content-api' },
+        config: {},
       },
       ...defaultRouter.routes,
     ];

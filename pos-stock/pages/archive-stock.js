@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { authApi, getBranches } from "@rutba/pos-shared/lib/api";
+import { BranchesEndpoints } from "@rutba/pos-shared/lib/endpoints";
 import {
     Table,
     TableHead,
@@ -117,7 +118,7 @@ export default function ArchiveStockPage() {
         setLoading(true);
         setResult(null);
         try {
-            const res = await authApi.post(`/branches/${selectedBranch}/archive-stock`, {
+            const res = await BranchesEndpoints.postArchiveStock(selectedBranch, {
                 cutoffDate,
                 statuses: Array.from(selectedStatuses),
                 dryRun: true,
@@ -143,7 +144,7 @@ export default function ArchiveStockPage() {
         setArchiving(true);
         setResult(null);
         try {
-            const res = await authApi.post(`/branches/${selectedBranch}/archive-stock`, {
+            const res = await BranchesEndpoints.postArchiveStock(selectedBranch, {
                 cutoffDate,
                 statuses: Array.from(selectedStatuses),
                 dryRun: false,
@@ -198,7 +199,7 @@ export default function ArchiveStockPage() {
 
         setRestoringItems(true);
         try {
-            const res = await authApi.post(`/branches/${selectedBranch}/unarchive-stock`, {
+            const res = await BranchesEndpoints.postUnarchiveStock(selectedBranch, {
                 stockItemIds: Array.from(selectedArchivedItems),
             });
             const data = res.data || res;

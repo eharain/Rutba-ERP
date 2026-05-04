@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import { authApi } from "@rutba/pos-shared/lib/api";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
 import { CashRegistersEndpoints, PaymentsEndpoints, CashRegisterTransactionEndpoints } from "@rutba/pos-shared/lib/endpoints";
 
@@ -185,7 +184,7 @@ export default function CashRegisterPage() {
                 ...(branchId ? { branch: { connect: [branchId] } } : {}),
                 ...(userId ? { opened_by_user: { connect: [userId] } } : {})
             };
-            const res = await authApi.post("/cash-registers/open", { data: payload });
+            const res = await CashRegistersEndpoints.postOpen(payload);
             const created = res?.data ?? res;
             setActiveRegister(created);
             setCashRegister(created);
@@ -208,15 +207,13 @@ export default function CashRegisterPage() {
         setLoading(true);
         setError(null);
         try {
-            const res = await authApi.put(`/cash-registers/${registerId}/close`, {
-                data: {
+            const res = await CashRegistersEndpoints.postClose(registerId, {
                     counted_cash: Number(closingCash || 0),
                     notes: closingNotes,
                     closed_by: user?.username || user?.email || "",
                     closed_by_id: user?.id ?? null,
                     ...(userId ? { closed_by_user: { connect: [userId] } } : {})
-                }
-            });
+                });
             setClosingCash("");
             setClosingNotes("");
             setCashRegister(null);
@@ -239,16 +236,14 @@ export default function CashRegisterPage() {
         if (!registerId || !txnAmount) return;
         setTxnLoading(true);
         try {
-            await authApi.post("/cash-register-transactions", {
-                data: {
+            await CashRegisterTransactionEndpoints.postCreate({
                     type: txnType,
                     amount: Number(txnAmount),
                     description: txnDesc,
                     transaction_date: new Date().toISOString(),
                     performed_by: user?.username || user?.email || "",
                     cash_register: { connect: [registerId] }
-                }
-            });
+                });
             setTxnAmount("");
             setTxnDesc("");
             await loadRegisterTransactions(activeRegister);

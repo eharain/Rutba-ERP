@@ -219,8 +219,7 @@ export default function EditProduct() {
 
             const ids = Array.from(selectedStockItems);
             for (const id of ids) {
-                const siEp = StockItemsEndpoints.update(id);
-                await authApi.put(siEp.path, { data: updates });
+                await StockItemsEndpoints.putUpdate(id, updates);
             }
 
             setSuccess(`Applied changes to ${ids.length} stock item(s)`);
@@ -277,8 +276,7 @@ export default function EditProduct() {
                     branch: branch?.documentId || branch?.id || undefined,
                 };
 
-                const siEp = StockItemsEndpoints.create();
-                await authApi.post(siEp.path, { data });
+                await StockItemsEndpoints.postCreate(data);
             }
 
             setSuccess(`Created ${addQty} new stock item(s)`);
@@ -323,7 +321,7 @@ export default function EditProduct() {
             };
 
             const createEp = StockItemsEndpoints.create();
-            await authApi.post(createEp.path, { data });
+            await StockItemsEndpoints.postCreate(data);
             setSuccess(`Stock item created with barcode "${code}"`);
             setScanBarcode('');
             if (scanInputRef.current) scanInputRef.current.focus();
@@ -355,14 +353,11 @@ export default function EditProduct() {
             const item = items[0];
             const itemId = item.documentId || item.id;
 
-            const attEp = StockItemsEndpoints.update(itemId);
-            await authApi.put(attEp.path, {
-                data: {
-                    product: documentId,
-                    name: product.name,
-                    selling_price: parseFloat(product.selling_price) || 0,
-                    offer_price: parseFloat(product.offer_price) || 0,
-                }
+            await StockItemsEndpoints.putUpdate(itemId, {
+                product: documentId,
+                name: product.name,
+                selling_price: parseFloat(product.selling_price) || 0,
+                offer_price: parseFloat(product.offer_price) || 0,
             });
 
             const prevProduct = item.product?.name || 'none';
@@ -386,8 +381,7 @@ export default function EditProduct() {
         try {
             const ids = Array.from(selectedStockItems);
             for (const id of ids) {
-                const bpEp = StockItemsEndpoints.update(id);
-                await authApi.put(bpEp.path, { data: { barcode: product.barcode } });
+                await StockItemsEndpoints.putUpdate(id, { barcode: product.barcode });
             }
             setSuccess(`Assigned product barcode "${product.barcode}" to ${ids.length} stock item(s)`);
             fetchStockItems(stockStatusFilter);
@@ -430,7 +424,7 @@ export default function EditProduct() {
             };
 
             const msEp = StockItemsEndpoints.create();
-            const res = await authApi.post(msEp.path, { data });
+            const res = await StockItemsEndpoints.postCreate(data);
             setMultiScanItems(prev => [
                 { barcode: code, sku: data.sku, id: res.data?.documentId || res.data?.id, time: new Date().toLocaleTimeString() },
                 ...prev

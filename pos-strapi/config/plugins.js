@@ -19,9 +19,9 @@ module.exports = ({ env}) => ({
     "strapi-content-sync-pro": {
         enabled: true,
     },
-    "api-guard-pro": {
-        enabled: true,
-    },
+    // "api-guard-pro": {
+    //     enabled: true,
+    // },
     email: {
         config: {
             provider: 'nodemailer',
@@ -55,22 +55,6 @@ module.exports = ({ env}) => ({
     upload: {
         config: {
             sizeLimit: env.int('UPLOAD_MAX_FILE_SIZE', 250 * 1024 * 1024), // 250 MB default
-            security: {
-                allowedMimeTypes: [
-                    'image/jpeg',
-                    'image/png',
-                    'image/gif',
-                    'image/webp',
-                    'image/svg+xml',
-                    'image/bmp',
-                    'image/tiff',
-                    'application/pdf',
-                    'video/mp4',
-                    'video/webm',
-                    'video/ogg',
-                    'video/quicktime',
-                ],
-            },
         },
     },
 });

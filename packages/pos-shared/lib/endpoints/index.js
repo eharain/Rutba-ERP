@@ -27,3 +27,5 @@ export { CmsPagesEndpoints } from './cms-pages.js';
 export { UploadEndpoints } from './upload.js';
 export { EnumsEndpoints } from './enums.js';
 export { TermTypesEndpoints, TermsEndpoints } from './term-types.js';
+export { CrmLeadsEndpoints } from './crm-leads.js';
+export { StockInputsEndpoints } from './stock-inputs.js';

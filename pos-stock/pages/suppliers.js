@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import { authApi } from "@rutba/pos-shared/lib/api";
 import { SuppliersEndpoints, ProductsEndpoints } from "@rutba/pos-shared/lib/endpoints/index.js";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
 import FileView from "@rutba/pos-shared/components/FileView";
@@ -173,11 +172,9 @@ export default function SuppliersPage() {
                 address: supplierForm.address.trim() || undefined
             };
             if (isEditing && selectedSupplierId) {
-                const ep = SuppliersEndpoints.update(selectedSupplierId);
-                await authApi.put(ep.path, { data: payload });
+                await SuppliersEndpoints.putUpdate(selectedSupplierId, payload);
             } else {
-                const ep = SuppliersEndpoints.create();
-                const res = await authApi.post(ep.path, { data: payload });
+                const res = await SuppliersEndpoints.postCreate(payload);
                 const created = res?.data ?? res;
                 setSelectedSupplierId(getEntryId(created));
             }
@@ -200,8 +197,7 @@ export default function SuppliersPage() {
         if (!confirm("Are you sure you want to delete this supplier?")) return;
         setLoading(true);
         try {
-            const delEp = SuppliersEndpoints.update(selectedSupplierId);
-            await authApi.del(delEp.path);
+            await SuppliersEndpoints.putDelete(selectedSupplierId);
             setSelectedSupplierId("");
             await loadSuppliers();
         } catch (error) {
@@ -247,21 +243,17 @@ export default function SuppliersPage() {
 
                     for (const product of sourceProducts) {
                         const productDocId = getEntryId(product);
-                        const pEp = ProductsEndpoints.update(productDocId);
-                        await authApi.put(pEp.path, {
-                            data: {
+                        await ProductsEndpoints.putUpdate(productDocId, {
                                 suppliers: {
                                     connect: [selectedSupplierId],
                                     disconnect: [sourceSupplierId]
                                 }
-                            }
-                        });
+                            });
                     }
                     page++;
                 } while (page <= totalPages);
 
-                const srcDelEp = SuppliersEndpoints.update(sourceSupplierId);
-                await authApi.del(srcDelEp.path);
+                await SuppliersEndpoints.putDelete(sourceSupplierId);
             }
 
             setMergeSelection(new Set());
@@ -305,15 +297,12 @@ export default function SuppliersPage() {
         setLoading(true);
         try {
             for (const productDocId of selectedProductIds) {
-                const mvEp = ProductsEndpoints.update(productDocId);
-                await authApi.put(mvEp.path, {
-                    data: {
+                await ProductsEndpoints.putUpdate(productDocId, {
                         suppliers: {
                             connect: [moveTargetSupplierId],
                             disconnect: [selectedSupplierId]
                         }
-                    }
-                });
+                    });
             }
             setSelectedProductIds(new Set());
             setMoveTargetSupplierId("");
@@ -333,14 +322,11 @@ export default function SuppliersPage() {
         setLoading(true);
         try {
             for (const productDocId of selectedProductIds) {
-                const cpEp = ProductsEndpoints.update(productDocId);
-                await authApi.put(cpEp.path, {
-                    data: {
+                await ProductsEndpoints.putUpdate(productDocId, {
                         suppliers: {
                             connect: [moveTargetSupplierId]
                         }
-                    }
-                });
+                    });
             }
             setSelectedProductIds(new Set());
             setMoveTargetSupplierId("");
@@ -357,12 +343,9 @@ export default function SuppliersPage() {
         if (!confirm("Remove this product from the supplier?")) return;
         setLoading(true);
         try {
-            const remEp = ProductsEndpoints.update(productDocId);
-            await authApi.put(remEp.path, {
-                data: {
+            await ProductsEndpoints.putUpdate(productDocId, {
                     suppliers: { disconnect: [selectedSupplierId] }
-                }
-            });
+                });
             await loadProducts();
         } catch (error) {
             console.error("Failed to remove product from supplier", error);
@@ -376,12 +359,9 @@ export default function SuppliersPage() {
         if (!selectedSupplierId) return alert("Select a supplier first");
         setLoading(true);
         try {
-            const addEp = ProductsEndpoints.update(productDocId);
-            await authApi.put(addEp.path, {
-                data: {
+            await ProductsEndpoints.putUpdate(productDocId, {
                     suppliers: { connect: [selectedSupplierId] }
-                }
-            });
+                });
             await loadProducts();
         } catch (error) {
             console.error("Failed to add product to supplier", error);

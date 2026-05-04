@@ -1,3 +1,5 @@
+import { authApi } from '../api.js';
+
 /**
  * CategoriesEndpoints
  * Centralised path + params definitions for the /categories content-type.
@@ -61,4 +63,13 @@ export const CategoriesEndpoints = {
      * @param {string} documentId
      */
     del: (documentId) => ({ path: `/categories/${documentId}` }),
+
+    /** Async: create a new category. */
+    postCreate: (data) => authApi.post('/categories', { data }),
+
+    /** Async: update a category by documentId. */
+    putUpdate: (documentId, data) => authApi.put(`/categories/${documentId}`, { data }),
+
+    /** Async: delete a category by documentId. */
+    putDelete: (documentId) => authApi.del(`/categories/${documentId}`),
 };

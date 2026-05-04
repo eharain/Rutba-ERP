@@ -1,3 +1,5 @@
+import { authApi } from '../api.js';
+
 /**
  * PurchasesEndpoints
  * Centralised path + params definitions for the /purchases content-type.
@@ -54,4 +56,13 @@ export const PurchasesEndpoints = {
      * @param {string} documentId
      */
     update: (documentId) => ({ path: `/purchases/${documentId}` }),
+
+    /** Async: create a new purchase. */
+    postCreate: (data) => authApi.post('/purchases', { data }),
+
+    /** Async: update a purchase by documentId. */
+    putUpdate: (documentId, data) => authApi.put(`/purchases/${documentId}`, { data }),
+
+    /** Async: delete a purchase by documentId. */
+    putDelete: (documentId) => authApi.del(`/purchases/${documentId}`),
 };

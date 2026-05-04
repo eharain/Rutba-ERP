@@ -61,4 +61,22 @@ export const PaymentsEndpoints = {
         const ep = PaymentsEndpoints.byId(documentId, opts);
         return authApi.fetch(ep.path, ep.params);
     },
+
+    /** Async: create a new payment. */
+    postCreate: (data) => {
+        const ep = PaymentsEndpoints.create();
+        return authApi.post(ep.path, { data });
+    },
+
+    /** Async: update a payment by documentId. */
+    putUpdate: (documentId, data) => {
+        const ep = PaymentsEndpoints.update(documentId);
+        return authApi.put(ep.path, { data });
+    },
+
+    /** Async: create a refund payment (negative amount, type 'refund'). */
+    postRefund: (data) => {
+        const ep = PaymentsEndpoints.createRefund();
+        return authApi.post(ep.path, { data });
+    },
 };

@@ -69,5 +69,15 @@ export const CashRegistersEndpoints = {
      * @param {string} registerId
      */
     close: (registerId) => ({ path: `/cash-registers/${registerId}/close` }),
+
+    /** Async: open a new cash register. */
+    postOpen: (data) => authApi.post('/cash-registers/open', { data }),
+
+    /**
+     * Async: close a cash register.
+     * @param {string} registerId
+     * @param {object} data
+     */
+    postClose: (registerId, data) => authApi.put(`/cash-registers/${registerId}/close`, { data }),
 };
 

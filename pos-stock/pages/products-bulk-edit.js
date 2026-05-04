@@ -8,8 +8,9 @@ import {
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import PermissionCheck from "@rutba/pos-shared/components/PermissionCheck";
-import { authApi, StraipImageUrl } from "@rutba/pos-shared/lib/api";
+import { StraipImageUrl } from "@rutba/pos-shared/lib/api";
 import { fetchProducts, saveProduct } from "@rutba/pos-shared/lib/pos";
+import { StockItemsEndpoints } from "@rutba/pos-shared/lib/endpoints";
 import { ProductFilter } from "@rutba/pos-shared/components/filter/product-filter";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
 import { getBranch } from "@rutba/pos-shared/lib/utils";
@@ -339,8 +340,7 @@ export default function ProductsBulkEdit() {
                     ? `${baseBarcode}-${barcodeNum.toString().padStart(4, '0')}`
                     : undefined;
 
-                await authApi.post('/stock-items', {
-                    data: {
+                await StockItemsEndpoints.postCreate({
                         sku,
                         barcode,
                         name: product.name,
@@ -350,8 +350,7 @@ export default function ProductsBulkEdit() {
                         cost_price: parseFloat(product.cost_price) || 0,
                         product: docId,
                         branch: branch?.documentId || branch?.id || undefined,
-                    }
-                });
+                    });
             }
             return `Created ${toCreate} stock item(s) as ${stockItemStatus}`;
         }
@@ -363,9 +362,7 @@ export default function ProductsBulkEdit() {
             const itemsToReduce = existingItems.slice(0, toReduce);
 
             for (const item of itemsToReduce) {
-                await authApi.put(`/stock-items/${item.documentId || item.id}`, {
-                    data: { status: 'Reduced' }
-                });
+                await StockItemsEndpoints.putUpdate(item.documentId || item.id, { status: 'Reduced' });
             }
             return `Reduced ${toReduce} stock item(s) to "Reduced" status`;
         }

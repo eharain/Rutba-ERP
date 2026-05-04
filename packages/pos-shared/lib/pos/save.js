@@ -1,5 +1,4 @@
 
-import { authApi } from '../api';
 import { prepareForPut } from '../utils';
 import { dataNode } from './search';
 import { SaleItemsEndpoints, PurchasesEndpoints, PurchaseItemsEndpoints, ProductsEndpoints, StockItemsEndpoints } from '../endpoints/index.js';
@@ -8,23 +7,15 @@ import { SaleItemsEndpoints, PurchasesEndpoints, PurchaseItemsEndpoints, Product
 // Save changes to sale items
 export async function saveSaleItems(id, items) {
     const promises = items.map(async (i) => {
-        const siEp = SaleItemsEndpoints.create();
-        const stockEp = StockItemsEndpoints.update(i.documentId);
-        [await authApi.post(siEp.path, {
-            data: {
-                items: [i.documentId],
-                quantity: i.quantity,
-                price: i.price,
-                product: i.product.documentId,
-                sale: id
-            }
-        }),
-        await authApi.put(stockEp.path, {
-            data: {
-                status: 'Sold'
-            }
-        })
-        ]
+        const results = await SaleItemsEndpoints.postCreate({
+            items: [i.documentId],
+            quantity: i.quantity,
+            price: i.price,
+            product: i.product.documentId,
+            sale: id
+        });
+        await StockItemsEndpoints.putUpdate(i.documentId, { status: 'Sold' });
+        return results;
     }).flat(2);
 
     return await Promise.all(promises);
@@ -33,40 +24,29 @@ export async function saveSaleItems(id, items) {
 
 // Save changes to purchase items
 export async function savePurchaseItems(id, items) {
-
-    const ep = PurchasesEndpoints.update(id);
-    return await authApi.put(ep.path, {
-        data: {
-            items: items.map((i) => ({
-                stock_item: i.stock_item.id,
-                quantity: i.quantity,
-                price: i.price,
-            })),
-        },
+    return PurchasesEndpoints.putUpdate(id, {
+        items: items.map((i) => ({
+            stock_item: i.stock_item.id,
+            quantity: i.quantity,
+            price: i.price,
+        })),
     });
 }
 
 //saveProductItems
 export async function saveProductItems(id, items) {
-    const ep = ProductsEndpoints.update(id);
-    return await authApi.put(ep.path, {
-        data: {
-            items: items.map((i) => ({
-                stock_item: i.stock_item.id,
-                quantity: i.quantity,
-                price: i.price,
-            })),
-        },
+    return ProductsEndpoints.putUpdate(id, {
+        items: items.map((i) => ({
+            stock_item: i.stock_item.id,
+            quantity: i.quantity,
+            price: i.price,
+        })),
     });
 }
 //prepareForPut()
 export async function saveProduct(id, formData) {
     const isUpdate = id && id !== 'new';
-    const ep = isUpdate ? ProductsEndpoints.update(id) : ProductsEndpoints.create();
 
-    ;
-    /**the relations like category, brand, owners, term-types, terms should be added as connect and disconnect paramter */
-    // List of numeric properties to convert
     const numericProps = [
         'offer_price',
         'selling_price',
@@ -74,11 +54,8 @@ export async function saveProduct(id, formData) {
         'stock_quantity',
         'reorder_level',
         'bundle_units',
-        //'category',
-        //'brand'
     ];
 
-    // Convert numeric properties to numbers if present
     const convertedFormData = { ...formData };
     numericProps.forEach(prop => {
         if (convertedFormData[prop] !== undefined && convertedFormData[prop] !== '') {
@@ -93,10 +70,9 @@ export async function saveProduct(id, formData) {
         ? { ...convertedFormData }
         : { ...convertedFormData, id };
 
-    const response = isUpdate
-        ? await authApi.put(ep.path, { data })
-        : authApi.post(ep.path, { data });
-    return response;
+    return isUpdate
+        ? ProductsEndpoints.putUpdate(id, data)
+        : ProductsEndpoints.postCreate(data);
 }
 function containsAlphabet(str) {
     const regex = /[a-zA-Z]/; // Matches any uppercase or lowercase letter
@@ -127,15 +103,12 @@ export async function savePurchase(idx, purchase) {
     purchaseData.items = { connect: saveItems.map(i => i.documentId) };
 
     const isExisting = purchaseData.id > 0;
-    const ep = isExisting
-        ? PurchasesEndpoints.update(purchaseData.documentId)
-        : PurchasesEndpoints.create();
 
     if (isExisting) {
-        const res = await authApi.put(ep.path, { data: prepareForPut(purchaseData, []) });
+        const res = await PurchasesEndpoints.putUpdate(purchaseData.documentId, prepareForPut(purchaseData, []));
         return dataNode(res);
     } else {
-        const res = await authApi.post(ep.path, { data: prepareForPut(purchaseData, []) });
+        const res = await PurchasesEndpoints.postCreate(prepareForPut(purchaseData, []));
         return dataNode(res);
     }
 }
@@ -149,12 +122,10 @@ export async function savePurchase(idx, purchase) {
 */
 export async function savePurchaseItem(item) {
     if (item.id > -1) {
-        const ep = PurchaseItemsEndpoints.update(item.documentId);
-        const res = await authApi.put(ep.path, { data: prepareForPut(item, []) });
+        const res = await PurchaseItemsEndpoints.putUpdate(item.documentId, prepareForPut(item, []));
         return dataNode(res);
     } else {
-        const ep = PurchaseItemsEndpoints.create();
-        const res = await authApi.post(ep.path, { data: prepareForPut(item, []) });
+        const res = await PurchaseItemsEndpoints.postCreate(prepareForPut(item, []));
         return dataNode(res);
     }
 }
