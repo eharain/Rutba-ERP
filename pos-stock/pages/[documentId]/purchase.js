@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { authApi } from "@rutba/pos-shared/lib/api";
+import { PurchasesEndpoints, PurchaseItemsEndpoints } from "@rutba/pos-shared/lib/endpoints";
 import { fetchPurchaseByIdDocumentIdOrPO, fetchEnumsValues, savePurchaseItem } from "@rutba/pos-shared/lib/pos";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import Layout from "../../components/Layout";
@@ -90,16 +91,13 @@ export default function PurchasePage() {
     async function ensurePurchaseCreated() {
         if (purchase.documentId) return purchase;
         const user = getUser();
-        const res = await authApi.post('/purchases', {
-            data: {
-                orderId: purchase.orderId,
-                order_date: purchase.order_date,
-                total: 0,
-                status: 'Draft',
-                owners: { connect: [user.documentId] },
-            }
+        const created = await PurchasesEndpoints.postCreate({
+            orderId: purchase.orderId,
+            order_date: purchase.order_date,
+            total: 0,
+            status: 'Draft',
+            owners: { connect: [user.documentId] },
         });
-        const created = res?.data ?? res;
         const updatedPurchase = { ...purchase, ...created };
         setPurchase(updatedPurchase);
         router.replace(`/${created.documentId}/purchase`);
@@ -147,9 +145,7 @@ export default function PurchasePage() {
             if(['Submitted','Partially Received'].includes(newStatus)){
                 if (editItems.length > 0){
                     if(confirm(`You won't be able to edit this purchase after submitting. Do you want to proceed?`)) {
-                        const res = await authApi.put(`/purchases/${purchase.documentId}`, {
-                            data: { status: newStatus }
-                        });
+                        const res = await PurchasesEndpoints.putUpdate(purchase.documentId, { status: newStatus });
                         router.push(`/${purchase.documentId}/purchase-receive`);
                         return;
                     }
@@ -187,7 +183,7 @@ export default function PurchasePage() {
 
         try {
             if(editItems.find(item => item.documentId === documentId)?.id>0){
-                        const res = await authApi.del(`/purchase-items/${documentId}`);
+                        await PurchaseItemsEndpoints.putDelete(documentId);
             }
             setEditItems(editItems.filter(item => item.documentId !== documentId));
         } catch (err) {

@@ -68,6 +68,15 @@ export const TermTypesEndpoints = {
         const ep = TermTypesEndpoints.list(opts);
         return authApi.fetch(ep.path, ep.params);
     },
+
+    /** Async: create a new term-type. */
+    postCreate: (data) => authApi.post('/term-types', { data }),
+
+    /** Async: update a term-type by id/documentId. */
+    putUpdate: (id, data) => authApi.put(`/term-types/${id}`, { data }),
+
+    /** Async: delete a term-type by id/documentId. */
+    putDelete: (id) => authApi.del(`/term-types/${id}`),
 };
 
 export const TermsEndpoints = {
@@ -97,4 +106,13 @@ export const TermsEndpoints = {
         const ep = TermsEndpoints.list(opts);
         return authApi.fetch(ep.path, ep.params);
     },
+
+    /** Async: create a new term. */
+    postCreate: (data) => authApi.post('/terms', { data }),
+
+    /** Async: update a term by id/documentId. */
+    putUpdate: (id, data) => authApi.put(`/terms/${id}`, { data }),
+
+    /** Async: delete a term by id/documentId. */
+    putDelete: (id) => authApi.del(`/terms/${id}`),
 };

@@ -1,4 +1,3 @@
-import { authApi } from '../api';
 import { generateNextInvoiceNumber, generateNextPONumber, getBranch, getUser } from '../utils';
 import { SalesEndpoints, PurchasesEndpoints, ProductsEndpoints, StockItemsEndpoints } from '../endpoints/index.js';
 
@@ -44,11 +43,11 @@ export async function createNewEntity(name) {
             },
         };
     }
-    const ep = name === 'sales' || name === 'sale' ? SalesEndpoints.create()
-        : name === 'purchases' || name === 'purchase' ? PurchasesEndpoints.create()
-        : ProductsEndpoints.create();
-    const res = await authApi.post(ep.path, { data });
-    const rdata = res?.data || {};
+    const createFn = name === 'sales' || name === 'sale' ? SalesEndpoints.postCreate
+        : name === 'purchases' || name === 'purchase' ? PurchasesEndpoints.postCreate
+        : ProductsEndpoints.postCreate;
+    const res = await createFn(data);
+    const rdata = res?.data ?? res;
     const id = /*rdata.orderId ?? rdata.invoice_no ??*/ rdata.documentId ?? rdata.id;
     return { data: rdata, id, nameSinglar, namePlural };
 }
@@ -86,9 +85,8 @@ export async function generateStockItems(purchase, purchaseItem, quantity) {
         };
 
         try {
-            const siEp = StockItemsEndpoints.create();
-            const response = await authApi.post(siEp.path, { data: stockItem });
-            stockItems.push(response.data);
+            const response = await StockItemsEndpoints.postCreate(stockItem);
+            stockItems.push(response?.data ?? response);
         } catch (error) {
             console.error('Error creating stock item:', error);
         }

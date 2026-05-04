@@ -4,7 +4,7 @@ import Link from 'next/link';
 import Layout from '../../components/Layout';
 import ProtectedRoute from '@rutba/pos-shared/components/ProtectedRoute';
 import { authApi, relationConnects } from '@rutba/pos-shared/lib/api';
-import { TermTypesEndpoints, StockItemsEndpoints } from '@rutba/pos-shared/lib/endpoints';
+import { TermTypesEndpoints, StockItemsEndpoints, ProductsEndpoints } from '@rutba/pos-shared/lib/endpoints';
 import { saveProduct } from '@rutba/pos-shared/lib/pos/save';
 import ProductGalleryManager from '@rutba/pos-shared/components/ProductGalleryManager';
 import ProductVariantManager from '@rutba/pos-shared/components/ProductVariantManager';
@@ -168,7 +168,7 @@ export default function ProductVariantsPage() {
             if (formValues.move_count > 0 && createdVariantId) {
                 const itemsToMove = stockItems.slice(0, Math.min(formValues.move_count, stockItems.length));
                 for (const item of itemsToMove) {
-                    await authApi.put(`/stock-items/${getEntryId(item)}`, { data: { product: { set: [createdVariantId] }, name: createdVariantName } });
+                    await StockItemsEndpoints.putUpdate(getEntryId(item), { product: { set: [createdVariantId] }, name: createdVariantName });
                 }
             }
             await loadProductDetails(parentDocumentId);
@@ -214,7 +214,7 @@ export default function ProductVariantsPage() {
                     const currentItems = await StockItemsEndpoints.fetchByProduct(parentDocumentId, { pageSize: formValues.move_count, sort: ['createdAt:desc'] });
                     const items = currentItems?.data ?? currentItems ?? [];
                     for (const item of items) {
-                        await authApi.put(`/stock-items/${getEntryId(item)}`, { data: { product: { set: [createdVariantId] }, name: createdVariantName } });
+                        await StockItemsEndpoints.putUpdate(getEntryId(item), { product: { set: [createdVariantId] }, name: createdVariantName });
                     }
                 }
                 created++;
@@ -247,14 +247,14 @@ export default function ProductVariantsPage() {
                     const items = res?.data ?? res ?? [];
                     totalPages = res?.meta?.pagination?.pageCount || 1;
                     for (const item of items) {
-                        await authApi.put(`/stock-items/${getEntryId(item)}`, {
-                            data: { product: { connect: [parentDocumentId], disconnect: [vId] }, name: selectedProduct.name }
+                        await StockItemsEndpoints.putUpdate(getEntryId(item), {
+                            product: { connect: [parentDocumentId], disconnect: [vId] }, name: selectedProduct.name
                         });
                     }
                     page++;
                 } while (page <= totalPages);
             }
-            await authApi.del(`/products/${vId}`);
+            await ProductsEndpoints.putDelete(vId);
             await loadProductDetails(parentDocumentId);
             setSuccess(`Variant "${variant.name}" deleted${count > 0 ? `, ${count} item(s) moved to parent` : ''}`);
         } catch (err) {
@@ -285,14 +285,14 @@ export default function ProductVariantsPage() {
                         const items = res?.data ?? res ?? [];
                         totalPages = res?.meta?.pagination?.pageCount || 1;
                         for (const item of items) {
-                            await authApi.put(`/stock-items/${getEntryId(item)}`, {
-                                data: { product: { connect: [parentDocumentId], disconnect: [vId] }, name: selectedProduct.name }
+                            await StockItemsEndpoints.putUpdate(getEntryId(item), {
+                                product: { connect: [parentDocumentId], disconnect: [vId] }, name: selectedProduct.name
                             });
                         }
                         page++;
                     } while (page <= totalPages);
                 }
-                await authApi.del(`/products/${vId}`);
+                await ProductsEndpoints.putDelete(vId);
             }
             setSelectedVariants(new Set());
             await loadProductDetails(parentDocumentId);
@@ -347,11 +347,9 @@ export default function ProductVariantsPage() {
         try {
             const ids = Array.from(selectedItems);
             for (const id of ids) {
-                await authApi.put(`/stock-items/${id}`, {
-                    data: {
-                        product: { set: [getEntryId(variant)] },
-                        name: variant.name
-                    }
+                await StockItemsEndpoints.putUpdate(id, {
+                    product: { set: [getEntryId(variant)] },
+                    name: variant.name
                 });
             }
             setSuccess(`Moved ${ids.length} item(s) to "${variant.name}"`);

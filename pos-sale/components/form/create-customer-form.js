@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { authApi } from "@rutba/pos-shared/lib/api"; 
+import { CustomersEndpoints } from '@rutba/pos-shared/lib/endpoints';
 
 export default function CreateCustomerForm({
     initialValue = '',
@@ -24,11 +24,8 @@ export default function CreateCustomerForm({
 
         setLoading(true);
         try {
-            const res = await authApi.post('/customers', {
-                data: { name, email, phone }
-            });
-
-            onCreated(res.data?.data ?? res.data??res);
+            const res = await CustomersEndpoints.postCreate({ name, email, phone });
+            onCreated(res?.data ?? res);
         } catch (err) {
             console.error(err);
             alert('Failed to create customer');

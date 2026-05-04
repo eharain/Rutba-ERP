@@ -224,4 +224,16 @@ export const StockItemsEndpoints = {
         const ep = StockItemsEndpoints.orphanGroupItems(opts);
         return authApi.fetch(ep.path, ep.params);
     },
+
+    /** Async: create a new stock item. */
+    postCreate: (data) => {
+        const ep = StockItemsEndpoints.create();
+        return authApi.post(ep.path, { data });
+    },
+
+    /** Async: update a stock item by documentId. */
+    putUpdate: (documentId, data) => {
+        const ep = StockItemsEndpoints.update(documentId);
+        return authApi.put(ep.path, { data });
+    },
 };

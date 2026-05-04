@@ -62,4 +62,20 @@ export const BranchesEndpoints = {
         const ep = BranchesEndpoints.listWithDesks();
         return authApi.fetch(ep.path, ep.params);
     },
+
+    /** Async: update a branch by documentId. */
+    putUpdate: (documentId, data) => {
+        const ep = BranchesEndpoints.update(documentId);
+        return authApi.put(ep.path, { data });
+    },
+
+    /** Async: archive stock items for a branch. */
+    postArchiveStock: (branchDocumentId, data) => {
+        return authApi.post(`/branches/${branchDocumentId}/archive-stock`, data);
+    },
+
+    /** Async: unarchive (restore) stock items for a branch. */
+    postUnarchiveStock: (branchDocumentId, data) => {
+        return authApi.post(`/branches/${branchDocumentId}/unarchive-stock`, data);
+    },
 };

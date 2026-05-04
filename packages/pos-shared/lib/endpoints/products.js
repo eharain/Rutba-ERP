@@ -242,4 +242,13 @@ export const ProductsEndpoints = {
         const ep = ProductsEndpoints.list(page, pageSize, filters);
         return authApi.fetch(ep.path, ep.params);
     },
+
+    /** Async: create a new product. */
+    postCreate: (data) => authApi.post('/products', { data }),
+
+    /** Async: update a product by documentId. */
+    putUpdate: (documentId, data) => authApi.put(`/products/${documentId}`, { data }),
+
+    /** Async: delete a product by documentId. */
+    putDelete: (documentId) => authApi.del(`/products/${documentId}`),
 };

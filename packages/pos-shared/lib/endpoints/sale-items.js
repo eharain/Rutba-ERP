@@ -1,6 +1,8 @@
+import { authApi } from '../api.js';
+
 /**
  * SaleItemsEndpoints
- * Centralised path + params definitions for the /sale-items content-type.
+ * Each `fetch*` / `post*` / `put*` method owns the full async call — callers use a single await.
  */
 export const SaleItemsEndpoints = {
 
@@ -15,8 +17,25 @@ export const SaleItemsEndpoints = {
 
     /**
      * Disconnect a sale item from its sale (zero-out relations).
-     * Body provided by caller: { data: { sale: { set: [] }, product: { set: [] } } }
      * @param {string} documentId
      */
     disconnect: (documentId) => ({ path: `/sale-items/${documentId}` }),
+
+    /** Async: create a new sale item. */
+    postCreate: (data) => {
+        const ep = SaleItemsEndpoints.create();
+        return authApi.post(ep.path, { data });
+    },
+
+    /** Async: update a sale item by documentId. */
+    putUpdate: (documentId, data) => {
+        const ep = SaleItemsEndpoints.update(documentId);
+        return authApi.put(ep.path, { data });
+    },
+
+    /** Async: disconnect a sale item from its sale. */
+    putDisconnect: (documentId) => {
+        const ep = SaleItemsEndpoints.disconnect(documentId);
+        return authApi.put(ep.path, { data: { sale: { set: [] }, product: { set: [] } } });
+    },
 };

@@ -1,3 +1,5 @@
+import { authApi } from '../api.js';
+
 /**
  * SuppliersEndpoints
  * Centralised path + params definitions for the /suppliers content-type.
@@ -54,4 +56,13 @@ export const SuppliersEndpoints = {
      * @param {string} documentId
      */
     update: (documentId) => ({ path: `/suppliers/${documentId}` }),
+
+    /** Async: create a new supplier. */
+    postCreate: (data) => authApi.post('/suppliers', { data }),
+
+    /** Async: update a supplier by documentId. */
+    putUpdate: (documentId, data) => authApi.put(`/suppliers/${documentId}`, { data }),
+
+    /** Async: delete a supplier by documentId. */
+    putDelete: (documentId) => authApi.del(`/suppliers/${documentId}`),
 };

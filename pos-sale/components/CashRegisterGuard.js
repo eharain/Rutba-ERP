@@ -1,7 +1,6 @@
 import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useUtil } from '@rutba/pos-shared/context/UtilContext';
-import { authApi } from '@rutba/pos-shared/lib/api';
 import { CashRegistersEndpoints } from '@rutba/pos-shared/lib/endpoints';
 
 const EXPIRY_HOURS = 20;
@@ -206,7 +205,7 @@ function OpenRegisterModal({ onClose, onOpened, status, expiredRegister }) {
                 ...(branchId ? { branch: { connect: [branchId] } } : {}),
                 ...(userId ? { opened_by_user: { connect: [userId] } } : {}),
             };
-            const res = await authApi.post('/cash-registers/open', { data: payload });
+            const res = await CashRegistersEndpoints.postOpen(payload);
             const created = res?.data ?? res;
             setCashRegister(created);
             onOpened();

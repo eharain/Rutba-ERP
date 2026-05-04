@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState, useRef } from "react";
 import * as XLSX from 'xlsx';
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import { authApi } from "@rutba/pos-shared/lib/api";
 import { TermTypesEndpoints, TermsEndpoints } from "@rutba/pos-shared/lib/endpoints";
 
 export default function TermTypesPage() {
@@ -121,12 +120,10 @@ export default function TermTypesPage() {
                 (source?.terms || []).forEach((term) => mergedTermIds.add(getEntryId(term)));
             });
 
-            await authApi.put(`/term-types/${selectedTermTypeId}`, {
-                data: { terms: { connect: Array.from(mergedTermIds) } }
-            });
+            await TermTypesEndpoints.putUpdate(selectedTermTypeId, { terms: { connect: Array.from(mergedTermIds) } });
 
             await Promise.all(
-                Array.from(mergeSelection).map((typeId) => authApi.del(`/term-types/${typeId}`))
+                Array.from(mergeSelection).map((typeId) => TermTypesEndpoints.putDelete(typeId))
             );
 
             setMergeSelection(new Set());
@@ -204,9 +201,9 @@ export default function TermTypesPage() {
                 is_public: termTypeForm.is_public
             };
             if (isEditingTermType && selectedTermTypeId) {
-                await authApi.put(`/term-types/${selectedTermTypeId}`, { data: payload });
+                await TermTypesEndpoints.putUpdate(selectedTermTypeId, payload);
             } else {
-                const res = await authApi.post("/term-types", { data: payload });
+                const res = await TermTypesEndpoints.postCreate(payload);
                 const created = res?.data ?? res;
                 setSelectedTermTypeId(getEntryId(created));
             }
@@ -231,7 +228,7 @@ export default function TermTypesPage() {
                 slug: termForm.slug || undefined,
                 term_types: { connect: [selectedTermTypeId] }
             };
-            await authApi.post("/terms", { data: payload });
+            await TermsEndpoints.postCreate(payload);
             setTermForm({ name: "", slug: "" });
             await loadData();
         } catch (error) {
@@ -247,9 +244,7 @@ export default function TermTypesPage() {
         if (!termId) return alert("Select a term to add");
         setLoading(true);
         try {
-            await authApi.put(`/term-types/${selectedTermTypeId}`, {
-                data: { terms: { connect: [termId] } }
-            });
+            await TermTypesEndpoints.putUpdate(selectedTermTypeId, { terms: { connect: [termId] } });
             await loadData();
         } catch (error) {
             console.error("Failed to add term", error);
@@ -263,9 +258,7 @@ export default function TermTypesPage() {
         if (!selectedTermTypeId) return;
         setLoading(true);
         try {
-            await authApi.put(`/term-types/${selectedTermTypeId}`, {
-                data: { terms: { disconnect: [termId] } }
-            });
+            await TermTypesEndpoints.putUpdate(selectedTermTypeId, { terms: { disconnect: [termId] } });
             await loadData();
         } catch (error) {
             console.error("Failed to remove term", error);
@@ -381,7 +374,7 @@ export default function TermTypesPage() {
                         slug: row.slug.trim() || undefined,
                         term_types: { connect: [selectedTermTypeId] }
                     };
-                    await authApi.post('/terms', { data: payload });
+                    await TermsEndpoints.postCreate(payload);
                     existingNames.add(trimmedName.toLowerCase());
                     setImportRows(prev => prev.map((r, idx) => idx === i ? { ...r, _status: 'created' } : r));
                     created++;

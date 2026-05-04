@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { authApi } from '@rutba/pos-shared/lib/api';
+import { CrmLeadsEndpoints } from '@rutba/pos-shared/lib/endpoints';
 
 const SOURCES = ['Website', 'Referral', 'Social Media', 'Cold Call', 'Advertisement', 'Other'];
 
@@ -35,8 +35,7 @@ export default function AddLeadModal({ isOpen, onClose, customer }) {
         setSaving(true);
         setError(null);
         try {
-            const payload = {
-                data: {
+            await CrmLeadsEndpoints.postCreate({
                     name,
                     email: email || undefined,
                     phone: phone || undefined,
@@ -48,10 +47,7 @@ export default function AddLeadModal({ isOpen, onClose, customer }) {
                     customer: customer?.documentId
                         ? { connect: [customer.documentId] }
                         : undefined,
-                },
-            };
-
-            await authApi.post('/crm-leads', payload);
+                });
             setSuccess(true);
             setTimeout(() => {
                 onClose(true);

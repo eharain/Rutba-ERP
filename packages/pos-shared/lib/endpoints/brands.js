@@ -106,3 +106,22 @@ export const BrandsEndpoints = {
      */
     unpublish: (documentId) => ({ path: `/brands/${documentId}/unpublish` }),
 };
+
+import { authApi } from '../api.js';
+
+Object.assign(BrandsEndpoints, {
+    async postCreate(data) {
+        const ep = BrandsEndpoints.create();
+        const res = await authApi.post(ep.path, { data });
+        return res?.data ?? res;
+    },
+    async putUpdate(documentId, data) {
+        const ep = BrandsEndpoints.update(documentId);
+        const res = await authApi.put(ep.path, { data });
+        return res?.data ?? res;
+    },
+    async putDelete(documentId) {
+        const ep = BrandsEndpoints.del(documentId);
+        return authApi.del(ep.path);
+    },
+});

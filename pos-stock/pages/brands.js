@@ -167,12 +167,9 @@ export default function BrandsPage() {
                 slug: brandForm.slug.trim() || undefined
             };
             if (isEditing && selectedBrandId) {
-                const ep = BrandsEndpoints.update(selectedBrandId);
-                await authApi.put(ep.path, { data: payload });
+                await BrandsEndpoints.putUpdate(selectedBrandId, payload);
             } else {
-                const ep = BrandsEndpoints.create();
-                const res = await authApi.post(ep.path, { data: payload });
-                const created = res?.data ?? res;
+                const created = await BrandsEndpoints.postCreate(payload);
                 setSelectedBrandId(getEntryId(created));
             }
             setIsEditing(false);
@@ -194,8 +191,7 @@ export default function BrandsPage() {
         if (!confirm("Are you sure you want to delete this brand?")) return;
         setLoading(true);
         try {
-            const delEp = BrandsEndpoints.del(selectedBrandId);
-            await authApi.del(delEp.path);
+            await BrandsEndpoints.putDelete(selectedBrandId);
             setSelectedBrandId("");
             await loadBrands();
         } catch (error) {
@@ -241,21 +237,17 @@ export default function BrandsPage() {
 
                     for (const product of sourceProducts) {
                         const productDocId = getEntryId(product);
-                        const pEp = ProductsEndpoints.update(productDocId);
-                        await authApi.put(pEp.path, {
-                            data: {
-                                brands: {
-                                    connect: [selectedBrandId],
-                                    disconnect: [sourceBrandId]
-                                }
+                        await ProductsEndpoints.putUpdate(productDocId, {
+                            brands: {
+                                connect: [selectedBrandId],
+                                disconnect: [sourceBrandId]
                             }
                         });
                     }
                     page++;
                 } while (page <= totalPages);
 
-                const srcDelEp = BrandsEndpoints.del(sourceBrandId);
-                await authApi.del(srcDelEp.path);
+                await BrandsEndpoints.putDelete(sourceBrandId);
             }
 
             setMergeSelection(new Set());
@@ -299,13 +291,10 @@ export default function BrandsPage() {
         setLoading(true);
         try {
             for (const productDocId of selectedProductIds) {
-                const mvEp = ProductsEndpoints.update(productDocId);
-                await authApi.put(mvEp.path, {
-                    data: {
-                        brands: {
-                            connect: [moveTargetBrandId],
-                            disconnect: [selectedBrandId]
-                        }
+                await ProductsEndpoints.putUpdate(productDocId, {
+                    brands: {
+                        connect: [moveTargetBrandId],
+                        disconnect: [selectedBrandId]
                     }
                 });
             }
@@ -327,13 +316,8 @@ export default function BrandsPage() {
         setLoading(true);
         try {
             for (const productDocId of selectedProductIds) {
-                const cpEp = ProductsEndpoints.update(productDocId);
-                await authApi.put(cpEp.path, {
-                    data: {
-                        brands: {
-                            connect: [moveTargetBrandId]
-                        }
-                    }
+                await ProductsEndpoints.putUpdate(productDocId, {
+                    brands: { connect: [moveTargetBrandId] }
                 });
             }
             setSelectedProductIds(new Set());
@@ -351,11 +335,8 @@ export default function BrandsPage() {
         if (!confirm("Remove this product from the brand?")) return;
         setLoading(true);
         try {
-            const remEp = ProductsEndpoints.update(productDocId);
-            await authApi.put(remEp.path, {
-                data: {
-                    brands: { disconnect: [selectedBrandId] }
-                }
+            await ProductsEndpoints.putUpdate(productDocId, {
+                brands: { disconnect: [selectedBrandId] }
             });
             await loadProducts();
         } catch (error) {
@@ -370,11 +351,8 @@ export default function BrandsPage() {
         if (!selectedBrandId) return alert("Select a brand first");
         setLoading(true);
         try {
-            const addEp = ProductsEndpoints.update(productDocId);
-            await authApi.put(addEp.path, {
-                data: {
-                    brands: { connect: [selectedBrandId] }
-                }
+            await ProductsEndpoints.putUpdate(productDocId, {
+                brands: { connect: [selectedBrandId] }
             });
             await loadProducts();
         } catch (error) {

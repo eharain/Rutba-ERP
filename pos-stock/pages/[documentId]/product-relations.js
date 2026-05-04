@@ -134,8 +134,8 @@ export default function ProductRelationsPage() {
                         const items = res?.data ?? res ?? [];
                         totalPages = res?.meta?.pagination?.pageCount || 1;
                         for (const item of items) {
-                            await authApi.put(`/stock-items/${getEntryId(item)}`, {
-                                data: { product: { connect: [documentId], disconnect: [sourceDocId] } },
+                            await StockItemsEndpoints.putUpdate(getEntryId(item), {
+                                product: { connect: [documentId], disconnect: [sourceDocId] },
                             });
                             itemCount++;
                         }
@@ -155,8 +155,8 @@ export default function ProductRelationsPage() {
                         const items = res?.data ?? res ?? [];
                         totalPages = res?.meta?.pagination?.pageCount || 1;
                         for (const item of items) {
-                            await authApi.put(`/purchase-items/${getEntryId(item)}`, {
-                                data: { product: { connect: [documentId], disconnect: [sourceDocId] } },
+                            await PurchaseItemsEndpoints.putUpdate(getEntryId(item), {
+                                product: { connect: [documentId], disconnect: [sourceDocId] },
                             });
                             itemCount++;
                         }
@@ -179,7 +179,7 @@ export default function ProductRelationsPage() {
                     if (sourceTerms.length) relPayload.terms = { connect: sourceTerms };
 
                     if (Object.keys(relPayload).length > 0) {
-                        await authApi.put(`/products/${documentId}`, { data: relPayload });
+                        await ProductsEndpoints.putUpdate(documentId, relPayload);
                         log.push(`  Transferred relations: ${Object.keys(relPayload).join(', ')}`);
                     }
                 }
@@ -190,8 +190,8 @@ export default function ProductRelationsPage() {
                 const variants = variantsRes?.data ?? variantsRes ?? [];
                 if (variants.length > 0) {
                     for (const variant of variants) {
-                        await authApi.put(`/products/${getEntryId(variant)}`, {
-                            data: { parent: { connect: [documentId], disconnect: [sourceDocId] } },
+                        await ProductsEndpoints.putUpdate(getEntryId(variant), {
+                            parent: { connect: [documentId], disconnect: [sourceDocId] },
                         });
                     }
                     log.push(`  Transferred ${variants.length} variant(s)`);
@@ -199,7 +199,7 @@ export default function ProductRelationsPage() {
 
                 // 5) Optionally delete source product
                 if (deleteSource) {
-                    await authApi.del(`/products/${sourceDocId}`);
+                    await ProductsEndpoints.putDelete(sourceDocId);
                     log.push(`  Deleted source product "${sourceName}"`);
                 } else {
                     log.push(`  Source product "${sourceName}" kept (not deleted)`);

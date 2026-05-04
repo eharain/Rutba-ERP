@@ -3,7 +3,6 @@ import { useRouter } from "next/router";
 import Layout from "../../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import CashRegisterGuard from "../../components/CashRegisterGuard";
-import { authApi } from "@rutba/pos-shared/lib/api";
 import { SaleReturnsEndpoints, SaleReturnItemsEndpoints, SalesEndpoints, StockItemsEndpoints, PaymentsEndpoints, CashRegisterTransactionEndpoints, BranchesEndpoints } from "@rutba/pos-shared/lib/endpoints/index.js";
 import { fetchSaleByIdOrInvoice } from "@rutba/pos-shared/lib/pos";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
@@ -72,8 +71,7 @@ function SaleReturnDetail({ documentId }) {
     async function handleSaveNotes() {
         setNotesSaving(true);
         try {
-            const notesEp = SaleReturnsEndpoints.update(documentId);
-            await authApi.put(notesEp.path, { data: { notes: notes || '' } });
+            await SaleReturnsEndpoints.putUpdate(documentId, { notes: notes || '' });
         } catch (err) {
             console.error("Failed to save notes", err);
             alert("Failed to save notes.");
@@ -455,21 +453,18 @@ function NewSaleReturn() {
             const userId = user?.documentId ?? user?.id;
 
             // 1) Create sale-return header
-            const retEp = SaleReturnsEndpoints.create();
-            const retRes = await authApi.post(retEp.path, {
-                data: {
-                    return_no: returnNo,
-                    return_date: new Date().toISOString(),
-                    total_refund: totalRefundAmt,
-                    type: "Return",
-                    refund_method: refundMethod,
-                    refund_status: "Refunded",
-                    desk_id: desk?.id ?? null,
-                    desk_name: desk?.name || "",
-                    returned_by: user?.username || user?.email || "",
-                    sale: { connect: [saleDocId] },
-                    ...(registerDocId ? { cash_register: { connect: [registerDocId] } } : {})
-                }
+            const retRes = await SaleReturnsEndpoints.postCreate({
+                return_no: returnNo,
+                return_date: new Date().toISOString(),
+                total_refund: totalRefundAmt,
+                type: "Return",
+                refund_method: refundMethod,
+                refund_status: "Refunded",
+                desk_id: desk?.id ?? null,
+                desk_name: desk?.name || "",
+                returned_by: user?.username || user?.email || "",
+                sale: { connect: [saleDocId] },
+                ...(registerDocId ? { cash_register: { connect: [registerDocId] } } : {})
             });
             const saleReturn = retRes?.data ?? retRes;
             const saleReturnDocId = getEntryId(saleReturn);
@@ -483,10 +478,7 @@ function NewSaleReturn() {
             if (branch) {
                 const branchDocId = getEntryId(branch);
                 if (branchDocId) {
-                    const brEp = BranchesEndpoints.update(branchDocId);
-                    await authApi.put(brEp.path, {
-                        data: { sale_returns: { connect: [saleReturnDocId] } }
-                    });
+                    await BranchesEndpoints.putUpdate(branchDocId, { sale_returns: { connect: [saleReturnDocId] } });
                 }
             }
 
@@ -506,69 +498,52 @@ function NewSaleReturn() {
                 const total = items.reduce((s, i) => s + (i.refundPrice ?? i.price), 0);
                 const productDocId = items[0].productDocId;
 
-                const riEp = SaleReturnItemsEndpoints.create();
-                const returnItemRes = await authApi.post(riEp.path, {
-                    data: {
-                        quantity,
-                        price,
-                        total,
-                        sale_return: { connect: [saleReturnDocId] },
-                        product: productDocId ? { connect: [productDocId] } : undefined
-                    }
+                const returnItemRes = await SaleReturnItemsEndpoints.postCreate({
+                    quantity,
+                    price,
+                    total,
+                    sale_return: { connect: [saleReturnDocId] },
+                    product: productDocId ? { connect: [productDocId] } : undefined
                 });
                 const returnItem = returnItemRes?.data ?? returnItemRes;
                 const returnItemDocId = getEntryId(returnItem);
 
                 // 4) Update each stock item: change status and link to sale_return_items
                 for (const ri of items) {
-                    const siEp = StockItemsEndpoints.update(ri.stockItemDocId);
-                    await authApi.put(siEp.path, {
-                        data: {
-                            status: ri.status,
-                            sale_return_items: returnItemDocId
-                                ? { connect: [returnItemDocId] }
-                                : undefined
-                        }
+                    await StockItemsEndpoints.putUpdate(ri.stockItemDocId, {
+                        status: ri.status,
+                        sale_return_items: returnItemDocId
+                            ? { connect: [returnItemDocId] }
+                            : undefined
                     });
                 }
             }
 
             // 5) Create payout payment linked to the sale return and cash register
-            const pymEp = PaymentsEndpoints.createRefund();
-            await authApi.post(pymEp.path, {
-                data: {
-                    payment_method: refundMethod,
-                    amount: -totalRefundAmt,
-                    payment_date: new Date().toISOString(),
-                    transaction_no: returnNo,
-                    sale: { connect: [saleDocId] },
-                    sale_return: { connect: [saleReturnDocId] },
-                    ...(registerDocId ? { cash_register: { connect: [registerDocId] } } : {}),
-                }
+            await PaymentsEndpoints.postRefund({
+                payment_method: refundMethod,
+                amount: -totalRefundAmt,
+                payment_date: new Date().toISOString(),
+                transaction_no: returnNo,
+                sale: { connect: [saleDocId] },
+                sale_return: { connect: [saleReturnDocId] },
+                ...(registerDocId ? { cash_register: { connect: [registerDocId] } } : {}),
             });
 
             // 6) Record refund transaction on the active cash register
             if (registerDocId) {
-                const crtEp = CashRegisterTransactionEndpoints.create();
-                await authApi.post(crtEp.path, {
-                    data: {
-                        type: "Refund",
-                        amount: totalRefundAmt,
-                        description: `Return ${returnNo} — ${refundMethod} refund`,
-                        transaction_date: new Date().toISOString(),
-                        performed_by: user?.email || user?.username || "",
-                        cash_register: { connect: [registerDocId] },
-                    }
+                await CashRegisterTransactionEndpoints.postCreate({
+                    type: "Refund",
+                    amount: totalRefundAmt,
+                    description: `Return ${returnNo} — ${refundMethod} refund`,
+                    transaction_date: new Date().toISOString(),
+                    performed_by: user?.email || user?.username || "",
+                    cash_register: { connect: [registerDocId] },
                 });
             }
 
             // 7) Mark the sale as returned
-            const saleEp = SalesEndpoints.update(saleDocId);
-            await authApi.put(saleEp.path, {
-                data: {
-                    return_status: "Returned"
-                }
-            });
+            await SalesEndpoints.putUpdate(saleDocId, { return_status: "Returned" });
 
             setReturnResult({
                 success: true,

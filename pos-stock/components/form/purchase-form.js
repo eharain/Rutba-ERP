@@ -1,6 +1,7 @@
 // /pos-desk/components/form/purchase-form.js
 import React, { useState, useEffect } from 'react';
 import { authApi } from '@rutba/pos-shared/lib/api';
+import { PurchasesEndpoints } from '@rutba/pos-shared/lib/endpoints';
 import { useUtil } from '@rutba/pos-shared/context/UtilContext';
 
 const PurchaseForm = ({ purchase, onSubmit, onCancel }) => {
@@ -68,9 +69,9 @@ const PurchaseForm = ({ purchase, onSubmit, onCancel }) => {
             };
 
             if (purchase?.documentId) {
-                await authApi.put(`/purchases/${purchase.documentId}`, { data: purchaseData });
+                await PurchasesEndpoints.putUpdate(purchase.documentId, purchaseData);
             } else {
-                await authApi.post('/purchases', { data: purchaseData });
+                await PurchasesEndpoints.postCreate(purchaseData);
             }
 
             onSubmit && onSubmit();

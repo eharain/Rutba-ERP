@@ -71,4 +71,16 @@ export const SaleReturnsEndpoints = {
         const ep = SaleReturnsEndpoints.byId(documentId);
         return authApi.fetch(ep.path, ep.params);
     },
+
+    /** Async: create a new sale return. */
+    postCreate: (data) => {
+        const ep = SaleReturnsEndpoints.create();
+        return authApi.post(ep.path, { data });
+    },
+
+    /** Async: update a sale return by documentId. */
+    putUpdate: (documentId, data) => {
+        const ep = SaleReturnsEndpoints.update(documentId);
+        return authApi.put(ep.path, { data });
+    },
 };

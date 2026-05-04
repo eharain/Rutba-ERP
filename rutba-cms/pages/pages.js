@@ -115,6 +115,7 @@ export default function Pages() {
     const unpublishOne = async (docId) => {
         setPublishing(prev => ({ ...prev, [docId]: true }));
         try {
+            //:todo: bad pattern to have separate publish and unpublish endpoints, should we just have a single /cms-pages/:id/publish endpoint that toggles state based on current value to avoid this?
             const ep = CmsPagesEndpoints.unpublish(docId);
             await authApi.post(ep.path, {});
             setPages(prev => prev.map(p => p.documentId === docId ? { ...p, _isPublished: false } : p));
@@ -134,7 +135,13 @@ export default function Pages() {
         let ok = 0, fail = 0;
         for (const docId of ids) {
             setPublishing(prev => ({ ...prev, [docId]: true }));
-            try { const bpEp = CmsPagesEndpoints.publish(docId); await authApi.post(bpEp.path, {}); ok++; setPages(prev => prev.map(p => p.documentId === docId ? { ...p, _isPublished: true } : p)); }
+            try {
+                //todo: bad pattern to have separate publish and unpublish endpoints, should we just have a single /cms-pages/:id/publish endpoint that toggles state based on current value to avoid this?
+                const bpEp = CmsPagesEndpoints.publish(docId);
+                await authApi.post(bpEp.path, {});
+                ok++;
+                setPages(prev => prev.map(p => p.documentId === docId ? { ...p, _isPublished: true } : p));
+            }
             catch { fail++; }
             finally { setPublishing(prev => ({ ...prev, [docId]: false })); }
         }
@@ -149,7 +156,12 @@ export default function Pages() {
         let ok = 0, fail = 0;
         for (const docId of ids) {
             setPublishing(prev => ({ ...prev, [docId]: true }));
-            try { const buEp = CmsPagesEndpoints.unpublish(docId); await authApi.post(buEp.path, {}); ok++; setPages(prev => prev.map(p => p.documentId === docId ? { ...p, _isPublished: false } : p)); }
+            try {
+                //:todo: bad pattern to have separate publish and unpublish endpoints, should we just have a single /cms-pages/:id/publish endpoint that toggles state based on current value to avoid this?
+                const buEp = CmsPagesEndpoints.unpublish(docId); 
+                await authApi.post(buEp.path, {}); ok++; 
+                
+                setPages(prev => prev.map(p => p.documentId === docId ? { ...p, _isPublished: false } : p)); }
             catch { fail++; }
             finally { setPublishing(prev => ({ ...prev, [docId]: false })); }
         }
@@ -162,6 +174,7 @@ export default function Pages() {
         setLoading(true);
         setError("");
         try {
+            //todo : bad pattern to have to make 2 calls to determine publication state, should we add a /pages-with-publish-state endpoint in the api that returns all pages with a boolean is_published field to avoid this?
             const draftEp = CmsPagesEndpoints.listDraft({ search: search.trim() || undefined, typeFilter: typeFilter || undefined, pageSize: 50 });
             const pubEp = CmsPagesEndpoints.listPublished({ pageSize: 200 });
             const [draftRes, pubRes] = await Promise.all([
@@ -200,14 +213,17 @@ export default function Pages() {
             const log = [];
             for (const row of rows) {
                 try {
+                    //todo: bad pattern why not the msPagesEndpoints.bySlugCheck should return the existing docId if found and then we can just call update without a separate fetch?
                     const chkEp = CmsPagesEndpoints.bySlugCheck(row.slug);
                     const existing = await authApi.fetch(chkEp.path, chkEp.params);
                     const doc = existing.data?.[0];
                     if (doc) {
+                        //todo:bad pattern why not to  await  CmsPagesEndpoints.update(doc.documentId,{ data: row });
                         const upEp = CmsPagesEndpoints.update(doc.documentId);
                         await authApi.put(upEp.path, { data: row });
                         log.push({ type: "success", text: `Updated: ${row.slug}` });
                     } else {
+                        //todo: bad pattern why not to await CmsPagesEndpoints.create({ data: row });
                         const crEp = CmsPagesEndpoints.create();
                         await authApi.post(crEp.path, { data: row });
                         log.push({ type: "success", text: `Created: ${row.slug}` });
