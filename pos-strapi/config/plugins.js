@@ -1,27 +1,25 @@
-function toSeconds(value, fallback) {
-    const v = String(value ?? fallback).trim().toLowerCase();
-    const match = v.match(/^(\d+)([smhd]?)$/);
 
-    if (!match) return fallback;
-
-    const amount = Number(match[1]);
-    const unit = match[2] || 's';
-
-    switch (unit) {
-        case 'm': return amount * 60;
-        case 'h': return amount * 60 * 60;
-        case 'd': return amount * 24 * 60 * 60;
-        default: return amount;
-    }
-}
-
-module.exports = ({ env}) => ({
+module.exports = ({ env }) => ({
     "strapi-content-sync-pro": {
         enabled: true,
     },
-    // "api-guard-pro": {
-    //     enabled: true,
-    // },
+
+    'api-guard-pro': {
+        enabled: true,
+        config: {
+            interceptorEnabled: true,
+            denyByDefault: true,
+            bypassPaths: [
+                '/api/auth',
+                '/api/users/me',
+                '/api/me/permissions',
+                '/api/me/stock-items-search',
+                '/upload',
+                '/users-permissions',
+            ],
+        },
+    },
+
     email: {
         config: {
             provider: 'nodemailer',
@@ -42,7 +40,7 @@ module.exports = ({ env}) => ({
     'users-permissions': {
         config: {
             register: {
-                allowedFields: ['displayName',"isStaff"], // add your custom fields here
+                allowedFields: ['displayName', "isStaff"], // add your custom fields here
             },
             jwtManagement: 'refresh',
             sessions: {
@@ -58,3 +56,22 @@ module.exports = ({ env}) => ({
         },
     },
 });
+
+
+
+function toSeconds(value, fallback) {
+    const v = String(value ?? fallback).trim().toLowerCase();
+    const match = v.match(/^(\d+)([smhd]?)$/);
+
+    if (!match) return fallback;
+
+    const amount = Number(match[1]);
+    const unit = match[2] || 's';
+
+    switch (unit) {
+        case 'm': return amount * 60;
+        case 'h': return amount * 60 * 60;
+        case 'd': return amount * 24 * 60 * 60;
+        default: return amount;
+    }
+}

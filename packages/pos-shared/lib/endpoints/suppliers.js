@@ -1,4 +1,5 @@
 import { authApi } from '../api.js';
+import { buildEndpointMeta } from './access-metadata.js';
 
 /**
  * SuppliersEndpoints
@@ -66,3 +67,12 @@ export const SuppliersEndpoints = {
     /** Async: delete a supplier by documentId. */
     putDelete: (documentId) => authApi.del(`/suppliers/${documentId}`),
 };
+
+export const SuppliersEndpointsMeta = buildEndpointMeta('api::supplier.supplier', '/suppliers', {
+    listPaged: 'find',
+    listAll: 'find',
+    list: 'find',
+    create: 'create',
+    update: 'update',
+    putDelete: 'delete',
+});

@@ -1,4 +1,5 @@
 import { authApi } from '../api.js';
+import { buildEndpointMeta } from './access-metadata.js';
 
 /**
  * CrmLeadsEndpoints
@@ -22,3 +23,8 @@ export const CrmLeadsEndpoints = {
     /** Async: update a CRM lead by documentId. */
     putUpdate: (documentId, data) => authApi.put(`/crm-leads/${documentId}`, { data }),
 };
+
+export const CrmLeadsEndpointsMeta = buildEndpointMeta('api::crm-lead.crm-lead', '/crm-leads', {
+    create: 'create',
+    update: 'update',
+});

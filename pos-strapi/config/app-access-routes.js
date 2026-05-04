@@ -1,91 +1,20 @@
+// @ts-nocheck
 'use strict';
 
-/**
- * app-access-routes.js
- *
- * Maps every API content-type to the app-access key(s) that own it.
- *
- *  • string   → that key for ALL actions (find, findOne, create, update, delete)
- *  • object   → per-action arrays for fine-grained control
- *  • array    → shortcut: all listed keys for ALL actions
- *
- * Content-types NOT listed here are left unguarded (the built-in
- * Strapi role/permission system still applies to them).
- *
- * The special key 'auth' means "user-management admin" — users
- * whose app_accesses include 'auth' can manage other users,
- * roles and app-access assignments.
- */
+function loadRouteOwners() {
+    try {
+        const { ROUTE_OWNERS_BY_UID } = require('../../packages/pos-shared/lib/endpoints/access-metadata.js');
+        return ROUTE_OWNERS_BY_UID;
+    } catch (sharedErr) {
+        try {
+            return require('./app-access-routes.legacy.js');
+        } catch (legacyErr) {
+            sharedErr.message = `${sharedErr.message} | fallback failed: ${legacyErr.message}`;
+            throw sharedErr;
+        }
+    }
+}
 
-module.exports = {
+const ROUTE_OWNERS_BY_UID = loadRouteOwners();
 
-  // ── Stock Management ──────────────────────────────────────
-  'api::product.product':                    { find: ['stock', 'sale', 'cms'], create: ['stock', 'cms'], update: ['stock', 'cms'], delete: ['stock', 'auth'] },
-  'api::product-group.product-group':        { find: ['stock', 'cms'], create: ['stock', 'cms'], update: ['stock', 'cms'], delete: ['stock', 'cms', 'auth'] },
-  'api::category.category':                  { find: ['stock', 'sale', 'cms'], create: ['stock', 'cms'], update: ['stock', 'cms'], delete: ['stock', 'auth'] },
-  'api::brand.brand':                        { find: ['stock', 'sale', 'cms'], create: ['stock', 'cms'], update: ['stock', 'cms'], delete: ['stock', 'auth'] },
-  'api::supplier.supplier':                  'stock',
-  'api::purchase.purchase':                  'stock',
-  'api::purchase-item.purchase-item':        'stock',
-  'api::purchase-return.purchase-return':    'stock',
-  'api::purchase-return-item.purchase-return-item': 'stock',
-  'api::stock-item.stock-item':              { find: ['stock', 'sale'], create: ['stock'], update: ['stock', 'sale'], delete: ['stock'] },
-  'api::stock-input.stock-input':            'stock',
-
-  // ── Point of Sale ─────────────────────────────────────────
-  'api::sale.sale':                          { find: ['sale', 'stock', 'accounts'], create: ['sale'], update: ['sale'], delete: ['sale', 'auth'] },
-  'api::sale-item.sale-item':                { find: ['sale', 'stock', 'accounts'], create: ['sale'], update: ['sale'], delete: ['sale', 'auth'] },
-  'api::sale-return.sale-return':            'sale',
-  'api::sale-return-item.sale-return-item':  'sale',
-  'api::payment.payment':                    { find: ['sale', 'accounts'], create: ['sale'], update: ['sale'], delete: ['sale', 'auth'] },
-  'api::cash-register.cash-register':        { find: ['sale', 'accounts'], create: ['sale'], update: ['sale'], delete: ['sale', 'auth'] },
-  'api::cash-register-transaction.cash-register-transaction': { find: ['sale', 'accounts'], create: ['sale'], update: ['sale'], delete: ['sale', 'auth'] },
-  'api::customer.customer':                  ['sale', 'crm', 'accounts', 'order-management', 'delivery', 'rider', 'web-user'],
-  'api::sale-order.sale-order':              ['sale', 'web-user', 'cms', 'order-management', 'delivery', 'rider'],
-
-  // ── CRM ───────────────────────────────────────────────────
-  'api::crm-contact.crm-contact':            'crm',
-  'api::crm-lead.crm-lead':                  { find: ['crm', 'sale'], findOne: ['crm', 'sale'], create: ['crm', 'sale'], update: ['crm'], delete: ['crm', 'auth'] },
-  'api::crm-activity.crm-activity':          'crm',
-
-  // ── HR ────────────────────────────────────────────────────
-  'api::hr-employee.hr-employee':            { find: ['hr', 'payroll'], create: ['hr'], update: ['hr'], delete: ['hr', 'auth'] },
-  'api::hr-department.hr-department':        { find: ['hr', 'payroll'], create: ['hr'], update: ['hr'], delete: ['hr', 'auth'] },
-  'api::hr-attendance.hr-attendance':         'hr',
-  'api::hr-leave-request.hr-leave-request':   'hr',
-
-  // ── Accounting ────────────────────────────────────────────
-  'api::acc-account.acc-account':             'accounts',
-  'api::acc-journal-entry.acc-journal-entry': 'accounts',
-  'api::acc-invoice.acc-invoice':             'accounts',
-  'api::acc-expense.acc-expense':             'accounts',
-
-  // ── Payroll ───────────────────────────────────────────────
-  'api::pay-salary-structure.pay-salary-structure': 'payroll',
-  'api::pay-payroll-run.pay-payroll-run':           'payroll',
-  'api::pay-payslip.pay-payslip':                   'payroll',
-
-  // ── CMS (Content Management) ──────────────────────────────
-  'api::cms-page.cms-page':                  'cms',
-  'api::brand-group.brand-group':            'cms',
-  'api::category-group.category-group':      'cms',
-  'api::cms-footer.cms-footer':              'cms',
-  'api::sale-offer.sale-offer':              'cms',
-  'api::delivery-offer.delivery-offer':      ['order-management', 'delivery', 'rider'],
-  'api::delivery-method.delivery-method':    ['order-management', 'delivery', 'rider', 'cms'],
-  'api::delivery-zone.delivery-zone':        ['order-management', 'delivery', 'rider', 'cms'],
-  'api::rider.rider':                        ['order-management', 'delivery', 'rider', 'cms'],
-  'api::order-message.order-message':        ['order-management', 'delivery', 'rider'],
-  'api::notification-template.notification-template': ['order-management', 'delivery', 'cms'],
-  'api::notification-log.notification-log':  ['order-management', 'delivery', 'cms'],
-
-  // ── Shared / system ───────────────────────────────────────
-  'api::branch.branch':                      ['stock', 'sale', 'hr', 'accounts'],
-  'api::currency.currency':                  ['stock', 'sale', 'accounts'],
-  'api::employee.employee':                  ['stock', 'sale', 'hr', 'payroll'],
-  'api::term.term':                          ['stock', 'sale'],
-  'api::term-type.term-type':                ['stock', 'sale'],
-
-  // ── Auth / admin ──────────────────────────────────────────
-  'api::app-access.app-access':              'auth',
-};
+module.exports = Object.freeze(ROUTE_OWNERS_BY_UID);

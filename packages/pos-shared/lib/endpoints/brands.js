@@ -5,6 +5,9 @@
  * Covers both the pos-stock management UI (draft/publish flows)
  * and simple list/paginated lookups used across other pages.
  */
+import { authApi } from '../api.js';
+import { buildEndpointMeta } from './access-metadata.js';
+
 export const BrandsEndpoints = {
 
     /**
@@ -107,8 +110,6 @@ export const BrandsEndpoints = {
     unpublish: (documentId) => ({ path: `/brands/${documentId}/unpublish` }),
 };
 
-import { authApi } from '../api.js';
-
 Object.assign(BrandsEndpoints, {
     async postCreate(data) {
         const ep = BrandsEndpoints.create();
@@ -124,4 +125,17 @@ Object.assign(BrandsEndpoints, {
         const ep = BrandsEndpoints.del(documentId);
         return authApi.del(ep.path);
     },
+});
+
+export const BrandsEndpointsMeta = buildEndpointMeta('api::brand.brand', '/brands', {
+    listPaged: 'find',
+    listAll: 'find',
+    list: 'find',
+    listDraft: 'find',
+    listPublished: 'find',
+    create: 'create',
+    update: 'update',
+    del: 'delete',
+    publish: 'publish',
+    unpublish: 'unpublish',
 });

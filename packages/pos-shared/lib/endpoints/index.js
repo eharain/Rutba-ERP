@@ -29,3 +29,72 @@ export { EnumsEndpoints } from './enums.js';
 export { TermTypesEndpoints, TermsEndpoints } from './term-types.js';
 export { CrmLeadsEndpoints } from './crm-leads.js';
 export { StockInputsEndpoints } from './stock-inputs.js';
+export { AppAccessMetadata, DISABLED_PLACEHOLDERS } from './access-metadata.js';
+export { DisabledPlaceholderEndpoints } from './disabled-placeholders.js';
+
+export {
+    SalesEndpointsMeta,
+} from './sales.js';
+export {
+    SaleItemsEndpointsMeta,
+} from './sale-items.js';
+export {
+    SaleReturnsEndpointsMeta,
+} from './sale-returns.js';
+export {
+    SaleReturnItemsEndpointsMeta,
+} from './sale-return-items.js';
+export {
+    PurchasesEndpointsMeta,
+} from './purchases.js';
+export {
+    PurchaseItemsEndpointsMeta,
+} from './purchase-items.js';
+export {
+    PaymentsEndpointsMeta,
+} from './payments.js';
+export {
+    CashRegisterTransactionEndpointsMeta,
+} from './cash-register-transactions.js';
+export {
+    CashRegistersEndpointsMeta,
+} from './cash-registers.js';
+export {
+    StockItemsEndpointsMeta,
+} from './stock-items.js';
+export {
+    ProductsEndpointsMeta,
+} from './products.js';
+export {
+    CustomersEndpointsMeta,
+} from './customers.js';
+export {
+    BranchesEndpointsMeta,
+} from './branches.js';
+export {
+    BrandsEndpointsMeta,
+} from './brands.js';
+export {
+    CategoriesEndpointsMeta,
+} from './categories.js';
+export {
+    SuppliersEndpointsMeta,
+} from './suppliers.js';
+export {
+    CmsPagesEndpointsMeta,
+} from './cms-pages.js';
+export {
+    TermTypesEndpointsMeta,
+    TermsEndpointsMeta,
+} from './term-types.js';
+export {
+    CrmLeadsEndpointsMeta,
+} from './crm-leads.js';
+export {
+    StockInputsEndpointsMeta,
+} from './stock-inputs.js';
+export {
+    IMPLEMENTED_ENDPOINT_META,
+    DISABLED_ENDPOINT_META,
+    ENDPOINT_METADATA_REGISTRY,
+} from './registry.js';
