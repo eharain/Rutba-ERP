@@ -12,6 +12,16 @@
 | Auth | NextAuth v4 (Google + Credentials) |
 | Forms | React Hook Form · Zod · @hookform/resolvers |
 
+## Design & UI Consistency (Multi-App)
+
+- Keep home page layouts visually consistent across sibling apps in the Rutba workspace — maintain a family look-and-feel (layout grid, spacing, typography, and visual weight).
+- Use function-relevant icons per app while matching the same icon scale, stroke/weight, and placement conventions.
+- Retain existing relevant headings and descriptions; prefer content reuse over rewording when the meaning is unchanged.
+- Share design tokens and primitives (Tailwind config, shadcn/ui components) to enforce consistency; place shared components in components/ui/ or a shared design package.
+- Align layout grids, spacing, and responsive breakpoints across apps to avoid jarring transitions between sibling applications.
+- Use consistent color usage and theming rules; reserve app-specific accent colors only for clear functional differentiation.
+- Document any deliberate visual deviations (icon, accent, or layout exceptions) with rationale in the component README or a short note in the shared design tokens.
+
 ## Project Structure
 rutba-web/src/
 ├── components/       # Domain-grouped components

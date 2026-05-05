@@ -1,0 +1,197 @@
+{
+    "system": {
+        "name": "Rutba CRM Notification System",
+        "channels": [ "in_app", "email" ],
+        "rules": {
+            "default_channel": "in_app",
+            "email_only_for_critical": true
+        },
+        "categories": [
+            "orders_payments",
+            "account_security",
+            "cart_activity",
+            "wishlist_interest",
+            "promotions_offers",
+            "customer_support"
+        ]
+    },
+
+    "events": [
+        { "event": "order.created" },
+        { "event": "payment.success" },
+        { "event": "payment.failed" },
+        { "event": "order.shipped" },
+        { "event": "order.delivered" },
+        { "event": "refund.processed" },
+
+        { "event": "cart.abandoned" },
+        { "event": "product.price_drop" },
+        { "event": "product.back_in_stock" },
+
+        { "event": "user.registered" },
+        { "event": "login.new_device" },
+        { "event": "password.changed" },
+
+        { "event": "wishlist.reminder" },
+        { "event": "user.inactive" },
+
+        { "event": "contact.submitted" },
+        { "event": "contact.reply.added" },
+        { "event": "contact.status.updated" },
+        { "event": "contact.resolved" },
+        { "event": "contact.sla.breach" }
+    ],
+
+    "notification_rules": [
+        {
+            "event": "order.created",
+            "category": "orders_payments",
+            "channels": [ "in_app", "email" ],
+            "priority": "high",
+            "is_critical": true,
+            "delay_minutes": 0,
+            "template": {
+                "title": "Order Confirmed",
+                "message": "Your order #{order.id} has been placed successfully."
+            }
+        },
+        {
+            "event": "payment.failed",
+            "category": "orders_payments",
+            "channels": [ "in_app", "email" ],
+            "priority": "critical",
+            "is_critical": true,
+            "delay_minutes": 0,
+            "template": {
+                "title": "Payment Failed",
+                "message": "Payment failed for order #{order.id}. Please retry."
+            }
+        },
+        {
+            "event": "order.shipped",
+            "category": "orders_payments",
+            "channels": [ "in_app", "email" ],
+            "priority": "high",
+            "is_critical": true,
+            "delay_minutes": 0,
+            "template": {
+                "title": "Order Shipped",
+                "message": "Your order #{order.id} has been shipped."
+            }
+        },
+        {
+            "event": "order.delivered",
+            "category": "orders_payments",
+            "channels": [ "in_app", "email" ],
+            "priority": "high",
+            "is_critical": true,
+            "template": {
+                "title": "Order Delivered",
+                "message": "Your order #{order.id} has been delivered."
+            }
+        },
+
+        {
+            "event": "cart.abandoned",
+            "category": "cart_activity",
+            "channels": [ "in_app" ],
+            "priority": "medium",
+            "delay_minutes": 60,
+            "template": {
+                "title": "You left items in your cart",
+                "message": "Complete your purchase before items go out of stock."
+            }
+        },
+
+        {
+            "event": "product.back_in_stock",
+            "category": "wishlist_interest",
+            "channels": [ "in_app" ],
+            "priority": "medium",
+            "template": {
+                "title": "Back in Stock",
+                "message": "{product.name} is now available again."
+            }
+        },
+
+        {
+            "event": "contact.submitted",
+            "category": "customer_support",
+            "channels": [ "in_app", "email" ],
+            "priority": "high",
+            "is_critical": true,
+            "template": {
+                "title": "We received your message",
+                "message": "Our support team will respond shortly."
+            }
+        },
+
+        {
+            "event": "contact.reply.added",
+            "category": "customer_support",
+            "channels": [ "in_app", "email" ],
+            "priority": "high",
+            "is_critical": true,
+            "conditions": {
+                "reply_by": "agent"
+            },
+            "template": {
+                "title": "Support replied",
+                "message": "You have a new response on your support request."
+            }
+        },
+
+        {
+            "event": "contact.sla.breach",
+            "category": "customer_support",
+            "channels": [ "in_app" ],
+            "priority": "critical",
+            "audience": "admin",
+            "template": {
+                "title": "SLA Breach Warning",
+                "message": "A support ticket has not been responded to in time."
+            }
+        }
+    ],
+
+    "data_models": {
+        "Notification": {
+            "id": "string",
+            "user_id": "string",
+            "title": "string",
+            "message": "string",
+            "category": "string",
+            "priority": "string",
+            "channels": [ "string" ],
+            "is_read": "boolean",
+            "is_email_sent": "boolean",
+            "created_at": "datetime"
+        },
+
+        "Event": {
+            "event_name": "string",
+            "entity_type": "string",
+            "entity_id": "string",
+            "payload": "json",
+            "created_at": "datetime"
+        },
+
+        "ContactTicket": {
+            "id": "string",
+            "user_id": "string",
+            "subject": "string",
+            "status": "open|in_progress|waiting|resolved",
+            "assigned_to": "string",
+            "created_at": "datetime"
+        }
+    },
+
+    "execution_flow": [
+        "Event occurs",
+        "Match trigger rules",
+        "Create in-app notification",
+        "If critical → send email",
+        "Store notification",
+        "Deliver to UI"
+    ]
+}
