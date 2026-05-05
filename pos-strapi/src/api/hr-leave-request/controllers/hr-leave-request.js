@@ -30,8 +30,11 @@ async function resolveEmployeeForUser(strapi, user) {
 }
 
 function isManagerLike(user) {
-  const adminAppAccess = (user?.admin_app_accesses || []).map((a) => a.key);
-  return adminAppAccess.includes('hr') || adminAppAccess.includes('auth');
+  const adminDomains = (user?.permission_roles || [])
+    .filter((r) => r?.level === 'admin')
+    .map((r) => r?.domain?.key)
+    .filter(Boolean);
+  return adminDomains.includes('hr') || adminDomains.includes('auth');
 }
 
 module.exports = createCoreController('api::hr-leave-request.hr-leave-request', ({ strapi }) => ({
@@ -55,7 +58,12 @@ module.exports = createCoreController('api::hr-leave-request.hr-leave-request', 
   async teamQueue(ctx) {
     const user = await strapi.query('plugin::users-permissions.user').findOne({
       where: { id: ctx.state?.user?.id },
-      populate: { admin_app_accesses: { select: ['key'] } },
+      populate: {
+        permission_roles: {
+          select: ['level'],
+          populate: { domain: { select: ['key'] } },
+        },
+      },
     });
     if (!user) return ctx.unauthorized('You must be logged in');
     if (!isManagerLike(user)) return ctx.forbidden('Manager access is required');
@@ -74,7 +82,12 @@ module.exports = createCoreController('api::hr-leave-request.hr-leave-request', 
     const { documentId } = ctx.params;
     const user = await strapi.query('plugin::users-permissions.user').findOne({
       where: { id: ctx.state?.user?.id },
-      populate: { admin_app_accesses: { select: ['key'] } },
+      populate: {
+        permission_roles: {
+          select: ['level'],
+          populate: { domain: { select: ['key'] } },
+        },
+      },
     });
     if (!user) return ctx.unauthorized('You must be logged in');
     if (!isManagerLike(user)) return ctx.forbidden('Manager access is required');
@@ -98,7 +111,12 @@ module.exports = createCoreController('api::hr-leave-request.hr-leave-request', 
     const { documentId } = ctx.params;
     const user = await strapi.query('plugin::users-permissions.user').findOne({
       where: { id: ctx.state?.user?.id },
-      populate: { admin_app_accesses: { select: ['key'] } },
+      populate: {
+        permission_roles: {
+          select: ['level'],
+          populate: { domain: { select: ['key'] } },
+        },
+      },
     });
     if (!user) return ctx.unauthorized('You must be logged in');
     if (!isManagerLike(user)) return ctx.forbidden('Manager access is required');

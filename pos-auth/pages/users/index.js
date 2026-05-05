@@ -7,6 +7,7 @@ import { authApi } from "@rutba/pos-shared/lib/api";
 
 export default function UsersPage() {
     const [users, setUsers] = useState([]);
+    const [domainsByKey, setDomainsByKey] = useState({});
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
     const [page, setPage] = useState(1);
@@ -17,8 +18,21 @@ export default function UsersPage() {
     async function loadUsers() {
         setLoading(true);
         try {
-            const data = await authApi.get("/auth-admin/users");
-            setUsers(Array.isArray(data) ? data : data?.data || []);
+            const [usersRes, domainsRes] = await Promise.all([
+                authApi.get("/auth-admin/users"),
+                authApi.get("/auth-admin/domains"),
+            ]);
+
+            const userData = Array.isArray(usersRes) ? usersRes : usersRes?.data || [];
+            const domainData = domainsRes?.data || domainsRes || [];
+
+            setUsers(userData);
+            setDomainsByKey(
+                (domainData || []).reduce((acc, d) => {
+                    acc[d.key] = d;
+                    return acc;
+                }, {})
+            );
         } catch (err) {
             console.error("Failed to load users", err);
         } finally {
@@ -110,10 +124,9 @@ export default function UsersPage() {
                                         <tr><td colSpan="5" className="text-center text-muted py-4">No users found</td></tr>
                                     )}
                                     {pagedUsers.map(u => {
-                                    const regularApps = (u.app_accesses || []).filter(
-                                        a => !(u.admin_app_accesses || []).some(aa => aa.id === a.id)
-                                    );
-                                    const adminApps = u.admin_app_accesses || [];
+                                    const userDomainKeys = u.domain_accesses || [];
+                                    const adminDomainKeys = u.admin_domain_accesses || [];
+                                    const regularDomainKeys = userDomainKeys.filter((k) => !adminDomainKeys.includes(k));
 
                                     return (
                                         <tr key={u.id}>
@@ -139,20 +152,20 @@ export default function UsersPage() {
                                                 </span>
                                             </td>
                                             <td>
-                                                {adminApps.length === 0 && regularApps.length === 0 ? (
+                                                {adminDomainKeys.length === 0 && regularDomainKeys.length === 0 ? (
                                                     <span className="text-muted">None</span>
                                                 ) : (
                                                     <div>
-                                                        {adminApps.map(a => (
-                                                            <span key={a.id} className="badge bg-warning text-dark me-1 mb-1">
+                                                        {adminDomainKeys.map((key) => (
+                                                            <span key={`admin-${key}`} className="badge bg-warning text-dark me-1 mb-1">
                                                                 <i className="fas fa-star me-1"></i>
-                                                                {a.name || a.key}
+                                                                {domainsByKey[key]?.name || key}
                                                             </span>
                                                         ))}
-                                                        {regularApps.map(a => (
-                                                            <span key={a.id} className="badge bg-info me-1 mb-1">
+                                                        {regularDomainKeys.map((key) => (
+                                                            <span key={`user-${key}`} className="badge bg-info me-1 mb-1">
                                                                 <i className="fas fa-user me-1"></i>
-                                                                {a.name || a.key}
+                                                                {domainsByKey[key]?.name || key}
                                                             </span>
                                                         ))}
                                                     </div>

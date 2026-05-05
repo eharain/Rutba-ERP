@@ -9,8 +9,8 @@ export default function UserAccessCard({
   updateAccess,
 }) {
   const [expanded, setExpanded] = useState(false);
-  const userAccessCount = (user.app_accesses || []).length;
-  const adminAccessCount = (user.admin_app_accesses || []).length;
+  const userAccessCount = (user.domain_accesses || []).length;
+  const adminAccessCount = (user.admin_domain_accesses || []).length;
 
   return (
     <div className="card mb-3">
@@ -95,10 +95,10 @@ export default function UserAccessCard({
               </thead>
               <tbody>
                 {apps.map((app) => {
-                  const userKey = `${user.id}:${app.id}:user`;
-                  const adminKey = `${user.id}:${app.id}:admin`;
-                  const userChecked = isChecked(user, app.id, "app_accesses");
-                  const adminChecked = isChecked(user, app.id, "admin_app_accesses");
+                  const userKey = `${user.id}:${app.key}:user`;
+                  const adminKey = `${user.id}:${app.key}:admin`;
+                  const userChecked = isChecked(user, app.key, "domain_accesses");
+                  const adminChecked = isChecked(user, app.key, "admin_domain_accesses");
                   const saving = !!(savingMap[userKey] || savingMap[adminKey]);
 
                   return (
@@ -120,7 +120,7 @@ export default function UserAccessCard({
                             checked={userChecked}
                             disabled={saving || adminChecked}
                             onChange={(e) =>
-                              updateAccess(user, app.id, "user", e.target.checked)
+                              updateAccess(user, app.key, "user", e.target.checked)
                             }
                             style={{ cursor: saving ? "wait" : "pointer" }}
                           />
@@ -137,7 +137,7 @@ export default function UserAccessCard({
                             checked={adminChecked}
                             disabled={saving}
                             onChange={(e) =>
-                              updateAccess(user, app.id, "admin", e.target.checked)
+                              updateAccess(user, app.key, "admin", e.target.checked)
                             }
                             style={{ cursor: saving ? "wait" : "pointer" }}
                           />

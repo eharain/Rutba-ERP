@@ -68,7 +68,10 @@ async function assertCanManageTeams(ctx, strapi, { requireTargetMembership = fal
     where: { id: ctx.state?.user?.id },
     populate: {
       role: { select: ['type'] },
-      admin_app_accesses: { select: ['key'] },
+      permission_roles: {
+        select: ['level'],
+        populate: { domain: { select: ['key'] } },
+      },
     },
   });
 
@@ -79,8 +82,11 @@ async function assertCanManageTeams(ctx, strapi, { requireTargetMembership = fal
     return { ok: true, bypass: true };
   }
 
-  const adminApps = (authUser.admin_app_accesses || []).map((a) => a.key);
-  if (adminApps.includes('hr') || adminApps.includes('auth')) {
+  const adminDomains = (authUser.permission_roles || [])
+    .filter((r) => r?.level === 'admin')
+    .map((r) => r?.domain?.key)
+    .filter(Boolean);
+  if (adminDomains.includes('hr') || adminDomains.includes('auth')) {
     return { ok: true, bypass: true };
   }
 

@@ -4,6 +4,7 @@ const APP_ACCESS_ALIASES = {
   rider: ['delivery'],
   'order-management': ['delivery', 'cms'],
   'web-orders': ['web-user'],
+  web: ['web-user'],
 };
 
 function normalizeKeys(values = []) {

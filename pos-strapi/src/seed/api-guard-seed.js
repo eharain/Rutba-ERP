@@ -440,6 +440,7 @@ async function seedDomains(strapi) {
             name: entry.name,
             description: `Rutba ERP domain — ${entry.name}`,
             matchKey: 'x-rutba-app',
+            strapiRoleType: 'authenticated',
         })),
         // Explicit storefront domain alias used by rutba-web clients.
         // Keeps api-guard domain list intuitive: "web" and "web-user".
@@ -448,6 +449,14 @@ async function seedDomains(strapi) {
             name: 'Web Storefront',
             description: 'Rutba ERP domain — Web Storefront',
             matchKey: 'x-rutba-app',
+            strapiRoleType: 'public',
+        },
+        {
+            key: 'web-user',
+            name: 'Web Storefront Users',
+            description: 'Rutba ERP domain — Web Storefront authenticated users',
+            matchKey: 'x-rutba-app',
+            strapiRoleType: 'authenticated',
         },
     ];
 
@@ -465,6 +474,7 @@ async function seedDomains(strapi) {
                 name: domain.name,
                 description: domain.description,
                 isActive: true,
+                strapiRoleType: domain.strapiRoleType || 'authenticated',
                 matchMode: 'header',
                 matchKey: domain.matchKey,
             },
@@ -515,40 +525,42 @@ async function seedGuardRoles(strapi) {
 
     // Explicit web storefront roles under domain "web".
     // Keeps UI aligned with web-app concepts (public/user) even though role level is "staff".
-    const webDomainId = domainIdByKey.get('web');
-    if (webDomainId) {
-        const webRoles = [
+    const webPublicDomainId = domainIdByKey.get('web');
+    if (webPublicDomainId) {
+        const { created: wasCreated } = await upsert(
+            strapi,
+            'plugin::api-guard-pro.role',
+            'key',
+            'web-public',
             {
-                key: 'web-public',
                 name: 'Web Storefront — Public',
+                level: 'staff',
                 description: 'Public/anonymous storefront access',
-                level: 'staff',
+                isActive: true,
+                domain: webPublicDomainId,
             },
-            {
-                key: 'web-user',
-                name: 'Web Storefront — User',
-                description: 'Authenticated storefront user access',
-                level: 'staff',
-            },
-        ];
+            'guard role'
+        );
+        if (wasCreated) created++;
+    }
 
-        for (const role of webRoles) {
-            const { created: wasCreated } = await upsert(
-                strapi,
-                'plugin::api-guard-pro.role',
-                'key',
-                role.key,
-                {
-                    name: role.name,
-                    level: role.level,
-                    description: role.description,
-                    isActive: true,
-                    domain: webDomainId,
-                },
-                'guard role'
-            );
-            if (wasCreated) created++;
-        }
+    const webUserDomainId = domainIdByKey.get('web-user');
+    if (webUserDomainId) {
+        const { created: wasCreated } = await upsert(
+            strapi,
+            'plugin::api-guard-pro.role',
+            'key',
+            'web-user',
+            {
+                name: 'Web Storefront — User',
+                level: 'staff',
+                description: 'Authenticated storefront user access',
+                isActive: true,
+                domain: webUserDomainId,
+            },
+            'guard role'
+        );
+        if (wasCreated) created++;
     }
 
     strapi.log.info(`[api-guard-seed] Guard roles: ${created} created`);

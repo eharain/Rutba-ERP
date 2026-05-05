@@ -76,18 +76,6 @@
       "inversedBy": "users",
       "configurable": false
     },
-    "app_accesses": {
-      "type": "relation",
-      "relation": "manyToMany",
-      "target": "api::app-access.app-access",
-      "inversedBy": "users"
-    },
-    "admin_app_accesses": {
-      "type": "relation",
-      "relation": "manyToMany",
-      "target": "api::app-access.app-access",
-      "inversedBy": "admin_users"
-    },
     "hr_employee": {
       "type": "relation",
       "relation": "oneToOne",

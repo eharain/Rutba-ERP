@@ -46,15 +46,21 @@ async function isAdminUser(userId, strapi) {
     where: { id: userId },
     populate: {
       role: { select: ['type'] },
-      admin_app_accesses: { select: ['key'] },
+      permission_roles: {
+        select: ['level'],
+        populate: { domain: { select: ['key'] } },
+      },
     },
   });
 
   // Super-admin role always passes
   if (user?.role?.type === 'admin') return true;
 
-  // App-level admin for the "sale" app
-  const adminKeys = (user?.admin_app_accesses || []).map((a) => a.key);
+  // Domain-level admin for the "sale" domain
+  const adminKeys = (user?.permission_roles || [])
+    .filter((r) => r?.level === 'admin')
+    .map((r) => r?.domain?.key)
+    .filter(Boolean);
   return adminKeys.includes('sale');
 }
 

@@ -36,7 +36,7 @@ export default function AccessAssignmentPage() {
     try {
       const [usersRes, appsRes] = await Promise.all([
         authApi.get("/auth-admin/users"),
-        authApi.get("/app-accesses"),
+        authApi.get("/auth-admin/domains"),
       ]);
 
       const userData = Array.isArray(usersRes) ? usersRes : usersRes?.data || [];
@@ -79,7 +79,7 @@ export default function AccessAssignmentPage() {
   const pagedUsers = filteredUsers.slice(startIndex, endIndex);
 
   function getIds(user, field) {
-    return new Set((user[field] || []).map((a) => a.id));
+    return new Set((user[field] || []));
   }
 
   function isChecked(user, appId, field) {
@@ -91,40 +91,37 @@ export default function AccessAssignmentPage() {
     setSavingMap((prev) => ({ ...prev, [key]: value }));
   }
 
-  async function updateAccess(user, appId, kind, checked) {
-    const key = `${user.id}:${appId}:${kind}`;
+  async function updateAccess(user, appKey, kind, checked) {
+    const key = `${user.id}:${appKey}:${kind}`;
     const prevUsers = users;
 
     const nextUsers = users.map((u) => {
       if (u.id !== user.id) return u;
 
-      const appSet = getIds(u, "app_accesses");
-      const adminSet = getIds(u, "admin_app_accesses");
+      const appSet = getIds(u, "domain_accesses");
+      const adminSet = getIds(u, "admin_domain_accesses");
 
       if (kind === "user") {
-        if (checked) appSet.add(appId);
+        if (checked) appSet.add(appKey);
         else {
-          appSet.delete(appId);
-          adminSet.delete(appId);
+          appSet.delete(appKey);
+          adminSet.delete(appKey);
         }
       }
 
       if (kind === "admin") {
         if (checked) {
-          adminSet.add(appId);
-          appSet.add(appId);
+          adminSet.add(appKey);
+          appSet.add(appKey);
         } else {
-          adminSet.delete(appId);
+          adminSet.delete(appKey);
         }
       }
 
-      const nextAppAccesses = apps.filter((a) => appSet.has(a.id));
-      const nextAdminAppAccesses = apps.filter((a) => adminSet.has(a.id));
-
       return {
         ...u,
-        app_accesses: nextAppAccesses,
-        admin_app_accesses: nextAdminAppAccesses,
+        domain_accesses: Array.from(appSet),
+        admin_domain_accesses: Array.from(adminSet),
       };
     });
 
@@ -134,8 +131,6 @@ export default function AccessAssignmentPage() {
 
     try {
       const current = nextUsers.find((u) => u.id === user.id);
-      const appIds = (current?.app_accesses || []).map((a) => a.id);
-      const adminIds = (current?.admin_app_accesses || []).map((a) => a.id);
 
       await authApi.put(`/auth-admin/users/${user.id}`, {
         username: current?.username,
@@ -144,8 +139,8 @@ export default function AccessAssignmentPage() {
         confirmed: current?.confirmed,
         blocked: current?.blocked,
         role: current?.role?.id || undefined,
-        app_accesses: appIds,
-        admin_app_accesses: adminIds,
+        domain_accesses: current?.domain_accesses || [],
+        admin_domain_accesses: current?.admin_domain_accesses || [],
       });
     } catch (err) {
       setUsers(prevUsers);
@@ -174,7 +169,7 @@ export default function AccessAssignmentPage() {
           </div>
 
           <p className="text-muted small mb-3">
-            Assign app access for each user. <strong>User</strong> access grants basic permissions, while <strong>Admin</strong> access provides elevated privileges (and automatically includes user access).
+            Assign domain access for each user. <strong>User</strong> access grants basic permissions, while <strong>Admin</strong> access provides elevated privileges (and automatically includes user access).
           </p>
 
           {error && <div className="alert alert-danger">{error}</div>}

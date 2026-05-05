@@ -1,6 +1,6 @@
+// @ts-nocheck
 'use strict';
 
-/** @type {import('@strapi/strapi').Core.RouterConfig} */
 module.exports = {
   type: 'content-api',
   routes: [
@@ -38,6 +38,24 @@ module.exports = {
       method: 'GET',
       path: '/auth-admin/roles',
       handler: 'api::auth-admin.auth-admin.listRoles',
+      config: { auth: false },
+    },
+    {
+      method: 'GET',
+      path: '/auth-admin/domains',
+      handler: 'api::auth-admin.auth-admin.listDomains',
+      config: { auth: false },
+    },
+    {
+      method: 'POST',
+      path: '/auth-admin/domains',
+      handler: 'api::auth-admin.auth-admin.createDomain',
+      config: { auth: false },
+    },
+    {
+      method: 'DELETE',
+      path: '/auth-admin/domains/:id',
+      handler: 'api::auth-admin.auth-admin.deleteDomain',
       config: { auth: false },
     },
   ],
