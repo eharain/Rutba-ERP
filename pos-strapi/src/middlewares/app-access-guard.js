@@ -35,19 +35,12 @@
  */
 
 const {
-  getPermissionsForAppGroups,
+  APP_ACCESS_ALIASES,
   canGroupElevateToAdmin,
-  getEnabledPermissionGroups,
-} = require('../../config/app-access-permissions');
-
-// Temporary compatibility aliases for transitioned apps.
-// Allows users with legacy app-access keys to continue working while
-// assignments are migrated in auth/admin.
-const APP_ACCESS_ALIASES = {
-  rider: ['delivery'],
-  'order-management': ['delivery', 'cms'],
-  'web-orders': ['web-user'],
-};
+  getEffectiveAppAccessFromUser,
+  getAccessibleAppKeysForRequest,
+  getPermissionDefsForAccessibleApps,
+} = require('../../../packages/pos-shared/lib/endpoints/access-metadata.js');
 
 // ───────────────────── helpers ──────────────────────────────
 function normaliseAction(action, method = 'GET') {
@@ -123,24 +116,7 @@ module.exports = (config, { strapi }) => {
       },
     });
 
-    const roleDerivedAppKeys = (user?.permission_roles || [])
-      .map((r) => r?.domain?.key)
-      .filter(Boolean);
-
-    const roleDerivedAdminKeys = (user?.permission_roles || [])
-      .filter((r) => r.level === 'admin')
-      .map((r) => r?.domain?.key)
-      .filter(Boolean);
-
-    const appKeys = [...new Set([
-      ...(user?.app_accesses || []).map((a) => a.key),
-      ...roleDerivedAppKeys,
-    ])];
-
-    const adminKeys = [...new Set([
-      ...(user?.admin_app_accesses || []).map((a) => a.key),
-      ...roleDerivedAdminKeys,
-    ])];
+    const { appKeys, adminKeys } = getEffectiveAppAccessFromUser(user);
 
     const result = {
       roleType: user?.role?.type || null,
@@ -243,13 +219,7 @@ module.exports = (config, { strapi }) => {
     }
 
     // Ã¢â€â‚¬Ã¢â€â‚¬ b.3  Resolve access level Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
-    const allowedAppKeys = [
-      appName,
-      ...(APP_ACCESS_ALIASES[appName] || []),
-    ];
-
-    const effectiveAppKeys = allowedAppKeys.filter((k, i) => allowedAppKeys.indexOf(k) === i);
-    const accessibleAppKeys = effectiveAppKeys.filter((k) => appKeys.includes(k) || adminKeys.includes(k));
+    const accessibleAppKeys = getAccessibleAppKeysForRequest(appName, appKeys, adminKeys);
     const hasAppAccess = accessibleAppKeys.length > 0;
 
     if (!hasAppAccess) {
@@ -277,23 +247,11 @@ module.exports = (config, { strapi }) => {
 
     // -- Permission check (b.3.a & b.3.b) --------------------
     {
-      const permissionDefs = accessibleAppKeys.flatMap((appKey) => {
-        const enabledGroups = getEnabledPermissionGroups(appKey);
-        const resolvedGroups = [];
-
-        if (appKeys.includes(appKey) && enabledGroups.includes('staff')) {
-          resolvedGroups.push('staff');
-          if (enabledGroups.includes('manager') && adminKeys.includes(appKey)) {
-            resolvedGroups.push('manager');
-          }
-        }
-
-        if (adminKeys.includes(appKey) && enabledGroups.includes('admin')) {
-          resolvedGroups.push('admin');
-        }
-
-        return getPermissionsForAppGroups(appKey, resolvedGroups);
-      });
+      const permissionDefs = getPermissionDefsForAccessibleApps(
+        accessibleAppKeys,
+        appKeys,
+        adminKeys
+      );
 
       const hasFind = hasPermissionInDefs(permissionDefs, uid, 'find');
       const hasFindOne = hasPermissionInDefs(permissionDefs, uid, 'findOne');

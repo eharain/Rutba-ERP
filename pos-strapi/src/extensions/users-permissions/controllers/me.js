@@ -1,19 +1,16 @@
 'use strict';
 const { createCoreController } = require('@strapi/strapi').factories;
 const {
-    getPermissionsForAppGroups,
     settingsByKey,
     DEFAULT_SESSION_TIMEOUT,
     CLIENT_PLUGIN_PERMISSIONS,
     canGroupElevateToAdmin,
     getEnabledPermissionGroups,
-} = require('../../../../config/app-access-permissions');
-
-const APP_ACCESS_ALIASES = {
-    rider: ['delivery'],
-    'order-management': ['delivery', 'cms'],
-    'web-orders': ['web-user'],
-};
+    getEffectiveAppAccessFromUser,
+    getAccessibleAppKeysForRequest,
+    getPermissionDefsForAccessibleApps,
+    permissionDefsToActions,
+} = require('../../../../../packages/pos-shared/lib/endpoints/access-metadata.js');
 
 module.exports = createCoreController('plugin::users-permissions.me', ({ strapi }) => ({
     mePermissions: async (ctx) => {
@@ -39,21 +36,8 @@ module.exports = createCoreController('plugin::users-permissions.me', ({ strapi 
             });
 
             const roleType = fullUser?.role?.type;
-            const appAccess = (fullUser?.app_accesses || []).map(a => a.key);
-            const adminAppAccess = (fullUser?.admin_app_accesses || []).map(a => a.key);
-            const permissionRoles = fullUser?.permission_roles || [];
-
-            const roleDerivedAppAccess = permissionRoles
-                .map((r) => r?.domain?.key)
-                .filter(Boolean);
-
-            const roleDerivedAdminAccess = permissionRoles
-                .filter((r) => r.level === 'admin')
-                .map((r) => r?.domain?.key)
-                .filter(Boolean);
-
-            const effectiveAppAccess = [...new Set([...appAccess, ...roleDerivedAppAccess])];
-            const effectiveAdminAppAccess = [...new Set([...adminAppAccess, ...roleDerivedAdminAccess])];
+            const { appKeys: effectiveAppAccess, adminKeys: effectiveAdminAppAccess } =
+                getEffectiveAppAccessFromUser(fullUser);
             const appName = (ctx.request.headers['x-rutba-app'] || '').trim().toLowerCase();
 
             let permissions = [];
@@ -62,29 +46,17 @@ module.exports = createCoreController('plugin::users-permissions.me', ({ strapi 
             // Applicable to ANY role whose user holds the corresponding
             // app_access (or admin_app_access).
             if (appName) {
-                const candidateKeys = [appName, ...(APP_ACCESS_ALIASES[appName] || [])]
-                    .filter((k, i, a) => a.indexOf(k) === i);
-                const accessibleKeys = candidateKeys.filter((k) => effectiveAppAccess.includes(k) || effectiveAdminAppAccess.includes(k));
-
-                permissions = accessibleKeys
-                    .flatMap((key) => {
-                        const enabledGroups = getEnabledPermissionGroups(key);
-                        const groups = [];
-
-                        if (effectiveAppAccess.includes(key) && enabledGroups.includes('staff')) {
-                            groups.push('staff');
-                            if (enabledGroups.includes('manager') && effectiveAdminAppAccess.includes(key)) {
-                                groups.push('manager');
-                            }
-                        }
-
-                        if (effectiveAdminAppAccess.includes(key) && enabledGroups.includes('admin')) {
-                            groups.push('admin');
-                        }
-
-                        return getPermissionsForAppGroups(key, groups);
-                    })
-                    .flatMap((def) => (def.actions || []).map((action) => `${def.uid}.${action}`));
+                const accessibleKeys = getAccessibleAppKeysForRequest(
+                    appName,
+                    effectiveAppAccess,
+                    effectiveAdminAppAccess
+                );
+                const permissionDefs = getPermissionDefsForAccessibleApps(
+                    accessibleKeys,
+                    effectiveAppAccess,
+                    effectiveAdminAppAccess
+                );
+                permissions = permissionDefsToActions(permissionDefs);
             }
 
             if (roleType !== 'rutba_app_user') {

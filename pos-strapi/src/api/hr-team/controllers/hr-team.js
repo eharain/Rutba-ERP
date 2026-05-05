@@ -1,35 +1,12 @@
 'use strict';
 
 const { createCoreController } = require('@strapi/strapi').factories;
-const { getAppRoleOptions, getEnabledPermissionGroups } = require('../../../../config/app-access-permissions');
-
-function sanitizeAppRoles(appRoles) {
-  const options = getAppRoleOptions();
-  const optionMap = new Map(options.map((o) => [o.appKey, new Set(o.enabledGroups || [])]));
-  const source = appRoles && typeof appRoles === 'object' ? appRoles : {};
-
-  const sanitized = {};
-  for (const [appKey, roles] of Object.entries(source)) {
-    const allowed = optionMap.get(appKey);
-    if (!allowed) continue;
-    const normalized = Array.isArray(roles) ? roles : [];
-    const validRoles = [...new Set(normalized.filter((r) => allowed.has(String(r))))];
-    sanitized[appKey] = validRoles;
-  }
-
-  return sanitized;
-}
-
-function deriveTeamSlug(data) {
-  const explicit = String(data?.team_slug || '').trim();
-  if (explicit) return explicit.toLowerCase();
-  const byDepartment = String(data?.department?.name || data?.departmentName || '').trim();
-  if (byDepartment) {
-    return byDepartment.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-  }
-  const byName = String(data?.name || '').trim();
-  return byName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-}
+const {
+  getAppRoleOptions,
+  getEnabledPermissionGroups,
+  sanitizeAppRolesForTeam,
+  deriveTeamSlugFromData,
+} = require('../../../../../packages/pos-shared/lib/endpoints/access-metadata.js');
 
 async function resolveEmployeeForUser(strapi, user) {
   if (!user?.id) return null;
@@ -155,8 +132,8 @@ module.exports = createCoreController('api::hr-team.hr-team', ({ strapi }) => ({
 
     const body = ctx.request.body || {};
     if (body?.data) {
-      body.data.team_slug = deriveTeamSlug(body.data);
-      body.data.app_roles = sanitizeAppRoles(body.data.app_roles);
+      body.data.team_slug = deriveTeamSlugFromData(body.data);
+      body.data.app_roles = sanitizeAppRolesForTeam(body.data.app_roles);
     }
     return await super.create(ctx);
   },
@@ -168,10 +145,10 @@ module.exports = createCoreController('api::hr-team.hr-team', ({ strapi }) => ({
     const body = ctx.request.body || {};
     if (body?.data) {
       if (Object.prototype.hasOwnProperty.call(body.data, 'app_roles')) {
-        body.data.app_roles = sanitizeAppRoles(body.data.app_roles);
+        body.data.app_roles = sanitizeAppRolesForTeam(body.data.app_roles);
       }
       if (Object.prototype.hasOwnProperty.call(body.data, 'team_slug') || Object.prototype.hasOwnProperty.call(body.data, 'name') || Object.prototype.hasOwnProperty.call(body.data, 'department')) {
-        body.data.team_slug = deriveTeamSlug(body.data);
+        body.data.team_slug = deriveTeamSlugFromData(body.data);
       }
     }
     return await super.update(ctx);
