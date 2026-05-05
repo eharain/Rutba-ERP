@@ -8,7 +8,7 @@ const {
     PLUGIN_PERMISSIONS,
     PUBLIC_PERMISSIONS,
     getAppRoleOptions,
-} = require('../config/app-access-permissions');
+} = require('../../packages/pos-shared/lib/endpoints/access-metadata.js');
 const seedAccounting = require('./seed/accounting-seed');
 const runJsonSeeds = require('./seed/json-seed-runner');
 

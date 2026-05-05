@@ -183,7 +183,7 @@ const APP_ENTRIES = [
     },
 ];
 
-const ROUTE_OWNERS_BY_UID = {
+const ROUTE_OWNERS_BY_UID_ALL = {
     'api::product.product': { find: ['stock', 'sale', 'cms'], create: ['stock', 'cms'], update: ['stock', 'cms'], delete: ['stock', 'auth'] },
     'api::product-group.product-group': { find: ['stock', 'cms'], create: ['stock', 'cms'], update: ['stock', 'cms'], delete: ['stock', 'cms', 'auth'] },
     'api::category.category': { find: ['stock', 'sale', 'cms'], create: ['stock', 'cms'], update: ['stock', 'cms'], delete: ['stock', 'auth'] },
@@ -238,7 +238,7 @@ const ROUTE_OWNERS_BY_UID = {
     'api::app-access.app-access': ['auth'],
 };
 
-const APP_PERMISSION_DEFS = {
+const APP_PERMISSION_DEFS_ALL = {
     stock: [
         { uid: 'api::product.product', actions: WRITE },
         { uid: 'api::product-group.product-group', actions: WRITE },
@@ -553,6 +553,28 @@ const ENDPOINT_COVERAGE = {
     'api::term.term': ['find', 'findOne', 'create', 'update', 'delete'],
 };
 
+const USED_ENDPOINT_UIDS = new Set(Object.keys(ENDPOINT_COVERAGE));
+
+const APP_PERMISSION_DEFS = Object.fromEntries(
+    Object.entries(APP_PERMISSION_DEFS_ALL).map(([appKey, defs]) => {
+        const filteredDefs = (defs || [])
+            .filter((def) => USED_ENDPOINT_UIDS.has(def.uid))
+            .map((def) => {
+                const coveredActions = new Set(ENDPOINT_COVERAGE[def.uid] || []);
+                const actions = [...new Set((def.actions || []).filter((action) => coveredActions.has(action)))];
+                if (actions.length === 0) return null;
+                return {
+                    uid: def.uid,
+                    actions,
+                    ...(def.group ? { group: def.group } : {}),
+                };
+            })
+            .filter(Boolean);
+
+        return [appKey, filteredDefs];
+    })
+);
+
 const COVERED_ACTIONS_BY_UID = Object.fromEntries(
     Object.entries(ENDPOINT_COVERAGE).map(([uid, actions]) => [uid, new Set(actions || [])])
 );
@@ -581,150 +603,6 @@ function normalizePermissionGroupKey(groupKey) {
     if (!groupKey) return null;
     const normalized = String(groupKey).trim().toLowerCase();
     return PERMISSION_GROUP_ALIASES[normalized] || normalized;
-}
-
-function getOwnersByAction(uid) {
-    const routeDef = ROUTE_OWNERS_BY_UID[uid];
-    if (!routeDef) return {};
-    if (Array.isArray(routeDef)) {
-        return {
-            find: [...routeDef],
-            findOne: [...routeDef],
-            create: [...routeDef],
-            update: [...routeDef],
-            delete: [...routeDef],
-        };
-    }
-    return Object.fromEntries(
-        Object.entries(routeDef).map(([action, owners]) => [action, [...owners]])
-    );
-}
-
-function getOwnersForUid(uid) {
-    const byAction = getOwnersByAction(uid);
-    return [...new Set(Object.values(byAction).flat())];
-}
-
-function getPermissionsByAppForUid(uid) {
-    const result = {};
-    Object.entries(APP_PERMISSION_DEFS).forEach(([appKey, defs]) => {
-        const groups = {};
-        (defs || []).forEach((def) => {
-            if (def.uid !== uid) return;
-            const group = normalizePermissionGroupKey(def.group || 'staff');
-            const allowedActions = filterActionsByEndpointCoverage(def.uid, def.actions || []);
-            if (allowedActions.length === 0) return;
-            groups[group] = [...new Set([...(groups[group] || []), ...allowedActions])].sort();
-        });
-        if (Object.keys(groups).length > 0) result[appKey] = groups;
-    });
-    return result;
-}
-
-function getDisabledPlaceholdersForUid(uid) {
-    const row = DISABLED_PLACEHOLDERS.find((x) => x.uid === uid);
-    return row ? [...(row.placeholders || [])] : [];
-}
-
-const ACTION_HTTP_MAP = {
-    find: 'GET',
-    findOne: 'GET',
-    create: 'POST',
-    update: 'PUT',
-    delete: 'DELETE',
-    publish: 'PUT',
-    unpublish: 'PUT',
-    open: 'POST',
-    close: 'PUT',
-    active: 'GET',
-    expire: 'PUT',
-    process: 'POST',
-    bulk: 'POST',
-    orphanGroups: 'GET',
-    orphanGroupItems: 'GET',
-    upload: 'POST',
-};
-
-function deriveActionAccess(uid) {
-    const routeDef = ROUTE_OWNERS_BY_UID[uid];
-    if (!routeDef) return {};
-    if (Array.isArray(routeDef)) {
-        return {
-            find: [...routeDef],
-            findOne: [...routeDef],
-            create: [...routeDef],
-            update: [...routeDef],
-            delete: [...routeDef],
-        };
-    }
-    return Object.fromEntries(Object.entries(routeDef).map(([k, v]) => [k, [...v]]));
-}
-
-function deriveAppAccess(uid, actionAccess = {}) {
-    const appKeys = [...new Set(Object.values(actionAccess).flat())];
-
-    return appKeys.map((appKey) => {
-        const appEntry = APP_ENTRIES.find((entry) => entry.key === appKey);
-        const defs = (APP_PERMISSION_DEFS[appKey] || []).filter((def) => def.uid === uid);
-
-        const groups = [...new Set(defs.map((def) => normalizePermissionGroupKey(def.group || 'staff')))];
-        const roleKeys = groups.length > 0 ? groups : ['staff'];
-        const accessGroups = roleKeys.map((r) => {
-            if (r === 'staff') return 'user';
-            return r;
-        });
-
-        return {
-            appKey,
-            appName: appEntry?.name || appKey,
-            roleKeys,
-            accessGroups,
-        };
-    });
-}
-
-function toHttpVerb(action) {
-    return ACTION_HTTP_MAP[action] || 'GET';
-}
-
-function deriveMethodHttp(methodActions = {}) {
-    return Object.fromEntries(
-        Object.entries(methodActions || {}).map(([method, action]) => [method, toHttpVerb(action)])
-    );
-}
-
-function deriveActionHttp(actionAccess = {}, methodActions = {}) {
-    const actionKeys = [...new Set([
-        ...Object.keys(actionAccess || {}),
-        ...Object.values(methodActions || {}),
-    ])];
-    return Object.fromEntries(actionKeys.map((action) => [action, toHttpVerb(action)]));
-}
-
-function enrichEndpointMeta(meta = {}) {
-    const uid = meta.uid;
-    const methodActions = meta.methodActions || {};
-    const actionAccess = meta.actionAccess || deriveActionAccess(uid);
-
-    return {
-        ...meta,
-        appAccess: meta.appAccess || deriveAppAccess(uid, actionAccess),
-        actionAccess,
-        methodHttp: meta.methodHttp || deriveMethodHttp(methodActions),
-        actionHttp: meta.actionHttp || deriveActionHttp(actionAccess, methodActions),
-    };
-}
-
-function buildEndpointMeta(uid, basePath, methodActions = {}) {
-    return ({
-        uid,
-        basePath,
-        owners: getOwnersForUid(uid),
-        ownersByAction: getOwnersByAction(uid),
-        permissionsByApp: getPermissionsByAppForUid(uid),
-        methodActions: { ...methodActions },
-        disabledPlaceholders: getDisabledPlaceholdersForUid(uid),
-    });
 }
 
 function getEnabledGroupKeysForEntry(entry) {
@@ -797,7 +675,6 @@ const DISABLED_PLACEHOLDERS = PARITY_MATRIX
     }));
 
 const ALL_UIDS = [...new Set([
-    ...Object.keys(ROUTE_OWNERS_BY_UID),
     ...Object.keys(ENDPOINT_COVERAGE),
     ...PARITY_MATRIX.map((r) => r.uid),
 ])].sort();
@@ -966,6 +843,60 @@ function getPermissionsForAppGroups(appKey, groupKeys = []) {
     return normalizedKeys.flatMap((key) => appGroups[key] || []);
 }
 
+function getEffectiveAppAccessFromUser(fullUser) {
+    const appAccess = (fullUser?.app_accesses || []).map((a) => a.key);
+    const adminAppAccess = (fullUser?.admin_app_accesses || []).map((a) => a.key);
+    const permissionRoles = fullUser?.permission_roles || [];
+
+    const roleDerivedAppAccess = permissionRoles
+        .map((r) => r?.domain?.key)
+        .filter(Boolean);
+
+    const roleDerivedAdminAccess = permissionRoles
+        .filter((r) => r.level === 'admin')
+        .map((r) => r?.domain?.key)
+        .filter(Boolean);
+
+    return {
+        appKeys: [...new Set([...appAccess, ...roleDerivedAppAccess])],
+        adminKeys: [...new Set([...adminAppAccess, ...roleDerivedAdminAccess])],
+    };
+}
+
+function getAccessibleAppKeysForRequest(appName, appKeys = [], adminKeys = []) {
+    const candidateKeys = [appName, ...(APP_ACCESS_ALIASES[appName] || [])]
+        .filter(Boolean)
+        .filter((k, i, a) => a.indexOf(k) === i);
+
+    return candidateKeys.filter((k) => appKeys.includes(k) || adminKeys.includes(k));
+}
+
+function getPermissionDefsForAccessibleApps(accessibleAppKeys = [], appKeys = [], adminKeys = []) {
+    return (accessibleAppKeys || []).flatMap((appKey) => {
+        const enabledGroups = getEnabledPermissionGroups(appKey);
+        const groups = [];
+
+        if (appKeys.includes(appKey) && enabledGroups.includes('staff')) {
+            groups.push('staff');
+            if (enabledGroups.includes('manager') && adminKeys.includes(appKey)) {
+                groups.push('manager');
+            }
+        }
+
+        if (adminKeys.includes(appKey) && enabledGroups.includes('admin')) {
+            groups.push('admin');
+        }
+
+        return getPermissionsForAppGroups(appKey, groups);
+    });
+}
+
+function permissionDefsToActions(permissionDefs = []) {
+    return (permissionDefs || []).flatMap((def) =>
+        (def.actions || []).map((action) => `${def.uid}.${action}`)
+    );
+}
+
 const userPermissionsByKey = Object.fromEntries(
     Object.entries(permissionGroupsByKey).map(([appKey, groups]) => [appKey, groups.staff || []])
 );
@@ -992,6 +923,30 @@ const FLAT_PERMISSIONS = Object.entries(permissionGroupsByKey).flatMap(([appKey,
     )
 );
 
+const DEFAULT_SESSION_TIMEOUT = 60;
+
+const ENTRIES = APP_ENTRIES.map((entry) => ({
+    key: entry.key,
+    name: entry.name,
+    description: entry.description,
+    sessionTimeout: entry.sessionTimeout,
+    enabledGroups: entry.enabledGroups,
+    permissions: [
+        {
+            role: PERMISSION_GROUPS.staff,
+            grants: permissionGroupsByKey[entry.key]?.staff || [],
+        },
+        {
+            role: PERMISSION_GROUPS.manager,
+            grants: permissionGroupsByKey[entry.key]?.manager || [],
+        },
+        {
+            role: PERMISSION_GROUPS.admin,
+            grants: permissionGroupsByKey[entry.key]?.admin || [],
+        },
+    ].filter((row) => Array.isArray(row.grants) && row.grants.length > 0),
+}));
+
 const settingsByKey = Object.fromEntries(
     APP_ENTRIES.map((entry) => [
         entry.key,
@@ -1013,6 +968,34 @@ function getAppRoleOptions() {
     }));
 }
 
+function sanitizeAppRolesForTeam(appRoles) {
+    const options = getAppRoleOptions();
+    const optionMap = new Map(options.map((o) => [o.appKey, new Set(o.enabledGroups || [])]));
+    const source = appRoles && typeof appRoles === 'object' ? appRoles : {};
+
+    const sanitized = {};
+    for (const [appKey, roles] of Object.entries(source)) {
+        const allowed = optionMap.get(appKey);
+        if (!allowed) continue;
+        const normalized = Array.isArray(roles) ? roles : [];
+        const validRoles = [...new Set(normalized.filter((r) => allowed.has(String(r))))];
+        sanitized[appKey] = validRoles;
+    }
+
+    return sanitized;
+}
+
+function deriveTeamSlugFromData(data) {
+    const explicit = String(data?.team_slug || '').trim();
+    if (explicit) return explicit.toLowerCase();
+    const byDepartment = String(data?.department?.name || data?.departmentName || '').trim();
+    if (byDepartment) {
+        return byDepartment.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    }
+    const byName = String(data?.name || '').trim();
+    return byName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+}
+
 function getGrantsForAppRole(appKey, roleKey) {
     return getPermissionsForAppGroups(appKey, [roleKey]);
 }
@@ -1029,90 +1012,28 @@ const WEB_USER_PLUGIN_PERMISSIONS =
 const PUBLIC_PERMISSIONS =
     PUBLIC_PERMISSION_ENTRIES.find((entry) => entry.role.roleType === 'public')?.permissions || [];
 
-const AppAccessMetadata = ({
-    APP_ENTRIES,
-    APP_ACCESS_ALIASES,
-    APP_DEPARTMENT_SEED_MAP,
-    PERMISSION_GROUPS,
-    PERMISSION_GROUP_ALIASES,
-    DEFAULT_APP_GROUP_FLAGS,
-    ROUTE_OWNERS_BY_UID,
-    APP_PERMISSION_DEFS,
-    ENDPOINT_COVERAGE,
-    DISABLED_METHOD_STATUS,
-    DISABLED_METHOD_REASONS,
-    PARITY_MATRIX,
-    DISABLED_PLACEHOLDERS,
-    ALL_UIDS,
-    SYSTEM_PERMISSION_GROUPS,
-    PLUGIN_PERMISSION_ENTRIES,
-    PUBLIC_PERMISSION_ENTRIES,
-    settingsByKey,
-    permissionGroupsByKey,
-    userPermissionsByKey,
-    adminPermissionsByKey,
-    permissionsByKey,
-    FLAT_PERMISSIONS,
-    PLUGIN_PERMISSIONS,
-    CLIENT_PLUGIN_PERMISSIONS,
-    WEB_USER_PLUGIN_PERMISSIONS,
-    PUBLIC_PERMISSIONS,
-    normalizePermissionGroupKey,
-    getPermissionGroup,
-    canGroupElevateToAdmin,
-    getPermissionsForAppGroups,
-    getOwnersByAction,
-    getOwnersForUid,
-    getPermissionsByAppForUid,
-    getDisabledPlaceholdersForUid,
-    buildEndpointMeta,
-    enrichEndpointMeta,
-    getEnabledPermissionGroups,
-    getAppRoleOptions,
-    getGrantsForAppRole,
-});
-
 export {
-    AppAccessMetadata,
+    ENTRIES,
     APP_ENTRIES,
-    APP_ACCESS_ALIASES,
-    APP_DEPARTMENT_SEED_MAP,
     PERMISSION_GROUPS,
-    PERMISSION_GROUP_ALIASES,
-    DEFAULT_APP_GROUP_FLAGS,
-    ROUTE_OWNERS_BY_UID,
-    APP_PERMISSION_DEFS,
-    ENDPOINT_COVERAGE,
-    DISABLED_METHOD_STATUS,
-    DISABLED_METHOD_REASONS,
-    PARITY_MATRIX,
     DISABLED_PLACEHOLDERS,
-    ALL_UIDS,
     SYSTEM_PERMISSION_GROUPS,
-    PLUGIN_PERMISSION_ENTRIES,
-    PUBLIC_PERMISSION_ENTRIES,
     settingsByKey,
-    permissionGroupsByKey,
-    userPermissionsByKey,
-    adminPermissionsByKey,
+    DEFAULT_SESSION_TIMEOUT,
     permissionsByKey,
-    FLAT_PERMISSIONS,
     PLUGIN_PERMISSIONS,
     CLIENT_PLUGIN_PERMISSIONS,
-    WEB_USER_PLUGIN_PERMISSIONS,
     PUBLIC_PERMISSIONS,
-    normalizePermissionGroupKey,
-    getPermissionGroup,
     canGroupElevateToAdmin,
+    APP_ACCESS_ALIASES,
     getPermissionsForAppGroups,
-    getOwnersByAction,
-    getOwnersForUid,
-    getPermissionsByAppForUid,
-    getDisabledPlaceholdersForUid,
-    buildEndpointMeta,
-    enrichEndpointMeta,
     getEnabledPermissionGroups,
     getAppRoleOptions,
-    getGrantsForAppRole,
+    getEffectiveAppAccessFromUser,
+    getAccessibleAppKeysForRequest,
+    getPermissionDefsForAccessibleApps,
+    permissionDefsToActions,
+    sanitizeAppRolesForTeam,
+    deriveTeamSlugFromData,
 };
 
