@@ -1,5 +1,4 @@
 import { authApi } from '../api.js';
-import { buildEndpointMeta } from './access-metadata.js';
 
 /**
  * CashRegisterTransactionEndpoints
@@ -8,7 +7,7 @@ import { buildEndpointMeta } from './access-metadata.js';
 export const CashRegisterTransactionEndpoints = {
 
     /** Create a new cash register transaction — body provided by caller as { data }. */
-    create: () => ({ path: '/cash-register-transactions' }),
+    create: () => ({ path: '/cash-register-transactions' , action:'create' , method:post, apps:['sale'], approle:['admin,user'] }),
 
     /**
      * List transactions for a specific cash register.
@@ -17,6 +16,10 @@ export const CashRegisterTransactionEndpoints = {
      */
     byRegister: (registerDocumentId, { page = 1, pageSize = 500, sort } = {}) => ({
         path: '/cash-register-transactions',
+        action: 'find',
+        method: 'get',
+        apps: ['sale'],
+        approle: ['admin', 'user'],
         params: {
             filters: { cash_register: { documentId: { $eq: registerDocumentId } } },
             sort: sort ?? ['transaction_date:asc'],
@@ -37,8 +40,40 @@ export const CashRegisterTransactionEndpoints = {
     },
 };
 
-export const CashRegisterTransactionEndpointsMeta = buildEndpointMeta('api::cash-register-transaction.cash-register-transaction', '/cash-register-transactions', {
-    create: 'create',
-    byRegister: 'find',
-});
+export const CashRegisterTransactionEndpointsMeta = {
+    uid: 'api::cash-register-transaction.cash-register-transaction',
+    basePath: '/cash-register-transactions',
+    appAccess: [
+        { appKey: 'sale', appName: 'Point of Sale', roleKeys: ['staff', 'admin'], accessGroups: ['user', 'admin'] },
+        { appKey: 'accounts', appName: 'Accounting', roleKeys: ['staff'], accessGroups: ['user'] },
+        { appKey: 'auth', appName: 'User Management', roleKeys: ['staff'], accessGroups: ['user'] },
+    ],
+    actionAccess: {
+        find: ['sale', 'accounts'],
+        findOne: ['sale', 'accounts'],
+        create: ['sale'],
+        update: ['sale'],
+        'delete': ['sale', 'auth'],
+    },
+    methodActions: {
+        create: 'create',
+        byRegister: 'find',
+    },
+    methodHttp: {
+        create: 'POST',
+        byRegister: 'GET',
+        fetchByRegister: 'GET',
+        postCreate: 'POST',
+    },
+    actionHttp: {
+        find: 'GET',
+        findOne: 'GET',
+        create: 'POST',
+        update: 'PUT',
+        'delete': 'DELETE',
+    },
+};
+
+
+
 

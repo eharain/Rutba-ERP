@@ -1,5 +1,4 @@
 import { authApi } from '../api.js';
-import { buildEndpointMeta } from './access-metadata.js';
 
 /**
  * CashRegistersEndpoints
@@ -82,11 +81,18 @@ export const CashRegistersEndpoints = {
     postClose: (registerId, data) => authApi.put(`/cash-registers/${registerId}/close`, { data }),
 };
 
-export const CashRegistersEndpointsMeta = buildEndpointMeta('api::cash-register.cash-register', '/cash-registers', {
-    list: 'find',
-    byId: 'findOne',
-    active: 'active',
-    open: 'open',
-    close: 'close',
-});
+export const CashRegistersEndpointsMeta = {
+    uid: 'api::cash-register.cash-register',
+    basePath: '/cash-registers',
+    methodActions: {
+        list: 'find',
+        byId: 'findOne',
+        active: 'active',
+        open: 'open',
+        close: 'close',
+    },
+};
+
+
+
 

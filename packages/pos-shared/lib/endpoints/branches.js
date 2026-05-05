@@ -1,5 +1,4 @@
 import { authApi } from '../api.js';
-import { buildEndpointMeta } from './access-metadata.js';
 
 /**
  * BranchesEndpoints
@@ -81,11 +80,18 @@ export const BranchesEndpoints = {
     },
 };
 
-export const BranchesEndpointsMeta = buildEndpointMeta('api::branch.branch', '/branches', {
-    listWithDesks: 'find',
-    list: 'find',
-    byId: 'findOne',
-    update: 'update',
-    postArchiveStock: 'update',
-    postUnarchiveStock: 'update',
-});
+export const BranchesEndpointsMeta = {
+    uid: 'api::branch.branch',
+    basePath: '/branches',
+    methodActions: {
+        listWithDesks: 'find',
+        list: 'find',
+        byId: 'findOne',
+        update: 'update',
+        postArchiveStock: 'update',
+        postUnarchiveStock: 'update',
+    },
+};
+
+
+

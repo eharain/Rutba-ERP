@@ -553,6 +553,20 @@ const ENDPOINT_COVERAGE = {
     'api::term.term': ['find', 'findOne', 'create', 'update', 'delete'],
 };
 
+const COVERED_ACTIONS_BY_UID = Object.fromEntries(
+    Object.entries(ENDPOINT_COVERAGE).map(([uid, actions]) => [uid, new Set(actions || [])])
+);
+
+function getCoveredActionsForUid(uid) {
+    return COVERED_ACTIONS_BY_UID[uid] || null;
+}
+
+function filterActionsByEndpointCoverage(uid, actions = []) {
+    const covered = getCoveredActionsForUid(uid);
+    if (!covered) return [];
+    return [...new Set((actions || []).filter((action) => covered.has(action)))];
+}
+
 const DISABLED_METHOD_STATUS = {
     NOT_IMPLEMENTED: 'not-implemented',
     DISABLED: 'disabled',
@@ -598,7 +612,9 @@ function getPermissionsByAppForUid(uid) {
         (defs || []).forEach((def) => {
             if (def.uid !== uid) return;
             const group = normalizePermissionGroupKey(def.group || 'staff');
-            groups[group] = [...new Set([...(groups[group] || []), ...(def.actions || [])])].sort();
+            const allowedActions = filterActionsByEndpointCoverage(def.uid, def.actions || []);
+            if (allowedActions.length === 0) return;
+            groups[group] = [...new Set([...(groups[group] || []), ...allowedActions])].sort();
         });
         if (Object.keys(groups).length > 0) result[appKey] = groups;
     });
@@ -610,8 +626,97 @@ function getDisabledPlaceholdersForUid(uid) {
     return row ? [...(row.placeholders || [])] : [];
 }
 
+const ACTION_HTTP_MAP = {
+    find: 'GET',
+    findOne: 'GET',
+    create: 'POST',
+    update: 'PUT',
+    delete: 'DELETE',
+    publish: 'PUT',
+    unpublish: 'PUT',
+    open: 'POST',
+    close: 'PUT',
+    active: 'GET',
+    expire: 'PUT',
+    process: 'POST',
+    bulk: 'POST',
+    orphanGroups: 'GET',
+    orphanGroupItems: 'GET',
+    upload: 'POST',
+};
+
+function deriveActionAccess(uid) {
+    const routeDef = ROUTE_OWNERS_BY_UID[uid];
+    if (!routeDef) return {};
+    if (Array.isArray(routeDef)) {
+        return {
+            find: [...routeDef],
+            findOne: [...routeDef],
+            create: [...routeDef],
+            update: [...routeDef],
+            delete: [...routeDef],
+        };
+    }
+    return Object.fromEntries(Object.entries(routeDef).map(([k, v]) => [k, [...v]]));
+}
+
+function deriveAppAccess(uid, actionAccess = {}) {
+    const appKeys = [...new Set(Object.values(actionAccess).flat())];
+
+    return appKeys.map((appKey) => {
+        const appEntry = APP_ENTRIES.find((entry) => entry.key === appKey);
+        const defs = (APP_PERMISSION_DEFS[appKey] || []).filter((def) => def.uid === uid);
+
+        const groups = [...new Set(defs.map((def) => normalizePermissionGroupKey(def.group || 'staff')))];
+        const roleKeys = groups.length > 0 ? groups : ['staff'];
+        const accessGroups = roleKeys.map((r) => {
+            if (r === 'staff') return 'user';
+            return r;
+        });
+
+        return {
+            appKey,
+            appName: appEntry?.name || appKey,
+            roleKeys,
+            accessGroups,
+        };
+    });
+}
+
+function toHttpVerb(action) {
+    return ACTION_HTTP_MAP[action] || 'GET';
+}
+
+function deriveMethodHttp(methodActions = {}) {
+    return Object.fromEntries(
+        Object.entries(methodActions || {}).map(([method, action]) => [method, toHttpVerb(action)])
+    );
+}
+
+function deriveActionHttp(actionAccess = {}, methodActions = {}) {
+    const actionKeys = [...new Set([
+        ...Object.keys(actionAccess || {}),
+        ...Object.values(methodActions || {}),
+    ])];
+    return Object.fromEntries(actionKeys.map((action) => [action, toHttpVerb(action)]));
+}
+
+function enrichEndpointMeta(meta = {}) {
+    const uid = meta.uid;
+    const methodActions = meta.methodActions || {};
+    const actionAccess = meta.actionAccess || deriveActionAccess(uid);
+
+    return {
+        ...meta,
+        appAccess: meta.appAccess || deriveAppAccess(uid, actionAccess),
+        actionAccess,
+        methodHttp: meta.methodHttp || deriveMethodHttp(methodActions),
+        actionHttp: meta.actionHttp || deriveActionHttp(actionAccess, methodActions),
+    };
+}
+
 function buildEndpointMeta(uid, basePath, methodActions = {}) {
-    return Object.freeze({
+    return ({
         uid,
         basePath,
         owners: getOwnersForUid(uid),
@@ -639,8 +744,10 @@ function getConfigUidActions() {
 
     Object.entries(APP_PERMISSION_DEFS).forEach(([, defs]) => {
         (defs || []).forEach((def) => {
+            const allowedActions = filterActionsByEndpointCoverage(def.uid, def.actions || []);
+            if (allowedActions.length === 0) return;
             const current = uidActions.get(def.uid) || new Set();
-            (def.actions || []).forEach((a) => current.add(a));
+            allowedActions.forEach((a) => current.add(a));
             uidActions.set(def.uid, current);
         });
     });
@@ -844,7 +951,9 @@ const permissionGroupsByKey = Object.fromEntries(
         for (const def of defs) {
             const groupKey = normalizePermissionGroupKey(def.group || 'staff');
             if (!groupKey || !enabledKeys.includes(groupKey)) continue;
-            groups[groupKey] = [...(groups[groupKey] || []), { uid: def.uid, actions: [...(def.actions || [])] }];
+            const allowedActions = filterActionsByEndpointCoverage(def.uid, def.actions || []);
+            if (allowedActions.length === 0) continue;
+            groups[groupKey] = [...(groups[groupKey] || []), { uid: def.uid, actions: allowedActions }];
         }
 
         return [entry.key, groups];
@@ -920,7 +1029,7 @@ const WEB_USER_PLUGIN_PERMISSIONS =
 const PUBLIC_PERMISSIONS =
     PUBLIC_PERMISSION_ENTRIES.find((entry) => entry.role.roleType === 'public')?.permissions || [];
 
-const AppAccessMetadata = Object.freeze({
+const AppAccessMetadata = ({
     APP_ENTRIES,
     APP_ACCESS_ALIASES,
     APP_DEPARTMENT_SEED_MAP,
@@ -957,6 +1066,7 @@ const AppAccessMetadata = Object.freeze({
     getPermissionsByAppForUid,
     getDisabledPlaceholdersForUid,
     buildEndpointMeta,
+    enrichEndpointMeta,
     getEnabledPermissionGroups,
     getAppRoleOptions,
     getGrantsForAppRole,
@@ -1000,7 +1110,9 @@ export {
     getPermissionsByAppForUid,
     getDisabledPlaceholdersForUid,
     buildEndpointMeta,
+    enrichEndpointMeta,
     getEnabledPermissionGroups,
     getAppRoleOptions,
     getGrantsForAppRole,
 };
+

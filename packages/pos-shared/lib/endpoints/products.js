@@ -1,5 +1,4 @@
 import { authApi } from '../api.js';
-import { buildEndpointMeta } from './access-metadata.js';
 
 /**
  * ProductsEndpoints
@@ -254,14 +253,21 @@ export const ProductsEndpoints = {
     putDelete: (documentId) => authApi.del(`/products/${documentId}`),
 };
 
-export const ProductsEndpointsMeta = buildEndpointMeta('api::product.product', '/products', {
-    listPaged: 'find',
-    listAll: 'find',
-    list: 'find',
-    search: 'find',
-    searchInRelation: 'find',
-    byId: 'findOne',
-    create: 'create',
-    update: 'update',
-    byParent: 'find',
-});
+export const ProductsEndpointsMeta = {
+    uid: 'api::product.product',
+    basePath: '/products',
+    methodActions: {
+        listPaged: 'find',
+        listAll: 'find',
+        list: 'find',
+        search: 'find',
+        searchInRelation: 'find',
+        byId: 'findOne',
+        create: 'create',
+        update: 'update',
+        byParent: 'find',
+    },
+};
+
+
+

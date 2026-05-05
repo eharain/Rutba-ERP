@@ -1,5 +1,4 @@
 import { authApi } from '../api.js';
-import { buildEndpointMeta } from './access-metadata.js';
 
 /**
  * CustomersEndpoints
@@ -74,9 +73,16 @@ export const CustomersEndpoints = {
     },
 };
 
-export const CustomersEndpointsMeta = buildEndpointMeta('api::customer.customer', '/customers', {
-    findByContact: 'find',
-    create: 'create',
-    search: 'find',
-    update: 'update',
-});
+export const CustomersEndpointsMeta = {
+    uid: 'api::customer.customer',
+    basePath: '/customers',
+    methodActions: {
+        findByContact: 'find',
+        create: 'create',
+        search: 'find',
+        update: 'update',
+    },
+};
+
+
+

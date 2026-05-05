@@ -84,6 +84,12 @@ export {
     CmsPagesEndpointsMeta,
 } from './cms-pages.js';
 export {
+    UploadEndpointsMeta,
+} from './upload.js';
+export {
+    EnumsEndpointsMeta,
+} from './enums.js';
+export {
     TermTypesEndpointsMeta,
     TermsEndpointsMeta,
 } from './term-types.js';
