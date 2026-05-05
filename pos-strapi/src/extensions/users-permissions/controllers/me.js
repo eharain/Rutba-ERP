@@ -1,3 +1,4 @@
+// @ts-nocheck
 'use strict';
 const { createCoreController } = require('@strapi/strapi').factories;
 const {
@@ -6,7 +7,6 @@ const {
     CLIENT_PLUGIN_PERMISSIONS,
     canGroupElevateToAdmin,
     getEnabledPermissionGroups,
-    getEffectiveAppAccessFromUser,
     getAccessibleAppKeysForRequest,
     getPermissionDefsForAccessibleApps,
     permissionDefsToActions,
@@ -24,8 +24,6 @@ module.exports = createCoreController('plugin::users-permissions.me', ({ strapi 
                 where: { id: user.id },
                 populate: {
                     role: { select: ['type', 'name'] },
-                    app_accesses: { select: ['key'] },
-                    admin_app_accesses: { select: ['key'] },
                     permission_roles: {
                         select: ['key', 'level'],
                         populate: {
@@ -36,8 +34,18 @@ module.exports = createCoreController('plugin::users-permissions.me', ({ strapi 
             });
 
             const roleType = fullUser?.role?.type;
-            const { appKeys: effectiveAppAccess, adminKeys: effectiveAdminAppAccess } =
-                getEffectiveAppAccessFromUser(fullUser);
+            const permissionRoles = fullUser?.permission_roles || [];
+            const effectiveAppAccess = [...new Set(
+                permissionRoles
+                    .map((r) => r?.domain?.key)
+                    .filter(Boolean)
+            )];
+            const effectiveAdminAppAccess = [...new Set(
+                permissionRoles
+                    .filter((r) => r?.level === 'admin')
+                    .map((r) => r?.domain?.key)
+                    .filter(Boolean)
+            )];
             const appName = (ctx.request.headers['x-rutba-app'] || '').trim().toLowerCase();
 
             let permissions = [];

@@ -4,6 +4,7 @@ import Layout from "../../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import AppAccessGate from "../../components/AppAccessGate";
 import { authApi } from "@rutba/pos-shared/lib/api";
+import { AppAccessesEndpoints } from "../../lib/endpoints";
 
 export default function EditUserPage() {
     const router = useRouter();
@@ -24,8 +25,8 @@ export default function EditUserPage() {
         confirmed: true,
         blocked: false,
         role: "",
-        app_accesses: [],
-        admin_app_accesses: [],
+        domain_accesses: [],
+        admin_domain_accesses: [],
     });
 
     useEffect(() => {
@@ -35,10 +36,11 @@ export default function EditUserPage() {
     async function loadAll() {
         setLoading(true);
         try {
+            const domainsEp = AppAccessesEndpoints.list();
             const [userData, rolesRes, aaRes] = await Promise.all([
                 authApi.get(`/auth-admin/users/${id}`),
                 authApi.get("/auth-admin/roles"),
-                authApi.get("/app-accesses"),
+                authApi.call(domainsEp),
             ]);
 
             setRoles(rolesRes?.roles || []);
@@ -53,8 +55,8 @@ export default function EditUserPage() {
                 confirmed: u.confirmed ?? true,
                 blocked: u.blocked ?? false,
                 role: u.role?.id || "",
-                app_accesses: (u.app_accesses || []).map(a => a.id),
-                admin_app_accesses: (u.admin_app_accesses || []).map(a => a.id),
+                domain_accesses: (u.domain_accesses || []),
+                admin_domain_accesses: (u.admin_domain_accesses || []),
             });
         } catch (err) {
             setError("Failed to load user: " + (err.message || ""));
@@ -67,33 +69,33 @@ export default function EditUserPage() {
         setForm(prev => ({ ...prev, [field]: value }));
     }
 
-    function toggleAppAccess(aaId, kind) {
+    function toggleAppAccess(domainKey, kind) {
         setForm(prev => {
-            const appSet = new Set(prev.app_accesses);
-            const adminSet = new Set(prev.admin_app_accesses);
+            const appSet = new Set(prev.domain_accesses);
+            const adminSet = new Set(prev.admin_domain_accesses);
 
             if (kind === "user") {
-                if (appSet.has(aaId)) {
-                    appSet.delete(aaId);
-                    adminSet.delete(aaId); // Remove admin if removing user
+                if (appSet.has(domainKey)) {
+                    appSet.delete(domainKey);
+                    adminSet.delete(domainKey); // Remove admin if removing user
                 } else {
-                    appSet.add(aaId);
+                    appSet.add(domainKey);
                 }
             }
 
             if (kind === "admin") {
-                if (adminSet.has(aaId)) {
-                    adminSet.delete(aaId);
+                if (adminSet.has(domainKey)) {
+                    adminSet.delete(domainKey);
                 } else {
-                    adminSet.add(aaId);
-                    appSet.add(aaId); // Admin implies user
+                    adminSet.add(domainKey);
+                    appSet.add(domainKey); // Admin implies user
                 }
             }
 
             return {
                 ...prev,
-                app_accesses: Array.from(appSet),
-                admin_app_accesses: Array.from(adminSet),
+                domain_accesses: Array.from(appSet),
+                admin_domain_accesses: Array.from(adminSet),
             };
         });
     }
@@ -111,8 +113,8 @@ export default function EditUserPage() {
                 confirmed: form.confirmed,
                 blocked: form.blocked,
                 role: form.role || undefined,
-                app_accesses: form.app_accesses,
-                admin_app_accesses: form.admin_app_accesses,
+                domain_accesses: form.domain_accesses,
+                admin_domain_accesses: form.admin_domain_accesses,
             };
             // Only include password if the admin typed a new one
             if (form.password) {
@@ -249,8 +251,8 @@ export default function EditUserPage() {
                                         </thead>
                                         <tbody>
                                             {appAccesses.map(aa => {
-                                                const hasUser = form.app_accesses.includes(aa.id);
-                                                const hasAdmin = form.admin_app_accesses.includes(aa.id);
+                                                const hasUser = form.domain_accesses.includes(aa.key);
+                                                const hasAdmin = form.admin_domain_accesses.includes(aa.key);
                                                 return (
                                                     <tr key={aa.id}>
                                                         <td>
@@ -270,7 +272,7 @@ export default function EditUserPage() {
                                                                     id={`aa-user-${aa.id}`}
                                                                     checked={hasUser}
                                                                     disabled={hasAdmin}
-                                                                    onChange={() => toggleAppAccess(aa.id, "user")}
+                                                                    onChange={() => toggleAppAccess(aa.key, "user")}
                                                                 />
                                                             </div>
                                                             {hasUser && !hasAdmin && (
@@ -284,7 +286,7 @@ export default function EditUserPage() {
                                                                     type="checkbox"
                                                                     id={`aa-admin-${aa.id}`}
                                                                     checked={hasAdmin}
-                                                                    onChange={() => toggleAppAccess(aa.id, "admin")}
+                                                                    onChange={() => toggleAppAccess(aa.key, "admin")}
                                                                 />
                                                             </div>
                                                             {hasAdmin && (

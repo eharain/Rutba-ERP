@@ -126,11 +126,11 @@ async function seedHrTeamsFromAppAccess(strapi, options = [], departmentByName =
 const ROLE_BOOTSTRAP_META = {
     rutba_app_user: {
         name: 'Rutba App User',
-        description: 'Role for Rutba front-end application users. Permissions are managed by app-access-guard and app-access assignments.',
+        description: 'Role for Rutba front-end application users. Permissions are managed by api-guard role assignments.',
     },
     rutba_web_user: {
         name: 'Rutba Web User',
-        description: 'Role for Rutba web storefront users. Permissions are managed by app-access-guard and app-access assignments.',
+        description: 'Role for Rutba web storefront users. Permissions are managed by api-guard role assignments.',
     },
 };
 
@@ -278,33 +278,8 @@ module.exports = {
         const role = ensuredRolesByType.rutba_app_user;
         const webRole = ensuredRolesByType.rutba_web_user;
 
-        // ─── a.2  Ensure all app-access entries exist ─────────────
-        for (const entry of ENTRIES) {
-            const existing = await knex('app_accesses').where('key', entry.key).first();
-
-            if (!existing) {
-                await knex('app_accesses').insert({
-                    document_id: hashCode([entry.description, entry.key, entry.name].join('-')),
-                    key: entry.key,
-                    name: entry.name,
-                    description: entry.description,
-                    created_at: new Date(),
-                    updated_at: new Date(),
-                    published_at: new Date(),
-                });
-                strapi.log.info(`[bootstrap] Created app-access "${entry.key}"`);
-            } else {
-                await knex('app_accesses').where('key', entry.key).update({
-                    name: entry.name,
-                    description: entry.description,
-                    updated_at: new Date(),
-                });
-                strapi.log.info(`[bootstrap] Updated app-access "${entry.key}"`);
-            }
-        }
-
-        // ─── a.3  For configured app-access roles, do not sync content permissions here.
-        //          Route-level permission enforcement is handled by app-access-guard.
+        // ─── a.3  For configured app roles, do not sync content permissions here.
+        //          Route-level permission enforcement is handled by api-guard middleware/plugin.
 
         const allActions = buildAllPermissionActions();
         const requiredActions = [...new Set([...allActions, ...PLUGIN_PERMISSIONS])].sort();

@@ -24,10 +24,11 @@ export default function AppAccessPage() {
     async function loadEntries() {
         setLoading(true);
         try {
-            const res = await authApi.get("/app-accesses", { populate: ["users"] });
+            const ep = AppAccessesEndpoints.listWithUsers();
+            const res = await authApi.call(ep);
             setEntries(res?.data || res || []);
         } catch (err) {
-            setError("Failed to load app-access entries");
+            setError("Failed to load app domains");
             console.error(err);
         } finally {
             setLoading(false);
@@ -44,14 +45,15 @@ export default function AppAccessPage() {
         }
         setSaving(true);
         try {
-            await authApi.post("/app-accesses", {
+            const ep = AppAccessesEndpoints.create();
+            await authApi.call(ep, {
                 data: { key: newKey, name: newName, description: newDesc }
             });
             setNewKey("");
             setNewName("");
             setNewDesc("");
             setShowForm(false);
-            setSuccess(`App access "${newKey}" created.`);
+            setSuccess(`App domain "${newKey}" created.`);
             await loadEntries();
         } catch (err) {
             const msg = err?.response?.data?.error?.message || err.message || "Failed to create";
@@ -62,12 +64,13 @@ export default function AppAccessPage() {
     }
 
     async function handleDelete(entry) {
-        if (!confirm(`Delete app access "${entry.key}"? Users with this access will lose it.`)) return;
+        if (!confirm(`Disable app domain "${entry.key}"? Users with this domain role will lose effective access.`)) return;
         setError("");
         setSuccess("");
         try {
-            await authApi.del(`/app-accesses/${entry.documentId}`);
-            setSuccess(`"${entry.key}" deleted.`);
+            const ep = AppAccessesEndpoints.deleteById(entry.id);
+            await authApi.call(ep);
+            setSuccess(`"${entry.key}" disabled.`);
             await loadEntries();
         } catch (err) {
             setError("Failed to delete: " + (err.message || ""));
@@ -78,9 +81,9 @@ export default function AppAccessPage() {
         <Layout>
             <ProtectedRoute>
                 <AppAccessGate appKey="auth">
-                <PermissionCheck adminOnly appKey="auth" required="api::app-access.app-access.update">
+                <PermissionCheck adminOnly appKey="auth" required="plugin::users-permissions.user.update">
                 <div className="d-flex justify-content-between align-items-center mb-3">
-                    <h2><i className="fas fa-key me-2"></i>App Access</h2>
+                    <h2><i className="fas fa-key me-2"></i>App Domains</h2>
                     <button className="btn btn-primary" onClick={() => setShowForm(!showForm)}>
                         <i className={`fas ${showForm ? 'fa-times' : 'fa-plus'} me-1`}></i>
                         {showForm ? 'Cancel' : 'New Entry'}
@@ -89,7 +92,7 @@ export default function AppAccessPage() {
 
                 <div className="alert alert-info">
                     For user assignment, use <strong>Users → Access Assignment</strong>.
-                    This page is intended for app catalog maintenance only.
+                    This page manages plugin-backed app domains used by api-guard roles.
                 </div>
 
                 {error && <div className="alert alert-danger">{error}</div>}
@@ -98,7 +101,7 @@ export default function AppAccessPage() {
                 {showForm && (
                     <div className="card mb-4">
                         <div className="card-body">
-                            <h5 className="card-title">Create App Access Entry</h5>
+                            <h5 className="card-title">Create App Domain</h5>
                             <form onSubmit={handleCreate}>
                                 <div className="row g-3">
                                     <div className="col-md-3">
@@ -139,7 +142,7 @@ export default function AppAccessPage() {
                             </thead>
                             <tbody>
                                 {entries.length === 0 && (
-                                    <tr><td colSpan="5" className="text-center text-muted py-4">No app-access entries</td></tr>
+                                    <tr><td colSpan="5" className="text-center text-muted py-4">No app domains</td></tr>
                                 )}
                                 {entries.map(e => (
                                     <tr key={e.id}>
@@ -148,7 +151,7 @@ export default function AppAccessPage() {
                                         <td className="text-muted">{e.description || '—'}</td>
                                         <td>
                                             <span className="badge bg-secondary">
-                                                {(e.users || []).length} user{(e.users || []).length !== 1 ? 's' : ''}
+                                                {(e.userCount || 0)} user{(e.userCount || 0) !== 1 ? 's' : ''}
                                             </span>
                                         </td>
                                         <td>
@@ -166,10 +169,10 @@ export default function AppAccessPage() {
                 <div className="mt-4 p-3 bg-light rounded">
                     <h6>How it works</h6>
                     <ul className="mb-0 small text-muted">
-                        <li>Each entry represents an application in the POS system.</li>
-                        <li>Assign entries to users via <strong>Users → Access Assignment</strong> matrix controls.</li>
-                        <li>The <code>key</code> must match the app key in <code>packages/pos-shared/lib/roles.js</code>.</li>
-                        <li>After creating a new entry here, add its key to <code>VALID_APP_KEYS</code> and <code>APP_URLS</code> in <code>roles.js</code>.</li>
+                        <li>Each entry represents an app domain used by api-guard.</li>
+                        <li>Assign domain roles to users via <strong>Users → Access Assignment</strong>.</li>
+                        <li>The <code>key</code> should match the app key sent in <code>x-rutba-app</code>.</li>
+                        <li>Core domains like <code>web</code> and <code>web-user</code> are seeded and protected.</li>
                     </ul>
                 </div>
                 </PermissionCheck>
