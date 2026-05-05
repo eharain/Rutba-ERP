@@ -92,6 +92,39 @@ export const TermTypesEndpointsMeta = {
     },
 };
 
+/**
+ * TermTypesEndpointRules
+ * Per-endpoint requestRules stored in the api-guard-pro resource record.
+ */
+export const TermTypesEndpointRules = {
+    /** GET /api/term-types — listVariants (is_variant = true with terms) */
+    listVariants: {
+        filters: { is_variant: { $eq: true } },
+        injectPopulate: { terms: true },
+        injectSort: ['name:asc'],
+    },
+
+    /** GET /api/term-types — listWithTerms */
+    listWithTerms: {
+        injectPopulate: { terms: true },
+        injectSort: ['name:asc'],
+    },
+
+    /** GET /api/term-types — list (no populate) */
+    list: {
+        injectSort: ['name:asc'],
+    },
+
+    /** POST /api/term-types */
+    create: {},
+
+    /** PUT /api/term-types/:id */
+    update: {},
+
+    /** DELETE /api/term-types/:id */
+    delete: {},
+};
+
 export const TermsEndpoints = {
     /**
      * List terms.
@@ -139,6 +172,27 @@ export const TermsEndpointsMeta = {
         update: 'update',
         putDelete: 'delete',
     },
+};
+
+/**
+ * TermsEndpointRules
+ * Per-endpoint requestRules stored in the api-guard-pro resource record.
+ */
+export const TermsEndpointRules = {
+    /** GET /api/terms — list */
+    list: {
+        injectPopulate: { term_type: true },
+        injectSort: ['name:asc'],
+    },
+
+    /** POST /api/terms */
+    create: {},
+
+    /** PUT /api/terms/:id */
+    update: {},
+
+    /** DELETE /api/terms/:id */
+    delete: {},
 };
 
 

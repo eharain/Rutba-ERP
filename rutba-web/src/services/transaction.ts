@@ -26,7 +26,7 @@ export default function useTransactionService() {
   };
 
   const getMyTransaction = async () => {
-    const ep = WebOrdersEndpoints.myOrders(session?.data?.user?.email ?? '');
+    const ep = WebOrdersEndpoints.myOrders();
     const req = await axios.get(BASE_URL + ep.path, {
       params: ep.params,
       headers: {

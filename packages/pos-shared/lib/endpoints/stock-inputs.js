@@ -39,5 +39,42 @@ export const StockInputsEndpointsMeta = {
     },
 };
 
+/**
+ * StockInputsEndpointRules
+ * Per-endpoint requestRules stored in the api-guard-pro resource record.
+ */
+export const StockInputsEndpointRules = {
+    /** GET /api/stock-inputs — paginated list */
+    list: {
+        injectPopulate: {
+            branch: true,
+            supplier: true,
+        },
+        injectSort: ['createdAt:desc'],
+    },
+
+    /** GET /api/stock-inputs/:id — byId with full populate */
+    byId: {
+        injectPopulate: {
+            branch: true,
+            supplier: true,
+            items: { populate: { product: true } },
+            processed_by: true,
+        },
+    },
+
+    /** POST /api/stock-inputs — create */
+    create: {},
+
+    /** PUT /api/stock-inputs/:id — update */
+    update: {},
+
+    /** DELETE /api/stock-inputs/:id */
+    delete: {},
+
+    /** POST /api/stock-inputs/process — process (bulk or single) */
+    process: {},
+};
+
 
 

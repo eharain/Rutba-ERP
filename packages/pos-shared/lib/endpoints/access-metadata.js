@@ -58,6 +58,7 @@ const APP_ACCESS_ALIASES = {
     rider: ['delivery'],
     'order-management': ['delivery', 'cms'],
     'web-orders': ['web-user'],
+    web: ['web-user'],
 };
 
 const APP_DEPARTMENT_SEED_MAP = {
@@ -536,7 +537,7 @@ const ENDPOINT_COVERAGE = {
     'api::cash-register.cash-register': ['find', 'findOne', 'create', 'open', 'close', 'active'],
     'api::category.category': ['find', 'findOne', 'create', 'update', 'delete'],
     'api::cms-page.cms-page': ['find', 'findOne', 'create', 'update', 'publish', 'unpublish'],
-    'api::crm-lead.crm-lead': ['create', 'update'],
+    'api::crm-lead.crm-lead': ['find', 'findOne', 'create', 'update'],
     'api::customer.customer': ['find', 'findOne', 'create', 'update'],
     'api::notification-log.notification-log': ['find', 'findOne'],
     'api::notification-template.notification-template': ['find', 'findOne', 'create', 'update', 'delete'],
@@ -1018,6 +1019,7 @@ export {
     ENTRIES,
     APP_ENTRIES,
     PERMISSION_GROUPS,
+    APP_PERMISSION_DEFS,
     DISABLED_PLACEHOLDERS,
     SYSTEM_PERMISSION_GROUPS,
     settingsByKey,

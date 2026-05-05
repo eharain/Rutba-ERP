@@ -80,5 +80,26 @@ export const SuppliersEndpointsMeta = {
     },
 };
 
+/**
+ * SuppliersEndpointRules
+ * Per-endpoint requestRules stored in the api-guard-pro resource record.
+ */
+export const SuppliersEndpointRules = {
+    /** GET /api/suppliers — list */
+    list: {
+        injectPopulate: { logo: true },
+        injectSort: ['name:asc'],
+    },
+
+    /** POST /api/suppliers */
+    create: {},
+
+    /** PUT /api/suppliers/:id */
+    update: {},
+
+    /** DELETE /api/suppliers/:id */
+    delete: {},
+};
+
 
 

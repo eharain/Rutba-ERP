@@ -179,5 +179,87 @@ export const SalesEndpointsMeta = {
     },
 };
 
+/**
+ * SalesEndpointRules
+ *
+ * Per-endpoint requestRules that are stored in the api-guard-pro resource record.
+ * Once seeded, clients only pass minimal lookup values; the server injects
+ * filters, populate, and other params from these rules at request time.
+ *
+ * Token syntax:
+ *   $query.<name>   → ctx.query.<name>   (URL query param)
+ *   $params.<name>  → ctx.params.<name>  (URL path param, e.g. :id)
+ *   $body.<name>    → ctx.request.body.data.<name>
+ *   $user.id        → authenticated user id
+ *   $today          → current date ISO string (date only)
+ *   $now            → current datetime ISO string
+ */
+export const SalesEndpointRules = {
+    /**
+     * GET /api/sales — list
+     * Client passes: ?page=1&pageSize=200  (optional sort/filters passed through)
+     * Server injects: default sort and a rich populate.
+     */
+    list: {
+        injectPopulate: {
+            customer: true,
+            employee: true,
+            cash_register: true,
+        },
+    },
+
+    /**
+     * GET /api/sales — byId (uses list path with injected $or filter)
+     * Client passes: ?q=INV-001  (invoice_no OR documentId)
+     * Server injects: full detail populate + $or filter.
+     *
+     * Resource key: get.api.sales.byId
+     * pathPattern: /api/sales  (same path as list; distinguished by resource key via canonical URL)
+     */
+    byId: {
+        filters: {
+            $or: [
+                { invoice_no: '$query.q' },
+                { id: '$query.q' },
+                { documentId: '$query.q' },
+            ],
+        },
+        injectPopulate: {
+            payments: true,
+            customer: true,
+            cash_register: {
+                fields: ['id', 'documentId', 'desk_id', 'desk_name', 'branch_name', 'opened_by', 'opened_at', 'status'],
+            },
+            items: { populate: { product: true, items: { populate: ['product'] } } },
+            sale_returns: {
+                populate: {
+                    items: { populate: { product: true, items: { populate: ['product'] } } },
+                    exchange_sale: { fields: ['id', 'documentId', 'invoice_no'] },
+                },
+            },
+            exchange_returns: {
+                populate: {
+                    items: { populate: { product: true, items: { populate: ['product'] } } },
+                    sale: { fields: ['id', 'documentId', 'invoice_no'] },
+                },
+            },
+        },
+    },
+
+    /**
+     * PUT /api/sales/:id — cancel
+     * No extra requestRules needed; route distinction is by canonical URL.
+     */
+    cancel: {},
+
+    /**
+     * PUT /api/sales/:id — saveNotes
+     * Whitelist body to only allow notes field.
+     */
+    saveNotes: {
+        allowedBodyFields: ['notes'],
+    },
+};
+
 
 

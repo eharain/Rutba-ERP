@@ -269,5 +269,77 @@ export const ProductsEndpointsMeta = {
     },
 };
 
+/**
+ * ProductsEndpointRules
+ * Per-endpoint requestRules stored in the api-guard-pro resource record.
+ */
+export const ProductsEndpointRules = {
+    /** GET /api/products — paginated list with category/brand populate */
+    list: {
+        injectPopulate: {
+            logo: true,
+            categories: true,
+            brands: true,
+        },
+        injectSort: ['name:asc'],
+    },
+
+    /**
+     * GET /api/products/:id — byId with full detail populate
+     */
+    byId: {
+        injectPopulate: {
+            categories: true,
+            brands: true,
+            suppliers: true,
+            logo: true,
+            gallery: true,
+            terms: true,
+            parent: true,
+        },
+    },
+
+    /**
+     * GET /api/products — search
+     * Client passes: ?q=<term>
+     * Server injects: $or containsi filter across name, sku, barcode
+     */
+    search: {
+        filters: {
+            $or: [
+                { name: { $containsi: '$query.q' } },
+                { sku: { $containsi: '$query.q' } },
+                { barcode: { $containsi: '$query.q' } },
+            ],
+        },
+        injectPopulate: {
+            categories: true,
+            brands: true,
+            suppliers: true,
+            terms: true,
+            logo: true,
+        },
+    },
+
+    /**
+     * GET /api/products — byParent (child variants)
+     * Client passes: ?parentDocId=<documentId>
+     */
+    byParent: {
+        filters: {
+            parent: { documentId: { $eq: '$query.parentDocId' } },
+        },
+    },
+
+    /** POST /api/products — create */
+    create: {},
+
+    /** PUT /api/products/:id — update */
+    update: {},
+
+    /** DELETE /api/products/:id */
+    delete: {},
+};
+
 
 

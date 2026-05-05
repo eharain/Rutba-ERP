@@ -1,16 +1,14 @@
 /**
  * WebOrdersEndpoints
- * Path + params for /sale-orders (web storefront order queries).
+ * Path + params for web storefront order queries and checkout flows.
  */
 export const WebOrdersEndpoints = {
     /**
-     * List orders for the current user.
-     * @param {string} userEmail
+     * List orders for current web user.
      */
-    myOrders: (userEmail: string) => ({
+    myOrders: () => ({
         path: 'sale-orders',
         params: {
-            filters: { user_id: { $eq: userEmail } },
             populate: {
                 customer_contact: true,
                 products: {
@@ -22,34 +20,58 @@ export const WebOrdersEndpoints = {
                     },
                 },
             },
+            sort: ['createdAt:desc'],
         },
     }),
 
     /**
-     * Fetch a single order by id with items populated.
-     * @param {string} id
+     * Fetch one order by documentId for current web user.
      */
-    byId: (id: string) => ({
-        path: `sale-orders/${id}`,
+    byId: (documentId: string) => ({
+        path: `sale-orders/${documentId}`,
         params: {
             populate: {
+                customer_contact: true,
                 products: { populate: { items: { populate: { image: true } } } },
             },
         },
     }),
 
+    /** Create a new order (checkout submit). */
+    create: () => ({
+        path: 'orders',
+    }),
+
+    /** Validate checkout address. */
+    validateAddress: () => ({
+        path: 'orders/checkout/validate-address',
+    }),
+
+    /** Fetch shipping rates for checkout parcel/address. */
+    shippingRate: () => ({
+        path: 'orders/checkout/shipping-rate',
+    }),
+
+    /** Calculate delivery methods from cart + destination. */
+    calculateDelivery: () => ({
+        path: 'orders/calculate-delivery',
+    }),
+
     /**
      * Tracking endpoint (public, uses order_secret).
-     * @param {string} code  order code
-     * @param {string} secret
      */
-    tracking: (code: string, secret: string) => ({
-        path: `sale-orders/tracking/${code}`,
+    tracking: (documentId: string, secret: string) => ({
+        path: `orders/tracking/${documentId}`,
         params: { secret },
     }),
 
-    /** Messages for an order. @param {string} orderDocumentId */
-    messages: (orderDocumentId: string) => ({
-        path: `orders/${orderDocumentId}/messages`,
+    /** Messages for an order (read). */
+    messages: (documentId: string) => ({
+        path: `orders/${documentId}/messages`,
+    }),
+
+    /** Send a message on an order thread. */
+    sendMessage: (documentId: string) => ({
+        path: `orders/${documentId}/messages`,
     }),
 };

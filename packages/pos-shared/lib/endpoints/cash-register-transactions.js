@@ -40,6 +40,27 @@ export const CashRegisterTransactionEndpoints = {
     },
 };
 
+/**
+ * CashRegisterTransactionEndpointRules
+ * Per-endpoint requestRules stored in the api-guard-pro resource record.
+ */
+export const CashRegisterTransactionEndpointRules = {
+    /**
+     * GET /api/cash-register-transactions — byRegister
+     * Client passes: ?registerId=<documentId>
+     * Server injects: filter by cash_register relation
+     */
+    byRegister: {
+        filters: {
+            cash_register: { documentId: { $eq: '$query.registerId' } },
+        },
+        injectSort: ['createdAt:asc'],
+    },
+
+    /** POST /api/cash-register-transactions — create */
+    create: {},
+};
+
 export const CashRegisterTransactionEndpointsMeta = {
     uid: 'api::cash-register-transaction.cash-register-transaction',
     basePath: '/cash-register-transactions',

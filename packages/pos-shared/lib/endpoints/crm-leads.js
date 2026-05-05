@@ -32,5 +32,17 @@ export const CrmLeadsEndpointsMeta = {
     },
 };
 
+/**
+ * CrmLeadsEndpointRules
+ * Per-endpoint requestRules stored in the api-guard-pro resource record.
+ */
+export const CrmLeadsEndpointRules = {
+    /** POST /api/crm-leads */
+    create: {},
+
+    /** PUT /api/crm-leads/:id */
+    update: {},
+};
+
 
 
