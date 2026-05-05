@@ -96,6 +96,7 @@ rutba-web/src/
   - Avoid heavy central metadata maps or runtime computation inside Strapi; minimize Strapi-side configuration and runtime joins. Use the aggregator to perform any necessary compilation at build-time rather than at runtime.
   - Ensure per-endpoint metadata includes required approval scopes, visible UI actions, and branch constraints using numeric branch IDs.
   - Use metadata primarily for discovery and UI visibility; keep authorization enforcement in server-side guards.
+- Prefer fixing API access issues by adding endpoint/access-metadata entries and shared endpoint definitions rather than introducing bypass-path workarounds. Define and reuse shared endpoint definitions (metadata + access rules) across services to ensure consistent enforcement and avoid ad-hoc access logic.
 - When adding new workflows that require approvals, register the workflow’s required approval scopes and reuse the same manager-scoped guard.
 
 ### pos-auth: User Management Screens

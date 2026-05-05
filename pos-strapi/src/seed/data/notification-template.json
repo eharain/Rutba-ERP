@@ -1,0 +1,205 @@
+{
+  "enabled": true,
+  "uid": "api::notification-template.notification-template",
+  "records": [
+    {
+      "locate": { "by": "name", "value": "Order Confirmed (Buyer)" },
+      "policy": { "editable": true, "revertOnSeed": true },
+      "data": {
+        "name": "Order Confirmed (Buyer)",
+        "event_name": "order.created",
+        "trigger_event": "order_placed",
+        "category": "orders_payments",
+        "priority": "high",
+        "audience": "user",
+        "is_critical": true,
+        "send_email": true,
+        "channels": ["in_app", "email"],
+        "delay_minutes": 0,
+        "dedup_window_minutes": 15,
+        "subject": "Order Confirmed",
+        "body_template": "Your order #{order.id} has been placed successfully.",
+        "available_variables": ["order.id", "user_id"],
+        "is_active": true,
+        "is_enabled": true
+      }
+    },
+    {
+      "locate": { "by": "name", "value": "Payment Failed (Buyer)" },
+      "policy": { "editable": true, "revertOnSeed": true },
+      "data": {
+        "name": "Payment Failed (Buyer)",
+        "event_name": "payment.failed",
+        "trigger_event": "payment_confirmed",
+        "category": "orders_payments",
+        "priority": "critical",
+        "audience": "user",
+        "is_critical": true,
+        "send_email": true,
+        "channels": ["in_app", "email"],
+        "delay_minutes": 0,
+        "dedup_window_minutes": 10,
+        "subject": "Payment Failed",
+        "body_template": "Payment failed for order #{order.id}. Please retry.",
+        "available_variables": ["order.id", "user_id"],
+        "is_active": true,
+        "is_enabled": true
+      }
+    },
+    {
+      "locate": { "by": "name", "value": "Order Shipped (Buyer)" },
+      "policy": { "editable": true, "revertOnSeed": true },
+      "data": {
+        "name": "Order Shipped (Buyer)",
+        "event_name": "order.shipped",
+        "trigger_event": "out_for_delivery",
+        "category": "orders_payments",
+        "priority": "high",
+        "audience": "user",
+        "is_critical": true,
+        "send_email": true,
+        "channels": ["in_app", "email"],
+        "delay_minutes": 0,
+        "dedup_window_minutes": 20,
+        "subject": "Order Shipped",
+        "body_template": "Your order #{order.id} has been shipped.",
+        "available_variables": ["order.id", "user_id"],
+        "is_active": true,
+        "is_enabled": true
+      }
+    },
+    {
+      "locate": { "by": "name", "value": "Cart Abandoned Reminder (Buyer)" },
+      "policy": { "editable": true, "revertOnSeed": true },
+      "data": {
+        "name": "Cart Abandoned Reminder (Buyer)",
+        "event_name": "cart.abandoned",
+        "trigger_event": "offer_accepted",
+        "category": "cart_activity",
+        "priority": "medium",
+        "audience": "user",
+        "is_critical": false,
+        "send_email": false,
+        "channels": ["in_app"],
+        "delay_minutes": 60,
+        "dedup_window_minutes": 120,
+        "subject": "You left items in your cart",
+        "body_template": "Complete your purchase before items go out of stock.",
+        "available_variables": ["user_id"],
+        "is_active": true,
+        "is_enabled": true
+      }
+    },
+    {
+      "locate": { "by": "name", "value": "Support Ticket Submitted (User+Admin)" },
+      "policy": { "editable": true, "revertOnSeed": true },
+      "data": {
+        "name": "Support Ticket Submitted (User+Admin)",
+        "event_name": "contact.submitted",
+        "trigger_event": "order_placed",
+        "category": "customer_support",
+        "priority": "high",
+        "audience": "both",
+        "is_critical": true,
+        "send_email": true,
+        "channels": ["in_app", "email"],
+        "delay_minutes": 0,
+        "dedup_window_minutes": 30,
+        "subject": "We received your message",
+        "body_template": "Our support team will respond shortly.",
+        "available_variables": ["ticket_id", "user_id", "subject"],
+        "is_active": true,
+        "is_enabled": true
+      }
+    },
+    {
+      "locate": { "by": "name", "value": "Support Reply Added (Opposite Party)" },
+      "policy": { "editable": true, "revertOnSeed": true },
+      "data": {
+        "name": "Support Reply Added (Opposite Party)",
+        "event_name": "contact.reply.added",
+        "trigger_event": "out_for_delivery",
+        "category": "customer_support",
+        "priority": "high",
+        "audience": "opposite_party",
+        "conditions": { "reply_by": "agent" },
+        "is_critical": true,
+        "send_email": true,
+        "channels": ["in_app", "email"],
+        "delay_minutes": 0,
+        "dedup_window_minutes": 20,
+        "subject": "Support replied",
+        "body_template": "You have a new response on your support request.",
+        "available_variables": ["ticket_id", "reply_by", "user_id", "assigned_to"],
+        "is_active": true,
+        "is_enabled": true
+      }
+    },
+    {
+      "locate": { "by": "name", "value": "Support SLA Breach (Admin)" },
+      "policy": { "editable": true, "revertOnSeed": true },
+      "data": {
+        "name": "Support SLA Breach (Admin)",
+        "event_name": "contact.sla.breach",
+        "trigger_event": "refund_initiated",
+        "category": "customer_support",
+        "priority": "critical",
+        "audience": "admin",
+        "is_critical": true,
+        "send_email": true,
+        "channels": ["in_app", "email"],
+        "delay_minutes": 0,
+        "dedup_window_minutes": 15,
+        "subject": "SLA Breach Warning",
+        "body_template": "A support ticket has not been responded to in time.",
+        "available_variables": ["ticket_id", "status", "sla_due_at"],
+        "is_active": true,
+        "is_enabled": true
+      }
+    },
+    {
+      "locate": { "by": "name", "value": "Low Stock Alert (Stock Team)" },
+      "policy": { "editable": true, "revertOnSeed": true },
+      "data": {
+        "name": "Low Stock Alert (Stock Team)",
+        "event_name": "stock.low",
+        "trigger_event": "cancelled",
+        "category": "stock_management",
+        "priority": "high",
+        "audience": "admin",
+        "is_critical": false,
+        "send_email": false,
+        "channels": ["in_app"],
+        "delay_minutes": 0,
+        "dedup_window_minutes": 60,
+        "subject": "Low Stock Alert",
+        "body_template": "{product.name} stock is low at {stock.available_units} units.",
+        "available_variables": ["product.name", "stock.available_units", "branch.name"],
+        "is_active": true,
+        "is_enabled": true
+      }
+    },
+    {
+      "locate": { "by": "name", "value": "Stock Out Alert (Stock Team)" },
+      "policy": { "editable": true, "revertOnSeed": true },
+      "data": {
+        "name": "Stock Out Alert (Stock Team)",
+        "event_name": "stock.out",
+        "trigger_event": "cancelled",
+        "category": "stock_management",
+        "priority": "critical",
+        "audience": "admin",
+        "is_critical": true,
+        "send_email": true,
+        "channels": ["in_app", "email"],
+        "delay_minutes": 0,
+        "dedup_window_minutes": 30,
+        "subject": "Stock Out Alert",
+        "body_template": "{product.name} is out of stock and requires replenishment.",
+        "available_variables": ["product.name", "branch.name"],
+        "is_active": true,
+        "is_enabled": true
+      }
+    }
+  ]
+}

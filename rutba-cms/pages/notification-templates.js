@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { authApi } from "@rutba/pos-shared/lib/api";
+import { NotificationTemplatesEndpoints } from "@rutba/pos-shared/lib/endpoints";
 import Link from "next/link";
 
 export default function NotificationTemplatesPage() {
@@ -14,7 +14,7 @@ export default function NotificationTemplatesPage() {
     if (!jwt) return;
     setLoading(true);
     try {
-      const res = await authApi.get("/notification-templates", {
+      const res = await NotificationTemplatesEndpoints.fetchList({
         sort: ["createdAt:desc"],
         populate: ["branch"],
         pagination: { pageSize: 200 },

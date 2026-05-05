@@ -5,14 +5,35 @@
   "options": { "draftAndPublish": false },
   "pluginOptions": {},
   "attributes": {
+    "event_name": { "type": "string" },
     "order": { "type": "relation", "relation": "manyToOne", "target": "api::sale-order.sale-order" },
+    "notification": { "type": "relation", "relation": "manyToOne", "target": "api::notification.notification" },
     "template": { "type": "relation", "relation": "manyToOne", "target": "api::notification-template.notification-template" },
     "trigger_event": { "type": "string" },
+    "category": {
+      "type": "enumeration",
+      "enum": [
+        "orders_payments",
+        "account_security",
+        "cart_activity",
+        "wishlist_interest",
+        "promotions_offers",
+        "customer_support",
+        "stock_management"
+      ]
+    },
+    "priority": { "type": "enumeration", "enum": ["critical", "high", "medium"] },
+    "channel": { "type": "enumeration", "enum": ["in_app", "email"] },
+    "recipient_user_id": { "type": "integer" },
+    "recipient_role_type": { "type": "string" },
     "recipient_email": { "type": "string" },
+    "dedup_key": { "type": "string" },
+    "is_duplicate": { "type": "boolean", "default": false },
     "status": { "type": "enumeration", "enum": ["sent","failed","pending"], "default": "pending" },
     "sent_at": { "type": "datetime" },
     "error_message": { "type": "text" },
     "rendered_subject": { "type": "string" },
-    "rendered_body": { "type": "text" }
+    "rendered_body": { "type": "text" },
+    "metadata": { "type": "json" }
   }
 }

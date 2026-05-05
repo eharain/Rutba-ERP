@@ -20,6 +20,7 @@ import { EnumsEndpointsMeta } from './enums.js';
 import { TermTypesEndpointsMeta, TermsEndpointsMeta } from './term-types.js';
 import { CrmLeadsEndpointsMeta } from './crm-leads.js';
 import { StockInputsEndpointsMeta } from './stock-inputs.js';
+import { NotificationTemplatesEndpointsMeta } from './notification-templates.js';
 import { DisabledPlaceholderEndpoints } from './disabled-placeholders.js';
 
 const IMPLEMENTED_ENDPOINT_META = [
@@ -46,6 +47,7 @@ const IMPLEMENTED_ENDPOINT_META = [
     TermsEndpointsMeta,
     CrmLeadsEndpointsMeta,
     StockInputsEndpointsMeta,
+    NotificationTemplatesEndpointsMeta,
 ];
 
 const DISABLED_ENDPOINT_META = Object.values(DisabledPlaceholderEndpoints || {});

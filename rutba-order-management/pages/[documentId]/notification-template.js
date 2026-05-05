@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import Layout from "../../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { authApi } from "@rutba/pos-shared/lib/api";
+import { NotificationTemplatesEndpoints } from "@rutba/pos-shared/lib/endpoints";
 import Link from "next/link";
 import { useToast } from "../../components/Toast";
 
@@ -47,8 +47,8 @@ export default function NotificationTemplateDetailPage() {
       return;
     }
 
-    authApi
-      .get(`/notification-templates/${documentId}`, { populate: ["branch"] })
+    NotificationTemplatesEndpoints
+      .fetchById(documentId, { populate: ["branch"] })
       .then((res) => {
         const t = res.data || res;
         setTemplate(t);
@@ -90,12 +90,12 @@ export default function NotificationTemplateDetailPage() {
     setSaving(true);
     try {
       if (isNew) {
-        const res = await authApi.post("/notification-templates", buildPayload());
+        const res = await NotificationTemplatesEndpoints.postCreate(buildPayload().data);
         const created = res.data || res;
         toast("Template created.", "success");
         router.push(`/${created.documentId}/notification-template`);
       } else {
-        await authApi.put(`/notification-templates/${documentId}`, buildPayload());
+        await NotificationTemplatesEndpoints.putUpdate(documentId, buildPayload().data);
         toast("Template updated.", "success");
       }
     } catch (err) {
@@ -111,7 +111,7 @@ export default function NotificationTemplateDetailPage() {
     if (!confirm("Are you sure you want to delete this template?")) return;
 
     try {
-      await authApi.del(`/notification-templates/${documentId}`);
+      await NotificationTemplatesEndpoints.deleteById(documentId);
       toast("Template deleted.", "success");
       router.push("/notification-templates");
     } catch (err) {

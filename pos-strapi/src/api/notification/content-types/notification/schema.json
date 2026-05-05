@@ -1,0 +1,65 @@
+{
+  "kind": "collectionType",
+  "collectionName": "notifications",
+  "info": {
+    "singularName": "notification",
+    "pluralName": "notifications",
+    "displayName": "Notification"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "title": { "type": "string", "required": true },
+    "message": { "type": "text", "required": true },
+    "event_name": { "type": "string", "required": true },
+    "category": {
+      "type": "enumeration",
+      "enum": [
+        "orders_payments",
+        "account_security",
+        "cart_activity",
+        "wishlist_interest",
+        "promotions_offers",
+        "customer_support",
+        "stock_management"
+      ],
+      "required": true
+    },
+    "priority": {
+      "type": "enumeration",
+      "enum": ["critical", "high", "medium"],
+      "default": "medium"
+    },
+    "channels": { "type": "json", "default": ["in_app"] },
+    "is_read": { "type": "boolean", "default": false },
+    "is_email_sent": { "type": "boolean", "default": false },
+    "audience": {
+      "type": "enumeration",
+      "enum": ["user", "admin", "both", "opposite_party"],
+      "default": "user"
+    },
+    "dedup_key": { "type": "string" },
+    "payload": { "type": "json" },
+    "reference_type": { "type": "string" },
+    "reference_id": { "type": "string" },
+    "recipient_user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "template": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::notification-template.notification-template"
+    },
+    "logs": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::notification-log.notification-log",
+      "mappedBy": "notification"
+    },
+    "read_at": { "type": "datetime" }
+  }
+}
