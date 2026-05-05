@@ -13,8 +13,6 @@
 | Forms | React Hook Form · Zod · @hookform/resolvers |
 
 ## Project Structure
-
-```
 rutba-web/src/
 ├── components/       # Domain-grouped components
 │   └── ui/           # shadcn/ui primitives (Button, Card, Dialog, …)
@@ -27,7 +25,6 @@ rutba-web/src/
 ├── store/            # Zustand stores (cart, checkout)
 ├── types/api/        # TypeScript interfaces mirroring Strapi content-types
 └── validations/      # Zod schemas for forms
-```
 
 ### Routing & Pages
 
@@ -84,11 +81,11 @@ rutba-web/src/
 ## Team & Access Notes
 
 - Keep access logic domain-driven and centralized in services/middleware — do not scatter permission checks across components.
-- Distribute app-access metadata across endpoint definitions and aggregate it for Strapi/plugin consumption instead of maintaining a separate central Strapi-first map:
-  - Define a consistent metadata shape and attach it to route handlers, service functions, or endpoint definition objects.
-  - Create a small aggregator utility or build-step script that collects metadata from endpoints and emits the consolidated definition for Strapi plugins or admin tooling.
-  - Ensure metadata includes required approval scopes, visible UI actions, and branch constraints using numeric branch IDs.
-  - Keep authorization enforcement in server-side guards; use metadata primarily for discovery, UI visibility, and plugin integration.
+- Prefer distributing app-access metadata in individual endpoint files (attach metadata to route handlers, service functions, or endpoint definition objects). Keep central metadata minimal:
+  - Emit or aggregate metadata via a simple build-step script or small aggregator utility that collects per-endpoint metadata and outputs a consolidated definition for Strapi plugins or admin tooling.
+  - Avoid heavy central metadata maps or runtime computation inside Strapi; minimize Strapi-side configuration and runtime joins. Use the aggregator to perform any necessary compilation at build-time rather than at runtime.
+  - Ensure per-endpoint metadata includes required approval scopes, visible UI actions, and branch constraints using numeric branch IDs.
+  - Use metadata primarily for discovery and UI visibility; keep authorization enforcement in server-side guards.
 - When adding new workflows that require approvals, register the workflow’s required approval scopes and reuse the same manager-scoped guard.
 
 ### pos-auth: User Management Screens

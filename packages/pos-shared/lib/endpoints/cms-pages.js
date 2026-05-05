@@ -3,7 +3,6 @@
  * Centralised path + params definitions for the /cms-pages content-type.
  * Covers both the admin (pos-shared / rutba-cms) draft flows and the web storefront read flows.
  */
-import { buildEndpointMeta } from './access-metadata.js';
 
 export const CmsPagesEndpoints = {
 
@@ -131,15 +130,22 @@ export const CmsPagesEndpoints = {
     unpublish: (documentId) => ({ path: `/cms-pages/${documentId}/unpublish` }),
 };
 
-export const CmsPagesEndpointsMeta = buildEndpointMeta('api::cms-page.cms-page', '/cms-pages', {
-    list: 'find',
-    listDraft: 'find',
-    listPublished: 'find',
-    bySlug: 'findOne',
-    bySlugCheck: 'findOne',
-    headerData: 'find',
-    create: 'create',
-    update: 'update',
-    publish: 'publish',
-    unpublish: 'unpublish',
-});
+export const CmsPagesEndpointsMeta = {
+    uid: 'api::cms-page.cms-page',
+    basePath: '/cms-pages',
+    methodActions: {
+        list: 'find',
+        listDraft: 'find',
+        listPublished: 'find',
+        bySlug: 'findOne',
+        bySlugCheck: 'findOne',
+        headerData: 'find',
+        create: 'create',
+        update: 'update',
+        publish: 'publish',
+        unpublish: 'unpublish',
+    },
+};
+
+
+

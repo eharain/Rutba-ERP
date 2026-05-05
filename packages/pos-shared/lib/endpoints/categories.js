@@ -1,5 +1,4 @@
 import { authApi } from '../api.js';
-import { buildEndpointMeta } from './access-metadata.js';
 
 /**
  * CategoriesEndpoints
@@ -75,11 +74,18 @@ export const CategoriesEndpoints = {
     putDelete: (documentId) => authApi.del(`/categories/${documentId}`),
 };
 
-export const CategoriesEndpointsMeta = buildEndpointMeta('api::category.category', '/categories', {
-    listPaged: 'find',
-    listAll: 'find',
-    list: 'find',
-    create: 'create',
-    update: 'update',
-    del: 'delete',
-});
+export const CategoriesEndpointsMeta = {
+    uid: 'api::category.category',
+    basePath: '/categories',
+    methodActions: {
+        listPaged: 'find',
+        listAll: 'find',
+        list: 'find',
+        create: 'create',
+        update: 'update',
+        del: 'delete',
+    },
+};
+
+
+

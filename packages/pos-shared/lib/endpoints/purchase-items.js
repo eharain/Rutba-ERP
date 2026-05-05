@@ -1,5 +1,4 @@
 import { authApi } from '../api.js';
-import { buildEndpointMeta } from './access-metadata.js';
 
 /**
  * PurchaseItemsEndpoints
@@ -64,10 +63,17 @@ export const PurchaseItemsEndpoints = {
     putDelete: (documentId) => authApi.del(`/purchase-items/${documentId}`),
 };
 
-export const PurchaseItemsEndpointsMeta = buildEndpointMeta('api::purchase-item.purchase-item', '/purchase-items', {
-    list: 'find',
-    create: 'create',
-    byProduct: 'find',
-    update: 'update',
-    putDelete: 'delete',
-});
+export const PurchaseItemsEndpointsMeta = {
+    uid: 'api::purchase-item.purchase-item',
+    basePath: '/purchase-items',
+    methodActions: {
+        list: 'find',
+        create: 'create',
+        byProduct: 'find',
+        update: 'update',
+        putDelete: 'delete',
+    },
+};
+
+
+

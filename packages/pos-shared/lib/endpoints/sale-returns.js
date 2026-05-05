@@ -1,5 +1,4 @@
 import { authApi } from '../api.js';
-import { buildEndpointMeta } from './access-metadata.js';
 
 /**
  * SaleReturnsEndpoints
@@ -86,11 +85,18 @@ export const SaleReturnsEndpoints = {
     },
 };
 
-export const SaleReturnsEndpointsMeta = buildEndpointMeta('api::sale-return.sale-return', '/sale-returns', {
-    list: 'find',
-    create: 'create',
-    byId: 'findOne',
-    update: 'update',
-    publish: 'publish',
-    unpublish: 'unpublish',
-});
+export const SaleReturnsEndpointsMeta = {
+    uid: 'api::sale-return.sale-return',
+    basePath: '/sale-returns',
+    methodActions: {
+        list: 'find',
+        create: 'create',
+        byId: 'findOne',
+        update: 'update',
+        publish: 'publish',
+        unpublish: 'unpublish',
+    },
+};
+
+
+

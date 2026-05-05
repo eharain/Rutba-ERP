@@ -1,5 +1,4 @@
 import { authApi } from '../api.js';
-import { buildEndpointMeta } from './access-metadata.js';
 
 /**
  * SaleItemsEndpoints
@@ -41,8 +40,15 @@ export const SaleItemsEndpoints = {
     },
 };
 
-export const SaleItemsEndpointsMeta = buildEndpointMeta('api::sale-item.sale-item', '/sale-items', {
-    create: 'create',
-    update: 'update',
-    disconnect: 'update',
-});
+export const SaleItemsEndpointsMeta = {
+    uid: 'api::sale-item.sale-item',
+    basePath: '/sale-items',
+    methodActions: {
+        create: 'create',
+        update: 'update',
+        disconnect: 'update',
+    },
+};
+
+
+

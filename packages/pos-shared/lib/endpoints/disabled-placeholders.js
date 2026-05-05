@@ -31,16 +31,18 @@ const DisabledPlaceholderEndpoints = Object.fromEntries(
 
         return [
             uidToKey(entry.uid),
-            Object.freeze({
+            {
                 uid: entry.uid,
                 endpointMissing: !!entry.endpointMissing,
                 enabled: false,
                 status: 'not-implemented',
-                placeholders: Object.freeze(entry.placeholders || []),
+                placeholders: (entry.placeholders || []),
                 ...endpointMethods,
-            }),
+            },
         ];
     })
 );
 
 export { DisabledPlaceholderEndpoints };
+
+

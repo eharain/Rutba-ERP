@@ -1,5 +1,4 @@
 import { authApi } from '../api.js';
-import { buildEndpointMeta } from './access-metadata.js';
 
 /**
  * StockItemsEndpoints
@@ -239,18 +238,25 @@ export const StockItemsEndpoints = {
     },
 };
 
-export const StockItemsEndpointsMeta = buildEndpointMeta('api::stock-item.stock-item', '/stock-items', {
-    list: 'find',
-    listByProduct: 'find',
-    listByBarcode: 'find',
-    checkBarcode: 'find',
-    orphanGroups: 'orphanGroups',
-    orphanGroupItems: 'orphanGroupItems',
-    create: 'create',
-    searchByBarcode: 'find',
-    searchByName: 'find',
-    byId: 'findOne',
-    update: 'update',
-    byProduct: 'find',
-    transfer: 'update',
-});
+export const StockItemsEndpointsMeta = {
+    uid: 'api::stock-item.stock-item',
+    basePath: '/stock-items',
+    methodActions: {
+        list: 'find',
+        listByProduct: 'find',
+        listByBarcode: 'find',
+        checkBarcode: 'find',
+        orphanGroups: 'orphanGroups',
+        orphanGroupItems: 'orphanGroupItems',
+        create: 'create',
+        searchByBarcode: 'find',
+        searchByName: 'find',
+        byId: 'findOne',
+        update: 'update',
+        byProduct: 'find',
+        transfer: 'update',
+    },
+};
+
+
+

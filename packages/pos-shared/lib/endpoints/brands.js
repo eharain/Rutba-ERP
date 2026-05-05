@@ -6,7 +6,6 @@
  * and simple list/paginated lookups used across other pages.
  */
 import { authApi } from '../api.js';
-import { buildEndpointMeta } from './access-metadata.js';
 
 export const BrandsEndpoints = {
 
@@ -127,15 +126,22 @@ Object.assign(BrandsEndpoints, {
     },
 });
 
-export const BrandsEndpointsMeta = buildEndpointMeta('api::brand.brand', '/brands', {
-    listPaged: 'find',
-    listAll: 'find',
-    list: 'find',
-    listDraft: 'find',
-    listPublished: 'find',
-    create: 'create',
-    update: 'update',
-    del: 'delete',
-    publish: 'publish',
-    unpublish: 'unpublish',
-});
+export const BrandsEndpointsMeta = {
+    uid: 'api::brand.brand',
+    basePath: '/brands',
+    methodActions: {
+        listPaged: 'find',
+        listAll: 'find',
+        list: 'find',
+        listDraft: 'find',
+        listPublished: 'find',
+        create: 'create',
+        update: 'update',
+        del: 'delete',
+        publish: 'publish',
+        unpublish: 'unpublish',
+    },
+};
+
+
+

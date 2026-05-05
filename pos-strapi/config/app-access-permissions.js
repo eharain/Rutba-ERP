@@ -1,20 +1,7 @@
 // @ts-nocheck
 'use strict';
 
-function loadSharedMetadata() {
-    try {
-        return require('../../packages/pos-shared/lib/endpoints/access-metadata.js');
-    } catch (sharedErr) {
-        try {
-            return require('./app-access-permissions.legacy.js');
-        } catch (legacyErr) {
-            sharedErr.message = `${sharedErr.message} | fallback failed: ${legacyErr.message}`;
-            throw sharedErr;
-        }
-    }
-}
-
-const shared = loadSharedMetadata();
+const shared = require('../../packages/pos-shared/lib/endpoints/access-metadata.js');
 
 const {
     APP_ENTRIES,
