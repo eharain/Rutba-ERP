@@ -93,5 +93,43 @@ export const PaymentsEndpointsMeta = {
     },
 };
 
+/**
+ * PaymentsEndpointRules
+ * Per-endpoint requestRules stored in the api-guard-pro resource record.
+ */
+export const PaymentsEndpointRules = {
+    /**
+     * GET /api/payments — byRegister
+     * Client passes: ?registerId=<documentId>
+     * Server injects: filter and default sort
+     */
+    byRegister: {
+        filters: {
+            cash_register: { documentId: { $eq: '$query.registerId' } },
+        },
+        injectSort: ['payment_date:asc'],
+    },
+
+    /**
+     * GET /api/payments/:id — byId with standard populate
+     */
+    byId: {
+        injectPopulate: {
+            sales: true,
+            customer: true,
+            cash_register: true,
+        },
+    },
+
+    /** POST /api/payments — create */
+    create: {},
+
+    /** POST /api/payments — createRefund (same route, different semantic) */
+    createRefund: {},
+
+    /** PUT /api/payments/:id — update */
+    update: {},
+};
+
 
 

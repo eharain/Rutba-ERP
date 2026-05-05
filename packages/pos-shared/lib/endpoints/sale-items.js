@@ -50,5 +50,22 @@ export const SaleItemsEndpointsMeta = {
     },
 };
 
+/**
+ * SaleItemsEndpointRules
+ * Per-endpoint requestRules stored in the api-guard-pro resource record.
+ */
+export const SaleItemsEndpointRules = {
+    /** POST /api/sale-items — create */
+    create: {},
+
+    /** PUT /api/sale-items/:id — update */
+    update: {},
+
+    /** PUT /api/sale-items/:id — disconnect (clears relations) */
+    disconnect: {
+        allowedBodyFields: ['sale', 'product'],
+    },
+};
+
 
 

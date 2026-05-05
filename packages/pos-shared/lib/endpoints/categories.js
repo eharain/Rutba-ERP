@@ -87,5 +87,26 @@ export const CategoriesEndpointsMeta = {
     },
 };
 
+/**
+ * CategoriesEndpointRules
+ * Per-endpoint requestRules stored in the api-guard-pro resource record.
+ */
+export const CategoriesEndpointRules = {
+    /** GET /api/categories — list */
+    list: {
+        injectPopulate: { logo: true, parent: true },
+        injectSort: ['name:asc'],
+    },
+
+    /** POST /api/categories */
+    create: {},
+
+    /** PUT /api/categories/:id */
+    update: {},
+
+    /** DELETE /api/categories/:id */
+    delete: {},
+};
+
 
 

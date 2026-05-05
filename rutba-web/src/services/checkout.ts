@@ -8,6 +8,7 @@ import {
   ValidateAddressInterface,
 } from "@/types/api/checkout";
 import { CheckoutPayload, OrderInterface } from "@/types/api/order";
+import { WebCheckoutEndpoints, WebOrdersEndpoints } from "@/endpoints";
 
 export default function useCheckoutService() {
 
@@ -18,12 +19,10 @@ export default function useCheckoutService() {
    * @return {Promise<ValidateAddressInterface>} The validated address.
    */
   const validateAddress = async (data: ValidationShippingInformationSchema) => {
-    const req = await axios.post(
-      BASE_URL + "orders/checkout/validate-address",
-      {
-        data,
-      }
-    );
+    const ep = WebCheckoutEndpoints.validateAddress();
+    const req = await axios.post(BASE_URL + ep.path, {
+      data,
+    });
 
     return req.data as ValidateAddressInterface;
   };
@@ -35,7 +34,8 @@ export default function useCheckoutService() {
    * @return {Promise<RatesInterface>} The shipping rate for the order checkout.
    */
   const getShippingRate = async (data: RequestShippingRateInterface) => {
-    const req = await axios.post(BASE_URL + "orders/checkout/shipping-rate", {
+    const ep = WebCheckoutEndpoints.shippingRate();
+    const req = await axios.post(BASE_URL + ep.path, {
       address: {
         ...data.address,
       },
@@ -52,12 +52,10 @@ export default function useCheckoutService() {
    * @return {Promise<OrderInterface>} A promise that resolves to the response data from the server.
    */
   const checkoutItem = async (data: CheckoutPayload) => {
-    const req = await axios.post(
-      BASE_URL + "orders",
-      {
-        data
-      },
-    );
+    const ep = WebOrdersEndpoints.create();
+    const req = await axios.post(BASE_URL + ep.path, {
+      data,
+    });
 
     return req.data.data as OrderInterface;
   };

@@ -93,6 +93,38 @@ export const CashRegistersEndpointsMeta = {
     },
 };
 
+/**
+ * CashRegistersEndpointRules
+ * Per-endpoint requestRules stored in the api-guard-pro resource record.
+ */
+export const CashRegistersEndpointRules = {
+    /** GET /api/cash-registers — paginated list */
+    list: {
+        injectPopulate: {
+            branch: true,
+            opened_by: true,
+        },
+    },
+
+    /** GET /api/cash-registers/:id — byId with full populate */
+    byId: {
+        injectPopulate: {
+            branch: true,
+            opened_by: true,
+            closed_by: true,
+        },
+    },
+
+    /** GET /api/cash-registers/active — custom route, no extra rules */
+    active: {},
+
+    /** POST /api/cash-registers/open — open a new register */
+    open: {},
+
+    /** PUT /api/cash-registers/:id/close — close a register */
+    close: {},
+};
+
 
 
 

@@ -6,10 +6,12 @@ import {
   ResponseAuth,
 } from "@/types/api/auth";
 import axios from "axios";
+import { WebAuthEndpoints } from "@/endpoints";
 
 export async function signInWithCredential(req: RequestSignInCredential) {
   try {
-    const response = await axios.post(`${BASE_URL}auth/local`, {
+    const ep = WebAuthEndpoints.localSignIn();
+    const response = await axios.post(`${BASE_URL}${ep.path}`, {
       identifier: req.email,
       password: req.password,
     });
@@ -27,11 +29,10 @@ export async function signInWithCredential(req: RequestSignInCredential) {
 
 export async function signInWithProviders(req: RequestSignInWithProviders) {
   try {
+    const ep = WebAuthEndpoints.providerCallback(req?.provider, req?.access_token);
     const response: {
       data: ResponseAuth;
-    } = await axios.get(
-      `${BASE_URL}auth/${req?.provider}/callback?access_token=${req?.access_token}`
-    );
+    } = await axios.get(`${BASE_URL}${ep.path}`, { params: ep.params });
 
     return response;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -46,15 +47,13 @@ export async function signInWithProviders(req: RequestSignInWithProviders) {
 
 export async function signUpWithCredential(data: RequestSignUpCredential) {
   try {
-    const response: ResponseAuth = await axios.post(
-      `${BASE_URL}auth/local/register`,
-      {
-        displayName: data.name,
-        email: data.email,
-        username: data.email,
-        password: data.password,
-      }
-    );
+    const ep = WebAuthEndpoints.localRegister();
+    const response: ResponseAuth = await axios.post(`${BASE_URL}${ep.path}`, {
+      displayName: data.name,
+      email: data.email,
+      username: data.email,
+      password: data.password,
+    });
 
     return response;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

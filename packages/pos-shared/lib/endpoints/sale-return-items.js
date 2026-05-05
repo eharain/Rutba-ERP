@@ -37,5 +37,17 @@ export const SaleReturnItemsEndpointsMeta = {
     },
 };
 
+/**
+ * SaleReturnItemsEndpointRules
+ * Per-endpoint requestRules stored in the api-guard-pro resource record.
+ */
+export const SaleReturnItemsEndpointRules = {
+    /** POST /api/sale-return-items — create */
+    create: {},
+
+    /** PUT /api/sale-return-items/:id — update */
+    update: {},
+};
+
 
 

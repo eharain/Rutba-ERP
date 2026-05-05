@@ -1,5 +1,6 @@
 import { BASE_URL } from "../static/const";
 import axios from "axios";
+import { WebLeadsEndpoints } from "@/endpoints";
 
 export interface CreateLeadRequest {
   name: string;
@@ -23,7 +24,8 @@ export interface LeadResponse {
 
 export async function createLead(data: CreateLeadRequest): Promise<LeadResponse> {
   try {
-    const response = await axios.post(`${BASE_URL}crm-leads`, {
+    const ep = WebLeadsEndpoints.create();
+    const response = await axios.post(`${BASE_URL}${ep.path}`, {
       data: {
         ...data,
         source: data.source || "Website",

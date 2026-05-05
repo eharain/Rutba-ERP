@@ -143,5 +143,45 @@ export const BrandsEndpointsMeta = {
     },
 };
 
+/**
+ * BrandsEndpointRules
+ * Per-endpoint requestRules stored in the api-guard-pro resource record.
+ */
+export const BrandsEndpointRules = {
+    /** GET /api/brands — list (all statuses) */
+    list: {
+        injectPopulate: { logo: true, categories: true },
+        injectSort: ['name:asc'],
+    },
+
+    /** GET /api/brands — listPublished (status=published) */
+    listPublished: {
+        filters: { publishedAt: { $notNull: true } },
+        injectPopulate: { logo: true },
+        injectSort: ['name:asc'],
+    },
+
+    /** GET /api/brands — listDraft */
+    listDraft: {
+        filters: { publishedAt: { $null: true } },
+        injectPopulate: { logo: true },
+    },
+
+    /** POST /api/brands */
+    create: {},
+
+    /** PUT /api/brands/:id */
+    update: {},
+
+    /** DELETE /api/brands/:id */
+    delete: {},
+
+    /** PUT /api/brands/:id/publish */
+    publish: {},
+
+    /** PUT /api/brands/:id/unpublish */
+    unpublish: {},
+};
+
 
 

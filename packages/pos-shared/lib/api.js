@@ -1,18 +1,18 @@
 import axios from "axios";
-import { storage } from "./storage";
+import { storage } from "./storage.js";
 import qs from 'qs';
-import { BranchesEndpoints } from './endpoints';
+import { BranchesEndpoints } from './endpoints/index.js';
 
 //const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4010/api";
 //export const IMAGE_URL = API_URL.substring(0, API_URL.length - 4)
 
-import { initApiConfig } from './api-url-resolver';
+import { initApiConfig } from './api-url-resolver.js';
 
 await initApiConfig({
   testPath: '/../admin',
 });
 
-import { API_URL, IMAGE_URL } from './api-url-resolver';
+import { API_URL, IMAGE_URL } from './api-url-resolver.js';
 export { API_URL, IMAGE_URL };
 
 

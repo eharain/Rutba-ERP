@@ -147,5 +147,56 @@ export const CmsPagesEndpointsMeta = {
     },
 };
 
+/**
+ * CmsPagesEndpointRules
+ * Per-endpoint requestRules stored in the api-guard-pro resource record.
+ */
+export const CmsPagesEndpointRules = {
+    /** GET /api/cms-pages — list all pages */
+    list: {
+        injectPopulate: { hero: true, sections: true },
+        injectSort: ['createdAt:desc'],
+    },
+
+    /** GET /api/cms-pages — listPublished */
+    listPublished: {
+        filters: { publishedAt: { $notNull: true } },
+        injectSort: ['createdAt:desc'],
+    },
+
+    /** GET /api/cms-pages — listDraft */
+    listDraft: {
+        filters: { publishedAt: { $null: true } },
+    },
+
+    /**
+     * GET /api/cms-pages — bySlug
+     * Client passes: ?slug=<value>
+     */
+    bySlug: {
+        filters: { slug: { $eq: '$query.slug' } },
+        injectPopulate: { hero: true, sections: true, seo: true },
+    },
+
+    /** GET /api/cms-pages — header data subset */
+    headerData: {
+        filters: { showInHeader: true },
+        injectPopulate: { hero: true },
+        injectSort: ['sortOrder:asc'],
+    },
+
+    /** POST /api/cms-pages */
+    create: {},
+
+    /** PUT /api/cms-pages/:id */
+    update: {},
+
+    /** PUT /api/cms-pages/:id/publish */
+    publish: {},
+
+    /** PUT /api/cms-pages/:id/unpublish */
+    unpublish: {},
+};
+
 
 

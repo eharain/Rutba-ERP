@@ -258,5 +258,103 @@ export const StockItemsEndpointsMeta = {
     },
 };
 
+/**
+ * StockItemsEndpointRules
+ * Per-endpoint requestRules stored in the api-guard-pro resource record.
+ */
+export const StockItemsEndpointRules = {
+    /**
+     * GET /me/stock-items-search — list (branch-scoped custom route)
+     * Client passes: ?page&pageSize&statusFilter&branchDocId&productDocId
+     * Server injects: populate; client filters are passed through
+     */
+    list: {
+        injectPopulate: {
+            product: true,
+            purchase_item: { populate: { purchase: true } },
+        },
+    },
+
+    /**
+     * GET /me/stock-items-search — listByProduct
+     * Client passes: ?productDocId=<documentId>
+     */
+    listByProduct: {
+        filters: {
+            product: { documentId: { $eq: '$query.productDocId' } },
+        },
+        injectPopulate: {
+            product: true,
+            purchase_item: { populate: { purchase: true } },
+        },
+    },
+
+    /**
+     * GET /me/stock-items-search — listByBarcode
+     * Client passes: ?barcode=<value>
+     */
+    listByBarcode: {
+        filters: {
+            barcode: { $eq: '$query.barcode' },
+        },
+        injectPopulate: { product: true },
+    },
+
+    /**
+     * GET /me/stock-items-search — searchByBarcode
+     * Client passes: ?barcode=<value>
+     */
+    searchByBarcode: {
+        filters: {
+            barcode: { $containsi: '$query.barcode' },
+        },
+        injectPopulate: { product: true },
+    },
+
+    /**
+     * GET /me/stock-items-search — searchByName
+     * Client passes: ?name=<value>
+     */
+    searchByName: {
+        filters: {
+            $or: [
+                { 'product.name': { $containsi: '$query.name' } },
+                { barcode: { $containsi: '$query.name' } },
+            ],
+        },
+        injectPopulate: { product: true },
+    },
+
+    /** GET /api/stock-items/orphan-groups — orphanGroups */
+    orphanGroups: {},
+
+    /** GET /api/stock-items/orphan-group-items — orphanGroupItems */
+    orphanGroupItems: {},
+
+    /** GET /api/stock-items/:id — byId */
+    byId: {
+        injectPopulate: { product: true, purchase_item: { populate: { purchase: true } } },
+    },
+
+    /**
+     * GET /api/stock-items — byProduct
+     * Client passes: ?productDocId=<documentId>
+     */
+    byProduct: {
+        filters: {
+            product: { documentId: { $eq: '$query.productDocId' } },
+        },
+    },
+
+    /** POST /api/stock-items — create */
+    create: {},
+
+    /** PUT /api/stock-items/:id — update */
+    update: {},
+
+    /** POST /api/stock-items/transfer — transfer items to another branch */
+    transfer: {},
+};
+
 
 

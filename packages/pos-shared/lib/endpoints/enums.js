@@ -23,5 +23,15 @@ export const EnumsEndpointsMeta = {
     },
 };
 
+/**
+ * EnumsEndpointRules
+ * Per-endpoint requestRules stored in the api-guard-pro resource record.
+ * Enums are read-only config lookups; no extra rules needed.
+ */
+export const EnumsEndpointRules = {
+    /** GET /api/enums/:name/:field */
+    values: {},
+};
+
 
 

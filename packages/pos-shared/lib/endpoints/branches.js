@@ -93,5 +93,33 @@ export const BranchesEndpointsMeta = {
     },
 };
 
+/**
+ * BranchesEndpointRules
+ * Per-endpoint requestRules stored in the api-guard-pro resource record.
+ */
+export const BranchesEndpointRules = {
+    /** GET /api/branches — list with desks/bank populate */
+    listWithDesks: {
+        injectPopulate: { desks: true, bank_accounts: true },
+    },
+
+    /** GET /api/branches — list (minimal) */
+    list: {},
+
+    /** GET /api/branches/:id — byId with full detail */
+    byId: {
+        injectPopulate: { desks: true, bank_accounts: true, logo: true },
+    },
+
+    /** PUT /api/branches/:id — update */
+    update: {},
+
+    /** POST /api/branches/:id/archive-stock — archive */
+    archiveStock: {},
+
+    /** POST /api/branches/:id/unarchive-stock — unarchive */
+    unarchiveStock: {},
+};
+
 
 

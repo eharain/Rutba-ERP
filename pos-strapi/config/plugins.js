@@ -9,6 +9,24 @@ module.exports = ({ env }) => ({
         config: {
             interceptorEnabled: true,
             denyByDefault: true,
+
+            // ── Header bridging ─────────────────────────────────────
+            // Must match the headers the Rutba front-end apps actually send.
+            headerDomainKey: 'x-rutba-app',        // was defaulting to 'x-app-name' — wrong
+            headerElevatedKey: 'x-rutba-app-admin', // was defaulting to 'x-app-admin'  — wrong
+
+            // ── Enforcement mode ────────────────────────────────────
+            // 'hybrid': if no guard grant matches, fall back to users-permissions.
+            // Keep as 'hybrid' during migration; switch to 'enforce' when
+            // all resources, domains, roles, policies and grants are seeded.
+            enforcementMode: 'hybrid',
+
+            // ── Owner scoping ───────────────────────────────────────
+            // When true the interceptor auto-injects owners filters for
+            // content-types that have an `owners` relation, mirroring the
+            // behaviour of app-access-guard for non-elevated users.
+            enforceOwnership: true,
+
             bypassPaths: [
                 '/api/auth',
                 '/api/users/me',
@@ -16,6 +34,30 @@ module.exports = ({ env }) => ({
                 '/api/me/stock-items-search',
                 '/upload',
                 '/users-permissions',
+            ],
+
+            // ── Domains ─────────────────────────────────────────────
+            // Seeded by the plugin setup service on every restart (upsert — safe to re-run).
+            // Mirrors APP_ENTRIES in packages/pos-shared/lib/endpoints/access-metadata.js.
+            // aliasKeys are resolved by the permission engine to widen grant lookups
+            // when one app key should also inherit another domain's grants.
+            domains: [
+                { key: 'stock',            name: 'Stock Management'    },
+                { key: 'order-management', name: 'Order Management',   aliasKeys: ['delivery', 'cms'] },
+                { key: 'sale',             name: 'Point of Sale'       },
+                { key: 'accounts',         name: 'Accounting'          },
+                { key: 'accounts-ap',      name: 'Accounts Payable'    },
+                { key: 'accounts-ar',      name: 'Accounts Receivable' },
+                { key: 'accounts-viewer',  name: 'Accounting Viewer'   },
+                { key: 'delivery',         name: 'Delivery'            },
+                { key: 'rider',            name: 'Rider App',          aliasKeys: ['delivery'] },
+                { key: 'crm',              name: 'CRM'                 },
+                { key: 'auth',             name: 'User Management'     },
+                { key: 'web-user',         name: 'Web Orders',         aliasKeys: ['web-user'] },
+                { key: 'hr',               name: 'Human Resources'     },
+                { key: 'payroll',          name: 'Payroll'             },
+                { key: 'cms',              name: 'Content Management'  },
+                { key: 'social',           name: 'Social Media'        },
             ],
         },
     },

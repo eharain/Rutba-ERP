@@ -12,3 +12,7 @@ export { WebProductGroupsEndpoints } from "./product-groups";
 export { WebReviewsEndpoints } from "./reviews";
 export { WebSiteSettingsEndpoints } from "./site-settings";
 export { WebOrdersEndpoints } from "./orders";
+export { WebAuthEndpoints } from "./auth";
+export { WebCheckoutEndpoints } from "./checkout";
+export { WebDeliveryEndpoints } from "./delivery";
+export { WebLeadsEndpoints } from "./leads";

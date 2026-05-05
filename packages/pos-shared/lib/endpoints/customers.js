@@ -84,5 +84,45 @@ export const CustomersEndpointsMeta = {
     },
 };
 
+/**
+ * CustomersEndpointRules
+ * Per-endpoint requestRules stored in the api-guard-pro resource record.
+ */
+export const CustomersEndpointRules = {
+    /**
+     * GET /api/customers — findByContact
+     * Client passes: ?email=<value> or ?phone=<value>
+     * Server injects: exact-match filters
+     */
+    findByContact: {
+        filters: {
+            $or: [
+                { email: { $eq: '$query.email' } },
+                { phone: { $eq: '$query.phone' } },
+            ],
+        },
+    },
+
+    /**
+     * GET /api/customers — search
+     * Client passes: ?q=<term>
+     * Server injects: $or containsi filter
+     */
+    search: {
+        filters: {
+            $or: [
+                { name: { $containsi: '$query.q' } },
+                { phone: { $containsi: '$query.q' } },
+            ],
+        },
+    },
+
+    /** POST /api/customers — create */
+    create: {},
+
+    /** PUT /api/customers/:id — update */
+    update: {},
+};
+
 
 
