@@ -1,0 +1,31 @@
+{
+  "kind": "collectionType",
+  "collectionName": "notification_events",
+  "info": {
+    "singularName": "notification-event",
+    "pluralName": "notification-events",
+    "displayName": "Notification Event"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "event_name": { "type": "string", "required": true },
+    "entity_type": { "type": "string" },
+    "entity_id": { "type": "string" },
+    "payload": { "type": "json" },
+    "status": {
+      "type": "enumeration",
+      "enum": ["pending", "processed", "failed", "deduplicated"],
+      "default": "pending"
+    },
+    "processed_at": { "type": "datetime" },
+    "error_message": { "type": "text" },
+    "notifications": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::notification.notification"
+    }
+  }
+}

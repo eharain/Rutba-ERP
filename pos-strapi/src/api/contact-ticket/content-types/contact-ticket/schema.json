@@ -1,0 +1,41 @@
+{
+  "kind": "collectionType",
+  "collectionName": "contact_tickets",
+  "info": {
+    "singularName": "contact-ticket",
+    "pluralName": "contact-tickets",
+    "displayName": "Contact Ticket"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "ticket_no": { "type": "uid", "targetField": "subject" },
+    "subject": { "type": "string", "required": true },
+    "message": { "type": "text", "required": true },
+    "status": {
+      "type": "enumeration",
+      "enum": ["open", "in_progress", "waiting", "resolved"],
+      "default": "open"
+    },
+    "sla_due_at": { "type": "datetime" },
+    "resolved_at": { "type": "datetime" },
+    "last_reply_by": {
+      "type": "enumeration",
+      "enum": ["user", "agent"]
+    },
+    "last_reply_at": { "type": "datetime" },
+    "metadata": { "type": "json" },
+    "user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "assigned_to": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

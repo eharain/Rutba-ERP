@@ -538,6 +538,8 @@ const ENDPOINT_COVERAGE = {
     'api::cms-page.cms-page': ['find', 'findOne', 'create', 'update', 'publish', 'unpublish'],
     'api::crm-lead.crm-lead': ['create', 'update'],
     'api::customer.customer': ['find', 'findOne', 'create', 'update'],
+    'api::notification-log.notification-log': ['find', 'findOne'],
+    'api::notification-template.notification-template': ['find', 'findOne', 'create', 'update', 'delete'],
     'api::payment.payment': ['find', 'findOne', 'create', 'update'],
     'api::product.product': ['find', 'findOne', 'create', 'update', 'delete'],
     'api::purchase-item.purchase-item': ['find', 'findOne', 'create', 'update', 'delete'],

@@ -33,12 +33,33 @@ function buildAllPermissionActions() {
             for (const action of BASE_CRUD) {
                 all.add(`${def.uid}.${action}`);
             }
+
             for (const action of def.actions) {
                 all.add(`${def.uid}.${action}`);
             }
         }
     }
     return [...all].sort();
+}
+
+async function ensureApiGuardResource(strapi, resource) {
+    const query = strapi.db.query('plugin::api-guard-pro.resource');
+    const existing = await query.findOne({ where: { key: resource.key } });
+
+    if (!existing) {
+        await query.create({ data: resource });
+        strapi.log.info(`[bootstrap] Created api-guard resource "${resource.key}"`);
+        return;
+    }
+
+    await query.update({
+        where: { id: existing.id },
+        data: {
+            ...resource,
+            isActive: true,
+        },
+    });
+    strapi.log.info(`[bootstrap] Synced api-guard resource "${resource.key}"`);
 }
 
 async function seedHrDepartmentsFromConfig(strapi, appRoleOptions = []) {
@@ -256,6 +277,80 @@ module.exports = {
 
     async bootstrap({ strapi }) {
         const knex = strapi.db.connection;
+
+        // ─── Ensure api-guard resources for notification templates ───
+        try {
+            if (strapi.db?.query && strapi.plugin('api-guard-pro')) {
+                const notificationResources = [
+                    {
+                        key: 'notificationTemplatesFind',
+                        displayName: 'GET /api/notification-templates',
+                        description: 'List notification templates',
+                        type: 'standard',
+                        method: 'GET',
+                        pathPattern: '/api/notification-templates',
+                        contentTypeUid: 'api::notification-template.notification-template',
+                        'route-name': 'get.api.notification-templates',
+                        isActive: true,
+                        isPublic: false,
+                    },
+                    {
+                        key: 'notificationTemplatesFindOne',
+                        displayName: 'GET /api/notification-templates/:id',
+                        description: 'Get a notification template',
+                        type: 'standard',
+                        method: 'GET',
+                        pathPattern: '/api/notification-templates/:id',
+                        contentTypeUid: 'api::notification-template.notification-template',
+                        'route-name': 'get.api.notification-templates.id',
+                        isActive: true,
+                        isPublic: false,
+                    },
+                    {
+                        key: 'notificationTemplatesCreate',
+                        displayName: 'POST /api/notification-templates',
+                        description: 'Create a notification template',
+                        type: 'standard',
+                        method: 'POST',
+                        pathPattern: '/api/notification-templates',
+                        contentTypeUid: 'api::notification-template.notification-template',
+                        'route-name': 'post.api.notification-templates',
+                        isActive: true,
+                        isPublic: false,
+                    },
+                    {
+                        key: 'notificationTemplatesUpdate',
+                        displayName: 'PUT /api/notification-templates/:id',
+                        description: 'Update a notification template',
+                        type: 'standard',
+                        method: 'PUT',
+                        pathPattern: '/api/notification-templates/:id',
+                        contentTypeUid: 'api::notification-template.notification-template',
+                        'route-name': 'put.api.notification-templates.id',
+                        isActive: true,
+                        isPublic: false,
+                    },
+                    {
+                        key: 'notificationTemplatesDelete',
+                        displayName: 'DELETE /api/notification-templates/:id',
+                        description: 'Delete a notification template',
+                        type: 'standard',
+                        method: 'DELETE',
+                        pathPattern: '/api/notification-templates/:id',
+                        contentTypeUid: 'api::notification-template.notification-template',
+                        'route-name': 'delete.api.notification-templates.id',
+                        isActive: true,
+                        isPublic: false,
+                    },
+                ];
+
+                for (const resource of notificationResources) {
+                    await ensureApiGuardResource(strapi, resource);
+                }
+            }
+        } catch (err) {
+            strapi.log.error(`[bootstrap] Failed to sync api-guard resources for notification templates: ${err.message}`);
+        }
 
         // ─── a.1  Ensure roles configured in app-access config ───
         const ensuredRolesByType = {};

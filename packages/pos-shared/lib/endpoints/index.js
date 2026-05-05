@@ -29,6 +29,7 @@ export { EnumsEndpoints } from './enums.js';
 export { TermTypesEndpoints, TermsEndpoints } from './term-types.js';
 export { CrmLeadsEndpoints } from './crm-leads.js';
 export { StockInputsEndpoints } from './stock-inputs.js';
+export { NotificationTemplatesEndpoints } from './notification-templates.js';
 export { DISABLED_PLACEHOLDERS } from './access-metadata.js';
 export { DisabledPlaceholderEndpoints } from './disabled-placeholders.js';
 
@@ -99,6 +100,9 @@ export {
 export {
     StockInputsEndpointsMeta,
 } from './stock-inputs.js';
+export {
+    NotificationTemplatesEndpointsMeta,
+} from './notification-templates.js';
 export {
     IMPLEMENTED_ENDPOINT_META,
     DISABLED_ENDPOINT_META,

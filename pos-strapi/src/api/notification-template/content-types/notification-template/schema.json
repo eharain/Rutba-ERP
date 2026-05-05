@@ -6,14 +6,45 @@
   "pluginOptions": {},
   "attributes": {
     "name": { "type": "string", "required": true },
+    "event_name": { "type": "string" },
     "trigger_event": { "type": "enumeration", "enum": ["order_placed","payment_confirmed","offer_accepted","out_for_delivery","delivered","cancelled","refund_initiated"], "required": true },
     "channel": { "type": "enumeration", "enum": ["email","sms","both"], "default": "email" },
+    "channels": { "type": "json" },
+    "category": {
+      "type": "enumeration",
+      "enum": [
+        "orders_payments",
+        "account_security",
+        "cart_activity",
+        "wishlist_interest",
+        "promotions_offers",
+        "customer_support",
+        "stock_management"
+      ],
+      "default": "orders_payments"
+    },
+    "priority": {
+      "type": "enumeration",
+      "enum": ["critical", "high", "medium"],
+      "default": "medium"
+    },
+    "audience": {
+      "type": "enumeration",
+      "enum": ["user", "admin", "both", "opposite_party"],
+      "default": "user"
+    },
+    "is_critical": { "type": "boolean", "default": false },
+    "send_email": { "type": "boolean", "default": false },
+    "delay_minutes": { "type": "integer", "default": 0 },
+    "dedup_window_minutes": { "type": "integer", "default": 60 },
+    "conditions": { "type": "json" },
     "subject": { "type": "string" },
     "body_template": { "type": "text" },
     "available_variables": { "type": "json" },
     "scope": { "type": "enumeration", "enum": ["global","per_branch"], "default": "global" },
     "branch": { "type": "relation", "relation": "manyToOne", "target": "api::branch.branch" },
     "send_to": { "type": "enumeration", "enum": ["customer","rider","staff","admin"], "default": "customer" },
-    "is_active": { "type": "boolean", "default": true }
+    "is_active": { "type": "boolean", "default": true },
+    "is_enabled": { "type": "boolean", "default": true }
   }
 }

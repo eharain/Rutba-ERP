@@ -247,9 +247,10 @@ module.exports = (config, { strapi }) => {
 
     // -- Permission check (b.3.a & b.3.b) --------------------
     {
+      const inheritedAppKeys = Array.from(new Set([...(appKeys || []), ...(adminKeys || [])]));
       const permissionDefs = getPermissionDefsForAccessibleApps(
         accessibleAppKeys,
-        appKeys,
+        inheritedAppKeys,
         adminKeys
       );
 
