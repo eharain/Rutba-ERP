@@ -2,7 +2,7 @@
 'use strict';
 
 const { ensureUser } = require('../../../utils/ensure-user');
-const { mapLegacyAccessToPermissionRoles } = require('../../../utils/permission-role-migration');
+const { resolveGuardRoles } = require('../../../utils/guard-roles');
 
 const AUTH_APP_KEY = 'auth';
 
@@ -18,7 +18,7 @@ function sanitizeUser(user) {
 }
 
 function deriveDomainAccessFromUser(user) {
-  const roles = user?.permission_roles || [];
+  const roles = user?.api_guard_roles || [];
 
   const appKeys = [...new Set(
     roles
@@ -26,9 +26,10 @@ function deriveDomainAccessFromUser(user) {
       .filter(Boolean)
   )];
 
+  // AGP roles have no level field; admin roles are identified by key convention (*_admin or *-admin)
   const adminKeys = [...new Set(
     roles
-      .filter((role) => role?.level === 'admin')
+      .filter((role) => /admin/i.test(role?.key || ''))
       .map((role) => role?.domain?.key)
       .filter(Boolean)
   )];
@@ -75,8 +76,8 @@ async function requireAuthAdmin(ctx, strapi) {
   const fullUser = await strapi.query('plugin::users-permissions.user').findOne({
     where: { id: user.id },
     populate: {
-      permission_roles: {
-        select: ['level'],
+      api_guard_roles: {
+        select: ['key'],
         populate: {
           domain: { select: ['key'] },
         },
@@ -84,8 +85,10 @@ async function requireAuthAdmin(ctx, strapi) {
     },
   });
 
-  const isAuthAdmin = (fullUser?.permission_roles || []).some((role) =>
-    role?.level === 'admin' && role?.domain?.key === AUTH_APP_KEY
+  // Admin = has an AGP role whose key matches the admin convention (*_admin/*-admin)
+  // and whose domain is the auth app
+  const isAuthAdmin = (fullUser?.api_guard_roles || []).some((role) =>
+    /admin/i.test(role?.key || '') && role?.domain?.key === AUTH_APP_KEY
   );
   if (!isAuthAdmin) {
     ctx.forbidden('Auth app admin access is required.');
@@ -100,7 +103,7 @@ async function fetchUserById(strapi, id) {
     where: { id },
     populate: {
       role: true,
-      permission_roles: {
+      api_guard_roles: {
         populate: {
           domain: true,
         },
@@ -118,7 +121,7 @@ async function listDomainsWithUserCounts(strapi) {
 
   const users = await strapi.query('plugin::users-permissions.user').findMany({
     populate: {
-      permission_roles: {
+      api_guard_roles: {
         populate: {
           domain: {
             select: ['key'],
@@ -131,7 +134,7 @@ async function listDomainsWithUserCounts(strapi) {
   const usersByDomainKey = new Map();
   for (const user of users || []) {
     const domainKeys = new Set(
-      (user.permission_roles || [])
+      (user.api_guard_roles || [])
         .map((role) => role?.domain?.key)
         .filter(Boolean)
     );
@@ -155,7 +158,7 @@ module.exports = {
     const users = await strapi.query('plugin::users-permissions.user').findMany({
       populate: {
         role: true,
-        permission_roles: {
+        api_guard_roles: {
           populate: {
             domain: true,
           },
@@ -202,9 +205,10 @@ module.exports = {
     const appAccesses = await resolveDomainKeys(strapi, payload.domain_accesses || []);
     const adminAppAccesses = await resolveDomainKeys(strapi, payload.admin_domain_accesses || []);
 
-    const { roleIds } = await mapLegacyAccessToPermissionRoles(strapi, {
-      appKeys: appAccesses,
+    const { roleIds } = await resolveGuardRoles(strapi, {
+      domainKeys: appAccesses,
       adminKeys: adminAppAccesses,
+      roleKeys: payload.role_keys || [],
     });
 
     const created = await userService.add({
@@ -216,7 +220,7 @@ module.exports = {
       confirmed: payload.confirmed,
       blocked: payload.blocked,
       role: payload.role,
-      permission_roles: roleIds,
+      api_guard_roles: roleIds,
     });
 
     const user = await fetchUserById(strapi, created.id);
@@ -235,9 +239,10 @@ module.exports = {
     const appAccesses = await resolveDomainKeys(strapi, payload.domain_accesses || []);
     const adminAppAccesses = await resolveDomainKeys(strapi, payload.admin_domain_accesses || []);
 
-    const { roleIds } = await mapLegacyAccessToPermissionRoles(strapi, {
-      appKeys: appAccesses,
+    const { roleIds } = await resolveGuardRoles(strapi, {
+      domainKeys: appAccesses,
       adminKeys: adminAppAccesses,
+      roleKeys: payload.role_keys || [],
     });
 
     const nextData = {
@@ -248,7 +253,7 @@ module.exports = {
       confirmed: payload.confirmed,
       blocked: payload.blocked,
       role: payload.role,
-      permission_roles: roleIds,
+      api_guard_roles: roleIds,
     };
 
     if (payload.password) {

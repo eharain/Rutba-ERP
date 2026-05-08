@@ -33,9 +33,7 @@
       "configurable": false,
       "required": true
     },
-    "isStaff": {
-      "type": "boolean"
-    },
+
     "provider": {
       "type": "string",
       "configurable": false

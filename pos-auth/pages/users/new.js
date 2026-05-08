@@ -4,6 +4,7 @@ import Layout from "../../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import AppAccessGate from "../../components/AppAccessGate";
 import { authApi } from "@rutba/pos-shared/lib/api";
+import { AppAccessesEndpoints } from "../../lib/endpoints";
 
 export default function NewUserPage() {
     const router = useRouter();
@@ -20,7 +21,8 @@ export default function NewUserPage() {
         confirmed: true,
         blocked: false,
         role: "",
-        app_accesses: [],
+        domain_accesses: [],
+        admin_domain_accesses: [],
     });
 
     useEffect(() => {
@@ -32,7 +34,8 @@ export default function NewUserPage() {
             const rolesRes = await authApi.get("/auth-admin/roles");
             setRoles(rolesRes?.roles || []);
 
-            const aaRes = await authApi.get("/app-accesses");
+            const domainsEp = AppAccessesEndpoints.list();
+            const aaRes = await authApi.call(domainsEp);
             setAppAccesses(aaRes?.data || aaRes || []);
         } catch (err) {
             console.error("Failed to load options", err);
@@ -43,12 +46,33 @@ export default function NewUserPage() {
         setForm(prev => ({ ...prev, [field]: value }));
     }
 
-    function toggleAppAccess(id) {
+    function toggleAppAccess(domainKey, kind) {
         setForm(prev => {
-            const current = prev.app_accesses;
+            const appSet = new Set(prev.domain_accesses);
+            const adminSet = new Set(prev.admin_domain_accesses);
+
+            if (kind === "user") {
+                if (appSet.has(domainKey)) {
+                    appSet.delete(domainKey);
+                    adminSet.delete(domainKey);
+                } else {
+                    appSet.add(domainKey);
+                }
+            }
+
+            if (kind === "admin") {
+                if (adminSet.has(domainKey)) {
+                    adminSet.delete(domainKey);
+                } else {
+                    adminSet.add(domainKey);
+                    appSet.add(domainKey);
+                }
+            }
+
             return {
                 ...prev,
-                app_accesses: current.includes(id) ? current.filter(a => a !== id) : [...current, id],
+                domain_accesses: Array.from(appSet),
+                admin_domain_accesses: Array.from(adminSet),
             };
         });
     }
@@ -70,7 +94,8 @@ export default function NewUserPage() {
                 confirmed: form.confirmed,
                 blocked: form.blocked,
                 role: form.role || undefined,
-                app_accesses: form.app_accesses,
+                domain_accesses: form.domain_accesses,
+                admin_domain_accesses: form.admin_domain_accesses,
             };
             await authApi.post("/auth-admin/users", payload);
             router.push("/users");
@@ -111,7 +136,7 @@ export default function NewUserPage() {
 
                         {/* Role */}
                         <div className="col-md-6">
-                            <label className="form-label">Role (API permissions)</label>
+                            <label className="form-label">Role (Strapi API permissions)</label>
                             <select className="form-select" value={form.role} onChange={e => setField("role", e.target.value)}>
                                 <option value="">— Select —</option>
                                 {roles.map(r => (
@@ -136,24 +161,61 @@ export default function NewUserPage() {
 
                         {/* App Access */}
                         <div className="col-12">
-                            <label className="form-label">App Access</label>
-                            <div className="d-flex flex-wrap gap-2">
-                                {appAccesses.map(aa => (
-                                    <div key={aa.id} className="form-check">
-                                        <input
-                                            className="form-check-input"
-                                            type="checkbox"
-                                            id={`aa-${aa.id}`}
-                                            checked={form.app_accesses.includes(aa.id)}
-                                            onChange={() => toggleAppAccess(aa.id)}
-                                        />
-                                        <label className="form-check-label" htmlFor={`aa-${aa.id}`}>
-                                            {aa.name} <small className="text-muted">({aa.key})</small>
-                                        </label>
-                                    </div>
-                                ))}
-                                {appAccesses.length === 0 && <span className="text-muted">No app-access entries found</span>}
-                            </div>
+                            <label className="form-label">Domain Access (AGP)</label>
+                            {appAccesses.length === 0 ? (
+                                <span className="text-muted">No applications configured</span>
+                            ) : (
+                                <div className="table-responsive">
+                                    <table className="table table-hover align-middle mb-0">
+                                        <thead className="table-light">
+                                            <tr>
+                                                <th style={{ width: "50%" }}>Application</th>
+                                                <th className="text-center" style={{ width: "25%" }}>User Access</th>
+                                                <th className="text-center" style={{ width: "25%" }}>Admin Access</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {appAccesses.map((aa) => {
+                                                const hasUser = form.domain_accesses.includes(aa.key);
+                                                const hasAdmin = form.admin_domain_accesses.includes(aa.key);
+
+                                                return (
+                                                    <tr key={aa.id}>
+                                                        <td>
+                                                            <div className="fw-semibold">{aa.name}</div>
+                                                            {aa.description && <div className="small text-muted">{aa.description}</div>}
+                                                            <div className="small"><code className="text-muted">{aa.key}</code></div>
+                                                        </td>
+                                                        <td className="text-center">
+                                                            <div className="form-check form-switch d-inline-block">
+                                                                <input
+                                                                    className="form-check-input"
+                                                                    type="checkbox"
+                                                                    id={`aa-user-${aa.id}`}
+                                                                    checked={hasUser}
+                                                                    disabled={hasAdmin}
+                                                                    onChange={() => toggleAppAccess(aa.key, "user")}
+                                                                />
+                                                            </div>
+                                                        </td>
+                                                        <td className="text-center">
+                                                            <div className="form-check form-switch d-inline-block">
+                                                                <input
+                                                                    className="form-check-input"
+                                                                    type="checkbox"
+                                                                    id={`aa-admin-${aa.id}`}
+                                                                    checked={hasAdmin}
+                                                                    onChange={() => toggleAppAccess(aa.key, "admin")}
+                                                                />
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
                         </div>
                     </div>
 
