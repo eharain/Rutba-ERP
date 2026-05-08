@@ -6,10 +6,37 @@ const meSchema = require('./content-types/me/schema.json');
 const userSchema = require('./content-types/user/schema.json');
 
 module.exports = (plugin) => {
-  // Ensure plugin content types use the shipped schemas rather than mutating runtime objects
+  // Merge our custom attributes into the existing user content-type schema rather
+  // than replacing the whole object. Replacing it wholesale would discard attributes
+  // injected by independent plugins (e.g. AGP's permission_roles) because those
+  // plugins run their register() after this extension is evaluated.
   plugin.contentTypes = plugin.contentTypes || {};
-  plugin.contentTypes.user = { schema: userSchema };
-  plugin.contentTypes.me = { schema: meSchema };
+
+    const existingUser = plugin.contentTypes.user;
+
+  if (existingUser && existingUser.schema) {
+    // Preserve everything the original schema already has; our attributes win on conflict.
+    existingUser.schema.attributes = Object.assign(
+      {},
+      existingUser.schema.attributes,
+      userSchema.attributes
+    );
+  } else {
+    // Fallback: no prior schema — use ours directly.
+    plugin.contentTypes.user = { schema: userSchema };
+  }
+
+  // Merge all user attributes into the me schema so the /me endpoint exposes the
+  // full user profile (displayName,  hr_employee, etc.) without losing
+  // any attributes that are exclusive to the me schema.
+  const mergedMeSchema = {
+    ...meSchema,
+    attributes: {
+      ...userSchema.attributes,
+      ...meSchema.attributes,
+    },
+  };
+  plugin.contentTypes.me = { schema: mergedMeSchema };
 
   // Register custom controller
   plugin.controllers = plugin.controllers || {};

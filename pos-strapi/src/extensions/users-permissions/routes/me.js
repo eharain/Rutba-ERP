@@ -6,6 +6,14 @@
 
 module.exports = [
     {
+        method: "GET",
+        path: "/me/permissions",
+        handler: "me.mePermissions",
+        config: {
+            prefix: '',
+        }
+    },
+    {
         method: "POST",
         path: "/me/permissions",
         handler: "me.mePermissions",

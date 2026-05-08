@@ -1,12 +1,47 @@
 'use strict';
 
 const { createCoreController } = require('@strapi/strapi').factories;
-const {
-  getAppRoleOptions,
-  getEnabledPermissionGroups,
-  sanitizeAppRolesForTeam,
-  deriveTeamSlugFromData,
-} = require('../../../../../packages/pos-shared/lib/endpoints/access-metadata.js');
+
+// ── Local slug derivation (no external dependency) ───────────────────────────
+function deriveTeamSlugFromData(data) {
+  const explicit = String(data?.team_slug || '').trim();
+  if (explicit) return explicit.toLowerCase();
+  const byDepartment = String(data?.department?.name || data?.departmentName || '').trim();
+  if (byDepartment) {
+    return byDepartment.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+  }
+  const byName = String(data?.name || '').trim();
+  return byName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+}
+
+// ── Validate submitted app_roles against actual guard role keys in DB ─────────
+async function sanitizeAppRolesForTeam(strapi, appRoles) {
+  if (!Array.isArray(appRoles)) return [];
+  const keys = [...new Set(appRoles.map((k) => String(k).trim()).filter(Boolean))];
+  if (!keys.length) return [];
+  const valid = await strapi.db.query('plugin::api-guard-pro.role').findMany({
+    where: { key: { $in: keys }, isActive: true },
+    select: ['key'],
+  });
+  return valid.map((r) => r.key);
+}
+
+// ── Return all guard domains with their roles for team assignment UI ──────────
+async function getAppRoleOptions(strapi) {
+  const domains = await strapi.db.query('plugin::api-guard-pro.domain').findMany({
+    where: { isActive: true },
+    populate: { roles: { where: { isActive: true }, select: ['key', 'name'] } },
+    select: ['key', 'name', 'description'],
+  });
+  return domains
+    .filter((d) => d.key !== 'default')
+    .map((d) => ({
+      domainKey: d.key,
+      domainName: d.name,
+      description: d.description,
+      roles: (d.roles || []).map((r) => ({ key: r.key, name: r.name || r.key })),
+    }));
+}
 
 async function resolveEmployeeForUser(strapi, user) {
   if (!user?.id) return null;
@@ -28,9 +63,9 @@ async function resolveEmployeeForUser(strapi, user) {
 }
 
 function extractHrRolesFromTeam(team) {
-  const roles = Array.isArray(team?.app_roles?.hr) ? team.app_roles.hr : [];
-  const enabled = new Set(getEnabledPermissionGroups('hr'));
-  return [...new Set(roles.filter((r) => enabled.has(String(r))))];
+  // app_roles is now a flat array of guard role keys e.g. ["hr_staff","hr_admin"]
+  const roles = Array.isArray(team?.app_roles) ? team.app_roles : [];
+  return [...new Set(roles.filter((r) => String(r).startsWith('hr_')))];
 }
 
 function isMemberOrManager(team, employeeDocumentId) {
@@ -66,13 +101,7 @@ async function getMembershipContext(strapi, user) {
 async function assertCanManageTeams(ctx, strapi, { requireTargetMembership = false } = {}) {
   const authUser = await strapi.query('plugin::users-permissions.user').findOne({
     where: { id: ctx.state?.user?.id },
-    populate: {
-      role: { select: ['type'] },
-      permission_roles: {
-        select: ['level'],
-        populate: { domain: { select: ['key'] } },
-      },
-    },
+    populate: { role: { select: ['type'] } },
   });
 
   if (!authUser) return { ok: false, reason: 'You must be logged in' };
@@ -82,12 +111,20 @@ async function assertCanManageTeams(ctx, strapi, { requireTargetMembership = fal
     return { ok: true, bypass: true };
   }
 
-  const adminDomains = (authUser.permission_roles || [])
-    .filter((r) => r?.level === 'admin')
-    .map((r) => r?.domain?.key)
-    .filter(Boolean);
-  if (adminDomains.includes('hr') || adminDomains.includes('auth')) {
-    return { ok: true, bypass: true };
+  // Check if the user holds hr_admin or auth_admin guard role via their teams
+  const hrEmployee = await strapi.db.query('api::hr-employee.hr-employee').findOne({
+    where: { user: { id: authUser.id } },
+    select: ['id'],
+  });
+  if (hrEmployee) {
+    const teams = await strapi.db.query('api::hr-team.hr-team').findMany({
+      where: { members: { id: hrEmployee.id } },
+      select: ['id', 'app_roles'],
+    });
+    const allRoleKeys = teams.flatMap((t) => (Array.isArray(t.app_roles) ? t.app_roles : []));
+    if (allRoleKeys.includes('hr_admin') || allRoleKeys.includes('auth_admin')) {
+      return { ok: true, bypass: true };
+    }
   }
 
   const membership = await getMembershipContext(strapi, authUser);
@@ -129,7 +166,8 @@ async function assertCanManageTeams(ctx, strapi, { requireTargetMembership = fal
 
 module.exports = createCoreController('api::hr-team.hr-team', ({ strapi }) => ({
   async appRoleOptions(ctx) {
-    return ctx.send({ data: getAppRoleOptions() });
+    const data = await getAppRoleOptions(strapi);
+    return ctx.send({ data });
   },
 
   async create(ctx) {
@@ -139,7 +177,7 @@ module.exports = createCoreController('api::hr-team.hr-team', ({ strapi }) => ({
     const body = ctx.request.body || {};
     if (body?.data) {
       body.data.team_slug = deriveTeamSlugFromData(body.data);
-      body.data.app_roles = sanitizeAppRolesForTeam(body.data.app_roles);
+      body.data.app_roles = await sanitizeAppRolesForTeam(strapi, body.data.app_roles);
     }
     return await super.create(ctx);
   },
@@ -151,7 +189,7 @@ module.exports = createCoreController('api::hr-team.hr-team', ({ strapi }) => ({
     const body = ctx.request.body || {};
     if (body?.data) {
       if (Object.prototype.hasOwnProperty.call(body.data, 'app_roles')) {
-        body.data.app_roles = sanitizeAppRolesForTeam(body.data.app_roles);
+        body.data.app_roles = await sanitizeAppRolesForTeam(strapi, body.data.app_roles);
       }
       if (Object.prototype.hasOwnProperty.call(body.data, 'team_slug') || Object.prototype.hasOwnProperty.call(body.data, 'name') || Object.prototype.hasOwnProperty.call(body.data, 'department')) {
         body.data.team_slug = deriveTeamSlugFromData(body.data);

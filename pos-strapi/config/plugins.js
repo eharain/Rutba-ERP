@@ -1,4 +1,42 @@
 
+const { loadConfiguration } = require('@rutba/api-provider');
+
+// ── Derive bypass paths and domains from api-provider config ─────────────────
+// publicResources keys are "METHOD /path" — extract unique paths only.
+// These routes bypass the api-guard-pro interceptor (no auth required).
+const _apiConfig = loadConfiguration();
+
+const PUBLIC_BYPASS_PATHS = [...new Set(
+    Object.keys(_apiConfig.publicResources || {}).map((key) => {
+        // key format: "GET /api/orders/checkout" — take the path portion
+        const parts = key.trim().split(/\s+/);
+        const rawPath = parts.length >= 2 ? parts[1] : parts[0];
+        // strip trailing param segments so prefix matching covers all variants
+        return rawPath.replace(/:[\w]+$/, '').replace(/\/$/, '') || rawPath;
+    })
+)];
+
+const FIXED_BYPASS_PATHS = [
+    '/api/auth',
+    '/api/users/me',
+    '/api/me/permissions',
+    '/api/users-permissions/me/permissions',
+    '/api/api-guard-pro/me/permissions',
+    '/api/me/stock-items-search',
+    '/api/users-permissions/me/stock-items-search',
+    '/uploads',
+    '/users-permissions',
+];
+
+const ALL_BYPASS_PATHS = [...new Set([...FIXED_BYPASS_PATHS, ...PUBLIC_BYPASS_PATHS])];
+
+// domains from configuration.json (used by plugin setup service for upsert)
+const DOMAINS_FROM_CONFIG = Object.entries(_apiConfig.domains || {}).map(([key, d]) => ({
+    key,
+    name: d?.name || key,
+    ...(d?.aliasKeys ? { aliasKeys: d.aliasKeys } : {}),
+}));
+
 module.exports = ({ env }) => ({
     "strapi-content-sync-pro": {
         enabled: true,
@@ -11,54 +49,23 @@ module.exports = ({ env }) => ({
             denyByDefault: true,
 
             // ── Header bridging ─────────────────────────────────────
-            // Must match the headers the Rutba front-end apps actually send.
-            headerDomainKey: 'x-rutba-app',        // was defaulting to 'x-app-name' — wrong
-            headerElevatedKey: 'x-rutba-app-admin', // was defaulting to 'x-app-admin'  — wrong
+            headerDomainKey: 'x-rutba-app',
+            headerElevatedKey: 'x-rutba-app-admin',
 
             // ── Enforcement mode ────────────────────────────────────
-            // 'hybrid': if no guard grant matches, fall back to users-permissions.
-            // Keep as 'hybrid' during migration; switch to 'enforce' when
-            // all resources, domains, roles, policies and grants are seeded.
+            // Switch to 'enforce' once all resources/policies/grants are verified.
             enforcementMode: 'hybrid',
 
             // ── Owner scoping ───────────────────────────────────────
-            // When true the interceptor auto-injects owners filters for
-            // content-types that have an `owners` relation, mirroring the
-            // behaviour of app-access-guard for non-elevated users.
             enforceOwnership: true,
 
-            bypassPaths: [
-                '/api/auth',
-                '/api/users/me',
-                '/api/me/permissions',
-                '/api/me/stock-items-search',
-                '/upload',
-                '/users-permissions',
-            ],
+            // ── Bypass paths ────────────────────────────────────────
+            // Fixed system paths + public routes from api-provider/config/configuration.json
+            bypassPaths: ALL_BYPASS_PATHS,
 
             // ── Domains ─────────────────────────────────────────────
-            // Seeded by the plugin setup service on every restart (upsert — safe to re-run).
-            // Mirrors APP_ENTRIES in packages/pos-shared/lib/endpoints/access-metadata.js.
-            // aliasKeys are resolved by the permission engine to widen grant lookups
-            // when one app key should also inherit another domain's grants.
-            domains: [
-                { key: 'stock',            name: 'Stock Management'    },
-                { key: 'order-management', name: 'Order Management',   aliasKeys: ['delivery', 'cms'] },
-                { key: 'sale',             name: 'Point of Sale'       },
-                { key: 'accounts',         name: 'Accounting'          },
-                { key: 'accounts-ap',      name: 'Accounts Payable'    },
-                { key: 'accounts-ar',      name: 'Accounts Receivable' },
-                { key: 'accounts-viewer',  name: 'Accounting Viewer'   },
-                { key: 'delivery',         name: 'Delivery'            },
-                { key: 'rider',            name: 'Rider App',          aliasKeys: ['delivery'] },
-                { key: 'crm',              name: 'CRM'                 },
-                { key: 'auth',             name: 'User Management'     },
-                { key: 'web-user',         name: 'Web Orders',         aliasKeys: ['web-user'] },
-                { key: 'hr',               name: 'Human Resources'     },
-                { key: 'payroll',          name: 'Payroll'             },
-                { key: 'cms',              name: 'Content Management'  },
-                { key: 'social',           name: 'Social Media'        },
-            ],
+            // Driven from api-provider/config/configuration.json — no manual list needed.
+            domains: DOMAINS_FROM_CONFIG,
         },
     },
 
@@ -82,7 +89,7 @@ module.exports = ({ env }) => ({
     'users-permissions': {
         config: {
             register: {
-                allowedFields: ['displayName', "isStaff"], // add your custom fields here
+                allowedFields: ['displayName','api_guard_roles'], // add your custom fields here
             },
             jwtManagement: 'refresh',
             sessions: {

@@ -1,0 +1,924 @@
+{
+  "domains": {
+    "accounts": { "roles": ["accounts_admin", "accounts_manager", "accounts_staff"] },
+    "accounts-ap": { "roles": ["ap_admin", "ap_manager", "ap_staff"] },
+    "accounts-ar": { "roles": ["ar_admin", "ar_manager", "ar_staff"] },
+    "accounts-viewer": { "roles": ["accounts_viewer_admin", "accounts_viewer_manager", "accounts_viewer_staff"] },
+    "auth": { "roles": ["auth_admin", "auth_manager", "auth_staff"] },
+    "cms": { "roles": ["cms_admin", "cms_manager", "cms_staff"] },
+    "crm": { "roles": ["crm_admin", "crm_manager", "crm_staff"] },
+    "delivery": { "roles": ["delivery_admin", "delivery_manager", "delivery_staff"] },
+    "hr": { "roles": ["hr_admin", "hr_manager", "hr_staff"] },
+    "order-management": { "roles": ["order_admin", "order_manager", "order_staff"] },
+    "payroll": { "roles": ["payroll_admin", "payroll_manager", "payroll_staff"] },
+    "rider": { "roles": ["rider_admin", "rider_manager", "rider_staff"] },
+    "sale": { "roles": ["sale_admin", "sale_manager", "sale_staff"] },
+    "social": { "roles": ["social_admin", "social_manager", "social_staff"] },
+    "stock": { "roles": ["stock_admin", "stock_manager", "stock_staff"] },
+    "web": { "roles": ["web_public", "web_user"] },
+    "web-user": { "roles": ["webuser_admin", "webuser_manager", "webuser_staff"] }
+  },
+
+  "roles": {
+    "accounts_admin": { "level": "admin", "domain": "accounts" },
+    "accounts_manager": { "level": "manager", "domain": "accounts" },
+    "accounts_staff": { "level": "staff", "domain": "accounts" },
+    "ap_admin": { "level": "admin", "domain": "accounts-ap" },
+    "ap_manager": { "level": "manager", "domain": "accounts-ap" },
+    "ap_staff": { "level": "staff", "domain": "accounts-ap" },
+    "ar_admin": { "level": "admin", "domain": "accounts-ar" },
+    "ar_manager": { "level": "manager", "domain": "accounts-ar" },
+    "ar_staff": { "level": "staff", "domain": "accounts-ar" },
+    "accounts_viewer_admin": { "level": "admin", "domain": "accounts-viewer" },
+    "accounts_viewer_manager": { "level": "manager", "domain": "accounts-viewer" },
+    "accounts_viewer_staff": { "level": "staff", "domain": "accounts-viewer" },
+    "auth_admin": { "level": "admin", "domain": "auth" },
+    "auth_manager": { "level": "manager", "domain": "auth" },
+    "auth_staff": { "level": "staff", "domain": "auth" },
+    "cms_admin": { "level": "admin", "domain": "cms" },
+    "cms_manager": { "level": "manager", "domain": "cms" },
+    "cms_staff": { "level": "staff", "domain": "cms" },
+    "crm_admin": { "level": "admin", "domain": "crm" },
+    "crm_manager": { "level": "manager", "domain": "crm" },
+    "crm_staff": { "level": "staff", "domain": "crm" },
+    "delivery_admin": { "level": "admin", "domain": "delivery" },
+    "delivery_manager": { "level": "manager", "domain": "delivery" },
+    "delivery_staff": { "level": "staff", "domain": "delivery" },
+    "hr_admin": { "level": "admin", "domain": "hr" },
+    "hr_manager": { "level": "manager", "domain": "hr" },
+    "hr_staff": { "level": "staff", "domain": "hr" },
+    "order_admin": { "level": "admin", "domain": "order-management" },
+    "order_manager": { "level": "manager", "domain": "order-management" },
+    "order_staff": { "level": "staff", "domain": "order-management" },
+    "payroll_admin": { "level": "admin", "domain": "payroll" },
+    "payroll_manager": { "level": "manager", "domain": "payroll" },
+    "payroll_staff": { "level": "staff", "domain": "payroll" },
+    "rider_admin": { "level": "admin", "domain": "rider" },
+    "rider_manager": { "level": "manager", "domain": "rider" },
+    "rider_staff": { "level": "staff", "domain": "rider" },
+    "sale_admin": { "level": "admin", "domain": "sale" },
+    "sale_manager": { "level": "manager", "domain": "sale" },
+    "sale_staff": { "level": "staff", "domain": "sale" },
+    "social_admin": { "level": "admin", "domain": "social" },
+    "social_manager": { "level": "manager", "domain": "social" },
+    "social_staff": { "level": "staff", "domain": "social" },
+    "stock_admin": { "level": "admin", "domain": "stock" },
+    "stock_manager": { "level": "manager", "domain": "stock" },
+    "stock_staff": { "level": "staff", "domain": "stock" },
+    "web_public": { "level": "public", "domain": "web" },
+    "web_user": { "level": "user", "domain": "web" },
+    "webuser_admin": { "level": "admin", "domain": "web-user" },
+    "webuser_manager": { "level": "manager", "domain": "web-user" },
+    "webuser_staff": { "level": "staff", "domain": "web-user" }
+  },
+
+  "resources": {
+    "api::branch.branch": {
+      "branch.find": {
+        "policies": [
+          {
+            "key": "fullAccess",
+            "grants": ["accounts_admin", "accounts_manager", "accounts_staff", "ap_admin", "ap_manager", "ap_staff", "ar_admin", "ar_manager", "ar_staff", "accounts_viewer_admin", "accounts_viewer_manager", "accounts_viewer_staff", "hr_admin", "hr_manager", "hr_staff", "sale_admin", "sale_manager", "sale_staff", "social_admin", "social_manager", "social_staff", "stock_admin", "stock_manager", "stock_staff"],
+            "query": { "populate": "*", "fields": ["id", "name", "code", "address", "phone"], "pagination": { "pageSize": 100 } }
+          }
+        ]
+      },
+      "branch.findOne": {
+        "policies": [
+          {
+            "key": "fullAccess",
+            "grants": ["accounts_admin", "accounts_manager", "accounts_staff", "ap_admin", "ap_manager", "ap_staff", "ar_admin", "ar_manager", "ar_staff", "accounts_viewer_admin", "accounts_viewer_manager", "accounts_viewer_staff", "hr_admin", "hr_manager", "hr_staff", "sale_admin", "sale_manager", "sale_staff", "social_admin", "social_manager", "social_staff", "stock_admin", "stock_manager", "stock_staff"],
+            "query": { "populate": "*" }
+          }
+        ]
+      },
+      "branch.create": {
+        "policies": [
+          {
+            "key": "adminOnly",
+            "grants": ["accounts_admin", "ap_admin", "ar_admin", "hr_admin", "sale_admin", "social_admin", "stock_admin"],
+            "body": { "createdBy": "$user.id" }
+          }
+        ]
+      },
+      "branch.update": {
+        "policies": [
+          {
+            "key": "adminOnly",
+            "grants": ["accounts_admin", "ap_admin", "ar_admin", "hr_admin", "sale_admin", "social_admin", "stock_admin"],
+            "filters": { "id": { "$eq": "$params.id" } },
+            "body": { "updatedBy": "$user.id" }
+          }
+        ]
+      },
+      "branch.delete": {
+        "policies": [
+          {
+            "key": "adminOnly",
+            "grants": ["accounts_admin", "ap_admin", "ar_admin", "hr_admin", "sale_admin", "social_admin", "stock_admin"]
+          }
+        ]
+      }
+    },
+
+    "api::brand.brand": {
+      "brand.find": {
+        "policies": [
+          {
+            "key": "fullAccess",
+            "grants": ["auth_admin", "auth_manager", "auth_staff", "cms_admin", "cms_manager", "cms_staff", "sale_admin", "sale_manager", "sale_staff", "stock_admin", "stock_manager", "stock_staff", "webuser_admin", "webuser_manager", "webuser_staff", "web_user"],
+            "query": { "populate": { "logo": true }, "fields": ["id", "name", "slug", "description"], "pagination": { "pageSize": 50 } }
+          }
+        ]
+      },
+      "brand.findOne": {
+        "policies": [
+          {
+            "key": "fullAccess",
+            "grants": ["auth_admin", "auth_manager", "auth_staff", "cms_admin", "cms_manager", "cms_staff", "sale_admin", "sale_manager", "sale_staff", "stock_admin", "stock_manager", "stock_staff", "webuser_admin", "webuser_manager", "webuser_staff", "web_user"],
+            "query": { "populate": { "logo": true } }
+          }
+        ]
+      },
+      "brand.create": {
+        "policies": [
+          {
+            "key": "editorAccess",
+            "grants": ["auth_admin", "auth_manager", "cms_admin", "cms_manager", "cms_staff", "stock_admin", "stock_manager"],
+            "body": { "createdBy": "$user.id" }
+          }
+        ]
+      },
+      "brand.update": {
+        "policies": [
+          {
+            "key": "editorAccess",
+            "grants": ["auth_admin", "auth_manager", "cms_admin", "cms_manager", "cms_staff", "stock_admin", "stock_manager"],
+            "body": { "updatedBy": "$user.id" }
+          }
+        ]
+      },
+      "brand.delete": {
+        "policies": [
+          {
+            "key": "adminOnly",
+            "grants": ["auth_admin", "cms_admin", "stock_admin"]
+          }
+        ]
+      },
+      "brand.publish": {
+        "policies": [
+          {
+            "key": "publisherAccess",
+            "grants": ["auth_admin", "auth_manager", "cms_admin", "cms_manager", "stock_admin", "stock_manager"]
+          }
+        ]
+      },
+      "brand.unpublish": {
+        "policies": [
+          {
+            "key": "publisherAccess",
+            "grants": ["auth_admin", "auth_manager", "cms_admin", "cms_manager", "stock_admin", "stock_manager"]
+          }
+        ]
+      }
+    },
+
+    "api::cash-register.cash-register": {
+      "cash-register.find": {
+        "policies": [
+          {
+            "key": "accountsAccess",
+            "grants": ["accounts_admin", "accounts_manager", "accounts_staff", "accounts_viewer_admin", "accounts_viewer_manager", "accounts_viewer_staff", "sale_admin", "sale_manager", "sale_staff", "auth_admin", "auth_manager", "auth_staff"],
+            "query": { "filters": { "branch": { "$eq": "$user.branch" } }, "populate": { "transactions": { "limit": 100 } }, "fields": ["id", "name", "status", "openingBalance", "currentBalance", "openedAt", "closedAt"] }
+          }
+        ]
+      },
+      "cash-register.findOne": {
+        "policies": [
+          {
+            "key": "accountsAccess",
+            "grants": ["accounts_admin", "accounts_manager", "accounts_staff", "accounts_viewer_admin", "accounts_viewer_manager", "accounts_viewer_staff", "sale_admin", "sale_manager", "sale_staff", "auth_admin", "auth_manager", "auth_staff"],
+            "query": { "populate": { "transactions": true, "openedBy": true, "closedBy": true } }
+          }
+        ]
+      },
+      "cash-register.create": {
+        "policies": [
+          {
+            "key": "adminOnly",
+            "grants": ["accounts_admin", "sale_admin", "auth_admin"]
+          }
+        ]
+      },
+      "cash-register.update": {
+        "policies": [
+          {
+            "key": "adminOnly",
+            "grants": ["accounts_admin", "sale_admin", "auth_admin"]
+          }
+        ]
+      },
+      "cash-register.delete": {
+        "policies": [
+          {
+            "key": "adminOnly",
+            "grants": ["accounts_admin", "sale_admin", "auth_admin"]
+          }
+        ]
+      },
+      "cash-register.open": {
+        "policies": [
+          {
+            "key": "openAccess",
+            "grants": ["accounts_admin", "accounts_manager", "sale_admin", "sale_manager", "sale_staff", "auth_admin"],
+            "body": { "openedBy": "$user.id", "openedAt": "$now" }
+          }
+        ]
+      },
+      "cash-register.close": {
+        "policies": [
+          {
+            "key": "closeAccess",
+            "grants": ["accounts_admin", "accounts_manager", "sale_admin", "sale_manager", "auth_admin"],
+            "body": { "closedBy": "$user.id", "closedAt": "$now" }
+          }
+        ]
+      }
+    },
+
+    "api::category.category": {
+      "category.find": {
+        "policies": [
+          {
+            "key": "fullAccess",
+            "grants": ["auth_admin", "auth_manager", "auth_staff", "cms_admin", "cms_manager", "cms_staff", "sale_admin", "sale_manager", "sale_staff", "stock_admin", "stock_manager", "stock_staff", "webuser_admin", "webuser_manager", "webuser_staff", "web_user"],
+            "query": { "populate": { "parent": true, "children": true }, "fields": ["id", "name", "slug", "description", "image"], "pagination": { "pageSize": 100 } }
+          }
+        ]
+      },
+      "category.findOne": {
+        "policies": [
+          {
+            "key": "fullAccess",
+            "grants": ["auth_admin", "auth_manager", "auth_staff", "cms_admin", "cms_manager", "cms_staff", "sale_admin", "sale_manager", "sale_staff", "stock_admin", "stock_manager", "stock_staff", "webuser_admin", "webuser_manager", "webuser_staff", "web_user"]
+          }
+        ]
+      },
+      "category.create": {
+        "policies": [
+          {
+            "key": "editorAccess",
+            "grants": ["auth_admin", "auth_manager", "cms_admin", "cms_manager", "cms_staff", "stock_admin", "stock_manager"]
+          }
+        ]
+      },
+      "category.update": {
+        "policies": [
+          {
+            "key": "editorAccess",
+            "grants": ["auth_admin", "auth_manager", "cms_admin", "cms_manager", "cms_staff", "stock_admin", "stock_manager"]
+          }
+        ]
+      },
+      "category.delete": {
+        "policies": [
+          {
+            "key": "adminOnly",
+            "grants": ["auth_admin", "cms_admin", "stock_admin"]
+          }
+        ]
+      }
+    },
+
+    "api::cms-page.cms-page": {
+      "cms-page.find": {
+        "policies": [
+          {
+            "key": "cmsAccess",
+            "grants": ["cms_admin", "cms_manager", "cms_staff"],
+            "query": { "fields": ["id", "title", "slug", "content", "seo", "publishedAt", "createdAt"], "populate": { "author": { "fields": ["id", "username"] }, "media": true }, "pagination": { "pageSize": 50 } }
+          },
+          {
+            "key": "publicRead",
+            "grants": ["web_public", "web_user"],
+            "query": { "filters": { "publishedAt": { "$ne": null } }, "fields": ["title", "slug", "content", "seo", "publishedAt"] }
+          }
+        ]
+      },
+      "cms-page.findOne": {
+        "policies": [
+          {
+            "key": "cmsAccess",
+            "grants": ["cms_admin", "cms_manager", "cms_staff"]
+          },
+          {
+            "key": "publicRead",
+            "grants": ["web_public", "web_user"],
+            "filters": { "publishedAt": { "$ne": null } }
+          }
+        ]
+      },
+      "cms-page.create": {
+        "policies": [
+          {
+            "key": "cmsCreate",
+            "grants": ["cms_admin", "cms_manager", "cms_staff"],
+            "body": { "author": "$user.id", "createdBy": "$user.id" }
+          }
+        ]
+      },
+      "cms-page.update": {
+        "policies": [
+          {
+            "key": "cmsUpdate",
+            "grants": ["cms_admin", "cms_manager", "cms_staff"],
+            "body": { "updatedBy": "$user.id" }
+          }
+        ]
+      },
+      "cms-page.delete": {
+        "policies": [
+          {
+            "key": "cmsDelete",
+            "grants": ["cms_admin"]
+          }
+        ]
+      },
+      "cms-page.publish": {
+        "policies": [
+          {
+            "key": "cmsPublish",
+            "grants": ["cms_admin", "cms_manager"],
+            "body": { "publishedBy": "$user.id", "publishedAt": "$now" }
+          }
+        ]
+      },
+      "cms-page.unpublish": {
+        "policies": [
+          {
+            "key": "cmsPublish",
+            "grants": ["cms_admin", "cms_manager"],
+            "body": { "publishedBy": "$user.id", "publishedAt": null }
+          }
+        ]
+      }
+    },
+
+    "api::crm-lead.crm-lead": {
+      "crm-lead.find": {
+        "policies": [
+          {
+            "key": "crmAccess",
+            "grants": ["crm_admin", "crm_manager", "crm_staff", "sale_admin", "sale_manager"],
+            "query": { "filters": { "assignedTo": { "$eq": "$user.id" } }, "populate": { "customer": true, "assignedTo": { "fields": ["id", "username"] } }, "fields": ["id", "name", "email", "phone", "status", "source", "notes", "createdAt"], "sort": ["createdAt:desc"], "pagination": { "pageSize": 50 } }
+          }
+        ]
+      },
+      "crm-lead.findOne": {
+        "policies": [
+          {
+            "key": "crmAccess",
+            "grants": ["crm_admin", "crm_manager", "crm_staff", "sale_admin", "sale_manager"],
+            "filters": { "$or": [{ "assignedTo": "$user.id" }, { "createdBy": "$user.id" }] }
+          }
+        ]
+      },
+      "crm-lead.create": {
+        "policies": [
+          {
+            "key": "crmCreate",
+            "grants": ["crm_admin", "crm_manager", "crm_staff", "sale_admin", "sale_manager", "sale_staff", "web_public"],
+            "body": { "createdBy": "$user.id", "createdAt": "$now", "status": "new" }
+          }
+        ]
+      },
+      "crm-lead.update": {
+        "policies": [
+          {
+            "key": "crmUpdateOwn",
+            "grants": ["crm_staff", "sale_staff"],
+            "filters": { "createdBy": "$user.id" }
+          },
+          {
+            "key": "crmUpdateAny",
+            "grants": ["crm_admin", "crm_manager", "sale_admin", "sale_manager"]
+          }
+        ]
+      },
+      "crm-lead.delete": {
+        "policies": [
+          {
+            "key": "crmDelete",
+            "grants": ["crm_admin"]
+          }
+        ]
+      }
+    },
+
+    "api::customer.customer": {
+      "customer.find": {
+        "policies": [
+          {
+            "key": "fullAccess",
+            "grants": ["accounts_admin", "accounts_manager", "accounts_staff", "accounts_viewer_admin", "accounts_viewer_manager", "accounts_viewer_staff", "ar_admin", "ar_manager", "ar_staff", "cms_admin", "cms_manager", "cms_staff", "crm_admin", "crm_manager", "crm_staff", "delivery_admin", "delivery_manager", "delivery_staff", "order_admin", "order_manager", "order_staff", "rider_admin", "rider_manager", "rider_staff", "sale_admin", "sale_manager", "sale_staff"],
+            "query": { "fields": ["id", "name", "email", "phone", "address", "totalSpent", "lastOrderAt"], "populate": { "orders": { "limit": 10 } }, "pagination": { "pageSize": 50 } }
+          },
+          {
+            "key": "selfAccess",
+            "grants": ["web_user"],
+            "filters": { "id": "$user.customerId" }
+          }
+        ]
+      },
+      "customer.findOne": {
+        "policies": [
+          {
+            "key": "fullAccess",
+            "grants": ["accounts_admin", "accounts_manager", "accounts_staff", "accounts_viewer_admin", "accounts_viewer_manager", "accounts_viewer_staff", "ar_admin", "ar_manager", "ar_staff", "cms_admin", "cms_manager", "cms_staff", "crm_admin", "crm_manager", "crm_staff", "delivery_admin", "delivery_manager", "delivery_staff", "order_admin", "order_manager", "order_staff", "rider_admin", "rider_manager", "rider_staff", "sale_admin", "sale_manager", "sale_staff"]
+          },
+          {
+            "key": "selfAccess",
+            "grants": ["web_user"],
+            "filters": { "id": "$user.customerId" }
+          }
+        ]
+      },
+      "customer.create": {
+        "policies": [
+          {
+            "key": "createAccess",
+            "grants": ["crm_admin", "crm_manager", "crm_staff", "sale_admin", "sale_manager", "sale_staff", "web_user", "web_public"],
+            "body": { "createdBy": "$user.id", "createdAt": "$now" }
+          }
+        ]
+      },
+      "customer.update": {
+        "policies": [
+          {
+            "key": "updateAccess",
+            "grants": ["crm_admin", "crm_manager", "sale_admin", "sale_manager", "accounts_admin", "ar_admin"]
+          },
+          {
+            "key": "selfUpdate",
+            "grants": ["web_user"],
+            "filters": { "id": "$user.customerId" },
+            "fields": ["name", "email", "phone", "address"]
+          }
+        ]
+      },
+      "customer.delete": {
+        "policies": [
+          {
+            "key": "adminOnly",
+            "grants": ["crm_admin", "accounts_admin"]
+          }
+        ]
+      }
+    },
+
+    "api::notification-template.notification-template": {
+      "notification-template.find": {
+        "policies": [
+          {
+            "key": "notificationAccess",
+            "grants": ["cms_admin", "cms_manager", "delivery_admin", "delivery_manager", "order_admin", "order_manager"],
+            "query": { "fields": ["id", "name", "subject", "body", "type", "channels"], "pagination": { "pageSize": 50 } }
+          }
+        ]
+      },
+      "notification-template.findOne": {
+        "policies": [
+          {
+            "key": "notificationAccess",
+            "grants": ["cms_admin", "cms_manager", "delivery_admin", "delivery_manager", "order_admin", "order_manager"]
+          }
+        ]
+      },
+      "notification-template.create": {
+        "policies": [
+          {
+            "key": "notificationCreate",
+            "grants": ["cms_admin", "delivery_admin", "order_admin"]
+          }
+        ]
+      },
+      "notification-template.update": {
+        "policies": [
+          {
+            "key": "notificationUpdate",
+            "grants": ["cms_admin", "delivery_admin", "order_admin"]
+          }
+        ]
+      },
+      "notification-template.delete": {
+        "policies": [
+          {
+            "key": "notificationDelete",
+            "grants": ["cms_admin", "delivery_admin", "order_admin"]
+          }
+        ]
+      }
+    },
+
+    "api::product.product": {
+      "product.find": {
+        "policies": [
+          {
+            "key": "fullAccess",
+            "grants": ["accounts_admin", "accounts_manager", "accounts_staff", "accounts_viewer_admin", "accounts_viewer_manager", "accounts_viewer_staff", "auth_admin", "auth_manager", "auth_staff", "cms_admin", "cms_manager", "cms_staff", "sale_admin", "sale_manager", "sale_staff", "stock_admin", "stock_manager", "stock_staff", "webuser_admin", "webuser_manager", "webuser_staff", "web_user"],
+            "query": { "fields": ["id", "name", "sku", "barcode", "price", "cost", "stock", "status"], "populate": { "brand": true, "categories": true, "variants": true, "images": true }, "pagination": { "pageSize": 50 }, "sort": ["name:asc"] }
+          }
+        ]
+      },
+      "product.findOne": {
+        "policies": [
+          {
+            "key": "fullAccess",
+            "grants": ["accounts_admin", "accounts_manager", "accounts_staff", "accounts_viewer_admin", "accounts_viewer_manager", "accounts_viewer_staff", "auth_admin", "auth_manager", "auth_staff", "cms_admin", "cms_manager", "cms_staff", "sale_admin", "sale_manager", "sale_staff", "stock_admin", "stock_manager", "stock_staff", "webuser_admin", "webuser_manager", "webuser_staff", "web_user"],
+            "query": { "populate": { "brand": true, "categories": true, "variants": { "populate": { "attributes": true } }, "images": true, "seo": true } }
+          }
+        ]
+      },
+      "product.create": {
+        "policies": [
+          {
+            "key": "productCreate",
+            "grants": ["auth_admin", "auth_manager", "cms_admin", "cms_manager", "cms_staff", "stock_admin", "stock_manager"],
+            "body": { "createdBy": "$user.id", "createdAt": "$now" }
+          }
+        ]
+      },
+      "product.update": {
+        "policies": [
+          {
+            "key": "productUpdate",
+            "grants": ["auth_admin", "auth_manager", "cms_admin", "cms_manager", "cms_staff", "stock_admin", "stock_manager"],
+            "body": { "updatedBy": "$user.id", "updatedAt": "$now" }
+          }
+        ]
+      },
+      "product.delete": {
+        "policies": [
+          {
+            "key": "productDelete",
+            "grants": ["auth_admin", "cms_admin", "stock_admin"]
+          }
+        ]
+      }
+    },
+
+    "api::purchase.purchase": {
+      "purchase.find": {
+        "policies": [
+          {
+            "key": "purchaseAccess",
+            "grants": ["accounts_admin", "accounts_manager", "accounts_staff", "accounts_viewer_admin", "accounts_viewer_manager", "accounts_viewer_staff", "ap_admin", "ap_manager", "ap_staff", "stock_admin", "stock_manager", "stock_staff"],
+            "query": { "filters": { "branch": { "$eq": "$user.branch" } }, "fields": ["id", "poNumber", "supplier", "totalAmount", "status", "orderedAt", "receivedAt"], "populate": { "items": { "fields": ["product", "quantity", "unitPrice", "total"] }, "supplier": { "fields": ["id", "name"] } }, "pagination": { "pageSize": 50 }, "sort": ["orderedAt:desc"] }
+          }
+        ]
+      },
+      "purchase.findOne": {
+        "policies": [
+          {
+            "key": "purchaseAccess",
+            "grants": ["accounts_admin", "accounts_manager", "accounts_staff", "accounts_viewer_admin", "accounts_viewer_manager", "accounts_viewer_staff", "ap_admin", "ap_manager", "ap_staff", "stock_admin", "stock_manager", "stock_staff"]
+          }
+        ]
+      },
+      "purchase.create": {
+        "policies": [
+          {
+            "key": "purchaseCreate",
+            "grants": ["ap_admin", "ap_manager", "ap_staff", "stock_admin", "stock_manager"],
+            "body": { "createdBy": "$user.id", "orderedAt": "$now", "status": "pending" }
+          }
+        ]
+      },
+      "purchase.update": {
+        "policies": [
+          {
+            "key": "purchaseUpdate",
+            "grants": ["ap_admin", "ap_manager", "stock_admin", "stock_manager"]
+          }
+        ]
+      },
+      "purchase.delete": {
+        "policies": [
+          {
+            "key": "purchaseDelete",
+            "grants": ["ap_admin", "stock_admin"]
+          }
+        ]
+      }
+    },
+
+    "api::sale.sale": {
+      "sale.find": {
+        "policies": [
+          {
+            "key": "saleAccess",
+            "grants": ["accounts_admin", "accounts_manager", "accounts_staff", "accounts_viewer_admin", "accounts_viewer_manager", "accounts_viewer_staff", "ar_admin", "ar_manager", "ar_staff", "sale_admin", "sale_manager", "sale_staff"],
+            "query": { "filters": { "branch": { "$eq": "$user.branch" } }, "fields": ["id", "invoiceNumber", "customer", "totalAmount", "paidAmount", "status", "soldAt"], "populate": { "items": { "fields": ["product", "quantity", "unitPrice", "total"] }, "customer": { "fields": ["id", "name", "phone"] }, "payments": true }, "pagination": { "pageSize": 50 }, "sort": ["soldAt:desc"] }
+          }
+        ]
+      },
+      "sale.findOne": {
+        "policies": [
+          {
+            "key": "saleAccess",
+            "grants": ["accounts_admin", "accounts_manager", "accounts_staff", "accounts_viewer_admin", "accounts_viewer_manager", "accounts_viewer_staff", "ar_admin", "ar_manager", "ar_staff", "sale_admin", "sale_manager", "sale_staff"]
+          }
+        ]
+      },
+      "sale.create": {
+        "policies": [
+          {
+            "key": "saleCreate",
+            "grants": ["sale_admin", "sale_manager", "sale_staff", "ar_admin", "ar_manager"],
+            "body": { "createdBy": "$user.id", "soldAt": "$now", "branch": "$user.branch" }
+          }
+        ]
+      },
+      "sale.update": {
+        "policies": [
+          {
+            "key": "saleUpdate",
+            "grants": ["sale_admin", "sale_manager", "ar_admin", "ar_manager"]
+          }
+        ]
+      },
+      "sale.cancel": {
+        "policies": [
+          {
+            "key": "saleCancel",
+            "grants": ["sale_admin", "sale_manager", "ar_admin"],
+            "body": { "cancelledBy": "$user.id", "cancelledAt": "$now", "status": "cancelled" }
+          }
+        ]
+      },
+      "sale.delete": {
+        "policies": [
+          {
+            "key": "saleDelete",
+            "grants": ["sale_admin", "ar_admin"]
+          }
+        ]
+      }
+    },
+
+    "api::sale-order.sale-order": {
+      "sale-order.find": {
+        "policies": [
+          {
+            "key": "orderAccess",
+            "grants": ["order_admin", "order_manager", "order_staff", "delivery_admin", "delivery_manager", "delivery_staff", "rider_admin", "rider_manager", "rider_staff", "sale_admin", "sale_manager", "sale_staff", "webuser_admin", "webuser_manager", "webuser_staff"],
+            "query": { "fields": ["id", "orderNumber", "customer", "items", "subtotal", "shippingCost", "total", "status", "paymentStatus", "createdAt"], "populate": { "customer": { "fields": ["id", "name", "address", "phone"] }, "delivery": { "fields": ["rider", "trackingNumber", "status"] } }, "pagination": { "pageSize": 50 }, "sort": ["createdAt:desc"] }
+          },
+          {
+            "key": "selfAccess",
+            "grants": ["web_user"],
+            "filters": { "customer.id": "$user.customerId" }
+          }
+        ]
+      },
+      "sale-order.findOne": {
+        "policies": [
+          {
+            "key": "orderAccess",
+            "grants": ["order_admin", "order_manager", "order_staff", "delivery_admin", "delivery_manager", "delivery_staff", "rider_admin", "rider_manager", "rider_staff", "sale_admin", "sale_manager", "sale_staff", "webuser_admin", "webuser_manager", "webuser_staff"]
+          },
+          {
+            "key": "selfAccess",
+            "grants": ["web_user"],
+            "filters": { "customer.id": "$user.customerId" }
+          }
+        ]
+      },
+      "sale-order.create": {
+        "policies": [
+          {
+            "key": "orderCreate",
+            "grants": ["order_admin", "order_manager", "order_staff", "sale_admin", "sale_manager", "sale_staff"],
+            "body": { "createdBy": "$user.id", "status": "pending", "paymentStatus": "unpaid" }
+          },
+          {
+            "key": "publicCheckout",
+            "grants": ["web_public", "web_user"],
+            "body": { "source": "web", "status": "pending_confirmation" }
+          }
+        ]
+      },
+      "sale-order.update": {
+        "policies": [
+          {
+            "key": "orderUpdate",
+            "grants": ["order_admin", "order_manager", "delivery_admin", "delivery_manager", "sale_admin", "sale_manager"]
+          }
+        ]
+      },
+      "sale-order.tracking": {
+        "policies": [
+          {
+            "key": "publicTracking",
+            "grants": ["web_public", "web_user", "delivery_staff", "rider_staff"],
+            "fields": ["orderNumber", "delivery.status", "delivery.trackingNumber", "delivery.estimatedDelivery", "currentLocation"]
+          }
+        ]
+      },
+      "sale-order.delete": {
+        "policies": [
+          {
+            "key": "orderDelete",
+            "grants": ["order_admin", "sale_admin"]
+          }
+        ]
+      }
+    },
+
+    "api::stock-item.stock-item": {
+      "stock-item.find": {
+        "policies": [
+          {
+            "key": "stockAccess",
+            "grants": ["accounts_admin", "accounts_manager", "accounts_staff", "accounts_viewer_admin", "accounts_viewer_manager", "accounts_viewer_staff", "sale_admin", "sale_manager", "sale_staff", "stock_admin", "stock_manager", "stock_staff"],
+            "query": { "filters": { "branch": { "$eq": "$user.branch" } }, "fields": ["id", "product", "sku", "barcode", "quantity", "reservedQuantity", "availableQuantity", "location", "batchNumber", "expiryDate"], "populate": { "product": { "fields": ["id", "name", "price"] } }, "pagination": { "pageSize": 50 } }
+          }
+        ]
+      },
+      "stock-item.findOne": {
+        "policies": [
+          {
+            "key": "stockAccess",
+            "grants": ["accounts_admin", "accounts_manager", "accounts_staff", "accounts_viewer_admin", "accounts_viewer_manager", "accounts_viewer_staff", "sale_admin", "sale_manager", "sale_staff", "stock_admin", "stock_manager", "stock_staff"]
+          }
+        ]
+      },
+      "stock-item.adjust": {
+        "policies": [
+          {
+            "key": "stockAdjust",
+            "grants": ["stock_admin", "stock_manager"],
+            "body": { "adjustedBy": "$user.id", "adjustedAt": "$now" }
+          }
+        ]
+      },
+      "stock-item.transfer": {
+        "policies": [
+          {
+            "key": "stockTransfer",
+            "grants": ["stock_admin", "stock_manager"],
+            "body": { "transferBy": "$user.id", "transferAt": "$now" }
+          }
+        ]
+      },
+      "stock-item.receive": {
+        "policies": [
+          {
+            "key": "stockReceive",
+            "grants": ["stock_admin", "stock_manager", "stock_staff"],
+            "body": { "receivedBy": "$user.id", "receivedAt": "$now" }
+          }
+        ]
+      }
+    },
+
+    "api::supplier.supplier": {
+      "supplier.find": {
+        "policies": [
+          {
+            "key": "supplierAccess",
+            "grants": ["accounts_admin", "accounts_manager", "accounts_staff", "accounts_viewer_admin", "accounts_viewer_manager", "accounts_viewer_staff", "ap_admin", "ap_manager", "ap_staff", "stock_admin", "stock_manager", "stock_staff"],
+            "query": { "fields": ["id", "name", "contactPerson", "email", "phone", "address", "taxNumber"], "pagination": { "pageSize": 50 } }
+          }
+        ]
+      },
+      "supplier.findOne": {
+        "policies": [
+          {
+            "key": "supplierAccess",
+            "grants": ["accounts_admin", "accounts_manager", "accounts_staff", "accounts_viewer_admin", "accounts_viewer_manager", "accounts_viewer_staff", "ap_admin", "ap_manager", "ap_staff", "stock_admin", "stock_manager", "stock_staff"]
+          }
+        ]
+      },
+      "supplier.create": {
+        "policies": [
+          {
+            "key": "supplierCreate",
+            "grants": ["ap_admin", "ap_manager", "stock_admin", "stock_manager"],
+            "body": { "createdBy": "$user.id" }
+          }
+        ]
+      },
+      "supplier.update": {
+        "policies": [
+          {
+            "key": "supplierUpdate",
+            "grants": ["ap_admin", "ap_manager", "stock_admin", "stock_manager"]
+          }
+        ]
+      },
+      "supplier.delete": {
+        "policies": [
+          {
+            "key": "supplierDelete",
+            "grants": ["ap_admin", "stock_admin"]
+          }
+        ]
+      }
+    },
+
+    "api::payment.payment": {
+      "payment.find": {
+        "policies": [
+          {
+            "key": "paymentAccess",
+            "grants": ["accounts_admin", "accounts_manager", "accounts_staff", "accounts_viewer_admin", "accounts_viewer_manager", "accounts_viewer_staff", "ap_admin", "ap_manager", "ap_staff", "ar_admin", "ar_manager", "ar_staff", "sale_admin", "sale_manager"],
+            "query": { "filters": { "branch": { "$eq": "$user.branch" } }, "fields": ["id", "amount", "method", "reference", "status", "paidAt"], "populate": { "order": { "fields": ["id", "orderNumber"] }, "customer": { "fields": ["id", "name"] } }, "pagination": { "pageSize": 50 }, "sort": ["paidAt:desc"] }
+          }
+        ]
+      },
+      "payment.findOne": {
+        "policies": [
+          {
+            "key": "paymentAccess",
+            "grants": ["accounts_admin", "accounts_manager", "accounts_staff", "accounts_viewer_admin", "accounts_viewer_manager", "accounts_viewer_staff", "ap_admin", "ap_manager", "ap_staff", "ar_admin", "ar_manager", "ar_staff", "sale_admin", "sale_manager"]
+          }
+        ]
+      },
+      "payment.create": {
+        "policies": [
+          {
+            "key": "paymentCreate",
+            "grants": ["sale_admin", "sale_manager", "sale_staff", "ar_admin", "ar_manager"],
+            "body": { "createdBy": "$user.id", "paidAt": "$now" }
+          },
+          {
+            "key": "publicPayment",
+            "grants": ["web_user", "web_public"],
+            "body": { "source": "web", "status": "pending_verification" }
+          }
+        ]
+      },
+      "payment.refund": {
+        "policies": [
+          {
+            "key": "refundAccess",
+            "grants": ["sale_admin", "sale_manager", "ar_admin"],
+            "body": { "refundedBy": "$user.id", "refundedAt": "$now" }
+          }
+        ]
+      }
+    },
+
+    "api::term.term": {
+      "term.find": {
+        "policies": [
+          {
+            "key": "termAccess",
+            "grants": ["sale_admin", "sale_manager", "sale_staff", "accounts_admin", "accounts_manager", "stock_admin", "stock_manager"],
+            "query": { "populate": { "type": true }, "fields": ["id", "name", "value", "description"], "pagination": { "pageSize": 100 } }
+          }
+        ]
+      },
+      "term.create": {
+        "policies": [
+          {
+            "key": "termCreate",
+            "grants": ["sale_admin", "accounts_admin"]
+          }
+        ]
+      },
+      "term.update": {
+        "policies": [
+          {
+            "key": "termUpdate",
+            "grants": ["sale_admin", "accounts_admin"]
+          }
+        ]
+      },
+      "term.delete": {
+        "policies": [
+          {
+            "key": "termDelete",
+            "grants": ["sale_admin", "accounts_admin"]
+          }
+        ]
+      }
+    }
+  },
+
+  "publicResources": {
+    "GET /api/orders/checkout": ["web_public", "web_user"],
+    "GET /api/orders/checkout/:id": ["web_public", "web_user"],
+    "POST /api/orders/checkout": ["web_public", "web_user"],
+    "PUT /api/orders/checkout/:id": ["web_public", "web_user"],
+    "DELETE /api/orders/checkout/:id": ["web_public", "web_user"],
+    "POST /api/orders/calculate-delivery": ["web_public", "web_user"],
+    "POST /api/orders/checkout/shipping-rate": ["web_public", "web_user"],
+    "POST /api/orders/checkout/validate-address": ["web_public", "web_user"],
+    "GET /api/orders/tracking/:documentId": ["web_public", "web_user"],
+    "POST /api/crm-leads": ["web_public", "web_user"]
+  }
+
+}

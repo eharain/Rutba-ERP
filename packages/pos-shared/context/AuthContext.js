@@ -11,27 +11,49 @@ const AuthContext = createContext();
  * Fetch role, appAccess and permissions from the API using the given JWT.
  */
 async function fetchPermissions(jwt) {
-    try {
-        const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}` };
-        const appName = getAppName();
-        if (appName) headers['X-Rutba-App'] = appName;
-        const res = await axios.post(`${API_URL}/me/permissions`,
-            { time: Date.now() },
-            { headers }
-        );
-        const data = res.data;
-        return {
-            role: data?.role || null,
-            roleType: data?.roleType || null,
-            appAccess: data?.appAccess || [],
-            adminAppAccess: data?.adminAppAccess || [],
-            permissions: data?.permissions || [],
-            sessionTimeout: data?.sessionTimeout || 60,
-        };
-    } catch (err) {
-        console.error('Failed to fetch permissions', err);
-        return null;
+    const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}` };
+    const appName = getAppName();
+    if (appName) headers['X-Rutba-App'] = appName;
+
+    const endpoints = [
+        `${API_URL}/me/permissions`,
+        `${API_URL}/api-guard-pro/me/permissions`,
+    ];
+
+    for (const url of endpoints) {
+        try {
+            const res = await axios.get(url, {
+                headers,
+                params: { t: Date.now() },
+            });
+            const data = res.data;
+
+            // AGP fallback may return `domains` instead of `appAccess`.
+            const derivedAppAccess = Array.isArray(data?.domains)
+                ? data.domains
+                    .map((d) => d?.key)
+                    .filter(Boolean)
+                : [];
+
+            const appAccess = Array.isArray(data?.appAccess) && data.appAccess.length
+                ? data.appAccess
+                : derivedAppAccess;
+
+            return {
+                role: data?.role || null,
+                roleType: data?.roleType || null,
+                appAccess,
+                adminAppAccess: data?.adminAppAccess || [],
+                permissions: data?.permissions || [],
+                sessionTimeout: data?.sessionTimeout || 60,
+            };
+        } catch (_) {
+            // try next endpoint
+        }
     }
+
+    console.error('Failed to fetch permissions from all known endpoints');
+    return null;
 }
 
 /** Fetch the authenticated user profile from Strapi. */
@@ -265,9 +287,13 @@ export function AuthProvider({ children }) {
     const logout = useCallback(() => {
         const jwt = storage.getItem("jwt");
         if (jwt) {
+            const headers = { Authorization: `Bearer ${jwt}` };
+            const appName = getAppName();
+            if (appName) headers['X-Rutba-App'] = appName;
+
             // Fire-and-forget — don't block the UI on server logout
             axios.post(`${API_URL}/auth/logout`, {}, {
-                headers: { Authorization: `Bearer ${jwt}` },
+                headers,
             }).catch(() => {});
         }
 

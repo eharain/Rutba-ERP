@@ -1,0 +1,13 @@
+{
+  "name": "@rutba/api-provider",
+  "version": "1.0.0",
+  "private": true,
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./config": "./config/configuration.json",
+    "./config/configuration.json": "./config/configuration.json",
+    "./lib/*": "./lib/*",
+    "./config/*": "./config/*"
+  }
+}

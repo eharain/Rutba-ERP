@@ -972,55 +972,6 @@ export interface ApiAccTaxRateAccTaxRate extends Struct.CollectionTypeSchema {
   };
 }
 
-export interface ApiAppAccessAppAccess extends Struct.CollectionTypeSchema {
-  collectionName: 'app_accesses';
-  info: {
-    description: 'Defines which front-end applications exist. Assign to users to grant access.';
-    displayName: 'App Access';
-    pluralName: 'app-accesses';
-    singularName: 'app-access';
-  };
-  options: {
-    draftAndPublish: false;
-  };
-  pluginOptions: {
-    'content-manager': {
-      visible: true;
-    };
-    'content-type-builder': {
-      visible: false;
-    };
-  };
-  attributes: {
-    admin_users: Schema.Attribute.Relation<
-      'manyToMany',
-      'plugin::users-permissions.user'
-    >;
-    createdAt: Schema.Attribute.DateTime;
-    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
-      Schema.Attribute.Private;
-    description: Schema.Attribute.Text;
-    key: Schema.Attribute.String &
-      Schema.Attribute.Required &
-      Schema.Attribute.Unique;
-    locale: Schema.Attribute.String & Schema.Attribute.Private;
-    localizations: Schema.Attribute.Relation<
-      'oneToMany',
-      'api::app-access.app-access'
-    > &
-      Schema.Attribute.Private;
-    name: Schema.Attribute.String & Schema.Attribute.Required;
-    publishedAt: Schema.Attribute.DateTime;
-    updatedAt: Schema.Attribute.DateTime;
-    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
-      Schema.Attribute.Private;
-    users: Schema.Attribute.Relation<
-      'manyToMany',
-      'plugin::users-permissions.user'
-    >;
-  };
-}
-
 export interface ApiBranchBranch extends Struct.CollectionTypeSchema {
   collectionName: 'branches';
   info: {
@@ -1472,6 +1423,54 @@ export interface ApiCmsPageCmsPage extends Struct.CollectionTypeSchema {
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+  };
+}
+
+export interface ApiContactTicketContactTicket
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'contact_tickets';
+  info: {
+    displayName: 'Contact Ticket';
+    pluralName: 'contact-tickets';
+    singularName: 'contact-ticket';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    assigned_to: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    last_reply_at: Schema.Attribute.DateTime;
+    last_reply_by: Schema.Attribute.Enumeration<['user', 'agent']>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::contact-ticket.contact-ticket'
+    > &
+      Schema.Attribute.Private;
+    message: Schema.Attribute.Text & Schema.Attribute.Required;
+    metadata: Schema.Attribute.JSON;
+    publishedAt: Schema.Attribute.DateTime;
+    resolved_at: Schema.Attribute.DateTime;
+    sla_due_at: Schema.Attribute.DateTime;
+    status: Schema.Attribute.Enumeration<
+      ['open', 'in_progress', 'waiting', 'resolved']
+    > &
+      Schema.Attribute.DefaultTo<'open'>;
+    subject: Schema.Attribute.String & Schema.Attribute.Required;
+    ticket_no: Schema.Attribute.UID<'subject'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    user: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
   };
 }
 
@@ -2106,6 +2105,48 @@ export interface ApiHrTeamHrTeam extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiNotificationEventNotificationEvent
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'notification_events';
+  info: {
+    displayName: 'Notification Event';
+    pluralName: 'notification-events';
+    singularName: 'notification-event';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    entity_id: Schema.Attribute.String;
+    entity_type: Schema.Attribute.String;
+    error_message: Schema.Attribute.Text;
+    event_name: Schema.Attribute.String & Schema.Attribute.Required;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::notification-event.notification-event'
+    > &
+      Schema.Attribute.Private;
+    notifications: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::notification.notification'
+    >;
+    payload: Schema.Attribute.JSON;
+    processed_at: Schema.Attribute.DateTime;
+    publishedAt: Schema.Attribute.DateTime;
+    status: Schema.Attribute.Enumeration<
+      ['pending', 'processed', 'failed', 'deduplicated']
+    > &
+      Schema.Attribute.DefaultTo<'pending'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiNotificationLogNotificationLog
   extends Struct.CollectionTypeSchema {
   collectionName: 'notification_logs';
@@ -2118,19 +2159,42 @@ export interface ApiNotificationLogNotificationLog
     draftAndPublish: false;
   };
   attributes: {
+    category: Schema.Attribute.Enumeration<
+      [
+        'orders_payments',
+        'account_security',
+        'cart_activity',
+        'wishlist_interest',
+        'promotions_offers',
+        'customer_support',
+        'stock_management',
+      ]
+    >;
+    channel: Schema.Attribute.Enumeration<['in_app', 'email']>;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    dedup_key: Schema.Attribute.String;
     error_message: Schema.Attribute.Text;
+    event_name: Schema.Attribute.String;
+    is_duplicate: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
       'api::notification-log.notification-log'
     > &
       Schema.Attribute.Private;
+    metadata: Schema.Attribute.JSON;
+    notification: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::notification.notification'
+    >;
     order: Schema.Attribute.Relation<'manyToOne', 'api::sale-order.sale-order'>;
+    priority: Schema.Attribute.Enumeration<['critical', 'high', 'medium']>;
     publishedAt: Schema.Attribute.DateTime;
     recipient_email: Schema.Attribute.String;
+    recipient_role_type: Schema.Attribute.String;
+    recipient_user_id: Schema.Attribute.Integer;
     rendered_body: Schema.Attribute.Text;
     rendered_subject: Schema.Attribute.String;
     sent_at: Schema.Attribute.DateTime;
@@ -2147,6 +2211,57 @@ export interface ApiNotificationLogNotificationLog
   };
 }
 
+export interface ApiNotificationPreferenceNotificationPreference
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'notification_preferences';
+  info: {
+    displayName: 'Notification Preference';
+    pluralName: 'notification-preferences';
+    singularName: 'notification-preference';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    category: Schema.Attribute.Enumeration<
+      [
+        'orders_payments',
+        'account_security',
+        'cart_activity',
+        'wishlist_interest',
+        'promotions_offers',
+        'customer_support',
+        'stock_management',
+      ]
+    > &
+      Schema.Attribute.Required;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    email_enabled: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    in_app_enabled: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::notification-preference.notification-preference'
+    > &
+      Schema.Attribute.Private;
+    minimum_priority: Schema.Attribute.Enumeration<
+      ['critical', 'high', 'medium']
+    > &
+      Schema.Attribute.DefaultTo<'medium'>;
+    publishedAt: Schema.Attribute.DateTime;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    user: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    > &
+      Schema.Attribute.Required;
+  };
+}
+
 export interface ApiNotificationTemplateNotificationTemplate
   extends Struct.CollectionTypeSchema {
   collectionName: 'notification_templates';
@@ -2159,15 +2274,39 @@ export interface ApiNotificationTemplateNotificationTemplate
     draftAndPublish: false;
   };
   attributes: {
+    audience: Schema.Attribute.Enumeration<
+      ['user', 'admin', 'both', 'opposite_party']
+    > &
+      Schema.Attribute.DefaultTo<'user'>;
     available_variables: Schema.Attribute.JSON;
     body_template: Schema.Attribute.Text;
     branch: Schema.Attribute.Relation<'manyToOne', 'api::branch.branch'>;
+    category: Schema.Attribute.Enumeration<
+      [
+        'orders_payments',
+        'account_security',
+        'cart_activity',
+        'wishlist_interest',
+        'promotions_offers',
+        'customer_support',
+        'stock_management',
+      ]
+    > &
+      Schema.Attribute.DefaultTo<'orders_payments'>;
     channel: Schema.Attribute.Enumeration<['email', 'sms', 'both']> &
       Schema.Attribute.DefaultTo<'email'>;
+    channels: Schema.Attribute.JSON;
+    conditions: Schema.Attribute.JSON;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    dedup_window_minutes: Schema.Attribute.Integer &
+      Schema.Attribute.DefaultTo<60>;
+    delay_minutes: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    event_name: Schema.Attribute.String;
     is_active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    is_critical: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    is_enabled: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
@@ -2175,9 +2314,12 @@ export interface ApiNotificationTemplateNotificationTemplate
     > &
       Schema.Attribute.Private;
     name: Schema.Attribute.String & Schema.Attribute.Required;
+    priority: Schema.Attribute.Enumeration<['critical', 'high', 'medium']> &
+      Schema.Attribute.DefaultTo<'medium'>;
     publishedAt: Schema.Attribute.DateTime;
     scope: Schema.Attribute.Enumeration<['global', 'per_branch']> &
       Schema.Attribute.DefaultTo<'global'>;
+    send_email: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     send_to: Schema.Attribute.Enumeration<
       ['customer', 'rider', 'staff', 'admin']
     > &
@@ -2195,6 +2337,75 @@ export interface ApiNotificationTemplateNotificationTemplate
       ]
     > &
       Schema.Attribute.Required;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiNotificationNotification
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'notifications';
+  info: {
+    displayName: 'Notification';
+    pluralName: 'notifications';
+    singularName: 'notification';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    audience: Schema.Attribute.Enumeration<
+      ['user', 'admin', 'both', 'opposite_party']
+    > &
+      Schema.Attribute.DefaultTo<'user'>;
+    category: Schema.Attribute.Enumeration<
+      [
+        'orders_payments',
+        'account_security',
+        'cart_activity',
+        'wishlist_interest',
+        'promotions_offers',
+        'customer_support',
+        'stock_management',
+      ]
+    > &
+      Schema.Attribute.Required;
+    channels: Schema.Attribute.JSON & Schema.Attribute.DefaultTo<['in_app']>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    dedup_key: Schema.Attribute.String;
+    event_name: Schema.Attribute.String & Schema.Attribute.Required;
+    is_email_sent: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    is_read: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::notification.notification'
+    > &
+      Schema.Attribute.Private;
+    logs: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::notification-log.notification-log'
+    >;
+    message: Schema.Attribute.Text & Schema.Attribute.Required;
+    payload: Schema.Attribute.JSON;
+    priority: Schema.Attribute.Enumeration<['critical', 'high', 'medium']> &
+      Schema.Attribute.DefaultTo<'medium'>;
+    publishedAt: Schema.Attribute.DateTime;
+    read_at: Schema.Attribute.DateTime;
+    recipient_user: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    reference_id: Schema.Attribute.String;
+    reference_type: Schema.Attribute.String;
+    template: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::notification-template.notification-template'
+    >;
+    title: Schema.Attribute.String & Schema.Attribute.Required;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -3580,6 +3791,263 @@ export interface ApiTermTerm extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface PluginApiGuardProApiRecording
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'guard_api_recordings';
+  info: {
+    description: 'Persisted API request recording captured by the resource recorder';
+    displayName: 'API Recording';
+    pluralName: 'api-recordings';
+    singularName: 'api-recording';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  pluginOptions: {
+    'content-manager': {
+      visible: false;
+    };
+    'content-type-builder': {
+      visible: false;
+    };
+  };
+  attributes: {
+    count: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<1>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    exampleBody: Schema.Attribute.JSON;
+    exampleQuery: Schema.Attribute.JSON;
+    exampleUrl: Schema.Attribute.Text;
+    firstSeenAt: Schema.Attribute.String;
+    lastSeenAt: Schema.Attribute.String;
+    lastStatus: Schema.Attribute.Integer;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'plugin::api-guard-pro.api-recording'
+    > &
+      Schema.Attribute.Private;
+    matched: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    method: Schema.Attribute.String & Schema.Attribute.Required;
+    path: Schema.Attribute.String & Schema.Attribute.Required;
+    publishedAt: Schema.Attribute.DateTime;
+    queryParamsJson: Schema.Attribute.JSON;
+    recordKey: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.Unique;
+    suggestedRequestRules: Schema.Attribute.JSON;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    urlParts: Schema.Attribute.JSON;
+  };
+}
+
+export interface PluginApiGuardProDomain extends Struct.CollectionTypeSchema {
+  collectionName: 'guard_domains';
+  info: {
+    description: 'Logical grouping that owns a set of roles';
+    displayName: 'Domain';
+    pluralName: 'domains';
+    singularName: 'domain';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  pluginOptions: {
+    'content-manager': {
+      visible: false;
+    };
+    'content-type-builder': {
+      visible: false;
+    };
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    description: Schema.Attribute.Text;
+    isActive: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    key: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.Unique &
+      Schema.Attribute.SetMinMaxLength<{
+        minLength: 2;
+      }>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'plugin::api-guard-pro.domain'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String;
+    publishedAt: Schema.Attribute.DateTime;
+    roles: Schema.Attribute.Relation<
+      'manyToMany',
+      'plugin::api-guard-pro.role'
+    >;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface PluginApiGuardProPolicy extends Struct.CollectionTypeSchema {
+  collectionName: 'guard_policies';
+  info: {
+    description: 'Access policy attached to a single resource action. Uniquely identified by <contentTypeUid>.<controller.action>.<policyKey>.';
+    displayName: 'Policy';
+    pluralName: 'policies';
+    singularName: 'policy';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  pluginOptions: {
+    'content-manager': {
+      visible: false;
+    };
+    'content-type-builder': {
+      visible: false;
+    };
+  };
+  attributes: {
+    actionName: Schema.Attribute.String & Schema.Attribute.Required;
+    body: Schema.Attribute.JSON & Schema.Attribute.DefaultTo<{}>;
+    contentTypeUid: Schema.Attribute.String & Schema.Attribute.Required;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    description: Schema.Attribute.Text;
+    filters: Schema.Attribute.JSON & Schema.Attribute.DefaultTo<{}>;
+    grants: Schema.Attribute.Relation<
+      'manyToMany',
+      'plugin::api-guard-pro.role'
+    >;
+    isActive: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    key: Schema.Attribute.String & Schema.Attribute.Required;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'plugin::api-guard-pro.policy'
+    > &
+      Schema.Attribute.Private;
+    publishedAt: Schema.Attribute.DateTime;
+    query: Schema.Attribute.JSON & Schema.Attribute.DefaultTo<{}>;
+    resource: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::api-guard-pro.resource'
+    >;
+    uid: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.Unique;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface PluginApiGuardProResource extends Struct.CollectionTypeSchema {
+  collectionName: 'guard_resources';
+  info: {
+    description: 'Strapi content-type bound resource. Owns a set of policies grouped by action.';
+    displayName: 'Resource';
+    pluralName: 'resources';
+    singularName: 'resource';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  pluginOptions: {
+    'content-manager': {
+      visible: false;
+    };
+    'content-type-builder': {
+      visible: false;
+    };
+  };
+  attributes: {
+    contentTypeUid: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.Unique;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    description: Schema.Attribute.Text;
+    displayName: Schema.Attribute.String;
+    isActive: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'plugin::api-guard-pro.resource'
+    > &
+      Schema.Attribute.Private;
+    policies: Schema.Attribute.Relation<
+      'oneToMany',
+      'plugin::api-guard-pro.policy'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface PluginApiGuardProRole extends Struct.CollectionTypeSchema {
+  collectionName: 'guard_roles';
+  info: {
+    description: 'Named role referenced by resource policy grants';
+    displayName: 'Role';
+    pluralName: 'roles';
+    singularName: 'role';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  pluginOptions: {
+    'content-manager': {
+      visible: false;
+    };
+    'content-type-builder': {
+      visible: false;
+    };
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    description: Schema.Attribute.Text;
+    domains: Schema.Attribute.Relation<
+      'manyToMany',
+      'plugin::api-guard-pro.domain'
+    >;
+    isActive: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    key: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.Unique;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'plugin::api-guard-pro.role'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String;
+    policies: Schema.Attribute.Relation<
+      'manyToMany',
+      'plugin::api-guard-pro.policy'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    users: Schema.Attribute.Relation<
+      'manyToMany',
+      'plugin::users-permissions.user'
+    >;
+  };
+}
+
 export interface PluginContentReleasesRelease
   extends Struct.CollectionTypeSchema {
   collectionName: 'strapi_releases';
@@ -4039,16 +4507,45 @@ export interface PluginUsersPermissionsMe extends Struct.CollectionTypeSchema {
     };
   };
   attributes: {
+    blocked: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    confirmationToken: Schema.Attribute.String & Schema.Attribute.Private;
+    confirmed: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    displayName: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.Unique &
+      Schema.Attribute.SetMinMaxLength<{
+        minLength: 3;
+      }>;
+    email: Schema.Attribute.Email &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMaxLength<{
+        minLength: 6;
+      }>;
+    hr_employee: Schema.Attribute.Relation<
+      'oneToOne',
+      'api::hr-employee.hr-employee'
+    >;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
       'plugin::users-permissions.me'
     > &
       Schema.Attribute.Private;
+    password: Schema.Attribute.Password &
+      Schema.Attribute.Private &
+      Schema.Attribute.SetMinMaxLength<{
+        minLength: 6;
+      }>;
+    provider: Schema.Attribute.String;
     publishedAt: Schema.Attribute.DateTime;
+    resetPasswordToken: Schema.Attribute.String & Schema.Attribute.Private;
+    role: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.role'
+    >;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -4171,13 +4668,9 @@ export interface PluginUsersPermissionsUser
     draftAndPublish: false;
   };
   attributes: {
-    admin_app_accesses: Schema.Attribute.Relation<
+    api_guard_roles: Schema.Attribute.Relation<
       'manyToMany',
-      'api::app-access.app-access'
-    >;
-    app_accesses: Schema.Attribute.Relation<
-      'manyToMany',
-      'api::app-access.app-access'
+      'plugin::api-guard-pro.role'
     >;
     blocked: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     confirmationToken: Schema.Attribute.String & Schema.Attribute.Private;
@@ -4200,7 +4693,6 @@ export interface PluginUsersPermissionsUser
       'oneToOne',
       'api::hr-employee.hr-employee'
     >;
-    isStaff: Schema.Attribute.Boolean;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
@@ -4252,7 +4744,6 @@ declare module '@strapi/strapi' {
       'api::acc-journal-entry.acc-journal-entry': ApiAccJournalEntryAccJournalEntry;
       'api::acc-journal-line.acc-journal-line': ApiAccJournalLineAccJournalLine;
       'api::acc-tax-rate.acc-tax-rate': ApiAccTaxRateAccTaxRate;
-      'api::app-access.app-access': ApiAppAccessAppAccess;
       'api::branch.branch': ApiBranchBranch;
       'api::brand-group.brand-group': ApiBrandGroupBrandGroup;
       'api::brand.brand': ApiBrandBrand;
@@ -4262,6 +4753,7 @@ declare module '@strapi/strapi' {
       'api::category.category': ApiCategoryCategory;
       'api::cms-footer.cms-footer': ApiCmsFooterCmsFooter;
       'api::cms-page.cms-page': ApiCmsPageCmsPage;
+      'api::contact-ticket.contact-ticket': ApiContactTicketContactTicket;
       'api::crm-activity.crm-activity': ApiCrmActivityCrmActivity;
       'api::crm-contact.crm-contact': ApiCrmContactCrmContact;
       'api::crm-lead.crm-lead': ApiCrmLeadCrmLead;
@@ -4276,8 +4768,11 @@ declare module '@strapi/strapi' {
       'api::hr-employee.hr-employee': ApiHrEmployeeHrEmployee;
       'api::hr-leave-request.hr-leave-request': ApiHrLeaveRequestHrLeaveRequest;
       'api::hr-team.hr-team': ApiHrTeamHrTeam;
+      'api::notification-event.notification-event': ApiNotificationEventNotificationEvent;
       'api::notification-log.notification-log': ApiNotificationLogNotificationLog;
+      'api::notification-preference.notification-preference': ApiNotificationPreferenceNotificationPreference;
       'api::notification-template.notification-template': ApiNotificationTemplateNotificationTemplate;
+      'api::notification.notification': ApiNotificationNotification;
       'api::order-message.order-message': ApiOrderMessageOrderMessage;
       'api::pay-payroll-run.pay-payroll-run': ApiPayPayrollRunPayPayrollRun;
       'api::pay-payslip.pay-payslip': ApiPayPayslipPayPayslip;
@@ -4305,6 +4800,11 @@ declare module '@strapi/strapi' {
       'api::supplier.supplier': ApiSupplierSupplier;
       'api::term-type.term-type': ApiTermTypeTermType;
       'api::term.term': ApiTermTerm;
+      'plugin::api-guard-pro.api-recording': PluginApiGuardProApiRecording;
+      'plugin::api-guard-pro.domain': PluginApiGuardProDomain;
+      'plugin::api-guard-pro.policy': PluginApiGuardProPolicy;
+      'plugin::api-guard-pro.resource': PluginApiGuardProResource;
+      'plugin::api-guard-pro.role': PluginApiGuardProRole;
       'plugin::content-releases.release': PluginContentReleasesRelease;
       'plugin::content-releases.release-action': PluginContentReleasesReleaseAction;
       'plugin::i18n.locale': PluginI18NLocale;

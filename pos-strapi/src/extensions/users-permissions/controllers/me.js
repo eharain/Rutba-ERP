@@ -1,16 +1,7 @@
-// @ts-nocheck
 'use strict';
 const { createCoreController } = require('@strapi/strapi').factories;
-const {
-    settingsByKey,
-    DEFAULT_SESSION_TIMEOUT,
-    CLIENT_PLUGIN_PERMISSIONS,
-    canGroupElevateToAdmin,
-    getEnabledPermissionGroups,
-    getAccessibleAppKeysForRequest,
-    getPermissionDefsForAccessibleApps,
-    permissionDefsToActions,
-} = require('../../../../../packages/pos-shared/lib/endpoints/access-metadata.js');
+
+const DEFAULT_SESSION_TIMEOUT = 300;
 
 module.exports = createCoreController('plugin::users-permissions.me', ({ strapi }) => ({
     mePermissions: async (ctx) => {
@@ -20,82 +11,95 @@ module.exports = createCoreController('plugin::users-permissions.me', ({ strapi 
                 return ctx.unauthorized("You must be logged in");
             }
 
-            const fullUser = await strapi.query("plugin::users-permissions.user").findOne({
+            // ── Load user with Strapi role + AGP roles (with their domains) ──
+            const fullUser = await strapi.db.query('plugin::users-permissions.user').findOne({
                 where: { id: user.id },
                 populate: {
-                    role: { select: ['type', 'name'] },
-                    permission_roles: {
-                        select: ['key', 'level'],
-                        populate: {
-                            domain: { select: ['key'] },
-                        },
+                    role: { select: ['type', 'name', 'id'] },
+                    api_guard_roles: {
+                        populate: { domains: true },
                     },
                 },
             });
 
             const roleType = fullUser?.role?.type;
-            const permissionRoles = fullUser?.permission_roles || [];
-            const effectiveAppAccess = [...new Set(
-                permissionRoles
-                    .map((r) => r?.domain?.key)
-                    .filter(Boolean)
-            )];
-            const effectiveAdminAppAccess = [...new Set(
-                permissionRoles
-                    .filter((r) => r?.level === 'admin')
-                    .map((r) => r?.domain?.key)
-                    .filter(Boolean)
-            )];
-            const appName = (ctx.request.headers['x-rutba-app'] || '').trim().toLowerCase();
+            const guardRoles = fullUser?.api_guard_roles || [];
 
-            let permissions = [];
+            // ── Build unique domain list from assigned guard roles ─────────────
+            const domains = [];
+            const guardRoleKeys = [];
 
-            // ── Build app-access permissions from the X-Rutba-App header ──
-            // Applicable to ANY role whose user holds the corresponding
-            // app_access (or admin_app_access).
-            if (appName) {
-                const accessibleKeys = getAccessibleAppKeysForRequest(
-                    appName,
-                    effectiveAppAccess,
-                    effectiveAdminAppAccess
-                );
-                const permissionDefs = getPermissionDefsForAccessibleApps(
-                    accessibleKeys,
-                    effectiveAppAccess,
-                    effectiveAdminAppAccess
-                );
-                permissions = permissionDefsToActions(permissionDefs);
+            for (const role of guardRoles) {
+                if (!role.isActive) continue;
+                guardRoleKeys.push(role.key);
+                for (const domain of role.domains || []) {
+                    if (!domains.find((d) => d.key === domain.key)) {
+                        domains.push({ key: domain.key, name: domain.name, roleKey: role.key });
+                    }
+                }
             }
 
-            if (roleType !== 'rutba_app_user') {
-                // Non-rutba_app_user: also include their Strapi role permissions
-                const rolePerms = await strapi.query("plugin::users-permissions.permission").findMany({
-                    where: { role: { id: user.role.id } },
+            // ── Load active policies granted to resolved roles ────────────────
+            let permissions = {};
+            if (guardRoleKeys.length) {
+                const knex = strapi.db.connection;
+                const policyRows = await knex('guard_policies')
+                    .join('guard_policies_grants_lnk', 'guard_policies_grants_lnk.policy_id', 'guard_policies.id')
+                    .join('guard_roles', 'guard_roles.id', 'guard_policies_grants_lnk.role_id')
+                    .whereIn('guard_roles.key', guardRoleKeys)
+                    .where('guard_policies.is_active', true)
+                    .select(
+                        'guard_policies.key',
+                        'guard_policies.content_type_uid as contentTypeUid',
+                        'guard_policies.action_name as actionName',
+                        'guard_policies.query',
+                        'guard_policies.filters',
+                        'guard_policies.body'
+                    )
+                    .catch(() => []);
+
+                for (const policy of policyRows) {
+                    const ctUid = policy.contentTypeUid;
+                    const action = policy.actionName;
+                    if (!ctUid || !action) continue;
+                    if (!permissions[ctUid]) permissions[ctUid] = {};
+                    if (!permissions[ctUid][action]) {
+                        permissions[ctUid][action] = { allowed: true, policies: [] };
+                    }
+                    // Deduplicate by policy key
+                    if (!permissions[ctUid][action].policies.find((p) => p.key === policy.key)) {
+                        permissions[ctUid][action].policies.push({
+                            key: policy.key,
+                            query: typeof policy.query === 'string' ? JSON.parse(policy.query) : (policy.query || {}),
+                            filters: typeof policy.filters === 'string' ? JSON.parse(policy.filters) : (policy.filters || {}),
+                            body: typeof policy.body === 'string' ? JSON.parse(policy.body) : (policy.body || {}),
+                        });
+                    }
+                }
+            }
+
+            // ── Strapi role permissions for non-app users ─────────────────────
+            let strapiPermissions = [];
+            if (roleType !== 'rutba_app_user' && fullUser?.role?.id) {
+                const rolePerms = await strapi.db.query('plugin::users-permissions.permission').findMany({
+                    where: { role: { id: fullUser.role.id } },
                     populate: false,
                     select: ['action'],
                 });
-                permissions.push(...rolePerms.map((p) => p.action));
+                strapiPermissions = rolePerms.map((p) => p.action);
             }
 
-            permissions = [...new Set([...permissions, ...CLIENT_PLUGIN_PERMISSIONS])].sort();
-
-            const data = {
-                role: fullUser.role.name,
+            ctx.send({
+                role: fullUser?.role?.name,
                 roleType,
-                appAccess: effectiveAppAccess,
-                adminAppAccess: effectiveAdminAppAccess,
-                permissionGroups: ['staff', 'manager', 'admin'].map((g) => ({
-                    key: g,
-                    canElevateToAdmin: canGroupElevateToAdmin(g),
-                })),
-                enabledPermissionGroups: appName ? getEnabledPermissionGroups(appName) : [],
+                domains,
                 permissions,
-                sessionTimeout: (settingsByKey[appName] || {}).sessionTimeout || DEFAULT_SESSION_TIMEOUT,
-            };
-            ctx.send(data);
+                strapiPermissions,
+                sessionTimeout: DEFAULT_SESSION_TIMEOUT,
+            });
         } catch (err) {
+            strapi.log.error(`[me/permissions] Error: ${err.message}`);
             ctx.internalServerError("Error fetching permissions");
-            console.error("Error Fetching user permissions...", err);
         }
     },
     stockItemsSearch: async (ctx) => {
