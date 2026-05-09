@@ -303,22 +303,6 @@ export const ProductsEndpoints = {
     postUnpublish: (documentId) => authApi.post(`/products/${documentId}/unpublish`, {}),
 };
 
-export const ProductsEndpointsMeta = {
-    uid: 'api::product.product',
-    basePath: '/products',
-    methodActions: {
-        listPaged: 'find',
-        listAll: 'find',
-        list: 'find',
-        search: 'find',
-        searchInRelation: 'find',
-        byId: 'findOne',
-        create: 'create',
-        update: 'update',
-        byParent: 'find',
-    },
-};
-
 /**
  * ProductsEndpointRules
  * Per-endpoint requestRules stored in the api-guard-pro resource record.

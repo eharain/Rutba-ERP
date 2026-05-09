@@ -248,26 +248,6 @@ export const StockItemsEndpoints = {
     },
 };
 
-export const StockItemsEndpointsMeta = {
-    uid: 'api::stock-item.stock-item',
-    basePath: '/stock-items',
-    methodActions: {
-        list: 'find',
-        listByProduct: 'find',
-        listByBarcode: 'find',
-        checkBarcode: 'find',
-        orphanGroups: 'orphanGroups',
-        orphanGroupItems: 'orphanGroupItems',
-        create: 'create',
-        searchByBarcode: 'find',
-        searchByName: 'find',
-        byId: 'findOne',
-        update: 'update',
-        byProduct: 'find',
-        transfer: 'update',
-    },
-};
-
 /**
  * StockItemsEndpointRules
  * Per-endpoint requestRules stored in the api-guard-pro resource record.

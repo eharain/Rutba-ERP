@@ -152,19 +152,6 @@ export const CategoriesEndpoints = {
     postUnpublish: (documentId) => authApi.post(`/categories/${documentId}/unpublish`, {}),
 };
 
-export const CategoriesEndpointsMeta = {
-    uid: 'api::category.category',
-    basePath: '/categories',
-    methodActions: {
-        listPaged: 'find',
-        listAll: 'find',
-        list: 'find',
-        create: 'create',
-        update: 'update',
-        del: 'delete',
-    },
-};
-
 /**
  * CategoriesEndpointRules
  * Per-endpoint requestRules stored in the api-guard-pro resource record.

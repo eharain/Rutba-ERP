@@ -43,15 +43,6 @@ export const CrmLeadsEndpoints = {
     putUpdate: (documentId, data) => authApi.put(`/crm-leads/${documentId}`, { data }),
 };
 
-export const CrmLeadsEndpointsMeta = {
-    uid: 'api::crm-lead.crm-lead',
-    basePath: '/crm-leads',
-    methodActions: {
-        create: 'create',
-        update: 'update',
-    },
-};
-
 /**
  * CrmLeadsEndpointRules
  * Per-endpoint requestRules stored in the api-guard-pro resource record.

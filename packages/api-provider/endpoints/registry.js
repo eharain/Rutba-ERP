@@ -1,75 +1,32 @@
-import { SalesEndpointsMeta, SalesEndpointRules } from './sales.js';
-import { SaleItemsEndpointsMeta, SaleItemsEndpointRules } from './sale-items.js';
-import { SaleReturnsEndpointsMeta, SaleReturnsEndpointRules } from './sale-returns.js';
-import { SaleReturnItemsEndpointsMeta, SaleReturnItemsEndpointRules } from './sale-return-items.js';
-import { PurchasesEndpointsMeta, PurchasesEndpointRules } from './purchases.js';
-import { PurchaseItemsEndpointsMeta, PurchaseItemsEndpointRules } from './purchase-items.js';
-import { PaymentsEndpointsMeta, PaymentsEndpointRules } from './payments.js';
-import { CashRegisterTransactionEndpointsMeta, CashRegisterTransactionEndpointRules } from './cash-register-transactions.js';
-import { CashRegistersEndpointsMeta, CashRegistersEndpointRules } from './cash-registers.js';
-import { StockItemsEndpointsMeta, StockItemsEndpointRules } from './stock-items.js';
-import { ProductsEndpointsMeta, ProductsEndpointRules } from './products.js';
-import { CustomersEndpointsMeta, CustomersEndpointRules } from './customers.js';
-import { BranchesEndpointsMeta, BranchesEndpointRules } from './branches.js';
-import { BrandsEndpointsMeta, BrandsEndpointRules } from './brands.js';
-import { CategoriesEndpointsMeta, CategoriesEndpointRules } from './categories.js';
-import { SuppliersEndpointsMeta, SuppliersEndpointRules } from './suppliers.js';
-import { CmsPagesEndpointsMeta, CmsPagesEndpointRules } from './cms-pages.js';
-import { UploadEndpointsMeta } from './upload.js';
-import { EnumsEndpointsMeta, EnumsEndpointRules } from './enums.js';
-import { TermTypesEndpointsMeta, TermTypesEndpointRules, TermsEndpointsMeta, TermsEndpointRules } from './term-types.js';
-import { CrmLeadsEndpointsMeta, CrmLeadsEndpointRules } from './crm-leads.js';
-import { StockInputsEndpointsMeta, StockInputsEndpointRules } from './stock-inputs.js';
-import { NotificationTemplatesEndpointsMeta, NotificationTemplatesEndpointRules } from './notification-templates.js';
-import { WebAuthEndpointsMeta, WebAuthEndpointRules, WebCheckoutEndpointsMeta, WebCheckoutEndpointRules, WebDeliveryEndpointsMeta, WebDeliveryEndpointRules, WebLeadsEndpointsMeta, WebLeadsEndpointRules } from './web.js';
-
-const IMPLEMENTED_ENDPOINT_META = [
-    SalesEndpointsMeta,
-    SaleItemsEndpointsMeta,
-    SaleReturnsEndpointsMeta,
-    SaleReturnItemsEndpointsMeta,
-    PurchasesEndpointsMeta,
-    PurchaseItemsEndpointsMeta,
-    PaymentsEndpointsMeta,
-    CashRegisterTransactionEndpointsMeta,
-    CashRegistersEndpointsMeta,
-    StockItemsEndpointsMeta,
-    ProductsEndpointsMeta,
-    CustomersEndpointsMeta,
-    BranchesEndpointsMeta,
-    BrandsEndpointsMeta,
-    CategoriesEndpointsMeta,
-    SuppliersEndpointsMeta,
-    CmsPagesEndpointsMeta,
-    UploadEndpointsMeta,
-    EnumsEndpointsMeta,
-    TermTypesEndpointsMeta,
-    TermsEndpointsMeta,
-    CrmLeadsEndpointsMeta,
-    StockInputsEndpointsMeta,
-    NotificationTemplatesEndpointsMeta,
-    WebAuthEndpointsMeta,
-    WebCheckoutEndpointsMeta,
-    WebDeliveryEndpointsMeta,
-    WebLeadsEndpointsMeta,
-];
-
-const ENDPOINT_METADATA_REGISTRY = {
-    implemented: IMPLEMENTED_ENDPOINT_META,
-    all: IMPLEMENTED_ENDPOINT_META,
-};
-
-export {
-    IMPLEMENTED_ENDPOINT_META,
-    ENDPOINT_METADATA_REGISTRY,
-};
+import { SalesEndpointRules } from './sales.js';
+import { SaleItemsEndpointRules } from './sale-items.js';
+import { SaleReturnsEndpointRules } from './sale-returns.js';
+import { SaleReturnItemsEndpointRules } from './sale-return-items.js';
+import { PurchasesEndpointRules } from './purchases.js';
+import { PurchaseItemsEndpointRules } from './purchase-items.js';
+import { PaymentsEndpointRules } from './payments.js';
+import { CashRegisterTransactionEndpointRules } from './cash-register-transactions.js';
+import { CashRegistersEndpointRules } from './cash-registers.js';
+import { StockItemsEndpointRules } from './stock-items.js';
+import { ProductsEndpointRules } from './products.js';
+import { CustomersEndpointRules } from './customers.js';
+import { BranchesEndpointRules } from './branches.js';
+import { BrandsEndpointRules } from './brands.js';
+import { CategoriesEndpointRules } from './categories.js';
+import { SuppliersEndpointRules } from './suppliers.js';
+import { CmsPagesEndpointRules } from './cms-pages.js';
+import { EnumsEndpointRules } from './enums.js';
+import { TermTypesEndpointRules, TermsEndpointRules } from './term-types.js';
+import { CrmLeadsEndpointRules } from './crm-leads.js';
+import { StockInputsEndpointRules } from './stock-inputs.js';
+import { NotificationTemplatesEndpointRules } from './notification-templates.js';
+import { WebAuthEndpointRules, WebCheckoutEndpointRules, WebDeliveryEndpointRules, WebLeadsEndpointRules } from './web.js';
 
 /**
  * ENDPOINT_RULES_REGISTRY
  *
  * Maps each endpoint basePath to its *EndpointRules object.
  * Used by the api-guard-seed.js seeder to attach requestRules to resource records.
- * Keys match the basePath fields on the corresponding *EndpointsMeta.
  */
 export const ENDPOINT_RULES_REGISTRY = {
     '/sales': SalesEndpointRules,

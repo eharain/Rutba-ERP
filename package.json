@@ -79,8 +79,8 @@
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^7.2.0",
-    "@rutba/pos-shared": "1.0.0",
-    "@rutba/api-provider": "1.0.0",
+    "@rutba/pos-shared": "file://packages/pos-shared",
+    "@rutba/api-provider": "file://packages/api-provider",
     "axios": "^1.14.0",
     "bootstrap": "^5.3.8",
     "marked": "^17.0.5",

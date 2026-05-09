@@ -28,15 +28,6 @@ export const SaleReturnItemsEndpoints = {
     },
 };
 
-export const SaleReturnItemsEndpointsMeta = {
-    uid: 'api::sale-return-item.sale-return-item',
-    basePath: '/sale-return-items',
-    methodActions: {
-        create: 'create',
-        update: 'update',
-    },
-};
-
 /**
  * SaleReturnItemsEndpointRules
  * Per-endpoint requestRules stored in the api-guard-pro resource record.

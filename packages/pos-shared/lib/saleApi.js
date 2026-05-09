@@ -1,4 +1,4 @@
-import { fetchSaleByIdOrInvoice, searchStockItems } from './pos';
+import { fetchSaleByIdOrInvoice, searchStockItems } from '@rutba/api-provider/pos';
 import SaleModel from '../context/domain/sale/SaleModel.js';
 import { getCashRegister, getBranch, getBranchDesk, getUser } from "../lib/utils";
 import {

@@ -170,23 +170,6 @@ Object.assign(BrandsEndpoints, {
     },
 });
 
-export const BrandsEndpointsMeta = {
-    uid: 'api::brand.brand',
-    basePath: '/brands',
-    methodActions: {
-        listPaged: 'find',
-        listAll: 'find',
-        list: 'find',
-        listDraft: 'find',
-        listPublished: 'find',
-        create: 'create',
-        update: 'update',
-        del: 'delete',
-        publish: 'publish',
-        unpublish: 'unpublish',
-    },
-};
-
 /**
  * BrandsEndpointRules
  * Per-endpoint requestRules stored in the api-guard-pro resource record.

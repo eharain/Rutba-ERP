@@ -89,19 +89,6 @@ export const BranchesEndpoints = {
     },
 };
 
-export const BranchesEndpointsMeta = {
-    uid: 'api::branch.branch',
-    basePath: '/branches',
-    methodActions: {
-        listWithDesks: 'find',
-        list: 'find',
-        byId: 'findOne',
-        update: 'update',
-        postArchiveStock: 'update',
-        postUnarchiveStock: 'update',
-    },
-};
-
 /**
  * BranchesEndpointRules
  * Per-endpoint requestRules stored in the api-guard-pro resource record.

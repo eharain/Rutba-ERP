@@ -61,40 +61,5 @@ export const CashRegisterTransactionEndpointRules = {
     create: {},
 };
 
-export const CashRegisterTransactionEndpointsMeta = {
-    uid: 'api::cash-register-transaction.cash-register-transaction',
-    basePath: '/cash-register-transactions',
-    appAccess: [
-        { appKey: 'sale', appName: 'Point of Sale', roleKeys: ['staff', 'admin'], accessGroups: ['user', 'admin'] },
-        { appKey: 'accounts', appName: 'Accounting', roleKeys: ['staff'], accessGroups: ['user'] },
-        { appKey: 'auth', appName: 'User Management', roleKeys: ['staff'], accessGroups: ['user'] },
-    ],
-    actionAccess: {
-        find: ['sale', 'accounts'],
-        findOne: ['sale', 'accounts'],
-        create: ['sale'],
-        update: ['sale'],
-        'delete': ['sale', 'auth'],
-    },
-    methodActions: {
-        create: 'create',
-        byRegister: 'find',
-    },
-    methodHttp: {
-        create: 'POST',
-        byRegister: 'GET',
-        fetchByRegister: 'GET',
-        postCreate: 'POST',
-    },
-    actionHttp: {
-        find: 'GET',
-        findOne: 'GET',
-        create: 'POST',
-        update: 'PUT',
-        'delete': 'DELETE',
-    },
-};
-
-
 
 
