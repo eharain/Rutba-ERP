@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { fetchPurchaseByIdDocumentIdOrPO } from '@rutba/api-provider/';
+import { fetchPurchaseByIdDocumentIdOrPO } from '@rutba/api-provider/pos';
 import ProtectedRoute from '@rutba/pos-shared/components/ProtectedRoute';
 import Layout from '../../components/Layout';
 import PermissionCheck from '@rutba/pos-shared/components/PermissionCheck';

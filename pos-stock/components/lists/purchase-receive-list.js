@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { PurchaseItemsEndpoints, PurchasesEndpoints } from '@rutba/api-provider/endpoints/index.js';
 import { Table, TableHead, TableBody, TableRow, TableCell } from '@rutba/pos-shared/components/Table';
-import {generateStockItems} from '@rutba/api-provider//create';
+import {generateStockItems} from '@rutba/api-provider/pos/create';
 import { useUtil } from '@rutba/pos-shared/context/UtilContext';
 
 const PurchaseReceiveList = ({ purchase, onComplete }) => {
