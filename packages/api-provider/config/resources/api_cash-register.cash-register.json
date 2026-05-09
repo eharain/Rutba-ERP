@@ -107,6 +107,24 @@
         }
       ]
     },
+    "cash-register.active": {
+      "policies": [
+        {
+          "key": "activeAccess",
+          "grants": [
+            "accounts_admin",
+            "accounts_manager",
+            "accounts_staff",
+            "sale_admin",
+            "sale_manager",
+            "sale_staff",
+            "auth_admin",
+            "auth_manager",
+            "auth_staff"
+          ]
+        }
+      ]
+    },
     "cash-register.open": {
       "policies": [
         {
@@ -141,6 +159,20 @@
             "closedBy": "$user.id",
             "closedAt": "$now"
           }
+        }
+      ]
+    },
+    "cash-register.expire": {
+      "policies": [
+        {
+          "key": "expireAccess",
+          "grants": [
+            "accounts_admin",
+            "accounts_manager",
+            "sale_admin",
+            "sale_manager",
+            "auth_admin"
+          ]
         }
       ]
     }

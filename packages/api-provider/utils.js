@@ -1,0 +1,130 @@
+import { storage } from './lib/storage.js';
+
+export function getBranch() {
+  try {
+    const raw = localStorage.getItem('branch');
+    return raw ? JSON.parse(raw) : null;
+  } catch (_) {
+    return storage.getJSON('branch');
+  }
+}
+
+export function getBranchDesk() {
+  try {
+    const raw = localStorage.getItem('branch-desk');
+    return raw ? JSON.parse(raw) : null;
+  } catch (_) {
+    return storage.getJSON('branch-desk');
+  }
+}
+
+export function getUser() {
+  const storedUser = storage.getJSON('user');
+  return storedUser ?? null;
+}
+
+export function getLocation() {
+  const branch = getBranch();
+  const desk = getBranchDesk();
+  if (!branch || !desk) {
+    return null;
+  }
+  return { branch, desk };
+}
+
+export function RandomNon22Char() {
+  const start = 'O'.charCodeAt(0);
+  const end = 'Z'.charCodeAt(0);
+  const randomCode = Math.floor(Math.random() * (end - start + 1)) + start;
+  return String.fromCharCode(randomCode);
+}
+
+export function padHex(value, length, char = ' ') {
+  if (typeof value === 'number') {
+    value = value.toString(32).toUpperCase();
+  }
+
+  const ps = char + String(value ?? '').padStart(length, char);
+  return ps.length > length * 2 ? ps.substring(0, length * 2) : ps;
+}
+
+export function generateNextDocumentId() {
+  const user = getUser();
+  const loc = getLocation();
+  const fixDate = new Date(2026, 1, 1, 1, 0, 0);
+  const time = Date.now() - fixDate.getTime();
+
+  if (!loc || !loc.branch || !loc.desk || !user) {
+    throw new Error('Branch, desk, or user not set');
+  }
+
+  return (
+    padHex(loc?.branch.id, 2, RandomNon22Char()) +
+    padHex(loc?.desk.id, 2, RandomNon22Char()) +
+    padHex(user?.id, 2, RandomNon22Char()) +
+    padHex(time, 2, RandomNon22Char())
+  );
+}
+
+export function generateNextInvoiceNumber() {
+  const user = getUser();
+  const loc = getLocation();
+  if (!loc || !loc.branch || !loc.desk || !user) {
+    return null;
+  }
+  return (loc?.desk?.invoice_prefix ?? 'I') + '' + generateNextDocumentId();
+}
+
+export function generateNextPONumber() {
+  const user = getUser();
+  const loc = getLocation();
+  if (!loc?.branch || !loc?.desk || !user) {
+    throw new Error('Branch, desk, or user not set');
+  }
+
+  return (
+    (loc.branch.po_prefix ?? 'PO') +
+    '-' +
+    (padHex(loc.branch.id, 2, RandomNon22Char()) +
+      padHex(user.id, 3, RandomNon22Char()) +
+      padHex(Date.now(), 6, RandomNon22Char()))
+  );
+}
+
+export function prepareForPut(obj, relations = []) {
+  if (!Array.isArray(relations)) {
+    relations = [];
+  }
+
+  const copy = {};
+  const skip = ['id', 'documentId', 'createdAt', 'updatedAt', 'publishedAt', 'more'];
+  const mediaFields = ['logo', 'gallery', 'receipts'];
+
+  if (relations.includes('owners')) {
+    obj.owners = Array.isArray(obj.owners) ? [...obj.owners, getUser()] : [getUser()];
+  }
+
+  for (const [name, value] of Object.entries(obj)) {
+    if (skip.includes(name)) continue;
+
+    if (relations.includes(name)) {
+      if (Array.isArray(value)) {
+        copy[name] = {
+          connect: value.map((v) =>
+            mediaFields.includes(name) ? { id: v.id } : { documentId: v.documentId }
+          ),
+        };
+      } else if (value) {
+        copy[name] = {
+          connect: [mediaFields.includes(name) ? { id: value.id } : { documentId: value.documentId }],
+        };
+      } else {
+        copy[name] = { connect: [] };
+      }
+    } else {
+      copy[name] = value;
+    }
+  }
+
+  return copy;
+}

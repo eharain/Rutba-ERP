@@ -27,6 +27,11 @@ const ROOT = path.resolve(__dirname, '..', '..');
 // ── Install pos-strapi dependencies ────────────────────────
 const strapiDir = path.join(ROOT, 'pos-strapi');
 if (fs.existsSync(path.join(strapiDir, 'package.json'))) {
+  if (process.env.RUTBA_SKIP_STRAPI_POSTINSTALL === '1') {
+    console.log('[postinstall] RUTBA_SKIP_STRAPI_POSTINSTALL=1 — skipping pos-strapi install.');
+    process.exit(0);
+  }
+
   console.log('[postinstall] Installing pos-strapi dependencies…');
   try {
     execSync('npm install --prefix pos-strapi', {
@@ -36,8 +41,8 @@ if (fs.existsSync(path.join(strapiDir, 'package.json'))) {
     });
     console.log('[postinstall] pos-strapi dependencies installed.');
   } catch (err) {
-    console.error('[postinstall] Failed to install pos-strapi dependencies:', err.message);
-    process.exit(1);
+    console.warn('[postinstall] Failed to install pos-strapi dependencies (continuing):', err.message);
+    console.warn('[postinstall] If you need Strapi locally, configure plugin source then run: npm install --prefix pos-strapi');
   }
 } else {
   console.log('[postinstall] pos-strapi/package.json not found — skipping.');

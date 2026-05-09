@@ -73,7 +73,7 @@ function createNextConfig(overrides = {}) {
   const base = {
     reactStrictMode: true,
     ...(process.env.NEXT_BUILD_OUTPUT ? { output: process.env.NEXT_BUILD_OUTPUT } : {}),
-    transpilePackages: ['@rutba/pos-shared'],
+    transpilePackages: ['@rutba/pos-shared', '@rutba/api-provider'],
     images: {
       remotePatterns: generateRemotePatterns(DEFAULT_IMAGE_URLS),
     },

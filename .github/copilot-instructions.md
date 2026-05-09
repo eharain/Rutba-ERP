@@ -118,10 +118,3 @@ rutba-web/src/
 
 - Enforce web_public vs web_user separation in service-layer guards and document the mapping in the access metadata aggregator.
 - Use session claims to avoid extra lookups where safe, but validate role-to-guard mappings server-side for sensitive actions.
-
-### pos-auth: User Management Screens
-
-- Show app access in expandable sections per user (accordion/expandable row).
-- Add pagination controls and a page-size selector to both Users and Access Assignment lists.
-- Make user names link to their edit user pages (use dedicated edit routes).
-- Ensure UI visibility follows authorization: hide actions the current user cannot perform and enforce the same rules server-side.

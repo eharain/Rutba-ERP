@@ -48,6 +48,7 @@ export { ReturnRequestsEndpoints } from './return-requests.js';
 export { DeliveryMethodsEndpoints } from './delivery-methods.js';
 export { DeliveryZonesEndpoints } from './delivery-zones.js';
 export { RidersEndpoints } from './riders.js';
+export { RiderEndpoints } from './rider-endpoints.js';
 export { SaleOrdersEndpoints } from './sale-orders.js';
 export { SiteSettingEndpoints } from './site-setting.js';
 export { AccInvoicesEndpoints } from './acc-invoices.js';
