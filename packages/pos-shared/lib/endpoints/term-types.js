@@ -63,6 +63,12 @@ export const TermTypesEndpoints = {
         return authApi.fetch(ep.path, ep.params);
     },
 
+    /** Async: fetch all term-types with terms across pages. */
+    fetchAllWithTerms: (opts = {}) => {
+        const ep = TermTypesEndpoints.listWithTerms(opts);
+        return authApi.getAll(ep.path, ep.params);
+    },
+
     /** Async: fetch term-types (no terms populate). */
     fetchList: (opts = {}) => {
         const ep = TermTypesEndpoints.list(opts);

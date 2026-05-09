@@ -1,0 +1,148 @@
+{
+  "uid": "api::cash-register.cash-register",
+  "policies": {
+    "cash-register.find": {
+      "policies": [
+        {
+          "key": "accountsAccess",
+          "grants": [
+            "accounts_admin",
+            "accounts_manager",
+            "accounts_staff",
+            "accounts_viewer_admin",
+            "accounts_viewer_manager",
+            "accounts_viewer_staff",
+            "sale_admin",
+            "sale_manager",
+            "sale_staff",
+            "auth_admin",
+            "auth_manager",
+            "auth_staff"
+          ],
+          "query": {
+            "filters": {
+              "branch": {
+                "$eq": "$user.branch"
+              }
+            },
+            "populate": {
+              "transactions": {
+                "limit": 100
+              }
+            },
+            "fields": [
+              "id",
+              "name",
+              "status",
+              "openingBalance",
+              "currentBalance",
+              "openedAt",
+              "closedAt"
+            ]
+          }
+        }
+      ]
+    },
+    "cash-register.findOne": {
+      "policies": [
+        {
+          "key": "accountsAccess",
+          "grants": [
+            "accounts_admin",
+            "accounts_manager",
+            "accounts_staff",
+            "accounts_viewer_admin",
+            "accounts_viewer_manager",
+            "accounts_viewer_staff",
+            "sale_admin",
+            "sale_manager",
+            "sale_staff",
+            "auth_admin",
+            "auth_manager",
+            "auth_staff"
+          ],
+          "query": {
+            "populate": {
+              "transactions": true,
+              "openedBy": true,
+              "closedBy": true
+            }
+          }
+        }
+      ]
+    },
+    "cash-register.create": {
+      "policies": [
+        {
+          "key": "adminOnly",
+          "grants": [
+            "accounts_admin",
+            "sale_admin",
+            "auth_admin"
+          ]
+        }
+      ]
+    },
+    "cash-register.update": {
+      "policies": [
+        {
+          "key": "adminOnly",
+          "grants": [
+            "accounts_admin",
+            "sale_admin",
+            "auth_admin"
+          ]
+        }
+      ]
+    },
+    "cash-register.delete": {
+      "policies": [
+        {
+          "key": "adminOnly",
+          "grants": [
+            "accounts_admin",
+            "sale_admin",
+            "auth_admin"
+          ]
+        }
+      ]
+    },
+    "cash-register.open": {
+      "policies": [
+        {
+          "key": "openAccess",
+          "grants": [
+            "accounts_admin",
+            "accounts_manager",
+            "sale_admin",
+            "sale_manager",
+            "sale_staff",
+            "auth_admin"
+          ],
+          "body": {
+            "openedBy": "$user.id",
+            "openedAt": "$now"
+          }
+        }
+      ]
+    },
+    "cash-register.close": {
+      "policies": [
+        {
+          "key": "closeAccess",
+          "grants": [
+            "accounts_admin",
+            "accounts_manager",
+            "sale_admin",
+            "sale_manager",
+            "auth_admin"
+          ],
+          "body": {
+            "closedBy": "$user.id",
+            "closedAt": "$now"
+          }
+        }
+      ]
+    }
+  }
+}

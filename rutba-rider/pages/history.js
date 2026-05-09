@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { authApi } from "@rutba/pos-shared/lib/api";
+import { RiderEndpoints } from "@rutba/api-provider/endpoints";
 
 export default function HistoryPage() {
   const { jwt } = useAuth();
@@ -11,7 +11,7 @@ export default function HistoryPage() {
 
   useEffect(() => {
     if (!jwt) return;
-    authApi.get('/rider/deliveries?status=history', {}, jwt)
+    RiderEndpoints.fetchDeliveries({ status: 'history' })
       .then((res) => setHistory(res.data || []))
       .catch((err) => console.error('Failed to load history', err))
       .finally(() => setLoading(false));

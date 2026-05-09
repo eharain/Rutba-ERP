@@ -1,0 +1,202 @@
+{
+  "accounts_admin": {
+    "level": "admin",
+    "domain": "accounts"
+  },
+  "accounts_manager": {
+    "level": "manager",
+    "domain": "accounts"
+  },
+  "accounts_staff": {
+    "level": "staff",
+    "domain": "accounts"
+  },
+  "ap_admin": {
+    "level": "admin",
+    "domain": "accounts-ap"
+  },
+  "ap_manager": {
+    "level": "manager",
+    "domain": "accounts-ap"
+  },
+  "ap_staff": {
+    "level": "staff",
+    "domain": "accounts-ap"
+  },
+  "ar_admin": {
+    "level": "admin",
+    "domain": "accounts-ar"
+  },
+  "ar_manager": {
+    "level": "manager",
+    "domain": "accounts-ar"
+  },
+  "ar_staff": {
+    "level": "staff",
+    "domain": "accounts-ar"
+  },
+  "accounts_viewer_admin": {
+    "level": "admin",
+    "domain": "accounts-viewer"
+  },
+  "accounts_viewer_manager": {
+    "level": "manager",
+    "domain": "accounts-viewer"
+  },
+  "accounts_viewer_staff": {
+    "level": "staff",
+    "domain": "accounts-viewer"
+  },
+  "auth_admin": {
+    "level": "admin",
+    "domain": "auth"
+  },
+  "auth_manager": {
+    "level": "manager",
+    "domain": "auth"
+  },
+  "auth_staff": {
+    "level": "staff",
+    "domain": "auth"
+  },
+  "cms_admin": {
+    "level": "admin",
+    "domain": "cms"
+  },
+  "cms_manager": {
+    "level": "manager",
+    "domain": "cms"
+  },
+  "cms_staff": {
+    "level": "staff",
+    "domain": "cms"
+  },
+  "crm_admin": {
+    "level": "admin",
+    "domain": "crm"
+  },
+  "crm_manager": {
+    "level": "manager",
+    "domain": "crm"
+  },
+  "crm_staff": {
+    "level": "staff",
+    "domain": "crm"
+  },
+  "delivery_admin": {
+    "level": "admin",
+    "domain": "delivery"
+  },
+  "delivery_manager": {
+    "level": "manager",
+    "domain": "delivery"
+  },
+  "delivery_staff": {
+    "level": "staff",
+    "domain": "delivery"
+  },
+  "hr_admin": {
+    "level": "admin",
+    "domain": "hr"
+  },
+  "hr_manager": {
+    "level": "manager",
+    "domain": "hr"
+  },
+  "hr_staff": {
+    "level": "staff",
+    "domain": "hr"
+  },
+  "order_admin": {
+    "level": "admin",
+    "domain": "order-management"
+  },
+  "order_manager": {
+    "level": "manager",
+    "domain": "order-management"
+  },
+  "order_staff": {
+    "level": "staff",
+    "domain": "order-management"
+  },
+  "payroll_admin": {
+    "level": "admin",
+    "domain": "payroll"
+  },
+  "payroll_manager": {
+    "level": "manager",
+    "domain": "payroll"
+  },
+  "payroll_staff": {
+    "level": "staff",
+    "domain": "payroll"
+  },
+  "rider_admin": {
+    "level": "admin",
+    "domain": "rider"
+  },
+  "rider_manager": {
+    "level": "manager",
+    "domain": "rider"
+  },
+  "rider_staff": {
+    "level": "staff",
+    "domain": "rider"
+  },
+  "sale_admin": {
+    "level": "admin",
+    "domain": "sale"
+  },
+  "sale_manager": {
+    "level": "manager",
+    "domain": "sale"
+  },
+  "sale_staff": {
+    "level": "staff",
+    "domain": "sale"
+  },
+  "social_admin": {
+    "level": "admin",
+    "domain": "social"
+  },
+  "social_manager": {
+    "level": "manager",
+    "domain": "social"
+  },
+  "social_staff": {
+    "level": "staff",
+    "domain": "social"
+  },
+  "stock_admin": {
+    "level": "admin",
+    "domain": "stock"
+  },
+  "stock_manager": {
+    "level": "manager",
+    "domain": "stock"
+  },
+  "stock_staff": {
+    "level": "staff",
+    "domain": "stock"
+  },
+  "web_public": {
+    "level": "public",
+    "domain": "web"
+  },
+  "web_user": {
+    "level": "user",
+    "domain": "web"
+  },
+  "webuser_admin": {
+    "level": "admin",
+    "domain": "web-user"
+  },
+  "webuser_manager": {
+    "level": "manager",
+    "domain": "web-user"
+  },
+  "webuser_staff": {
+    "level": "staff",
+    "domain": "web-user"
+  }
+}

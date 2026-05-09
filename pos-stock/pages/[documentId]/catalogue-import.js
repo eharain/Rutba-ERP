@@ -4,7 +4,7 @@ import Link from 'next/link';
 import Layout from '../../components/Layout';
 import ProtectedRoute from '@rutba/pos-shared/components/ProtectedRoute';
 import { authApi, relationConnects } from '@rutba/pos-shared/lib/api';
-import { TermTypesEndpoints } from '@rutba/pos-shared/lib/endpoints';
+import { TermTypesEndpoints } from '@rutba/api-provider/endpoints';
 import { saveProduct } from '@rutba/pos-shared/lib/pos/save';
 
 function getEntryId(entry) {

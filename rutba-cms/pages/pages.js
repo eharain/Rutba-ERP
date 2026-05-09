@@ -4,7 +4,7 @@ import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { authApi } from "@rutba/pos-shared/lib/api";
-import { CmsPagesEndpoints } from "@rutba/pos-shared/lib/endpoints/index.js";
+import { CmsPagesEndpoints } from "@rutba/api-provider/endpoints";
 import Link from "next/link";
 import { useToast } from "../components/Toast";
 
@@ -372,4 +372,5 @@ export default function Pages() {
         </ProtectedRoute>
     );
 }
+
 

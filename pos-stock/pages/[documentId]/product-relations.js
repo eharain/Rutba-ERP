@@ -4,7 +4,7 @@ import Link from 'next/link';
 import Layout from '../../components/Layout';
 import ProtectedRoute from '@rutba/pos-shared/components/ProtectedRoute';
 import { authApi } from '@rutba/pos-shared/lib/api';
-import { StockItemsEndpoints, PurchaseItemsEndpoints, ProductsEndpoints } from '@rutba/pos-shared/lib/endpoints';
+import { StockItemsEndpoints, PurchaseItemsEndpoints, ProductsEndpoints } from '@rutba/api-provider/endpoints';
 import { loadProduct } from '@rutba/pos-shared/lib/pos';
 import { useUtil } from '@rutba/pos-shared/context/UtilContext';
 import StrapiImage from '@rutba/pos-shared/components/StrapiImage';

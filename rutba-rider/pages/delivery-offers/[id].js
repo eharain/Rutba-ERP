@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import Layout from "../../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { authApi } from "@rutba/pos-shared/lib/api";
+import { RiderEndpoints } from "@rutba/api-provider/endpoints";
 
 export default function DeliveryOfferDetailPage() {
   const router = useRouter();
@@ -17,7 +17,7 @@ export default function DeliveryOfferDetailPage() {
   const load = () => {
     if (!jwt) return;
 
-    authApi.get('/rider/delivery-offers', {}, jwt)
+    RiderEndpoints.fetchDeliveryOffers()
       .then((res) => setOffers(res.data || []))
       .catch((err) => console.error('Failed to load delivery offers', err))
       .finally(() => setLoading(false));
@@ -42,7 +42,7 @@ export default function DeliveryOfferDetailPage() {
     if (!jwt || !id) return;
     try {
       setActionLoading(true);
-      const res = await authApi.post(`/rider/delivery-offers/${id}/accept`, {}, jwt);
+      const res = await RiderEndpoints.postAcceptDeliveryOffer(id, {});
       const assignedOrder = res?.data;
       if (assignedOrder?.documentId) {
         router.push(`/deliveries/${assignedOrder.documentId}`);
@@ -60,7 +60,7 @@ export default function DeliveryOfferDetailPage() {
     if (!jwt || !id) return;
     try {
       setActionLoading(true);
-      await authApi.post(`/rider/delivery-offers/${id}/reject`, {}, jwt);
+      await RiderEndpoints.postRejectDeliveryOffer(id, {});
       router.push('/delivery-offers');
     } catch (err) {
       alert(err?.response?.data?.error?.message || 'Failed to reject offer');

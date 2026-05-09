@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, Fragment } from "react";
-import { authApi } from "@rutba/pos-shared/lib/api";
 import { fetchProducts } from "@rutba/pos-shared/lib/pos";
+import { ProductsEndpoints, BrandsEndpoints, CategoriesEndpoints, SuppliersEndpoints, TermTypesEndpoints, PurchasesEndpoints } from "@rutba/api-provider/endpoints";
 import SearchableSelect from "@rutba/pos-shared/components/SearchableSelect";
 
 export default function ProductPickerModal({ show, onClose, onSelect, title }) {
@@ -70,10 +70,10 @@ export default function ProductPickerModal({ show, onClose, onSelect, title }) {
         if (!variantsMap[docId]) {
             setLoadingVariants(prev => ({ ...prev, [docId]: true }));
             try {
-                const res = await authApi.get("/products", {
-                    filters: { parent: { documentId: docId } },
+                const res = await ProductsEndpoints.fetchByParent(docId, {
+                    page: 1,
+                    pageSize: 100,
                     populate: { categories: true, brands: true, suppliers: true },
-                    pagination: { pageSize: 100 },
                 });
                 setVariantsMap(prev => ({ ...prev, [docId]: res.data || [] }));
             } catch (err) {
@@ -102,11 +102,11 @@ export default function ProductPickerModal({ show, onClose, onSelect, title }) {
     useEffect(() => {
         if (!show || filterDataLoaded) return;
         Promise.all([
-            authApi.getAll("/brands"),
-            authApi.getAll("/categories"),
-            authApi.getAll("/suppliers"),
-            authApi.getAll("/term-types", { populate: ["terms"] }),
-            authApi.getAll("/purchases", { sort: ["createdAt:desc"] }),
+            BrandsEndpoints.fetchAll(),
+            CategoriesEndpoints.fetchAll(),
+            SuppliersEndpoints.fetchAll(),
+            TermTypesEndpoints.fetchAllWithTerms(),
+            PurchasesEndpoints.fetchAll({ sort: ["createdAt:desc"] }),
         ]).then(([b, c, s, t, p]) => {
             setBrands(b?.data || b || []);
             setCategories(c?.data || c || []);

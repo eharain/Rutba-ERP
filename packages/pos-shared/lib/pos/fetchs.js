@@ -1,6 +1,6 @@
 import { authApi } from '../api';
 import { dataNode } from './search';
-import { SalesEndpoints, SaleReturnsEndpoints, PurchasesEndpoints, CategoriesEndpoints, BrandsEndpoints, ProductsEndpoints, EnumsEndpoints } from '../endpoints/index.js';
+import { SalesEndpoints, SaleReturnsEndpoints, PurchasesEndpoints, CategoriesEndpoints, BrandsEndpoints, ProductsEndpoints, EnumsEndpoints } from '@rutba/api-provider/endpoints';
 
 // Fetch sales and returns for reports
 export async function fetchEntities(entities, page, rowsPerPage = 100) {

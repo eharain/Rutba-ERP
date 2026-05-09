@@ -22,7 +22,6 @@ import { CrmLeadsEndpointsMeta, CrmLeadsEndpointRules } from './crm-leads.js';
 import { StockInputsEndpointsMeta, StockInputsEndpointRules } from './stock-inputs.js';
 import { NotificationTemplatesEndpointsMeta, NotificationTemplatesEndpointRules } from './notification-templates.js';
 import { WebAuthEndpointsMeta, WebAuthEndpointRules, WebCheckoutEndpointsMeta, WebCheckoutEndpointRules, WebDeliveryEndpointsMeta, WebDeliveryEndpointRules, WebLeadsEndpointsMeta, WebLeadsEndpointRules } from './web.js';
-import { DisabledPlaceholderEndpoints } from './disabled-placeholders.js';
 
 const IMPLEMENTED_ENDPOINT_META = [
     SalesEndpointsMeta,
@@ -55,20 +54,13 @@ const IMPLEMENTED_ENDPOINT_META = [
     WebLeadsEndpointsMeta,
 ];
 
-const DISABLED_ENDPOINT_META = Object.values(DisabledPlaceholderEndpoints || {});
-
 const ENDPOINT_METADATA_REGISTRY = {
     implemented: IMPLEMENTED_ENDPOINT_META,
-    disabled: DISABLED_ENDPOINT_META,
-    all: [
-        ...IMPLEMENTED_ENDPOINT_META,
-        ...DISABLED_ENDPOINT_META,
-    ],
+    all: IMPLEMENTED_ENDPOINT_META,
 };
 
 export {
     IMPLEMENTED_ENDPOINT_META,
-    DISABLED_ENDPOINT_META,
     ENDPOINT_METADATA_REGISTRY,
 };
 

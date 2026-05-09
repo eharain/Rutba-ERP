@@ -3,7 +3,7 @@ import Link from "next/link";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { authApi } from "@rutba/pos-shared/lib/api";
-import { BrandsEndpoints, ProductsEndpoints } from "@rutba/pos-shared/lib/endpoints/index.js";
+import { BrandsEndpoints, ProductsEndpoints } from "@rutba/api-provider/endpoints";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
 import FileView from "@rutba/pos-shared/components/FileView";
 
@@ -810,5 +810,6 @@ export default function BrandsPage() {
         </ProtectedRoute>
     );
 }
+
 
 

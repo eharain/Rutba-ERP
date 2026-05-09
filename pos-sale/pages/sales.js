@@ -6,7 +6,7 @@ import { fetchSales } from "@rutba/pos-shared/lib/pos";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { isAppAdmin } from "@rutba/pos-shared/lib/roles";
 import { getBranches, getAdminMode, authApi } from "@rutba/pos-shared/lib/api";
-import { SalesEndpoints } from "@rutba/pos-shared/lib/endpoints";
+import { SalesEndpoints } from "@rutba/api-provider/endpoints";
 import SaleApi from "@rutba/pos-shared/lib/saleApi";
 import Link from "next/link";
 import { Table, TableHead, TableRow, TableCell, TableBody, CircularProgress, TablePagination } from "@rutba/pos-shared/components/Table";
@@ -521,4 +521,5 @@ export default function Sales() {
         </ProtectedRoute>
     );
 }
+
 

@@ -211,11 +211,12 @@ export const ProductsEndpoints = {
      * @param {string} parentDocId
      * @param {{ page?, pageSize? }} opts
      */
-    byParent: (parentDocId, { page = 1, pageSize = 500 } = {}) => ({
+    byParent: (parentDocId, { page = 1, pageSize = 500, populate } = {}) => ({
         path: '/products',
         params: {
             filters: { parent: { documentId: parentDocId } },
             pagination: { page, pageSize },
+            ...(populate ? { populate } : {}),
         },
     }),
 

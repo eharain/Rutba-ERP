@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { authApi } from '../lib/api';
-import { TermTypesEndpoints } from '../lib/endpoints';
+import { TermTypesEndpoints } from '@rutba/api-provider/endpoints';
 import TermTypeTermDialog from './TermTypeTermDialog';
 
 function getEntryId(entry) {

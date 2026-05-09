@@ -48,6 +48,18 @@ export const PurchasesEndpoints = {
         },
     }),
 
+    /** Async: fetch purchase list (single page). */
+    fetchList: (page = 1, pageSize = 100, opts = {}) => {
+        const ep = PurchasesEndpoints.list(page, pageSize, opts);
+        return authApi.fetch(ep.path, ep.params);
+    },
+
+    /** Async: fetch all purchases across pages. */
+    fetchAll: (opts = {}) => {
+        const ep = PurchasesEndpoints.list(1, 100, opts);
+        return authApi.getAll(ep.path, ep.params);
+    },
+
     /** Create a new purchase — body provided by caller as { data }. */
     create: () => ({ path: '/purchases' }),
 

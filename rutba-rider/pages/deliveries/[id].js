@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import Layout from "../../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { authApi } from "@rutba/pos-shared/lib/api";
+import { RiderEndpoints, SaleOrdersEndpoints } from "@rutba/api-provider/endpoints";
 
 export default function DeliveryDetailPage() {
   const router = useRouter();
@@ -18,8 +18,8 @@ export default function DeliveryDetailPage() {
   const load = () => {
     if (!jwt) return;
     Promise.all([
-      authApi.get('/rider/deliveries?status=active', {}, jwt),
-      id ? authApi.get(`/sale-orders/${id}/messages`, {}, jwt) : Promise.resolve({ data: [] }),
+      RiderEndpoints.fetchDeliveries({ status: 'active' }),
+      id ? SaleOrdersEndpoints.fetchMessages(id) : Promise.resolve({ data: [] }),
     ])
       .then(([dRes, mRes]) => {
         setDeliveries(dRes.data || []);
@@ -41,7 +41,7 @@ export default function DeliveryDetailPage() {
     if (!jwt || !id) return;
     try {
       setActionLoading(true);
-      await authApi.post(`/rider/deliveries/${id}/status`, { status }, jwt);
+      await RiderEndpoints.postUpdateDeliveryStatus(id, { status });
       load();
     } catch (err) {
       alert(err?.response?.data?.error?.message || 'Failed to update status');
@@ -55,7 +55,7 @@ export default function DeliveryDetailPage() {
     if (!msg || !jwt || !id) return;
     try {
       setActionLoading(true);
-      await authApi.post(`/sale-orders/${id}/messages`, { message: msg }, jwt);
+      await SaleOrdersEndpoints.postSendMessage(id, { message: msg });
       setMessageInput('');
       load();
     } catch (err) {

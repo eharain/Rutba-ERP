@@ -7,7 +7,7 @@ import ProductCard from "@rutba/pos-shared/components/ProductCard";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import PermissionCheck from "@rutba/pos-shared/components/PermissionCheck";
 import { authApi, StraipImageUrl } from "@rutba/pos-shared/lib/api";
-import { BrandsEndpoints, CategoriesEndpoints, SuppliersEndpoints, PurchasesEndpoints } from "@rutba/pos-shared/lib/endpoints/index.js";
+import { BrandsEndpoints, CategoriesEndpoints, SuppliersEndpoints, PurchasesEndpoints } from "@rutba/api-provider/endpoints";
 import { fetchProducts } from "@rutba/pos-shared/lib/pos";
 import { ProductFilter } from "@rutba/pos-shared/components/filter/product-filter";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
@@ -514,5 +514,6 @@ export default function Products() {
 
     );
 }
+
 
 

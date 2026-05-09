@@ -14,7 +14,7 @@ import {
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { getStockStatus, getBranches } from "@rutba/pos-shared/lib/api";
-import { StockItemsEndpoints } from "@rutba/pos-shared/lib/endpoints/index.js";
+import { StockItemsEndpoints } from "@rutba/api-provider/endpoints";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
 import { loadProduct } from "@rutba/pos-shared/lib/pos/fetchs";
 import { searchStockItems } from "@rutba/pos-shared/lib/pos";
@@ -481,6 +481,7 @@ export default function StockItemsPage() {
         </ProtectedRoute>
     );
 }
+
 
 
 

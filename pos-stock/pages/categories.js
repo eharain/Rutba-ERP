@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import { CategoriesEndpoints, ProductsEndpoints } from "@rutba/pos-shared/lib/endpoints/index.js";
+import { CategoriesEndpoints, ProductsEndpoints } from "@rutba/api-provider/endpoints";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
 import FileView from "@rutba/pos-shared/components/FileView";
 
@@ -888,5 +888,6 @@ export default function CategoriesPage() {
         </ProtectedRoute>
     );
 }
+
 
 

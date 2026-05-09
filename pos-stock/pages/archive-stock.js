@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { authApi, getBranches } from "@rutba/pos-shared/lib/api";
-import { BranchesEndpoints } from "@rutba/pos-shared/lib/endpoints";
+import { BranchesEndpoints } from "@rutba/api-provider/endpoints";
 import {
     Table,
     TableHead,
@@ -484,4 +484,5 @@ export default function ArchiveStockPage() {
         </ProtectedRoute>
     );
 }
+
 

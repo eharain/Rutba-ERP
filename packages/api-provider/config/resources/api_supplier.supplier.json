@@ -1,0 +1,101 @@
+{
+  "uid": "api::supplier.supplier",
+  "policies": {
+    "supplier.find": {
+      "policies": [
+        {
+          "key": "supplierAccess",
+          "grants": [
+            "accounts_admin",
+            "accounts_manager",
+            "accounts_staff",
+            "accounts_viewer_admin",
+            "accounts_viewer_manager",
+            "accounts_viewer_staff",
+            "ap_admin",
+            "ap_manager",
+            "ap_staff",
+            "stock_admin",
+            "stock_manager",
+            "stock_staff"
+          ],
+          "query": {
+            "fields": [
+              "id",
+              "name",
+              "contactPerson",
+              "email",
+              "phone",
+              "address",
+              "taxNumber"
+            ],
+            "pagination": {
+              "pageSize": 50
+            }
+          }
+        }
+      ]
+    },
+    "supplier.findOne": {
+      "policies": [
+        {
+          "key": "supplierAccess",
+          "grants": [
+            "accounts_admin",
+            "accounts_manager",
+            "accounts_staff",
+            "accounts_viewer_admin",
+            "accounts_viewer_manager",
+            "accounts_viewer_staff",
+            "ap_admin",
+            "ap_manager",
+            "ap_staff",
+            "stock_admin",
+            "stock_manager",
+            "stock_staff"
+          ]
+        }
+      ]
+    },
+    "supplier.create": {
+      "policies": [
+        {
+          "key": "supplierCreate",
+          "grants": [
+            "ap_admin",
+            "ap_manager",
+            "stock_admin",
+            "stock_manager"
+          ],
+          "body": {
+            "createdBy": "$user.id"
+          }
+        }
+      ]
+    },
+    "supplier.update": {
+      "policies": [
+        {
+          "key": "supplierUpdate",
+          "grants": [
+            "ap_admin",
+            "ap_manager",
+            "stock_admin",
+            "stock_manager"
+          ]
+        }
+      ]
+    },
+    "supplier.delete": {
+      "policies": [
+        {
+          "key": "supplierDelete",
+          "grants": [
+            "ap_admin",
+            "stock_admin"
+          ]
+        }
+      ]
+    }
+  }
+}

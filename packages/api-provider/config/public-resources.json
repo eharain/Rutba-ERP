@@ -1,0 +1,42 @@
+{
+  "GET /api/orders/checkout": [
+    "web_public",
+    "web_user"
+  ],
+  "GET /api/orders/checkout/:id": [
+    "web_public",
+    "web_user"
+  ],
+  "POST /api/orders/checkout": [
+    "web_public",
+    "web_user"
+  ],
+  "PUT /api/orders/checkout/:id": [
+    "web_public",
+    "web_user"
+  ],
+  "DELETE /api/orders/checkout/:id": [
+    "web_public",
+    "web_user"
+  ],
+  "POST /api/orders/calculate-delivery": [
+    "web_public",
+    "web_user"
+  ],
+  "POST /api/orders/checkout/shipping-rate": [
+    "web_public",
+    "web_user"
+  ],
+  "POST /api/orders/checkout/validate-address": [
+    "web_public",
+    "web_user"
+  ],
+  "GET /api/orders/tracking/:documentId": [
+    "web_public",
+    "web_user"
+  ],
+  "POST /api/crm-leads": [
+    "web_public",
+    "web_user"
+  ]
+}

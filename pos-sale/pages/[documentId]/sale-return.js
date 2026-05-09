@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import Layout from "../../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import CashRegisterGuard from "../../components/CashRegisterGuard";
-import { SaleReturnsEndpoints, SaleReturnItemsEndpoints, SalesEndpoints, StockItemsEndpoints, PaymentsEndpoints, CashRegisterTransactionEndpoints, BranchesEndpoints } from "@rutba/pos-shared/lib/endpoints/index.js";
+import { SaleReturnsEndpoints, SaleReturnItemsEndpoints, SalesEndpoints, StockItemsEndpoints, PaymentsEndpoints, CashRegisterTransactionEndpoints, BranchesEndpoints } from "@rutba/api-provider/endpoints";
 import { fetchSaleByIdOrInvoice } from "@rutba/pos-shared/lib/pos";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
 import { getCashRegister } from "@rutba/pos-shared/lib/utils";

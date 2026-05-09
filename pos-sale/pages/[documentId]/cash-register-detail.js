@@ -4,7 +4,7 @@ import Link from "next/link";
 import Layout from "../../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { authApi, getAppName } from "@rutba/pos-shared/lib/api";
-import { CashRegistersEndpoints, PaymentsEndpoints, CashRegisterTransactionEndpoints } from "@rutba/pos-shared/lib/endpoints";
+import { CashRegistersEndpoints, PaymentsEndpoints, CashRegisterTransactionEndpoints } from "@rutba/api-provider/endpoints";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { isAppAdmin } from "@rutba/pos-shared/lib/roles";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";

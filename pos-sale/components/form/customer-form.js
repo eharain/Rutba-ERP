@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { authApi } from '@rutba/pos-shared/lib/api';
-import { CustomersEndpoints } from '@rutba/pos-shared/lib/endpoints';
+import { CustomersEndpoints } from '@rutba/api-provider/endpoints';
 
 export default function CustomerForm({
     customer,
@@ -131,3 +131,4 @@ export default function CustomerForm({
         </form>
     );
 }
+

@@ -10,7 +10,7 @@ import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import PermissionCheck from "@rutba/pos-shared/components/PermissionCheck";
 import { StraipImageUrl } from "@rutba/pos-shared/lib/api";
 import { fetchProducts, saveProduct } from "@rutba/pos-shared/lib/pos";
-import { StockItemsEndpoints } from "@rutba/pos-shared/lib/endpoints";
+import { StockItemsEndpoints } from "@rutba/api-provider/endpoints";
 import { ProductFilter } from "@rutba/pos-shared/components/filter/product-filter";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
 import { getBranch } from "@rutba/pos-shared/lib/utils";
@@ -633,3 +633,4 @@ export default function ProductsBulkEdit() {
         </ProtectedRoute>
     );
 }
+

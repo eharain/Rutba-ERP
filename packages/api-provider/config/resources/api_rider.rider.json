@@ -1,0 +1,49 @@
+{
+  "uid": "api::rider.rider",
+  "policies": {
+    "rider.find": {
+      "policies": [
+        {
+          "key": "riderDirectoryAccess",
+          "grants": [
+            "delivery_admin",
+            "delivery_manager",
+            "delivery_staff",
+            "rider_admin",
+            "rider_manager",
+            "rider_staff"
+          ]
+        }
+      ]
+    },
+    "rider.findOne": {
+      "policies": [
+        {
+          "key": "riderSelfAndManagerAccess",
+          "grants": [
+            "delivery_admin",
+            "delivery_manager",
+            "delivery_staff",
+            "rider_admin",
+            "rider_manager",
+            "rider_staff"
+          ]
+        }
+      ]
+    },
+    "rider.update": {
+      "policies": [
+        {
+          "key": "riderStatusAndProfileUpdate",
+          "grants": [
+            "delivery_admin",
+            "delivery_manager",
+            "rider_admin",
+            "rider_manager",
+            "rider_staff"
+          ]
+        }
+      ]
+    }
+  }
+}

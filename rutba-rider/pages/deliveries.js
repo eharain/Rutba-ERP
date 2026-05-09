@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { authApi } from "@rutba/pos-shared/lib/api";
+import { RiderEndpoints } from "@rutba/api-provider/endpoints";
 import Link from "next/link";
 
 export default function DeliveriesPage() {
@@ -12,7 +12,7 @@ export default function DeliveriesPage() {
 
   useEffect(() => {
     if (!jwt) return;
-    authApi.get('/rider/deliveries?status=active', {}, jwt)
+    RiderEndpoints.fetchDeliveries({ status: 'active' })
       .then((res) => setDeliveries(res.data || []))
       .catch((err) => console.error('Failed to load deliveries', err))
       .finally(() => setLoading(false));

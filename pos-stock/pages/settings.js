@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { authApi, api } from "@rutba/pos-shared/lib/api";
-import { BranchesEndpoints } from "@rutba/pos-shared/lib/endpoints/index.js";
+import { BranchesEndpoints } from "@rutba/api-provider/endpoints";
 import Layout from "../components/Layout";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext"
 export default function SettingsPage() {
@@ -81,5 +81,6 @@ export default function SettingsPage() {
             </Layout>
     );
 }
+
 
 
