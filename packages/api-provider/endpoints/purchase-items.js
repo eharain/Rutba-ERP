@@ -8,6 +8,12 @@ import { dataNode } from '../pos/search.js';
  */
 export const PurchaseItemsEndpoints = {
 
+    meta: {
+        uid: 'api::purchase-item.purchase-item',
+        domains: ['purchase', 'stock'],
+        roles: ['admin', 'manager', 'staff']
+    },
+
     /**
      * List purchase items for a given purchase documentId.
      * @param {string} purchaseDocId
@@ -15,6 +21,10 @@ export const PurchaseItemsEndpoints = {
      */
     list: (purchaseDocId, { populate } = {}) => ({
         path: '/purchase-items',
+        action: 'find',
+        method: 'get',
+        apps: ['purchase', 'stock'],
+        approle: ['admin', 'manager', 'staff'],
         params: {
             filters: { purchase: { documentId: { $eq: purchaseDocId } } },
             populate: populate ?? { product: true },
@@ -22,7 +32,13 @@ export const PurchaseItemsEndpoints = {
     }),
 
     /** Create a new purchase item — body provided by caller as { data }. */
-    create: () => ({ path: '/purchase-items' }),
+    create: () => ({
+        path: '/purchase-items',
+        action: 'create',
+        method: 'post',
+        apps: ['purchase', 'stock'],
+        approle: ['admin', 'manager', 'staff']
+    }),
 
     /**
      * List purchase items by product documentId (for counting or transfer).
@@ -41,7 +57,13 @@ export const PurchaseItemsEndpoints = {
      * Update a purchase item by documentId — body provided by caller as { data }.
      * @param {string} documentId
      */
-    update: (documentId) => ({ path: `/purchase-items/${documentId}` }),
+    update: (documentId) => ({
+        path: `/purchase-items/${documentId}`,
+        action: 'update',
+        method: 'put',
+        apps: ['purchase', 'stock'],
+        approle: ['admin', 'manager']
+    }),
 
     /** Async: fetch purchase items by product documentId. */
     fetchByProduct: (productDocId, opts = {}) => {
@@ -63,6 +85,21 @@ export const PurchaseItemsEndpoints = {
 
     /** Async: delete a purchase item by documentId. */
     putDelete: (documentId) => authApi.del(`/purchase-items/${documentId}`),
+
+    /**
+     * Save a single purchase item — PUT if it already exists (id > -1), POST otherwise.
+     * Previously standalone function, now part of the endpoint object.
+     * @param {Object} item
+     */
+    savePurchaseItem: async (item) => {
+        if (item.id > -1) {
+            const res = await PurchaseItemsEndpoints.putUpdate(item.documentId, prepareForPut(item, []));
+            return dataNode(res);
+        } else {
+            const res = await PurchaseItemsEndpoints.postCreate(prepareForPut(item, []));
+            return dataNode(res);
+        }
+    },
 };
 
 /**
@@ -93,20 +130,3 @@ export const PurchaseItemsEndpointRules = {
     /** DELETE /api/purchase-items/:id */
     delete: {},
 };
-
-/**
- * Save a single purchase item — PUT if it already exists (id > -1), POST otherwise.
- * @param {Object} item
- */
-export async function savePurchaseItem(item) {
-    if (item.id > -1) {
-        const res = await PurchaseItemsEndpoints.putUpdate(item.documentId, prepareForPut(item, []));
-        return dataNode(res);
-    } else {
-        const res = await PurchaseItemsEndpoints.postCreate(prepareForPut(item, []));
-        return dataNode(res);
-    }
-}
-
-
-

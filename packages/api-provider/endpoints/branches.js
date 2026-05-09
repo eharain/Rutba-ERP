@@ -1,5 +1,5 @@
 import { api, authApi } from '../lib/api.js';
-import { AuthApiEndpoints } from './http-client.js';
+import { AuthApiEndpoints } from '../lib/http-client.js';
 import { dataNode } from '../pos/search.js';
 
 /**

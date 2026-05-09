@@ -1,5 +1,4 @@
 import { authApi } from '../lib/api.js';
-import { AuthApiEndpoints } from './http-client.js';
 import { dataNode } from '../pos/search.js';
 import { getBranch, getUser } from '../utils.js';
 
@@ -12,6 +11,12 @@ import { getBranch, getUser } from '../utils.js';
  */
 export const ProductsEndpoints = {
 
+    meta: {
+        uid: 'api::product.product',
+        domains: ['stock', 'product'],
+        roles: ['admin', 'manager', 'staff']
+    },
+
     /**
      * Paged product list — no search, no extra filters.
      * @param {number} page
@@ -20,6 +25,10 @@ export const ProductsEndpoints = {
      */
     listPaged: (page = 1, pageSize = 100, { sort, populate } = {}) => ({
         path: '/products',
+        action: 'find',
+        method: 'get',
+        apps: ['stock', 'product'],
+        approle: ['admin', 'manager', 'staff'],
         params: {
             sort: sort ?? ['name:asc'],
             pagination: { page, pageSize },
@@ -41,6 +50,10 @@ export const ProductsEndpoints = {
      */
     listAll: ({ sort, populate } = {}) => ({
         path: '/products',
+        action: 'find',
+        method: 'get',
+        apps: ['stock', 'product'],
+        approle: ['admin', 'manager', 'staff'],
         params: {
             sort: sort ?? ['name:asc'],
             pagination: { page: 1, pageSize: 1000 },
@@ -301,6 +314,158 @@ export const ProductsEndpoints = {
 
     /** Async: unpublish a product via helper. */
     postUnpublish: (documentId) => authApi.post(`/products/${documentId}/unpublish`, {}),
+
+    /**
+     * Inline-update product items without creating separate records.
+     * Previously standalone function, now part of the endpoint object.
+     * @param {string} id - documentId of the product
+     * @param {Array} items
+     */
+    saveProductItems: async (id, items) => {
+        return ProductsEndpoints.putUpdate(id, {
+            items: items.map((i) => ({
+                stock_item: i.stock_item.id,
+                quantity: i.quantity,
+                price: i.price,
+            })),
+        });
+    },
+
+    /**
+     * Create or update a product.
+     * Previously standalone function, now part of the endpoint object.
+     * @param {string|number} id - documentId or 'new'
+     * @param {Object} formData
+     */
+    saveProduct: async (id, formData) => {
+        const containsAlphabet = (str) => /[a-zA-Z]/.test(str);
+        const isUpdate = id && id !== 'new';
+        const numericProps = [
+            'offer_price', 'selling_price', 'tax_rate',
+            'stock_quantity', 'reorder_level', 'bundle_units',
+        ];
+        const convertedFormData = { ...formData };
+        numericProps.forEach((prop) => {
+            if (convertedFormData[prop] !== undefined && convertedFormData[prop] !== '') {
+                const num = Number(convertedFormData[prop]);
+                if (!isNaN(num)) convertedFormData[prop] = num;
+            }
+        });
+        const data = typeof id === 'string' && containsAlphabet(id)
+            ? { ...convertedFormData }
+            : { ...convertedFormData, id };
+        return isUpdate
+            ? ProductsEndpoints.putUpdate(id, data)
+            : ProductsEndpoints.postCreate(data);
+    },
+
+    /**
+     * Fetch a filtered/paginated product list.
+     * Previously standalone function, now part of the endpoint object.
+     * @param {{ searchText?, brands?, categories?, suppliers?, purchases?, parentOnly?, status? }} filters
+     * @param {number} page
+     * @param {number} rowsPerPage
+     * @param {string} sort
+     */
+    fetchProducts: async (filters, page, rowsPerPage, sort) => {
+        const { searchText } = filters;
+        if (searchText && searchText.trim().length > 0) {
+            const ep = ProductsEndpoints.search(searchText.trim(), page, rowsPerPage);
+            return await authApi.get(ep.path, ep.params);
+        }
+        const ep = ProductsEndpoints.list(page, rowsPerPage, {
+            brands: filters.brands,
+            categories: filters.categories,
+            suppliers: filters.suppliers,
+            purchases: filters.purchases,
+            parentOnly: filters.parentOnly,
+            status: filters.status,
+            sort,
+        });
+        return await authApi.get(ep.path, ep.params);
+    },
+
+    /**
+     * Load a single product by id / documentId.
+     * Previously standalone function, now part of the endpoint object.
+     * @param {string|number} id
+     */
+    loadProduct: async (id) => {
+        const ep = ProductsEndpoints.byId(id);
+        const res = await authApi.get(ep.path, ep.params);
+        return res.data || res;
+    },
+
+    /**
+     * Full-text search for products.
+     * Previously standalone function, now part of the endpoint object.
+     * @param {string} searchTerm
+     * @param {number} page
+     * @param {number} rowsPerPage
+     */
+    searchProduct: async (searchTerm, page = 0, rowsPerPage = 100) => {
+        const ep = ProductsEndpoints.search(searchTerm, page, rowsPerPage);
+        const res = await authApi.get(ep.path, ep.params);
+        return dataNode(res);
+    },
+
+    /**
+     * Create a new draft product owned by the current user on the current branch.
+     * Previously standalone function, now part of the endpoint object.
+     * @returns {{ data, id, nameSingular, namePlural }}
+     */
+    createProduct: async () => {
+        const user = getUser();
+        const branch = getBranch();
+        const data = {
+            cost_price: 0,
+            selling_price: 0,
+            reorder_level: 1,
+            is_active: false,
+            branches: { connect: [branch.documentId] },
+            owners: { connect: [user.documentId] },
+        };
+        const res = await ProductsEndpoints.postCreate(data);
+        const rdata = res?.data ?? res;
+        return { data: rdata, id: rdata.documentId ?? rdata.id, nameSingular: 'product', namePlural: 'products' };
+    },
+
+    /**
+     * Search products by name, barcode, SKU, supplier, or purchase order.
+     * Previously standalone function, now part of the endpoint object.
+     * @param {string} searchTerm
+     * @param {number} page
+     * @param {number} rowsPerPage
+     */
+    searchProducts: async (searchTerm, page = 1, rowsPerPage = 5) => {
+        const hasSearch = searchTerm && searchTerm.trim().length > 0;
+        const query = {
+            populate: {
+                categories: true,
+                brands: true,
+                suppliers: true,
+                logo: true,
+                gallery: true,
+                items: true,
+                purchase_items: { populate: { purchase: true } },
+            },
+            pagination: { page, pageSize: rowsPerPage },
+        };
+        if (hasSearch) {
+            query.filters = {
+                $or: [
+                    { name: { $containsi: searchTerm } },
+                    { barcode: { $eq: searchTerm } },
+                    { sku: { $eq: searchTerm } },
+                    { suppliers: { $or: [{ name: { $containsi: searchTerm } }, { phone: { $containsi: searchTerm } }] } },
+                    { purchase_items: { purchase: { orderId: { $containsi: searchTerm } } } },
+                ],
+            };
+        }
+        const qs = (await import('qs')).default;
+        const res = await authApi.fetch(`/products?${qs.stringify(query, { encodeValuesOnly: true })}`);
+        return dataNode(res);
+    },
 };
 
 /**
@@ -374,154 +539,3 @@ export const ProductsEndpointRules = {
     /** DELETE /api/products/:id */
     delete: {},
 };
-
-function containsAlphabet(str) {
-    return /[a-zA-Z]/.test(str);
-}
-
-/**
- * Inline-update product items without creating separate records.
- * @param {string} id - documentId of the product
- * @param {Array} items
- */
-export async function saveProductItems(id, items) {
-    return ProductsEndpoints.putUpdate(id, {
-        items: items.map((i) => ({
-            stock_item: i.stock_item.id,
-            quantity: i.quantity,
-            price: i.price,
-        })),
-    });
-}
-
-/**
- * Create or update a product.
- * @param {string|number} id - documentId or 'new'
- * @param {Object} formData
- */
-export async function saveProduct(id, formData) {
-    const isUpdate = id && id !== 'new';
-    const numericProps = [
-        'offer_price', 'selling_price', 'tax_rate',
-        'stock_quantity', 'reorder_level', 'bundle_units',
-    ];
-    const convertedFormData = { ...formData };
-    numericProps.forEach((prop) => {
-        if (convertedFormData[prop] !== undefined && convertedFormData[prop] !== '') {
-            const num = Number(convertedFormData[prop]);
-            if (!isNaN(num)) convertedFormData[prop] = num;
-        }
-    });
-    const data = typeof id === 'string' && containsAlphabet(id)
-        ? { ...convertedFormData }
-        : { ...convertedFormData, id };
-    return isUpdate
-        ? ProductsEndpoints.putUpdate(id, data)
-        : ProductsEndpoints.postCreate(data);
-}
-
-/**
- * Fetch a filtered/paginated product list.
- * @param {{ searchText?, brands?, categories?, suppliers?, purchases?, parentOnly?, status? }} filters
- * @param {number} page
- * @param {number} rowsPerPage
- * @param {string} sort
- */
-export async function fetchProducts(filters, page, rowsPerPage, sort) {
-    const { searchText } = filters;
-    if (searchText && searchText.trim().length > 0) {
-        const ep = ProductsEndpoints.search(searchText.trim(), page, rowsPerPage);
-        return await AuthApiEndpoints.get(ep.path, ep.params);
-    }
-    const ep = ProductsEndpoints.list(page, rowsPerPage, {
-        brands: filters.brands,
-        categories: filters.categories,
-        suppliers: filters.suppliers,
-        purchases: filters.purchases,
-        parentOnly: filters.parentOnly,
-        status: filters.status,
-        sort,
-    });
-    return await AuthApiEndpoints.get(ep.path, ep.params);
-}
-
-/**
- * Load a single product by id / documentId.
- * @param {string|number} id
- */
-export async function loadProduct(id) {
-    const ep = ProductsEndpoints.byId(id);
-    const res = await AuthApiEndpoints.get(ep.path, ep.params);
-    return res.data || res;
-}
-
-/**
- * Full-text search for products.
- * @param {string} searchTerm
- * @param {number} page
- * @param {number} rowsPerPage
- */
-export async function searchProduct(searchTerm, page = 0, rowsPerPage = 100) {
-    const ep = ProductsEndpoints.search(searchTerm, page, rowsPerPage);
-    const res = await AuthApiEndpoints.get(ep.path, ep.params);
-    return dataNode(res);
-}
-
-/**
- * Create a new draft product owned by the current user on the current branch.
- * @returns {{ data, id, nameSingular, namePlural }}
- */
-export async function createProduct() {
-    const user = getUser();
-    const branch = getBranch();
-    const data = {
-        cost_price: 0,
-        selling_price: 0,
-        reorder_level: 1,
-        is_active: false,
-        branches: { connect: [branch.documentId] },
-        owners: { connect: [user.documentId] },
-    };
-    const res = await ProductsEndpoints.postCreate(data);
-    const rdata = res?.data ?? res;
-    return { data: rdata, id: rdata.documentId ?? rdata.id, nameSingular: 'product', namePlural: 'products' };
-}
-
-/**
- * Search products by name, barcode, SKU, supplier, or purchase order.
- * @param {string} searchTerm
- * @param {number} page
- * @param {number} rowsPerPage
- */
-export async function searchProducts(searchTerm, page = 1, rowsPerPage = 5) {
-    const hasSearch = searchTerm && searchTerm.trim().length > 0;
-    const query = {
-        populate: {
-            categories: true,
-            brands: true,
-            suppliers: true,
-            logo: true,
-            gallery: true,
-            items: true,
-            purchase_items: { populate: { purchase: true } },
-        },
-        pagination: { page, pageSize: rowsPerPage },
-    };
-    if (hasSearch) {
-        query.filters = {
-            $or: [
-                { name: { $containsi: searchTerm } },
-                { barcode: { $eq: searchTerm } },
-                { sku: { $eq: searchTerm } },
-                { suppliers: { $or: [{ name: { $containsi: searchTerm } }, { phone: { $containsi: searchTerm } }] } },
-                { purchase_items: { purchase: { orderId: { $containsi: searchTerm } } } },
-            ],
-        };
-    }
-    const qs = (await import('qs')).default;
-    const res = await AuthApiEndpoints.fetch(`/products?${qs.stringify(query, { encodeValuesOnly: true })}`);
-    return dataNode(res);
-}
-
-
-

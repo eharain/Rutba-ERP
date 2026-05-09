@@ -1,11 +1,16 @@
 import { authApi } from '../lib/api.js';
-import { AuthApiEndpoints } from './http-client.js';
 
 /**
  * SaleReturnsEndpoints
  * Each `fetch*` method owns the full async call — callers use a single await.
  */
 export const SaleReturnsEndpoints = {
+
+    meta: {
+        uid: 'api::sale-return.sale-return',
+        domains: ['sale', 'return'],
+        roles: ['admin', 'manager', 'staff']
+    },
 
     /**
      * List sale returns with pagination.
@@ -15,6 +20,10 @@ export const SaleReturnsEndpoints = {
      */
     list: (page = 1, pageSize = 100, { sort, filters, populate } = {}) => ({
         path: '/sale-returns',
+        action: 'find',
+        method: 'get',
+        apps: ['sale', 'return'],
+        approle: ['admin', 'manager', 'staff'],
         params: {
             sort: sort ?? ['createdAt:desc'],
             filters: filters ?? undefined,
@@ -24,7 +33,13 @@ export const SaleReturnsEndpoints = {
     }),
 
     /** Create a new sale return — body provided by caller as { data }. */
-    create: () => ({ path: '/sale-returns' }),
+    create: () => ({
+        path: '/sale-returns',
+        action: 'create',
+        method: 'post',
+        apps: ['sale', 'return'],
+        approle: ['admin', 'manager', 'staff']
+    }),
 
     /**
      * Fetch a single sale return by documentId with full populate.
@@ -32,6 +47,10 @@ export const SaleReturnsEndpoints = {
      */
     byId: (documentId) => ({
         path: `/sale-returns/${documentId}`,
+        action: 'findOne',
+        method: 'get',
+        apps: ['sale', 'return'],
+        approle: ['admin', 'manager', 'staff'],
         params: {
             populate: {
                 sale: { populate: { customer: true } },
@@ -47,19 +66,37 @@ export const SaleReturnsEndpoints = {
      * Update a sale return by documentId — body provided by caller as { data }.
      * @param {string} documentId
      */
-    update: (documentId) => ({ path: `/sale-returns/${documentId}` }),
+    update: (documentId) => ({
+        path: `/sale-returns/${documentId}`,
+        action: 'update',
+        method: 'put',
+        apps: ['sale', 'return'],
+        approle: ['admin', 'manager']
+    }),
 
     /**
      * Publish a sale return (draft → published).
      * @param {string} documentId
      */
-    publish: (documentId) => ({ path: `/sale-returns/${documentId}/publish` }),
+    publish: (documentId) => ({
+        path: `/sale-returns/${documentId}/publish`,
+        action: 'publish',
+        method: 'post',
+        apps: ['sale', 'return'],
+        approle: ['admin', 'manager']
+    }),
 
     /**
      * Unpublish a sale return.
      * @param {string} documentId
      */
-    unpublish: (documentId) => ({ path: `/sale-returns/${documentId}/unpublish` }),
+    unpublish: (documentId) => ({
+        path: `/sale-returns/${documentId}/unpublish`,
+        action: 'unpublish',
+        method: 'post',
+        apps: ['sale', 'return'],
+        approle: ['admin', 'manager']
+    }),
 
     /** Async: fetch paginated list of sale returns. */
     fetchList: (page, pageSize, opts = {}) => {
@@ -83,6 +120,17 @@ export const SaleReturnsEndpoints = {
     putUpdate: (documentId, data) => {
         const ep = SaleReturnsEndpoints.update(documentId);
         return authApi.put(ep.path, { data });
+    },
+
+    /**
+     * Fetch a paginated list of sale returns.
+     * Previously standalone function, now part of the endpoint object.
+     * @param {number} page
+     * @param {number} rowsPerPage
+     */
+    fetchReturns: async (page, rowsPerPage = 100) => {
+        const ep = SaleReturnsEndpoints.list(page, rowsPerPage);
+        return await authApi.fetch(ep.path, ep.params);
     },
 };
 
@@ -121,16 +169,3 @@ export const SaleReturnsEndpointRules = {
     /** PUT /api/sale-returns/:id/unpublish */
     unpublish: {},
 };
-
-/**
- * Fetch a paginated list of sale returns.
- * @param {number} page
- * @param {number} rowsPerPage
- */
-export async function fetchReturns(page, rowsPerPage = 100) {
-    const ep = SaleReturnsEndpoints.list(page, rowsPerPage);
-    return await AuthApiEndpoints.fetch(ep.path, ep.params);
-}
-
-
-

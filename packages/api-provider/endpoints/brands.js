@@ -1,5 +1,5 @@
 import { authApi } from '../lib/api.js';
-import { AuthApiEndpoints } from './http-client.js';
+import { dataNode } from '../pos/search.js';
 
 /**
  * BrandsEndpoints
@@ -11,6 +11,12 @@ import { AuthApiEndpoints } from './http-client.js';
 
 export const BrandsEndpoints = {
 
+    meta: {
+        uid: 'api::brand.brand',
+        domains: ['stock', 'brand'],
+        roles: ['admin', 'manager', 'staff']
+    },
+
     /**
      * Paged brand list — simple name-sorted fetch.
      * @param {number} page
@@ -19,6 +25,10 @@ export const BrandsEndpoints = {
      */
     listPaged: (page = 1, pageSize = 100, { sort, populate } = {}) => ({
         path: '/brands',
+        action: 'find',
+        method: 'get',
+        apps: ['stock', 'brand'],
+        approle: ['admin', 'manager', 'staff'],
         params: {
             sort: sort ?? ['name:asc'],
             populate: populate ?? { logo: true, gallery: true },
@@ -33,6 +43,10 @@ export const BrandsEndpoints = {
      */
     listAll: ({ sort, populate, pageSize = 100 } = {}) => ({
         path: '/brands',
+        action: 'find',
+        method: 'get',
+        apps: ['stock', 'brand'],
+        approle: ['admin', 'manager', 'staff'],
         params: {
             sort: sort ?? ['name:asc'],
             populate: populate ?? { logo: true, gallery: true },
@@ -46,6 +60,10 @@ export const BrandsEndpoints = {
      */
     list: ({ sort, populate, search } = {}) => ({
         path: '/brands',
+        action: 'find',
+        method: 'get',
+        apps: ['stock', 'brand'],
+        approle: ['admin', 'manager', 'staff'],
         params: {
             sort: sort ?? ['name:asc'],
             populate: populate ?? { logo: true },
@@ -61,6 +79,10 @@ export const BrandsEndpoints = {
      */
     listDraft: ({ search, sort, populate, pageSize = 100 } = {}) => ({
         path: '/brands',
+        action: 'find',
+        method: 'get',
+        apps: ['stock', 'brand'],
+        approle: ['admin', 'manager'],
         params: {
             status: 'draft',
             sort: sort ?? ['name:asc'],
@@ -76,6 +98,10 @@ export const BrandsEndpoints = {
      */
     listPublished: ({ pageSize = 500 } = {}) => ({
         path: '/brands',
+        action: 'find',
+        method: 'get',
+        apps: ['stock', 'brand'],
+        approle: ['admin', 'manager', 'staff'],
         params: {
             status: 'published',
             fields: ['documentId'],
@@ -96,21 +122,41 @@ export const BrandsEndpoints = {
     },
 
     /** Create a new brand — body provided by caller as { data }. */
-    create: () => ({ path: '/brands' }),
+    create: () => ({
+        path: '/brands',
+        action: 'create',
+        method: 'post',
+        apps: ['stock', 'brand'],
+        approle: ['admin', 'manager']
+    }),
 
     /**
      * Update a brand by documentId — body provided by caller as { data }.
      * @param {string} documentId
      */
-    update: (documentId) => ({ path: `/brands/${documentId}` }),
+    update: (documentId) => ({
+        path: `/brands/${documentId}`,
+        action: 'update',
+        method: 'put',
+        apps: ['stock', 'brand'],
+        approle: ['admin', 'manager']
+    }),
 
     byIdDraft: (documentId, { populate } = {}) => ({
         path: `/brands/${documentId}`,
+        action: 'findOne',
+        method: 'get',
+        apps: ['stock', 'brand'],
+        approle: ['admin', 'manager'],
         params: { status: 'draft', ...(populate ? { populate } : {}) },
     }),
 
     byIdPublished: (documentId, { fields, populate } = {}) => ({
         path: `/brands/${documentId}`,
+        action: 'findOne',
+        method: 'get',
+        apps: ['stock', 'brand'],
+        approle: ['admin', 'manager', 'staff'],
         params: { status: 'published', ...(fields ? { fields } : {}), ...(populate ? { populate } : {}) },
     }),
 
@@ -118,19 +164,48 @@ export const BrandsEndpoints = {
      * Delete a brand by documentId.
      * @param {string} documentId
      */
-    del: (documentId) => ({ path: `/brands/${documentId}` }),
+    del: (documentId) => ({
+        path: `/brands/${documentId}`,
+        action: 'delete',
+        method: 'delete',
+        apps: ['stock', 'brand'],
+        approle: ['admin']
+    }),
 
     /**
      * Publish a brand — custom Strapi action.
      * @param {string} documentId
      */
-    publish: (documentId) => ({ path: `/brands/${documentId}/publish` }),
+    publish: (documentId) => ({
+        path: `/brands/${documentId}/publish`,
+        action: 'publish',
+        method: 'post',
+        apps: ['stock', 'brand'],
+        approle: ['admin', 'manager']
+    }),
 
     /**
      * Unpublish a brand — custom Strapi action.
      * @param {string} documentId
      */
-    unpublish: (documentId) => ({ path: `/brands/${documentId}/unpublish` }),
+    unpublish: (documentId) => ({
+        path: `/brands/${documentId}/unpublish`,
+        action: 'unpublish',
+        method: 'post',
+        apps: ['stock', 'brand'],
+        approle: ['admin', 'manager']
+    }),
+
+    /**
+     * Fetch a paginated list of brands.
+     * Previously standalone function, now part of the endpoint object.
+     * @param {number} page
+     * @param {number} rowsPerPage
+     */
+    fetchBrands: async (page, rowsPerPage) => {
+        const ep = BrandsEndpoints.list({ page, pageSize: rowsPerPage ?? 100 });
+        return await authApi.fetch(ep.path, ep.params);
+    },
 };
 
 Object.assign(BrandsEndpoints, {
@@ -209,16 +284,4 @@ export const BrandsEndpointRules = {
     /** PUT /api/brands/:id/unpublish */
     unpublish: {},
 };
-
-/**
- * Fetch a paginated list of brands.
- * @param {number} page
- * @param {number} rowsPerPage
- */
-export async function fetchBrands(page, rowsPerPage) {
-    const ep = BrandsEndpoints.list({ page, pageSize: rowsPerPage ?? 100 });
-    return await AuthApiEndpoints.fetch(ep.path, ep.params);
-}
-
-
 

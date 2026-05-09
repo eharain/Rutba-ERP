@@ -1,10 +1,20 @@
 // Moved to their endpoint files -- re-exported for backward compatibility.
-export { searchStockItemsByName, searchStockItemsByBarcode, searchStockItems } from '../endpoints/stock-items.js';
-export { searchProduct, searchProducts } from '../endpoints/products.js';
-export { searchSales } from '../endpoints/sales.js';
-export { searchPurchases } from '../endpoints/purchases.js';
-export { searchBranches } from '../endpoints/branches.js';
-export { searchCategories } from '../endpoints/categories.js';
+import { StockItemsEndpoints } from '../endpoints/stock-items.js';
+import { ProductsEndpoints } from '../endpoints/products.js';
+import { SalesEndpoints } from '../endpoints/sales.js';
+import { PurchasesEndpoints } from '../endpoints/purchases.js';
+import { BranchesEndpoints } from '../endpoints/branches.js';
+import { CategoriesEndpoints } from '../endpoints/categories.js';
+
+export const searchStockItemsByName = StockItemsEndpoints.searchStockItemsByName;
+export const searchStockItemsByBarcode = StockItemsEndpoints.searchStockItemsByBarcode;
+export const searchStockItems = StockItemsEndpoints.searchStockItems;
+export const searchProduct = ProductsEndpoints.searchProduct;
+export const searchProducts = ProductsEndpoints.searchProducts;
+export const searchSales = SalesEndpoints.searchSales;
+export const searchPurchases = PurchasesEndpoints.searchPurchases;
+export const searchBranches = BranchesEndpoints.searchBranches;
+export const searchCategories = CategoriesEndpoints.searchCategories;
 
 export function dataNode(res) {
     return res.data?.data ?? res.data ?? res;
@@ -12,16 +22,16 @@ export function dataNode(res) {
 
 // General full-text search across multiple entities (stays here).
 export async function fetchSearch(searchTerm, page, rowsPerPage) {
-    const { searchProducts } = await import('../endpoints/products.js');
-    const { searchPurchases } = await import('../endpoints/purchases.js');
-    const { searchSales } = await import('../endpoints/sales.js');
-    const { searchStockItems } = await import('../endpoints/stock-items.js');
+    const { ProductsEndpoints } = await import('../endpoints/products.js');
+    const { PurchasesEndpoints } = await import('../endpoints/purchases.js');
+    const { SalesEndpoints } = await import('../endpoints/sales.js');
+    const { StockItemsEndpoints } = await import('../endpoints/stock-items.js');
 
     const [products, purchases, sales, stockItems] = await Promise.allSettled([
-        searchProducts(searchTerm, page, rowsPerPage),
-        searchPurchases(searchTerm, page, rowsPerPage),
-        searchSales(searchTerm, page, rowsPerPage),
-        searchStockItems(searchTerm, page, rowsPerPage),
+        ProductsEndpoints.searchProducts(searchTerm, page, rowsPerPage),
+        PurchasesEndpoints.searchPurchases(searchTerm, page, rowsPerPage),
+        SalesEndpoints.searchSales(searchTerm, page, rowsPerPage),
+        StockItemsEndpoints.searchStockItems(searchTerm, page, rowsPerPage),
     ]);
 
     const results = [
