@@ -4,7 +4,7 @@ import { useRouter } from 'next/router';
 import Layout from '../../components/Layout';
 import ProtectedRoute from '@rutba/pos-shared/components/ProtectedRoute';
 import PurchaseReceiveList from '../../components/lists/purchase-receive-list';
-import { fetchPurchaseByIdDocumentIdOrPO } from '@rutba/api-provider/';
+import { fetchPurchaseByIdDocumentIdOrPO } from '@rutba/api-provider/pos';
 
 export default function PurchaseReceivePage() {
     const router = useRouter();
