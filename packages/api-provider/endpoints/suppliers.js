@@ -79,19 +79,6 @@ export const SuppliersEndpoints = {
     putDelete: (documentId) => authApi.del(`/suppliers/${documentId}`),
 };
 
-export const SuppliersEndpointsMeta = {
-    uid: 'api::supplier.supplier',
-    basePath: '/suppliers',
-    methodActions: {
-        listPaged: 'find',
-        listAll: 'find',
-        list: 'find',
-        create: 'create',
-        update: 'update',
-        putDelete: 'delete',
-    },
-};
-
 /**
  * SuppliersEndpointRules
  * Per-endpoint requestRules stored in the api-guard-pro resource record.

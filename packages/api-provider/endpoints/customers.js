@@ -73,17 +73,6 @@ export const CustomersEndpoints = {
     },
 };
 
-export const CustomersEndpointsMeta = {
-    uid: 'api::customer.customer',
-    basePath: '/customers',
-    methodActions: {
-        findByContact: 'find',
-        create: 'create',
-        search: 'find',
-        update: 'update',
-    },
-};
-
 /**
  * CustomersEndpointRules
  * Per-endpoint requestRules stored in the api-guard-pro resource record.

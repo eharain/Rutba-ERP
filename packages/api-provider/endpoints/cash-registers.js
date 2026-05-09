@@ -81,18 +81,6 @@ export const CashRegistersEndpoints = {
     postClose: (registerId, data) => authApi.put(`/cash-registers/${registerId}/close`, { data }),
 };
 
-export const CashRegistersEndpointsMeta = {
-    uid: 'api::cash-register.cash-register',
-    basePath: '/cash-registers',
-    methodActions: {
-        list: 'find',
-        byId: 'findOne',
-        active: 'active',
-        open: 'open',
-        close: 'close',
-    },
-};
-
 /**
  * CashRegistersEndpointRules
  * Per-endpoint requestRules stored in the api-guard-pro resource record.

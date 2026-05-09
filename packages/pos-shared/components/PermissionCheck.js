@@ -53,7 +53,7 @@ export function PermissionCheck({ required, has, showIf, adminOnly, appKey, chil
     // ── permission checks ───────────────────────────────────
     function findMissing(requiredString) {
         if (!requiredString) return [];
-        const userPerms = permissions || []; 
+        const userPerms = Array.isArray(permissions) ? permissions : [];
 
         const requiredArray = requiredString.split(',').map(s => s.trim());
         const missing = requiredArray.filter(p => !userPerms.includes(p));

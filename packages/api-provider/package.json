@@ -24,6 +24,7 @@
     "./config/*": "./config/*",
     "./endpoints/*": "./endpoints/*",
     "./scripts/*": "./scripts/*",
+    "./pos": "./pos/index.js",
     "./pos/*": "./pos/*"
   }
 }

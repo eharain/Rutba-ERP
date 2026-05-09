@@ -30,19 +30,6 @@ export const StockInputsEndpoints = {
     },
 };
 
-export const StockInputsEndpointsMeta = {
-    uid: 'api::stock-input.stock-input',
-    basePath: '/stock-inputs',
-    methodActions: {
-        list: 'find',
-        byId: 'findOne',
-        create: 'create',
-        update: 'update',
-        del: 'delete',
-        process: 'process',
-    },
-};
-
 /**
  * StockInputsEndpointRules
  * Per-endpoint requestRules stored in the api-guard-pro resource record.

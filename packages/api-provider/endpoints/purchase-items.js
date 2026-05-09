@@ -65,18 +65,6 @@ export const PurchaseItemsEndpoints = {
     putDelete: (documentId) => authApi.del(`/purchase-items/${documentId}`),
 };
 
-export const PurchaseItemsEndpointsMeta = {
-    uid: 'api::purchase-item.purchase-item',
-    basePath: '/purchase-items',
-    methodActions: {
-        list: 'find',
-        create: 'create',
-        byProduct: 'find',
-        update: 'update',
-        putDelete: 'delete',
-    },
-};
-
 /**
  * PurchaseItemsEndpointRules
  * Per-endpoint requestRules stored in the api-guard-pro resource record.

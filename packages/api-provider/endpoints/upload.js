@@ -33,14 +33,6 @@ export const UploadEndpoints = {
     deleteFile: (fileId) => ({ path: `/upload/files/${fileId}` }),
 };
 
-export const UploadEndpointsMeta = {
-    uid: null,
-    basePath: '/upload',
-    methodActions: {
-        upload: 'upload',
-        deleteFile: 'delete',
-    },
-};
 
 
 

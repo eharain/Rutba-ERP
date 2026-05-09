@@ -38,12 +38,25 @@ async function fetchPermissions(jwt) {
                 ? data.appAccess
                 : derivedAppAccess;
 
+            // Convert permissions object to array of permission strings
+            const permissionsArray = [];
+            if (data?.permissions && typeof data.permissions === 'object') {
+                for (const [contentType, actions] of Object.entries(data.permissions)) {
+                    for (const action of Object.keys(actions)) {
+                        // Action format is "resource.actionName" (e.g., "sale.find")
+                        // Extract just the action part after the dot
+                        const actionPart = action.includes('.') ? action.split('.')[1] : action;
+                        permissionsArray.push(`${contentType}.${actionPart}`);
+                    }
+                }
+            }
+
             return {
                 role: data?.role || null,
                 roleType: data?.roleType || null,
                 appAccess,
                 adminAppAccess: data?.adminAppAccess || [],
-                permissions: data?.permissions || [],
+                permissions: permissionsArray.length > 0 ? permissionsArray : (Array.isArray(data?.strapiPermissions) ? data.strapiPermissions : []),
                 sessionTimeout: data?.sessionTimeout || 60,
             };
         } catch (_) {

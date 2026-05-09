@@ -179,23 +179,6 @@ export const CmsPagesEndpoints = {
     delById: (documentId) => authApi.del(`/cms-pages/${documentId}`),
 };
 
-export const CmsPagesEndpointsMeta = {
-    uid: 'api::cms-page.cms-page',
-    basePath: '/cms-pages',
-    methodActions: {
-        list: 'find',
-        listDraft: 'find',
-        listPublished: 'find',
-        bySlug: 'findOne',
-        bySlugCheck: 'findOne',
-        headerData: 'find',
-        create: 'create',
-        update: 'update',
-        publish: 'publish',
-        unpublish: 'unpublish',
-    },
-};
-
 /**
  * CmsPagesEndpointRules
  * Per-endpoint requestRules stored in the api-guard-pro resource record.

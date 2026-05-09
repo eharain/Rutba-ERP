@@ -54,18 +54,6 @@ export const NotificationTemplatesEndpoints = {
     },
 };
 
-export const NotificationTemplatesEndpointsMeta = {
-    uid: 'api::notification-template.notification-template',
-    basePath: '/notification-templates',
-    methodActions: {
-        list: 'find',
-        byId: 'findOne',
-        create: 'create',
-        update: 'update',
-        remove: 'delete',
-    },
-};
-
 /**
  * NotificationTemplatesEndpointRules
  * Per-endpoint requestRules stored in the api-guard-pro resource record.

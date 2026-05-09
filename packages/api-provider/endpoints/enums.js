@@ -18,14 +18,6 @@ export const EnumsEndpoints = {
     values: (name, field) => ({ path: `/enums/${name}/${field}` }),
 };
 
-export const EnumsEndpointsMeta = {
-    uid: null,
-    basePath: '/enums',
-    methodActions: {
-        values: 'find',
-    },
-};
-
 /**
  * EnumsEndpointRules
  * Per-endpoint requestRules stored in the api-guard-pro resource record.

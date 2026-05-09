@@ -88,19 +88,6 @@ export const TermTypesEndpoints = {
     putDelete: (id) => authApi.del(`/term-types/${id}`),
 };
 
-export const TermTypesEndpointsMeta = {
-    uid: 'api::term-type.term-type',
-    basePath: '/term-types',
-    methodActions: {
-        listVariants: 'find',
-        listWithTerms: 'find',
-        list: 'find',
-        create: 'create',
-        update: 'update',
-        putDelete: 'delete',
-    },
-};
-
 /**
  * TermTypesEndpointRules
  * Per-endpoint requestRules stored in the api-guard-pro resource record.
@@ -173,17 +160,6 @@ export const TermsEndpoints = {
 
     /** Async: delete a term by id/documentId. */
     putDelete: (id) => authApi.del(`/terms/${id}`),
-};
-
-export const TermsEndpointsMeta = {
-    uid: 'api::term.term',
-    basePath: '/terms',
-    methodActions: {
-        list: 'find',
-        create: 'create',
-        update: 'update',
-        putDelete: 'delete',
-    },
 };
 
 /**
