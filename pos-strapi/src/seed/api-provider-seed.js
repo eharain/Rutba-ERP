@@ -7,7 +7,7 @@
  * grants) directly from `@rutba/api-provider/config` (configuration.json).
  *
  * Idempotent: delegates to the plugin's `data-transfer` service, which upserts
- * by stable keys (`domain.key`, `role.key`, `resource.contentTypeUid`,
+ * by stable keys (`domain.key`, `role.key`, `resource.content_type_uid`,
  * `policy.uid`).
  *
  * `publicResources` from configuration.json are intentionally NOT seeded here;

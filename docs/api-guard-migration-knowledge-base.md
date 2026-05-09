@@ -162,7 +162,7 @@ Use consistent records per route:
 
 - `method`: `GET|POST|PUT|PATCH|DELETE`
 - `pathPattern`: include `/api/...` and use `:id` placeholders
-- `contentTypeUid`: Strapi UID (e.g. `api::notification-template.notification-template`)
+- `content_type_uid`: Strapi UID (e.g. `api::notification-template.notification-template`)
 - `type`: `standard` for regular content API routes
 - `isActive`: `true`
 - `isPublic`: only true for explicit public routes
