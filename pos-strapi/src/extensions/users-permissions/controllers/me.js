@@ -50,7 +50,7 @@ module.exports = createCoreController('plugin::users-permissions.me', ({ strapi 
                     .where('guard_policies.is_active', true)
                     .select(
                         'guard_policies.key',
-                        'guard_policies.content_type_uid as contentTypeUid',
+                        'guard_policies.content_type_uid',
                         'guard_policies.action_name as actionName',
                         'guard_policies.query',
                         'guard_policies.filters',
@@ -59,7 +59,7 @@ module.exports = createCoreController('plugin::users-permissions.me', ({ strapi 
                     .catch(() => []);
 
                 for (const policy of policyRows) {
-                    const ctUid = policy.contentTypeUid;
+                    const ctUid = policy.content_type_uid;
                     const action = policy.actionName;
                     if (!ctUid || !action) continue;
                     if (!permissions[ctUid]) permissions[ctUid] = {};
