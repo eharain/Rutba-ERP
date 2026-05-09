@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { authApi, StraipImageUrl } from "@rutba/pos-shared/lib/api";
+import { CategoriesEndpoints, MediaUtilsEndpoints } from "@rutba/api-provider/endpoints";
 import Link from "next/link";
 import { useToast } from "../components/Toast";
 
@@ -36,7 +36,7 @@ export default function Categories() {
     const publishOne = async (docId) => {
         setPublishing(prev => ({ ...prev, [docId]: true }));
         try {
-            await authApi.post(`/categories/${docId}/publish`, {});
+            await CategoriesEndpoints.postPublish(docId);
             setCategories(prev => prev.map(c => c.documentId === docId ? { ...c, _isPublished: true } : c));
             toast("Published!", "success");
         } catch (err) {
@@ -50,7 +50,7 @@ export default function Categories() {
     const unpublishOne = async (docId) => {
         setPublishing(prev => ({ ...prev, [docId]: true }));
         try {
-            await authApi.post(`/categories/${docId}/unpublish`, {});
+            await CategoriesEndpoints.postUnpublish(docId);
             setCategories(prev => prev.map(c => c.documentId === docId ? { ...c, _isPublished: false } : c));
             toast("Unpublished.", "success");
         } catch (err) {
@@ -68,7 +68,7 @@ export default function Categories() {
         let ok = 0, fail = 0;
         for (const docId of ids) {
             setPublishing(prev => ({ ...prev, [docId]: true }));
-            try { await authApi.post(`/categories/${docId}/publish`, {}); ok++; setCategories(prev => prev.map(c => c.documentId === docId ? { ...c, _isPublished: true } : c)); }
+            try { await CategoriesEndpoints.postPublish(docId); ok++; setCategories(prev => prev.map(c => c.documentId === docId ? { ...c, _isPublished: true } : c)); }
             catch { fail++; }
             finally { setPublishing(prev => ({ ...prev, [docId]: false })); }
         }
@@ -83,7 +83,7 @@ export default function Categories() {
         let ok = 0, fail = 0;
         for (const docId of ids) {
             setPublishing(prev => ({ ...prev, [docId]: true }));
-            try { await authApi.post(`/categories/${docId}/unpublish`, {}); ok++; setCategories(prev => prev.map(c => c.documentId === docId ? { ...c, _isPublished: false } : c)); }
+            try { await CategoriesEndpoints.postUnpublish(docId); ok++; setCategories(prev => prev.map(c => c.documentId === docId ? { ...c, _isPublished: false } : c)); }
             catch { fail++; }
             finally { setPublishing(prev => ({ ...prev, [docId]: false })); }
         }
@@ -105,8 +105,14 @@ export default function Categories() {
                 params.filters = { name: { $containsi: search.trim() } };
             }
             const [draftRes, pubRes] = await Promise.all([
-                authApi.get("/categories", params),
-                authApi.get("/categories", { status: 'published', fields: ["documentId"], pagination: { pageSize: 500 } }),
+                CategoriesEndpoints.fetchList({
+                    sort: ["name:asc"],
+                    populate: ["logo", "parent"],
+                    page: 1,
+                    pageSize: 100,
+                    ...(search.trim() ? { search: search.trim() } : {}),
+                }),
+                CategoriesEndpoints.fetchListPublished({ pageSize: 500 }),
             ]);
             const pubIds = new Set((pubRes.data || []).map(c => c.documentId));
             setCategories((draftRes.data || []).map(c => ({ ...c, _isPublished: pubIds.has(c.documentId) })));
@@ -185,7 +191,7 @@ export default function Categories() {
                                         </td>
                                         <td>
                                             {c.logo?.url ? (
-                                                <img src={StraipImageUrl(c.logo)} alt={c.name} style={{ width: 36, height: 36, objectFit: "cover", borderRadius: 4 }} />
+                                                <img src={MediaUtilsEndpoints.strapiImageUrl(c.logo)} alt={c.name} style={{ width: 36, height: 36, objectFit: "cover", borderRadius: 4 }} />
                                             ) : (
                                                 <span className="text-muted"><i className="fas fa-folder"></i></span>
                                             )}

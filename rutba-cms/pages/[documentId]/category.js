@@ -3,12 +3,11 @@ import { useRouter } from "next/router";
 import Layout from "../../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { authApi } from "@rutba/pos-shared/lib/api";
 import FileView from "@rutba/pos-shared/components/FileView";
+import { CategoriesEndpoints, ProductsEndpoints } from "@rutba/api-provider/endpoints";
 import Link from "next/link";
 import { useToast } from "../../components/Toast";
 import ProductPickerTabs from "../../components/ProductPickerTabs";
-import { fetchProducts } from "@rutba/pos-shared/lib/pos";
 
 export default function CategoryDetail() {
     const router = useRouter();
@@ -33,9 +32,14 @@ export default function CategoryDetail() {
     useEffect(() => {
         if (!jwt || !documentId || isNew) { setLoading(false); return; }
         Promise.all([
-            authApi.get(`/categories/${documentId}`, { status: 'draft', populate: ["logo", "gallery", "parent"] }),
-            authApi.get(`/categories/${documentId}`, { status: 'published', fields: ["documentId"] }).catch(() => ({ data: null })),
-            fetchProducts({ categories: [documentId], parentOnly: true, status: "draft" }, 1, 1000, "name:asc"),
+            CategoriesEndpoints.fetchByIdDraft(documentId, { populate: ["logo", "gallery", "parent"] }),
+            CategoriesEndpoints.fetchByIdPublished(documentId, { fields: ["documentId"] }).catch(() => ({ data: null })),
+            ProductsEndpoints.fetchList({
+                status: "draft",
+                filters: { categories: { documentId: { $in: [documentId] } }, parent: { documentId: { $null: true } } },
+                sort: ["name:asc"],
+                pagination: { page: 1, pageSize: 1000 },
+            }),
         ])
             .then(([catRes, pubRes, productsRes]) => {
                 const c = catRes.data || catRes;
@@ -66,15 +70,11 @@ export default function CategoryDetail() {
         setSaving(true);
         try {
             if (isNew) {
-                const res = await authApi.post("/categories", {
-                    data: { name, slug: slug || name.toLowerCase().replace(/\s+/g, "-"), summary, description },
-                });
+                const res = await CategoriesEndpoints.postCreate({ name, slug: slug || name.toLowerCase().replace(/\s+/g, "-"), summary, description });
                 const created = res.data || res;
                 router.push(`/${created.documentId}/category`);
             } else {
-                await authApi.put(`/categories/${documentId}?status=draft`, {
-                    data: { name, summary, description },
-                });
+                await CategoriesEndpoints.putUpdateDraft(documentId, { name, summary, description });
 
                 const initialIds = new Set(initialProductIdsRef.current);
                 const currentIds = new Set(selectedProductIds);
@@ -83,14 +83,10 @@ export default function CategoryDetail() {
 
                 const updates = [];
                 for (const id of added) {
-                    updates.push(authApi.put(`/products/${id}?status=draft`, {
-                        data: { categories: { connect: [documentId] } }
-                    }));
+                    updates.push(ProductsEndpoints.putUpdateDraft(id, { categories: { connect: [documentId] } }));
                 }
                 for (const id of removed) {
-                    updates.push(authApi.put(`/products/${id}?status=draft`, {
-                        data: { categories: { disconnect: [documentId] } }
-                    }));
+                    updates.push(ProductsEndpoints.putUpdateDraft(id, { categories: { disconnect: [documentId] } }));
                 }
                 await Promise.all(updates);
 
@@ -108,10 +104,8 @@ export default function CategoryDetail() {
     const handlePublish = async () => {
         setSaving(true);
         try {
-            await authApi.put(`/categories/${documentId}?status=draft`, {
-                data: { name, summary, description },
-            });
-            await authApi.post(`/categories/${documentId}/publish`, {});
+            await CategoriesEndpoints.putUpdateDraft(documentId, { name, summary, description });
+            await CategoriesEndpoints.postPublish(documentId);
             setIsPublished(true);
             toast("Category saved & published!", "success");
         } catch (err) {
@@ -125,7 +119,7 @@ export default function CategoryDetail() {
     const handleUnpublish = async () => {
         setSaving(true);
         try {
-            await authApi.post(`/categories/${documentId}/unpublish`, {});
+            await CategoriesEndpoints.postUnpublish(documentId);
             setIsPublished(false);
             toast("Category unpublished.", "success");
         } catch (err) {
@@ -140,10 +134,8 @@ export default function CategoryDetail() {
         if (!confirm("Save current draft and load the published version into the editor?")) return;
         setSaving(true);
         try {
-            await authApi.put(`/categories/${documentId}?status=draft`, {
-                data: { name, summary, description },
-            });
-            const res = await authApi.get(`/categories/${documentId}`, { status: 'published', populate: ["logo", "gallery", "parent"] });
+            await CategoriesEndpoints.putUpdateDraft(documentId, { name, summary, description });
+            const res = await CategoriesEndpoints.fetchByIdPublished(documentId, { populate: ["logo", "gallery", "parent"] });
             const c = res.data || res;
             if (!c) { toast("No published version found.", "warning"); return; }
             setName(c.name || "");

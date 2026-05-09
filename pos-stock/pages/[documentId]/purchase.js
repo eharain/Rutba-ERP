@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
-import { authApi } from "@rutba/pos-shared/lib/api";
-import { PurchasesEndpoints, PurchaseItemsEndpoints } from "@rutba/api-provider/endpoints";
+import { PurchasesEndpoints, PurchaseItemsEndpoints } from "../../../packages/api-provider/endpoints/index.js";
 import { fetchPurchaseByIdDocumentIdOrPO, fetchEnumsValues, savePurchaseItem } from "@rutba/pos-shared/lib/pos";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import Layout from "../../components/Layout";

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { authApi } from "@rutba/pos-shared/lib/api";
+import { AuthAdminEndpoints, HrDepartmentsEndpoints, HrEmployeesEndpoints } from "@rutba/api-provider/endpoints";
 
 const STATUS_OPTIONS = ["Active", "Inactive", "Terminated", "On Leave"];
 
@@ -35,9 +35,9 @@ export default function HrEmployeeManagementPage() {
         setLoading(true);
         try {
             const [empRes, depRes, usersRes] = await Promise.all([
-                authApi.get("/hr-employees?sort=name:asc&populate=department,user", {}, jwt),
-                authApi.get("/hr-departments?sort=name:asc", {}, jwt),
-                authApi.get("/auth-admin/users", {}, jwt),
+                HrEmployeesEndpoints.fetchList({ sort: ["name:asc"], populate: ["department", "user"] }),
+                HrDepartmentsEndpoints.fetchList({ sort: ["name:asc"] }),
+                AuthAdminEndpoints.fetchUsers(),
             ]);
             setEmployees(empRes?.data || []);
             setDepartments(depRes?.data || []);
@@ -104,9 +104,9 @@ export default function HrEmployeeManagementPage() {
         setSaving(true);
         try {
             if (editingId) {
-                await authApi.put(`/hr-employees/${editingId}`, payload, jwt);
+                await HrEmployeesEndpoints.putUpdate(editingId, payload.data);
             } else {
-                await authApi.post("/hr-employees", payload, jwt);
+                await HrEmployeesEndpoints.postCreate(payload.data);
             }
             resetForm();
             await loadAll();

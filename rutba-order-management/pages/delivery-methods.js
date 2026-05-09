@@ -3,7 +3,7 @@ import Link from "next/link";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { authApi } from "@rutba/pos-shared/lib/api";
+import { DeliveryMethodsEndpoints } from "../../packages/api-provider/endpoints/index.js";
 import { useToast } from "../components/Toast";
 
 export default function DeliveryMethodsPage() {
@@ -16,7 +16,7 @@ export default function DeliveryMethodsPage() {
     if (!jwt) return;
     setLoading(true);
     try {
-      const res = await authApi.get("/delivery-methods", {
+      const res = await DeliveryMethodsEndpoints.fetchList({
         sort: ["priority:asc", "createdAt:desc"],
         populate: ["delivery_zones", "product_groups"],
         pagination: { pageSize: 200 },

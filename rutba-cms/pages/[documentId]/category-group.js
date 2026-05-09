@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import Layout from "../../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { authApi } from "@rutba/pos-shared/lib/api";
+import { CategoriesEndpoints, CategoryGroupsEndpoints } from "@rutba/api-provider/endpoints";
 import Link from "next/link";
 import { useToast } from "../../components/Toast";
 
@@ -28,8 +28,8 @@ export default function CategoryGroupDetail() {
     useEffect(() => {
         if (!jwt || !documentId || isNew) { setLoading(false); return; }
         Promise.all([
-            authApi.get(`/category-groups/${documentId}`, { status: 'draft', populate: ["categories"] }),
-            authApi.get(`/category-groups/${documentId}`, { status: 'published', fields: ["documentId"] }).catch(() => ({ data: null })),
+            CategoryGroupsEndpoints.fetchByIdDraft(documentId, { populate: ["categories"] }),
+            CategoryGroupsEndpoints.fetchByIdPublished(documentId, { fields: ["documentId"] }).catch(() => ({ data: null })),
         ])
             .then(([draftRes, pubRes]) => {
                 const g = draftRes.data || draftRes;
@@ -47,7 +47,7 @@ export default function CategoryGroupDetail() {
     const loadCategories = useCallback(async () => {
         if (!jwt) return;
         try {
-            const res = await authApi.get("/categories", { status: 'draft', pagination: { pageSize: 200 }, sort: ["name:asc"] });
+            const res = await CategoriesEndpoints.fetchListDraft({ pagination: { pageSize: 200 }, sort: ["name:asc"], populate: [] });
             setAllCategories(res.data || []);
         } catch (err) {
             console.error("Failed to load categories", err);
@@ -74,11 +74,11 @@ export default function CategoryGroupDetail() {
             };
             if (isNew) {
                 payload.data.slug = slug || name.toLowerCase().replace(/\s+/g, "-");
-                const res = await authApi.post("/category-groups", payload);
+                const res = await CategoryGroupsEndpoints.postCreate(payload.data);
                 const created = res.data || res;
                 router.push(`/${created.documentId}/category-group`);
             } else {
-                await authApi.put(`/category-groups/${documentId}?status=draft`, payload);
+                await CategoryGroupsEndpoints.putUpdateDraft(documentId, payload.data);
                 toast("Draft saved!", "success");
             }
         } catch (err) {
@@ -99,8 +99,8 @@ export default function CategoryGroupDetail() {
                     categories: { set: selectedCategoryIds },
                 },
             };
-            await authApi.put(`/category-groups/${documentId}?status=draft`, payload);
-            await authApi.post(`/category-groups/${documentId}/publish`, {});
+            await CategoryGroupsEndpoints.putUpdateDraft(documentId, payload.data);
+            await CategoryGroupsEndpoints.postPublish(documentId);
             setIsPublished(true);
             toast("Category group saved & published!", "success");
         } catch (err) {
@@ -114,7 +114,7 @@ export default function CategoryGroupDetail() {
     const handleUnpublish = async () => {
         setSaving(true);
         try {
-            await authApi.post(`/category-groups/${documentId}/unpublish`, {});
+            await CategoryGroupsEndpoints.postUnpublish(documentId);
             setIsPublished(false);
             toast("Category group unpublished.", "success");
         } catch (err) {
@@ -129,10 +129,8 @@ export default function CategoryGroupDetail() {
         if (!confirm("Save current draft and load the published version into the editor?")) return;
         setSaving(true);
         try {
-            await authApi.put(`/category-groups/${documentId}?status=draft`, {
-                data: { name, sort_order: sortOrder, categories: { set: selectedCategoryIds } },
-            });
-            const res = await authApi.get(`/category-groups/${documentId}`, { status: 'published', populate: ["categories"] });
+            await CategoryGroupsEndpoints.putUpdateDraft(documentId, { name, sort_order: sortOrder, categories: { set: selectedCategoryIds } });
+            const res = await CategoryGroupsEndpoints.fetchByIdPublished(documentId, { populate: ["categories"] });
             const g = res.data || res;
             if (!g) { toast("No published version found.", "warning"); return; }
             setName(g.name || "");
@@ -151,7 +149,7 @@ export default function CategoryGroupDetail() {
     const handleDelete = async () => {
         if (!confirm("Are you sure you want to delete this category group?")) return;
         try {
-            await authApi.del(`/category-groups/${documentId}`);
+            await CategoryGroupsEndpoints.delById(documentId);
             router.push("/category-groups");
         } catch (err) {
             console.error("Failed to delete category group", err);

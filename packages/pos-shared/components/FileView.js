@@ -1,13 +1,14 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { storage } from '../lib/storage';
-import { authApi, StraipImageUrl, isImage, isPDF, isVideo } from '../lib/api';
+import { StraipImageUrl, isImage, isPDF, isVideo } from '../lib/api';
+import { MediaLibraryEndpoints, UploadEndpoints } from '../lib/endpoints';
 import StrapiMediaLibrary from './StrapiMediaLibrary';
 // Utility functions
 
 // Upload helper using fetch so multipart boundaries are handled by the browser.
 // Attaches to the entity if ref/refId/field provided (Strapi upload attachment pattern).
 export async function uploadToStrapiFiles(files = [], ref, field, refId, info) {
-    return await authApi.uploadFile(files, ref, field, refId, info);
+    return await UploadEndpoints.uploadFiles(files, ref, field, refId, info);
 }
 
 function FileView({ onFileChange = function (field, files, multiple) { }, single = null, gallery = [], multiple = false, refName = null, refId = null, field = null, autoUpload = true, name = null, accept = null, buttonLabel = null }) {
@@ -127,7 +128,7 @@ function FileView({ onFileChange = function (field, files, multiple) { }, single
         if (!id || isNaN(id)) return;
         setPasteIdLoading(true);
         try {
-            const res = await authApi.get('/media-library/files/' + id);
+            const res = await MediaLibraryEndpoints.fetchFile(id);
             const file = res.data;
             if (!file) return;
             handleMediaLibrarySelect([file]);

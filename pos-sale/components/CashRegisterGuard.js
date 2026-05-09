@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useUtil } from '@rutba/pos-shared/context/UtilContext';
-import { CashRegistersEndpoints } from '@rutba/api-provider/endpoints';
+import { CashRegistersEndpoints } from '../../packages/api-provider/endpoints/index.js';
 
 const EXPIRY_HOURS = 20;
 
@@ -79,8 +79,7 @@ export default function CashRegisterGuard({ children }) {
         }
 
         try {
-            const ep = CashRegistersEndpoints.active({ deskId: desk?.id, userId });
-            const res = await authApi.get(ep.path);
+            const res = await CashRegistersEndpoints.fetchActive({ deskId: desk?.id, userId });
             const register = res?.data ?? null;
 
             if (res?.meta?.expired) {

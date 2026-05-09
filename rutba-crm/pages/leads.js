@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { authApi } from "@rutba/pos-shared/lib/api";
+import { CrmLeadsEndpoints } from "@rutba/api-provider/endpoints";
 import Link from "next/link";
 import LeadForm from "../components/form/LeadForm";
 
@@ -15,7 +15,7 @@ export default function Leads() {
     const loadLeads = () => {
         if (!jwt) return;
         setLoading(true);
-        authApi.get("/crm-leads?sort=createdAt:desc&populate=customer", {}, jwt)
+        CrmLeadsEndpoints.fetchList({ sort: ["createdAt:desc"], populate: "customer" })
             .then((res) => setLeads(res.data || []))
             .catch((err) => console.error("Failed to load leads", err))
             .finally(() => setLoading(false));

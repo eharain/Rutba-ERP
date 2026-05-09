@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from "react"
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { authApi, StraipImageUrl, isImage, isPDF } from "@rutba/pos-shared/lib/api";
+import { MediaLibraryEndpoints, MediaUtilsEndpoints } from "@rutba/api-provider/endpoints";
+import { UploadEndpoints } from "@rutba/pos-shared/lib/endpoints";
 import { useToast } from "../components/Toast";
 
 const PAGE_SIZE = 30;
@@ -57,7 +58,7 @@ export default function MediaPage() {
     const loadFolders = useCallback(async () => {
         if (!jwt) return;
         try {
-            const res = await authApi.get('/media-library/folders/tree');
+            const res = await MediaLibraryEndpoints.fetchFoldersTree();
             setFolderTree(res.data || []);
         } catch (err) {
             console.error('Failed to load folder tree', err);
@@ -71,7 +72,7 @@ export default function MediaPage() {
         try {
             const parentId = (currentFolderId && currentFolderId !== 'all' && currentFolderId !== 'root')
                 ? Number(currentFolderId) : null;
-            await authApi.post('/media-library/folders', { name: newFolderName.trim(), parent: parentId });
+            await MediaLibraryEndpoints.postCreateFolder({ name: newFolderName.trim(), parent: parentId });
             setNewFolderName('');
             setCreatingFolder(false);
             toast('Folder created.', 'success');
@@ -85,7 +86,7 @@ export default function MediaPage() {
     const handleRenameFolder = async (folderId) => {
         if (!renameValue.trim()) return;
         try {
-            await authApi.put('/media-library/folders/' + folderId, { name: renameValue.trim() });
+            await MediaLibraryEndpoints.putRenameFolder(folderId, { name: renameValue.trim() });
             setRenamingFolderId(null);
             setRenameValue('');
             toast('Folder renamed.', 'success');
@@ -100,7 +101,7 @@ export default function MediaPage() {
         e.stopPropagation();
         if (!confirm('Delete this folder? Files will be moved to the root.')) return;
         try {
-            await authApi.del('/media-library/folders/' + folderId);
+            await MediaLibraryEndpoints.delFolder(folderId);
             if (String(currentFolderId) === String(folderId)) setCurrentFolderId('all');
             toast('Folder deleted.', 'success');
             await loadFolders();
@@ -143,7 +144,7 @@ export default function MediaPage() {
                 params.mime = 'other';
             }
 
-            const res = await authApi.get('/media-library/files', params);
+            const res = await MediaLibraryEndpoints.fetchFiles(params);
             setFiles(res.data || []);
             setPageCount(res.meta?.pagination?.pageCount || 1);
             setTotalCount(res.meta?.pagination?.total || 0);
@@ -165,12 +166,12 @@ export default function MediaPage() {
         try {
             const folderId = (currentFolderId && currentFolderId !== 'all' && currentFolderId !== 'root')
                 ? currentFolderId : null;
-            const uploaded = await authApi.uploadFile(newFiles, null, null, null, {
+            const uploaded = await UploadEndpoints.uploadFiles(newFiles, null, null, null, {
                 name: null, alt: null, caption: null,
             });
             if (folderId && uploaded) {
                 const ids = (Array.isArray(uploaded) ? uploaded : [uploaded]).map(f => f.id);
-                await authApi.post('/media-library/files/move', {
+                await MediaLibraryEndpoints.postMoveFiles({
                     fileIds: ids,
                     targetFolderId: Number(folderId),
                 });
@@ -190,7 +191,7 @@ export default function MediaPage() {
         if (!confirm('Permanently delete this file? It will be removed from all entries that reference it.')) return;
         setDeleting(fileId);
         try {
-            await authApi.del('/media-library/files/' + fileId);
+            await MediaLibraryEndpoints.delFile(fileId);
             setFiles(prev => prev.filter(f => f.id !== fileId));
             if (selectedFile?.id === fileId) setSelectedFile(null);
             toast('File deleted.', 'success');
@@ -205,7 +206,7 @@ export default function MediaPage() {
     const handleUpdateMeta = async () => {
         if (!selectedFile) return;
         try {
-            await authApi.put('/media-library/files/' + selectedFile.id, {
+            await MediaLibraryEndpoints.putUpdateFileInfo(selectedFile.id, {
                 name: selectedFile.name,
                 alternativeText: selectedFile.alternativeText,
                 caption: selectedFile.caption,
@@ -219,7 +220,7 @@ export default function MediaPage() {
     };
 
     const copyUrl = (file) => {
-        const url = StraipImageUrl(file);
+        const url = MediaUtilsEndpoints.strapiImageUrl(file);
         navigator.clipboard.writeText(url).then(() => {
             toast('URL copied to clipboard.', 'success');
         }).catch(() => {
@@ -243,7 +244,7 @@ export default function MediaPage() {
         if (!id || isNaN(id)) { toast('Enter a valid file ID.', 'warning'); return; }
         setPasteIdLoading(true);
         try {
-            const res = await authApi.get('/media-library/files/' + id);
+            const res = await MediaLibraryEndpoints.fetchFile(id);
             const file = res.data;
             if (!file) { toast('File not found.', 'warning'); return; }
             setSelectedFile(file);
@@ -275,12 +276,12 @@ export default function MediaPage() {
         try {
             const folderId = (currentFolderId && currentFolderId !== 'all' && currentFolderId !== 'root')
                 ? currentFolderId : null;
-            const uploaded = await authApi.uploadFile(imageFiles, null, null, null, {
+            const uploaded = await UploadEndpoints.uploadFiles(imageFiles, null, null, null, {
                 name: null, alt: null, caption: null,
             });
             if (folderId && uploaded) {
                 const ids = (Array.isArray(uploaded) ? uploaded : [uploaded]).map(f => f.id);
-                await authApi.post('/media-library/files/move', {
+                await MediaLibraryEndpoints.postMoveFiles({
                     fileIds: ids,
                     targetFolderId: Number(folderId),
                 });
@@ -325,7 +326,7 @@ export default function MediaPage() {
         }
         if (ids.length === 0) return;
         try {
-            await authApi.post('/media-library/files/move', {
+            await MediaLibraryEndpoints.postMoveFiles({
                 fileIds: ids.map(Number),
                 targetFolderId: targetFolderId === 'root' ? null : Number(targetFolderId),
             });
@@ -345,7 +346,7 @@ export default function MediaPage() {
             : (selectedFile ? [selectedFile.id] : []);
         if (ids.length === 0) return;
         try {
-            await authApi.post('/media-library/files/move', {
+            await MediaLibraryEndpoints.postMoveFiles({
                 fileIds: ids.map(Number),
                 targetFolderId: targetFolderId === 'root' ? null : Number(targetFolderId),
             });
@@ -586,9 +587,9 @@ export default function MediaPage() {
                                     <div className="row g-3">
                                         {files.map(file => {
                                             const thumb = file.formats?.thumbnail || file.formats?.small || file;
-                                            const src = StraipImageUrl(thumb);
-                                            const fileIsImage = isImage(file);
-                                            const fileIsPdf = isPDF(file);
+                                            const src = MediaUtilsEndpoints.strapiImageUrl(thumb);
+                                            const fileIsImage = MediaUtilsEndpoints.isImage(file);
+                                            const fileIsPdf = MediaUtilsEndpoints.isPDF(file);
                                             const isActive = selectedFile?.id === file.id;
                                             return (
                                                 <div key={file.id} className="col-6 col-sm-4 col-md-3 col-lg-2">
@@ -634,15 +635,15 @@ export default function MediaPage() {
                                             <tbody>
                                                 {files.map(file => {
                                                     const thumb = file.formats?.thumbnail || file;
-                                                    const src = StraipImageUrl(thumb);
-                                                    const fileIsImage = isImage(file);
+                                                    const src = MediaUtilsEndpoints.strapiImageUrl(thumb);
+                                                    const fileIsImage = MediaUtilsEndpoints.isImage(file);
                                                     const isActive = selectedFile?.id === file.id;
                                                     return (
                                                         <tr key={file.id} className={isActive ? 'table-primary' : ''} style={{ cursor: 'pointer' }}
                                                             draggable onDragStart={(e) => handleFileDragStart(e, file.id)}
                                                             onClick={(e) => toggleFileSelect(file.id, e)}>
                                                             <td>{fileIsImage ? <img src={src} alt="" style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 4 }} draggable={false} />
-                                                                : <i className={`fas ${isPDF(file) ? 'fa-file-pdf text-danger' : 'fa-file text-secondary'} fa-lg`} />}</td>
+                                                                : <i className={`fas ${MediaUtilsEndpoints.isPDF(file) ? 'fa-file-pdf text-danger' : 'fa-file text-secondary'} fa-lg`} />}
                                                             <td className="text-truncate" style={{ maxWidth: 250 }} title={file.name}>{file.name}</td>
                                                             <td>{file.folder ? <span className="badge bg-light text-dark"><i className="fas fa-folder fa-xs me-1 text-warning" />{file.folder.name}</span> : <span className="text-muted">—</span>}</td>
                                                             <td><span className="badge bg-light text-dark">{file.ext}</span></td>
@@ -689,8 +690,8 @@ export default function MediaPage() {
                                             <button className="btn-close btn-sm" onClick={() => setSelectedFile(null)} />
                                         </div>
                                         <div className="text-center mb-3 bg-light p-2 rounded" style={{ maxHeight: 250, overflow: 'hidden' }}>
-                                            {isImage(selectedFile) ? <img src={StraipImageUrl(selectedFile)} alt={selectedFile.alternativeText || selectedFile.name} style={{ maxWidth: '100%', maxHeight: 230, objectFit: 'contain' }} />
-                                                : isPDF(selectedFile) ? <i className="fas fa-file-pdf fa-5x text-danger my-4" />
+                                            {MediaUtilsEndpoints.isImage(selectedFile) ? <img src={MediaUtilsEndpoints.strapiImageUrl(selectedFile)} alt={selectedFile.alternativeText || selectedFile.name} style={{ maxWidth: '100%', maxHeight: 230, objectFit: 'contain' }} />
+                                                : MediaUtilsEndpoints.isPDF(selectedFile) ? <i className="fas fa-file-pdf fa-5x text-danger my-4" />
                                                     : <i className="fas fa-file fa-5x text-secondary my-4" />}
                                         </div>
                                         <table className="table table-sm small mb-3">
@@ -730,7 +731,7 @@ export default function MediaPage() {
                                         <div className="d-flex flex-wrap gap-2">
                                             <button className="btn btn-sm btn-outline-secondary flex-grow-1" onClick={() => copyId(selectedFile)}><i className="fas fa-hashtag me-1" /> Copy ID</button>
                                             <button className="btn btn-sm btn-outline-secondary flex-grow-1" onClick={() => copyUrl(selectedFile)}><i className="fas fa-link me-1" /> Copy URL</button>
-                                            <a className="btn btn-sm btn-outline-primary flex-grow-1" href={StraipImageUrl(selectedFile)} target="_blank" rel="noopener noreferrer"><i className="fas fa-external-link-alt me-1" /> Open</a>
+                                            <a className="btn btn-sm btn-outline-primary flex-grow-1" href={MediaUtilsEndpoints.strapiImageUrl(selectedFile)} target="_blank" rel="noopener noreferrer"><i className="fas fa-external-link-alt me-1" /> Open</a>
                                             <button className="btn btn-sm btn-outline-danger flex-grow-1" onClick={() => handleDelete(selectedFile.id)} disabled={deleting === selectedFile.id}><i className="fas fa-trash me-1" /> Delete</button>
                                         </div>
                                     </div>

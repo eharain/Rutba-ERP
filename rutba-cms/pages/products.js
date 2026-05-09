@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { authApi, StraipImageUrl } from "@rutba/pos-shared/lib/api";
+import { BrandsEndpoints, CategoriesEndpoints, MediaUtilsEndpoints, ProductsEndpoints, PurchasesEndpoints, SuppliersEndpoints, TermTypesEndpoints } from "@rutba/api-provider/endpoints";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
 import { ProductFilter } from "@rutba/pos-shared/components/filter/product-filter";
 import { fetchProducts } from "@rutba/pos-shared/lib/pos";
@@ -86,7 +86,7 @@ export default function Products() {
     const publishOne = async (docId) => {
         setPublishing(prev => ({ ...prev, [docId]: true }));
         try {
-            await authApi.post(`/products/${docId}/publish`, {});
+            await ProductsEndpoints.postPublish(docId);
             const now = new Date().toISOString();
             setProducts(prev => prev.map(p => p.documentId === docId ? { ...p, _isPublished: true, _publishedAt: now } : p));
             setVariantsMap(prev => {
@@ -108,7 +108,7 @@ export default function Products() {
     const unpublishOne = async (docId) => {
         setPublishing(prev => ({ ...prev, [docId]: true }));
         try {
-            await authApi.post(`/products/${docId}/unpublish`, {});
+            await ProductsEndpoints.postUnpublish(docId);
             setProducts(prev => prev.map(p => p.documentId === docId ? { ...p, _isPublished: false, _publishedAt: null } : p));
             setVariantsMap(prev => {
                 const copy = { ...prev };
@@ -194,11 +194,11 @@ export default function Products() {
     // fetch lookup data once
     useEffect(() => {
         Promise.all([
-            authApi.getAll("/brands"),
-            authApi.getAll("/categories"),
-            authApi.getAll("/suppliers"),
-            authApi.getAll("/term-types", { populate: ["terms"] }),
-            authApi.getAll("/purchases", { sort: ["createdAt:desc"] }),
+            BrandsEndpoints.fetchAll(),
+            CategoriesEndpoints.fetchAll(),
+            SuppliersEndpoints.fetchAll(),
+            TermTypesEndpoints.fetchAllWithTerms(),
+            PurchasesEndpoints.fetchAll({ sort: ["createdAt:desc"] }),
         ]).then(([b, c, s, t, p]) => {
             setBrands(b?.data || b || []);
             setCategories(c?.data || c || []);
@@ -231,11 +231,10 @@ export default function Products() {
                 if (draftProducts.length > 0) {
                     const docIds = draftProducts.map(p => p.documentId);
                     try {
-                        const pubRes = await authApi.get("/products", {
+                        const pubRes = await ProductsEndpoints.fetchList(1, docIds.length, {
                             status: "published",
                             fields: ["documentId", "publishedAt"],
                             filters: { documentId: { $in: docIds } },
-                            pagination: { pageSize: docIds.length },
                         });
                         for (const p of (pubRes.data || [])) {
                             pubMap[p.documentId] = p.publishedAt;
@@ -277,17 +276,15 @@ export default function Products() {
         if (!variantsMap[docId]) {
             setLoadingVariants(prev => ({ ...prev, [docId]: true }));
             try {
-                const res = await authApi.get("/products", {
+                const res = await ProductsEndpoints.fetchList(1, 100, {
                     status: "draft",
                     filters: { parent: { documentId: docId } },
                     populate: { logo: true, categories: true, brands: true, purchase_items: { populate: ["purchase"] } },
-                    pagination: { pageSize: 100 },
                 });
-                const pubRes = await authApi.get("/products", {
+                const pubRes = await ProductsEndpoints.fetchList(1, 100, {
                     status: "published",
                     filters: { parent: { documentId: docId } },
                     fields: ["documentId", "publishedAt"],
-                    pagination: { pageSize: 100 },
                 });
                 const varPubMap = {};
                 for (const pv of (pubRes.data || [])) {
@@ -414,7 +411,7 @@ export default function Products() {
                                             <td>
                                                 {p.logo?.url ? (
                                                     <img
-                                                        src={StraipImageUrl(p.logo)}
+                                                        src={MediaUtilsEndpoints.strapiImageUrl(p.logo)}
                                                         alt={p.name}
                                                         style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 4 }}
                                                     />
@@ -467,7 +464,7 @@ export default function Products() {
                                                         <td>
                                                             {v.logo?.url ? (
                                                                 <img
-                                                                    src={StraipImageUrl(v.logo)}
+                                                                    src={MediaUtilsEndpoints.strapiImageUrl(v.logo)}
                                                                     alt={v.name}
                                                                     style={{ width: 30, height: 30, objectFit: "cover", borderRadius: 4 }}
                                                                 />

@@ -1,13 +1,17 @@
 import { authApi } from '../api.js';
 
 export const StockInputsEndpoints = {
-    list: () => ({ path: '/stock-inputs' }),
+    list: (opts = {}) => ({ path: '/stock-inputs', params: opts }),
     byId: (documentId) => ({ path: `/stock-inputs/${documentId}` }),
     create: () => ({ path: '/stock-inputs' }),
     update: (documentId) => ({ path: `/stock-inputs/${documentId}` }),
     del: (documentId) => ({ path: `/stock-inputs/${documentId}` }),
     process: () => ({ path: '/stock-inputs/process' }),
 
+    async fetchList(opts = {}) {
+        const ep = StockInputsEndpoints.list(opts);
+        return authApi.fetch(ep.path, ep.params);
+    },
     async postCreate(data) {
         const res = await authApi.post('/stock-inputs', { data });
         return res?.data ?? res;

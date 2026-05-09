@@ -1,4 +1,7 @@
 import { authApi } from '../api.js';
+import { AuthApiEndpoints } from './http-client.js';
+import { dataNode } from '../pos/search.js';
+import { getBranch } from '../utils.js';
 
 /**
  * StockItemsEndpoints
@@ -39,16 +42,17 @@ export const StockItemsEndpoints = {
      * @param {string} productDocId
      * @param {{ statusFilter?, page?, pageSize? }} opts
      */
-    listByProduct: (productDocId, { statusFilter, page = 1, pageSize = 200 } = {}) => ({
+    listByProduct: (productDocId, { statusFilter, page = 1, pageSize = 200, populate, fields, sort } = {}) => ({
         path: '/me/stock-items-search',
         params: {
-            populate: { product: true, purchase_item: { populate: { purchase: true } } },
+            populate: populate ?? { product: true, purchase_item: { populate: { purchase: true } } },
+            ...(fields ? { fields } : {}),
             filters: {
                 product: { documentId: productDocId },
                 ...(statusFilter ? { status: statusFilter } : {}),
             },
             pagination: { page, pageSize },
-            sort: ['createdAt:desc'],
+            sort: sort ?? ['createdAt:desc'],
         },
     }),
 
@@ -192,6 +196,12 @@ export const StockItemsEndpoints = {
     /** Async: fetch stock items belonging to a product via the branch-scoped route. */
     fetchListByProduct: (productDocId, opts = {}) => {
         const ep = StockItemsEndpoints.listByProduct(productDocId, opts);
+        return authApi.fetch(ep.path, ep.params);
+    },
+
+    /** Async: check whether a barcode already exists. */
+    fetchCheckBarcode: (barcode) => {
+        const ep = StockItemsEndpoints.checkBarcode(barcode);
         return authApi.fetch(ep.path, ep.params);
     },
 
@@ -355,6 +365,87 @@ export const StockItemsEndpointRules = {
     /** POST /api/stock-items/transfer — transfer items to another branch */
     transfer: {},
 };
+
+/**
+ * Generate and persist stock items for a received purchase item.
+ * @param {Object} purchase
+ * @param {Object} purchaseItem
+ * @param {number} quantity
+ */
+export async function generateStockItems(purchase, purchaseItem, quantity) {
+    const stockItems = [];
+    const product = purchaseItem.product;
+    for (let i = 0; i < quantity; i++) {
+        let sku = purchaseItem.product.sku;
+        let barcode = purchaseItem.product.barcode;
+        if (!sku) {
+            sku = product.id.toString(22).toUpperCase();
+        }
+        sku = `${sku}-${Date.now().toString(22)}-${i.toString(22)}`.toUpperCase();
+        barcode = barcode ? `${barcode}-${i.toString(22)}`.toUpperCase() : undefined;
+        const stockItem = {
+            sku,
+            barcode,
+            status: 'Received',
+            cost_price: purchaseItem.unit_price,
+            selling_price: purchaseItem.product.selling_price,
+            offer_price: purchaseItem.product.offer_price,
+            product: purchaseItem.product.documentId || purchaseItem.product.id,
+            purchase_item: purchaseItem.documentId || purchaseItem.id,
+            branch: getBranch()?.documentId || getBranch()?.id,
+        };
+        try {
+            const response = await StockItemsEndpoints.postCreate(stockItem);
+            stockItems.push(response?.data ?? response);
+        } catch (error) {
+            console.error('Error creating stock item:', error);
+        }
+    }
+    return stockItems;
+}
+
+/**
+ * Search stock items by name or barcode.
+ * @param {string} searchTerm
+ */
+export async function searchStockItemsByName(searchTerm) {
+    const ep = StockItemsEndpoints.searchByName(searchTerm);
+    const res = await AuthApiEndpoints.get(ep.path, ep.params);
+    return dataNode(res);
+}
+
+/**
+ * Search stock items by barcode.
+ * @param {string} barcode
+ */
+export async function searchStockItemsByBarcode(barcode) {
+    const ep = StockItemsEndpoints.searchByBarcode(barcode);
+    const res = await AuthApiEndpoints.get(ep.path, ep.params);
+    return dataNode(res);
+}
+
+/**
+ * Search stock items with optional filters.
+ * @param {string} searchTerm
+ * @param {number} page
+ * @param {number} rowsPerPage
+ * @param {string|null} statusFilter
+ * @param {string|null} branch
+ * @param {string|null} productDocumentId
+ */
+export async function searchStockItems(searchTerm, page = 0, rowsPerPage = 100, statusFilter = null, branch = null, productDocumentId = null) {
+    const ep = StockItemsEndpoints.list(page, rowsPerPage, {
+        statusFilter,
+        branchDocId: branch,
+        productDocId: productDocumentId,
+    });
+    let url = ep.path + (ep.params ? '?' + new URLSearchParams(ep.params).toString() : '');
+    if (statusFilter) url += `&filters[status]=${statusFilter}`;
+    if (branch) url += `&filters[branch][documentId]=${branch}`;
+    if (productDocumentId) url += `&filters[product][documentId]=${productDocumentId}`;
+    const res = await AuthApiEndpoints.fetchWithPagination(url);
+    return { data: res.data, meta: res.meta };
+}
 
 
 

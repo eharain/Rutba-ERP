@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { authApi } from "@rutba/pos-shared/lib/api";
+import { BrandGroupsEndpoints } from "@rutba/api-provider/endpoints";
 import Link from "next/link";
 import { useToast } from "../components/Toast";
 
@@ -35,7 +35,7 @@ export default function BrandGroups() {
     const publishOne = async (docId) => {
         setPublishing(prev => ({ ...prev, [docId]: true }));
         try {
-            await authApi.post(`/brand-groups/${docId}/publish`, {});
+            await BrandGroupsEndpoints.postPublish(docId);
             setGroups(prev => prev.map(g => g.documentId === docId ? { ...g, _isPublished: true } : g));
             toast("Published!", "success");
         } catch (err) {
@@ -49,7 +49,7 @@ export default function BrandGroups() {
     const unpublishOne = async (docId) => {
         setPublishing(prev => ({ ...prev, [docId]: true }));
         try {
-            await authApi.post(`/brand-groups/${docId}/unpublish`, {});
+            await BrandGroupsEndpoints.postUnpublish(docId);
             setGroups(prev => prev.map(g => g.documentId === docId ? { ...g, _isPublished: false } : g));
             toast("Unpublished.", "success");
         } catch (err) {
@@ -67,7 +67,7 @@ export default function BrandGroups() {
         let ok = 0, fail = 0;
         for (const docId of ids) {
             setPublishing(prev => ({ ...prev, [docId]: true }));
-            try { await authApi.post(`/brand-groups/${docId}/publish`, {}); ok++; setGroups(prev => prev.map(g => g.documentId === docId ? { ...g, _isPublished: true } : g)); }
+            try { await BrandGroupsEndpoints.postPublish(docId); ok++; setGroups(prev => prev.map(g => g.documentId === docId ? { ...g, _isPublished: true } : g)); }
             catch { fail++; }
             finally { setPublishing(prev => ({ ...prev, [docId]: false })); }
         }
@@ -82,7 +82,7 @@ export default function BrandGroups() {
         let ok = 0, fail = 0;
         for (const docId of ids) {
             setPublishing(prev => ({ ...prev, [docId]: true }));
-            try { await authApi.post(`/brand-groups/${docId}/unpublish`, {}); ok++; setGroups(prev => prev.map(g => g.documentId === docId ? { ...g, _isPublished: false } : g)); }
+            try { await BrandGroupsEndpoints.postUnpublish(docId); ok++; setGroups(prev => prev.map(g => g.documentId === docId ? { ...g, _isPublished: false } : g)); }
             catch { fail++; }
             finally { setPublishing(prev => ({ ...prev, [docId]: false })); }
         }
@@ -95,13 +95,8 @@ export default function BrandGroups() {
         setLoading(true);
         try {
             const [draftRes, pubRes] = await Promise.all([
-                authApi.get("/brand-groups", {
-                    status: 'draft',
-                    sort: ["sort_order:asc", "createdAt:desc"],
-                    populate: ["brands"],
-                    pagination: { pageSize: 50 },
-                }),
-                authApi.get("/brand-groups", { status: 'published', fields: ["documentId"], pagination: { pageSize: 200 } }),
+                BrandGroupsEndpoints.fetchListDraft({ sort: ["sort_order:asc", "createdAt:desc"], populate: ["brands"], pagination: { pageSize: 50 } }),
+                BrandGroupsEndpoints.fetchListPublished({ pageSize: 200 }),
             ]);
             const pubIds = new Set((pubRes.data || []).map(g => g.documentId));
             setGroups((draftRes.data || []).map(g => ({ ...g, _isPublished: pubIds.has(g.documentId) })));

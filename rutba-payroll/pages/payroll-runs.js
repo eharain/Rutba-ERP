@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { authApi } from "@rutba/pos-shared/lib/api";
+import { PayPayrollRunsEndpoints } from "@rutba/api-provider/endpoints";
 
 export default function PayrollRuns() {
     const { jwt } = useAuth();
@@ -11,7 +11,8 @@ export default function PayrollRuns() {
 
     useEffect(() => {
         if (!jwt) return;
-        authApi.get("/pay-payroll-runs?sort=period_start:desc", {}, jwt)
+        const ep = PayPayrollRunsEndpoints.list();
+        PayPayrollRunsEndpoints.fetchList(ep.params)
             .then((res) => setRuns(res.data || []))
             .catch((err) => console.error("Failed to load payroll runs", err))
             .finally(() => setLoading(false));

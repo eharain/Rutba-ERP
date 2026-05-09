@@ -3,8 +3,7 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import Layout from '../../components/Layout';
 import ProtectedRoute from '@rutba/pos-shared/components/ProtectedRoute';
-import { authApi, relationConnects, getStockStatus } from '@rutba/pos-shared/lib/api';
-import { StockItemsEndpoints, ProductsEndpoints, CategoriesEndpoints, BrandsEndpoints, SuppliersEndpoints } from '@rutba/api-provider/endpoints';
+import { StockHelpersEndpoints, StockItemsEndpoints, ProductsEndpoints, CategoriesEndpoints, BrandsEndpoints, SuppliersEndpoints } from '../../../packages/api-provider/endpoints/index.js';
 import { saveProduct, loadProduct } from '@rutba/pos-shared/lib/pos';
 import { useUtil } from '@rutba/pos-shared/context/UtilContext';
 import { printStorage } from '@rutba/pos-shared/lib/printStorage';
@@ -82,19 +81,17 @@ export default function EditProduct() {
     const [multiScanItems, setMultiScanItems] = useState([]);
     const multiScanInputRef = useRef(null);
 
-    async function fetchAllRecords(endpoint) {
+    async function fetchAllRecords(fetchPage) {
         let allRecords = [];
         let page = 1;
         let totalPages = 1;
 
         do {
-            // Fetch current page
-            const response = await authApi.get(`${endpoint}?pagination[page]=${page}&pagination[pageSize]=100`);
+            const response = await fetchPage(page);
             const { data, meta } = response;
 
             allRecords = [...allRecords, ...data];
 
-            // Update pagination info
             totalPages = meta.pagination.pageCount;
             page++;
         } while (page <= totalPages);
@@ -109,10 +106,10 @@ export default function EditProduct() {
 
                 // Fetch categories, brands, suppliers, and stock statuses
                 const [categoriesRes, brandsRes, suppliersRes, statusRes] = await Promise.all([
-                    fetchAllRecords(p => CategoriesEndpoints.listPaged(p, 100)),
-                    fetchAllRecords(p => BrandsEndpoints.listPaged(p, 100)),
-                    fetchAllRecords(p => SuppliersEndpoints.listPaged(p, 100)),
-                    getStockStatus()
+                    fetchAllRecords(p => CategoriesEndpoints.fetchList({ page: p, pageSize: 100 })),
+                    fetchAllRecords(p => BrandsEndpoints.fetchList({ page: p, pageSize: 100 })),
+                    fetchAllRecords(p => SuppliersEndpoints.fetchList({ page: p, pageSize: 100 })),
+                    StockHelpersEndpoints.getStockStatus()
                 ]);
 
                 setCategories(categoriesRes || []);
@@ -131,9 +128,9 @@ export default function EditProduct() {
 
                     // Override with most recent stock item's barcode prefix if available
                     try {
-                        const prefEp = StockItemsEndpoints.listByProduct(documentId, { page: 1, pageSize: 5 });
-                        const res = await authApi.fetch(prefEp.path, {
-                            ...prefEp.params,
+                        const res = await StockItemsEndpoints.fetchListByProduct(documentId, {
+                            page: 1,
+                            pageSize: 5,
                             fields: ['barcode'],
                         });
                         const items = res?.data || [];
@@ -165,8 +162,7 @@ export default function EditProduct() {
         if (!documentId || documentId === 'new') return;
         setStockItemsLoading(true);
         try {
-            const ep = StockItemsEndpoints.listByProduct(documentId, { statusFilter, page: 1, pageSize: 1000 });
-            const response = await authApi.fetch(ep.path, ep.params);
+            const response = await StockItemsEndpoints.fetchListByProduct(documentId, { statusFilter, page: 1, pageSize: 1000 });
             const data = response.data || [];
             setStockItems(data);
             setStockItemsTotal(response.meta?.pagination?.total || 0);
@@ -297,8 +293,7 @@ export default function EditProduct() {
         setScanAdding(true);
         setError('');
         try {
-            const chkEp = StockItemsEndpoints.checkBarcode(code);
-            const existing = await authApi.fetch(chkEp.path, chkEp.params);
+            const existing = await StockItemsEndpoints.fetchCheckBarcode(code);
             if (existing?.data?.length > 0) {
                 setError(`Barcode "${code}" is already in use by another stock item`);
                 setScanAdding(false);
@@ -320,7 +315,6 @@ export default function EditProduct() {
                 branch: branch?.documentId || branch?.id || undefined,
             };
 
-            const createEp = StockItemsEndpoints.create();
             await StockItemsEndpoints.postCreate(data);
             setSuccess(`Stock item created with barcode "${code}"`);
             setScanBarcode('');
@@ -341,8 +335,7 @@ export default function EditProduct() {
         setAttachLoading(true);
         setError('');
         try {
-            const bcEp = StockItemsEndpoints.listByBarcode(code);
-            const res = await authApi.fetch(bcEp.path, { ...bcEp.params, populate: { product: true } });
+            const res = await StockItemsEndpoints.fetchByBarcode(code);
             const items = res?.data || [];
             if (items.length === 0) {
                 setError(`No stock item found with barcode "${code}"`);
@@ -400,8 +393,7 @@ export default function EditProduct() {
         setMultiScanAdding(true);
         setError('');
         try {
-            const mchkEp = StockItemsEndpoints.checkBarcode(code);
-            const existing = await authApi.fetch(mchkEp.path, mchkEp.params);
+            const existing = await StockItemsEndpoints.fetchCheckBarcode(code);
             if (existing?.data?.length > 0) {
                 setError(`Barcode "${code}" is already in use by another stock item`);
                 setMultiScanAdding(false);
@@ -423,7 +415,6 @@ export default function EditProduct() {
                 branch: branch?.documentId || branch?.id || undefined,
             };
 
-            const msEp = StockItemsEndpoints.create();
             const res = await StockItemsEndpoints.postCreate(data);
             setMultiScanItems(prev => [
                 { barcode: code, sku: data.sku, id: res.data?.documentId || res.data?.id, time: new Date().toLocaleTimeString() },
@@ -495,7 +486,7 @@ export default function EditProduct() {
 
             const payload = {
                 ...product,
-                ...relationConnects({
+                ...StockHelpersEndpoints.relationConnects({
                     categories: product.categories,
                     brands: product.brands,
                     suppliers: product.suppliers

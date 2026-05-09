@@ -4,7 +4,7 @@ import PermissionCheck from "@rutba/pos-shared/components/PermissionCheck";
 import { useCart } from "@rutba/pos-shared/context/CartContext";
 import CartItem from "../components/CartItem";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { SalesEndpoints, SaleItemsEndpoints } from "@rutba/api-provider/endpoints";
+import { SalesEndpoints, SaleItemsEndpoints } from "../../packages/api-provider/endpoints/index.js";
 
 export default function Cart() {
     const { cartItems, setQty, remove, clear, total } = useCart();

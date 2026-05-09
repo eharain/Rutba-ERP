@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { authApi } from "@rutba/pos-shared/lib/api";
+import { HrDepartmentsEndpoints } from "@rutba/api-provider/endpoints";
 
 export default function Departments() {
     const { jwt } = useAuth();
@@ -11,7 +11,7 @@ export default function Departments() {
 
     useEffect(() => {
         if (!jwt) return;
-        authApi.get("/hr-departments?sort=name:asc", {}, jwt)
+        HrDepartmentsEndpoints.fetchList()
             .then((res) => setDepartments(res.data || []))
             .catch((err) => console.error("Failed to load departments", err))
             .finally(() => setLoading(false));

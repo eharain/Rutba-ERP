@@ -3,7 +3,6 @@ import * as XLSX from "xlsx";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { authApi } from "@rutba/pos-shared/lib/api";
 import { CmsPagesEndpoints } from "@rutba/api-provider/endpoints";
 import Link from "next/link";
 import { useToast } from "../components/Toast";
@@ -100,8 +99,7 @@ export default function Pages() {
     const publishOne = async (docId) => {
         setPublishing(prev => ({ ...prev, [docId]: true }));
         try {
-            const ep = CmsPagesEndpoints.publish(docId);
-            await authApi.post(ep.path, {});
+            await CmsPagesEndpoints.postPublish(docId);
             setPages(prev => prev.map(p => p.documentId === docId ? { ...p, _isPublished: true } : p));
             toast("Published!", "success");
         } catch (err) {
@@ -116,8 +114,7 @@ export default function Pages() {
         setPublishing(prev => ({ ...prev, [docId]: true }));
         try {
             //:todo: bad pattern to have separate publish and unpublish endpoints, should we just have a single /cms-pages/:id/publish endpoint that toggles state based on current value to avoid this?
-            const ep = CmsPagesEndpoints.unpublish(docId);
-            await authApi.post(ep.path, {});
+            await CmsPagesEndpoints.postUnpublish(docId);
             setPages(prev => prev.map(p => p.documentId === docId ? { ...p, _isPublished: false } : p));
             toast("Unpublished.", "success");
         } catch (err) {
@@ -137,8 +134,7 @@ export default function Pages() {
             setPublishing(prev => ({ ...prev, [docId]: true }));
             try {
                 //todo: bad pattern to have separate publish and unpublish endpoints, should we just have a single /cms-pages/:id/publish endpoint that toggles state based on current value to avoid this?
-                const bpEp = CmsPagesEndpoints.publish(docId);
-                await authApi.post(bpEp.path, {});
+                await CmsPagesEndpoints.postPublish(docId);
                 ok++;
                 setPages(prev => prev.map(p => p.documentId === docId ? { ...p, _isPublished: true } : p));
             }
@@ -158,8 +154,7 @@ export default function Pages() {
             setPublishing(prev => ({ ...prev, [docId]: true }));
             try {
                 //:todo: bad pattern to have separate publish and unpublish endpoints, should we just have a single /cms-pages/:id/publish endpoint that toggles state based on current value to avoid this?
-                const buEp = CmsPagesEndpoints.unpublish(docId); 
-                await authApi.post(buEp.path, {}); ok++; 
+                await CmsPagesEndpoints.postUnpublish(docId); ok++; 
                 
                 setPages(prev => prev.map(p => p.documentId === docId ? { ...p, _isPublished: false } : p)); }
             catch { fail++; }
@@ -178,8 +173,8 @@ export default function Pages() {
             const draftEp = CmsPagesEndpoints.listDraft({ search: search.trim() || undefined, typeFilter: typeFilter || undefined, pageSize: 50 });
             const pubEp = CmsPagesEndpoints.listPublished({ pageSize: 200 });
             const [draftRes, pubRes] = await Promise.all([
-                authApi.fetch(draftEp.path, draftEp.params),
-                authApi.fetch(pubEp.path, pubEp.params),
+                CmsPagesEndpoints.fetchListDraft({ search: search.trim() || undefined, typeFilter: typeFilter || undefined, pageSize: 50 }),
+                CmsPagesEndpoints.fetchListPublished({ pageSize: 200 }),
             ]);
             const pubIds = new Set((pubRes.data || []).map(p => p.documentId));
             setPages((draftRes.data || []).map(p => ({ ...p, _isPublished: pubIds.has(p.documentId) })));
@@ -214,18 +209,15 @@ export default function Pages() {
             for (const row of rows) {
                 try {
                     //todo: bad pattern why not the msPagesEndpoints.bySlugCheck should return the existing docId if found and then we can just call update without a separate fetch?
-                    const chkEp = CmsPagesEndpoints.bySlugCheck(row.slug);
-                    const existing = await authApi.fetch(chkEp.path, chkEp.params);
+                    const existing = await CmsPagesEndpoints.fetchBySlugCheck(row.slug);
                     const doc = existing.data?.[0];
                     if (doc) {
                         //todo:bad pattern why not to  await  CmsPagesEndpoints.update(doc.documentId,{ data: row });
-                        const upEp = CmsPagesEndpoints.update(doc.documentId);
-                        await authApi.put(upEp.path, { data: row });
+                        await CmsPagesEndpoints.putUpdate(doc.documentId, row);
                         log.push({ type: "success", text: `Updated: ${row.slug}` });
                     } else {
                         //todo: bad pattern why not to await CmsPagesEndpoints.create({ data: row });
-                        const crEp = CmsPagesEndpoints.create();
-                        await authApi.post(crEp.path, { data: row });
+                        await CmsPagesEndpoints.postCreate(row);
                         log.push({ type: "success", text: `Created: ${row.slug}` });
                     }
                 } catch (err) {

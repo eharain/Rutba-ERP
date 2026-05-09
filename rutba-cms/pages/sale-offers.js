@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { authApi } from "@rutba/pos-shared/lib/api";
+import { SaleOffersEndpoints } from "@rutba/api-provider/endpoints";
 import Link from "next/link";
 
 export default function Offers() {
@@ -15,13 +15,8 @@ export default function Offers() {
         setLoading(true);
         try {
             const [draftRes, pubRes] = await Promise.all([
-                authApi.get("/sale-offers", {
-                    status: 'draft',
-                    sort: ["createdAt:desc"],
-                    populate: ["product_groups", "cms_pages", "categories"],
-                    pagination: { pageSize: 50 },
-                }),
-                authApi.get("/sale-offers", { status: 'published', fields: ["documentId"], pagination: { pageSize: 200 } }),
+                SaleOffersEndpoints.fetchListDraft({ sort: ["createdAt:desc"], populate: ["product_groups", "cms_pages", "categories"], pagination: { pageSize: 50 } }),
+                SaleOffersEndpoints.fetchListPublished({ pageSize: 200 }),
             ]);
             const pubIds = new Set((pubRes.data || []).map(o => o.documentId));
             const mapped = (draftRes.data || []).map(o => ({ ...o, _isPublished: pubIds.has(o.documentId) }));

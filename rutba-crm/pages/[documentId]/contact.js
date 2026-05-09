@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import Layout from "../../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { authApi } from "@rutba/pos-shared/lib/api";
+import { CrmContactsEndpoints } from "@rutba/api-provider/endpoints";
 import Link from "next/link";
 
 export default function ContactDetail() {
@@ -15,7 +15,7 @@ export default function ContactDetail() {
 
     useEffect(() => {
         if (!jwt || !documentId) return;
-        authApi.get(`/crm-contacts/${documentId}?populate=*`, {}, jwt)
+        CrmContactsEndpoints.fetchById(documentId, { populate: '*' })
             .then((res) => setContact(res.data || res))
             .catch((err) => console.error("Failed to load contact", err))
             .finally(() => setLoading(false));

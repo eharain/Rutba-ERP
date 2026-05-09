@@ -3,8 +3,7 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import Layout from '../../components/Layout';
 import ProtectedRoute from '@rutba/pos-shared/components/ProtectedRoute';
-import { authApi, relationConnects } from '@rutba/pos-shared/lib/api';
-import { TermTypesEndpoints, StockItemsEndpoints, ProductsEndpoints } from '@rutba/api-provider/endpoints';
+import { StockHelpersEndpoints, TermTypesEndpoints, StockItemsEndpoints, ProductsEndpoints } from '../../../packages/api-provider/endpoints/index.js';
 import { saveProduct } from '@rutba/pos-shared/lib/pos/save';
 import ProductGalleryManager from '@rutba/pos-shared/components/ProductGalleryManager';
 import ProductVariantManager from '@rutba/pos-shared/components/ProductVariantManager';
@@ -56,7 +55,7 @@ export default function ProductVariantsPage() {
     async function loadProductDetails(id) {
         setLoading(true);
         try {
-            const res = await authApi.get(`/products/${id}`, { populate: { variants: { populate: ['terms'] }, items: true, terms: true } });
+            const res = await ProductsEndpoints.fetchById(id);
             const prod = res.data || res;
             setSelectedProduct(prod);
             const loadedVariants = prod.variants || [];
@@ -159,7 +158,7 @@ export default function ProductVariantsPage() {
                 name,
                 parent: parentDocumentId,
                 is_variant: true,
-                ...relationConnects({ terms: [term] })
+                ...StockHelpersEndpoints.relationConnects({ terms: [term] })
             };
             const response = await saveProduct('new', payload);
             const createdVariant = response?.data?.data ?? response?.data ?? response;
@@ -204,7 +203,7 @@ export default function ProductVariantsPage() {
                     name,
                     parent: parentDocumentId,
                     is_variant: true,
-                    ...relationConnects({ terms: [term] })
+                    ...StockHelpersEndpoints.relationConnects({ terms: [term] })
                 };
                 const response = await saveProduct('new', payload);
                 const createdVariant = response?.data?.data ?? response?.data ?? response;
@@ -242,8 +241,7 @@ export default function ProductVariantsPage() {
                 let page = 1;
                 let totalPages = 1;
                 do {
-                    const dEp = StockItemsEndpoints.byProduct(vId, { page, pageSize: 100 });
-                    const res = await authApi.fetch(dEp.path, dEp.params);
+                    const res = await StockItemsEndpoints.fetchByProduct(vId, { page, pageSize: 100 });
                     const items = res?.data ?? res ?? [];
                     totalPages = res?.meta?.pagination?.pageCount || 1;
                     for (const item of items) {
@@ -280,8 +278,7 @@ export default function ProductVariantsPage() {
                     let page = 1;
                     let totalPages = 1;
                     do {
-                        const bdEp = StockItemsEndpoints.byProduct(vId, { page, pageSize: 100 });
-                        const res = await authApi.fetch(bdEp.path, bdEp.params);
+                        const res = await StockItemsEndpoints.fetchByProduct(vId, { page, pageSize: 100 });
                         const items = res?.data ?? res ?? [];
                         totalPages = res?.meta?.pagination?.pageCount || 1;
                         for (const item of items) {

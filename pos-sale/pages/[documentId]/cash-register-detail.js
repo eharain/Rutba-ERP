@@ -3,8 +3,7 @@ import { useRouter } from "next/router";
 import Link from "next/link";
 import Layout from "../../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import { authApi, getAppName } from "@rutba/pos-shared/lib/api";
-import { CashRegistersEndpoints, PaymentsEndpoints, CashRegisterTransactionEndpoints } from "@rutba/api-provider/endpoints";
+import { AppContextEndpoints, CashRegistersEndpoints, PaymentsEndpoints, CashRegisterTransactionEndpoints } from "../../../packages/api-provider/endpoints/index.js";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { isAppAdmin } from "@rutba/pos-shared/lib/roles";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
@@ -14,7 +13,7 @@ export default function CashRegisterDetailPage() {
     const { documentId } = router.query;
     const { currency } = useUtil();
     const { adminAppAccess } = useAuth();
-    const userIsAdmin = isAppAdmin(adminAppAccess, getAppName());
+    const userIsAdmin = isAppAdmin(adminAppAccess, AppContextEndpoints.getAppName());
     const [register, setRegister] = useState(null);
     const [payments, setPayments] = useState([]);
     const [transactions, setTransactions] = useState([]);

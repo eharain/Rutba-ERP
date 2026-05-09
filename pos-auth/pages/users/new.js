@@ -3,8 +3,7 @@ import { useRouter } from "next/router";
 import Layout from "../../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import AppAccessGate from "../../components/AppAccessGate";
-import { authApi } from "@rutba/pos-shared/lib/api";
-import { AppAccessesEndpoints } from "../../lib/endpoints";
+import { AuthAdminEndpoints, AppAccessesEndpoints } from "../../lib/endpoints";
 
 export default function NewUserPage() {
     const router = useRouter();
@@ -31,11 +30,11 @@ export default function NewUserPage() {
 
     async function loadOptions() {
         try {
-            const rolesRes = await authApi.get("/auth-admin/roles");
+            const [rolesRes, aaRes] = await Promise.all([
+                AuthAdminEndpoints.fetchRoles(),
+                AppAccessesEndpoints.fetchList(),
+            ]);
             setRoles(rolesRes?.roles || []);
-
-            const domainsEp = AppAccessesEndpoints.list();
-            const aaRes = await authApi.call(domainsEp);
             setAppAccesses(aaRes?.data || aaRes || []);
         } catch (err) {
             console.error("Failed to load options", err);
@@ -97,7 +96,7 @@ export default function NewUserPage() {
                 domain_accesses: form.domain_accesses,
                 admin_domain_accesses: form.admin_domain_accesses,
             };
-            await authApi.post("/auth-admin/users", payload);
+            await AuthAdminEndpoints.postCreateUser(payload);
             router.push("/users");
         } catch (err) {
             const msg = err?.response?.data?.error?.message || err.message || "Failed to create user";

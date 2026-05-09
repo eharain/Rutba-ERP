@@ -2,8 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import { authApi } from "@rutba/pos-shared/lib/api";
-import { BrandsEndpoints, ProductsEndpoints } from "@rutba/api-provider/endpoints";
+import { BrandsEndpoints, ProductsEndpoints } from "../../packages/api-provider/endpoints/index.js";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
 import FileView from "@rutba/pos-shared/components/FileView";
 
@@ -58,9 +57,8 @@ export default function BrandsPage() {
         const timer = setTimeout(async () => {
             setProductSearchLoading(true);
             try {
-                const ep = ProductsEndpoints.searchInRelation(searchValue, 1, 20);
-                const res = await authApi.fetch(ep.path, {
-                    ...ep.params,
+                const res = await ProductsEndpoints.fetchSearch(searchValue, {
+                    pageSize: 20,
                     populate: { brands: true },
                 });
                 const data = res?.data ?? res;
@@ -90,8 +88,7 @@ export default function BrandsPage() {
             let page = 1;
             let totalPages = 1;
             do {
-                const ep = BrandsEndpoints.listPaged(page, 100);
-                const res = await authApi.fetch(ep.path, ep.params);
+                const res = await BrandsEndpoints.fetchList({ page, pageSize: 100 });
                 const data = res?.data ?? res;
                 allBrands = [...allBrands, ...(data || [])];
                 totalPages = res?.meta?.pagination?.pageCount || 1;
@@ -121,10 +118,9 @@ export default function BrandsPage() {
             let page = 1;
             let totalPages = 1;
             do {
-                const ep = ProductsEndpoints.list(page, 100, { sort: 'name:asc' });
-                const res = await authApi.fetch(ep.path, {
-                    ...ep.params,
-                    filters: { brands: { documentId: selectedBrandId } },
+                const res = await ProductsEndpoints.fetchList(page, 100, {
+                    sort: 'name:asc',
+                    brands: [selectedBrandId],
                     populate: { brands: true },
                 });
                 const data = res?.data ?? res;
@@ -226,10 +222,8 @@ export default function BrandsPage() {
                 let page = 1;
                 let totalPages = 1;
                 do {
-                    const mergeEp = ProductsEndpoints.list(page, 100, {});
-                    const res = await authApi.fetch(mergeEp.path, {
-                        ...mergeEp.params,
-                        filters: { brands: { documentId: sourceBrandId } },
+                    const res = await ProductsEndpoints.fetchList(page, 100, {
+                        brands: [sourceBrandId],
                         populate: { brands: true },
                     });
                     const sourceProducts = res?.data ?? res ?? [];

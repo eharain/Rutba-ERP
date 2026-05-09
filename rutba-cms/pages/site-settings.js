@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { authApi } from "@rutba/pos-shared/lib/api";
+import { SiteSettingEndpoints } from "@rutba/api-provider/endpoints";
 import { useToast } from "../components/Toast";
 import FileView from "@rutba/pos-shared/components/FileView";
 
@@ -30,8 +30,8 @@ export default function SiteSettingsPage() {
     useEffect(() => {
         if (!jwt) return;
         Promise.all([
-            authApi.get("/site-setting", { status: "draft", populate: ["site_logo", "favicon"] }).catch(() => ({ data: null })),
-            authApi.get("/site-setting", { status: "published", fields: ["id"] }).catch(() => ({ data: null })),
+            SiteSettingEndpoints.fetchDraft({ populate: ["site_logo", "favicon"] }).catch(() => ({ data: null })),
+            SiteSettingEndpoints.fetchPublished({ fields: ["id"] }).catch(() => ({ data: null })),
         ])
             .then(([draftRes, pubRes]) => {
                 const d = draftRes.data || draftRes;
@@ -77,9 +77,9 @@ export default function SiteSettingsPage() {
             let res;
             if (!record) {
                 // First time — singleType doesn't exist yet, use PUT to create it
-                res = await authApi.put("/site-setting", buildPayload());
+                res = await SiteSettingEndpoints.putUpdate(buildPayload());
             } else {
-                res = await authApi.put("/site-setting?status=draft", buildPayload());
+                res = await SiteSettingEndpoints.putUpdateDraft(buildPayload());
             }
             const saved = res.data || res;
             setRecord(saved);
@@ -95,8 +95,8 @@ export default function SiteSettingsPage() {
     const handlePublish = async () => {
         setSaving(true);
         try {
-            await authApi.put("/site-setting?status=draft", buildPayload());
-            await authApi.post("/site-setting/publish", {});
+            await SiteSettingEndpoints.putUpdateDraft(buildPayload());
+            await SiteSettingEndpoints.postPublish();
             setIsPublished(true);
             toast("Site settings saved & published!", "success");
         } catch (err) {
@@ -111,8 +111,8 @@ export default function SiteSettingsPage() {
         if (!confirm("Discard draft changes and load the published version?")) return;
         setSaving(true);
         try {
-            await authApi.post("/site-setting/discard", {});
-            const res = await authApi.get("/site-setting", { status: "draft", populate: ["site_logo", "favicon"] });
+            await SiteSettingEndpoints.postDiscard();
+            const res = await SiteSettingEndpoints.fetchDraft({ populate: ["site_logo", "favicon"] });
             const d = res.data || res;
             setRecord(d);
             setSiteName(d.site_name || "");

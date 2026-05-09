@@ -25,11 +25,47 @@ export { CategoriesEndpoints } from './categories.js';
 export { SuppliersEndpoints } from './suppliers.js';
 export { CmsPagesEndpoints } from './cms-pages.js';
 export { UploadEndpoints } from './upload.js';
+export { MediaLibraryEndpoints } from './media-library.js';
+export { AppContextEndpoints } from './app-context.js';
+export { MediaUtilsEndpoints } from './media-utils.js';
+export { StockHelpersEndpoints } from './stock-helpers.js';
+export { AuthEndpoints } from './auth.js';
+export { AuthApiEndpoints, PublicApiEndpoints } from './http-client.js';
 export { EnumsEndpoints } from './enums.js';
 export { TermTypesEndpoints, TermsEndpoints } from './term-types.js';
 export { CrmLeadsEndpoints } from './crm-leads.js';
+export { CrmContactsEndpoints } from './crm-contacts.js';
+export { CrmActivitiesEndpoints } from './crm-activities.js';
+export { HrAttendancesEndpoints } from './hr-attendances.js';
+export { HrDepartmentsEndpoints } from './hr-departments.js';
+export { HrEmployeesEndpoints } from './hr-employees.js';
+export { HrLeaveRequestsEndpoints } from './hr-leave-requests.js';
+export { HrTeamsEndpoints } from './hr-teams.js';
+export { AuthAdminEndpoints } from './auth-admin.js';
+export { BrandGroupsEndpoints } from './brand-groups.js';
+export { CategoryGroupsEndpoints } from './category-groups.js';
+export { ProductGroupsEndpoints } from './product-groups.js';
+export { CmsFootersEndpoints } from './cms-footers.js';
+export { SaleOffersEndpoints } from './sale-offers.js';
 export { StockInputsEndpoints } from './stock-inputs.js';
 export { NotificationTemplatesEndpoints } from './notification-templates.js';
+export { SocialAccountsEndpoints } from './social-accounts.js';
+export { SocialPostsEndpoints } from './social-posts.js';
+export { SocialRepliesEndpoints } from './social-replies.js';
+export { WebOrdersEndpoints } from './web-orders.js';
+export { ReturnRequestsEndpoints } from './return-requests.js';
+export { DeliveryMethodsEndpoints } from './delivery-methods.js';
+export { DeliveryZonesEndpoints } from './delivery-zones.js';
+export { RidersEndpoints } from './riders.js';
+export { SaleOrdersEndpoints } from './sale-orders.js';
+export { SiteSettingEndpoints } from './site-setting.js';
+export { AccInvoicesEndpoints } from './acc-invoices.js';
+export { AccExpensesEndpoints } from './acc-expenses.js';
+export { AccJournalEntriesEndpoints } from './acc-journal-entries.js';
+export { AccAccountsEndpoints } from './acc-accounts.js';
+export { PaySalaryStructuresEndpoints } from './pay-salary-structures.js';
+export { PayPayslipsEndpoints } from './pay-payslips.js';
+export { PayPayrollRunsEndpoints } from './pay-payroll-runs.js';
 
 export {
     SalesEndpointsMeta,
@@ -106,3 +142,16 @@ export {
     DISABLED_ENDPOINT_META,
     ENDPOINT_METADATA_REGISTRY,
 } from './registry.js';
+
+// Named operation functions — grouped by entity
+export { fetchSaleByIdOrInvoice, fetchSales, fetchEntities, createSale, searchSales } from './sales.js';
+export { fetchPurchaseByIdDocumentIdOrPO, fetchPurchases, savePurchaseItems, savePurchase, createPurchase, searchPurchases } from './purchases.js';
+export { savePurchaseItem } from './purchase-items.js';
+export { fetchProducts, loadProduct, saveProduct, saveProductItems, searchProduct, searchProducts, createProduct } from './products.js';
+export { saveSaleItems } from './sale-items.js';
+export { fetchReturns } from './sale-returns.js';
+export { fetchCategories, searchCategories } from './categories.js';
+export { fetchBrands } from './brands.js';
+export { fetchEnumsValues } from './enums.js';
+export { generateStockItems, searchStockItemsByName, searchStockItemsByBarcode, searchStockItems } from './stock-items.js';
+export { searchBranches } from './branches.js';

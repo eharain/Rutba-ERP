@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { authApi } from '../lib/api';
-import { TermTypesEndpoints } from '@rutba/api-provider/endpoints';
+import { ProductsEndpoints } from '../lib/endpoints';
+import { TermTypesEndpoints } from '../lib/endpoints';
 import TermTypeTermDialog from './TermTypeTermDialog';
 
 function getEntryId(entry) {
@@ -46,12 +46,7 @@ export default function ProductVariantManager({ productId, onUpdate }) {
         if (!productId) return;
         setLoading(true);
         try {
-            const res = await authApi.get(`/products/${productId}`, {
-                populate: {
-                    terms: { populate: { term_types: true } },
-                    variants: { populate: { terms: { populate: { term_types: true } }, logo: true } },
-                },
-            });
+            const res = await ProductsEndpoints.fetchById(productId);
             const prod = res.data || res;
             setProduct(prod);
             setVariants(prod.variants || []);
@@ -113,8 +108,8 @@ export default function ProductVariantManager({ productId, onUpdate }) {
             const existingTermIds = (product.terms || []).map(t => getEntryId(t));
             const newIds = selectedTerms.map(t => getEntryId(t)).filter(id => !existingTermIds.includes(id));
             if (newIds.length > 0) {
-                await authApi.put(`/products/${getEntryId(product)}`, {
-                    data: { terms: { connect: [...existingTermIds, ...newIds] } },
+                await ProductsEndpoints.putUpdate(getEntryId(product), {
+                    terms: { connect: [...existingTermIds, ...newIds] },
                 });
             }
             await loadData();
@@ -132,8 +127,8 @@ export default function ProductVariantManager({ productId, onUpdate }) {
         if (!product) return;
         setLoading(true);
         try {
-            await authApi.put(`/products/${getEntryId(product)}`, {
-                data: { terms: { disconnect: [termDocId] } },
+            await ProductsEndpoints.putUpdate(getEntryId(product), {
+                terms: { disconnect: [termDocId] },
             });
             await loadData();
             if (onUpdate) onUpdate();
@@ -154,8 +149,8 @@ export default function ProductVariantManager({ productId, onUpdate }) {
             const existingTermIds = (variant.terms || []).map(t => getEntryId(t));
             const newIds = selectedTerms.map(t => getEntryId(t)).filter(id => !existingTermIds.includes(id));
             if (newIds.length > 0) {
-                await authApi.put(`/products/${variantDocId}`, {
-                    data: { terms: { connect: [...existingTermIds, ...newIds] } },
+                await ProductsEndpoints.putUpdate(variantDocId, {
+                    terms: { connect: [...existingTermIds, ...newIds] },
                 });
             }
             await loadData();
@@ -172,8 +167,8 @@ export default function ProductVariantManager({ productId, onUpdate }) {
     async function handleRemoveTermFromVariant(variantDocId, termDocId) {
         setLoading(true);
         try {
-            await authApi.put(`/products/${variantDocId}`, {
-                data: { terms: { disconnect: [termDocId] } },
+            await ProductsEndpoints.putUpdate(variantDocId, {
+                terms: { disconnect: [termDocId] },
             });
             await loadData();
             if (onUpdate) onUpdate();

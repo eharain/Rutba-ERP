@@ -1,4 +1,6 @@
-import { authApi } from '../api.js';
+import { api, authApi } from '../api.js';
+import { AuthApiEndpoints } from './http-client.js';
+import { dataNode } from '../pos/search.js';
 
 /**
  * BranchesEndpoints
@@ -16,6 +18,10 @@ export const BranchesEndpoints = {
             populate: { desks: true, currency: true },
         },
     }),
+    fetchListWithDesks: () => {
+        const ep = BranchesEndpoints.listWithDesks();
+        return api.get(ep.path, ep.params);
+    },
 
     /**
      * Simple list of branches (no nested populate).
@@ -68,6 +74,9 @@ export const BranchesEndpoints = {
         const ep = BranchesEndpoints.update(documentId);
         return authApi.put(ep.path, { data });
     },
+
+    /** Async: fetch archive statistics for a branch. */
+    fetchArchiveStats: (branchDocumentId) => authApi.get(`/branches/${branchDocumentId}/archive-stats`),
 
     /** Async: archive stock items for a branch. */
     postArchiveStock: (branchDocumentId, data) => {
@@ -123,3 +132,29 @@ export const BranchesEndpointRules = {
 
 
 
+
+
+/**
+ * Search branches by name or code.
+ * @param {string} searchTerm
+ * @param {number} page
+ * @param {number} rowsPerPage
+ */
+export async function searchBranches(searchTerm, page = 1, rowsPerPage = 5) {
+    const hasSearch = searchTerm && searchTerm.trim().length > 0;
+    const qs = (await import('qs')).default;
+    const query = {
+        populate: ['logo', 'gallery', 'currency', { categories: { populate: ['logo', 'gallery'] } }],
+        pagination: { page, pageSize: rowsPerPage },
+        ...(hasSearch && {
+            filters: {
+                $or: [
+                    { name: { $containsi: searchTerm } },
+                    { code: { $eq: searchTerm } },
+                ],
+            },
+        }),
+    };
+    const res = await AuthApiEndpoints.fetch(`/branches?${qs.stringify(query, { encodeValuesOnly: true })}`);
+    return dataNode(res);
+}

@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { authApi } from "@rutba/pos-shared/lib/api";
+import { WebOrdersEndpoints, ReturnRequestsEndpoints } from "@rutba/api-provider/endpoints";
 
 export default function Returns() {
     const router = useRouter();
@@ -18,7 +18,7 @@ export default function Returns() {
 
     useEffect(() => {
         if (!jwt || !orderId) return;
-        authApi.get(`/web-orders/${orderId}?populate=*`, {}, jwt)
+        WebOrdersEndpoints.fetchById(orderId, { populate: '*' }, jwt)
             .then((res) => setOrder(res.data || res))
             .catch((err) => console.error("Failed to load order", err));
     }, [jwt, orderId]);
@@ -34,12 +34,12 @@ export default function Returns() {
         setError("");
 
         try {
-            await authApi.post("/return-requests", {
+            await ReturnRequestsEndpoints.postCreate({
                 data: {
                     order: orderId,
                     reason: reason.trim(),
                 }
-            }, jwt);
+            });
             setSubmitted(true);
         } catch (err) {
             console.error("Failed to submit return request", err);

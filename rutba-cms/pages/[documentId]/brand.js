@@ -3,12 +3,11 @@ import { useRouter } from "next/router";
 import Layout from "../../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { authApi } from "@rutba/pos-shared/lib/api";
 import FileView from "@rutba/pos-shared/components/FileView";
+import { BrandsEndpoints, ProductsEndpoints } from "@rutba/api-provider/endpoints";
 import Link from "next/link";
 import { useToast } from "../../components/Toast";
 import ProductPickerTabs from "../../components/ProductPickerTabs";
-import { fetchProducts } from "@rutba/pos-shared/lib/pos";
 
 export default function BrandDetail() {
     const router = useRouter();
@@ -31,9 +30,14 @@ export default function BrandDetail() {
     useEffect(() => {
         if (!jwt || !documentId || isNew) { setLoading(false); return; }
         Promise.all([
-            authApi.get(`/brands/${documentId}`, { status: 'draft', populate: ["logo", "gallery"] }),
-            authApi.get(`/brands/${documentId}`, { status: 'published', fields: ["documentId"] }).catch(() => ({ data: null })),
-            fetchProducts({ brands: [documentId], parentOnly: true, status: "draft" }, 1, 1000, "name:asc"),
+            BrandsEndpoints.fetchByIdDraft(documentId, { populate: ["logo", "gallery"] }),
+            BrandsEndpoints.fetchByIdPublished(documentId, { fields: ["documentId"] }).catch(() => ({ data: null })),
+            ProductsEndpoints.fetchList({
+                status: "draft",
+                filters: { brands: { documentId: { $in: [documentId] } }, parent: { documentId: { $null: true } } },
+                sort: ["name:asc"],
+                pagination: { page: 1, pageSize: 1000 },
+            }),
         ])
             .then(([brandRes, pubRes, productsRes]) => {
                 const b = brandRes.data || brandRes;
@@ -62,15 +66,11 @@ export default function BrandDetail() {
         setSaving(true);
         try {
             if (isNew) {
-                const res = await authApi.post("/brands", {
-                    data: { name, slug: slug || name.toLowerCase().replace(/\s+/g, "-") },
-                });
+                const res = await BrandsEndpoints.postCreate({ name, slug: slug || name.toLowerCase().replace(/\s+/g, "-") });
                 const created = res.data || res;
                 router.push(`/${created.documentId}/brand`);
             } else {
-                await authApi.put(`/brands/${documentId}?status=draft`, {
-                    data: { name },
-                });
+                await BrandsEndpoints.putUpdateDraft(documentId, { name });
 
                 const initialIds = new Set(initialProductIdsRef.current);
                 const currentIds = new Set(selectedProductIds);
@@ -79,14 +79,10 @@ export default function BrandDetail() {
 
                 const updates = [];
                 for (const id of added) {
-                    updates.push(authApi.put(`/products/${id}?status=draft`, {
-                        data: { brands: { connect: [documentId] } }
-                    }));
+                    updates.push(ProductsEndpoints.putUpdateDraft(id, { brands: { connect: [documentId] } }));
                 }
                 for (const id of removed) {
-                    updates.push(authApi.put(`/products/${id}?status=draft`, {
-                        data: { brands: { disconnect: [documentId] } }
-                    }));
+                    updates.push(ProductsEndpoints.putUpdateDraft(id, { brands: { disconnect: [documentId] } }));
                 }
                 await Promise.all(updates);
 
@@ -104,10 +100,8 @@ export default function BrandDetail() {
     const handlePublish = async () => {
         setSaving(true);
         try {
-            await authApi.put(`/brands/${documentId}?status=draft`, {
-                data: { name },
-            });
-            await authApi.post(`/brands/${documentId}/publish`, {});
+            await BrandsEndpoints.putUpdateDraft(documentId, { name });
+            await BrandsEndpoints.postPublish(documentId);
             setIsPublished(true);
             toast("Brand saved & published!", "success");
         } catch (err) {
@@ -121,7 +115,7 @@ export default function BrandDetail() {
     const handleUnpublish = async () => {
         setSaving(true);
         try {
-            await authApi.post(`/brands/${documentId}/unpublish`, {});
+            await BrandsEndpoints.postUnpublish(documentId);
             setIsPublished(false);
             toast("Brand unpublished.", "success");
         } catch (err) {
@@ -136,10 +130,8 @@ export default function BrandDetail() {
         if (!confirm("Save current draft and load the published version into the editor?")) return;
         setSaving(true);
         try {
-            await authApi.put(`/brands/${documentId}?status=draft`, {
-                data: { name },
-            });
-            const res = await authApi.get(`/brands/${documentId}`, { status: 'published', populate: ["logo", "gallery"] });
+            await BrandsEndpoints.putUpdateDraft(documentId, { name });
+            const res = await BrandsEndpoints.fetchByIdPublished(documentId, { populate: ["logo", "gallery"] });
             const b = res.data || res;
             if (!b) { toast("No published version found.", "warning"); return; }
             setName(b.name || "");

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { authApi } from "@rutba/pos-shared/lib/api";
+import { AccAccountsEndpoints } from "@rutba/api-provider/endpoints";
 
 export default function ChartOfAccounts() {
     const { jwt } = useAuth();
@@ -11,7 +11,8 @@ export default function ChartOfAccounts() {
 
     useEffect(() => {
         if (!jwt) return;
-        authApi.get("/acc-accounts?sort=code:asc", {}, jwt)
+        const ep = AccAccountsEndpoints.list();
+        AccAccountsEndpoints.fetchList(ep.params)
             .then((res) => setAccounts(res.data || []))
             .catch((err) => console.error("Failed to load accounts", err))
             .finally(() => setLoading(false));

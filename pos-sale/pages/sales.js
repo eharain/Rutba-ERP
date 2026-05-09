@@ -5,8 +5,7 @@ import PermissionCheck from "@rutba/pos-shared/components/PermissionCheck";
 import { fetchSales } from "@rutba/pos-shared/lib/pos";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { isAppAdmin } from "@rutba/pos-shared/lib/roles";
-import { getBranches, getAdminMode, authApi } from "@rutba/pos-shared/lib/api";
-import { SalesEndpoints } from "@rutba/api-provider/endpoints";
+import { AppContextEndpoints, BranchesEndpoints, SalesEndpoints } from "@rutba/pos-shared/lib/endpoints";
 import SaleApi from "@rutba/pos-shared/lib/saleApi";
 import Link from "next/link";
 import { Table, TableHead, TableRow, TableCell, TableBody, CircularProgress, TablePagination } from "@rutba/pos-shared/components/Table";
@@ -65,7 +64,7 @@ export default function Sales() {
     const [sales, setSales] = useState([]);
     const { jwt, adminAppAccess } = useAuth();
     const admin = isAppAdmin(adminAppAccess, "sale");
-    const elevated = admin && getAdminMode();
+    const elevated = admin && AppContextEndpoints.getAdminMode();
     const [page, setPage] = useState(0);
     const [rowsPerPage, setRowsPerPage] = useState(10);
     const [total, setTotal] = useState(0);
@@ -106,7 +105,7 @@ export default function Sales() {
         if (!admin) return;
         (async () => {
             try {
-                const res = await getBranches();
+                const res = await BranchesEndpoints.fetchList();
                 const data = res?.data ?? res;
                 setBranches(Array.isArray(data) ? data : []);
             } catch { setBranches([]); }

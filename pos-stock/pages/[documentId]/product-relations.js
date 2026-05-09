@@ -3,8 +3,7 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import Layout from '../../components/Layout';
 import ProtectedRoute from '@rutba/pos-shared/components/ProtectedRoute';
-import { authApi } from '@rutba/pos-shared/lib/api';
-import { StockItemsEndpoints, PurchaseItemsEndpoints, ProductsEndpoints } from '@rutba/api-provider/endpoints';
+import { StockItemsEndpoints, PurchaseItemsEndpoints, ProductsEndpoints } from '../../../packages/api-provider/endpoints/index.js';
 import { loadProduct } from '@rutba/pos-shared/lib/pos';
 import { useUtil } from '@rutba/pos-shared/context/UtilContext';
 import StrapiImage from '@rutba/pos-shared/components/StrapiImage';
@@ -50,13 +49,11 @@ export default function ProductRelationsPage() {
             setProduct(prod);
 
             // Load stock items count
-            const siEp = StockItemsEndpoints.byProduct(documentId, { pageSize: 1 });
-            const itemsRes = await authApi.fetch(siEp.path, siEp.params);
+            const itemsRes = await StockItemsEndpoints.fetchByProduct(documentId, { pageSize: 1 });
             prod._stockItemsCount = itemsRes?.meta?.pagination?.total ?? 0;
 
             // Load purchase items count
-            const piEp = PurchaseItemsEndpoints.byProduct(documentId, { pageSize: 1 });
-            const purchaseItemsRes = await authApi.fetch(piEp.path, piEp.params);
+            const purchaseItemsRes = await PurchaseItemsEndpoints.fetchByProduct(documentId, { pageSize: 1 });
             prod._purchaseItemsCount = purchaseItemsRes?.meta?.pagination?.total ?? 0;
 
             setProduct({ ...prod });
@@ -80,8 +77,7 @@ export default function ProductRelationsPage() {
         const timer = setTimeout(async () => {
             setMergeSearchLoading(true);
             try {
-                const ep = ProductsEndpoints.search(searchValue, { excludeDocId: documentId });
-                const res = await authApi.fetch(ep.path, ep.params);
+                const res = await ProductsEndpoints.fetchSearch(searchValue, { excludeDocId: documentId });
                 const data = res?.data ?? res;
                 if (isActive) setMergeResults(data || []);
             } catch (err) {
@@ -129,8 +125,7 @@ export default function ProductRelationsPage() {
                     let totalPages = 1;
                     let itemCount = 0;
                     do {
-                        const siEp = StockItemsEndpoints.byProduct(sourceDocId, { page, pageSize: 100 });
-                        const res = await authApi.fetch(siEp.path, siEp.params);
+                        const res = await StockItemsEndpoints.fetchByProduct(sourceDocId, { page, pageSize: 100 });
                         const items = res?.data ?? res ?? [];
                         totalPages = res?.meta?.pagination?.pageCount || 1;
                         for (const item of items) {
@@ -150,8 +145,7 @@ export default function ProductRelationsPage() {
                     let totalPages = 1;
                     let itemCount = 0;
                     do {
-                        const piEp = PurchaseItemsEndpoints.byProduct(sourceDocId, { page, pageSize: 100 });
-                        const res = await authApi.fetch(piEp.path, piEp.params);
+                        const res = await PurchaseItemsEndpoints.fetchByProduct(sourceDocId, { page, pageSize: 100 });
                         const items = res?.data ?? res ?? [];
                         totalPages = res?.meta?.pagination?.pageCount || 1;
                         for (const item of items) {
@@ -185,8 +179,7 @@ export default function ProductRelationsPage() {
                 }
 
                 // 4) Transfer variants (child products)
-                const variantsEp = ProductsEndpoints.byParent(sourceDocId);
-                const variantsRes = await authApi.fetch(variantsEp.path, variantsEp.params);
+                const variantsRes = await ProductsEndpoints.fetchByParent(sourceDocId);
                 const variants = variantsRes?.data ?? variantsRes ?? [];
                 if (variants.length > 0) {
                     for (const variant of variants) {

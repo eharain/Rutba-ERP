@@ -3,7 +3,6 @@ import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import AppAccessGate from "../components/AppAccessGate";
 import PermissionCheck from "@rutba/pos-shared/components/PermissionCheck";
-import { authApi } from "@rutba/pos-shared/lib/api";
 import { AppAccessesEndpoints } from "../lib/endpoints";
 
 export default function AppAccessPage() {
@@ -24,8 +23,7 @@ export default function AppAccessPage() {
     async function loadEntries() {
         setLoading(true);
         try {
-            const ep = AppAccessesEndpoints.listWithUsers();
-            const res = await authApi.call(ep);
+            const res = await AppAccessesEndpoints.fetchList();
             setEntries(res?.data || res || []);
         } catch (err) {
             setError("Failed to load app domains");
@@ -45,8 +43,7 @@ export default function AppAccessPage() {
         }
         setSaving(true);
         try {
-            const ep = AppAccessesEndpoints.create();
-            await authApi.call(ep, {
+            await AppAccessesEndpoints.postCreate({
                 data: { key: newKey, name: newName, description: newDesc }
             });
             setNewKey("");
@@ -68,8 +65,7 @@ export default function AppAccessPage() {
         setError("");
         setSuccess("");
         try {
-            const ep = AppAccessesEndpoints.deleteById(entry.id);
-            await authApi.call(ep);
+            await AppAccessesEndpoints.del(entry.id);
             setSuccess(`"${entry.key}" disabled.`);
             await loadEntries();
         } catch (err) {

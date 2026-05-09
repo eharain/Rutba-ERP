@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import Layout from "../../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { authApi } from "@rutba/pos-shared/lib/api";
+import { CrmLeadsEndpoints } from "@rutba/api-provider/endpoints";
 import Link from "next/link";
 import LeadForm from "../../components/form/LeadForm";
 
@@ -18,7 +18,7 @@ export default function LeadDetail() {
     const loadLead = () => {
         if (!jwt || !documentId) return;
         setLoading(true);
-        authApi.get(`/crm-leads/${documentId}?populate=*`, {}, jwt)
+        CrmLeadsEndpoints.fetchById(documentId, { populate: '*' })
             .then((res) => setLead(res.data || res))
             .catch((err) => console.error("Failed to load lead", err))
             .finally(() => setLoading(false));

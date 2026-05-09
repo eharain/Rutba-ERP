@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { authApi, StraipImageUrl } from "@rutba/pos-shared/lib/api";
+import { MediaUtilsEndpoints, ProductGroupsEndpoints } from "@rutba/api-provider/endpoints";
 import Link from "next/link";
 
 export default function ProductGroups() {
@@ -15,13 +15,8 @@ export default function ProductGroups() {
         setLoading(true);
         try {
             const [draftRes, pubRes] = await Promise.all([
-                authApi.get("/product-groups", {
-                    status: 'draft',
-                    sort: ["createdAt:desc"],
-                    populate: ["gallery", "cover_image", "products"],
-                    pagination: { pageSize: 50 },
-                }),
-                authApi.get("/product-groups", { status: 'published', fields: ["documentId"], pagination: { pageSize: 200 } }),
+                ProductGroupsEndpoints.fetchListDraft({ sort: ["createdAt:desc"], populate: ["gallery", "cover_image", "products"], pagination: { pageSize: 50 } }),
+                ProductGroupsEndpoints.fetchListPublished({ pageSize: 200 }),
             ]);
             const pubIds = new Set((pubRes.data || []).map(g => g.documentId));
             const mapped = (draftRes.data || []).map(g => ({ ...g, _isPublished: pubIds.has(g.documentId) }));
@@ -76,9 +71,9 @@ export default function ProductGroups() {
                                     <tr key={g.id}>
                                         <td>
                                             {g.gallery?.url ? (
-                                                <img src={StraipImageUrl(g.gallery)} alt={g.name} style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 4 }} />
+                                                <img src={MediaUtilsEndpoints.strapiImageUrl(g.gallery)} alt={g.name} style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 4 }} />
                                             ) : g.cover_image?.url ? (
-                                                <img src={StraipImageUrl(g.cover_image)} alt={g.name} style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 4 }} />
+                                                <img src={MediaUtilsEndpoints.strapiImageUrl(g.cover_image)} alt={g.name} style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 4 }} />
                                             ) : (
                                                 <span className="text-muted"><i className="fas fa-layer-group"></i></span>
                                             )}

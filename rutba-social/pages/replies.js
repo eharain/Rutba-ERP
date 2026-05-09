@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { authApi } from "@rutba/pos-shared/lib/api";
+import { SocialRepliesEndpoints } from "@rutba/api-provider/endpoints";
 import { useToast } from "../components/Toast";
 import { PlatformBadge } from "../components/PlatformBadge";
 import Link from "next/link";
@@ -42,7 +42,7 @@ export default function RepliesPage() {
             if (directionFilter === 'inbound') filters.is_outbound = { $eq: false };
             if (directionFilter === 'outbound') filters.is_outbound = { $eq: true };
             if (Object.keys(filters).length > 0) params.filters = filters;
-            const res = await authApi.get('/social-replies', params);
+            const res = await SocialRepliesEndpoints.fetchList(params);
             setReplies(res.data || []);
             setPageCount(res.meta?.pagination?.pageCount || 1);
         } catch (err) {
@@ -58,7 +58,7 @@ export default function RepliesPage() {
     const handleDelete = async (reply) => {
         if (!confirm("Delete this reply?")) return;
         try {
-            await authApi.del(`/social-replies/${reply.documentId}`);
+            await SocialRepliesEndpoints.putDelete(reply.documentId);
             toast("Reply deleted.", "success");
             await loadReplies();
         } catch (err) {

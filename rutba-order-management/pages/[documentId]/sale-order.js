@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import Layout from "../../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { authApi } from "@rutba/pos-shared/lib/api";
+import { SaleOrdersEndpoints, RidersEndpoints, ProductsEndpoints } from "../../../packages/api-provider/endpoints/index.js";
 import Link from "next/link";
 import { useToast } from "../../components/Toast";
 
@@ -59,15 +59,14 @@ export default function SaleOrderDetailPage() {
       setLoading(true);
       try {
         const [riderRes, productRes] = await Promise.all([
-          authApi.get("/riders", {
+          RidersEndpoints.fetchList({
             sort: ["full_name:asc"],
             fields: ["documentId", "full_name", "status"],
             pagination: { pageSize: 200 },
           }),
-          authApi.get("/products", {
+          ProductsEndpoints.fetchList(1, 500, {
             sort: ["name:asc"],
             fields: ["documentId", "name"],
-            pagination: { pageSize: 500 },
           }),
         ]);
 
@@ -79,7 +78,7 @@ export default function SaleOrderDetailPage() {
           return;
         }
 
-        const res = await authApi.get(`/sale-orders/${documentId}`, {
+        const res = await SaleOrdersEndpoints.fetchById(documentId, {
           populate: ["customer_contact", "products", "assigned_rider"],
         });
         const o = res.data || res;
@@ -188,12 +187,12 @@ export default function SaleOrderDetailPage() {
 
       if (isNew) {
         payload.data.order_id = `ADM-${Date.now()}`;
-        const res = await authApi.post("/sale-orders", payload);
+        const res = await SaleOrdersEndpoints.postCreate(payload);
         const created = res.data || res;
         toast("Order created.", "success");
         router.push(`/${created.documentId}/sale-order`);
       } else {
-        await authApi.put(`/sale-orders/${documentId}`, payload);
+        await SaleOrdersEndpoints.putUpdate(documentId, payload);
         toast("Order updated.", "success");
       }
     } catch (err) {
@@ -236,7 +235,7 @@ export default function SaleOrderDetailPage() {
     if (!orderStatus) return;
     setProcessing(true);
     try {
-      await authApi.post(`/sale-orders/${documentId}/update-status`, {
+      await SaleOrdersEndpoints.postUpdateStatus(documentId, {
         status: orderStatus,
         rider_notes: riderNotes || undefined,
       });
@@ -253,7 +252,7 @@ export default function SaleOrderDetailPage() {
     if (!riderDocumentId) return;
     setProcessing(true);
     try {
-      await authApi.post(`/sale-orders/${documentId}/assign-rider`, { rider_document_id: riderDocumentId });
+      await SaleOrdersEndpoints.postAssignRider(documentId, { rider_document_id: riderDocumentId });
       toast("Rider assigned.", "success");
     } catch (err) {
       console.error("Failed to assign rider", err);

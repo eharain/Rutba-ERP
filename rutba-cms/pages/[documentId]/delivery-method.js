@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import Layout from "../../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { authApi } from "@rutba/pos-shared/lib/api";
+import { CategoriesEndpoints, CmsPagesEndpoints, DeliveryMethodsEndpoints, ProductGroupsEndpoints } from "@rutba/api-provider/endpoints";
 import Link from "next/link";
 import { useToast } from "../../components/Toast";
 
@@ -105,9 +105,9 @@ export default function DeliveryMethodDetail() {
     useEffect(() => {
         if (!jwt) return;
         Promise.all([
-            authApi.get("/product-groups", { status: "draft", fields: ["documentId", "name"], pagination: { pageSize: 200 } }),
-            authApi.get("/cms-pages", { status: "draft", fields: ["documentId", "title", "slug"], pagination: { pageSize: 200 } }),
-            authApi.get("/categories", { status: "draft", fields: ["documentId", "name"], pagination: { pageSize: 200 } }),
+            ProductGroupsEndpoints.fetchListDraft({ pagination: { pageSize: 200 }, sort: ["name:asc"] }),
+            CmsPagesEndpoints.fetchListDraft({ pageSize: 200, sort: ["title:asc"] }),
+            CategoriesEndpoints.fetchListDraft({ pagination: { pageSize: 200 }, sort: ["name:asc"], populate: [] }),
         ])
             .then(([gRes, pRes, cRes]) => {
                 setAllGroups(gRes.data || []);
@@ -123,7 +123,7 @@ export default function DeliveryMethodDetail() {
             return;
         }
 
-        authApi.get(`/delivery-methods/${documentId}`, {
+        DeliveryMethodsEndpoints.fetchByIdDraft(documentId, {
             populate: ["product_groups", "cms_pages", "categories"],
         })
             .then((res) => {
@@ -187,12 +187,12 @@ export default function DeliveryMethodDetail() {
         setSaving(true);
         try {
             if (isNew) {
-                const res = await authApi.post("/delivery-methods", buildPayload());
+                const res = await DeliveryMethodsEndpoints.postCreate(buildPayload());
                 const created = res.data || res;
                 toast("Delivery method created.", "success");
                 router.push(`/${created.documentId}/delivery-method`);
             } else {
-                await authApi.put(`/delivery-methods/${documentId}`, buildPayload());
+                await DeliveryMethodsEndpoints.putUpdate(documentId, buildPayload());
                 toast("Delivery method updated.", "success");
             }
         } catch (err) {
@@ -208,7 +208,7 @@ export default function DeliveryMethodDetail() {
         if (!confirm("Are you sure you want to delete this delivery method?")) return;
 
         try {
-            await authApi.del(`/delivery-methods/${documentId}`);
+            await DeliveryMethodsEndpoints.delById(documentId);
             toast("Delivery method deleted.", "success");
             router.push("/delivery-methods");
         } catch (err) {

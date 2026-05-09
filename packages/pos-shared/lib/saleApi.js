@@ -1,5 +1,5 @@
 import { fetchSaleByIdOrInvoice, searchStockItems } from './pos';
-import SaleModel from '../domain/sale/SaleModel';
+import SaleModel from '../context/domain/sale/SaleModel.js';
 import { getCashRegister, getBranch, getBranchDesk, getUser } from "../lib/utils";
 import {
     SalesEndpoints,
@@ -11,7 +11,7 @@ import {
     StockItemsEndpoints,
     BranchesEndpoints,
     CashRegisterTransactionEndpoints,
-} from '@rutba/api-provider/endpoints';
+} from './endpoints/index.js';
 
 export default class SaleApi {
 

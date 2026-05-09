@@ -1,4 +1,6 @@
 import { authApi } from '../api.js';
+import { AuthApiEndpoints } from './http-client.js';
+import { dataNode } from '../pos/search.js';
 
 /**
  * CategoriesEndpoints
@@ -49,9 +51,69 @@ export const CategoriesEndpoints = {
         },
     }),
 
+    listDraft: ({ search, sort, populate, pagination } = {}) => ({
+        path: '/categories',
+        params: {
+            status: 'draft',
+            sort: sort ?? ['name:asc'],
+            populate: populate ?? ['logo', 'parent'],
+            pagination: pagination ?? { pageSize: 100 },
+            ...(search ? { filters: { name: { $containsi: search } } } : {}),
+        },
+    }),
+
+    listPublished: ({ pageSize = 500 } = {}) => ({
+        path: '/categories',
+        params: {
+            status: 'published',
+            fields: ['documentId'],
+            pagination: { pageSize },
+        },
+    }),
+
+    byIdDraft: (documentId, { populate } = {}) => ({
+        path: `/categories/${documentId}`,
+        params: {
+            status: 'draft',
+            ...(populate ? { populate } : {}),
+        },
+    }),
+
+    byIdPublished: (documentId, { fields, populate } = {}) => ({
+        path: `/categories/${documentId}`,
+        params: {
+            status: 'published',
+            ...(fields ? { fields } : {}),
+            ...(populate ? { populate } : {}),
+        },
+    }),
+
+    publish: (documentId) => ({ path: `/categories/${documentId}/publish` }),
+    unpublish: (documentId) => ({ path: `/categories/${documentId}/unpublish` }),
+
     /** Async: fetch category list (single page). */
     fetchList: (opts = {}) => {
         const ep = CategoriesEndpoints.list(opts);
+        return authApi.fetch(ep.path, ep.params);
+    },
+
+    fetchListDraft: (opts = {}) => {
+        const ep = CategoriesEndpoints.listDraft(opts);
+        return authApi.fetch(ep.path, ep.params);
+    },
+
+    fetchListPublished: (opts = {}) => {
+        const ep = CategoriesEndpoints.listPublished(opts);
+        return authApi.fetch(ep.path, ep.params);
+    },
+
+    fetchByIdDraft: (documentId, opts = {}) => {
+        const ep = CategoriesEndpoints.byIdDraft(documentId, opts);
+        return authApi.fetch(ep.path, ep.params);
+    },
+
+    fetchByIdPublished: (documentId, opts = {}) => {
+        const ep = CategoriesEndpoints.byIdPublished(documentId, opts);
         return authApi.fetch(ep.path, ep.params);
     },
 
@@ -81,9 +143,13 @@ export const CategoriesEndpoints = {
 
     /** Async: update a category by documentId. */
     putUpdate: (documentId, data) => authApi.put(`/categories/${documentId}`, { data }),
+    putUpdateDraft: (documentId, data) => authApi.put(`/categories/${documentId}`, { data, status: 'draft' }),
 
     /** Async: delete a category by documentId. */
     putDelete: (documentId) => authApi.del(`/categories/${documentId}`),
+
+    postPublish: (documentId) => authApi.post(`/categories/${documentId}/publish`, {}),
+    postUnpublish: (documentId) => authApi.post(`/categories/${documentId}/unpublish`, {}),
 };
 
 export const CategoriesEndpointsMeta = {
@@ -119,6 +185,41 @@ export const CategoriesEndpointRules = {
     /** DELETE /api/categories/:id */
     delete: {},
 };
+
+/**
+ * Fetch a paginated list of categories.
+ * @param {number} page
+ * @param {number} rowsPerPage
+ */
+export async function fetchCategories(page, rowsPerPage) {
+    const ep = CategoriesEndpoints.list({ page, pageSize: rowsPerPage ?? 100 });
+    return await AuthApiEndpoints.fetch(ep.path, ep.params);
+}
+
+/**
+ * Search categories by name or code.
+ * @param {string} searchTerm
+ * @param {number} page
+ * @param {number} rowsPerPage
+ */
+export async function searchCategories(searchTerm, page = 1, rowsPerPage = 5) {
+    const hasSearch = searchTerm && searchTerm.trim().length > 0;
+    const qs = (await import('qs')).default;
+    const query = {
+        populate: ['logo', 'gallery', { parent: { populate: ['logo', 'gallery'] } }],
+        pagination: { page, pageSize: rowsPerPage },
+        ...(hasSearch && {
+            filters: {
+                $or: [
+                    { name: { $containsi: searchTerm } },
+                    { code: { $eq: searchTerm } },
+                ],
+            },
+        }),
+    };
+    const res = await AuthApiEndpoints.fetch(`/categories?${qs.stringify(query, { encodeValuesOnly: true })}`);
+    return dataNode(res);
+}
 
 
 

@@ -1,4 +1,5 @@
 import { authApi } from '../api.js';
+import { StockItemsEndpoints } from './stock-items.js';
 
 /**
  * SaleItemsEndpoints
@@ -66,6 +67,26 @@ export const SaleItemsEndpointRules = {
         allowedBodyFields: ['sale', 'product'],
     },
 };
+
+/**
+ * Save an array of sale items: creates each sale item and marks each stock item as Sold.
+ * @param {string} saleId - documentId of the parent sale
+ * @param {Array} items
+ */
+export async function saveSaleItems(saleId, items) {
+    const promises = items.map(async (i) => {
+        const result = await SaleItemsEndpoints.postCreate({
+            items: [i.documentId],
+            quantity: i.quantity,
+            price: i.price,
+            product: i.product.documentId,
+            sale: saleId,
+        });
+        await StockItemsEndpoints.putUpdate(i.documentId, { status: 'Sold' });
+        return result;
+    });
+    return await Promise.all(promises);
+}
 
 
 

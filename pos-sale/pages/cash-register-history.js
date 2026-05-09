@@ -2,8 +2,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import { authApi, getAppName } from "@rutba/pos-shared/lib/api";
-import { CashRegistersEndpoints } from "@rutba/api-provider/endpoints";
+import { AppContextEndpoints, CashRegistersEndpoints } from "../../packages/api-provider/endpoints/index.js";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { isAppAdmin } from "@rutba/pos-shared/lib/roles";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
@@ -14,7 +13,7 @@ const STATUS_OPTIONS = ["Active", "Open", "Closed", "Expired", "Cancelled"];
 export default function CashRegisterHistoryPage() {
     const { currency } = useUtil();
     const { adminAppAccess } = useAuth();
-    const userIsAdmin = isAppAdmin(adminAppAccess, getAppName());
+    const userIsAdmin = isAppAdmin(adminAppAccess, AppContextEndpoints.getAppName());
     const [registers, setRegisters] = useState([]);
     const [loading, setLoading] = useState(false);
     const [page, setPage] = useState(0);

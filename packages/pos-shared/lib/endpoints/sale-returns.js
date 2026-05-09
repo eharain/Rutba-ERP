@@ -1,4 +1,5 @@
 import { authApi } from '../api.js';
+import { AuthApiEndpoints } from './http-client.js';
 
 /**
  * SaleReturnsEndpoints
@@ -133,6 +134,16 @@ export const SaleReturnsEndpointRules = {
     /** PUT /api/sale-returns/:id/unpublish */
     unpublish: {},
 };
+
+/**
+ * Fetch a paginated list of sale returns.
+ * @param {number} page
+ * @param {number} rowsPerPage
+ */
+export async function fetchReturns(page, rowsPerPage = 100) {
+    const ep = SaleReturnsEndpoints.list(page, rowsPerPage);
+    return await AuthApiEndpoints.fetch(ep.path, ep.params);
+}
 
 
 

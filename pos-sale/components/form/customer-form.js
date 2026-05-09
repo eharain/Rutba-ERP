@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { authApi } from '@rutba/pos-shared/lib/api';
-import { CustomersEndpoints } from '@rutba/api-provider/endpoints';
+import { CustomersEndpoints } from '../../../packages/api-provider/endpoints/index.js';
 
 export default function CustomerForm({
     customer,
@@ -39,9 +38,8 @@ export default function CustomerForm({
         lastCheckRef.current = key;
 
         try {
-            const ep = CustomersEndpoints.findByContact({ email: email || undefined, phone: phone || undefined });
-            const res = await authApi.get(ep.path, ep.params);
-            const found = res.data?.data?.[0];
+            const res = await CustomersEndpoints.fetchByContact({ email: email || undefined, phone: phone || undefined });
+            const found = res.data?.[0];
 
             if (found && found.documentId !== customer?.documentId) {
                 setDuplicate(found);

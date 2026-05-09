@@ -3,6 +3,8 @@
  * Centralised path + params for auth-admin users, roles, and api-guard domains.
  */
 
+import { AuthApiEndpoints } from "../../../packages/api-provider/endpoints/index.js";
+
 export const AppAccessesEndpoints = {
     /** List all active plugin-backed app domains. */
     list: () => ({ path: '/auth-admin/domains' }),
@@ -12,6 +14,12 @@ export const AppAccessesEndpoints = {
     create: () => ({ path: '/auth-admin/domains' }),
     /** Delete a plugin-backed app domain. @param {number|string} id */
     deleteById: (id) => ({ path: `/auth-admin/domains/${id}` }),
+    /** Async: fetch active domains. */
+    fetchList: () => AuthApiEndpoints.get('/auth-admin/domains'),
+    /** Async: create a domain. */
+    postCreate: (data) => AuthApiEndpoints.post('/auth-admin/domains', data),
+    /** Async: delete a domain by id. */
+    del: (id) => AuthApiEndpoints.del(`/auth-admin/domains/${id}`),
 };
 
 export const AuthAdminEndpoints = {
@@ -27,4 +35,16 @@ export const AuthAdminEndpoints = {
     deleteUser: (id) => ({ path: `/auth-admin/users/${id}` }),
     /** List all roles. */
     roles: () => ({ path: '/auth-admin/roles' }),
+    /** Async: fetch all users. */
+    fetchUsers: () => AuthApiEndpoints.get('/auth-admin/users'),
+    /** Async: fetch a single user. */
+    fetchUserById: (id) => AuthApiEndpoints.get(`/auth-admin/users/${id}`),
+    /** Async: fetch all roles. */
+    fetchRoles: () => AuthApiEndpoints.get('/auth-admin/roles'),
+    /** Async: create user. */
+    postCreateUser: (data) => AuthApiEndpoints.post('/auth-admin/users', data),
+    /** Async: update user. */
+    putUpdateUser: (id, data) => AuthApiEndpoints.put(`/auth-admin/users/${id}`, data),
+    /** Async: delete user. */
+    delUser: (id) => AuthApiEndpoints.del(`/auth-admin/users/${id}`),
 };

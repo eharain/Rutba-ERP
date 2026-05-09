@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import Layout from "../../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { authApi, StraipImageUrl } from "@rutba/pos-shared/lib/api";
+import { BrandGroupsEndpoints, CategoryGroupsEndpoints, CmsFootersEndpoints, CmsPagesEndpoints, MediaUtilsEndpoints, ProductGroupsEndpoints } from "@rutba/api-provider/endpoints";
 import MarkdownEditor from "@rutba/pos-shared/components/MarkdownEditor";
 import FileView from "@rutba/pos-shared/components/FileView";
 import Link from "next/link";
@@ -58,11 +58,10 @@ export default function CmsPageDetail() {
     useEffect(() => {
         if (!jwt || !documentId || isNew) { setLoading(false); return; }
         Promise.all([
-            authApi.get(`/cms-pages/${documentId}`, {
-                status: 'draft',
+            CmsPagesEndpoints.fetchByIdDraft(documentId, {
                 populate: ["featured_image", "gallery", "background_image", "hero_product_groups", "brand_groups", "category_groups", "product_groups", "related_pages", "footer"],
             }),
-            authApi.get(`/cms-pages/${documentId}`, { status: 'published', fields: ["documentId"] }).catch(() => ({ data: null })),
+            CmsPagesEndpoints.fetchByIdPublished(documentId, { fields: ["documentId"] }).catch(() => ({ data: null })),
         ])
             .then(([draftRes, pubRes]) => {
                 const p = draftRes.data || draftRes;
@@ -97,11 +96,11 @@ export default function CmsPageDetail() {
         if (!jwt) return;
         try {
             const [groupsRes, brandGroupsRes, categoryGroupsRes, pagesRes, footersRes] = await Promise.all([
-                authApi.get("/product-groups", { status: 'draft', pagination: { pageSize: 100 }, sort: ["name:asc"] }),
-                authApi.get("/brand-groups", { status: 'draft', pagination: { pageSize: 100 }, sort: ["sort_order:asc", "name:asc"] }),
-                authApi.get("/category-groups", { status: 'draft', pagination: { pageSize: 100 }, sort: ["sort_order:asc", "name:asc"] }),
-                authApi.get("/cms-pages", { status: 'draft', pagination: { pageSize: 100 }, sort: ["title:asc"] }),
-                authApi.get("/cms-footers", { status: 'draft', pagination: { pageSize: 100 }, sort: ["name:asc"] }),
+                ProductGroupsEndpoints.fetchListDraft({ pagination: { pageSize: 100 }, sort: ["name:asc"] }),
+                BrandGroupsEndpoints.fetchListDraft({ pagination: { pageSize: 100 }, sort: ["sort_order:asc", "name:asc"] }),
+                CategoryGroupsEndpoints.fetchListDraft({ pagination: { pageSize: 100 }, sort: ["sort_order:asc", "name:asc"] }),
+                CmsPagesEndpoints.fetchListDraft({ pageSize: 100, sort: ["title:asc"] }),
+                CmsFootersEndpoints.fetchListDraft({ pagination: { pageSize: 100 }, sort: ["name:asc"] }),
             ]);
             setAllGroups(groupsRes.data || []);
             setAllBrandGroups(brandGroupsRes.data || []);
@@ -168,11 +167,11 @@ export default function CmsPageDetail() {
             if (galleryIds.length > 0) payload.data.gallery = galleryIds;
             if (isNew) {
                 payload.data.slug = slug || title.toLowerCase().replace(/\s+/g, "-");
-                const res = await authApi.post("/cms-pages", payload);
+                const res = await CmsPagesEndpoints.postCreate(payload.data);
                 const created = res.data || res;
                 router.push(`/${created.documentId}/cms-page`);
             } else {
-                await authApi.put(`/cms-pages/${documentId}?status=draft`, payload);
+                await CmsPagesEndpoints.putUpdateDraft(documentId, payload.data);
                 toast("Draft saved!", "success");
             }
         } catch (err) {
@@ -210,8 +209,8 @@ export default function CmsPageDetail() {
                     gallery: galleryIds.length > 0 ? galleryIds : null,
                 },
             };
-            await authApi.put(`/cms-pages/${documentId}?status=draft`, payload);
-            await authApi.post(`/cms-pages/${documentId}/publish`, {});
+            await CmsPagesEndpoints.putUpdateDraft(documentId, payload.data);
+            await CmsPagesEndpoints.postPublish(documentId);
             setIsPublished(true);
             toast("Page saved & published!", "success");
         } catch (err) {
@@ -225,7 +224,7 @@ export default function CmsPageDetail() {
     const handleUnpublish = async () => {
         setSaving(true);
         try {
-            await authApi.post(`/cms-pages/${documentId}/unpublish`, {});
+            await CmsPagesEndpoints.postUnpublish(documentId);
             setIsPublished(false);
             toast("Page unpublished.", "success");
         } catch (err) {
@@ -256,10 +255,9 @@ export default function CmsPageDetail() {
             if (featuredImageId) discardPayload.data.featured_image = featuredImageId;
             if (backgroundImageId) discardPayload.data.background_image = backgroundImageId;
             if (galleryIds.length > 0) discardPayload.data.gallery = galleryIds;
-            await authApi.put(`/cms-pages/${documentId}?status=draft`, discardPayload);
+            await CmsPagesEndpoints.putUpdateDraft(documentId, discardPayload.data);
             // Load the published version into the form
-            const res = await authApi.get(`/cms-pages/${documentId}`, {
-                status: 'published',
+            const res = await CmsPagesEndpoints.fetchByIdPublished(documentId, {
                 populate: ["featured_image", "gallery", "background_image", "hero_product_groups", "brand_groups", "category_groups", "product_groups", "related_pages", "footer"],
             });
             const p = res.data || res;
@@ -296,7 +294,7 @@ export default function CmsPageDetail() {
     const handleDelete = async () => {
         if (!confirm("Are you sure you want to delete this page?")) return;
         try {
-            await authApi.del(`/cms-pages/${documentId}`);
+            await CmsPagesEndpoints.delById(documentId);
             router.push("/pages");
         } catch (err) {
             console.error("Failed to delete page", err);

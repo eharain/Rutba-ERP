@@ -2,6 +2,9 @@
   "name": "@rutba/pos-shared",
   "version": "1.0.0",
   "private": true,
+  "dependencies": {
+    "@rutba/api-provider": "1.0.0"
+  },
   "exports": {
     "./lib/*": "./lib/*",
     "./context/*": "./context/*",

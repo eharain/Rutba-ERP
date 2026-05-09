@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { authApi } from "@rutba/pos-shared/lib/api";
+import { DeliveryMethodsEndpoints } from "@rutba/api-provider/endpoints";
 import Link from "next/link";
 
 export default function DeliveryMethods() {
@@ -14,7 +14,7 @@ export default function DeliveryMethods() {
         if (!jwt) return;
         setLoading(true);
         try {
-            const res = await authApi.get("/delivery-methods", {
+            const res = await DeliveryMethodsEndpoints.fetchList({
                 sort: ["priority:asc", "createdAt:desc"],
                 populate: ["product_groups", "cms_pages", "categories", "delivery_zones"],
                 pagination: { pageSize: 200 },

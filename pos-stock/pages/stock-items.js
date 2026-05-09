@@ -13,8 +13,7 @@ import {
 } from "@rutba/pos-shared/components/Table";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import { getStockStatus, getBranches } from "@rutba/pos-shared/lib/api";
-import { StockItemsEndpoints } from "@rutba/api-provider/endpoints";
+import { BranchesEndpoints, StockHelpersEndpoints, StockItemsEndpoints } from "../../packages/api-provider/endpoints/index.js";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
 import { loadProduct } from "@rutba/pos-shared/lib/pos/fetchs";
 import { searchStockItems } from "@rutba/pos-shared/lib/pos";
@@ -42,8 +41,8 @@ export default function StockItemsPage() {
 
     useEffect(() => {
         (async () => {
-            setStockStatus(await getStockStatus());
-            const branches = await getBranches();
+            setStockStatus(await StockHelpersEndpoints.getStockStatus());
+            const branches = await BranchesEndpoints.fetchList();
             setBranches(branches.data);
         })();
     }, [])
@@ -117,7 +116,12 @@ export default function StockItemsPage() {
                 productDocId: productFilter || undefined,
                 showArchived,
             });
-            const response = await authApi.get(ep.path, ep.params);
+            const response = await StockItemsEndpoints.fetchList(page + 1, rowsPerPage, {
+                statusFilter,
+                branchDocId: selectedBranch || undefined,
+                productDocId: productFilter || undefined,
+                showArchived,
+            });
             const data = response.data || [];
             setStockItems(data);
             setFilteredItems(data);

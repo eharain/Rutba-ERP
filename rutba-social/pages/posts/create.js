@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import Layout from "../../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { authApi, StraipImageUrl } from "@rutba/pos-shared/lib/api";
+import { MediaUtilsEndpoints, SocialAccountsEndpoints, SocialPostsEndpoints, ProductsEndpoints } from "@rutba/api-provider/endpoints";
 import { useToast } from "../../components/Toast";
 import PLATFORMS from "../../components/PlatformBadge";
 import FileView from "@rutba/pos-shared/components/FileView";
@@ -36,8 +36,7 @@ export default function CreatePostPage() {
     const loadAccounts = useCallback(async () => {
         if (!jwt) return;
         try {
-            const res = await authApi.get('/social-accounts', {
-                filters: { is_active: { $eq: true } },
+            const res = await SocialAccountsEndpoints.fetchList({
                 sort: ['platform:asc'],
             });
             setAccounts(res.data || []);
@@ -64,14 +63,7 @@ export default function CreatePostPage() {
         if (!jwt || !productSearch.trim()) { setProductResults([]); return; }
         setProductLoading(true);
         try {
-            const res = await authApi.get('/products', {
-                status: 'draft',
-                filters: { name: { $containsi: productSearch.trim() } },
-                fields: ['name', 'sku', 'documentId'],
-                populate: ['logo'],
-                pagination: { pageSize: 20 },
-                sort: ['name:asc'],
-            });
+            const res = await ProductsEndpoints.fetchSearch(productSearch.trim(), { pageSize: 20, populate: ['logo'] });
             setProductResults(res.data || []);
         } catch (err) {
             console.error("Failed to search products", err);
@@ -114,7 +106,7 @@ export default function CreatePostPage() {
             };
             if (coverId) payload.data.cover = coverId;
             if (videoIds.length > 0) payload.data.video = videoIds;
-            const res = await authApi.post("/social-posts", payload);
+            const res = await SocialPostsEndpoints.postCreate(payload);
             toast("Post created!", "success");
             router.push(`/posts/${res.data?.documentId}`);
         } catch (err) {
@@ -216,7 +208,7 @@ export default function CreatePostPage() {
                                                 return (
                                                     <div key={p.documentId} className="d-inline-flex align-items-center gap-1">
                                                         {p.logo?.url ? (
-                                                            <img src={StraipImageUrl(p.logo)} alt={p.name} style={{ width: 28, height: 28, objectFit: "cover", borderRadius: 4 }} />
+                                                            <img src={MediaUtilsEndpoints.strapiImageUrl(p.logo)} alt={p.name} style={{ width: 28, height: 28, objectFit: "cover", borderRadius: 4 }} />
                                                         ) : (
                                                             <span className="text-muted" style={{ width: 28, height: 28, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
                                                                 <i className="fas fa-image"></i>
