@@ -1,4 +1,8 @@
 {
+  "POST /api/auth/local/register": [
+    "web_public",
+    "web_user"
+  ],
   "GET /api/orders/checkout": [
     "web_public",
     "web_user"

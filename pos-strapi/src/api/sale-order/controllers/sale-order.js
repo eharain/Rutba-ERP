@@ -22,9 +22,9 @@ async function requireOrderAccessUser(ctx, strapi, user) {
         populate: { role: { select: ['type'] } },
     });
     const roleType = fullUser?.role?.type;
-    const allowed = roleType === 'rutba_web_user' || roleType === 'rutba_app_user';
+    const allowed = roleType === 'rutba_web_user' || roleType === 'rutba_app_user' || roleType === 'authenticated';
     if (!fullUser || !allowed) {
-        ctx.forbidden('Only Rutba Web Users or Rutba App Users can access this resource.');
+        ctx.forbidden('Only authenticated web/app users can access this resource.');
         return null;
     }
     return fullUser;
@@ -373,7 +373,7 @@ module.exports = factories.createCoreController(
             if (!accessUser) return;
 
             const roleType = accessUser.role?.type;
-            const webUserFilter = roleType === 'rutba_web_user'
+            const webUserFilter = roleType === 'rutba_web_user' || roleType === 'authenticated'
                 ? { owners: { id: { $eq: user.id } } }
                 : null;
 
@@ -401,7 +401,7 @@ module.exports = factories.createCoreController(
                 documentId, populate: ['products', 'customer_contact', 'owners', 'delivery_method', 'assigned_rider'],
             });
             if (!order) return ctx.notFound('Order not found');
-            if (accessUser.role?.type === 'rutba_web_user') {
+            if (accessUser.role?.type === 'rutba_web_user' || accessUser.role?.type === 'authenticated') {
                 const isOwner = (order.owners || []).some((o) => o.id === user.id);
                 if (!isOwner) return ctx.forbidden('You can only view your own orders.');
             }
