@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { getAppName, getAdminMode, setAdminMode } from '@rutba/api-provider/lib/api.js';
+import { getAppName, getAdminMode, setAdminMode } from '@rutba/api-provider/lib/api';
 import { isAppAdmin } from '../lib/roles';
 
 /**

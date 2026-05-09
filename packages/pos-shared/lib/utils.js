@@ -1,4 +1,4 @@
-import { storage } from "./storage";
+import { storage } from "@rutba/api-provider/lib/storage";
 
 export function brachTaxRate() {
     return getBranch()?.tax_rate ?? 0;

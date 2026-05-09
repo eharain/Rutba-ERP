@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Table, TableHead, TableBody, TableRow, TableCell } from '@rutba/pos-shared/components/Table';
-import { searchProduct } from '@rutba/api-provider/';
+import { searchProduct } from '@rutba/api-provider/pos';
 const PurchaseItemForm = ({ purchaseItem, onSubmit, onCancel }) => {
     const [formData, setFormData] = useState({
         quantity: 0,

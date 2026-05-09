@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { StraipImageUrl, isImage, relationConnects } from "@rutba/api-provider/lib/api.js";
+import { StraipImageUrl, isImage, relationConnects } from "@rutba/api-provider/lib/api";
 import { ProductsEndpoints, UploadEndpoints, TermTypesEndpoints } from "@rutba/api-provider/endpoints";
-import { saveProduct } from '@rutba/api-provider/pos/save.js';
+import { saveProduct } from '@rutba/api-provider/pos/save';
 import StrapiMediaLibrary from './StrapiMediaLibrary';
 import TermTypeTermDialog from './TermTypeTermDialog';
 

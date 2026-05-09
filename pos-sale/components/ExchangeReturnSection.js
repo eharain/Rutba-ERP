@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useUtil } from '@rutba/pos-shared/context/UtilContext';
-import { fetchSaleByIdOrInvoice } from '@rutba/api-provider/';
+import { fetchSaleByIdOrInvoice } from '@rutba/api-provider/pos';
 
 const RETURN_STATUSES = ['Returned', 'ReturnedDamaged', 'Damaged', 'InStock'];
 const DAMAGED_STATUSES = ['Damaged', 'ReturnedDamaged'];

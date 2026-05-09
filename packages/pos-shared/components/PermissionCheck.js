@@ -1,6 +1,6 @@
 import { useAuth } from "../context/AuthContext";
 import { isAppAdmin } from "../lib/roles";
-import { getAppName } from "@rutba/api-provider/lib/api.js";
+import { getAppName } from "@rutba/api-provider/lib/api";
 import dynamic from 'next/dynamic';
 
 /**

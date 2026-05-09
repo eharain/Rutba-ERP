@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useMemo, useState, useEffect, useCallback } from "react";
-import { storage } from "../lib/storage";
-import { BranchesEndpoints } from "@'rutba/api-provider/enpoints'";
+import { storage } from "@rutba/api-provider/lib/storage";
+import { BranchesEndpoints } from "@rutba/api-provider/endpoints";
 
 const UtilContext = createContext(null);
 

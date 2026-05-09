@@ -1,5 +1,5 @@
 ﻿import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { StraipImageUrl, isImage, isPDF } from '@rutba/api-provider/lib/api.js';
+import { StraipImageUrl, isImage, isPDF } from '@rutba/api-provider/lib/api';
 import { MediaLibraryEndpoints, UploadEndpoints } from "@rutba/api-provider/endpoints";
 
 /**

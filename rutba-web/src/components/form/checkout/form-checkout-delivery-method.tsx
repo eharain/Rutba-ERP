@@ -14,9 +14,11 @@ function ProviderIcon({ provider }: { provider: string }) {
 
 export default function FormCheckoutDeliveryMethod({
   onConfirm,
+  onNoDeliveryConfirm,
   isPlacingOrder = false,
 }: {
   onConfirm: () => void;
+  onNoDeliveryConfirm?: () => void;
   isPlacingOrder?: boolean;
 }) {
   const {
@@ -37,10 +39,21 @@ export default function FormCheckoutDeliveryMethod({
 
   if (availableDeliveryMethods.length === 0) {
     return (
-      <div className="rounded-md border border-dashed p-8 text-center text-sm text-slate-500">
+      <div className="rounded-md border border-dashed p-8 text-center text-sm text-slate-500 space-y-4">
         <PackageIcon className="mx-auto mb-3 h-8 w-8 text-slate-400" />
         <p className="font-semibold">No delivery options available</p>
         <p className="mt-1">Please contact us to arrange shipping for your location.</p>
+
+        {onNoDeliveryConfirm && (
+          <Button className="w-full" onClick={onNoDeliveryConfirm} disabled={isPlacingOrder}>
+            {isPlacingOrder && (
+              <span className="mr-2 inline-flex">
+                <Spinner />
+              </span>
+            )}
+            {isPlacingOrder ? "Recording Order…" : "Record Order & Open WhatsApp Chat"}
+          </Button>
+        )}
       </div>
     );
   }

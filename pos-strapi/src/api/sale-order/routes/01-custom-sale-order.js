@@ -18,6 +18,20 @@ const config = {
       path: '/sale-orders/checkout/validate-address',
       handler: 'api::sale-order.sale-order.validateAddress',
     },
+
+    // ── Web checkout create order (public + authenticated) ──
+    {
+      method: 'POST',
+      path: '/orders',
+      handler: 'api::sale-order.sale-order.create',
+      config: { auth: false },
+    },
+    {
+      method: 'POST',
+      path: '/sale-orders',
+      handler: 'api::sale-order.sale-order.create',
+      config: { auth: false },
+    },
     // {
     //   method: 'POST',
     //   path: '/orders/checkout/shipping-rate',

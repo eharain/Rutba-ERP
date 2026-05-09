@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { api } from "@rutba/api-provider/lib/api.js";
+import { api } from "@rutba/api-provider/lib/api";
 
 export default function BranchDeskModal({ isOpen, onSelect, currentBranch, currentDesk }) {
     const [branches, setBranches] = useState([]);

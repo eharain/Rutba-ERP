@@ -27,6 +27,14 @@
     "web_public",
     "web_user"
   ],
+  "POST /api/orders": [
+    "web_public",
+    "web_user"
+  ],
+  "POST /api/sale-orders": [
+    "web_public",
+    "web_user"
+  ],
   "POST /api/orders/checkout/shipping-rate": [
     "web_public",
     "web_user"

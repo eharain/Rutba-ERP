@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import PermissionCheck from "@rutba/pos-shared/components/PermissionCheck";
-import { fetchSales } from "@rutba/api-provider/";
+import { fetchSales } from "@rutba/api-provider/pos";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { isAppAdmin } from "@rutba/pos-shared/lib/roles";
 import { AppContextEndpoints, BranchesEndpoints, SalesEndpoints } from "@rutba/api-provider/endpoints";
