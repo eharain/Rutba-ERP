@@ -3,8 +3,7 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import Layout from '../../components/Layout';
 import ProtectedRoute from '@rutba/pos-shared/components/ProtectedRoute';
-import { authApi, relationConnects } from '@rutba/pos-shared/lib/api';
-import { TermTypesEndpoints } from '@rutba/api-provider/endpoints';
+import { StockHelpersEndpoints, TermTypesEndpoints, ProductsEndpoints, UploadEndpoints } from '../../../packages/api-provider/endpoints/index.js';
 import { saveProduct } from '@rutba/pos-shared/lib/pos/save';
 
 function getEntryId(entry) {
@@ -84,7 +83,7 @@ export default function CatalogueImportPage() {
     async function loadProduct(id) {
         setLoading(true);
         try {
-            const res = await authApi.get(`/products/${id}`, {
+            const res = await ProductsEndpoints.fetchById(id, {
                 populate: { variants: { populate: ['terms'] }, terms: true }
             });
             const prod = res.data || res;
@@ -240,7 +239,7 @@ export default function CatalogueImportPage() {
                     if (page.termId) {
                         const term = availableTerms.find(t => getEntryId(t) === page.termId);
                         if (term) {
-                            Object.assign(payload, relationConnects({ terms: [term] }));
+                            Object.assign(payload, StockHelpersEndpoints.relationConnects({ terms: [term] }));
                         }
                     }
 
@@ -261,7 +260,7 @@ export default function CatalogueImportPage() {
                                     `${variantName.replace(/[^a-zA-Z0-9-_ ]/g, '')}-page${page.pageNum}.png`,
                                     { type: 'image/png' }
                                 );
-                                await authApi.uploadFile(
+                                await UploadEndpoints.uploadFiles(
                                     [imageFile],
                                     'product',
                                     'logo',
@@ -314,7 +313,7 @@ export default function CatalogueImportPage() {
 
             if (page.termId) {
                 const term = availableTerms.find(t => getEntryId(t) === page.termId);
-                if (term) Object.assign(payload, relationConnects({ terms: [term] }));
+                if (term) Object.assign(payload, StockHelpersEndpoints.relationConnects({ terms: [term] }));
             }
 
             const response = await saveProduct('new', payload);
@@ -331,7 +330,7 @@ export default function CatalogueImportPage() {
                         `${variantName.replace(/[^a-zA-Z0-9-_ ]/g, '')}-page${page.pageNum}.png`,
                         { type: 'image/png' }
                     );
-                    await authApi.uploadFile(
+                    await UploadEndpoints.uploadFiles(
                         [imageFile],
                         'product',
                         'logo',

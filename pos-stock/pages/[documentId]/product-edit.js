@@ -2,8 +2,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '../../components/Layout';
 import ProtectedRoute from '@rutba/pos-shared/components/ProtectedRoute';
-import { authApi, relationConnects } from '@rutba/pos-shared/lib/api';
-import { CategoriesEndpoints, BrandsEndpoints, SuppliersEndpoints, ProductsEndpoints, StockItemsEndpoints } from '@rutba/api-provider/endpoints';
+import { StockHelpersEndpoints, CategoriesEndpoints, BrandsEndpoints, SuppliersEndpoints, ProductsEndpoints, StockItemsEndpoints } from '../../../packages/api-provider/endpoints/index.js';
 import { saveProduct, loadProduct } from '@rutba/pos-shared/lib/pos';
 import { useUtil } from '@rutba/pos-shared/context/UtilContext';
 import FileView from '@rutba/pos-shared/components/FileView';
@@ -34,8 +33,7 @@ export default function ProductEditPage() {
         let page = 1;
         let totalPages = 1;
         do {
-            const ep = epBuilder(page);
-            const response = await authApi.fetch(ep.path, ep.params);
+            const response = await epBuilder(page);
             const { data, meta } = response;
             allRecords = [...allRecords, ...(data || [])];
             totalPages = meta?.pagination?.pageCount || 1;
@@ -49,11 +47,11 @@ export default function ProductEditPage() {
             try {
                 setLoading(true);
                 const [categoriesRes, brandsRes, suppliersRes, termsRes, productsRes] = await Promise.all([
-                    fetchAllRecords(p => CategoriesEndpoints.listPaged(p, 100)),
-                    fetchAllRecords(p => BrandsEndpoints.listPaged(p, 100)),
-                    fetchAllRecords(p => SuppliersEndpoints.listPaged(p, 100)),
-                    fetchAllRecords(p => ({ path: '/terms', params: { pagination: { page: p, pageSize: 100 } } })),
-                    fetchAllRecords(p => ProductsEndpoints.listPaged(p, 100)),
+                    CategoriesEndpoints.fetchAll({ pageSize: 100 }),
+                    BrandsEndpoints.fetchAll({ pageSize: 100 }),
+                    SuppliersEndpoints.fetchAll({ pageSize: 100 }),
+                    ProductsEndpoints.fetchList(1, 100, { sort: 'name:asc' }),
+                    ProductsEndpoints.fetchList(1, 100, { sort: 'name:asc' }),
                 ]);
                 setCategories(categoriesRes || []);
                 setBrands(brandsRes || []);
@@ -67,15 +65,7 @@ export default function ProductEditPage() {
 
                     // Load stock_quantity as the count of Received + InStock stock items
                     try {
-                        const siEp = StockItemsEndpoints.listByProduct(documentId, { statusFilter: undefined });
-                        const siRes = await authApi.fetch(siEp.path, {
-                            ...siEp.params,
-                            filters: {
-                                product: { documentId },
-                                status: { $in: ['Received', 'InStock'] },
-                            },
-                            pagination: { pageSize: 1 },
-                        });
+                        const siRes = await StockItemsEndpoints.fetchListByProduct(documentId, { pageSize: 1 });
                         productData.stock_quantity = siRes.meta?.pagination?.total || 0;
                     } catch (_) {
                         // keep whatever value came from the product
@@ -146,7 +136,7 @@ export default function ProductEditPage() {
         try {
             const payload = {
                 ...product,
-                ...relationConnects({
+                ...StockHelpersEndpoints.relationConnects({
                     categories: product.categories,
                     brands: product.brands,
                     suppliers: product.suppliers,
@@ -192,7 +182,7 @@ export default function ProductEditPage() {
         try {
             const payload = {
                 ...product,
-                ...relationConnects({
+                ...StockHelpersEndpoints.relationConnects({
                     categories: product.categories,
                     brands: product.brands,
                     suppliers: product.suppliers,

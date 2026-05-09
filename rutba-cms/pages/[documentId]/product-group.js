@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import Layout from "../../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { authApi } from "@rutba/pos-shared/lib/api";
+import { CmsPagesEndpoints, ProductGroupsEndpoints } from "@rutba/api-provider/endpoints";
 import FileView from "@rutba/pos-shared/components/FileView";
 import MarkdownEditor from "@rutba/pos-shared/components/MarkdownEditor";
 import Link from "next/link";
@@ -48,8 +48,8 @@ export default function ProductGroupDetail() {
     useEffect(() => {
         if (!jwt || !documentId || isNew) { setLoading(false); return; }
         Promise.all([
-            authApi.get(`/product-groups/${documentId}`, { status: 'draft', populate: ["gallery", "cover_image", "products", "cms_pages"] }),
-            authApi.get(`/product-groups/${documentId}`, { status: 'published', fields: ["documentId"] }).catch(() => ({ data: null })),
+            ProductGroupsEndpoints.fetchByIdDraft(documentId, { populate: ["gallery", "cover_image", "products", "cms_pages"] }),
+            ProductGroupsEndpoints.fetchByIdPublished(documentId, { fields: ["documentId"] }).catch(() => ({ data: null })),
         ])
             .then(([draftRes, pubRes]) => {
                 const g = draftRes.data || draftRes;
@@ -80,7 +80,7 @@ export default function ProductGroupDetail() {
     // Load CMS pages for picker
     useEffect(() => {
         if (!jwt) return;
-        authApi.getAll("/cms-pages", { status: "draft", fields: ["documentId", "title", "slug", "page_type"], sort: ["title:asc"] })
+        CmsPagesEndpoints.fetchAllDraft({ sort: ["title:asc"] })
             .then(res => setAllCmsPages(res?.data || res || []))
             .catch(err => console.error("Failed to load CMS pages", err));
     }, [jwt]);
@@ -126,11 +126,11 @@ export default function ProductGroupDetail() {
             };
             if (isNew) {
                 payload.data.slug = slug || name.toLowerCase().replace(/\s+/g, "-");
-                const res = await authApi.post("/product-groups", payload);
+                const res = await ProductGroupsEndpoints.postCreate(payload.data);
                 const created = res.data || res;
                 router.push(`/${created.documentId}/product-group`);
             } else {
-                await authApi.put(`/product-groups/${documentId}?status=draft`, payload);
+                await ProductGroupsEndpoints.putUpdateDraft(documentId, payload.data);
                 toast("Draft saved!", "success");
             }
         } catch (err) {
@@ -162,8 +162,8 @@ export default function ProductGroupDetail() {
                     cms_pages: { set: selectedPageIds },
                 },
             };
-            await authApi.put(`/product-groups/${documentId}?status=draft`, payload);
-            await authApi.post(`/product-groups/${documentId}/publish`, {});
+            await ProductGroupsEndpoints.putUpdateDraft(documentId, payload.data);
+            await ProductGroupsEndpoints.postPublish(documentId);
             setIsPublished(true);
             toast("Product group saved & published!", "success");
         } catch (err) {
@@ -177,7 +177,7 @@ export default function ProductGroupDetail() {
     const handleUnpublish = async () => {
         setSaving(true);
         try {
-            await authApi.post(`/product-groups/${documentId}/unpublish`, {});
+            await ProductGroupsEndpoints.postUnpublish(documentId);
             setIsPublished(false);
             toast("Product group unpublished.", "success");
         } catch (err) {
@@ -192,10 +192,8 @@ export default function ProductGroupDetail() {
         if (!confirm("Save current draft and load the published version into the editor?")) return;
         setSaving(true);
         try {
-            await authApi.put(`/product-groups/${documentId}?status=draft`, {
-                data: { name, title, excerpt, content, layout, priority, default_sort: defaultSort, enable_sort_dropdown: enableSortDropdown, enable_view_toggle: enableViewToggle, max_inline_products: maxInlineProducts, products: { set: selectedProductIds }, cms_pages: { set: selectedPageIds } },
-            });
-            const res = await authApi.get(`/product-groups/${documentId}`, { status: 'published', populate: ["gallery", "cover_image", "products", "cms_pages"] });
+            await ProductGroupsEndpoints.putUpdateDraft(documentId, { name, title, excerpt, content, layout, priority, default_sort: defaultSort, enable_sort_dropdown: enableSortDropdown, enable_view_toggle: enableViewToggle, max_inline_products: maxInlineProducts, products: { set: selectedProductIds }, cms_pages: { set: selectedPageIds } });
+            const res = await ProductGroupsEndpoints.fetchByIdPublished(documentId, { populate: ["gallery", "cover_image", "products", "cms_pages"] });
             const g = res.data || res;
             if (!g) { toast("No published version found.", "warning"); return; }
             setName(g.name || "");
@@ -225,7 +223,7 @@ export default function ProductGroupDetail() {
     const handleDelete = async () => {
         if (!confirm("Are you sure you want to delete this product group?")) return;
         try {
-            await authApi.del(`/product-groups/${documentId}`);
+            await ProductGroupsEndpoints.delById(documentId);
             router.push("/product-groups");
         } catch (err) {
             console.error("Failed to delete product group", err);

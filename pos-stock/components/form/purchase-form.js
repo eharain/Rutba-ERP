@@ -1,7 +1,6 @@
 // /pos-desk/components/form/purchase-form.js
 import React, { useState, useEffect } from 'react';
-import { authApi } from '@rutba/pos-shared/lib/api';
-import { PurchasesEndpoints } from '@rutba/api-provider/endpoints';
+import { PurchasesEndpoints, SuppliersEndpoints } from '../../../packages/api-provider/endpoints/index.js';
 import { useUtil } from '@rutba/pos-shared/context/UtilContext';
 
 const PurchaseForm = ({ purchase, onSubmit, onCancel }) => {
@@ -36,8 +35,8 @@ const PurchaseForm = ({ purchase, onSubmit, onCancel }) => {
 
     const loadSuppliers = async () => {
         try {
-            const response = await authApi.get('/suppliers');
-            setSuppliers(response.data || []);
+            const response = await SuppliersEndpoints.fetchAll();
+            setSuppliers(response.data || response || []);
         } catch (error) {
             console.error('Error loading suppliers:', error);
         }

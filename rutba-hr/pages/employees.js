@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { authApi } from "@rutba/pos-shared/lib/api";
+import { HrEmployeesEndpoints } from "@rutba/api-provider/endpoints";
 import Link from "next/link";
 
 export default function Employees() {
@@ -12,7 +12,7 @@ export default function Employees() {
 
     useEffect(() => {
         if (!jwt) return;
-        authApi.get("/hr-employees?sort=name:asc&populate=department,user", {}, jwt)
+        HrEmployeesEndpoints.fetchList({ sort: ["name:asc"], populate: ["department", "user"] })
             .then((res) => setEmployees(res.data || []))
             .catch((err) => console.error("Failed to load employees", err))
             .finally(() => setLoading(false));

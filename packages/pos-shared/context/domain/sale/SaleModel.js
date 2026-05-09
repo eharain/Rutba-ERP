@@ -1,7 +1,7 @@
 import SaleItem from './SaleItem';
 import { calculateTax } from './pricing';
 
-import { generateNextInvoiceNumber, parseContactLine, parseStockLine } from '../../lib/utils';
+import { generateNextInvoiceNumber, parseContactLine, parseStockLine } from '../../../lib/utils.js';
 
 /**
  * Resolve the product name for a sale-return-item.

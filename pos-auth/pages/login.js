@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { api } from "@rutba/pos-shared/lib/api";
+import { AuthEndpoints } from "../../packages/api-provider/endpoints/index.js";
 
 export default function Login() {
     const { login, logout, user, jwt } = useAuth();
@@ -80,7 +80,7 @@ export default function Login() {
         setErrorMessage("");
         setMessage("");
         try {
-            await api.post("/auth/forgot-password", { email: forgotEmail });
+            await AuthEndpoints.postForgotPassword(forgotEmail);
             setMessage("If that email exists, a reset link has been sent. Check your inbox or enter the reset code below.");
             setView("reset");
         } catch (e) {
@@ -100,7 +100,7 @@ export default function Login() {
         setErrorMessage("");
         setMessage("");
         try {
-            await api.post("/auth/reset-password", {
+            await AuthEndpoints.postResetPassword({
                 code: resetCode,
                 password: newPassword,
                 passwordConfirmation: confirmPassword,

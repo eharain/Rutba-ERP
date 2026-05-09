@@ -4,6 +4,8 @@
  * Covers both the admin (pos-shared / rutba-cms) draft flows and the web storefront read flows.
  */
 
+import { authApi } from '../api.js';
+
 export const CmsPagesEndpoints = {
 
     /**
@@ -108,6 +110,16 @@ export const CmsPagesEndpoints = {
         }
     }),
 
+    byIdDraft: (documentId, params = {}) => ({
+        path: `/cms-pages/${documentId}`,
+        params: { status: 'draft', ...params },
+    }),
+
+    byIdPublished: (documentId, params = {}) => ({
+        path: `/cms-pages/${documentId}`,
+        params: { status: 'published', ...params },
+    }),
+
     /** Create a new CMS page — body provided by caller as { data }. */
     create: () => ({ path: '/cms-pages' }),
 
@@ -128,6 +140,43 @@ export const CmsPagesEndpoints = {
      * @param {string} documentId
      */
     unpublish: (documentId) => ({ path: `/cms-pages/${documentId}/unpublish` }),
+
+    fetchListDraft: (opts = {}) => {
+        const ep = CmsPagesEndpoints.listDraft(opts);
+        return authApi.fetch(ep.path, ep.params);
+    },
+
+    fetchAllDraft: (opts = {}) => {
+        const ep = CmsPagesEndpoints.listDraft(opts);
+        return authApi.getAll(ep.path, ep.params);
+    },
+
+    fetchListPublished: (opts = {}) => {
+        const ep = CmsPagesEndpoints.listPublished(opts);
+        return authApi.fetch(ep.path, ep.params);
+    },
+
+    fetchBySlugCheck: (slug) => {
+        const ep = CmsPagesEndpoints.bySlugCheck(slug);
+        return authApi.fetch(ep.path, ep.params);
+    },
+
+    fetchByIdDraft: (documentId, params = {}) => {
+        const ep = CmsPagesEndpoints.byIdDraft(documentId, params);
+        return authApi.fetch(ep.path, ep.params);
+    },
+
+    fetchByIdPublished: (documentId, params = {}) => {
+        const ep = CmsPagesEndpoints.byIdPublished(documentId, params);
+        return authApi.fetch(ep.path, ep.params);
+    },
+
+    postCreate: (data) => authApi.post('/cms-pages', { data }),
+    putUpdate: (documentId, data) => authApi.put(`/cms-pages/${documentId}`, { data }),
+    putUpdateDraft: (documentId, data) => authApi.put(`/cms-pages/${documentId}`, { data, status: 'draft' }),
+    postPublish: (documentId) => authApi.post(`/cms-pages/${documentId}/publish`, {}),
+    postUnpublish: (documentId) => authApi.post(`/cms-pages/${documentId}/unpublish`, {}),
+    delById: (documentId) => authApi.del(`/cms-pages/${documentId}`),
 };
 
 export const CmsPagesEndpointsMeta = {

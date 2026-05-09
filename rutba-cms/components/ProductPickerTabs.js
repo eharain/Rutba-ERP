@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { authApi, StraipImageUrl } from "@rutba/pos-shared/lib/api";
+import { BrandsEndpoints, CategoriesEndpoints, MediaUtilsEndpoints, PurchasesEndpoints, SuppliersEndpoints, TermTypesEndpoints } from "@rutba/api-provider/endpoints";
 import { ProductFilter } from "@rutba/pos-shared/components/filter/product-filter";
 import { fetchProducts } from "@rutba/pos-shared/lib/pos";
 import Link from "next/link";
@@ -72,11 +72,11 @@ export default function ProductPickerTabs({ selectedProductIds, connectedProduct
         (async () => {
             try {
                 const [brandsRes, categoriesRes, suppliersRes, termTypesRes, purchasesRes] = await Promise.all([
-                    authApi.getAll("/brands"),
-                    authApi.getAll("/categories"),
-                    authApi.getAll("/suppliers"),
-                    authApi.getAll("/term-types", { populate: ["terms"] }),
-                    authApi.getAll("/purchases", { sort: ["createdAt:desc"] }),
+                    BrandsEndpoints.fetchAll(),
+                    CategoriesEndpoints.fetchAll(),
+                    SuppliersEndpoints.fetchAll(),
+                    TermTypesEndpoints.fetchAllWithTerms(),
+                    PurchasesEndpoints.fetchAll({ sort: ["createdAt:desc"] }),
                 ]);
                 setBrands(brandsRes?.data || brandsRes || []);
                 setCategories(categoriesRes?.data || categoriesRes || []);
@@ -243,7 +243,7 @@ export default function ProductPickerTabs({ selectedProductIds, connectedProduct
             <div key={p.documentId} className="d-inline-flex align-items-center gap-1">
                 {p.logo?.url ? (
                     <img
-                        src={StraipImageUrl(p.logo)}
+                        src={MediaUtilsEndpoints.strapiImageUrl(p.logo)}
                         alt={p.name}
                         style={{ width: 32, height: 32, objectFit: "cover", borderRadius: 4 }}
                     />

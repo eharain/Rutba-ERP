@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { authApi } from "@rutba/pos-shared/lib/api";
+import { PayPayslipsEndpoints } from "@rutba/api-provider/endpoints";
 
 export default function Payslips() {
     const { jwt } = useAuth();
@@ -11,7 +11,8 @@ export default function Payslips() {
 
     useEffect(() => {
         if (!jwt) return;
-        authApi.get("/pay-payslips?sort=createdAt:desc&populate=employee", {}, jwt)
+        const ep = PayPayslipsEndpoints.list();
+        PayPayslipsEndpoints.fetchList(ep.params)
             .then((res) => setPayslips(res.data || []))
             .catch((err) => console.error("Failed to load payslips", err))
             .finally(() => setLoading(false));

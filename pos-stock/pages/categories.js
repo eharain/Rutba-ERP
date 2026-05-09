@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import { CategoriesEndpoints, ProductsEndpoints } from "@rutba/api-provider/endpoints";
+import { CategoriesEndpoints, ProductsEndpoints } from "../../packages/api-provider/endpoints/index.js";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
 import FileView from "@rutba/pos-shared/components/FileView";
 
@@ -57,9 +57,8 @@ export default function CategoriesPage() {
         const timer = setTimeout(async () => {
             setProductSearchLoading(true);
             try {
-                const ep = ProductsEndpoints.searchInRelation(searchValue, 1, 20);
-                const res = await authApi.fetch(ep.path, {
-                    ...ep.params,
+                const res = await ProductsEndpoints.fetchSearch(searchValue, {
+                    pageSize: 20,
                     populate: { categories: true },
                 });
                 const data = res?.data ?? res;
@@ -89,8 +88,7 @@ export default function CategoriesPage() {
             let page = 1;
             let totalPages = 1;
             do {
-                const ep = CategoriesEndpoints.listPaged(page, 100);
-                const res = await authApi.fetch(ep.path, ep.params);
+                const res = await CategoriesEndpoints.fetchList({ page, pageSize: 100 });
                 const data = res?.data ?? res;
                 allCategories = [...allCategories, ...(data || [])];
                 totalPages = res?.meta?.pagination?.pageCount || 1;
@@ -120,10 +118,9 @@ export default function CategoriesPage() {
             let page = 1;
             let totalPages = 1;
             do {
-                const ep = ProductsEndpoints.list(page, 100, { sort: 'name:asc' });
-                const res = await authApi.fetch(ep.path, {
-                    ...ep.params,
-                    filters: { categories: { documentId: selectedCategoryId } },
+                const res = await ProductsEndpoints.fetchList(page, 100, {
+                    sort: 'name:asc',
+                    categories: [selectedCategoryId],
                     populate: { categories: true },
                 });
                 const data = res?.data ?? res;
@@ -231,10 +228,8 @@ export default function CategoriesPage() {
                 let page = 1;
                 let totalPages = 1;
                 do {
-                    const mergeEp = ProductsEndpoints.list(page, 100, {});
-                    const res = await authApi.fetch(mergeEp.path, {
-                        ...mergeEp.params,
-                        filters: { categories: { documentId: sourceCatId } },
+                    const res = await ProductsEndpoints.fetchList(page, 100, {
+                        categories: [sourceCatId],
                         populate: { categories: true },
                     });
                     const sourceProducts = res?.data ?? res ?? [];

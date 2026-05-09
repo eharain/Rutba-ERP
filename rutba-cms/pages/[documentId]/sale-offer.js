@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import Layout from "../../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { authApi } from "@rutba/pos-shared/lib/api";
+import { CategoriesEndpoints, CmsPagesEndpoints, ProductGroupsEndpoints, SaleOffersEndpoints } from "@rutba/api-provider/endpoints";
 import MarkdownEditor from "@rutba/pos-shared/components/MarkdownEditor";
 import Link from "next/link";
 import { useToast } from "../../components/Toast";
@@ -94,9 +94,9 @@ export default function OfferDetail() {
     useEffect(() => {
         if (!jwt) return;
         Promise.all([
-            authApi.get("/product-groups", { status: 'draft', fields: ["documentId", "name"], pagination: { pageSize: 200 } }),
-            authApi.get("/cms-pages", { status: 'draft', fields: ["documentId", "title", "slug"], pagination: { pageSize: 200 } }),
-            authApi.get("/categories", { status: 'draft', fields: ["documentId", "name"], pagination: { pageSize: 200 } }),
+            ProductGroupsEndpoints.fetchListDraft({ pagination: { pageSize: 200 } }),
+            CmsPagesEndpoints.fetchListDraft({ pageSize: 200 }),
+            CategoriesEndpoints.fetchListDraft({ pagination: { pageSize: 200 }, populate: [] }),
         ]).then(([gRes, pRes, cRes]) => {
             setAllGroups(gRes.data || []);
             setAllPages(pRes.data || []);
@@ -108,8 +108,8 @@ export default function OfferDetail() {
     useEffect(() => {
         if (!jwt || !documentId || isNew) { setLoading(false); return; }
         Promise.all([
-            authApi.get(`/sale-offers/${documentId}`, { status: 'draft', populate: ["product_groups", "cms_pages", "categories"] }),
-            authApi.get(`/sale-offers/${documentId}`, { status: 'published', fields: ["documentId"] }).catch(() => ({ data: null })),
+            SaleOffersEndpoints.fetchByIdDraft(documentId, { populate: ["product_groups", "cms_pages", "categories"] }),
+            SaleOffersEndpoints.fetchByIdPublished(documentId, { fields: ["documentId"] }).catch(() => ({ data: null })),
         ]).then(([draftRes, pubRes]) => {
             const o = draftRes.data || draftRes;
             setOffer(o);
@@ -148,11 +148,11 @@ export default function OfferDetail() {
         setSaving(true);
         try {
             if (isNew) {
-                const res = await authApi.post("/sale-offers", buildPayload());
+                const res = await SaleOffersEndpoints.postCreate(buildPayload().data);
                 const created = res.data || res;
                 router.push(`/${created.documentId}/sale-offer`);
             } else {
-                await authApi.put(`/sale-offers/${documentId}?status=draft`, buildPayload());
+                await SaleOffersEndpoints.putUpdateDraft(documentId, buildPayload().data);
                 toast("Draft saved!", "success");
             }
         } catch (err) {
@@ -166,8 +166,8 @@ export default function OfferDetail() {
     const handlePublish = async () => {
         setSaving(true);
         try {
-            await authApi.put(`/sale-offers/${documentId}?status=draft`, buildPayload());
-            await authApi.post(`/sale-offers/${documentId}/publish`, {});
+            await SaleOffersEndpoints.putUpdateDraft(documentId, buildPayload().data);
+            await SaleOffersEndpoints.postPublish(documentId);
             setIsPublished(true);
             toast("Offer saved & published!", "success");
         } catch (err) {
@@ -181,7 +181,7 @@ export default function OfferDetail() {
     const handleUnpublish = async () => {
         setSaving(true);
         try {
-            await authApi.post(`/sale-offers/${documentId}/unpublish`, {});
+            await SaleOffersEndpoints.postUnpublish(documentId);
             setIsPublished(false);
             toast("Offer unpublished.", "success");
         } catch (err) {
@@ -195,7 +195,7 @@ export default function OfferDetail() {
     const handleDelete = async () => {
         if (!confirm("Are you sure you want to delete this sale offer?")) return;
         try {
-            await authApi.del(`/sale-offers/${documentId}`);
+            await SaleOffersEndpoints.delById(documentId);
             router.push("/sale-offers");
         } catch (err) {
             console.error("Failed to delete sale offer", err);

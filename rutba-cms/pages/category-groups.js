@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { authApi } from "@rutba/pos-shared/lib/api";
+import { CategoryGroupsEndpoints } from "@rutba/api-provider/endpoints";
 import Link from "next/link";
 import { useToast } from "../components/Toast";
 
@@ -35,7 +35,7 @@ export default function CategoryGroups() {
     const publishOne = async (docId) => {
         setPublishing(prev => ({ ...prev, [docId]: true }));
         try {
-            await authApi.post(`/category-groups/${docId}/publish`, {});
+            await CategoryGroupsEndpoints.postPublish(docId);
             setGroups(prev => prev.map(g => g.documentId === docId ? { ...g, _isPublished: true } : g));
             toast("Published!", "success");
         } catch (err) {
@@ -49,7 +49,7 @@ export default function CategoryGroups() {
     const unpublishOne = async (docId) => {
         setPublishing(prev => ({ ...prev, [docId]: true }));
         try {
-            await authApi.post(`/category-groups/${docId}/unpublish`, {});
+            await CategoryGroupsEndpoints.postUnpublish(docId);
             setGroups(prev => prev.map(g => g.documentId === docId ? { ...g, _isPublished: false } : g));
             toast("Unpublished.", "success");
         } catch (err) {
@@ -67,7 +67,7 @@ export default function CategoryGroups() {
         let ok = 0, fail = 0;
         for (const docId of ids) {
             setPublishing(prev => ({ ...prev, [docId]: true }));
-            try { await authApi.post(`/category-groups/${docId}/publish`, {}); ok++; setGroups(prev => prev.map(g => g.documentId === docId ? { ...g, _isPublished: true } : g)); }
+            try { await CategoryGroupsEndpoints.postPublish(docId); ok++; setGroups(prev => prev.map(g => g.documentId === docId ? { ...g, _isPublished: true } : g)); }
             catch { fail++; }
             finally { setPublishing(prev => ({ ...prev, [docId]: false })); }
         }
@@ -82,7 +82,7 @@ export default function CategoryGroups() {
         let ok = 0, fail = 0;
         for (const docId of ids) {
             setPublishing(prev => ({ ...prev, [docId]: true }));
-            try { await authApi.post(`/category-groups/${docId}/unpublish`, {}); ok++; setGroups(prev => prev.map(g => g.documentId === docId ? { ...g, _isPublished: false } : g)); }
+            try { await CategoryGroupsEndpoints.postUnpublish(docId); ok++; setGroups(prev => prev.map(g => g.documentId === docId ? { ...g, _isPublished: false } : g)); }
             catch { fail++; }
             finally { setPublishing(prev => ({ ...prev, [docId]: false })); }
         }
@@ -95,13 +95,8 @@ export default function CategoryGroups() {
         setLoading(true);
         try {
             const [draftRes, pubRes] = await Promise.all([
-                authApi.get("/category-groups", {
-                    status: 'draft',
-                    sort: ["sort_order:asc", "createdAt:desc"],
-                    populate: ["categories"],
-                    pagination: { pageSize: 50 },
-                }),
-                authApi.get("/category-groups", { status: 'published', fields: ["documentId"], pagination: { pageSize: 200 } }),
+                CategoryGroupsEndpoints.fetchListDraft({ sort: ["sort_order:asc", "createdAt:desc"], populate: ["categories"], pagination: { pageSize: 50 } }),
+                CategoryGroupsEndpoints.fetchListPublished({ pageSize: 200 }),
             ]);
             const pubIds = new Set((pubRes.data || []).map(g => g.documentId));
             setGroups((draftRes.data || []).map(g => ({ ...g, _isPublished: pubIds.has(g.documentId) })));

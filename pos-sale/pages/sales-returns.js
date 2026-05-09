@@ -1,8 +1,7 @@
-import { useEffect, useState } from "react";
+ï»¿import { useEffect, useState } from "react";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import { authApi } from "@rutba/pos-shared/lib/api";
-import { SaleReturnsEndpoints } from "@rutba/api-provider/endpoints";
+import { SaleReturnsEndpoints } from "../../packages/api-provider/endpoints/index.js";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
 import Link from "next/link";
 import { Table, TableHead, TableRow, TableCell, TableBody, TablePagination } from "@rutba/pos-shared/components/Table";
@@ -87,7 +86,7 @@ export default function SalesReturnsPage() {
                                     <TableCell>{ret.return_date ? new Date(ret.return_date).toLocaleString() : "-"}</TableCell>
                                     <TableCell>{ret.sale?.invoice_no || "-"}</TableCell>
                                     <TableCell>{ret.items?.length || 0}</TableCell>
-                                    <TableCell>{ret.refund_method || "—"}</TableCell>
+                                    <TableCell>{ret.refund_method || "-"}</TableCell>
                                     <TableCell align="right">{currency}{Number(ret.total_refund || 0).toFixed(2)}</TableCell>
                                     <TableCell>
                                         <span className={`badge ${ret.refund_status === "Refunded" ? "bg-success" : ret.refund_status === "Credited" ? "bg-info" : "bg-warning text-dark"}`}>
@@ -116,5 +115,6 @@ export default function SalesReturnsPage() {
         </ProtectedRoute>
     );
 }
+
 
 

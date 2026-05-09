@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '../components/Layout';
 import ProtectedRoute from '@rutba/pos-shared/components/ProtectedRoute';
-import { authApi } from '@rutba/pos-shared/lib/api';
+import { PurchasesEndpoints } from '../../packages/api-provider/endpoints/index.js';
 import StockEntryForm from '../components/stock-entry/StockEntryForm';
 import StockEntryHeader from '../components/stock-entry/StockEntryHeader';
 import StockEntryAlerts from '../components/stock-entry/StockEntryAlerts';
@@ -21,12 +21,11 @@ export default function StockEntry() {
     const loadInitialData = async () => {
         try {
             setLoading(true);
-            const purchasesRes = await authApi.get('/purchases', {
-                populate: ['suppliers'],
+            const purchasesRes = await PurchasesEndpoints.fetchList(1, 50, {
                 sort: ['createdAt:desc'],
-                pagination: { pageSize: 50 }
+                populate: ['suppliers'],
             });
-            setPurchases(purchasesRes.data || []);
+            setPurchases(purchasesRes.data || purchasesRes || []);
         } catch (err) {
             console.error('Error loading initial data:', err);
             setError('Failed to load purchase orders');

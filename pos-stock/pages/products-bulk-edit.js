@@ -8,9 +8,8 @@ import {
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import PermissionCheck from "@rutba/pos-shared/components/PermissionCheck";
-import { StraipImageUrl } from "@rutba/pos-shared/lib/api";
 import { fetchProducts, saveProduct } from "@rutba/pos-shared/lib/pos";
-import { StockItemsEndpoints } from "@rutba/api-provider/endpoints";
+import { MediaUtilsEndpoints, StockItemsEndpoints, BrandsEndpoints, CategoriesEndpoints, SuppliersEndpoints, TermTypesEndpoints, PurchasesEndpoints } from "../../packages/api-provider/endpoints/index.js";
 import { ProductFilter } from "@rutba/pos-shared/components/filter/product-filter";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
 import { getBranch } from "@rutba/pos-shared/lib/utils";
@@ -96,15 +95,9 @@ export default function ProductsBulkEdit() {
         await Promise.all(
             productsList.map(async (p) => {
                 try {
-                    const res = await authApi.get('/stock-items', {
-                        filters: {
-                            product: { documentId: p.documentId },
-                            status: { $in: ['Received', 'InStock'] },
-                        },
-                        pagination: { pageSize: 1 },
-                    });
+                    const res = await StockItemsEndpoints.fetchListByProduct(p.documentId, { pageSize: 1 });
                     counts[p.documentId] = res.meta?.pagination?.total || 0;
-                } catch {
+                } catch (err) {
                     counts[p.documentId] = 0;
                 }
             })
@@ -126,11 +119,11 @@ export default function ProductsBulkEdit() {
 
     useEffect(() => {
         Promise.all([
-            authApi.getAll("/brands"),
-            authApi.getAll("/categories"),
-            authApi.getAll("/suppliers"),
-            authApi.getAll("/term-types", { populate: ["terms"] }),
-            authApi.getAll("/purchases", { sort: ["createdAt:desc"] }),
+            BrandsEndpoints.fetchAll(),
+            CategoriesEndpoints.fetchAll(),
+            SuppliersEndpoints.fetchAll(),
+            TermTypesEndpoints.fetchAllWithTerms(),
+            PurchasesEndpoints.fetchAll({ sort: ['createdAt:desc'] }),
         ]).then(([b, c, s, t, p]) => {
             setBrands(b?.data || b || []);
             setCategories(c?.data || c || []);
@@ -299,14 +292,7 @@ export default function ProductsBulkEdit() {
         const branch = getBranch();
 
         // Fetch existing stock items in Received + InStock statuses
-        const res = await authApi.get('/stock-items', {
-            filters: {
-                product: { documentId: docId },
-                status: { $in: ['Received', 'InStock'] },
-            },
-            sort: ['createdAt:desc'],
-            pagination: { pageSize: 1000 },
-        });
+        const res = await StockItemsEndpoints.fetchListByProduct(docId, { pageSize: 1000 });
         const existingItems = res.data || [];
         const currentCount = existingItems.length;
 
@@ -524,7 +510,7 @@ export default function ProductsBulkEdit() {
                                                     <TableCell>
                                                         {product.logo?.url ? (
                                                             <img
-                                                                src={StraipImageUrl(product.logo)}
+                                                                src={MediaUtilsEndpoints.strapiImageUrl(product.logo)}
                                                                 alt={product.name}
                                                                 style={{ width: 36, height: 36, objectFit: "cover", borderRadius: 4 }}
                                                             />

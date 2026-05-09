@@ -1,4 +1,6 @@
 import { authApi } from '../api.js';
+import { prepareForPut } from '../utils.js';
+import { dataNode } from '../pos/search.js';
 
 /**
  * PurchaseItemsEndpoints
@@ -103,6 +105,20 @@ export const PurchaseItemsEndpointRules = {
     /** DELETE /api/purchase-items/:id */
     delete: {},
 };
+
+/**
+ * Save a single purchase item — PUT if it already exists (id > -1), POST otherwise.
+ * @param {Object} item
+ */
+export async function savePurchaseItem(item) {
+    if (item.id > -1) {
+        const res = await PurchaseItemsEndpoints.putUpdate(item.documentId, prepareForPut(item, []));
+        return dataNode(res);
+    } else {
+        const res = await PurchaseItemsEndpoints.postCreate(prepareForPut(item, []));
+        return dataNode(res);
+    }
+}
 
 
 

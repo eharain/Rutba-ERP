@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { authApi } from "@rutba/pos-shared/lib/api";
+import { AccJournalEntriesEndpoints } from "@rutba/api-provider/endpoints";
 
 export default function JournalEntries() {
     const { jwt } = useAuth();
@@ -11,7 +11,8 @@ export default function JournalEntries() {
 
     useEffect(() => {
         if (!jwt) return;
-        authApi.get("/acc-journal-entries?sort=date:desc", {}, jwt)
+        const ep = AccJournalEntriesEndpoints.list();
+        AccJournalEntriesEndpoints.fetchList(ep.params)
             .then((res) => setEntries(res.data || []))
             .catch((err) => console.error("Failed to load journal entries", err))
             .finally(() => setLoading(false));

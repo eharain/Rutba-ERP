@@ -78,6 +78,9 @@ export const TermTypesEndpoints = {
     /** Async: create a new term-type. */
     postCreate: (data) => authApi.post('/term-types', { data }),
 
+    /** Async: create a term-type by endpoint helper. */
+    createTermType: (data) => authApi.post('/term-types', { data }),
+
     /** Async: update a term-type by id/documentId. */
     putUpdate: (id, data) => authApi.put(`/term-types/${id}`, { data }),
 
@@ -161,6 +164,9 @@ export const TermsEndpoints = {
 
     /** Async: create a new term. */
     postCreate: (data) => authApi.post('/terms', { data }),
+
+    /** Async: create a term by endpoint helper. */
+    createTerm: (data) => authApi.post('/terms', { data }),
 
     /** Async: update a term by id/documentId. */
     putUpdate: (id, data) => authApi.put(`/terms/${id}`, { data }),

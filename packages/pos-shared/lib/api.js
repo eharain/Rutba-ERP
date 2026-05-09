@@ -1,7 +1,7 @@
 import axios from "axios";
 import { storage } from "./storage.js";
 import qs from 'qs';
-import { BranchesEndpoints } from '@rutba/api-provider/endpoints';
+import { BranchesEndpoints } from '../../api-provider/endpoints/index.js';
 
 //const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4010/api";
 //export const IMAGE_URL = API_URL.substring(0, API_URL.length - 4)
@@ -357,7 +357,7 @@ export async function getStockStatus() {
 
 export async function getBranches() {
     const ep = BranchesEndpoints.list();
-    return await authApi.fetch(ep.path, ep.params);
+    return await api.fetch(ep.path, ep.params);
 }
 
 

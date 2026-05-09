@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { authApi } from "@rutba/pos-shared/lib/api";
+import { HrDepartmentsEndpoints, HrEmployeesEndpoints, HrTeamsEndpoints } from "@rutba/api-provider/endpoints";
 
 export default function TeamsPage() {
     const { jwt } = useAuth();
@@ -32,14 +32,14 @@ export default function TeamsPage() {
         setLoading(true);
         try {
             const [teamsRes, empRes, depRes] = await Promise.all([
-                authApi.get("/hr-teams?sort=name:asc&populate=team_manager,members,parent_team,department", {}, jwt),
-                authApi.get("/hr-employees?sort=name:asc", {}, jwt),
-                authApi.get("/hr-departments?sort=name:asc", {}, jwt),
+                HrTeamsEndpoints.fetchList({ sort: ["name:asc"], populate: ["team_manager", "members", "parent_team", "department"] }),
+                HrEmployeesEndpoints.fetchList({ sort: ["name:asc"] }),
+                HrDepartmentsEndpoints.fetchList({ sort: ["name:asc"] }),
             ]);
             setTeams(teamsRes?.data || []);
             setEmployees(empRes?.data || []);
             setDepartments(depRes?.data || []);
-            const roleRes = await authApi.get("/hr-teams/app-role-options", {}, jwt);
+            const roleRes = await HrTeamsEndpoints.fetchAppRoleOptions();
             setAppRoleOptions(roleRes?.data || []);
         } catch (err) {
             console.error("Failed to load teams", err);
@@ -122,9 +122,9 @@ export default function TeamsPage() {
         setSaving(true);
         try {
             if (editingId) {
-                await authApi.put(`/hr-teams/${editingId}`, payload, jwt);
+                await HrTeamsEndpoints.putUpdate(editingId, payload.data);
             } else {
-                await authApi.post("/hr-teams", payload, jwt);
+                await HrTeamsEndpoints.postCreate(payload.data);
             }
             resetForm();
             await loadAll();

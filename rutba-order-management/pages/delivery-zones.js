@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { authApi } from "@rutba/pos-shared/lib/api";
+import { DeliveryZonesEndpoints } from "../../packages/api-provider/endpoints/index.js";
 import { useToast } from "../components/Toast";
 
 const ZONE_TYPES = ["domestic_own_rider", "domestic_courier", "international"];
@@ -26,7 +26,7 @@ export default function DeliveryZonesPage() {
     if (!jwt) return;
     setLoading(true);
     try {
-      const res = await authApi.get("/delivery-zones", {
+      const res = await DeliveryZonesEndpoints.fetchList({
         sort: ["createdAt:desc"],
         pagination: { pageSize: 200 },
       });
@@ -61,7 +61,7 @@ export default function DeliveryZonesPage() {
 
     setCreating(true);
     try {
-      await authApi.post("/delivery-zones", {
+      await DeliveryZonesEndpoints.postCreate({
         data: {
           name: newZone.name.trim(),
           zone_type: newZone.zone_type,

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { authApi } from "@rutba/pos-shared/lib/api";
+import { SaleOrdersEndpoints } from "../../packages/api-provider/endpoints/index.js";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
 import { useToast } from "../components/Toast";
 import Link from "next/link";
@@ -41,7 +41,7 @@ export default function SaleOrdersPage() {
         if (!jwt) return;
         setLoading(true);
         try {
-            const res = await authApi.get("/sale-orders", {
+            const res = await SaleOrdersEndpoints.fetchList({
                 sort: ["createdAt:desc"],
                 pagination: { page, pageSize: 25 },
                 populate: ["customer_contact", "delivery_method", "assigned_rider", "delivery_zone"],

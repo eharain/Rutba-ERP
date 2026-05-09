@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import { SuppliersEndpoints, ProductsEndpoints } from "@rutba/api-provider/endpoints";
+import { SuppliersEndpoints, ProductsEndpoints } from "../../packages/api-provider/endpoints/index.js";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
 import FileView from "@rutba/pos-shared/components/FileView";
 
@@ -57,9 +57,8 @@ export default function SuppliersPage() {
         const timer = setTimeout(async () => {
             setProductSearchLoading(true);
             try {
-                const ep = ProductsEndpoints.searchInRelation(searchValue, 1, 20);
-                const res = await authApi.fetch(ep.path, {
-                    ...ep.params,
+                const res = await ProductsEndpoints.fetchSearch(searchValue, {
+                    pageSize: 20,
                     populate: { suppliers: true },
                 });
                 const data = res?.data ?? res;
@@ -89,8 +88,7 @@ export default function SuppliersPage() {
             let page = 1;
             let totalPages = 1;
             do {
-                const ep = SuppliersEndpoints.listPaged(page, 100);
-                const res = await authApi.fetch(ep.path, ep.params);
+                const res = await SuppliersEndpoints.fetchList({ page, pageSize: 100 });
                 const data = res?.data ?? res;
                 allSuppliers = [...allSuppliers, ...(data || [])];
                 totalPages = res?.meta?.pagination?.pageCount || 1;
@@ -120,10 +118,9 @@ export default function SuppliersPage() {
             let page = 1;
             let totalPages = 1;
             do {
-                const ep = ProductsEndpoints.list(page, 100, { sort: 'name:asc' });
-                const res = await authApi.fetch(ep.path, {
-                    ...ep.params,
-                    filters: { suppliers: { documentId: selectedSupplierId } },
+                const res = await ProductsEndpoints.fetchList(page, 100, {
+                    sort: 'name:asc',
+                    suppliers: [selectedSupplierId],
                     populate: { suppliers: true },
                 });
                 const data = res?.data ?? res;
@@ -232,10 +229,8 @@ export default function SuppliersPage() {
                 let page = 1;
                 let totalPages = 1;
                 do {
-                    const mergeEp = ProductsEndpoints.list(page, 100, {});
-                    const res = await authApi.fetch(mergeEp.path, {
-                        ...mergeEp.params,
-                        filters: { suppliers: { documentId: sourceSupplierId } },
+                    const res = await ProductsEndpoints.fetchList(page, 100, {
+                        suppliers: [sourceSupplierId],
                         populate: { suppliers: true },
                     });
                     const sourceProducts = res?.data ?? res ?? [];

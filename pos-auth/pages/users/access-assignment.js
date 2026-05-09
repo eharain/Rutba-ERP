@@ -4,7 +4,7 @@ import Layout from "../../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import AppAccessGate from "../../components/AppAccessGate";
 import PermissionCheck from "@rutba/pos-shared/components/PermissionCheck";
-import { authApi } from "@rutba/pos-shared/lib/api";
+import { AuthAdminEndpoints, AppAccessesEndpoints } from "../../lib/endpoints";
 import UserAccessFilters from "../../components/UserAccessFilters";
 import UserAccessCard from "../../components/UserAccessCard";
 
@@ -35,8 +35,8 @@ export default function AccessAssignmentPage() {
     setError("");
     try {
       const [usersRes, appsRes] = await Promise.all([
-        authApi.get("/auth-admin/users"),
-        authApi.get("/auth-admin/domains"),
+        AuthAdminEndpoints.fetchUsers(),
+        AppAccessesEndpoints.fetchList(),
       ]);
 
       const userData = Array.isArray(usersRes) ? usersRes : usersRes?.data || [];
@@ -132,7 +132,7 @@ export default function AccessAssignmentPage() {
     try {
       const current = nextUsers.find((u) => u.id === user.id);
 
-      await authApi.put(`/auth-admin/users/${user.id}`, {
+      await AuthAdminEndpoints.putUpdateUser(user.id, {
         username: current?.username,
         email: current?.email,
         displayName: current?.displayName,

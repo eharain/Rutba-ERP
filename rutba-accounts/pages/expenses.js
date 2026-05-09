@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { authApi } from "@rutba/pos-shared/lib/api";
+import { AccExpensesEndpoints } from "@rutba/api-provider/endpoints";
 
 export default function Expenses() {
     const { jwt } = useAuth();
@@ -11,7 +11,8 @@ export default function Expenses() {
 
     useEffect(() => {
         if (!jwt) return;
-        authApi.get("/acc-expenses?sort=date:desc", {}, jwt)
+        const ep = AccExpensesEndpoints.list();
+        AccExpensesEndpoints.fetchList(ep.params)
             .then((res) => setExpenses(res.data || []))
             .catch((err) => console.error("Failed to load expenses", err))
             .finally(() => setLoading(false));

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, useRef } from "react";
 import * as XLSX from 'xlsx';
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import { TermTypesEndpoints, TermsEndpoints } from "@rutba/api-provider/endpoints";
+import { TermTypesEndpoints, TermsEndpoints } from "../../packages/api-provider/endpoints/index.js";
 
 export default function TermTypesPage() {
     const [termTypes, setTermTypes] = useState([]);

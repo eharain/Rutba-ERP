@@ -2,7 +2,7 @@
 import Layout from "../../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { authApi, StraipImageUrl } from "@rutba/pos-shared/lib/api";
+import { MediaUtilsEndpoints, SocialPostsEndpoints } from "@rutba/api-provider/endpoints";
 import { useToast } from "../../components/Toast";
 import { PlatformBadge } from "../../components/PlatformBadge";
 import Link from "next/link";
@@ -52,7 +52,7 @@ export default function PostsPage() {
     const publishOne = async (docId) => {
         setPublishing(prev => ({ ...prev, [docId]: true }));
         try {
-            await authApi.post(`/social-posts/${docId}/publish`, {});
+            await SocialPostsEndpoints.postPublish(docId);
             setPosts(prev => prev.map(p => p.documentId === docId ? { ...p, _isPublished: true } : p));
             toast("Published!", "success");
         } catch (err) {
@@ -66,7 +66,7 @@ export default function PostsPage() {
     const unpublishOne = async (docId) => {
         setPublishing(prev => ({ ...prev, [docId]: true }));
         try {
-            await authApi.post(`/social-posts/${docId}/unpublish`, {});
+            await SocialPostsEndpoints.postUnpublish(docId);
             setPosts(prev => prev.map(p => p.documentId === docId ? { ...p, _isPublished: false } : p));
             toast("Unpublished.", "success");
         } catch (err) {
@@ -84,7 +84,7 @@ export default function PostsPage() {
         let ok = 0, fail = 0;
         for (const docId of ids) {
             setPublishing(prev => ({ ...prev, [docId]: true }));
-            try { await authApi.post(`/social-posts/${docId}/publish`, {}); ok++; setPosts(prev => prev.map(p => p.documentId === docId ? { ...p, _isPublished: true } : p)); }
+            try { await SocialPostsEndpoints.postPublish(docId); ok++; setPosts(prev => prev.map(p => p.documentId === docId ? { ...p, _isPublished: true } : p)); }
             catch { fail++; }
             finally { setPublishing(prev => ({ ...prev, [docId]: false })); }
         }
@@ -99,7 +99,7 @@ export default function PostsPage() {
         let ok = 0, fail = 0;
         for (const docId of ids) {
             setPublishing(prev => ({ ...prev, [docId]: true }));
-            try { await authApi.post(`/social-posts/${docId}/unpublish`, {}); ok++; setPosts(prev => prev.map(p => p.documentId === docId ? { ...p, _isPublished: false } : p)); }
+            try { await SocialPostsEndpoints.postUnpublish(docId); ok++; setPosts(prev => prev.map(p => p.documentId === docId ? { ...p, _isPublished: false } : p)); }
             catch { fail++; }
             finally { setPublishing(prev => ({ ...prev, [docId]: false })); }
         }
@@ -123,8 +123,8 @@ export default function PostsPage() {
             if (Object.keys(filters).length > 0) params.filters = filters;
 
             const [draftRes, pubRes] = await Promise.all([
-                authApi.get('/social-posts', params),
-                authApi.get('/social-posts', { status: 'published', fields: ['documentId'], pagination: { pageSize: 200 } }),
+                SocialPostsEndpoints.fetchList(params),
+                SocialPostsEndpoints.fetchPublishedMarker(),
             ]);
             const pubIds = new Set((pubRes.data || []).map(p => p.documentId));
             setPosts((draftRes.data || []).map(p => ({ ...p, _isPublished: pubIds.has(p.documentId) })));
@@ -142,7 +142,7 @@ export default function PostsPage() {
     const handleDelete = async (post) => {
         if (!confirm(`Delete post "${post.title}"?`)) return;
         try {
-            await authApi.del(`/social-posts/${post.documentId}`);
+            await SocialPostsEndpoints.del(post.documentId);
             toast("Post deleted.", "success");
             await loadPosts();
         } catch (err) {
@@ -226,7 +226,7 @@ export default function PostsPage() {
                                             </td>
                                             <td>
                                                 {post.cover ? (
-                                                    <img src={StraipImageUrl(post.cover)} alt="" className="rounded" style={{ width: 40, height: 40, objectFit: "cover" }} />
+                                                    <img src={MediaUtilsEndpoints.strapiImageUrl(post.cover)} alt="" className="rounded" style={{ width: 40, height: 40, objectFit: "cover" }} />
                                                 ) : (
                                                     <div className="bg-light rounded d-flex align-items-center justify-content-center" style={{ width: 40, height: 40 }}>
                                                         <i className="fas fa-image text-muted"></i>

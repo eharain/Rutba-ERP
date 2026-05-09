@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CrmLeadsEndpoints } from '@rutba/api-provider/endpoints';
+import { CrmLeadsEndpoints } from '../../packages/api-provider/endpoints/index.js';
 
 const SOURCES = ['Website', 'Referral', 'Social Media', 'Cold Call', 'Advertisement', 'Other'];
 

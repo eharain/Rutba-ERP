@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { authApi } from "@rutba/pos-shared/lib/api";
+import { SocialAccountsEndpoints } from "@rutba/api-provider/endpoints";
 import { useToast } from "../components/Toast";
 import PLATFORMS, { PlatformBadge } from "../components/PlatformBadge";
 
@@ -32,7 +32,7 @@ export default function AccountsPage() {
         if (!jwt) return;
         setLoading(true);
         try {
-            const res = await authApi.get('/social-accounts', { sort: ['createdAt:desc'] });
+            const res = await SocialAccountsEndpoints.fetchList({ sort: ['createdAt:desc'] });
             setAccounts(res.data || []);
         } catch (err) {
             console.error("Failed to load accounts", err);
@@ -76,10 +76,10 @@ export default function AccountsPage() {
         try {
             const payload = { data: { ...form } };
             if (editing) {
-                await authApi.put(`/social-accounts/${editing.documentId}`, payload);
+                await SocialAccountsEndpoints.putUpdate(editing.documentId, payload);
                 toast("Account updated.", "success");
             } else {
-                await authApi.post("/social-accounts", payload);
+                await SocialAccountsEndpoints.postCreate(payload);
                 toast("Account created.", "success");
             }
             setShowForm(false);
@@ -97,7 +97,7 @@ export default function AccountsPage() {
     const handleDelete = async (account) => {
         if (!confirm(`Delete account "${account.account_name}"?`)) return;
         try {
-            await authApi.del(`/social-accounts/${account.documentId}`);
+            await SocialAccountsEndpoints.putDelete(account.documentId);
             toast("Account deleted.", "success");
             await loadAccounts();
         } catch (err) {

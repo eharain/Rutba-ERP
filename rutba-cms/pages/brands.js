@@ -2,8 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { authApi, StraipImageUrl } from "@rutba/pos-shared/lib/api";
-import { BrandsEndpoints } from "@rutba/api-provider/endpoints";
+import { BrandsEndpoints, MediaUtilsEndpoints } from "@rutba/api-provider/endpoints";
 import Link from "next/link";
 import { useToast } from "../components/Toast";
 
@@ -37,8 +36,7 @@ export default function Brands() {
     const publishOne = async (docId) => {
         setPublishing(prev => ({ ...prev, [docId]: true }));
         try {
-            const ep = BrandsEndpoints.publish(docId);
-            await authApi.post(ep.path, {});
+            await BrandsEndpoints.postPublish(docId);
             setBrands(prev => prev.map(b => b.documentId === docId ? { ...b, _isPublished: true } : b));
             toast("Published!", "success");
         } catch (err) {
@@ -52,8 +50,7 @@ export default function Brands() {
     const unpublishOne = async (docId) => {
         setPublishing(prev => ({ ...prev, [docId]: true }));
         try {
-            const ep = BrandsEndpoints.unpublish(docId);
-            await authApi.post(ep.path, {});
+            await BrandsEndpoints.postUnpublish(docId);
             setBrands(prev => prev.map(b => b.documentId === docId ? { ...b, _isPublished: false } : b));
             toast("Unpublished.", "success");
         } catch (err) {
@@ -71,7 +68,7 @@ export default function Brands() {
         let ok = 0, fail = 0;
         for (const docId of ids) {
             setPublishing(prev => ({ ...prev, [docId]: true }));
-            try { const bpEp = BrandsEndpoints.publish(docId); await authApi.post(bpEp.path, {}); ok++; setBrands(prev => prev.map(b => b.documentId === docId ? { ...b, _isPublished: true } : b)); }
+            try { await BrandsEndpoints.postPublish(docId); ok++; setBrands(prev => prev.map(b => b.documentId === docId ? { ...b, _isPublished: true } : b)); }
             catch { fail++; }
             finally { setPublishing(prev => ({ ...prev, [docId]: false })); }
         }
@@ -86,7 +83,7 @@ export default function Brands() {
         let ok = 0, fail = 0;
         for (const docId of ids) {
             setPublishing(prev => ({ ...prev, [docId]: true }));
-            try { const buEp = BrandsEndpoints.unpublish(docId); await authApi.post(buEp.path, {}); ok++; setBrands(prev => prev.map(b => b.documentId === docId ? { ...b, _isPublished: false } : b)); }
+            try { await BrandsEndpoints.postUnpublish(docId); ok++; setBrands(prev => prev.map(b => b.documentId === docId ? { ...b, _isPublished: false } : b)); }
             catch { fail++; }
             finally { setPublishing(prev => ({ ...prev, [docId]: false })); }
         }
@@ -101,8 +98,8 @@ export default function Brands() {
             const draftEp = BrandsEndpoints.listDraft(search.trim() ? { search: search.trim() } : {});
             const pubEp = BrandsEndpoints.listPublished();
             const [draftRes, pubRes] = await Promise.all([
-                authApi.fetch(draftEp.path, draftEp.params),
-                authApi.fetch(pubEp.path, pubEp.params),
+                BrandsEndpoints.fetchList({ search: search.trim() || undefined }),
+                BrandsEndpoints.fetchListPublished(),
             ]);
             const pubIds = new Set((pubRes.data || []).map(b => b.documentId));
             setBrands((draftRes.data || []).map(b => ({ ...b, _isPublished: pubIds.has(b.documentId) })));
@@ -180,7 +177,7 @@ export default function Brands() {
                                         </td>
                                         <td>
                                             {b.logo?.url ? (
-                                                <img src={StraipImageUrl(b.logo)} alt={b.name} style={{ width: 36, height: 36, objectFit: "cover", borderRadius: 4 }} />
+                                                <img src={MediaUtilsEndpoints.strapiImageUrl(b.logo)} alt={b.name} style={{ width: 36, height: 36, objectFit: "cover", borderRadius: 4 }} />
                                             ) : (
                                                 <span className="text-muted"><i className="fas fa-copyright"></i></span>
                                             )}

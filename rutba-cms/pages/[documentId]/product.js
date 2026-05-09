@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import Layout from "../../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { authApi, StraipImageUrl } from "@rutba/pos-shared/lib/api";
+import { MediaUtilsEndpoints, ProductGroupsEndpoints, ProductsEndpoints } from "@rutba/api-provider/endpoints";
 import FileView from "@rutba/pos-shared/components/FileView";
 import ProductGalleryManager from "@rutba/pos-shared/components/ProductGalleryManager";
 import ProductVariantManager from "@rutba/pos-shared/components/ProductVariantManager";
@@ -50,8 +50,7 @@ export default function ProductDetail() {
         setLoading(true);
         try {
             const [draftRes, pubRes] = await Promise.all([
-                authApi.get(`/products/${documentId}`, {
-                    status: 'draft',
+                ProductsEndpoints.fetchByIdDraft(documentId, {
                     populate: {
                         logo: true,
                         gallery: true,
@@ -60,7 +59,7 @@ export default function ProductDetail() {
                         variants: { populate: { gallery: true, logo: true, terms: true } },
                     },
                 }),
-                authApi.get(`/products/${documentId}`, { status: 'published', fields: ["documentId"] }).catch(() => ({ data: null })),
+                ProductsEndpoints.fetchByIdPublished(documentId, { fields: ["documentId"] }).catch(() => ({ data: null })),
             ]);
             const p = draftRes.data || draftRes;
             setProduct(p);
@@ -84,8 +83,7 @@ export default function ProductDetail() {
         if (!jwt || !documentId || isNew) return;
         setGroupsLoading(true);
         try {
-            const res = await authApi.get("/product-groups", {
-                status: "draft",
+            const res = await ProductGroupsEndpoints.fetchListDraft({
                 sort: ["name:asc"],
                 pagination: { pageSize: 500 },
                 populate: ["products"],
@@ -117,12 +115,12 @@ export default function ProductDetail() {
                 is_active: isActive,
             };
             if (isNew) {
-                const res = await authApi.post("/products", { data: { ...payload, status: "draft" } });
+                const res = await ProductsEndpoints.postCreate({ ...payload, status: "draft" });
                 const created = res.data || res;
                 toast("Product created!", "success");
                 router.push(`/${created.documentId}/product`);
             } else {
-                await authApi.put(`/products/${documentId}?status=draft`, { data: payload });
+                await ProductsEndpoints.putUpdateDraft(documentId, payload);
                 toast("Draft saved!", "success");
             }
         } catch (err) {
@@ -145,14 +143,14 @@ export default function ProductDetail() {
                 is_active: isActive,
             };
             if (isNew) {
-                const res = await authApi.post("/products", { data });
+                const res = await ProductsEndpoints.postCreate(data);
                 const created = res.data || res;
-                await authApi.post(`/products/${created.documentId}/publish`, {});
+                await ProductsEndpoints.postPublish(created.documentId);
                 toast("Product created & published!", "success");
                 router.push(`/${created.documentId}/product`);
             } else {
-                await authApi.put(`/products/${documentId}?status=draft`, { data });
-                await authApi.post(`/products/${documentId}/publish`, {});
+                await ProductsEndpoints.putUpdateDraft(documentId, data);
+                await ProductsEndpoints.postPublish(documentId);
                 setIsPublished(true);
                 toast("Product saved & published!", "success");
             }
@@ -167,7 +165,7 @@ export default function ProductDetail() {
     const handleUnpublish = async () => {
         setSaving(true);
         try {
-            await authApi.post(`/products/${documentId}/unpublish`, {});
+            await ProductsEndpoints.postUnpublish(documentId);
             setIsPublished(false);
             toast("Product unpublished.", "success");
         } catch (err) {
@@ -182,18 +180,15 @@ export default function ProductDetail() {
         if (!confirm("Save current draft and load the published version into the editor?")) return;
         setSaving(true);
         try {
-            await authApi.put(`/products/${documentId}?status=draft`, {
-                data: {
-                    name,
-                    summary,
-                    description,
-                    selling_price: parseFloat(sellingPrice) || 0,
-                    offer_price: offerPrice ? parseFloat(offerPrice) : null,
-                    is_active: isActive,
-                },
+            await ProductsEndpoints.putUpdateDraft(documentId, {
+                name,
+                summary,
+                description,
+                selling_price: parseFloat(sellingPrice) || 0,
+                offer_price: offerPrice ? parseFloat(offerPrice) : null,
+                is_active: isActive,
             });
-            const res = await authApi.get(`/products/${documentId}`, {
-                status: 'published',
+            const res = await ProductsEndpoints.fetchByIdPublished(documentId, {
                 populate: {
                     logo: true,
                     gallery: true,
@@ -232,9 +227,7 @@ export default function ProductDetail() {
 
         setGroupBusyId(groupDocId);
         try {
-            await authApi.put(`/product-groups/${groupDocId}?status=draft`, {
-                data: { products: { set: nextIds } },
-            });
+            await ProductGroupsEndpoints.putUpdateDraft(groupDocId, { products: { set: nextIds } });
             setAllGroups(prev => prev.map(g =>
                 g.documentId === groupDocId
                     ? {
@@ -267,13 +260,11 @@ export default function ProductDetail() {
         setCreatingGroup(true);
         try {
             const generatedSlug = trimmedName.toLowerCase().trim().replace(/\s+/g, "-");
-            await authApi.post("/product-groups", {
-                data: {
-                    name: trimmedName,
-                    title: newGroupTitle.trim() || undefined,
-                    slug: generatedSlug,
-                    products: { set: [documentId] },
-                },
+            await ProductGroupsEndpoints.postCreate({
+                name: trimmedName,
+                title: newGroupTitle.trim() || undefined,
+                slug: generatedSlug,
+                products: { set: [documentId] },
             });
             setNewGroupName("");
             setNewGroupTitle("");

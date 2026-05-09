@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { authApi } from "@rutba/pos-shared/lib/api";
+import { HrAttendancesEndpoints } from "@rutba/api-provider/endpoints";
 
 export default function Attendance() {
     const { jwt } = useAuth();
@@ -11,7 +11,7 @@ export default function Attendance() {
 
     useEffect(() => {
         if (!jwt) return;
-        authApi.get("/hr-attendances?sort=date:desc&populate=employee", {}, jwt)
+        HrAttendancesEndpoints.fetchList()
             .then((res) => setRecords(res.data || []))
             .catch((err) => console.error("Failed to load attendance", err))
             .finally(() => setLoading(false));

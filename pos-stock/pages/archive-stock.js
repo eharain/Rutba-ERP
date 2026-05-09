@@ -1,8 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import { authApi, getBranches } from "@rutba/pos-shared/lib/api";
-import { BranchesEndpoints } from "@rutba/api-provider/endpoints";
+import { BranchesEndpoints, StockItemsEndpoints } from "../../packages/api-provider/endpoints/index.js";
 import {
     Table,
     TableHead,
@@ -45,7 +44,7 @@ export default function ArchiveStockPage() {
 
     useEffect(() => {
         (async () => {
-            const res = await getBranches();
+            const res = await BranchesEndpoints.fetchList();
             setBranches(res.data || []);
         })();
         // Default cutoff: 6 months ago
@@ -58,7 +57,7 @@ export default function ArchiveStockPage() {
         if (!selectedBranch) return;
         setLoading(true);
         try {
-            const res = await authApi.get(`/branches/${selectedBranch}/archive-stats`);
+            const res = await BranchesEndpoints.fetchArchiveStats(selectedBranch);
             setStats(res.data || res);
         } catch (err) {
             console.error('Error loading stats:', err);
@@ -88,20 +87,10 @@ export default function ArchiveStockPage() {
         if (!selectedBranch) return;
         setLoadingArchived(true);
         try {
-            const res = await authApi.get("/me/stock-items-search", {
-                filters: {
-                    branch: { documentId: selectedBranch },
-                    archived: true,
-                },
-                populate: {
-                    product: true,
-                    purchase_item: { populate: { purchase: true } },
-                },
-                pagination: {
-                    page: archivedPage + 1,
-                    pageSize: archivedRowsPerPage,
-                },
-                sort: ["archived_at:desc"],
+            const res = await StockItemsEndpoints.fetchList(archivedPage + 1, archivedRowsPerPage, {
+                branchDocId: selectedBranch,
+                showArchived: true,
+                sort: ['archived_at:desc'],
             });
             const data = res.data || [];
             setArchivedItems(data);

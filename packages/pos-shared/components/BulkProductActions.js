@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { authApi } from "../lib/api";
+import { ProductsEndpoints } from "../lib/endpoints";
 
 /**
  * BulkProductActions — reusable toolbar for bulk product operations.
@@ -47,8 +47,8 @@ export default function BulkProductActions({
         let ok = 0, fail = 0;
         for (const docId of ids) {
             try {
-                await authApi.put(`/products/${docId}?status=draft`, {
-                    data: { [field]: documentIds },
+                await ProductsEndpoints.putUpdate(docId, {
+                    [field]: documentIds,
                 });
                 ok++;
                 if (onAssigned) onAssigned(field, documentIds, docId);
@@ -72,12 +72,7 @@ export default function BulkProductActions({
         if (includeVariants) {
             for (const docId of ids) {
                 try {
-                    const res = await authApi.get("/products", {
-                        status: "draft",
-                        filters: { parent: { documentId: docId } },
-                        fields: ["documentId"],
-                        pagination: { pageSize: 200 },
-                    });
+                    const res = await ProductsEndpoints.fetchByParentDraft(docId, { pageSize: 200 });
                     (res.data || []).forEach(v => { if (!allIds.includes(v.documentId)) allIds.push(v.documentId); });
                 } catch (err) {
                     console.error("Failed to fetch variants for", docId, err);
@@ -88,7 +83,7 @@ export default function BulkProductActions({
         let ok = 0, fail = 0;
         for (const docId of allIds) {
             try {
-                await authApi.post(`/products/${docId}/publish`, {});
+                await ProductsEndpoints.postPublish(docId);
                 ok++;
                 if (onPublished) onPublished(docId);
             } catch (err) {
@@ -110,7 +105,7 @@ export default function BulkProductActions({
         let ok = 0, fail = 0;
         for (const docId of ids) {
             try {
-                await authApi.post(`/products/${docId}/unpublish`, {});
+                await ProductsEndpoints.postUnpublish(docId);
                 ok++;
                 if (onUnpublished) onUnpublished(docId);
             } catch (err) {

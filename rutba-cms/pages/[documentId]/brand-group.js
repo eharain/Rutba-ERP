@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import Layout from "../../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { authApi, StraipImageUrl } from "@rutba/pos-shared/lib/api";
+import { BrandGroupsEndpoints, BrandsEndpoints, MediaUtilsEndpoints } from "@rutba/api-provider/endpoints";
 import Link from "next/link";
 import { useToast } from "../../components/Toast";
 
@@ -28,8 +28,8 @@ export default function BrandGroupDetail() {
     useEffect(() => {
         if (!jwt || !documentId || isNew) { setLoading(false); return; }
         Promise.all([
-            authApi.get(`/brand-groups/${documentId}`, { status: 'draft', populate: ["brands.logo"] }),
-            authApi.get(`/brand-groups/${documentId}`, { status: 'published', fields: ["documentId"] }).catch(() => ({ data: null })),
+            BrandGroupsEndpoints.fetchByIdDraft(documentId, { populate: ["brands.logo"] }),
+            BrandGroupsEndpoints.fetchByIdPublished(documentId, { fields: ["documentId"] }).catch(() => ({ data: null })),
         ])
             .then(([draftRes, pubRes]) => {
                 const g = draftRes.data || draftRes;
@@ -47,7 +47,7 @@ export default function BrandGroupDetail() {
     const loadBrands = useCallback(async () => {
         if (!jwt) return;
         try {
-            const res = await authApi.get("/brands", { status: 'draft', pagination: { pageSize: 100 }, sort: ["name:asc"], populate: ["logo"] });
+            const res = await BrandsEndpoints.fetchList({ sort: ["name:asc"], populate: ["logo"], pageSize: 100, status: 'draft' });
             setAllBrands(res.data || []);
         } catch (err) {
             console.error("Failed to load brands", err);
@@ -74,11 +74,11 @@ export default function BrandGroupDetail() {
             };
             if (isNew) {
                 payload.data.slug = slug || name.toLowerCase().replace(/\s+/g, "-");
-                const res = await authApi.post("/brand-groups", payload);
+                const res = await BrandGroupsEndpoints.postCreate(payload.data);
                 const created = res.data || res;
                 router.push(`/${created.documentId}/brand-group`);
             } else {
-                await authApi.put(`/brand-groups/${documentId}?status=draft`, payload);
+                await BrandGroupsEndpoints.putUpdateDraft(documentId, payload.data);
                 toast("Draft saved!", "success");
             }
         } catch (err) {
@@ -99,8 +99,8 @@ export default function BrandGroupDetail() {
                     brands: { set: selectedBrandIds },
                 },
             };
-            await authApi.put(`/brand-groups/${documentId}?status=draft`, payload);
-            await authApi.post(`/brand-groups/${documentId}/publish`, {});
+            await BrandGroupsEndpoints.putUpdateDraft(documentId, payload.data);
+            await BrandGroupsEndpoints.postPublish(documentId);
             setIsPublished(true);
             toast("Brand group saved & published!", "success");
         } catch (err) {
@@ -114,7 +114,7 @@ export default function BrandGroupDetail() {
     const handleUnpublish = async () => {
         setSaving(true);
         try {
-            await authApi.post(`/brand-groups/${documentId}/unpublish`, {});
+            await BrandGroupsEndpoints.postUnpublish(documentId);
             setIsPublished(false);
             toast("Brand group unpublished.", "success");
         } catch (err) {
@@ -129,10 +129,8 @@ export default function BrandGroupDetail() {
         if (!confirm("Save current draft and load the published version into the editor?")) return;
         setSaving(true);
         try {
-            await authApi.put(`/brand-groups/${documentId}?status=draft`, {
-                data: { name, sort_order: sortOrder, brands: { set: selectedBrandIds } },
-            });
-            const res = await authApi.get(`/brand-groups/${documentId}`, { status: 'published', populate: ["brands.logo"] });
+            await BrandGroupsEndpoints.putUpdateDraft(documentId, { name, sort_order: sortOrder, brands: { set: selectedBrandIds } });
+            const res = await BrandGroupsEndpoints.fetchByIdPublished(documentId, { populate: ["brands.logo"] });
             const g = res.data || res;
             if (!g) { toast("No published version found.", "warning"); return; }
             setName(g.name || "");
@@ -151,7 +149,7 @@ export default function BrandGroupDetail() {
     const handleDelete = async () => {
         if (!confirm("Are you sure you want to delete this brand group?")) return;
         try {
-            await authApi.del(`/brand-groups/${documentId}`);
+            await BrandGroupsEndpoints.delById(documentId);
             router.push("/brand-groups");
         } catch (err) {
             console.error("Failed to delete brand group", err);
@@ -243,7 +241,7 @@ export default function BrandGroupDetail() {
                                                 return (
                                                     <button key={b.documentId} type="button" className={`btn btn-sm ${selected ? "btn-warning" : "btn-outline-secondary"}`} onClick={() => toggleBrand(b.documentId)}>
                                                         {selected && <i className="fas fa-check me-1"></i>}
-                                                        {b.logo?.url && <img src={StraipImageUrl(b.logo)} alt="" style={{ width: 16, height: 16, objectFit: "contain", marginRight: 4 }} />}
+                                                        src={MediaUtilsEndpoints.strapiImageUrl(b.logo)}
                                                         {b.name}
                                                     </button>
                                                 );

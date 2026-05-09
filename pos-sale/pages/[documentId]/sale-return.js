@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import Layout from "../../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import CashRegisterGuard from "../../components/CashRegisterGuard";
-import { SaleReturnsEndpoints, SaleReturnItemsEndpoints, SalesEndpoints, StockItemsEndpoints, PaymentsEndpoints, CashRegisterTransactionEndpoints, BranchesEndpoints } from "@rutba/api-provider/endpoints";
+import { SaleReturnsEndpoints, SaleReturnItemsEndpoints, SalesEndpoints, StockItemsEndpoints, PaymentsEndpoints, CashRegisterTransactionEndpoints, BranchesEndpoints } from "../../../packages/api-provider/endpoints/index.js";
 import { fetchSaleByIdOrInvoice } from "@rutba/pos-shared/lib/pos";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
 import { getCashRegister } from "@rutba/pos-shared/lib/utils";
@@ -51,8 +51,7 @@ function SaleReturnDetail({ documentId }) {
         setLoading(true);
         setError("");
         try {
-            const ep = SaleReturnsEndpoints.byId(documentId);
-            const res = await authApi.fetch(ep.path, ep.params);
+            const res = await SaleReturnsEndpoints.fetchById(documentId);
             const data = res?.data ?? res;
             if (!data) {
                 setError("Sale return not found.");

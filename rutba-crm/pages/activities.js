@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { authApi } from "@rutba/pos-shared/lib/api";
+import { CrmActivitiesEndpoints } from "@rutba/api-provider/endpoints";
 
 export default function Activities() {
     const { jwt } = useAuth();
@@ -11,7 +11,8 @@ export default function Activities() {
 
     useEffect(() => {
         if (!jwt) return;
-        authApi.get("/crm-activities?sort=date:desc", {}, jwt)
+        const ep = CrmActivitiesEndpoints.list();
+        CrmActivitiesEndpoints.fetchList(ep.params)
             .then((res) => setActivities(res.data || []))
             .catch((err) => console.error("Failed to load activities", err))
             .finally(() => setLoading(false));

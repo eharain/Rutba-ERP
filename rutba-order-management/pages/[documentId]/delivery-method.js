@@ -4,7 +4,7 @@ import Link from "next/link";
 import Layout from "../../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { authApi } from "@rutba/pos-shared/lib/api";
+import { DeliveryMethodsEndpoints } from "../../../packages/api-provider/endpoints/index.js";
 import { useToast } from "../../components/Toast";
 
 const PROVIDERS = ["own_rider", "easypost", "custom"];
@@ -39,8 +39,8 @@ export default function DeliveryMethodDetailPage() {
       return;
     }
 
-    authApi
-      .get(`/delivery-methods/${documentId}`)
+    DeliveryMethodsEndpoints
+      .fetchById(documentId)
       .then((res) => {
         const m = res.data || res;
         setName(m.name || "");
@@ -89,12 +89,12 @@ export default function DeliveryMethodDetailPage() {
     setSaving(true);
     try {
       if (isNew) {
-        const res = await authApi.post("/delivery-methods", buildPayload());
+        const res = await DeliveryMethodsEndpoints.postCreate(buildPayload());
         const created = res.data || res;
         toast("Delivery method created.", "success");
         router.push(`/${created.documentId}/delivery-method`);
       } else {
-        await authApi.put(`/delivery-methods/${documentId}`, buildPayload());
+        await DeliveryMethodsEndpoints.putUpdate(documentId, buildPayload());
         toast("Delivery method updated.", "success");
       }
     } catch (err) {

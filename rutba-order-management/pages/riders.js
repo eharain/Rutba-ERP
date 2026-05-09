@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { authApi } from "@rutba/pos-shared/lib/api";
+import { RidersEndpoints } from "../../packages/api-provider/endpoints/index.js";
 import { useToast } from "../components/Toast";
 
 const STATUS_OPTIONS = ["available", "on_delivery", "off_duty", "suspended"];
@@ -26,7 +26,7 @@ export default function RidersPage() {
     if (!jwt) return;
     setLoading(true);
     try {
-      const res = await authApi.get("/riders", {
+      const res = await RidersEndpoints.fetchList({
         sort: ["createdAt:desc"],
         populate: ["assigned_zones", "user"],
         pagination: { pageSize: 200 },
@@ -49,7 +49,7 @@ export default function RidersPage() {
     if (!status) return;
     setSaving((p) => ({ ...p, [rider.documentId]: true }));
     try {
-      await authApi.put(`/riders/${rider.documentId}`, { data: { status } });
+      await RidersEndpoints.putUpdate(rider.documentId, { data: { status } });
       toast("Rider status updated.", "success");
       await load();
     } catch (err) {
@@ -69,7 +69,7 @@ export default function RidersPage() {
 
     setCreating(true);
     try {
-      await authApi.post("/riders", {
+      await RidersEndpoints.postCreate({
         data: {
           full_name: newRider.full_name.trim(),
           phone: newRider.phone.trim() || null,

@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { authApi } from '@rutba/pos-shared/lib/api';
 import { parseContactLine } from '@rutba/pos-shared/lib/utils';
 import CustomerForm from './form/customer-form';
-import { CustomersEndpoints } from '@rutba/api-provider/endpoints';
+import { CustomersEndpoints } from '../../packages/api-provider/endpoints/index.js';
 
 export default function CustomerSelect({ value, onChange, disabled }) {
     const [query, setQuery] = useState('');
@@ -86,9 +85,8 @@ export default function CustomerSelect({ value, onChange, disabled }) {
     const fetchCustomers = async () => {
         setLoading(true);
         try {
-            const ep = CustomersEndpoints.search(query, 20);
-            const res = await authApi.get(ep.path, ep.params);
-            setResults(res?.data || []);
+            const res = await CustomersEndpoints.fetchSearch(query, { pageSize: 20 });
+            setResults(res?.data || res || []);
         } catch (e) {
             console.error('Customer search failed', e);
             setResults([]);

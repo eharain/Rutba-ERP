@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import Layout from "../../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { authApi } from "@rutba/pos-shared/lib/api";
+import { SaleOrdersEndpoints } from "@rutba/api-provider/endpoints";
 import Link from "next/link";
 
 export default function SaleOrderDetailPage() {
@@ -27,7 +27,7 @@ export default function SaleOrderDetailPage() {
 
     useEffect(() => {
         if (!jwt || !documentId) return;
-        authApi.get(`/sale-orders/${documentId}?populate=*`, {}, jwt)
+        SaleOrdersEndpoints.fetchById(documentId, { populate: '*' }, jwt)
             .then((res) => setOrder(res.data || res))
             .catch((err) => console.error("Failed to load order", err))
             .finally(() => setLoading(false));
@@ -35,7 +35,7 @@ export default function SaleOrderDetailPage() {
 
     const fetchMessages = () => {
         if (!jwt || !documentId) return;
-        authApi.get(`/sale-orders/${documentId}/messages`, {}, jwt)
+        SaleOrdersEndpoints.fetchMessages(documentId, jwt)
             .then((res) => setMessages(res.data || []))
             .catch((err) => console.error("Failed to load order messages", err));
     };
@@ -51,7 +51,7 @@ export default function SaleOrderDetailPage() {
         if (!message || !jwt || !documentId) return;
         try {
             setSendingMessage(true);
-            await authApi.post(`/sale-orders/${documentId}/messages`, { message }, jwt);
+            await SaleOrdersEndpoints.postSendMessage(documentId, { message }, jwt);
             setMessageInput("");
             fetchMessages();
         } catch (err) {

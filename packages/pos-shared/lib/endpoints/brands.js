@@ -1,3 +1,6 @@
+import { authApi } from '../api.js';
+import { AuthApiEndpoints } from './http-client.js';
+
 /**
  * BrandsEndpoints
  * Centralised path + params definitions for the /brands content-type.
@@ -5,7 +8,6 @@
  * Covers both the pos-stock management UI (draft/publish flows)
  * and simple list/paginated lookups used across other pages.
  */
-import { authApi } from '../api.js';
 
 export const BrandsEndpoints = {
 
@@ -102,6 +104,16 @@ export const BrandsEndpoints = {
      */
     update: (documentId) => ({ path: `/brands/${documentId}` }),
 
+    byIdDraft: (documentId, { populate } = {}) => ({
+        path: `/brands/${documentId}`,
+        params: { status: 'draft', ...(populate ? { populate } : {}) },
+    }),
+
+    byIdPublished: (documentId, { fields, populate } = {}) => ({
+        path: `/brands/${documentId}`,
+        params: { status: 'published', ...(fields ? { fields } : {}), ...(populate ? { populate } : {}) },
+    }),
+
     /**
      * Delete a brand by documentId.
      * @param {string} documentId
@@ -131,6 +143,26 @@ Object.assign(BrandsEndpoints, {
         const ep = BrandsEndpoints.update(documentId);
         const res = await authApi.put(ep.path, { data });
         return res?.data ?? res;
+    },
+    fetchByIdDraft(documentId, opts = {}) {
+        const ep = BrandsEndpoints.byIdDraft(documentId, opts);
+        return authApi.fetch(ep.path, ep.params);
+    },
+    fetchByIdPublished(documentId, opts = {}) {
+        const ep = BrandsEndpoints.byIdPublished(documentId, opts);
+        return authApi.fetch(ep.path, ep.params);
+    },
+    putUpdateDraft(documentId, data) {
+        return authApi.put(`/brands/${documentId}`, { data, status: 'draft' });
+    },
+    postPublish(documentId) {
+        return authApi.post(`/brands/${documentId}/publish`, {});
+    },
+    postUnpublish(documentId) {
+        return authApi.post(`/brands/${documentId}/unpublish`, {});
+    },
+    delById(documentId) {
+        return authApi.del(`/brands/${documentId}`);
     },
     async putDelete(documentId) {
         const ep = BrandsEndpoints.del(documentId);
@@ -194,6 +226,16 @@ export const BrandsEndpointRules = {
     /** PUT /api/brands/:id/unpublish */
     unpublish: {},
 };
+
+/**
+ * Fetch a paginated list of brands.
+ * @param {number} page
+ * @param {number} rowsPerPage
+ */
+export async function fetchBrands(page, rowsPerPage) {
+    const ep = BrandsEndpoints.list({ page, pageSize: rowsPerPage ?? 100 });
+    return await AuthApiEndpoints.fetch(ep.path, ep.params);
+}
 
 
 

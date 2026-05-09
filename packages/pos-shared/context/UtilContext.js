@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useMemo, useState, useEffect, useCallback } from "react";
 import { storage } from "../lib/storage";
-import { authApi } from "../lib/api";
-import { BranchesEndpoints } from "@rutba/api-provider/endpoints";
+import { BranchesEndpoints } from "../lib/endpoints";
 
 const UtilContext = createContext(null);
 
@@ -72,8 +71,7 @@ export function UtilProvider({ children }) {
         if (!hydrated || !branch?.documentId) return;
         (async () => {
             try {
-                const ep = BranchesEndpoints.byId(branch.documentId);
-                const response = await authApi.get(ep.path, ep.params);
+                const response = await BranchesEndpoints.fetchById(branch.documentId);
                 const fresh = response?.data ?? response;
                 if (fresh && fresh.documentId) {
                     setBranchState(fresh);
@@ -185,7 +183,7 @@ export function UtilProvider({ children }) {
         }
         const merged = { ...BRANCH_PRINT_DEFAULTS, ...newSettings };
         try {
-            const response = await authApi.put(`/branches/${branch.documentId}`, { data: { printSettings: merged } });
+            const response = await BranchesEndpoints.putUpdate(branch.documentId, { printSettings: merged });
             // Use the API response to get the full fresh branch entity,
             // so any fields updated in the admin panel are picked up.
             const fresh = response?.data ?? response;

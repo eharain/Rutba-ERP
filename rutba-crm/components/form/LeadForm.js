@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { authApi } from '@rutba/pos-shared/lib/api';
-import { CustomersEndpoints } from '@rutba/api-provider/endpoints';
+import { CustomersEndpoints, CrmLeadsEndpoints } from '@rutba/api-provider/endpoints';
 
 const SOURCES = ['Website', 'Referral', 'Social Media', 'Cold Call', 'Advertisement', 'Other'];
 const STATUSES = ['New', 'Contacted', 'Qualified', 'Negotiation', 'Won', 'Lost'];
@@ -47,8 +46,7 @@ export default function LeadForm({ lead, onSaved, onCancel }) {
         const timer = setTimeout(async () => {
             setSearchingCustomer(true);
             try {
-                const ep = CustomersEndpoints.search(customerQuery, 10);
-                const res = await authApi.get(ep.path, ep.params);
+                const res = await CustomersEndpoints.fetchSearch(customerQuery, 10);
                 setCustomerResults(res?.data || []);
             } catch {
                 setCustomerResults([]);
@@ -85,9 +83,9 @@ export default function LeadForm({ lead, onSaved, onCancel }) {
 
             let result;
             if (lead?.documentId) {
-                result = await authApi.put(`/crm-leads/${lead.documentId}`, payload);
+                result = await CrmLeadsEndpoints.putUpdate(lead.documentId, payload.data);
             } else {
-                result = await authApi.post('/crm-leads', payload);
+                result = await CrmLeadsEndpoints.postCreate(payload.data);
             }
 
             if (onSaved) onSaved(result.data || result);

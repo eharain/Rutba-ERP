@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { authApi } from "@rutba/pos-shared/lib/api";
+import { AccInvoicesEndpoints } from "@rutba/api-provider/endpoints";
 
 export default function Invoices() {
     const { jwt } = useAuth();
@@ -11,7 +11,8 @@ export default function Invoices() {
 
     useEffect(() => {
         if (!jwt) return;
-        authApi.get("/acc-invoices?sort=date:desc", {}, jwt)
+        const ep = AccInvoicesEndpoints.list();
+        AccInvoicesEndpoints.fetchList(ep.params)
             .then((res) => setInvoices(res.data || []))
             .catch((err) => console.error("Failed to load invoices", err))
             .finally(() => setLoading(false));

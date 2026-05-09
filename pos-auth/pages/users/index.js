@@ -3,7 +3,7 @@ import Link from "next/link";
 import Layout from "../../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import AppAccessGate from "../../components/AppAccessGate";
-import { authApi } from "@rutba/pos-shared/lib/api";
+import { AuthAdminEndpoints, AppAccessesEndpoints } from "../../lib/endpoints";
 
 export default function UsersPage() {
     const [users, setUsers] = useState([]);
@@ -19,8 +19,8 @@ export default function UsersPage() {
         setLoading(true);
         try {
             const [usersRes, domainsRes] = await Promise.all([
-                authApi.get("/auth-admin/users"),
-                authApi.get("/auth-admin/domains"),
+                AuthAdminEndpoints.fetchUsers(),
+                AppAccessesEndpoints.fetchList(),
             ]);
 
             const userData = Array.isArray(usersRes) ? usersRes : usersRes?.data || [];

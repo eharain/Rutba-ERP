@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { authApi } from "@rutba/pos-shared/lib/api";
+import { PaySalaryStructuresEndpoints } from "@rutba/api-provider/endpoints";
 
 export default function SalaryStructures() {
     const { jwt } = useAuth();
@@ -11,7 +11,8 @@ export default function SalaryStructures() {
 
     useEffect(() => {
         if (!jwt) return;
-        authApi.get("/pay-salary-structures?sort=name:asc", {}, jwt)
+        const ep = PaySalaryStructuresEndpoints.list();
+        PaySalaryStructuresEndpoints.fetchList(ep.params)
             .then((res) => setStructures(res.data || []))
             .catch((err) => console.error("Failed to load salary structures", err))
             .finally(() => setLoading(false));

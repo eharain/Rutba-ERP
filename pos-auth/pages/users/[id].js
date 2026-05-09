@@ -3,8 +3,7 @@ import { useRouter } from "next/router";
 import Layout from "../../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import AppAccessGate from "../../components/AppAccessGate";
-import { authApi } from "@rutba/pos-shared/lib/api";
-import { AppAccessesEndpoints } from "../../lib/endpoints";
+import { AuthAdminEndpoints, AppAccessesEndpoints } from "../../lib/endpoints";
 
 export default function EditUserPage() {
     const router = useRouter();
@@ -36,11 +35,10 @@ export default function EditUserPage() {
     async function loadAll() {
         setLoading(true);
         try {
-            const domainsEp = AppAccessesEndpoints.list();
             const [userData, rolesRes, aaRes] = await Promise.all([
-                authApi.get(`/auth-admin/users/${id}`),
-                authApi.get("/auth-admin/roles"),
-                authApi.call(domainsEp),
+                AuthAdminEndpoints.fetchUserById(id),
+                AuthAdminEndpoints.fetchRoles(),
+                AppAccessesEndpoints.fetchList(),
             ]);
 
             setRoles(rolesRes?.roles || []);
@@ -120,7 +118,7 @@ export default function EditUserPage() {
             if (form.password) {
                 payload.password = form.password;
             }
-            await authApi.put(`/auth-admin/users/${id}`, payload);
+            await AuthAdminEndpoints.putUpdateUser(id, payload);
             setSuccess("User updated successfully.");
         } catch (err) {
             const msg = err?.response?.data?.error?.message || err.message || "Failed to update user";
@@ -133,7 +131,7 @@ export default function EditUserPage() {
     async function handleDelete() {
         if (!confirm("Are you sure you want to delete this user? This cannot be undone.")) return;
         try {
-            await authApi.del(`/auth-admin/users/${id}`);
+            await AuthAdminEndpoints.delUser(id);
             router.push("/users");
         } catch (err) {
             setError("Failed to delete user: " + (err.message || ""));

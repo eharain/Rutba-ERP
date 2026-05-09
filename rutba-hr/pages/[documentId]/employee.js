@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import Layout from "../../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { authApi } from "@rutba/pos-shared/lib/api";
+import { AuthAdminEndpoints, HrEmployeesEndpoints } from "@rutba/api-provider/endpoints";
 import Link from "next/link";
 
 export default function EmployeeDetail() {
@@ -18,7 +18,7 @@ export default function EmployeeDetail() {
 
     useEffect(() => {
         if (!jwt || !documentId) return;
-        authApi.get(`/hr-employees/${documentId}?populate=*`, {}, jwt)
+        HrEmployeesEndpoints.fetchById(documentId, { populate: '*' })
             .then((res) => setEmployee(res.data || res))
             .catch((err) => console.error("Failed to load employee", err))
             .finally(() => setLoading(false));
@@ -26,7 +26,7 @@ export default function EmployeeDetail() {
 
     useEffect(() => {
         if (!jwt) return;
-        authApi.get("/auth-admin/users", {}, jwt)
+        AuthAdminEndpoints.fetchUsers()
             .then((res) => {
                 const rows = Array.isArray(res) ? res : res?.data || [];
                 setUsers(rows);
@@ -46,13 +46,11 @@ export default function EmployeeDetail() {
         if (!employee?.documentId) return;
         setSavingLink(true);
         try {
-            await authApi.put(`/hr-employees/${employee.documentId}`, {
-                data: {
-                    user: linkDraft ? { id: Number(linkDraft) } : null,
-                },
-            }, jwt);
+            await HrEmployeesEndpoints.putUpdate(employee.documentId, {
+                user: linkDraft ? { id: Number(linkDraft) } : null,
+            });
 
-            const res = await authApi.get(`/hr-employees/${employee.documentId}?populate=*`, {}, jwt);
+            const res = await HrEmployeesEndpoints.fetchById(employee.documentId, { populate: '*' });
             setEmployee(res.data || res);
         } catch (err) {
             console.error("Failed to save employee-user link", err);

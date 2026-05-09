@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, useMemo } from "react";
 import Layout from "../components/Layout";
 import ProductPickerModal from "../components/ProductPickerModal";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import { StockItemsEndpoints, ProductsEndpoints } from "@rutba/api-provider/endpoints";
+import { StockItemsEndpoints, ProductsEndpoints } from "../../packages/api-provider/endpoints/index.js";
 
 const STATUS_OPTIONS = [
     "InStock", "Sold", "Received", "Reserved",
@@ -55,8 +55,7 @@ export default function OrphanStockItemsPage() {
         setError("");
         setGroupExtras({});
         try {
-            const ep = StockItemsEndpoints.orphanGroups({ page, pageSize, search, statusFilter, skuFilter, sortField, sortDir });
-            const res = await authApi.get(ep.path, ep.params);
+            const res = await StockItemsEndpoints.fetchOrphanGroups({ page, pageSize, search, statusFilter, skuFilter, sortField, sortDir });
             const groups = res.data || [];
             const sampleItems = groups
                 .map(g => ({
@@ -94,12 +93,12 @@ export default function OrphanStockItemsPage() {
         setBusyId(item.documentId);
         try {
             const prodRes = await ProductsEndpoints.postCreate({
-                    name: item.name,
-                    selling_price: item.selling_price,
-                    cost_price: item.cost_price,
-                    sku: item.sku,
-                    barcode: item.barcode,
-                });
+                name: item.name,
+                selling_price: item.selling_price,
+                cost_price: item.cost_price,
+                sku: item.sku,
+                barcode: item.barcode,
+            });
             const newProductDocId = (prodRes?.data ?? prodRes)?.documentId;
             if (newProductDocId) {
                 await StockItemsEndpoints.putUpdate(item.documentId, { product: { connect: [newProductDocId] } });
@@ -174,8 +173,7 @@ export default function OrphanStockItemsPage() {
         const groupKey = group.key;
         setGroupLoading(prev => ({ ...prev, [groupKey]: true }));
         try {
-            const ep = StockItemsEndpoints.orphanGroupItems({ page: 1, pageSize: 10000, name: group.name, selling_price: group.selling_price == null ? "__null__" : String(group.selling_price), statusFilter, skuFilter, sortField, sortDir });
-            const res = await authApi.get(ep.path, ep.params);
+            const res = await StockItemsEndpoints.fetchOrphanGroupItems({ page: 1, pageSize: 10000, name: group.name, selling_price: group.selling_price == null ? "__null__" : String(group.selling_price), statusFilter, skuFilter, sortField, sortDir });
             const exactGroupItems = (res.data || []).filter(item =>
                 makeGroupKey(item.name, item.selling_price) === groupKey
             );
@@ -219,12 +217,12 @@ export default function OrphanStockItemsPage() {
             const first = selectedItems[0];
             setBulkProgress("Creating product...");
             const prodRes = await ProductsEndpoints.postCreate({
-                    name: first.name,
-                    selling_price: first.selling_price,
-                    cost_price: first.cost_price,
-                    sku: first.sku,
-                    barcode: first.barcode,
-                });
+                name: first.name,
+                selling_price: first.selling_price,
+                cost_price: first.cost_price,
+                sku: first.sku,
+                barcode: first.barcode,
+            });
             const newProductDocId = (prodRes?.data ?? prodRes)?.documentId;
             if (!newProductDocId) throw new Error("Product creation returned no documentId");
 

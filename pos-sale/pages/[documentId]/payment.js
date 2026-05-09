@@ -3,9 +3,8 @@ import { useRouter } from "next/router";
 import Link from "next/link";
 import Layout from "../../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import { authApi } from "@rutba/pos-shared/lib/api";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
-import { PaymentsEndpoints } from "@rutba/api-provider/endpoints";
+import { PaymentsEndpoints } from "../../../packages/api-provider/endpoints/index.js";
 
 export default function PaymentRedirectPage() {
     const router = useRouter();
@@ -25,14 +24,7 @@ export default function PaymentRedirectPage() {
         setLoading(true);
         setError("");
         try {
-            const ep = PaymentsEndpoints.byId(documentId, {
-                populate: {
-                    sale: { fields: ["documentId", "invoice_no", "total", "payment_status", "status"] },
-                    sale_return: { fields: ["documentId", "return_no", "total_refund", "type", "refund_status"] },
-                    cash_register: { fields: ["documentId", "id", "status", "desk_name", "branch_name"] },
-                },
-            });
-            const res = await authApi.get(ep.path, ep.params);
+            const res = await PaymentsEndpoints.fetchById(documentId);
             const data = res?.data ?? res;
             if (!data) {
                 setError("Payment not found.");

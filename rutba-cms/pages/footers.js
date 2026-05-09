@@ -3,7 +3,7 @@ import * as XLSX from "xlsx";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { authApi } from "@rutba/pos-shared/lib/api";
+import { CmsFootersEndpoints } from "@rutba/api-provider/endpoints";
 import Link from "next/link";
 import { useToast } from "../components/Toast";
 
@@ -94,7 +94,7 @@ export default function Footers() {
     const publishOne = async (docId) => {
         setPublishing(prev => ({ ...prev, [docId]: true }));
         try {
-            await authApi.post(`/cms-footers/${docId}/publish`, {});
+            await CmsFootersEndpoints.postPublish(docId);
             setFooters(prev => prev.map(f => f.documentId === docId ? { ...f, _isPublished: true } : f));
             toast("Published!", "success");
         } catch (err) {
@@ -108,7 +108,7 @@ export default function Footers() {
     const unpublishOne = async (docId) => {
         setPublishing(prev => ({ ...prev, [docId]: true }));
         try {
-            await authApi.post(`/cms-footers/${docId}/unpublish`, {});
+            await CmsFootersEndpoints.postUnpublish(docId);
             setFooters(prev => prev.map(f => f.documentId === docId ? { ...f, _isPublished: false } : f));
             toast("Unpublished.", "success");
         } catch (err) {
@@ -126,7 +126,7 @@ export default function Footers() {
         let ok = 0, fail = 0;
         for (const docId of ids) {
             setPublishing(prev => ({ ...prev, [docId]: true }));
-            try { await authApi.post(`/cms-footers/${docId}/publish`, {}); ok++; setFooters(prev => prev.map(f => f.documentId === docId ? { ...f, _isPublished: true } : f)); }
+            try { await CmsFootersEndpoints.postPublish(docId); ok++; setFooters(prev => prev.map(f => f.documentId === docId ? { ...f, _isPublished: true } : f)); }
             catch { fail++; }
             finally { setPublishing(prev => ({ ...prev, [docId]: false })); }
         }
@@ -141,7 +141,7 @@ export default function Footers() {
         let ok = 0, fail = 0;
         for (const docId of ids) {
             setPublishing(prev => ({ ...prev, [docId]: true }));
-            try { await authApi.post(`/cms-footers/${docId}/unpublish`, {}); ok++; setFooters(prev => prev.map(f => f.documentId === docId ? { ...f, _isPublished: false } : f)); }
+            try { await CmsFootersEndpoints.postUnpublish(docId); ok++; setFooters(prev => prev.map(f => f.documentId === docId ? { ...f, _isPublished: false } : f)); }
             catch { fail++; }
             finally { setPublishing(prev => ({ ...prev, [docId]: false })); }
         }
@@ -154,12 +154,8 @@ export default function Footers() {
         setLoading(true);
         try {
             const [draftRes, pubRes] = await Promise.all([
-                authApi.get("/cms-footers", {
-                    status: 'draft',
-                    sort: ["createdAt:desc"],
-                    pagination: { pageSize: 50 },
-                }),
-                authApi.get("/cms-footers", { status: 'published', fields: ["documentId"], pagination: { pageSize: 200 } }),
+                CmsFootersEndpoints.fetchListDraft({ sort: ["createdAt:desc"], pagination: { pageSize: 50 } }),
+                CmsFootersEndpoints.fetchListPublished({ pageSize: 200 }),
             ]);
             const pubIds = new Set((pubRes.data || []).map(f => f.documentId));
             setFooters((draftRes.data || []).map(f => ({ ...f, _isPublished: pubIds.has(f.documentId) })));
@@ -186,18 +182,16 @@ export default function Footers() {
             const log = [];
             for (const row of rows) {
                 try {
-                    const existing = await authApi.get("/cms-footers", {
-                        status: "draft",
-                        filters: { slug: { $eq: row.slug } },
-                        fields: ["documentId"],
+                    const existing = await CmsFootersEndpoints.fetchListDraft({
                         pagination: { pageSize: 1 },
+                        filters: { slug: { $eq: row.slug } },
                     });
                     const doc = existing.data?.[0];
                     if (doc) {
-                        await authApi.put(`/cms-footers/${doc.documentId}`, { data: row });
+                        await CmsFootersEndpoints.putUpdateDraft(doc.documentId, row);
                         log.push({ type: "success", text: `Updated: ${row.slug}` });
                     } else {
-                        await authApi.post("/cms-footers", { data: row });
+                        await CmsFootersEndpoints.postCreate(row);
                         log.push({ type: "success", text: `Created: ${row.slug}` });
                     }
                 } catch (err) {

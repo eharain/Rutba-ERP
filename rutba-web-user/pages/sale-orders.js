@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { authApi } from "@rutba/pos-shared/lib/api";
+import { SaleOrdersEndpoints } from "@rutba/api-provider/endpoints";
 import Link from "next/link";
 
 export default function SaleOrdersPage() {
@@ -12,7 +12,7 @@ export default function SaleOrdersPage() {
 
     useEffect(() => {
         if (!jwt) return;
-        authApi.get("/sale-orders?sort=createdAt:desc", {}, jwt)
+        SaleOrdersEndpoints.fetchList({ sort: ['createdAt:desc'] }, jwt)
             .then((res) => setOrders(res.data || []))
             .catch((err) => console.error("Failed to load orders", err))
             .finally(() => setLoading(false));

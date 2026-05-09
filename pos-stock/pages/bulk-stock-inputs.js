@@ -3,8 +3,7 @@ import * as XLSX from 'xlsx';
 import Layout from '../components/Layout';
 import ProtectedRoute from '@rutba/pos-shared/components/ProtectedRoute';
 import PermissionCheck from '@rutba/pos-shared/components/PermissionCheck';
-import { authApi } from '@rutba/pos-shared/lib/api';
-import { StockInputsEndpoints } from '@rutba/api-provider/endpoints';
+import { StockInputsEndpoints, BrandsEndpoints, CategoriesEndpoints, SuppliersEndpoints } from '../../packages/api-provider/endpoints/index.js';
 import { useUtil } from '@rutba/pos-shared/context/UtilContext';
 
 // ── Column mapping (mirrors export-catalog/utils/excel-helper.js) ──
@@ -129,9 +128,9 @@ export default function BulkStockInputs() {
     // Load reference data and pending stock-inputs
     useEffect(() => {
         Promise.all([
-            authApi.getAll('/brands'),
-            authApi.getAll('/categories'),
-            authApi.getAll('/suppliers'),
+            BrandsEndpoints.fetchAll(),
+            CategoriesEndpoints.fetchAll(),
+            SuppliersEndpoints.fetchAll(),
         ]).then(([b, c, s]) => {
             setBrands(b?.data || b || []);
             setCategories(c?.data || c || []);
@@ -143,7 +142,7 @@ export default function BulkStockInputs() {
     const loadPending = async () => {
         setLoadingPending(true);
         try {
-            const res = await authApi.get('/stock-inputs', {
+            const res = await StockInputsEndpoints.fetchList({
                 filters: { processed: false },
                 sort: ['createdAt:desc'],
                 pagination: { pageSize: 200 },

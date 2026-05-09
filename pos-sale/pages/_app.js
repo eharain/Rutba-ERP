@@ -4,9 +4,9 @@ import { AuthProvider } from "@rutba/pos-shared/context/AuthContext";
 import { CartProvider } from "@rutba/pos-shared/context/CartContext";
 import { UtilProvider, useUtil } from "@rutba/pos-shared/context/UtilContext";
 import BranchDeskModal from "@rutba/pos-shared/components/BranchDeskModal";
-import { setAppName } from "@rutba/pos-shared/lib/api";
+import { AppContextEndpoints } from "../../packages/api-provider/endpoints/index.js";
 
-setAppName('sale');
+AppContextEndpoints.setAppName('sale');
 
 import 'bootstrap/dist/css/bootstrap.min.css';
 import '@fortawesome/fontawesome-free/css/all.min.css';

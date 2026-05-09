@@ -1,134 +1,58 @@
-import qs from 'qs';
-import { authApi } from '../api';
-import { buildQueries } from './queries';
-import { StockItemsEndpoints } from '@rutba/api-provider/endpoints';
-
-//export function buildSearchQueries(searchText, page = 1, rowsPerPage = 5) {
-
-//    const queriesObject = buildQueries(searchText, page, rowsPerPage);
-
-//    const queries = Object.entries(queriesObject).map(([entity, { query }]) => {
-//        return {
-//            entity, query: { ...query, ...{ filters: query.search_filters } }
-//        };
-//    });
-
-//    const hasSearch = !!searchText && searchText.trim().length > 0;
-//    queries.forEach(q => {
-//        if (!hasSearch) {
-//            delete q.query.filters;
-//        }
-
-//        q.url = `/${q.entity}?` + qs.stringify(q.query, { encodeValuesOnly: true });
-//    })
-//    return queries;
-
-//}
-//export function createQueries(searchText, page, rowsPerPage) {
-//    // Helper to build filters only if searchText is present
-
-//    const queries = buildSearchQueries(searchText, page, rowsPerPage);
-
-
-
-//    return queries;
-//}
-
-
-// General search function across multiple entities
-export async function featchSearch(searchTerm, page, rowsPerPage) {
-    let queries = Object.values(buildQueries(searchTerm, page, rowsPerPage));
-
-    let results = [];
-    // for (let { name, query } in queries) {
-    for (let { entity, query, url } of queries) {
-
-        const res = await authApi.fetch(url);
-        console.log('Fetching', entity, url, res.data);
-        results.push({ entity, data: res?.data ?? [], pagination: res?.meta?.pagination })
-    }
-
-
-    const data = results.map((res, i) => {
-        return res.data.map((r) => {
-            //   const r = res.data;
-            //const total
-            return {
-                entity: res.entity,
-                name: r.name ?? r?.product?.name,
-                code: r.orderId ?? r.invoice_no,
-                barcode: r.barcode,
-                sku: r.sku,
-                id: r.id,
-                documentId: r.documentId,
-                date: r.sale_date ?? r.order_date,
-                person_name: r.customer?.name ?? r.supplier?.name ?? r.name,
-                phone: r.customer?.phone ?? r.supplier?.phone ?? '',
-                email: r.customer?.email ?? r.supplier?.email ?? '',
-                total: r.total,
-                subtotal: r.subtotal,
-                logo: r.logo
-            }
-        })
-    }).flat();
-
-    const pagination = results.reduce((pre, curr) => {
-        const p = curr.pagination
-        pre.total = Math.max(pre.total, p?.total ?? 0);
-        return pre;
-    }, { total: 0, page, pageSize: rowsPerPage });
-
-    const result = { results, data, pagination, meta: { pagination } };
-    console.log(result);
-
-    return result;
-}
-
-
-
-
-// Search stock items by name
-export async function searchStockItemsByName(searchTerm) {
-    const ep = StockItemsEndpoints.searchByName(searchTerm);
-    const res = await authApi.get(ep.path, ep.params);
-    return dataNode(res);
-}
-
-// Search stock items by barcode and add to sale
-export async function searchStockItemsByBarcode(barcode) {
-    const ep = StockItemsEndpoints.searchByBarcode(barcode);
-    const res = await authApi.get(ep.path, ep.params);
-    return dataNode(res);
-}
-
-
-
-// Mock function - replace with your actual API call
-export async function searchProduct(searchTerm, page = 0, rowsPerPage = 100) {
-    const query = buildQueries(searchTerm, page, rowsPerPage).products
-    console.log('Product search query:', query);
-    const res = await authApi.fetch(query.url);
-    return dataNode( res);
-};
-
+// Moved to their endpoint files -- re-exported for backward compatibility.
+export { searchStockItemsByName, searchStockItemsByBarcode, searchStockItems } from '../endpoints/stock-items.js';
+export { searchProduct, searchProducts } from '../endpoints/products.js';
+export { searchSales } from '../endpoints/sales.js';
+export { searchPurchases } from '../endpoints/purchases.js';
+export { searchBranches } from '../endpoints/branches.js';
+export { searchCategories } from '../endpoints/categories.js';
 
 export function dataNode(res) {
     return res.data?.data ?? res.data ?? res;
 }
 
+// General full-text search across multiple entities (stays here).
+export async function fetchSearch(searchTerm, page, rowsPerPage) {
+    const { searchProducts } = await import('../endpoints/products.js');
+    const { searchPurchases } = await import('../endpoints/purchases.js');
+    const { searchSales } = await import('../endpoints/sales.js');
+    const { searchStockItems } = await import('../endpoints/stock-items.js');
 
-export async function searchStockItems(searchTerm, page = 0, rowsPerPage = 100, statusFilter = null, branch = null, productDocumentId = null) {
-    let query = buildQueries(searchTerm, page, rowsPerPage)['me/stock-items-search']
-    if (statusFilter) {
-        query.url += `&filters[status]=${statusFilter}`;
-    }
-    if (branch) {
-        query.url += `&filters[branch][documentId]=${branch}`;
-    }
-    if (productDocumentId) {
-        query.url += `&filters[product][documentId]=${productDocumentId}`;
-    }
-    console.log('Stock items search query:', query);    
-    const res = await authApi.fetchWithPagination(query.url);
-    return { data: res.data, meta: res.meta };
+    const [products, purchases, sales, stockItems] = await Promise.allSettled([
+        searchProducts(searchTerm, page, rowsPerPage),
+        searchPurchases(searchTerm, page, rowsPerPage),
+        searchSales(searchTerm, page, rowsPerPage),
+        searchStockItems(searchTerm, page, rowsPerPage),
+    ]);
+
+    const results = [
+        { entity: 'products', data: products.status === 'fulfilled' ? (Array.isArray(products.value) ? products.value : products.value?.data ?? []) : [], pagination: null },
+        { entity: 'purchases', data: purchases.status === 'fulfilled' ? (Array.isArray(purchases.value) ? purchases.value : purchases.value?.data ?? []) : [], pagination: null },
+        { entity: 'sales', data: sales.status === 'fulfilled' ? (Array.isArray(sales.value) ? sales.value : sales.value?.data ?? []) : [], pagination: null },
+        { entity: 'stock-items', data: stockItems.status === 'fulfilled' ? (Array.isArray(stockItems.value) ? stockItems.value : stockItems.value?.data ?? []) : [], pagination: null },
+    ];
+
+    const data = results.flatMap((res) =>
+        res.data.map((r) => ({
+            entity: res.entity,
+            name: r.name ?? r?.product?.name,
+            code: r.orderId ?? r.invoice_no,
+            barcode: r.barcode,
+            sku: r.sku,
+            id: r.id,
+            documentId: r.documentId,
+            date: r.sale_date ?? r.order_date,
+            person_name: r.customer?.name ?? r.supplier?.name ?? r.name,
+            phone: r.customer?.phone ?? r.supplier?.phone ?? '',
+            email: r.customer?.email ?? r.supplier?.email ?? '',
+            total: r.total,
+            subtotal: r.subtotal,
+            logo: r.logo,
+        }))
+    );
+    const pagination = results.reduce(
+        (pre, curr) => { pre.total = Math.max(pre.total, curr.pagination?.total ?? 0); return pre; },
+        { total: 0, page, pageSize: rowsPerPage }
+    );
+    return { results, data, pagination, meta: { pagination } };
 }
+

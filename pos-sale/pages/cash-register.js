@@ -3,7 +3,7 @@ import Link from "next/link";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
-import { CashRegistersEndpoints, PaymentsEndpoints, CashRegisterTransactionEndpoints } from "@rutba/api-provider/endpoints";
+import { CashRegistersEndpoints, PaymentsEndpoints, CashRegisterTransactionEndpoints } from "../../packages/api-provider/endpoints/index.js";
 
 const EXPIRY_HOURS = 20;
 
@@ -115,8 +115,7 @@ export default function CashRegisterPage() {
         setError(null);
         try {
             const userId = user?.documentId ?? user?.id;
-            const ep = CashRegistersEndpoints.active({ deskId: desk?.id, userId });
-            const res = await authApi.get(ep.path);
+            const res = await CashRegistersEndpoints.fetchActive({ deskId: desk?.id, userId });
             const register = res?.data ?? null;
 
             if (res?.meta?.expired) {

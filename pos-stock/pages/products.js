@@ -6,8 +6,7 @@ import Layout from "../components/Layout";
 import ProductCard from "@rutba/pos-shared/components/ProductCard";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import PermissionCheck from "@rutba/pos-shared/components/PermissionCheck";
-import { authApi, StraipImageUrl } from "@rutba/pos-shared/lib/api";
-import { BrandsEndpoints, CategoriesEndpoints, SuppliersEndpoints, PurchasesEndpoints } from "@rutba/api-provider/endpoints";
+import { MediaUtilsEndpoints, ProductsEndpoints, BrandsEndpoints, CategoriesEndpoints, SuppliersEndpoints, PurchasesEndpoints, TermTypesEndpoints } from "@rutba/pos-shared/lib/endpoints";
 import { fetchProducts } from "@rutba/pos-shared/lib/pos";
 import { ProductFilter } from "@rutba/pos-shared/components/filter/product-filter";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
@@ -125,16 +124,13 @@ export default function Products() {
     }, [page, rowsPerPage, filters, filtersInitialized, sortString]);
 
     useEffect(() => {
-        const brandsEp = BrandsEndpoints.listAll();
-        const catsEp = CategoriesEndpoints.listAll();
-        const suppEp = SuppliersEndpoints.listAll();
-        const purchEp = PurchasesEndpoints.list(1, 1000, { sort: ['createdAt:desc'] });
+        // endpoint descriptors no longer needed here
         Promise.all([
-            authApi.getAll(brandsEp.path, brandsEp.params),
-            authApi.getAll(catsEp.path, catsEp.params),
-            authApi.getAll(suppEp.path, suppEp.params),
-            authApi.getAll("/term-types", { populate: ["terms"] }),
-            authApi.getAll(purchEp.path, purchEp.params),
+            BrandsEndpoints.fetchAll(),
+            CategoriesEndpoints.fetchAll(),
+            SuppliersEndpoints.fetchAll(),
+            TermTypesEndpoints.fetchAllWithTerms(),
+            PurchasesEndpoints.fetchAll({ sort: ['createdAt:desc'] }),
         ]).then(([b, c, s, t, p]) => {
             setBrands(b?.data || b || []);
             setCategories(c?.data || c || []);
@@ -236,8 +232,8 @@ export default function Products() {
         if (!variantsMap[docId]) {
             setLoadingVariants(prev => ({ ...prev, [docId]: true }));
             try {
-                const res = await authApi.get("/products", {
-                    filters: { parent: { documentId: docId } },
+                const res = await ProductsEndpoints.fetchByParent(docId, {
+                    pageSize: 100,
                     populate: {
                         logo: true,
                         categories: true,
@@ -245,7 +241,6 @@ export default function Products() {
                         suppliers: true,
                         purchase_items: { populate: { purchase: true } },
                     },
-                    pagination: { pageSize: 100 },
                 });
                 setVariantsMap(prev => ({ ...prev, [docId]: res.data || [] }));
             } catch (err) {
@@ -384,7 +379,7 @@ export default function Products() {
                                                     <TableCell>
                                                         {product.logo?.url ? (
                                                             <img
-                                                                src={StraipImageUrl(product.logo)}
+                                                                src={MediaUtilsEndpoints.strapiImageUrl(product.logo)}
                                                                 alt={product.name}
                                                                 style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 4 }}
                                                             />

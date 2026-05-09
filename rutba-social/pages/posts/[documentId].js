@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import Layout from "../../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { authApi, StraipImageUrl } from "@rutba/pos-shared/lib/api";
+import { MediaUtilsEndpoints, SocialPostsEndpoints, SocialAccountsEndpoints, ProductsEndpoints } from "@rutba/api-provider/endpoints";
 import { useToast } from "../../components/Toast";
 import PLATFORMS, { PlatformBadge } from "../../components/PlatformBadge";
 import FileView from "@rutba/pos-shared/components/FileView";
@@ -63,11 +63,11 @@ export default function PostDetailPage() {
         setLoading(true);
         try {
             const [draftRes, pubRes] = await Promise.all([
-                authApi.get(`/social-posts/${documentId}`, {
+                SocialPostsEndpoints.fetchById(documentId, {
                     status: 'draft',
                     populate: ['cover', 'video', 'social_accounts', 'social_replies', 'products'],
                 }),
-                authApi.get(`/social-posts/${documentId}`, { status: 'published', fields: ['documentId'] }).catch(() => ({ data: null })),
+                SocialPostsEndpoints.fetchById(documentId, { status: 'published', fields: ['documentId'] }).catch(() => ({ data: null })),
             ]);
             const p = draftRes.data || draftRes;
             setPost(p);
@@ -95,7 +95,7 @@ export default function PostDetailPage() {
     const loadAccounts = useCallback(async () => {
         if (!jwt) return;
         try {
-            const res = await authApi.get('/social-accounts', {
+            const res = await SocialAccountsEndpoints.fetchList({
                 filters: { is_active: { $eq: true } },
                 sort: ['platform:asc'],
             });
@@ -119,13 +119,15 @@ export default function PostDetailPage() {
         if (!jwt || !productSearch.trim()) { setProductResults([]); return; }
         setProductLoading(true);
         try {
-            const res = await authApi.get('/products', {
+            const res = await ProductsEndpoints.fetchList(1, 20, {
                 status: 'draft',
-                filters: { name: { $containsi: productSearch.trim() } },
-                fields: ['name', 'sku', 'documentId'],
-                populate: ['logo'],
-                pagination: { pageSize: 20 },
                 sort: ['name:asc'],
+                populate: ['logo'],
+                filters: {
+                    $or: [
+                        { name: { $containsi: productSearch.trim() } },
+                    ],
+                },
             });
             setProductResults(res.data || []);
         } catch (err) {
@@ -166,7 +168,7 @@ export default function PostDetailPage() {
     const handleSave = async () => {
         setSaving(true);
         try {
-            await authApi.put(`/social-posts/${documentId}?status=draft`, buildPayload());
+            await SocialPostsEndpoints.putUpdateDraft(documentId, buildPayload());
             toast("Draft saved!", "success");
             await loadPost();
         } catch (err) {
@@ -180,8 +182,8 @@ export default function PostDetailPage() {
     const handlePublish = async () => {
         setSaving(true);
         try {
-            await authApi.put(`/social-posts/${documentId}?status=draft`, buildPayload());
-            await authApi.post(`/social-posts/${documentId}/publish`, {});
+            await SocialPostsEndpoints.putUpdateDraft(documentId, buildPayload());
+            await SocialPostsEndpoints.postPublish(documentId);
             setIsPublished(true);
             toast("Post saved & published!", "success");
             await loadPost();
@@ -196,7 +198,7 @@ export default function PostDetailPage() {
     const handleUnpublish = async () => {
         setSaving(true);
         try {
-            await authApi.post(`/social-posts/${documentId}/unpublish`, {});
+            await SocialPostsEndpoints.postUnpublish(documentId);
             setIsPublished(false);
             toast("Post unpublished.", "success");
         } catch (err) {
@@ -211,8 +213,8 @@ export default function PostDetailPage() {
         if (!confirm("Load the published version into the editor?")) return;
         setSaving(true);
         try {
-            await authApi.put(`/social-posts/${documentId}?status=draft`, buildPayload());
-            const res = await authApi.get(`/social-posts/${documentId}`, {
+            await SocialPostsEndpoints.putUpdateDraft(documentId, buildPayload());
+            const res = await SocialPostsEndpoints.fetchById(documentId, {
                 status: 'published',
                 populate: ['cover', 'video', 'social_accounts', 'social_replies', 'products'],
             });
@@ -242,7 +244,7 @@ export default function PostDetailPage() {
     const handleDelete = async () => {
         if (!confirm("Are you sure you want to delete this post?")) return;
         try {
-            await authApi.del(`/social-posts/${documentId}`);
+            await SocialPostsEndpoints.del(documentId);
             router.push("/posts");
         } catch (err) {
             console.error("Failed to delete post", err);
@@ -363,7 +365,7 @@ export default function PostDetailPage() {
                                                 return (
                                                     <div key={p.documentId} className="d-inline-flex align-items-center gap-1">
                                                         {p.logo?.url ? (
-                                                            <img src={StraipImageUrl(p.logo)} alt={p.name} style={{ width: 28, height: 28, objectFit: "cover", borderRadius: 4 }} />
+                                                            <img src={MediaUtilsEndpoints.strapiImageUrl(p.logo)} alt={p.name} style={{ width: 28, height: 28, objectFit: "cover", borderRadius: 4 }} />
                                                         ) : (
                                                             <span className="text-muted" style={{ width: 28, height: 28, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
                                                                 <i className="fas fa-image"></i>
@@ -390,7 +392,7 @@ export default function PostDetailPage() {
                                             return (
                                                 <div key={p.documentId} className="d-inline-flex align-items-center gap-1">
                                                     {p.logo?.url ? (
-                                                        <img src={StraipImageUrl(p.logo)} alt={p.name} style={{ width: 28, height: 28, objectFit: "cover", borderRadius: 4 }} />
+                                                        <img src={MediaUtilsEndpoints.strapiImageUrl(p.logo)} alt={p.name} style={{ width: 28, height: 28, objectFit: "cover", borderRadius: 4 }} />
                                                     ) : (
                                                         <span className="text-muted" style={{ width: 28, height: 28, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
                                                             <i className="fas fa-image"></i>

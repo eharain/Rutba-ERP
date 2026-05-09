@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { authApi, StraipImageUrl, isImage, relationConnects } from '../lib/api';
-import { TermTypesEndpoints } from '@rutba/api-provider/endpoints';
+import { StraipImageUrl, isImage, relationConnects } from '../lib/api';
+import { ProductsEndpoints, UploadEndpoints } from '../lib/endpoints';
+import { TermTypesEndpoints } from '../lib/endpoints';
 import { saveProduct } from '../lib/pos/save';
 import StrapiMediaLibrary from './StrapiMediaLibrary';
 import TermTypeTermDialog from './TermTypeTermDialog';
@@ -61,13 +62,7 @@ export default function ProductGalleryManager({ productId, onUpdate }) {
         if (!productId) return;
         setLoading(true);
         try {
-            const res = await authApi.get(`/products/${productId}`, {
-                populate: {
-                    gallery: true,
-                    logo: true,
-                    variants: { populate: { gallery: true, logo: true, terms: true } }
-                }
-            });
+            const res = await ProductsEndpoints.fetchById(productId);
             const prod = res.data || res;
             setProduct(prod);
             const loadedVariants = prod.variants || [];
@@ -157,12 +152,10 @@ export default function ProductGalleryManager({ productId, onUpdate }) {
         const edits = getVariantEdit(variantDocId, variant);
         setSavingVariant(prev => ({ ...prev, [variantDocId]: true }));
         try {
-            await authApi.put(`/products/${variantDocId}`, {
-                data: {
-                    name: edits.name,
-                    selling_price: parseFloat(edits.selling_price) || 0,
-                    offer_price: edits.offer_price ? parseFloat(edits.offer_price) : null,
-                },
+            await ProductsEndpoints.putUpdate(variantDocId, {
+                name: edits.name,
+                selling_price: parseFloat(edits.selling_price) || 0,
+                offer_price: edits.offer_price ? parseFloat(edits.offer_price) : null,
             });
             await loadData();
             if (onUpdate) onUpdate();
@@ -183,7 +176,7 @@ export default function ProductGalleryManager({ productId, onUpdate }) {
         if (files.length === 0) return;
         setUploading(true);
         try {
-            await authApi.uploadFile(
+            await UploadEndpoints.uploadFiles(
                 files, 'product', 'gallery', product.id,
                 { name: product.name, alt: product.name, caption: product.name }
             );
@@ -216,8 +209,8 @@ export default function ProductGalleryManager({ productId, onUpdate }) {
                 const newIds = selectedFiles.map(f => f.id).filter(id => !existingIds.has(id));
                 if (newIds.length > 0) {
                     const updatedGallery = [...parentGallery.map(g => g.id), ...newIds];
-                    await authApi.put(`/products/${getEntryId(product)}`, {
-                        data: { gallery: updatedGallery }
+                    await ProductsEndpoints.putUpdate(getEntryId(product), {
+                        gallery: updatedGallery
                     });
                 }
                 setSuccess(`Added ${newIds.length} image(s) from media library`);
@@ -230,8 +223,8 @@ export default function ProductGalleryManager({ productId, onUpdate }) {
                 const newIds = selectedFiles.map(f => f.id).filter(id => !existingIds.has(id));
                 if (newIds.length > 0) {
                     const updatedGallery = [...vGallery.map(g => g.id), ...newIds];
-                    await authApi.put(`/products/${mediaLibraryTarget}`, {
-                        data: { gallery: updatedGallery }
+                    await ProductsEndpoints.putUpdate(mediaLibraryTarget, {
+                        gallery: updatedGallery
                     });
                 }
                 setSuccess(`Added ${newIds.length} image(s) to "${variant.name}" from media library`);
@@ -262,11 +255,11 @@ export default function ProductGalleryManager({ productId, onUpdate }) {
             const newIds = imagesToMove.filter(id => !existingIds.has(id));
             const newVariantGallery = [...variantGallery.map(g => g.id), ...newIds];
 
-            await authApi.put(`/products/${getEntryId(product)}`, {
-                data: { gallery: remainingParentGallery.map(g => g.id) }
+            await ProductsEndpoints.putUpdate(getEntryId(product), {
+                gallery: remainingParentGallery.map(g => g.id)
             });
-            await authApi.put(`/products/${variantDocId}`, {
-                data: { gallery: newVariantGallery }
+            await ProductsEndpoints.putUpdate(variantDocId, {
+                gallery: newVariantGallery
             });
 
             await loadData();
@@ -296,8 +289,8 @@ export default function ProductGalleryManager({ productId, onUpdate }) {
             const newIds = imagesToCopy.filter(id => !existingIds.has(id));
             const newVariantGallery = [...variantGallery.map(g => g.id), ...newIds];
 
-            await authApi.put(`/products/${variantDocId}`, {
-                data: { gallery: newVariantGallery }
+            await ProductsEndpoints.putUpdate(variantDocId, {
+                gallery: newVariantGallery
             });
 
             await loadData();
@@ -329,11 +322,11 @@ export default function ProductGalleryManager({ productId, onUpdate }) {
             const newParentIds = imagesToMove.filter(id => !existingParentIds.has(id));
             const newParentGallery = [...parentGallery.map(g => g.id), ...newParentIds];
 
-            await authApi.put(`/products/${variantDocId}`, {
-                data: { gallery: remainingVariantGallery.map(g => g.id) }
+            await ProductsEndpoints.putUpdate(variantDocId, {
+                gallery: remainingVariantGallery.map(g => g.id)
             });
-            await authApi.put(`/products/${getEntryId(product)}`, {
-                data: { gallery: newParentGallery }
+            await ProductsEndpoints.putUpdate(getEntryId(product), {
+                gallery: newParentGallery
             });
 
             await loadData();
@@ -362,8 +355,8 @@ export default function ProductGalleryManager({ productId, onUpdate }) {
             const newParentIds = imagesToCopy.filter(id => !existingParentIds.has(id));
             const newParentGallery = [...parentGallery.map(g => g.id), ...newParentIds];
 
-            await authApi.put(`/products/${getEntryId(product)}`, {
-                data: { gallery: newParentGallery }
+            await ProductsEndpoints.putUpdate(getEntryId(product), {
+                gallery: newParentGallery
             });
 
             await loadData();
@@ -397,11 +390,11 @@ export default function ProductGalleryManager({ productId, onUpdate }) {
             const newIds = imagesToMove.filter(id => !existingTargetIds.has(id));
             const newTargetGallery = [...targetGallery.map(g => g.id), ...newIds];
 
-            await authApi.put(`/products/${sourceVariantDocId}`, {
-                data: { gallery: remainingSourceGallery.map(g => g.id) }
+            await ProductsEndpoints.putUpdate(sourceVariantDocId, {
+                gallery: remainingSourceGallery.map(g => g.id)
             });
-            await authApi.put(`/products/${targetVariantDocId}`, {
-                data: { gallery: newTargetGallery }
+            await ProductsEndpoints.putUpdate(targetVariantDocId, {
+                gallery: newTargetGallery
             });
 
             await loadData();
@@ -434,8 +427,8 @@ export default function ProductGalleryManager({ productId, onUpdate }) {
             const newIds = imagesToCopy.filter(id => !existingTargetIds.has(id));
             const newTargetGallery = [...targetGallery.map(g => g.id), ...newIds];
 
-            await authApi.put(`/products/${targetVariantDocId}`, {
-                data: { gallery: newTargetGallery }
+            await ProductsEndpoints.putUpdate(targetVariantDocId, {
+                gallery: newTargetGallery
             });
 
             await loadData();
@@ -478,8 +471,8 @@ export default function ProductGalleryManager({ productId, onUpdate }) {
             await saveProduct('new', payload);
 
             // Remove assigned images from parent
-            await authApi.put(`/products/${parentDocId}`, {
-                data: { gallery: remainingParentGallery.map(g => g.id) }
+            await ProductsEndpoints.putUpdate(parentDocId, {
+                gallery: remainingParentGallery.map(g => g.id)
             });
 
             await loadData();
@@ -532,8 +525,8 @@ export default function ProductGalleryManager({ productId, onUpdate }) {
 
             // Remove assigned images from parent
             const remainingParentGallery = parentGallery.filter(img => !selectedParentImages.has(img.id));
-            await authApi.put(`/products/${parentDocId}`, {
-                data: { gallery: remainingParentGallery.map(g => g.id) }
+            await ProductsEndpoints.putUpdate(parentDocId, {
+                gallery: remainingParentGallery.map(g => g.id)
             });
 
             await loadData();

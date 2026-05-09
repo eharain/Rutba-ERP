@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { authApi } from "@rutba/pos-shared/lib/api";
+import { HrLeaveRequestsEndpoints } from "@rutba/api-provider/endpoints";
 
 const LEAVE_TYPES = ["Annual", "Sick", "Casual", "Maternity", "Paternity", "Unpaid", "Other"];
 
@@ -31,8 +31,8 @@ export default function LeaveRequests() {
         setLoading(true);
         try {
             const [myRes, teamRes] = await Promise.all([
-                authApi.get("/hr-leave-requests/my-requests", {}, jwt),
-                isManager ? authApi.get("/hr-leave-requests/team-queue", {}, jwt) : Promise.resolve({ data: [] }),
+                HrLeaveRequestsEndpoints.fetchMyRequests(),
+                isManager ? HrLeaveRequestsEndpoints.fetchTeamQueue() : Promise.resolve({ data: [] }),
             ]);
             setLeaves(myRes?.data || []);
             setTeamQueue(teamRes?.data || []);
@@ -48,15 +48,13 @@ export default function LeaveRequests() {
         if (!newRequest.start_date || !newRequest.end_date) return;
         setSaving(true);
         try {
-            await authApi.post("/hr-leave-requests", {
-                data: {
-                    leave_type: newRequest.leave_type,
-                    start_date: newRequest.start_date,
-                    end_date: newRequest.end_date,
-                    reason: newRequest.reason || null,
-                    status: "Pending",
-                },
-            }, jwt);
+            await HrLeaveRequestsEndpoints.postCreate({
+                leave_type: newRequest.leave_type,
+                start_date: newRequest.start_date,
+                end_date: newRequest.end_date,
+                reason: newRequest.reason || null,
+                status: "Pending",
+            });
             setNewRequest({ leave_type: "Annual", start_date: "", end_date: "", reason: "" });
             await loadAll();
         } catch (err) {
@@ -70,7 +68,7 @@ export default function LeaveRequests() {
         const key = `${documentId}:${action}`;
         setActionLoading((p) => ({ ...p, [key]: true }));
         try {
-            await authApi.post(`/hr-leave-requests/${documentId}/${action}`, {}, jwt);
+            await HrLeaveRequestsEndpoints.postAction(documentId, action, {});
             await loadAll();
         } catch (err) {
             console.error(`Failed to ${action} leave request`, err);

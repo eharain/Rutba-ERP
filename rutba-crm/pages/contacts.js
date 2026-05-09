@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { authApi } from "@rutba/pos-shared/lib/api";
+import { CrmContactsEndpoints } from "@rutba/api-provider/endpoints";
 import Link from "next/link";
 
 export default function Contacts() {
@@ -12,7 +12,8 @@ export default function Contacts() {
 
     useEffect(() => {
         if (!jwt) return;
-        authApi.get("/crm-contacts?sort=createdAt:desc", {}, jwt)
+        const ep = CrmContactsEndpoints.list();
+        CrmContactsEndpoints.fetchList(ep.params)
             .then((res) => setContacts(res.data || []))
             .catch((err) => console.error("Failed to load contacts", err))
             .finally(() => setLoading(false));

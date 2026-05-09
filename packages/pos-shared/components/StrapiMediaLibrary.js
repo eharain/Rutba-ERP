@@ -1,5 +1,6 @@
 ﻿import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { authApi, StraipImageUrl, isImage, isPDF } from '../lib/api';
+import { StraipImageUrl, isImage, isPDF } from '../lib/api';
+import { MediaLibraryEndpoints, UploadEndpoints } from '../lib/endpoints';
 
 /**
  * StrapiMediaLibrary - modal component that browses Strapi media with
@@ -44,7 +45,7 @@ export default function StrapiMediaLibrary({
     const loadFolders = useCallback(async () => {
         if (!show) return;
         try {
-            const res = await authApi.get('/media-library/folders/tree');
+            const res = await MediaLibraryEndpoints.fetchFoldersTree();
             setFolderTree(res.data || []);
         } catch (err) {
             console.error('Failed to load folder tree', err);
@@ -71,7 +72,7 @@ export default function StrapiMediaLibrary({
             if (accept === 'image') {
                 params.mime = 'image';
             }
-            const res = await authApi.get('/media-library/files', params);
+            const res = await MediaLibraryEndpoints.fetchFiles(params);
             setFiles(res.data || []);
             setPageCount(res.meta?.pagination?.pageCount || 1);
         } catch (err) {
@@ -114,7 +115,7 @@ export default function StrapiMediaLibrary({
         if (!id || isNaN(id)) return;
         setPasteIdLoading(true);
         try {
-            var res = await authApi.get('/media-library/files/' + id);
+            var res = await MediaLibraryEndpoints.fetchFile(id);
             var file = res.data;
             if (file) {
                 onSelect([file]);
@@ -134,12 +135,12 @@ export default function StrapiMediaLibrary({
         try {
             const folderId = (currentFolderId && currentFolderId !== 'all' && currentFolderId !== 'root')
                 ? currentFolderId : null;
-            const uploaded = await authApi.uploadFile(newFiles, null, null, null, {
+            const uploaded = await UploadEndpoints.uploadFiles(newFiles, null, null, null, {
                 name: null, alt: null, caption: null,
             });
             if (folderId && uploaded) {
                 const ids = (Array.isArray(uploaded) ? uploaded : [uploaded]).map(f => f.id);
-                await authApi.post('/media-library/files/move', {
+                await MediaLibraryEndpoints.postMoveFiles({
                     fileIds: ids,
                     targetFolderId: Number(folderId),
                 });
@@ -171,12 +172,12 @@ export default function StrapiMediaLibrary({
         try {
             var folderId = (currentFolderId && currentFolderId !== 'all' && currentFolderId !== 'root')
                 ? currentFolderId : null;
-            var uploaded = await authApi.uploadFile(imageFiles, null, null, null, {
+            var uploaded = await UploadEndpoints.uploadFiles(imageFiles, null, null, null, {
                 name: null, alt: null, caption: null,
             });
             if (folderId && uploaded) {
                 var ids = (Array.isArray(uploaded) ? uploaded : [uploaded]).map(function(f) { return f.id; });
-                await authApi.post('/media-library/files/move', {
+                await MediaLibraryEndpoints.postMoveFiles({
                     fileIds: ids,
                     targetFolderId: Number(folderId),
                 });
@@ -199,7 +200,7 @@ export default function StrapiMediaLibrary({
         try {
             const parentId = (currentFolderId && currentFolderId !== 'all' && currentFolderId !== 'root')
                 ? Number(currentFolderId) : null;
-            await authApi.post('/media-library/folders', {
+            await MediaLibraryEndpoints.postCreateFolder({
                 name: newFolderName.trim(),
                 parent: parentId,
             });
@@ -214,7 +215,7 @@ export default function StrapiMediaLibrary({
     const handleRenameFolder = async (folderId) => {
         if (!renameValue.trim()) return;
         try {
-            await authApi.put('/media-library/folders/' + folderId, { name: renameValue.trim() });
+            await MediaLibraryEndpoints.putRenameFolder(folderId, { name: renameValue.trim() });
             setRenamingFolderId(null);
             setRenameValue('');
             await loadFolders();
@@ -227,7 +228,7 @@ export default function StrapiMediaLibrary({
         e.stopPropagation();
         if (!confirm('Delete this folder? Files will be moved to the root.')) return;
         try {
-            await authApi.del('/media-library/folders/' + folderId);
+            await MediaLibraryEndpoints.delFolder(folderId);
             if (String(currentFolderId) === String(folderId)) setCurrentFolderId('all');
             await loadFolders();
             await loadFiles();
@@ -262,7 +263,7 @@ export default function StrapiMediaLibrary({
         }
         if (ids.length === 0) return;
         try {
-            await authApi.post('/media-library/files/move', {
+            await MediaLibraryEndpoints.postMoveFiles({
                 fileIds: ids.map(Number),
                 targetFolderId: targetFolderId === 'root' ? null : Number(targetFolderId),
             });
@@ -280,7 +281,7 @@ export default function StrapiMediaLibrary({
             : [];
         if (ids.length === 0) return;
         try {
-            await authApi.post('/media-library/files/move', {
+            await MediaLibraryEndpoints.postMoveFiles({
                 fileIds: ids.map(Number),
                 targetFolderId: targetFolderId === 'root' ? null : Number(targetFolderId),
             });
