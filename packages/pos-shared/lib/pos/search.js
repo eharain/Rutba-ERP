@@ -1,7 +1,7 @@
 import qs from 'qs';
 import { authApi } from '../api';
 import { buildQueries } from './queries';
-import { StockItemsEndpoints } from '../endpoints';
+import { StockItemsEndpoints } from '@rutba/api-provider/endpoints';
 
 //export function buildSearchQueries(searchText, page = 1, rowsPerPage = 5) {
 

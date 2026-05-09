@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useUtil } from '@rutba/pos-shared/context/UtilContext';
-import { CashRegisterTransactionEndpoints } from '@rutba/pos-shared/lib/endpoints';
+import { CashRegisterTransactionEndpoints } from '@rutba/api-provider/endpoints';
 
 /**
  * CashDrawTopUpModal
@@ -204,3 +204,4 @@ export default function CashDrawTopUpModal({ isOpen, onClose, onComplete, saleRe
         </div>
     );
 }
+

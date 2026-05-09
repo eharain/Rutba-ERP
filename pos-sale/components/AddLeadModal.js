@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CrmLeadsEndpoints } from '@rutba/pos-shared/lib/endpoints';
+import { CrmLeadsEndpoints } from '@rutba/api-provider/endpoints';
 
 const SOURCES = ['Website', 'Referral', 'Social Media', 'Cold Call', 'Advertisement', 'Other'];
 
@@ -190,3 +190,4 @@ export default function AddLeadModal({ isOpen, onClose, customer }) {
         </div>
     );
 }
+

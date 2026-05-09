@@ -1,0 +1,120 @@
+{
+  "accounts": {
+    "roles": [
+      "accounts_admin",
+      "accounts_manager",
+      "accounts_staff"
+    ]
+  },
+  "accounts-ap": {
+    "roles": [
+      "ap_admin",
+      "ap_manager",
+      "ap_staff"
+    ]
+  },
+  "accounts-ar": {
+    "roles": [
+      "ar_admin",
+      "ar_manager",
+      "ar_staff"
+    ]
+  },
+  "accounts-viewer": {
+    "roles": [
+      "accounts_viewer_admin",
+      "accounts_viewer_manager",
+      "accounts_viewer_staff"
+    ]
+  },
+  "auth": {
+    "roles": [
+      "auth_admin",
+      "auth_manager",
+      "auth_staff"
+    ]
+  },
+  "cms": {
+    "roles": [
+      "cms_admin",
+      "cms_manager",
+      "cms_staff"
+    ]
+  },
+  "crm": {
+    "roles": [
+      "crm_admin",
+      "crm_manager",
+      "crm_staff"
+    ]
+  },
+  "delivery": {
+    "roles": [
+      "delivery_admin",
+      "delivery_manager",
+      "delivery_staff"
+    ]
+  },
+  "hr": {
+    "roles": [
+      "hr_admin",
+      "hr_manager",
+      "hr_staff"
+    ]
+  },
+  "order-management": {
+    "roles": [
+      "order_admin",
+      "order_manager",
+      "order_staff"
+    ]
+  },
+  "payroll": {
+    "roles": [
+      "payroll_admin",
+      "payroll_manager",
+      "payroll_staff"
+    ]
+  },
+  "rider": {
+    "roles": [
+      "rider_admin",
+      "rider_manager",
+      "rider_staff"
+    ]
+  },
+  "sale": {
+    "roles": [
+      "sale_admin",
+      "sale_manager",
+      "sale_staff"
+    ]
+  },
+  "social": {
+    "roles": [
+      "social_admin",
+      "social_manager",
+      "social_staff"
+    ]
+  },
+  "stock": {
+    "roles": [
+      "stock_admin",
+      "stock_manager",
+      "stock_staff"
+    ]
+  },
+  "web": {
+    "roles": [
+      "web_public",
+      "web_user"
+    ]
+  },
+  "web-user": {
+    "roles": [
+      "webuser_admin",
+      "webuser_manager",
+      "webuser_staff"
+    ]
+  }
+}

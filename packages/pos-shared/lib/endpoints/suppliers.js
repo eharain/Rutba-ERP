@@ -48,6 +48,18 @@ export const SuppliersEndpoints = {
         },
     }),
 
+    /** Async: fetch supplier list (single page). */
+    fetchList: (opts = {}) => {
+        const ep = SuppliersEndpoints.list(opts);
+        return authApi.fetch(ep.path, ep.params);
+    },
+
+    /** Async: fetch all suppliers across pages. */
+    fetchAll: (opts = {}) => {
+        const ep = SuppliersEndpoints.list(opts);
+        return authApi.getAll(ep.path, ep.params);
+    },
+
     /** Create a new supplier — body provided by caller as { data }. */
     create: () => ({ path: '/suppliers' }),
 

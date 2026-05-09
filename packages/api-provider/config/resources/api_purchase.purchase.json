@@ -1,0 +1,128 @@
+{
+  "uid": "api::purchase.purchase",
+  "policies": {
+    "purchase.find": {
+      "policies": [
+        {
+          "key": "purchaseAccess",
+          "grants": [
+            "accounts_admin",
+            "accounts_manager",
+            "accounts_staff",
+            "accounts_viewer_admin",
+            "accounts_viewer_manager",
+            "accounts_viewer_staff",
+            "ap_admin",
+            "ap_manager",
+            "ap_staff",
+            "stock_admin",
+            "stock_manager",
+            "stock_staff"
+          ],
+          "query": {
+            "filters": {
+              "branch": {
+                "$eq": "$user.branch"
+              }
+            },
+            "fields": [
+              "id",
+              "poNumber",
+              "supplier",
+              "totalAmount",
+              "status",
+              "orderedAt",
+              "receivedAt"
+            ],
+            "populate": {
+              "items": {
+                "fields": [
+                  "product",
+                  "quantity",
+                  "unitPrice",
+                  "total"
+                ]
+              },
+              "supplier": {
+                "fields": [
+                  "id",
+                  "name"
+                ]
+              }
+            },
+            "pagination": {
+              "pageSize": 50
+            },
+            "sort": [
+              "orderedAt:desc"
+            ]
+          }
+        }
+      ]
+    },
+    "purchase.findOne": {
+      "policies": [
+        {
+          "key": "purchaseAccess",
+          "grants": [
+            "accounts_admin",
+            "accounts_manager",
+            "accounts_staff",
+            "accounts_viewer_admin",
+            "accounts_viewer_manager",
+            "accounts_viewer_staff",
+            "ap_admin",
+            "ap_manager",
+            "ap_staff",
+            "stock_admin",
+            "stock_manager",
+            "stock_staff"
+          ]
+        }
+      ]
+    },
+    "purchase.create": {
+      "policies": [
+        {
+          "key": "purchaseCreate",
+          "grants": [
+            "ap_admin",
+            "ap_manager",
+            "ap_staff",
+            "stock_admin",
+            "stock_manager"
+          ],
+          "body": {
+            "createdBy": "$user.id",
+            "orderedAt": "$now",
+            "status": "pending"
+          }
+        }
+      ]
+    },
+    "purchase.update": {
+      "policies": [
+        {
+          "key": "purchaseUpdate",
+          "grants": [
+            "ap_admin",
+            "ap_manager",
+            "stock_admin",
+            "stock_manager"
+          ]
+        }
+      ]
+    },
+    "purchase.delete": {
+      "policies": [
+        {
+          "key": "purchaseDelete",
+          "grants": [
+            "ap_admin",
+            "stock_admin"
+          ]
+        }
+      ]
+    }
+  }
+}

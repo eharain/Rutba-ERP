@@ -1,0 +1,131 @@
+{
+  "uid": "api::payment.payment",
+  "policies": {
+    "payment.find": {
+      "policies": [
+        {
+          "key": "paymentAccess",
+          "grants": [
+            "accounts_admin",
+            "accounts_manager",
+            "accounts_staff",
+            "accounts_viewer_admin",
+            "accounts_viewer_manager",
+            "accounts_viewer_staff",
+            "ap_admin",
+            "ap_manager",
+            "ap_staff",
+            "ar_admin",
+            "ar_manager",
+            "ar_staff",
+            "sale_admin",
+            "sale_manager"
+          ],
+          "query": {
+            "filters": {
+              "branch": {
+                "$eq": "$user.branch"
+              }
+            },
+            "fields": [
+              "id",
+              "amount",
+              "method",
+              "reference",
+              "status",
+              "paidAt"
+            ],
+            "populate": {
+              "order": {
+                "fields": [
+                  "id",
+                  "orderNumber"
+                ]
+              },
+              "customer": {
+                "fields": [
+                  "id",
+                  "name"
+                ]
+              }
+            },
+            "pagination": {
+              "pageSize": 50
+            },
+            "sort": [
+              "paidAt:desc"
+            ]
+          }
+        }
+      ]
+    },
+    "payment.findOne": {
+      "policies": [
+        {
+          "key": "paymentAccess",
+          "grants": [
+            "accounts_admin",
+            "accounts_manager",
+            "accounts_staff",
+            "accounts_viewer_admin",
+            "accounts_viewer_manager",
+            "accounts_viewer_staff",
+            "ap_admin",
+            "ap_manager",
+            "ap_staff",
+            "ar_admin",
+            "ar_manager",
+            "ar_staff",
+            "sale_admin",
+            "sale_manager"
+          ]
+        }
+      ]
+    },
+    "payment.create": {
+      "policies": [
+        {
+          "key": "paymentCreate",
+          "grants": [
+            "sale_admin",
+            "sale_manager",
+            "sale_staff",
+            "ar_admin",
+            "ar_manager"
+          ],
+          "body": {
+            "createdBy": "$user.id",
+            "paidAt": "$now"
+          }
+        },
+        {
+          "key": "publicPayment",
+          "grants": [
+            "web_user",
+            "web_public"
+          ],
+          "body": {
+            "source": "web",
+            "status": "pending_verification"
+          }
+        }
+      ]
+    },
+    "payment.refund": {
+      "policies": [
+        {
+          "key": "refundAccess",
+          "grants": [
+            "sale_admin",
+            "sale_manager",
+            "ar_admin"
+          ],
+          "body": {
+            "refundedBy": "$user.id",
+            "refundedAt": "$now"
+          }
+        }
+      ]
+    }
+  }
+}

@@ -11,7 +11,7 @@ import {
     StockItemsEndpoints,
     BranchesEndpoints,
     CashRegisterTransactionEndpoints,
-} from './endpoints/index.js';
+} from '@rutba/api-provider/endpoints';
 
 export default class SaleApi {
 

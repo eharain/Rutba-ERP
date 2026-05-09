@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import Layout from "../../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { NotificationTemplatesEndpoints } from "@rutba/pos-shared/lib/endpoints";
+import { NotificationTemplatesEndpoints } from "@rutba/api-provider/endpoints";
 import Link from "next/link";
 import { useToast } from "../../components/Toast";
 

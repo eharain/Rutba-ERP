@@ -4,15 +4,12 @@
  * api-provider-seed.js
  *
  * Seeds the strapi-api-guard-pro plugin (domains, roles, resources, policies,
- * grants) directly from `@rutba/api-provider/config` (configuration.json).
+ * grants) directly from `@rutba/api-provider/config` split configuration source
+ * (`domains.json`, `roles.json`, `resources/*.json`).
  *
  * Idempotent: delegates to the plugin's `data-transfer` service, which upserts
  * by stable keys (`domain.key`, `role.key`, `resource.content_type_uid`,
  * `policy.uid`).
- *
- * `publicResources` from configuration.json are intentionally NOT seeded here;
- * they are wired into the api-guard-pro interceptor as bypass paths in a
- * later step.
  */
 
 const { loadConfiguration } = require('@rutba/api-provider');

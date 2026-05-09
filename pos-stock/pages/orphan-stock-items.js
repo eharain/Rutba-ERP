@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, useMemo } from "react";
 import Layout from "../components/Layout";
 import ProductPickerModal from "../components/ProductPickerModal";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import { StockItemsEndpoints, ProductsEndpoints } from "@rutba/pos-shared/lib/endpoints/index.js";
+import { StockItemsEndpoints, ProductsEndpoints } from "@rutba/api-provider/endpoints";
 
 const STATUS_OPTIONS = [
     "InStock", "Sold", "Received", "Reserved",
@@ -735,4 +735,5 @@ function statusColor(status) {
         default: return "light";
     }
 }
+
 

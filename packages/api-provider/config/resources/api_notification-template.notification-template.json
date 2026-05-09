@@ -1,0 +1,84 @@
+{
+  "uid": "api::notification-template.notification-template",
+  "policies": {
+    "notification-template.find": {
+      "policies": [
+        {
+          "key": "notificationAccess",
+          "grants": [
+            "cms_admin",
+            "cms_manager",
+            "delivery_admin",
+            "delivery_manager",
+            "order_admin",
+            "order_manager"
+          ],
+          "query": {
+            "fields": [
+              "id",
+              "name",
+              "subject",
+              "body",
+              "type",
+              "channels"
+            ],
+            "pagination": {
+              "pageSize": 50
+            }
+          }
+        }
+      ]
+    },
+    "notification-template.findOne": {
+      "policies": [
+        {
+          "key": "notificationAccess",
+          "grants": [
+            "cms_admin",
+            "cms_manager",
+            "delivery_admin",
+            "delivery_manager",
+            "order_admin",
+            "order_manager"
+          ]
+        }
+      ]
+    },
+    "notification-template.create": {
+      "policies": [
+        {
+          "key": "notificationCreate",
+          "grants": [
+            "cms_admin",
+            "delivery_admin",
+            "order_admin"
+          ]
+        }
+      ]
+    },
+    "notification-template.update": {
+      "policies": [
+        {
+          "key": "notificationUpdate",
+          "grants": [
+            "cms_admin",
+            "delivery_admin",
+            "order_admin"
+          ]
+        }
+      ]
+    },
+    "notification-template.delete": {
+      "policies": [
+        {
+          "key": "notificationDelete",
+          "grants": [
+            "cms_admin",
+            "delivery_admin",
+            "order_admin"
+          ]
+        }
+      ]
+    }
+  }
+}

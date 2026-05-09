@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { authApi } from '@rutba/pos-shared/lib/api';
-import { CustomersEndpoints } from '@rutba/pos-shared/lib/endpoints';
+import { CustomersEndpoints } from '@rutba/api-provider/endpoints';
 
 const SOURCES = ['Website', 'Referral', 'Social Media', 'Cold Call', 'Advertisement', 'Other'];
 const STATUSES = ['New', 'Contacted', 'Qualified', 'Negotiation', 'Won', 'Lost'];
@@ -265,3 +265,4 @@ export default function LeadForm({ lead, onSaved, onCancel }) {
         </form>
     );
 }
+

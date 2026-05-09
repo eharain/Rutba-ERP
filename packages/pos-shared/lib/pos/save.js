@@ -1,7 +1,7 @@
 
 import { prepareForPut } from '../utils';
 import { dataNode } from './search';
-import { SaleItemsEndpoints, PurchasesEndpoints, PurchaseItemsEndpoints, ProductsEndpoints, StockItemsEndpoints } from '../endpoints/index.js';
+import { SaleItemsEndpoints, PurchasesEndpoints, PurchaseItemsEndpoints, ProductsEndpoints, StockItemsEndpoints } from '@rutba/api-provider/endpoints';
 
 
 // Save changes to sale items

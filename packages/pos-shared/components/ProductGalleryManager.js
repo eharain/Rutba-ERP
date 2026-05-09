@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { authApi, StraipImageUrl, isImage, relationConnects } from '../lib/api';
-import { TermTypesEndpoints } from '../lib/endpoints';
+import { TermTypesEndpoints } from '@rutba/api-provider/endpoints';
 import { saveProduct } from '../lib/pos/save';
 import StrapiMediaLibrary from './StrapiMediaLibrary';
 import TermTypeTermDialog from './TermTypeTermDialog';

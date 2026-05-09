@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { authApi } from '@rutba/pos-shared/lib/api';
 import { parseContactLine } from '@rutba/pos-shared/lib/utils';
 import CustomerForm from './form/customer-form';
-import { CustomersEndpoints } from '@rutba/pos-shared/lib/endpoints';
+import { CustomersEndpoints } from '@rutba/api-provider/endpoints';
 
 export default function CustomerSelect({ value, onChange, disabled }) {
     const [query, setQuery] = useState('');
@@ -226,3 +226,4 @@ export default function CustomerSelect({ value, onChange, disabled }) {
         </div>
     );
 }
+

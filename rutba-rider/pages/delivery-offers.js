@@ -3,7 +3,7 @@ import Layout from "../components/Layout";
 import DeliveryOfferCard from "../components/DeliveryOfferCard";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { authApi } from "@rutba/pos-shared/lib/api";
+import { RiderEndpoints } from "@rutba/api-provider/endpoints";
 
 export default function DeliveryOffersPage() {
   const { jwt } = useAuth();
@@ -13,7 +13,7 @@ export default function DeliveryOffersPage() {
   useEffect(() => {
     if (!jwt) return;
     const load = () => {
-      authApi.get('/rider/delivery-offers', {}, jwt)
+      RiderEndpoints.fetchDeliveryOffers()
         .then((res) => setOffers(res.data || []))
         .catch((err) => console.error('Failed to load rider delivery offers', err))
         .finally(() => setLoading(false));

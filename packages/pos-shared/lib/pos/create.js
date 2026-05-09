@@ -1,5 +1,5 @@
 import { generateNextInvoiceNumber, generateNextPONumber, getBranch, getUser } from '../utils';
-import { SalesEndpoints, PurchasesEndpoints, ProductsEndpoints, StockItemsEndpoints } from '../endpoints/index.js';
+import { SalesEndpoints, PurchasesEndpoints, ProductsEndpoints, StockItemsEndpoints } from '@rutba/api-provider/endpoints';
 
 // Create a new sale or purchase entity
 export async function createNewEntity(name) {

@@ -1,0 +1,675 @@
+Code	File	Line	Column	Kind
+import { authApi } from "../lib/api";	D:\Rutba\ERP\packages\pos-shared\components\BulkProductActions.js	2	10	
+                    const res = await authApi.get("/products", {	D:\Rutba\ERP\packages\pos-shared\components\BulkProductActions.js	75	39	
+                await authApi.put(`/products/${docId}?status=draft`, {	D:\Rutba\ERP\packages\pos-shared\components\BulkProductActions.js	50	23	
+                await authApi.post(`/products/${docId}/unpublish`, {});	D:\Rutba\ERP\packages\pos-shared\components\BulkProductActions.js	113	23	
+                await authApi.post(`/products/${docId}/publish`, {});	D:\Rutba\ERP\packages\pos-shared\components\BulkProductActions.js	91	23	
+    return await authApi.uploadFile(files, ref, field, refId, info);	D:\Rutba\ERP\packages\pos-shared\components\FileView.js	10	18	
+import { authApi, StraipImageUrl, isImage, isPDF, isVideo } from '../lib/api';	D:\Rutba\ERP\packages\pos-shared\components\FileView.js	3	10	
+            const res = await authApi.get('/media-library/files/' + id);	D:\Rutba\ERP\packages\pos-shared\components\FileView.js	130	31	
+import { authApi, StraipImageUrl, isImage, relationConnects } from '../lib/api';	D:\Rutba\ERP\packages\pos-shared\components\ProductGalleryManager.js	2	10	
+            const res = await authApi.get(`/products/${productId}`, {	D:\Rutba\ERP\packages\pos-shared\components\ProductGalleryManager.js	64	31	
+            await authApi.uploadFile(	D:\Rutba\ERP\packages\pos-shared\components\ProductGalleryManager.js	186	19	
+            await authApi.put(`/products/${variantDocId}`, {	D:\Rutba\ERP\packages\pos-shared\components\ProductGalleryManager.js	160	19	
+            await authApi.put(`/products/${variantDocId}`, {	D:\Rutba\ERP\packages\pos-shared\components\ProductGalleryManager.js	268	19	
+            await authApi.put(`/products/${variantDocId}`, {	D:\Rutba\ERP\packages\pos-shared\components\ProductGalleryManager.js	299	19	
+            await authApi.put(`/products/${variantDocId}`, {	D:\Rutba\ERP\packages\pos-shared\components\ProductGalleryManager.js	332	19	
+            await authApi.put(`/products/${targetVariantDocId}`, {	D:\Rutba\ERP\packages\pos-shared\components\ProductGalleryManager.js	403	19	
+            await authApi.put(`/products/${targetVariantDocId}`, {	D:\Rutba\ERP\packages\pos-shared\components\ProductGalleryManager.js	437	19	
+            await authApi.put(`/products/${sourceVariantDocId}`, {	D:\Rutba\ERP\packages\pos-shared\components\ProductGalleryManager.js	400	19	
+            await authApi.put(`/products/${parentDocId}`, {	D:\Rutba\ERP\packages\pos-shared\components\ProductGalleryManager.js	481	19	
+            await authApi.put(`/products/${parentDocId}`, {	D:\Rutba\ERP\packages\pos-shared\components\ProductGalleryManager.js	535	19	
+                    await authApi.put(`/products/${mediaLibraryTarget}`, {	D:\Rutba\ERP\packages\pos-shared\components\ProductGalleryManager.js	233	27	
+                    await authApi.put(`/products/${getEntryId(product)}`, {	D:\Rutba\ERP\packages\pos-shared\components\ProductGalleryManager.js	219	27	
+            await authApi.put(`/products/${getEntryId(product)}`, {	D:\Rutba\ERP\packages\pos-shared\components\ProductGalleryManager.js	265	19	
+            await authApi.put(`/products/${getEntryId(product)}`, {	D:\Rutba\ERP\packages\pos-shared\components\ProductGalleryManager.js	335	19	
+            await authApi.put(`/products/${getEntryId(product)}`, {	D:\Rutba\ERP\packages\pos-shared\components\ProductGalleryManager.js	365	19	
+import { authApi } from '../lib/api';	D:\Rutba\ERP\packages\pos-shared\components\ProductVariantManager.js	2	10	
+            const res = await authApi.get(`/products/${productId}`, {	D:\Rutba\ERP\packages\pos-shared\components\ProductVariantManager.js	49	31	
+                await authApi.put(`/products/${variantDocId}`, {	D:\Rutba\ERP\packages\pos-shared\components\ProductVariantManager.js	157	23	
+            await authApi.put(`/products/${variantDocId}`, {	D:\Rutba\ERP\packages\pos-shared\components\ProductVariantManager.js	175	19	
+                await authApi.put(`/products/${getEntryId(product)}`, {	D:\Rutba\ERP\packages\pos-shared\components\ProductVariantManager.js	116	23	
+            await authApi.put(`/products/${getEntryId(product)}`, {	D:\Rutba\ERP\packages\pos-shared\components\ProductVariantManager.js	135	19	
+            var uploaded = await authApi.uploadFile(imageFiles, null, null, null, {	D:\Rutba\ERP\packages\pos-shared\components\StrapiMediaLibrary.js	174	34	
+            var res = await authApi.get('/media-library/files/' + id);	D:\Rutba\ERP\packages\pos-shared\components\StrapiMediaLibrary.js	117	29	
+import { authApi, StraipImageUrl, isImage, isPDF } from '../lib/api';	D:\Rutba\ERP\packages\pos-shared\components\StrapiMediaLibrary.js	2	10	
+            const uploaded = await authApi.uploadFile(newFiles, null, null, null, {	D:\Rutba\ERP\packages\pos-shared\components\StrapiMediaLibrary.js	137	36	
+            const res = await authApi.get('/media-library/folders/tree');	D:\Rutba\ERP\packages\pos-shared\components\StrapiMediaLibrary.js	47	31	
+            const res = await authApi.get('/media-library/files', params);	D:\Rutba\ERP\packages\pos-shared\components\StrapiMediaLibrary.js	74	31	
+            await authApi.put('/media-library/folders/' + folderId, { name: renameValue.trim() });	D:\Rutba\ERP\packages\pos-shared\components\StrapiMediaLibrary.js	217	19	
+            await authApi.post('/media-library/folders', {	D:\Rutba\ERP\packages\pos-shared\components\StrapiMediaLibrary.js	202	19	
+                await authApi.post('/media-library/files/move', {	D:\Rutba\ERP\packages\pos-shared\components\StrapiMediaLibrary.js	142	23	
+                await authApi.post('/media-library/files/move', {	D:\Rutba\ERP\packages\pos-shared\components\StrapiMediaLibrary.js	179	23	
+            await authApi.post('/media-library/files/move', {	D:\Rutba\ERP\packages\pos-shared\components\StrapiMediaLibrary.js	265	19	
+            await authApi.post('/media-library/files/move', {	D:\Rutba\ERP\packages\pos-shared\components\StrapiMediaLibrary.js	283	19	
+            await authApi.del('/media-library/folders/' + folderId);	D:\Rutba\ERP\packages\pos-shared\components\StrapiMediaLibrary.js	230	19	
+import { authApi } from '../lib/api';	D:\Rutba\ERP\packages\pos-shared\components\TermTypeTermDialog.js	2	10	
+            const res = await authApi.post('/term-types', { data: payload });	D:\Rutba\ERP\packages\pos-shared\components\TermTypeTermDialog.js	121	31	
+            const res = await authApi.post('/terms', { data: payload });	D:\Rutba\ERP\packages\pos-shared\components\TermTypeTermDialog.js	147	31	
+                const res = await authApi.post('/terms', {	D:\Rutba\ERP\packages\pos-shared\components\TermTypeTermDialog.js	178	35	
+import { authApi } from "../lib/api";	D:\Rutba\ERP\packages\pos-shared\context\UtilContext.js	3	10	
+            const response = await authApi.put(`/branches/${branch.documentId}`, { data: { printSettings: merged } });	D:\Rutba\ERP\packages\pos-shared\context\UtilContext.js	188	36	
+                const response = await authApi.get(ep.path, ep.params);	D:\Rutba\ERP\packages\pos-shared\context\UtilContext.js	76	40	
+    return await authApi.fetch(ep.path, ep.params);	D:\Rutba\ERP\packages\pos-shared\lib\api.js	360	18	
+export const authAPI = authApi;	D:\Rutba\ERP\packages\pos-shared\lib\api.js	327	24	
+export const authApi = {	D:\Rutba\ERP\packages\pos-shared\lib\api.js	300	14	
+     * Defaults to GET (same channel as `authApi.fetch`).	D:\Rutba\ERP\packages\pos-shared\lib\api.js	312	42	
+        return authApi.put(ep.path, { data });	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\branches.js	69	16	
+        return authApi.post(`/branches/${branchDocumentId}/unarchive-stock`, data);	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\branches.js	79	16	
+        return authApi.post(`/branches/${branchDocumentId}/archive-stock`, data);	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\branches.js	74	16	
+        return authApi.fetch(ep.path, ep.params);	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\branches.js	51	16	
+        return authApi.fetch(ep.path, ep.params);	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\branches.js	57	16	
+        return authApi.fetch(ep.path, ep.params);	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\branches.js	63	16	
+import { authApi } from '../api.js';	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\branches.js	1	10	
+        return authApi.getAll(ep.path, ep.params);	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\brands.js	93	16	
+        return authApi.fetch(ep.path, ep.params);	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\brands.js	87	16	
+        return authApi.del(ep.path);	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\brands.js	137	16	
+import { authApi } from '../api.js';	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\brands.js	8	10	
+        const res = await authApi.put(ep.path, { data });	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\brands.js	132	27	
+        const res = await authApi.post(ep.path, { data });	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\brands.js	127	27	
+        return authApi.post(ep.path, { data });	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\cash-register-transactions.js	39	16	
+        return authApi.fetch(ep.path, ep.params);	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\cash-register-transactions.js	33	16	
+import { authApi } from '../api.js';	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\cash-register-transactions.js	1	10	
+        return authApi.fetch(ep.path, ep.params);	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\cash-registers.js	27	16	
+        return authApi.fetch(ep.path, ep.params);	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\cash-registers.js	43	16	
+        return authApi.fetch(ep.path);	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\cash-registers.js	61	16	
+    postOpen: (data) => authApi.post('/cash-registers/open', { data }),	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\cash-registers.js	74	25	
+    postClose: (registerId, data) => authApi.put(`/cash-registers/${registerId}/close`, { data }),	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\cash-registers.js	81	38	
+import { authApi } from '../api.js';	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\cash-registers.js	1	10	
+        return authApi.getAll(ep.path, ep.params);	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\categories.js	61	16	
+        return authApi.fetch(ep.path, ep.params);	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\categories.js	55	16	
+    putUpdate: (documentId, data) => authApi.put(`/categories/${documentId}`, { data }),	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\categories.js	83	38	
+    putDelete: (documentId) => authApi.del(`/categories/${documentId}`),	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\categories.js	86	32	
+    postCreate: (data) => authApi.post('/categories', { data }),	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\categories.js	80	27	
+import { authApi } from '../api.js';	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\categories.js	1	10	
+    putUpdate: (documentId, data) => authApi.put(`/crm-leads/${documentId}`, { data }),	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\crm-leads.js	23	38	
+    postCreate: (data) => authApi.post('/crm-leads', { data }),	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\crm-leads.js	20	27	
+import { authApi } from '../api.js';	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\crm-leads.js	1	10	
+        return authApi.put(ep.path, { data });	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\customers.js	72	16	
+        return authApi.post(ep.path, { data });	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\customers.js	66	16	
+        return authApi.fetch(ep.path, ep.params);	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\customers.js	54	16	
+        return authApi.fetch(ep.path, ep.params);	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\customers.js	60	16	
+import { authApi } from '../api.js';	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\customers.js	1	10	
+     * Mirrors: authApi.fetch(`/enums/${name}/${field}`)	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\enums.js	10	17	
+        return authApi.put(ep.path, { data });	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\notification-templates.js	48	16	
+        return authApi.post(ep.path, { data });	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\notification-templates.js	43	16	
+        return authApi.fetch(ep.path, ep.params);	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\notification-templates.js	33	16	
+        return authApi.fetch(ep.path, ep.params);	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\notification-templates.js	38	16	
+        return authApi.del(ep.path);	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\notification-templates.js	53	16	
+import { authApi } from '../api.js';	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\notification-templates.js	6	10	
+        return authApi.put(ep.path, { data });	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\payments.js	74	16	
+        return authApi.post(ep.path, { data });	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\payments.js	68	16	
+        return authApi.post(ep.path, { data });	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\payments.js	80	16	
+        return authApi.fetch(ep.path, ep.params);	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\payments.js	56	16	
+        return authApi.fetch(ep.path, ep.params);	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\payments.js	62	16	
+import { authApi } from '../api.js';	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\payments.js	1	10	
+        return authApi.fetch(ep.path, ep.params);	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\products.js	226	16	
+        return authApi.fetch(ep.path, ep.params);	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\products.js	232	16	
+        return authApi.fetch(ep.path, ep.params);	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\products.js	238	16	
+        return authApi.fetch(ep.path, ep.params);	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\products.js	244	16	
+    putUpdate: (documentId, data) => authApi.put(`/products/${documentId}`, { data }),	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\products.js	251	38	
+    putDelete: (documentId) => authApi.del(`/products/${documentId}`),	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\products.js	254	32	
+    postCreate: (data) => authApi.post('/products', { data }),	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\products.js	248	27	
+import { authApi } from '../api.js';	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\products.js	1	10	
+     * Replaces authApi.get(`/products/${id}`, query) in loadProduct().	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\products.js	160	17	
+        return authApi.fetch(ep.path, ep.params);	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\purchase-items.js	47	16	
+        return authApi.fetch(ep.path, ep.params);	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\purchase-items.js	53	16	
+    putUpdate: (documentId, data) => authApi.put(`/purchase-items/${documentId}`, { data }),	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\purchase-items.js	60	38	
+    putDelete: (documentId) => authApi.del(`/purchase-items/${documentId}`),	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\purchase-items.js	63	32	
+    postCreate: (data) => authApi.post('/purchase-items', { data }),	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\purchase-items.js	57	27	
+import { authApi } from '../api.js';	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\purchase-items.js	1	10	
+        return authApi.getAll(ep.path, ep.params);	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\purchases.js	60	16	
+        return authApi.fetch(ep.path, ep.params);	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\purchases.js	54	16	
+    putUpdate: (documentId, data) => authApi.put(`/purchases/${documentId}`, { data }),	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\purchases.js	76	38	
+    putDelete: (documentId) => authApi.del(`/purchases/${documentId}`),	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\purchases.js	79	32	
+    postCreate: (data) => authApi.post('/purchases', { data }),	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\purchases.js	73	27	
+import { authApi } from '../api.js';	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\purchases.js	1	10	
+        return authApi.put(ep.path, { data: { sale: { set: [] }, product: { set: [] } } });	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\sale-items.js	39	16	
+        return authApi.put(ep.path, { data });	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\sale-items.js	33	16	
+        return authApi.post(ep.path, { data });	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\sale-items.js	27	16	
+import { authApi } from '../api.js';	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\sale-items.js	1	10	
+        return authApi.put(ep.path, { data });	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\sale-return-items.js	27	16	
+        return authApi.post(ep.path, { data });	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\sale-return-items.js	21	16	
+import { authApi } from '../api.js';	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\sale-return-items.js	1	10	
+        return authApi.put(ep.path, { data });	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\sale-returns.js	84	16	
+        return authApi.post(ep.path, { data });	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\sale-returns.js	78	16	
+        return authApi.fetch(ep.path, ep.params);	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\sale-returns.js	66	16	
+        return authApi.fetch(ep.path, ep.params);	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\sale-returns.js	72	16	
+import { authApi } from '../api.js';	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\sale-returns.js	1	10	
+        return authApi.put(ep.path, { data: { notes: notes || '' } });	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\sales.js	163	16	
+        return authApi.put(ep.path, { data });	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\sales.js	151	16	
+        return authApi.put(ep.path);	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\sales.js	157	16	
+        return authApi.post(ep.path, { data });	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\sales.js	145	16	
+        return authApi.fetch(ep.path, ep.params);	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\sales.js	121	16	
+        return authApi.fetch(ep.path, ep.params);	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\sales.js	127	16	
+        return authApi.fetch(ep.path);	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\sales.js	133	16	
+        return authApi.fetch(ep.path);	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\sales.js	139	16	
+import { authApi } from '../api.js';	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\sales.js	1	10	
+        return authApi.del(`/stock-inputs/${documentId}`);	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\stock-inputs.js	20	16	
+import { authApi } from '../api.js';	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\stock-inputs.js	1	10	
+        const res = await authApi.put(`/stock-inputs/${documentId}`, { data });	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\stock-inputs.js	16	27	
+        const res = await authApi.post('/stock-inputs/process', body);	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\stock-inputs.js	24	27	
+        const res = await authApi.post('/stock-inputs', { data });	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\stock-inputs.js	12	27	
+        return authApi.put(ep.path, { data });	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\stock-items.js	237	16	
+        return authApi.post(ep.path, { data });	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\stock-items.js	231	16	
+        return authApi.fetch(ep.path, ep.params);	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\stock-items.js	183	16	
+        return authApi.fetch(ep.path, ep.params);	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\stock-items.js	189	16	
+        return authApi.fetch(ep.path, ep.params);	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\stock-items.js	195	16	
+        return authApi.fetch(ep.path, ep.params);	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\stock-items.js	201	16	
+        return authApi.fetch(ep.path, ep.params);	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\stock-items.js	207	16	
+        return authApi.fetch(ep.path, ep.params);	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\stock-items.js	213	16	
+        return authApi.fetch(ep.path, ep.params);	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\stock-items.js	219	16	
+        return authApi.fetch(ep.path, ep.params);	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\stock-items.js	225	16	
+import { authApi } from '../api.js';	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\stock-items.js	1	10	
+        return authApi.getAll(ep.path, ep.params);	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\suppliers.js	60	16	
+        return authApi.fetch(ep.path, ep.params);	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\suppliers.js	54	16	
+    putUpdate: (documentId, data) => authApi.put(`/suppliers/${documentId}`, { data }),	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\suppliers.js	76	38	
+    putDelete: (documentId) => authApi.del(`/suppliers/${documentId}`),	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\suppliers.js	79	32	
+    postCreate: (data) => authApi.post('/suppliers', { data }),	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\suppliers.js	73	27	
+import { authApi } from '../api.js';	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\suppliers.js	1	10	
+        return authApi.getAll(ep.path, ep.params);	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\term-types.js	69	16	
+        return authApi.fetch(ep.path, ep.params);	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\term-types.js	57	16	
+        return authApi.fetch(ep.path, ep.params);	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\term-types.js	63	16	
+        return authApi.fetch(ep.path, ep.params);	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\term-types.js	75	16	
+        return authApi.fetch(ep.path, ep.params);	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\term-types.js	159	16	
+    putUpdate: (id, data) => authApi.put(`/term-types/${id}`, { data }),	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\term-types.js	82	30	
+    putUpdate: (id, data) => authApi.put(`/terms/${id}`, { data }),	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\term-types.js	166	30	
+    putDelete: (id) => authApi.del(`/term-types/${id}`),	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\term-types.js	85	24	
+    putDelete: (id) => authApi.del(`/terms/${id}`),	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\term-types.js	169	24	
+    postCreate: (data) => authApi.post('/term-types', { data }),	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\term-types.js	79	27	
+    postCreate: (data) => authApi.post('/terms', { data }),	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\term-types.js	163	27	
+import { authApi } from '../api.js';	D:\Rutba\ERP\packages\pos-shared\lib\endpoints\term-types.js	1	10	
+        return await authApi.get(ep.path, ep.params);	D:\Rutba\ERP\packages\pos-shared\lib\pos\fetchs.js	102	22	
+    return await authApi.get(ep.path, ep.params);	D:\Rutba\ERP\packages\pos-shared\lib\pos\fetchs.js	114	18	
+    return await authApi.fetch(ep.path, ep.params);	D:\Rutba\ERP\packages\pos-shared\lib\pos\fetchs.js	13	18	
+    return await authApi.fetch(ep.path, ep.params);	D:\Rutba\ERP\packages\pos-shared\lib\pos\fetchs.js	18	18	
+    return await authApi.fetch(ep.path, ep.params);	D:\Rutba\ERP\packages\pos-shared\lib\pos\fetchs.js	24	18	
+    return await authApi.fetch(ep.path, ep.params);	D:\Rutba\ERP\packages\pos-shared\lib\pos\fetchs.js	30	18	
+    return await authApi.fetch(ep.path, ep.params);	D:\Rutba\ERP\packages\pos-shared\lib\pos\fetchs.js	36	18	
+    return await authApi.fetch("/" + entities, {	D:\Rutba\ERP\packages\pos-shared\lib\pos\fetchs.js	7	18	
+    res = await authApi.get(byIdEp.path, byIdEp.params);	D:\Rutba\ERP\packages\pos-shared\lib\pos\fetchs.js	44	17	
+    let res = await authApi.get(byIdEp.path, byIdEp.params);	D:\Rutba\ERP\packages\pos-shared\lib\pos\fetchs.js	119	21	
+import { authApi } from '../api';	D:\Rutba\ERP\packages\pos-shared\lib\pos\fetchs.js	1	10	
+    const res = await authApi.get(ep.path, ep.params);	D:\Rutba\ERP\packages\pos-shared\lib\pos\fetchs.js	80	23	
+    const res = await authApi.fetch(ep.path);	D:\Rutba\ERP\packages\pos-shared\lib\pos\fetchs.js	88	23	
+                const excRes = await authApi.get(excEp.path, excEp.params);	D:\Rutba\ERP\packages\pos-shared\lib\pos\fetchs.js	63	38	
+import { authApi } from '../api';	D:\Rutba\ERP\packages\pos-shared\lib\pos\search.js	2	10	
+    const res = await authApi.get(ep.path, ep.params);	D:\Rutba\ERP\packages\pos-shared\lib\pos\search.js	93	23	
+    const res = await authApi.get(ep.path, ep.params);	D:\Rutba\ERP\packages\pos-shared\lib\pos\search.js	100	23	
+    const res = await authApi.fetchWithPagination(query.url);	D:\Rutba\ERP\packages\pos-shared\lib\pos\search.js	132	23	
+        const res = await authApi.fetch(url);	D:\Rutba\ERP\packages\pos-shared\lib\pos\search.js	46	27	
+    const res = await authApi.fetch(query.url);	D:\Rutba\ERP\packages\pos-shared\lib\pos\search.js	110	23	
+import { authApi } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\pos-auth\pages\app-access.js	6	10	
+            const res = await authApi.call(ep);	D:\Rutba\ERP\pos-auth\pages\app-access.js	28	31	
+            await authApi.call(ep, {	D:\Rutba\ERP\pos-auth\pages\app-access.js	49	19	
+            await authApi.call(ep);	D:\Rutba\ERP\pos-auth\pages\app-access.js	72	19	
+import { authApi } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\pos-auth\pages\users\access-assignment.js	7	10	
+      await authApi.put(`/auth-admin/users/${user.id}`, {	D:\Rutba\ERP\pos-auth\pages\users\access-assignment.js	135	13	
+        authApi.get("/auth-admin/users"),	D:\Rutba\ERP\pos-auth\pages\users\access-assignment.js	38	9	
+        authApi.get("/auth-admin/domains"),	D:\Rutba\ERP\pos-auth\pages\users\access-assignment.js	39	9	
+import { authApi } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\pos-auth\pages\users\index.js	6	10	
+                authApi.get("/auth-admin/users"),	D:\Rutba\ERP\pos-auth\pages\users\index.js	22	17	
+                authApi.get("/auth-admin/domains"),	D:\Rutba\ERP\pos-auth\pages\users\index.js	23	17	
+import { authApi } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\pos-auth\pages\users\new.js	6	10	
+            const rolesRes = await authApi.get("/auth-admin/roles");	D:\Rutba\ERP\pos-auth\pages\users\new.js	34	36	
+            const aaRes = await authApi.call(domainsEp);	D:\Rutba\ERP\pos-auth\pages\users\new.js	38	33	
+            await authApi.post("/auth-admin/users", payload);	D:\Rutba\ERP\pos-auth\pages\users\new.js	100	19	
+import { authApi } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\pos-auth\pages\users\[id].js	6	10	
+            await authApi.put(`/auth-admin/users/${id}`, payload);	D:\Rutba\ERP\pos-auth\pages\users\[id].js	123	19	
+            await authApi.del(`/auth-admin/users/${id}`);	D:\Rutba\ERP\pos-auth\pages\users\[id].js	136	19	
+                authApi.get(`/auth-admin/users/${id}`),	D:\Rutba\ERP\pos-auth\pages\users\[id].js	41	17	
+                authApi.get("/auth-admin/roles"),	D:\Rutba\ERP\pos-auth\pages\users\[id].js	42	17	
+                authApi.call(domainsEp),	D:\Rutba\ERP\pos-auth\pages\users\[id].js	43	17	
+            const res = await authApi.get(ep.path);	D:\Rutba\ERP\pos-sale\components\CashRegisterGuard.js	83	31	
+import { authApi } from '@rutba/pos-shared/lib/api';	D:\Rutba\ERP\pos-sale\components\CustomerSelect.js	2	10	
+            const res = await authApi.get(ep.path, ep.params);	D:\Rutba\ERP\pos-sale\components\CustomerSelect.js	90	31	
+import { authApi } from '@rutba/pos-shared/lib/api';	D:\Rutba\ERP\pos-sale\components\form\customer-form.js	2	10	
+            const res = await authApi.get(ep.path, ep.params);	D:\Rutba\ERP\pos-sale\components\form\customer-form.js	43	31	
+import { authApi, getAppName } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\pos-sale\pages\cash-register-history.js	5	10	
+            const res = await authApi.get(ep.path);	D:\Rutba\ERP\pos-sale\pages\cash-register.js	119	31	
+import { authApi } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\pos-sale\pages\sales-returns.js	4	10	
+import { getBranches, getAdminMode, authApi } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\pos-sale\pages\sales.js	8	37	
+import { authApi, api } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\pos-sale\pages\settings.js	2	10	
+import { authApi, getAppName } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\pos-sale\pages\[documentId]\cash-register-detail.js	6	10	
+import { authApi } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\pos-sale\pages\[documentId]\payment.js	6	10	
+            const res = await authApi.get(ep.path, ep.params);	D:\Rutba\ERP\pos-sale\pages\[documentId]\payment.js	35	31	
+            const res = await authApi.fetch(ep.path, ep.params);	D:\Rutba\ERP\pos-sale\pages\[documentId]\sale-return.js	55	31	
+import { authApi } from '@rutba/pos-shared/lib/api';	D:\Rutba\ERP\pos-stock\components\form\purchase-form.js	3	10	
+            const response = await authApi.get('/suppliers');	D:\Rutba\ERP\pos-stock\components\form\purchase-form.js	39	36	
+                        return authApi.get(ep.path, ep.params)	D:\Rutba\ERP\pos-stock\components\print\BulkBarcodePrint.js	60	32	
+import { authApi } from '@rutba/pos-shared/lib/api';	D:\Rutba\ERP\pos-stock\components\print\BulkBarcodePrint.js	2	10	
+import { authApi, getBranches } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\pos-stock\pages\archive-stock.js	4	10	
+            const res = await authApi.get(`/branches/${selectedBranch}/archive-stats`);	D:\Rutba\ERP\pos-stock\pages\archive-stock.js	61	31	
+            const res = await authApi.get("/me/stock-items-search", {	D:\Rutba\ERP\pos-stock\pages\archive-stock.js	91	31	
+import { authApi } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\pos-stock\pages\brands.js	5	10	
+                    const res = await authApi.fetch(mergeEp.path, {	D:\Rutba\ERP\pos-stock\pages\brands.js	230	39	
+                const res = await authApi.fetch(ep.path, ep.params);	D:\Rutba\ERP\pos-stock\pages\brands.js	94	35	
+                const res = await authApi.fetch(ep.path, {	D:\Rutba\ERP\pos-stock\pages\brands.js	62	35	
+                const res = await authApi.fetch(ep.path, {	D:\Rutba\ERP\pos-stock\pages\brands.js	125	35	
+import { authApi } from '@rutba/pos-shared/lib/api';	D:\Rutba\ERP\pos-stock\pages\bulk-stock-inputs.js	6	10	
+            const res = await authApi.get('/stock-inputs', {	D:\Rutba\ERP\pos-stock\pages\bulk-stock-inputs.js	146	31	
+            authApi.getAll('/suppliers'),	D:\Rutba\ERP\pos-stock\pages\bulk-stock-inputs.js	134	13	
+            authApi.getAll('/categories'),	D:\Rutba\ERP\pos-stock\pages\bulk-stock-inputs.js	133	13	
+            authApi.getAll('/brands'),	D:\Rutba\ERP\pos-stock\pages\bulk-stock-inputs.js	132	13	
+                    const res = await authApi.fetch(mergeEp.path, {	D:\Rutba\ERP\pos-stock\pages\categories.js	235	39	
+                const res = await authApi.fetch(ep.path, ep.params);	D:\Rutba\ERP\pos-stock\pages\categories.js	93	35	
+                const res = await authApi.fetch(ep.path, {	D:\Rutba\ERP\pos-stock\pages\categories.js	61	35	
+                const res = await authApi.fetch(ep.path, {	D:\Rutba\ERP\pos-stock\pages\categories.js	124	35	
+            const res = await authApi.get(ep.path, ep.params);	D:\Rutba\ERP\pos-stock\pages\orphan-stock-items.js	59	31	
+            const res = await authApi.get(ep.path, ep.params);	D:\Rutba\ERP\pos-stock\pages\orphan-stock-items.js	178	31	
+                    const res = await authApi.get('/stock-items', {	D:\Rutba\ERP\pos-stock\pages\products-bulk-edit.js	99	39	
+        const res = await authApi.get('/stock-items', {	D:\Rutba\ERP\pos-stock\pages\products-bulk-edit.js	302	27	
+            authApi.getAll("/term-types", { populate: ["terms"] }),	D:\Rutba\ERP\pos-stock\pages\products-bulk-edit.js	132	13	
+            authApi.getAll("/suppliers"),	D:\Rutba\ERP\pos-stock\pages\products-bulk-edit.js	131	13	
+            authApi.getAll("/purchases", { sort: ["createdAt:desc"] }),	D:\Rutba\ERP\pos-stock\pages\products-bulk-edit.js	133	13	
+            authApi.getAll("/categories"),	D:\Rutba\ERP\pos-stock\pages\products-bulk-edit.js	130	13	
+            authApi.getAll("/brands"),	D:\Rutba\ERP\pos-stock\pages\products-bulk-edit.js	129	13	
+import { authApi, StraipImageUrl } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\pos-stock\pages\products.js	9	10	
+                const res = await authApi.get("/products", {	D:\Rutba\ERP\pos-stock\pages\products.js	239	35	
+            authApi.getAll(suppEp.path, suppEp.params),	D:\Rutba\ERP\pos-stock\pages\products.js	135	13	
+            authApi.getAll(purchEp.path, purchEp.params),	D:\Rutba\ERP\pos-stock\pages\products.js	137	13	
+            authApi.getAll(catsEp.path, catsEp.params),	D:\Rutba\ERP\pos-stock\pages\products.js	134	13	
+            authApi.getAll(brandsEp.path, brandsEp.params),	D:\Rutba\ERP\pos-stock\pages\products.js	133	13	
+            authApi.getAll("/term-types", { populate: ["terms"] }),	D:\Rutba\ERP\pos-stock\pages\products.js	136	13	
+import { authApi, api } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\pos-stock\pages\settings.js	2	10	
+import { authApi } from '@rutba/pos-shared/lib/api';	D:\Rutba\ERP\pos-stock\pages\stock-entry.js	5	10	
+            const purchasesRes = await authApi.get('/purchases', {	D:\Rutba\ERP\pos-stock\pages\stock-entry.js	24	40	
+            const response = await authApi.get(ep.path, ep.params);	D:\Rutba\ERP\pos-stock\pages\stock-items.js	120	36	
+                    const res = await authApi.fetch(mergeEp.path, {	D:\Rutba\ERP\pos-stock\pages\suppliers.js	236	39	
+                const res = await authApi.fetch(ep.path, ep.params);	D:\Rutba\ERP\pos-stock\pages\suppliers.js	93	35	
+                const res = await authApi.fetch(ep.path, {	D:\Rutba\ERP\pos-stock\pages\suppliers.js	61	35	
+                const res = await authApi.fetch(ep.path, {	D:\Rutba\ERP\pos-stock\pages\suppliers.js	124	35	
+import { authApi, relationConnects } from '@rutba/pos-shared/lib/api';	D:\Rutba\ERP\pos-stock\pages\[documentId]\catalogue-import.js	6	10	
+            const res = await authApi.get(`/products/${id}`, {	D:\Rutba\ERP\pos-stock\pages\[documentId]\catalogue-import.js	87	31	
+                                await authApi.uploadFile(	D:\Rutba\ERP\pos-stock\pages\[documentId]\catalogue-import.js	264	39	
+                    await authApi.uploadFile(	D:\Rutba\ERP\pos-stock\pages\[documentId]\catalogue-import.js	334	27	
+import { authApi, relationConnects } from '@rutba/pos-shared/lib/api';	D:\Rutba\ERP\pos-stock\pages\[documentId]\product-edit.js	5	10	
+                        const siRes = await authApi.fetch(siEp.path, {	D:\Rutba\ERP\pos-stock\pages\[documentId]\product-edit.js	71	45	
+            const response = await authApi.fetch(ep.path, ep.params);	D:\Rutba\ERP\pos-stock\pages\[documentId]\product-edit.js	38	36	
+import { authApi } from '@rutba/pos-shared/lib/api';	D:\Rutba\ERP\pos-stock\pages\[documentId]\product-relations.js	6	10	
+                const variantsRes = await authApi.fetch(variantsEp.path, variantsEp.params);	D:\Rutba\ERP\pos-stock\pages\[documentId]\product-relations.js	189	43	
+                        const res = await authApi.fetch(siEp.path, siEp.params);	D:\Rutba\ERP\pos-stock\pages\[documentId]\product-relations.js	133	43	
+                        const res = await authApi.fetch(piEp.path, piEp.params);	D:\Rutba\ERP\pos-stock\pages\[documentId]\product-relations.js	154	43	
+                const res = await authApi.fetch(ep.path, ep.params);	D:\Rutba\ERP\pos-stock\pages\[documentId]\product-relations.js	84	35	
+            const purchaseItemsRes = await authApi.fetch(piEp.path, piEp.params);	D:\Rutba\ERP\pos-stock\pages\[documentId]\product-relations.js	59	44	
+            const itemsRes = await authApi.fetch(siEp.path, siEp.params);	D:\Rutba\ERP\pos-stock\pages\[documentId]\product-relations.js	54	36	
+import { authApi, relationConnects, getStockStatus } from '@rutba/pos-shared/lib/api';	D:\Rutba\ERP\pos-stock\pages\[documentId]\product-stock-items.js	6	10	
+            const response = await authApi.get(`${endpoint}?pagination[page]=${page}&pagination[pageSize]=100`);	D:\Rutba\ERP\pos-stock\pages\[documentId]\product-stock-items.js	92	36	
+            const response = await authApi.fetch(ep.path, ep.params);	D:\Rutba\ERP\pos-stock\pages\[documentId]\product-stock-items.js	169	36	
+                        const res = await authApi.fetch(prefEp.path, {	D:\Rutba\ERP\pos-stock\pages\[documentId]\product-stock-items.js	135	43	
+            const res = await authApi.fetch(bcEp.path, { ...bcEp.params, populate: { product: true } });	D:\Rutba\ERP\pos-stock\pages\[documentId]\product-stock-items.js	345	31	
+            const existing = await authApi.fetch(mchkEp.path, mchkEp.params);	D:\Rutba\ERP\pos-stock\pages\[documentId]\product-stock-items.js	404	36	
+            const existing = await authApi.fetch(chkEp.path, chkEp.params);	D:\Rutba\ERP\pos-stock\pages\[documentId]\product-stock-items.js	301	36	
+import { authApi, relationConnects } from '@rutba/pos-shared/lib/api';	D:\Rutba\ERP\pos-stock\pages\[documentId]\product-variants.js	6	10	
+            const res = await authApi.get(`/products/${id}`, { populate: { variants: { populate: ['terms'] }, items: true, terms: true } });	D:\Rutba\ERP\pos-stock\pages\[documentId]\product-variants.js	59	31	
+                    const res = await authApi.fetch(dEp.path, dEp.params);	D:\Rutba\ERP\pos-stock\pages\[documentId]\product-variants.js	246	39	
+                        const res = await authApi.fetch(bdEp.path, bdEp.params);	D:\Rutba\ERP\pos-stock\pages\[documentId]\product-variants.js	284	43	
+import { authApi } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\pos-stock\pages\[documentId]\purchase.js	3	10	
+import { authApi } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\rutba-accounts\pages\chart-of-accounts.js	5	10	
+        authApi.get("/acc-accounts?sort=code:asc", {}, jwt)	D:\Rutba\ERP\rutba-accounts\pages\chart-of-accounts.js	14	9	
+import { authApi } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\rutba-accounts\pages\expenses.js	5	10	
+        authApi.get("/acc-expenses?sort=date:desc", {}, jwt)	D:\Rutba\ERP\rutba-accounts\pages\expenses.js	14	9	
+import { authApi } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\rutba-accounts\pages\invoices.js	5	10	
+        authApi.get("/acc-invoices?sort=date:desc", {}, jwt)	D:\Rutba\ERP\rutba-accounts\pages\invoices.js	14	9	
+import { authApi } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\rutba-accounts\pages\journal-entries.js	5	10	
+        authApi.get("/acc-journal-entries?sort=date:desc", {}, jwt)	D:\Rutba\ERP\rutba-accounts\pages\journal-entries.js	14	9	
+import { authApi, IMAGE_URL } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\rutba-cms\components\Navigation.js	5	10	
+        authApi.get("/site-setting", { status: "draft", populate: ["site_logo"] })	D:\Rutba\ERP\rutba-cms\components\Navigation.js	17	9	
+import { authApi, StraipImageUrl } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\rutba-cms\components\ProductPickerTabs.js	3	10	
+                    authApi.getAll("/term-types", { populate: ["terms"] }),	D:\Rutba\ERP\rutba-cms\components\ProductPickerTabs.js	78	21	
+                    authApi.getAll("/suppliers"),	D:\Rutba\ERP\rutba-cms\components\ProductPickerTabs.js	77	21	
+                    authApi.getAll("/purchases", { sort: ["createdAt:desc"] }),	D:\Rutba\ERP\rutba-cms\components\ProductPickerTabs.js	79	21	
+                    authApi.getAll("/categories"),	D:\Rutba\ERP\rutba-cms\components\ProductPickerTabs.js	76	21	
+                    authApi.getAll("/brands"),	D:\Rutba\ERP\rutba-cms\components\ProductPickerTabs.js	75	21	
+            try { await authApi.post(`/brand-groups/${docId}/unpublish`, {}); ok++; setGroups(prev => prev.map(g => g.documentId === docId ? { ...g, _isPublished: false } : g)); }	D:\Rutba\ERP\rutba-cms\pages\brand-groups.js	85	25	
+            try { await authApi.post(`/brand-groups/${docId}/publish`, {}); ok++; setGroups(prev => prev.map(g => g.documentId === docId ? { ...g, _isPublished: true } : g)); }	D:\Rutba\ERP\rutba-cms\pages\brand-groups.js	70	25	
+import { authApi } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\rutba-cms\pages\brand-groups.js	5	10	
+            await authApi.post(`/brand-groups/${docId}/unpublish`, {});	D:\Rutba\ERP\rutba-cms\pages\brand-groups.js	52	19	
+            await authApi.post(`/brand-groups/${docId}/publish`, {});	D:\Rutba\ERP\rutba-cms\pages\brand-groups.js	38	19	
+                authApi.get("/brand-groups", { status: 'published', fields: ["documentId"], pagination: { pageSize: 200 } }),	D:\Rutba\ERP\rutba-cms\pages\brand-groups.js	104	17	
+                authApi.get("/brand-groups", {	D:\Rutba\ERP\rutba-cms\pages\brand-groups.js	98	17	
+            try { const bpEp = BrandsEndpoints.publish(docId); await authApi.post(bpEp.path, {}); ok++; setBrands(prev => prev.map(b => b.documentId === docId ? { ...b, _isPublished: true } : b)); }	D:\Rutba\ERP\rutba-cms\pages\brands.js	74	70	
+import { authApi, StraipImageUrl } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\rutba-cms\pages\brands.js	5	10	
+blish(docId); await authApi.post(buEp.path, {}); ok++; setBrands(prev => prev.map(b => b.documentId === docId ? { ...b, _isPublished: false } : b)); }	D:\Rutba\ERP\rutba-cms\pages\brands.js	89	72	
+            await authApi.post(ep.path, {});	D:\Rutba\ERP\rutba-cms\pages\brands.js	41	19	
+            await authApi.post(ep.path, {});	D:\Rutba\ERP\rutba-cms\pages\brands.js	56	19	
+                authApi.fetch(pubEp.path, pubEp.params),	D:\Rutba\ERP\rutba-cms\pages\brands.js	105	17	
+                authApi.fetch(draftEp.path, draftEp.params),	D:\Rutba\ERP\rutba-cms\pages\brands.js	104	17	
+            try { await authApi.post(`/categories/${docId}/unpublish`, {}); ok++; setCategories(prev => prev.map(c => c.documentId === docId ? { ...c, _isPublished: false } : c)); }	D:\Rutba\ERP\rutba-cms\pages\categories.js	86	25	
+            try { await authApi.post(`/categories/${docId}/publish`, {}); ok++; setCategories(prev => prev.map(c => c.documentId === docId ? { ...c, _isPublished: true } : c)); }	D:\Rutba\ERP\rutba-cms\pages\categories.js	71	25	
+import { authApi, StraipImageUrl } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\rutba-cms\pages\categories.js	5	10	
+            await authApi.post(`/categories/${docId}/unpublish`, {});	D:\Rutba\ERP\rutba-cms\pages\categories.js	53	19	
+            await authApi.post(`/categories/${docId}/publish`, {});	D:\Rutba\ERP\rutba-cms\pages\categories.js	39	19	
+                authApi.get("/categories", params),	D:\Rutba\ERP\rutba-cms\pages\categories.js	108	17	
+                authApi.get("/categories", { status: 'published', fields: ["documentId"], pagination: { pageSize: 500 } }),	D:\Rutba\ERP\rutba-cms\pages\categories.js	109	17	
+            try { await authApi.post(`/category-groups/${docId}/unpublish`, {}); ok++; setGroups(prev => prev.map(g => g.documentId === docId ? { ...g, _isPublished: false } : g)); }	D:\Rutba\ERP\rutba-cms\pages\category-groups.js	85	25	
+            try { await authApi.post(`/category-groups/${docId}/publish`, {}); ok++; setGroups(prev => prev.map(g => g.documentId === docId ? { ...g, _isPublished: true } : g)); }	D:\Rutba\ERP\rutba-cms\pages\category-groups.js	70	25	
+import { authApi } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\rutba-cms\pages\category-groups.js	5	10	
+            await authApi.post(`/category-groups/${docId}/unpublish`, {});	D:\Rutba\ERP\rutba-cms\pages\category-groups.js	52	19	
+            await authApi.post(`/category-groups/${docId}/publish`, {});	D:\Rutba\ERP\rutba-cms\pages\category-groups.js	38	19	
+                authApi.get("/category-groups", { status: 'published', fields: ["documentId"], pagination: { pageSize: 200 } }),	D:\Rutba\ERP\rutba-cms\pages\category-groups.js	104	17	
+                authApi.get("/category-groups", {	D:\Rutba\ERP\rutba-cms\pages\category-groups.js	98	17	
+import { authApi } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\rutba-cms\pages\delivery-methods.js	5	10	
+            const res = await authApi.get("/delivery-methods", {	D:\Rutba\ERP\rutba-cms\pages\delivery-methods.js	17	31	
+            try { await authApi.post(`/cms-footers/${docId}/unpublish`, {}); ok++; setFooters(prev => prev.map(f => f.documentId === docId ? { ...f, _isPublished: false } : f)); }	D:\Rutba\ERP\rutba-cms\pages\footers.js	144	25	
+            try { await authApi.post(`/cms-footers/${docId}/publish`, {}); ok++; setFooters(prev => prev.map(f => f.documentId === docId ? { ...f, _isPublished: true } : f)); }	D:\Rutba\ERP\rutba-cms\pages\footers.js	129	25	
+import { authApi } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\rutba-cms\pages\footers.js	6	10	
+                    const existing = await authApi.get("/cms-footers", {	D:\Rutba\ERP\rutba-cms\pages\footers.js	189	44	
+                        await authApi.put(`/cms-footers/${doc.documentId}`, { data: row });	D:\Rutba\ERP\rutba-cms\pages\footers.js	197	31	
+            await authApi.post(`/cms-footers/${docId}/unpublish`, {});	D:\Rutba\ERP\rutba-cms\pages\footers.js	111	19	
+            await authApi.post(`/cms-footers/${docId}/publish`, {});	D:\Rutba\ERP\rutba-cms\pages\footers.js	97	19	
+                        await authApi.post("/cms-footers", { data: row });	D:\Rutba\ERP\rutba-cms\pages\footers.js	200	31	
+                authApi.get("/cms-footers", { status: 'published', fields: ["documentId"], pagination: { pageSize: 200 } }),	D:\Rutba\ERP\rutba-cms\pages\footers.js	162	17	
+                authApi.get("/cms-footers", {	D:\Rutba\ERP\rutba-cms\pages\footers.js	157	17	
+import { authApi, StraipImageUrl, isImage, isPDF } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\rutba-cms\pages\media.js	5	10	
+            const uploaded = await authApi.uploadFile(newFiles, null, null, null, {	D:\Rutba\ERP\rutba-cms\pages\media.js	168	36	
+            const uploaded = await authApi.uploadFile(imageFiles, null, null, null, {	D:\Rutba\ERP\rutba-cms\pages\media.js	278	36	
+            const res = await authApi.get('/media-library/folders/tree');	D:\Rutba\ERP\rutba-cms\pages\media.js	60	31	
+            const res = await authApi.get('/media-library/files/' + id);	D:\Rutba\ERP\rutba-cms\pages\media.js	246	31	
+            const res = await authApi.get('/media-library/files', params);	D:\Rutba\ERP\rutba-cms\pages\media.js	146	31	
+            await authApi.put('/media-library/folders/' + folderId, { name: renameValue.trim() });	D:\Rutba\ERP\rutba-cms\pages\media.js	88	19	
+            await authApi.put('/media-library/files/' + selectedFile.id, {	D:\Rutba\ERP\rutba-cms\pages\media.js	208	19	
+            await authApi.post('/media-library/folders', { name: newFolderName.trim(), parent: parentId });	D:\Rutba\ERP\rutba-cms\pages\media.js	74	19	
+                await authApi.post('/media-library/files/move', {	D:\Rutba\ERP\rutba-cms\pages\media.js	173	23	
+                await authApi.post('/media-library/files/move', {	D:\Rutba\ERP\rutba-cms\pages\media.js	283	23	
+            await authApi.post('/media-library/files/move', {	D:\Rutba\ERP\rutba-cms\pages\media.js	328	19	
+            await authApi.post('/media-library/files/move', {	D:\Rutba\ERP\rutba-cms\pages\media.js	348	19	
+            await authApi.del('/media-library/folders/' + folderId);	D:\Rutba\ERP\rutba-cms\pages\media.js	103	19	
+            await authApi.del('/media-library/files/' + fileId);	D:\Rutba\ERP\rutba-cms\pages\media.js	193	19	
+import { authApi } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\rutba-cms\pages\pages.js	6	10	
+                    const existing = await authApi.fetch(chkEp.path, chkEp.params);	D:\Rutba\ERP\rutba-cms\pages\pages.js	218	44	
+                        await authApi.put(upEp.path, { data: row });	D:\Rutba\ERP\rutba-cms\pages\pages.js	223	31	
+            await authApi.post(ep.path, {});	D:\Rutba\ERP\rutba-cms\pages\pages.js	104	19	
+            await authApi.post(ep.path, {});	D:\Rutba\ERP\rutba-cms\pages\pages.js	120	19	
+                        await authApi.post(crEp.path, { data: row });	D:\Rutba\ERP\rutba-cms\pages\pages.js	228	31	
+                await authApi.post(buEp.path, {}); ok++; 	D:\Rutba\ERP\rutba-cms\pages\pages.js	162	23	
+                await authApi.post(bpEp.path, {});	D:\Rutba\ERP\rutba-cms\pages\pages.js	141	23	
+                authApi.fetch(pubEp.path, pubEp.params),	D:\Rutba\ERP\rutba-cms\pages\pages.js	182	17	
+                authApi.fetch(draftEp.path, draftEp.params),	D:\Rutba\ERP\rutba-cms\pages\pages.js	181	17	
+import { authApi, StraipImageUrl } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\rutba-cms\pages\product-groups.js	5	10	
+                authApi.get("/product-groups", { status: 'published', fields: ["documentId"], pagination: { pageSize: 200 } }),	D:\Rutba\ERP\rutba-cms\pages\product-groups.js	24	17	
+                authApi.get("/product-groups", {	D:\Rutba\ERP\rutba-cms\pages\product-groups.js	18	17	
+import { authApi, StraipImageUrl } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\rutba-cms\pages\products.js	6	10	
+                const res = await authApi.get("/products", {	D:\Rutba\ERP\rutba-cms\pages\products.js	280	35	
+                        const pubRes = await authApi.get("/products", {	D:\Rutba\ERP\rutba-cms\pages\products.js	234	46	
+                const pubRes = await authApi.get("/products", {	D:\Rutba\ERP\rutba-cms\pages\products.js	286	38	
+            await authApi.post(`/products/${docId}/unpublish`, {});	D:\Rutba\ERP\rutba-cms\pages\products.js	111	19	
+            await authApi.post(`/products/${docId}/publish`, {});	D:\Rutba\ERP\rutba-cms\pages\products.js	89	19	
+            authApi.getAll("/term-types", { populate: ["terms"] }),	D:\Rutba\ERP\rutba-cms\pages\products.js	200	13	
+            authApi.getAll("/suppliers"),	D:\Rutba\ERP\rutba-cms\pages\products.js	199	13	
+            authApi.getAll("/purchases", { sort: ["createdAt:desc"] }),	D:\Rutba\ERP\rutba-cms\pages\products.js	201	13	
+            authApi.getAll("/categories"),	D:\Rutba\ERP\rutba-cms\pages\products.js	198	13	
+            authApi.getAll("/brands"),	D:\Rutba\ERP\rutba-cms\pages\products.js	197	13	
+import { authApi } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\rutba-cms\pages\sale-offers.js	5	10	
+                authApi.get("/sale-offers", { status: 'published', fields: ["documentId"], pagination: { pageSize: 200 } }),	D:\Rutba\ERP\rutba-cms\pages\sale-offers.js	24	17	
+                authApi.get("/sale-offers", {	D:\Rutba\ERP\rutba-cms\pages\sale-offers.js	18	17	
+                res = await authApi.put("/site-setting?status=draft", buildPayload());	D:\Rutba\ERP\rutba-cms\pages\site-settings.js	82	29	
+                res = await authApi.put("/site-setting", buildPayload());	D:\Rutba\ERP\rutba-cms\pages\site-settings.js	80	29	
+import { authApi } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\rutba-cms\pages\site-settings.js	5	10	
+            const res = await authApi.get("/site-setting", { status: "draft", populate: ["site_logo", "favicon"] });	D:\Rutba\ERP\rutba-cms\pages\site-settings.js	115	31	
+            await authApi.put("/site-setting?status=draft", buildPayload());	D:\Rutba\ERP\rutba-cms\pages\site-settings.js	98	19	
+            await authApi.post("/site-setting/publish", {});	D:\Rutba\ERP\rutba-cms\pages\site-settings.js	99	19	
+            await authApi.post("/site-setting/discard", {});	D:\Rutba\ERP\rutba-cms\pages\site-settings.js	114	19	
+            authApi.get("/site-setting", { status: "published", fields: ["id"] }).catch(() => ({ data: null })),	D:\Rutba\ERP\rutba-cms\pages\site-settings.js	34	13	
+            authApi.get("/site-setting", { status: "draft", populate: ["site_logo", "favicon"] }).catch(() => ({ data: null })),	D:\Rutba\ERP\rutba-cms\pages\site-settings.js	33	13	
+import { authApi, StraipImageUrl } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\rutba-cms\pages\[documentId]\brand-group.js	6	10	
+                const res = await authApi.post("/brand-groups", payload);	D:\Rutba\ERP\rutba-cms\pages\[documentId]\brand-group.js	77	35	
+            const res = await authApi.get(`/brand-groups/${documentId}`, { status: 'published', populate: ["brands.logo"] });	D:\Rutba\ERP\rutba-cms\pages\[documentId]\brand-group.js	135	31	
+            const res = await authApi.get("/brands", { status: 'draft', pagination: { pageSize: 100 }, sort: ["name:asc"], populate: ["logo"] });	D:\Rutba\ERP\rutba-cms\pages\[documentId]\brand-group.js	50	31	
+                await authApi.put(`/brand-groups/${documentId}?status=draft`, payload);	D:\Rutba\ERP\rutba-cms\pages\[documentId]\brand-group.js	81	23	
+            await authApi.put(`/brand-groups/${documentId}?status=draft`, payload);	D:\Rutba\ERP\rutba-cms\pages\[documentId]\brand-group.js	102	19	
+            await authApi.put(`/brand-groups/${documentId}?status=draft`, {	D:\Rutba\ERP\rutba-cms\pages\[documentId]\brand-group.js	132	19	
+            await authApi.post(`/brand-groups/${documentId}/unpublish`, {});	D:\Rutba\ERP\rutba-cms\pages\[documentId]\brand-group.js	117	19	
+            await authApi.post(`/brand-groups/${documentId}/publish`, {});	D:\Rutba\ERP\rutba-cms\pages\[documentId]\brand-group.js	103	19	
+            await authApi.del(`/brand-groups/${documentId}`);	D:\Rutba\ERP\rutba-cms\pages\[documentId]\brand-group.js	154	19	
+            authApi.get(`/brand-groups/${documentId}`, { status: 'published', fields: ["documentId"] }).catch(() => ({ data: null })),	D:\Rutba\ERP\rutba-cms\pages\[documentId]\brand-group.js	32	13	
+            authApi.get(`/brand-groups/${documentId}`, { status: 'draft', populate: ["brands.logo"] }),	D:\Rutba\ERP\rutba-cms\pages\[documentId]\brand-group.js	31	13	
+                    updates.push(authApi.put(`/products/${id}?status=draft`, {	D:\Rutba\ERP\rutba-cms\pages\[documentId]\brand.js	82	34	
+                    updates.push(authApi.put(`/products/${id}?status=draft`, {	D:\Rutba\ERP\rutba-cms\pages\[documentId]\brand.js	87	34	
+import { authApi } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\rutba-cms\pages\[documentId]\brand.js	6	10	
+                const res = await authApi.post("/brands", {	D:\Rutba\ERP\rutba-cms\pages\[documentId]\brand.js	65	35	
+            const res = await authApi.get(`/brands/${documentId}`, { status: 'published', populate: ["logo", "gallery"] });	D:\Rutba\ERP\rutba-cms\pages\[documentId]\brand.js	142	31	
+                await authApi.put(`/brands/${documentId}?status=draft`, {	D:\Rutba\ERP\rutba-cms\pages\[documentId]\brand.js	71	23	
+            await authApi.put(`/brands/${documentId}?status=draft`, {	D:\Rutba\ERP\rutba-cms\pages\[documentId]\brand.js	107	19	
+            await authApi.put(`/brands/${documentId}?status=draft`, {	D:\Rutba\ERP\rutba-cms\pages\[documentId]\brand.js	139	19	
+            await authApi.post(`/brands/${documentId}/unpublish`, {});	D:\Rutba\ERP\rutba-cms\pages\[documentId]\brand.js	124	19	
+            await authApi.post(`/brands/${documentId}/publish`, {});	D:\Rutba\ERP\rutba-cms\pages\[documentId]\brand.js	110	19	
+            authApi.get(`/brands/${documentId}`, { status: 'published', fields: ["documentId"] }).catch(() => ({ data: null })),	D:\Rutba\ERP\rutba-cms\pages\[documentId]\brand.js	35	13	
+            authApi.get(`/brands/${documentId}`, { status: 'draft', populate: ["logo", "gallery"] }),	D:\Rutba\ERP\rutba-cms\pages\[documentId]\brand.js	34	13	
+import { authApi } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\rutba-cms\pages\[documentId]\category-group.js	6	10	
+                const res = await authApi.post("/category-groups", payload);	D:\Rutba\ERP\rutba-cms\pages\[documentId]\category-group.js	77	35	
+            const res = await authApi.get(`/category-groups/${documentId}`, { status: 'published', populate: ["categories"] });	D:\Rutba\ERP\rutba-cms\pages\[documentId]\category-group.js	135	31	
+            const res = await authApi.get("/categories", { status: 'draft', pagination: { pageSize: 200 }, sort: ["name:asc"] });	D:\Rutba\ERP\rutba-cms\pages\[documentId]\category-group.js	50	31	
+                await authApi.put(`/category-groups/${documentId}?status=draft`, payload);	D:\Rutba\ERP\rutba-cms\pages\[documentId]\category-group.js	81	23	
+            await authApi.put(`/category-groups/${documentId}?status=draft`, payload);	D:\Rutba\ERP\rutba-cms\pages\[documentId]\category-group.js	102	19	
+            await authApi.put(`/category-groups/${documentId}?status=draft`, {	D:\Rutba\ERP\rutba-cms\pages\[documentId]\category-group.js	132	19	
+            await authApi.post(`/category-groups/${documentId}/unpublish`, {});	D:\Rutba\ERP\rutba-cms\pages\[documentId]\category-group.js	117	19	
+            await authApi.post(`/category-groups/${documentId}/publish`, {});	D:\Rutba\ERP\rutba-cms\pages\[documentId]\category-group.js	103	19	
+            await authApi.del(`/category-groups/${documentId}`);	D:\Rutba\ERP\rutba-cms\pages\[documentId]\category-group.js	154	19	
+            authApi.get(`/category-groups/${documentId}`, { status: 'published', fields: ["documentId"] }).catch(() => ({ data: null })),	D:\Rutba\ERP\rutba-cms\pages\[documentId]\category-group.js	32	13	
+            authApi.get(`/category-groups/${documentId}`, { status: 'draft', populate: ["categories"] }),	D:\Rutba\ERP\rutba-cms\pages\[documentId]\category-group.js	31	13	
+                    updates.push(authApi.put(`/products/${id}?status=draft`, {	D:\Rutba\ERP\rutba-cms\pages\[documentId]\category.js	86	34	
+                    updates.push(authApi.put(`/products/${id}?status=draft`, {	D:\Rutba\ERP\rutba-cms\pages\[documentId]\category.js	91	34	
+import { authApi } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\rutba-cms\pages\[documentId]\category.js	6	10	
+                const res = await authApi.post("/categories", {	D:\Rutba\ERP\rutba-cms\pages\[documentId]\category.js	69	35	
+            const res = await authApi.get(`/categories/${documentId}`, { status: 'published', populate: ["logo", "gallery", "parent"] });	D:\Rutba\ERP\rutba-cms\pages\[documentId]\category.js	146	31	
+                await authApi.put(`/categories/${documentId}?status=draft`, {	D:\Rutba\ERP\rutba-cms\pages\[documentId]\category.js	75	23	
+            await authApi.put(`/categories/${documentId}?status=draft`, {	D:\Rutba\ERP\rutba-cms\pages\[documentId]\category.js	111	19	
+            await authApi.put(`/categories/${documentId}?status=draft`, {	D:\Rutba\ERP\rutba-cms\pages\[documentId]\category.js	143	19	
+            await authApi.post(`/categories/${documentId}/unpublish`, {});	D:\Rutba\ERP\rutba-cms\pages\[documentId]\category.js	128	19	
+            await authApi.post(`/categories/${documentId}/publish`, {});	D:\Rutba\ERP\rutba-cms\pages\[documentId]\category.js	114	19	
+            authApi.get(`/categories/${documentId}`, { status: 'published', fields: ["documentId"] }).catch(() => ({ data: null })),	D:\Rutba\ERP\rutba-cms\pages\[documentId]\category.js	37	13	
+            authApi.get(`/categories/${documentId}`, { status: 'draft', populate: ["logo", "gallery", "parent"] }),	D:\Rutba\ERP\rutba-cms\pages\[documentId]\category.js	36	13	
+import { authApi } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\rutba-cms\pages\[documentId]\cms-footer.js	6	10	
+                const res = await authApi.post("/cms-footers", payload);	D:\Rutba\ERP\rutba-cms\pages\[documentId]\cms-footer.js	167	35	
+            const res = await authApi.get(`/cms-footers/${documentId}`, { status: 'published', populate: ["pinned_pages", "cms_pages"] });	D:\Rutba\ERP\rutba-cms\pages\[documentId]\cms-footer.js	236	31	
+            const res = await authApi.get("/cms-pages", { status: 'draft', pagination: { pageSize: 100 }, sort: ["title:asc"], populate: ["footer"] });	D:\Rutba\ERP\rutba-cms\pages\[documentId]\cms-footer.js	81	31	
+            await authApi.put(`/cms-pages/${pageDocId}?status=draft`, {	D:\Rutba\ERP\rutba-cms\pages\[documentId]\cms-footer.js	118	19	
+                await authApi.put(`/cms-footers/${documentId}?status=draft`, payload);	D:\Rutba\ERP\rutba-cms\pages\[documentId]\cms-footer.js	171	23	
+            await authApi.put(`/cms-footers/${documentId}?status=draft`, payload);	D:\Rutba\ERP\rutba-cms\pages\[documentId]\cms-footer.js	197	19	
+            await authApi.put(`/cms-footers/${documentId}?status=draft`, {	D:\Rutba\ERP\rutba-cms\pages\[documentId]\cms-footer.js	227	19	
+            await authApi.post(`/cms-footers/${documentId}/unpublish`, {});	D:\Rutba\ERP\rutba-cms\pages\[documentId]\cms-footer.js	212	19	
+            await authApi.post(`/cms-footers/${documentId}/publish`, {});	D:\Rutba\ERP\rutba-cms\pages\[documentId]\cms-footer.js	198	19	
+            await authApi.del(`/cms-footers/${documentId}`);	D:\Rutba\ERP\rutba-cms\pages\[documentId]\cms-footer.js	261	19	
+                authApi.put(`/cms-pages/${pid}?status=draft`, { data: { footer: null } })	D:\Rutba\ERP\rutba-cms\pages\[documentId]\cms-footer.js	138	17	
+            authApi.get(`/cms-footers/${documentId}`, { status: 'published', fields: ["documentId"] }).catch(() => ({ data: null })),	D:\Rutba\ERP\rutba-cms\pages\[documentId]\cms-footer.js	57	13	
+            authApi.get(`/cms-footers/${documentId}`, { status: 'draft', populate: ["pinned_pages", "cms_pages"] }),	D:\Rutba\ERP\rutba-cms\pages\[documentId]\cms-footer.js	56	13	
+import { authApi, StraipImageUrl } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\rutba-cms\pages\[documentId]\cms-page.js	6	10	
+                const res = await authApi.post("/cms-pages", payload);	D:\Rutba\ERP\rutba-cms\pages\[documentId]\cms-page.js	171	35	
+            const res = await authApi.get(`/cms-pages/${documentId}`, {	D:\Rutba\ERP\rutba-cms\pages\[documentId]\cms-page.js	261	31	
+                await authApi.put(`/cms-pages/${documentId}?status=draft`, payload);	D:\Rutba\ERP\rutba-cms\pages\[documentId]\cms-page.js	175	23	
+            await authApi.put(`/cms-pages/${documentId}?status=draft`, payload);	D:\Rutba\ERP\rutba-cms\pages\[documentId]\cms-page.js	213	19	
+            await authApi.put(`/cms-pages/${documentId}?status=draft`, discardPayload);	D:\Rutba\ERP\rutba-cms\pages\[documentId]\cms-page.js	259	19	
+            await authApi.post(`/cms-pages/${documentId}/unpublish`, {});	D:\Rutba\ERP\rutba-cms\pages\[documentId]\cms-page.js	228	19	
+            await authApi.post(`/cms-pages/${documentId}/publish`, {});	D:\Rutba\ERP\rutba-cms\pages\[documentId]\cms-page.js	214	19	
+            await authApi.del(`/cms-pages/${documentId}`);	D:\Rutba\ERP\rutba-cms\pages\[documentId]\cms-page.js	299	19	
+            authApi.get(`/cms-pages/${documentId}`, { status: 'published', fields: ["documentId"] }).catch(() => ({ data: null })),	D:\Rutba\ERP\rutba-cms\pages\[documentId]\cms-page.js	65	13	
+            authApi.get(`/cms-pages/${documentId}`, {	D:\Rutba\ERP\rutba-cms\pages\[documentId]\cms-page.js	61	13	
+                authApi.get("/product-groups", { status: 'draft', pagination: { pageSize: 100 }, sort: ["name:asc"] }),	D:\Rutba\ERP\rutba-cms\pages\[documentId]\cms-page.js	100	17	
+                authApi.get("/cms-pages", { status: 'draft', pagination: { pageSize: 100 }, sort: ["title:asc"] }),	D:\Rutba\ERP\rutba-cms\pages\[documentId]\cms-page.js	103	17	
+                authApi.get("/cms-footers", { status: 'draft', pagination: { pageSize: 100 }, sort: ["name:asc"] }),	D:\Rutba\ERP\rutba-cms\pages\[documentId]\cms-page.js	104	17	
+                authApi.get("/category-groups", { status: 'draft', pagination: { pageSize: 100 }, sort: ["sort_order:asc", "name:asc"] }),	D:\Rutba\ERP\rutba-cms\pages\[documentId]\cms-page.js	102	17	
+                authApi.get("/brand-groups", { status: 'draft', pagination: { pageSize: 100 }, sort: ["sort_order:asc", "name:asc"] }),	D:\Rutba\ERP\rutba-cms\pages\[documentId]\cms-page.js	101	17	
+import { authApi } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\rutba-cms\pages\[documentId]\delivery-method.js	6	10	
+                const res = await authApi.post("/delivery-methods", buildPayload());	D:\Rutba\ERP\rutba-cms\pages\[documentId]\delivery-method.js	190	35	
+                await authApi.put(`/delivery-methods/${documentId}`, buildPayload());	D:\Rutba\ERP\rutba-cms\pages\[documentId]\delivery-method.js	195	23	
+            await authApi.del(`/delivery-methods/${documentId}`);	D:\Rutba\ERP\rutba-cms\pages\[documentId]\delivery-method.js	211	19	
+        authApi.get(`/delivery-methods/${documentId}`, {	D:\Rutba\ERP\rutba-cms\pages\[documentId]\delivery-method.js	126	9	
+            authApi.get("/product-groups", { status: "draft", fields: ["documentId", "name"], pagination: { pageSize: 200 } }),	D:\Rutba\ERP\rutba-cms\pages\[documentId]\delivery-method.js	108	13	
+            authApi.get("/cms-pages", { status: "draft", fields: ["documentId", "title", "slug"], pagination: { pageSize: 200 } }),	D:\Rutba\ERP\rutba-cms\pages\[documentId]\delivery-method.js	109	13	
+            authApi.get("/categories", { status: "draft", fields: ["documentId", "name"], pagination: { pageSize: 200 } }),	D:\Rutba\ERP\rutba-cms\pages\[documentId]\delivery-method.js	110	13	
+import { authApi } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\rutba-cms\pages\[documentId]\product-group.js	6	10	
+                const res = await authApi.post("/product-groups", payload);	D:\Rutba\ERP\rutba-cms\pages\[documentId]\product-group.js	129	35	
+            const res = await authApi.get(`/product-groups/${documentId}`, { status: 'published', populate: ["gallery", "cover_image", "products", "cms_pages"] });	D:\Rutba\ERP\rutba-cms\pages\[documentId]\product-group.js	198	31	
+                await authApi.put(`/product-groups/${documentId}?status=draft`, payload);	D:\Rutba\ERP\rutba-cms\pages\[documentId]\product-group.js	133	23	
+            await authApi.put(`/product-groups/${documentId}?status=draft`, payload);	D:\Rutba\ERP\rutba-cms\pages\[documentId]\product-group.js	165	19	
+            await authApi.put(`/product-groups/${documentId}?status=draft`, {	D:\Rutba\ERP\rutba-cms\pages\[documentId]\product-group.js	195	19	
+            await authApi.post(`/product-groups/${documentId}/unpublish`, {});	D:\Rutba\ERP\rutba-cms\pages\[documentId]\product-group.js	180	19	
+            await authApi.post(`/product-groups/${documentId}/publish`, {});	D:\Rutba\ERP\rutba-cms\pages\[documentId]\product-group.js	166	19	
+            await authApi.del(`/product-groups/${documentId}`);	D:\Rutba\ERP\rutba-cms\pages\[documentId]\product-group.js	228	19	
+        authApi.getAll("/cms-pages", { status: "draft", fields: ["documentId", "title", "slug", "page_type"], sort: ["title:asc"] })	D:\Rutba\ERP\rutba-cms\pages\[documentId]\product-group.js	83	9	
+            authApi.get(`/product-groups/${documentId}`, { status: 'published', fields: ["documentId"] }).catch(() => ({ data: null })),	D:\Rutba\ERP\rutba-cms\pages\[documentId]\product-group.js	52	13	
+            authApi.get(`/product-groups/${documentId}`, { status: 'draft', populate: ["gallery", "cover_image", "products", "cms_pages"] }),	D:\Rutba\ERP\rutba-cms\pages\[documentId]\product-group.js	51	13	
+import { authApi, StraipImageUrl } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\rutba-cms\pages\[documentId]\product.js	6	10	
+                const res = await authApi.post("/products", { data: { ...payload, status: "draft" } });	D:\Rutba\ERP\rutba-cms\pages\[documentId]\product.js	120	35	
+                const res = await authApi.post("/products", { data });	D:\Rutba\ERP\rutba-cms\pages\[documentId]\product.js	148	35	
+            const res = await authApi.get(`/products/${documentId}`, {	D:\Rutba\ERP\rutba-cms\pages\[documentId]\product.js	195	31	
+            const res = await authApi.get("/product-groups", {	D:\Rutba\ERP\rutba-cms\pages\[documentId]\product.js	87	31	
+                await authApi.put(`/products/${documentId}?status=draft`, { data: payload });	D:\Rutba\ERP\rutba-cms\pages\[documentId]\product.js	125	23	
+                await authApi.put(`/products/${documentId}?status=draft`, { data });	D:\Rutba\ERP\rutba-cms\pages\[documentId]\product.js	154	23	
+            await authApi.put(`/products/${documentId}?status=draft`, {	D:\Rutba\ERP\rutba-cms\pages\[documentId]\product.js	185	19	
+            await authApi.put(`/product-groups/${groupDocId}?status=draft`, {	D:\Rutba\ERP\rutba-cms\pages\[documentId]\product.js	235	19	
+            await authApi.post(`/products/${documentId}/unpublish`, {});	D:\Rutba\ERP\rutba-cms\pages\[documentId]\product.js	170	19	
+                await authApi.post(`/products/${documentId}/publish`, {});	D:\Rutba\ERP\rutba-cms\pages\[documentId]\product.js	155	23	
+                await authApi.post(`/products/${created.documentId}/publish`, {});	D:\Rutba\ERP\rutba-cms\pages\[documentId]\product.js	150	23	
+            await authApi.post("/product-groups", {	D:\Rutba\ERP\rutba-cms\pages\[documentId]\product.js	270	19	
+                authApi.get(`/products/${documentId}`, { status: 'published', fields: ["documentId"] }).catch(() => ({ data: null })),	D:\Rutba\ERP\rutba-cms\pages\[documentId]\product.js	63	17	
+                authApi.get(`/products/${documentId}`, {	D:\Rutba\ERP\rutba-cms\pages\[documentId]\product.js	53	17	
+import { authApi } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\rutba-cms\pages\[documentId]\sale-offer.js	6	10	
+                const res = await authApi.post("/sale-offers", buildPayload());	D:\Rutba\ERP\rutba-cms\pages\[documentId]\sale-offer.js	151	35	
+                await authApi.put(`/sale-offers/${documentId}?status=draft`, buildPayload());	D:\Rutba\ERP\rutba-cms\pages\[documentId]\sale-offer.js	155	23	
+            await authApi.put(`/sale-offers/${documentId}?status=draft`, buildPayload());	D:\Rutba\ERP\rutba-cms\pages\[documentId]\sale-offer.js	169	19	
+            await authApi.post(`/sale-offers/${documentId}/unpublish`, {});	D:\Rutba\ERP\rutba-cms\pages\[documentId]\sale-offer.js	184	19	
+            await authApi.post(`/sale-offers/${documentId}/publish`, {});	D:\Rutba\ERP\rutba-cms\pages\[documentId]\sale-offer.js	170	19	
+            await authApi.del(`/sale-offers/${documentId}`);	D:\Rutba\ERP\rutba-cms\pages\[documentId]\sale-offer.js	198	19	
+            authApi.get(`/sale-offers/${documentId}`, { status: 'published', fields: ["documentId"] }).catch(() => ({ data: null })),	D:\Rutba\ERP\rutba-cms\pages\[documentId]\sale-offer.js	112	13	
+            authApi.get(`/sale-offers/${documentId}`, { status: 'draft', populate: ["product_groups", "cms_pages", "categories"] }),	D:\Rutba\ERP\rutba-cms\pages\[documentId]\sale-offer.js	111	13	
+            authApi.get("/product-groups", { status: 'draft', fields: ["documentId", "name"], pagination: { pageSize: 200 } }),	D:\Rutba\ERP\rutba-cms\pages\[documentId]\sale-offer.js	97	13	
+            authApi.get("/cms-pages", { status: 'draft', fields: ["documentId", "title", "slug"], pagination: { pageSize: 200 } }),	D:\Rutba\ERP\rutba-cms\pages\[documentId]\sale-offer.js	98	13	
+            authApi.get("/categories", { status: 'draft', fields: ["documentId", "name"], pagination: { pageSize: 200 } }),	D:\Rutba\ERP\rutba-cms\pages\[documentId]\sale-offer.js	99	13	
+                result = await authApi.put(`/crm-leads/${lead.documentId}`, payload);	D:\Rutba\ERP\rutba-crm\components\form\LeadForm.js	88	32	
+                result = await authApi.post('/crm-leads', payload);	D:\Rutba\ERP\rutba-crm\components\form\LeadForm.js	90	32	
+import { authApi } from '@rutba/pos-shared/lib/api';	D:\Rutba\ERP\rutba-crm\components\form\LeadForm.js	2	10	
+                const res = await authApi.get(ep.path, ep.params);	D:\Rutba\ERP\rutba-crm\components\form\LeadForm.js	51	35	
+import { authApi } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\rutba-crm\pages\activities.js	5	10	
+        authApi.get("/crm-activities?sort=date:desc", {}, jwt)	D:\Rutba\ERP\rutba-crm\pages\activities.js	14	9	
+import { authApi } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\rutba-crm\pages\contacts.js	5	10	
+        authApi.get("/crm-contacts?sort=createdAt:desc", {}, jwt)	D:\Rutba\ERP\rutba-crm\pages\contacts.js	15	9	
+import { authApi } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\rutba-crm\pages\leads.js	5	10	
+        authApi.get("/crm-leads?sort=createdAt:desc&populate=customer", {}, jwt)	D:\Rutba\ERP\rutba-crm\pages\leads.js	18	9	
+import { authApi } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\rutba-crm\pages\[documentId]\contact.js	6	10	
+        authApi.get(`/crm-contacts/${documentId}?populate=*`, {}, jwt)	D:\Rutba\ERP\rutba-crm\pages\[documentId]\contact.js	18	9	
+import { authApi } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\rutba-crm\pages\[documentId]\lead.js	6	10	
+        authApi.get(`/crm-leads/${documentId}?populate=*`, {}, jwt)	D:\Rutba\ERP\rutba-crm\pages\[documentId]\lead.js	21	9	
+import { authApi } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\rutba-hr\pages\attendance.js	5	10	
+        authApi.get("/hr-attendances?sort=date:desc&populate=employee", {}, jwt)	D:\Rutba\ERP\rutba-hr\pages\attendance.js	14	9	
+import { authApi } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\rutba-hr\pages\departments.js	5	10	
+        authApi.get("/hr-departments?sort=name:asc", {}, jwt)	D:\Rutba\ERP\rutba-hr\pages\departments.js	14	9	
+import { authApi } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\rutba-hr\pages\employees.js	5	10	
+        authApi.get("/hr-employees?sort=name:asc&populate=department,user", {}, jwt)	D:\Rutba\ERP\rutba-hr\pages\employees.js	15	9	
+import { authApi } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\rutba-hr\pages\hr-employee-management.js	5	10	
+                await authApi.put(`/hr-employees/${editingId}`, payload, jwt);	D:\Rutba\ERP\rutba-hr\pages\hr-employee-management.js	107	23	
+                await authApi.post("/hr-employees", payload, jwt);	D:\Rutba\ERP\rutba-hr\pages\hr-employee-management.js	109	23	
+                authApi.get("/hr-employees?sort=name:asc&populate=department,user", {}, jwt),	D:\Rutba\ERP\rutba-hr\pages\hr-employee-management.js	38	17	
+                authApi.get("/hr-departments?sort=name:asc", {}, jwt),	D:\Rutba\ERP\rutba-hr\pages\hr-employee-management.js	39	17	
+                authApi.get("/auth-admin/users", {}, jwt),	D:\Rutba\ERP\rutba-hr\pages\hr-employee-management.js	40	17	
+                isManager ? authApi.get("/hr-leave-requests/team-queue", {}, jwt) : Promise.resolve({ data: [] }),	D:\Rutba\ERP\rutba-hr\pages\leave-requests.js	35	29	
+import { authApi } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\rutba-hr\pages\leave-requests.js	5	10	
+            await authApi.post(`/hr-leave-requests/${documentId}/${action}`, {}, jwt);	D:\Rutba\ERP\rutba-hr\pages\leave-requests.js	73	19	
+            await authApi.post("/hr-leave-requests", {	D:\Rutba\ERP\rutba-hr\pages\leave-requests.js	51	19	
+                authApi.get("/hr-leave-requests/my-requests", {}, jwt),	D:\Rutba\ERP\rutba-hr\pages\leave-requests.js	34	17	
+import { authApi } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\rutba-hr\pages\teams.js	5	10	
+            const roleRes = await authApi.get("/hr-teams/app-role-options", {}, jwt);	D:\Rutba\ERP\rutba-hr\pages\teams.js	42	35	
+                await authApi.put(`/hr-teams/${editingId}`, payload, jwt);	D:\Rutba\ERP\rutba-hr\pages\teams.js	125	23	
+                await authApi.post("/hr-teams", payload, jwt);	D:\Rutba\ERP\rutba-hr\pages\teams.js	127	23	
+                authApi.get("/hr-teams?sort=name:asc&populate=team_manager,members,parent_team,department", {}, jwt),	D:\Rutba\ERP\rutba-hr\pages\teams.js	35	17	
+                authApi.get("/hr-employees?sort=name:asc", {}, jwt),	D:\Rutba\ERP\rutba-hr\pages\teams.js	36	17	
+                authApi.get("/hr-departments?sort=name:asc", {}, jwt),	D:\Rutba\ERP\rutba-hr\pages\teams.js	37	17	
+import { authApi } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\rutba-hr\pages\[documentId]\employee.js	6	10	
+            const res = await authApi.get(`/hr-employees/${employee.documentId}?populate=*`, {}, jwt);	D:\Rutba\ERP\rutba-hr\pages\[documentId]\employee.js	55	31	
+            await authApi.put(`/hr-employees/${employee.documentId}`, {	D:\Rutba\ERP\rutba-hr\pages\[documentId]\employee.js	49	19	
+        authApi.get(`/hr-employees/${documentId}?populate=*`, {}, jwt)	D:\Rutba\ERP\rutba-hr\pages\[documentId]\employee.js	21	9	
+        authApi.get("/auth-admin/users", {}, jwt)	D:\Rutba\ERP\rutba-hr\pages\[documentId]\employee.js	29	9	
+import { authApi, IMAGE_URL } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\rutba-order-management\components\Navigation.js	5	10	
+        authApi.get("/site-setting", { status: "draft", populate: ["site_logo"] })	D:\Rutba\ERP\rutba-order-management\components\Navigation.js	17	9	
+import { authApi, StraipImageUrl } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\rutba-order-management\components\ProductPickerTabs.js	3	10	
+                    authApi.getAll("/term-types", { populate: ["terms"] }),	D:\Rutba\ERP\rutba-order-management\components\ProductPickerTabs.js	78	21	
+                    authApi.getAll("/suppliers"),	D:\Rutba\ERP\rutba-order-management\components\ProductPickerTabs.js	77	21	
+                    authApi.getAll("/purchases", { sort: ["createdAt:desc"] }),	D:\Rutba\ERP\rutba-order-management\components\ProductPickerTabs.js	79	21	
+                    authApi.getAll("/categories"),	D:\Rutba\ERP\rutba-order-management\components\ProductPickerTabs.js	76	21	
+                    authApi.getAll("/brands"),	D:\Rutba\ERP\rutba-order-management\components\ProductPickerTabs.js	75	21	
+import { authApi } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\rutba-order-management\pages\delivery-methods.js	6	10	
+      const res = await authApi.get("/delivery-methods", {	D:\Rutba\ERP\rutba-order-management\pages\delivery-methods.js	19	25	
+import { authApi } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\rutba-order-management\pages\delivery-zones.js	5	10	
+      const res = await authApi.get("/delivery-zones", {	D:\Rutba\ERP\rutba-order-management\pages\delivery-zones.js	29	25	
+      await authApi.post("/delivery-zones", {	D:\Rutba\ERP\rutba-order-management\pages\delivery-zones.js	64	13	
+import { authApi } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\rutba-order-management\pages\riders.js	5	10	
+      const res = await authApi.get("/riders", {	D:\Rutba\ERP\rutba-order-management\pages\riders.js	29	25	
+      await authApi.put(`/riders/${rider.documentId}`, { data: { status } });	D:\Rutba\ERP\rutba-order-management\pages\riders.js	52	13	
+      await authApi.post("/riders", {	D:\Rutba\ERP\rutba-order-management\pages\riders.js	72	13	
+import { authApi } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\rutba-order-management\pages\sale-orders.js	5	10	
+            const res = await authApi.get("/sale-orders", {	D:\Rutba\ERP\rutba-order-management\pages\sale-orders.js	44	31	
+import { authApi } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\rutba-order-management\pages\[documentId]\delivery-method.js	7	10	
+        const res = await authApi.post("/delivery-methods", buildPayload());	D:\Rutba\ERP\rutba-order-management\pages\[documentId]\delivery-method.js	92	27	
+        await authApi.put(`/delivery-methods/${documentId}`, buildPayload());	D:\Rutba\ERP\rutba-order-management\pages\[documentId]\delivery-method.js	97	15	
+    authApi	D:\Rutba\ERP\rutba-order-management\pages\[documentId]\delivery-method.js	42	5	
+import { authApi } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\rutba-order-management\pages\[documentId]\sale-order.js	6	10	
+        const res = await authApi.post("/sale-orders", payload);	D:\Rutba\ERP\rutba-order-management\pages\[documentId]\sale-order.js	191	27	
+        const res = await authApi.get(`/sale-orders/${documentId}`, {	D:\Rutba\ERP\rutba-order-management\pages\[documentId]\sale-order.js	82	27	
+        await authApi.put(`/sale-orders/${documentId}`, payload);	D:\Rutba\ERP\rutba-order-management\pages\[documentId]\sale-order.js	196	15	
+      await authApi.post(`/sale-orders/${documentId}/update-status`, {	D:\Rutba\ERP\rutba-order-management\pages\[documentId]\sale-order.js	239	13	
+      await authApi.post(`/sale-orders/${documentId}/assign-rider`, { rider_document_id: riderDocumentId });	D:\Rutba\ERP\rutba-order-management\pages\[documentId]\sale-order.js	256	13	
+          authApi.get("/riders", {	D:\Rutba\ERP\rutba-order-management\pages\[documentId]\sale-order.js	62	11	
+          authApi.get("/products", {	D:\Rutba\ERP\rutba-order-management\pages\[documentId]\sale-order.js	67	11	
+import { authApi } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\rutba-payroll\pages\payroll-runs.js	5	10	
+        authApi.get("/pay-payroll-runs?sort=period_start:desc", {}, jwt)	D:\Rutba\ERP\rutba-payroll\pages\payroll-runs.js	14	9	
+import { authApi } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\rutba-payroll\pages\payslips.js	5	10	
+        authApi.get("/pay-payslips?sort=createdAt:desc&populate=employee", {}, jwt)	D:\Rutba\ERP\rutba-payroll\pages\payslips.js	14	9	
+import { authApi } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\rutba-payroll\pages\salary-structures.js	5	10	
+        authApi.get("/pay-salary-structures?sort=name:asc", {}, jwt)	D:\Rutba\ERP\rutba-payroll\pages\salary-structures.js	14	9	
+import { authApi } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\rutba-social\pages\accounts.js	5	10	
+            const res = await authApi.get('/social-accounts', { sort: ['createdAt:desc'] });	D:\Rutba\ERP\rutba-social\pages\accounts.js	35	31	
+                await authApi.put(`/social-accounts/${editing.documentId}`, payload);	D:\Rutba\ERP\rutba-social\pages\accounts.js	79	23	
+                await authApi.post("/social-accounts", payload);	D:\Rutba\ERP\rutba-social\pages\accounts.js	82	23	
+            await authApi.del(`/social-accounts/${account.documentId}`);	D:\Rutba\ERP\rutba-social\pages\accounts.js	100	19	
+import { authApi, StraipImageUrl, isImage, isPDF } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\rutba-social\pages\media.js	5	10	
+            const uploaded = await authApi.uploadFile(newFiles, null, null, null, {	D:\Rutba\ERP\rutba-social\pages\media.js	168	36	
+            const uploaded = await authApi.uploadFile(imageFiles, null, null, null, {	D:\Rutba\ERP\rutba-social\pages\media.js	278	36	
+            const res = await authApi.get('/media-library/folders/tree');	D:\Rutba\ERP\rutba-social\pages\media.js	60	31	
+            const res = await authApi.get('/media-library/files/' + id);	D:\Rutba\ERP\rutba-social\pages\media.js	246	31	
+            const res = await authApi.get('/media-library/files', params);	D:\Rutba\ERP\rutba-social\pages\media.js	146	31	
+            await authApi.put('/media-library/folders/' + folderId, { name: renameValue.trim() });	D:\Rutba\ERP\rutba-social\pages\media.js	88	19	
+            await authApi.put('/media-library/files/' + selectedFile.id, {	D:\Rutba\ERP\rutba-social\pages\media.js	208	19	
+            await authApi.post('/media-library/folders', { name: newFolderName.trim(), parent: parentId });	D:\Rutba\ERP\rutba-social\pages\media.js	74	19	
+                await authApi.post('/media-library/files/move', {	D:\Rutba\ERP\rutba-social\pages\media.js	173	23	
+                await authApi.post('/media-library/files/move', {	D:\Rutba\ERP\rutba-social\pages\media.js	283	23	
+            await authApi.post('/media-library/files/move', {	D:\Rutba\ERP\rutba-social\pages\media.js	328	19	
+            await authApi.post('/media-library/files/move', {	D:\Rutba\ERP\rutba-social\pages\media.js	348	19	
+            await authApi.del('/media-library/folders/' + folderId);	D:\Rutba\ERP\rutba-social\pages\media.js	103	19	
+            await authApi.del('/media-library/files/' + fileId);	D:\Rutba\ERP\rutba-social\pages\media.js	193	19	
+import { authApi, StraipImageUrl } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\rutba-social\pages\posts\create.js	6	10	
+            const res = await authApi.post("/social-posts", payload);	D:\Rutba\ERP\rutba-social\pages\posts\create.js	117	31	
+            const res = await authApi.get('/social-accounts', {	D:\Rutba\ERP\rutba-social\pages\posts\create.js	39	31	
+            const res = await authApi.get('/products', {	D:\Rutba\ERP\rutba-social\pages\posts\create.js	67	31	
+            try { await authApi.post(`/social-posts/${docId}/unpublish`, {}); ok++; setPosts(prev => prev.map(p => p.documentId === docId ? { ...p, _isPublished: false } : p)); }	D:\Rutba\ERP\rutba-social\pages\posts\index.js	102	25	
+            try { await authApi.post(`/social-posts/${docId}/publish`, {}); ok++; setPosts(prev => prev.map(p => p.documentId === docId ? { ...p, _isPublished: true } : p)); }	D:\Rutba\ERP\rutba-social\pages\posts\index.js	87	25	
+import { authApi, StraipImageUrl } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\rutba-social\pages\posts\index.js	5	10	
+            await authApi.post(`/social-posts/${docId}/unpublish`, {});	D:\Rutba\ERP\rutba-social\pages\posts\index.js	69	19	
+            await authApi.post(`/social-posts/${docId}/publish`, {});	D:\Rutba\ERP\rutba-social\pages\posts\index.js	55	19	
+            await authApi.del(`/social-posts/${post.documentId}`);	D:\Rutba\ERP\rutba-social\pages\posts\index.js	145	19	
+                authApi.get('/social-posts', params),	D:\Rutba\ERP\rutba-social\pages\posts\index.js	126	17	
+                authApi.get('/social-posts', { status: 'published', fields: ['documentId'], pagination: { pageSize: 200 } }),	D:\Rutba\ERP\rutba-social\pages\posts\index.js	127	17	
+import { authApi, StraipImageUrl } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\rutba-social\pages\posts\[documentId].js	6	10	
+            const res = await authApi.get(`/social-posts/${documentId}`, {	D:\Rutba\ERP\rutba-social\pages\posts\[documentId].js	215	31	
+            const res = await authApi.get('/social-accounts', {	D:\Rutba\ERP\rutba-social\pages\posts\[documentId].js	98	31	
+            const res = await authApi.get('/products', {	D:\Rutba\ERP\rutba-social\pages\posts\[documentId].js	122	31	
+            await authApi.put(`/social-posts/${documentId}?status=draft`, buildPayload());	D:\Rutba\ERP\rutba-social\pages\posts\[documentId].js	169	19	
+            await authApi.put(`/social-posts/${documentId}?status=draft`, buildPayload());	D:\Rutba\ERP\rutba-social\pages\posts\[documentId].js	183	19	
+            await authApi.put(`/social-posts/${documentId}?status=draft`, buildPayload());	D:\Rutba\ERP\rutba-social\pages\posts\[documentId].js	214	19	
+            await authApi.post(`/social-posts/${documentId}/unpublish`, {});	D:\Rutba\ERP\rutba-social\pages\posts\[documentId].js	199	19	
+            await authApi.post(`/social-posts/${documentId}/publish`, {});	D:\Rutba\ERP\rutba-social\pages\posts\[documentId].js	184	19	
+            await authApi.del(`/social-posts/${documentId}`);	D:\Rutba\ERP\rutba-social\pages\posts\[documentId].js	245	19	
+                authApi.get(`/social-posts/${documentId}`, { status: 'published', fields: ['documentId'] }).catch(() => ({ data: null })),	D:\Rutba\ERP\rutba-social\pages\posts\[documentId].js	70	17	
+                authApi.get(`/social-posts/${documentId}`, {	D:\Rutba\ERP\rutba-social\pages\posts\[documentId].js	66	17	
+import { authApi } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\rutba-social\pages\replies.js	5	10	
+            const res = await authApi.get('/social-replies', params);	D:\Rutba\ERP\rutba-social\pages\replies.js	45	31	
+            await authApi.del(`/social-replies/${reply.documentId}`);	D:\Rutba\ERP\rutba-social\pages\replies.js	61	19	
+import { authApi } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\rutba-web-user\pages\returns.js	6	10	
+            await authApi.post("/return-requests", {	D:\Rutba\ERP\rutba-web-user\pages\returns.js	37	19	
+        authApi.get(`/web-orders/${orderId}?populate=*`, {}, jwt)	D:\Rutba\ERP\rutba-web-user\pages\returns.js	21	9	
+import { authApi } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\rutba-web-user\pages\sale-orders.js	5	10	
+        authApi.get("/sale-orders?sort=createdAt:desc", {}, jwt)	D:\Rutba\ERP\rutba-web-user\pages\sale-orders.js	15	9	
+import { authApi } from "@rutba/pos-shared/lib/api";	D:\Rutba\ERP\rutba-web-user\pages\[documentId]\sale-order.js	6	10	
+            await authApi.post(`/sale-orders/${documentId}/messages`, { message }, jwt);	D:\Rutba\ERP\rutba-web-user\pages\[documentId]\sale-order.js	54	19	
+        authApi.get(`/sale-orders/${documentId}?populate=*`, {}, jwt)	D:\Rutba\ERP\rutba-web-user\pages\[documentId]\sale-order.js	30	9	
+        authApi.get(`/sale-orders/${documentId}/messages`, {}, jwt)	D:\Rutba\ERP\rutba-web-user\pages\[documentId]\sale-order.js	38	9	

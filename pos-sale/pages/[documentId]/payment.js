@@ -5,7 +5,7 @@ import Layout from "../../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { authApi } from "@rutba/pos-shared/lib/api";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
-import { PaymentsEndpoints } from "@rutba/pos-shared/lib/endpoints";
+import { PaymentsEndpoints } from "@rutba/api-provider/endpoints";
 
 export default function PaymentRedirectPage() {
     const router = useRouter();

@@ -4,7 +4,7 @@ import Layout from '../components/Layout';
 import ProtectedRoute from '@rutba/pos-shared/components/ProtectedRoute';
 import PermissionCheck from '@rutba/pos-shared/components/PermissionCheck';
 import { authApi } from '@rutba/pos-shared/lib/api';
-import { StockInputsEndpoints } from '@rutba/pos-shared/lib/endpoints';
+import { StockInputsEndpoints } from '@rutba/api-provider/endpoints';
 import { useUtil } from '@rutba/pos-shared/context/UtilContext';
 
 // ── Column mapping (mirrors export-catalog/utils/excel-helper.js) ──
@@ -690,4 +690,5 @@ export default function BulkStockInputs() {
         </ProtectedRoute>
     );
 }
+
 

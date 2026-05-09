@@ -81,6 +81,18 @@ export const BrandsEndpoints = {
         },
     }),
 
+    /** Async: fetch brand list (single page). */
+    fetchList: (opts = {}) => {
+        const ep = BrandsEndpoints.list(opts);
+        return authApi.fetch(ep.path, ep.params);
+    },
+
+    /** Async: fetch all brands across pages. */
+    fetchAll: (opts = {}) => {
+        const ep = BrandsEndpoints.list(opts);
+        return authApi.getAll(ep.path, ep.params);
+    },
+
     /** Create a new brand — body provided by caller as { data }. */
     create: () => ({ path: '/brands' }),
 

@@ -49,6 +49,18 @@ export const CategoriesEndpoints = {
         },
     }),
 
+    /** Async: fetch category list (single page). */
+    fetchList: (opts = {}) => {
+        const ep = CategoriesEndpoints.list(opts);
+        return authApi.fetch(ep.path, ep.params);
+    },
+
+    /** Async: fetch all categories across pages. */
+    fetchAll: (opts = {}) => {
+        const ep = CategoriesEndpoints.list(opts);
+        return authApi.getAll(ep.path, ep.params);
+    },
+
     /** Create a new category — body provided by caller as { data }. */
     create: () => ({ path: '/categories' }),
 

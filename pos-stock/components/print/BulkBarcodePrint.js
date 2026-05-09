@@ -3,7 +3,7 @@ import { authApi } from '@rutba/pos-shared/lib/api';
 import { useUtil } from '@rutba/pos-shared/context/UtilContext';
 import { QRCodeSVG } from 'qrcode.react';
 import Barcode from 'react-barcode'; // renders linear barcodes (Code39/Code128)
-import { StockItemsEndpoints } from '@rutba/pos-shared/lib/endpoints';
+import { StockItemsEndpoints } from '@rutba/api-provider/endpoints';
 
 const BulkBarcodePrint = ({
     storageKey,
@@ -172,3 +172,4 @@ const BulkBarcodePrint = ({
 };
 
 export default BulkBarcodePrint;
+

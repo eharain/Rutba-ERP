@@ -3,7 +3,7 @@ import Link from "next/link";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
-import { CashRegistersEndpoints, PaymentsEndpoints, CashRegisterTransactionEndpoints } from "@rutba/pos-shared/lib/endpoints";
+import { CashRegistersEndpoints, PaymentsEndpoints, CashRegisterTransactionEndpoints } from "@rutba/api-provider/endpoints";
 
 const EXPIRY_HOURS = 20;
 
@@ -550,4 +550,5 @@ export default function CashRegisterPage() {
         </ProtectedRoute>
     );
 }
+
 

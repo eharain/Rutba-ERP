@@ -1,0 +1,68 @@
+{
+  "uid": "api::term.term",
+  "policies": {
+    "term.find": {
+      "policies": [
+        {
+          "key": "termAccess",
+          "grants": [
+            "sale_admin",
+            "sale_manager",
+            "sale_staff",
+            "accounts_admin",
+            "accounts_manager",
+            "stock_admin",
+            "stock_manager"
+          ],
+          "query": {
+            "populate": {
+              "type": true
+            },
+            "fields": [
+              "id",
+              "name",
+              "value",
+              "description"
+            ],
+            "pagination": {
+              "pageSize": 100
+            }
+          }
+        }
+      ]
+    },
+    "term.create": {
+      "policies": [
+        {
+          "key": "termCreate",
+          "grants": [
+            "sale_admin",
+            "accounts_admin"
+          ]
+        }
+      ]
+    },
+    "term.update": {
+      "policies": [
+        {
+          "key": "termUpdate",
+          "grants": [
+            "sale_admin",
+            "accounts_admin"
+          ]
+        }
+      ]
+    },
+    "term.delete": {
+      "policies": [
+        {
+          "key": "termDelete",
+          "grants": [
+            "sale_admin",
+            "accounts_admin"
+          ]
+        }
+      ]
+    }
+  }
+}

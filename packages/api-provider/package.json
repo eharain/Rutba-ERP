@@ -3,10 +3,23 @@
   "version": "1.0.0",
   "private": true,
   "main": "index.js",
+  "scripts": {
+    "generate:configuration": "node ./scripts/generate-configuration.js",
+    "split:configuration": "node ./scripts/split-configuration.js",
+    "join:configuration": "node ./scripts/join-configuration.js"
+  },
   "exports": {
     ".": "./index.js",
-    "./config": "./config/configuration.json",
-    "./config/configuration.json": "./config/configuration.json",
+    "./config": "./config/configuration.source.js",
+    "./config/source": "./config/configuration.source.js",
+    "./config/domains": "./config/domains.json",
+    "./config/roles": "./config/roles.json",
+    "./config/public-resources": "./config/public-resources.json",
+    "./config/resources/*": "./config/resources/*",
+    "./endpoints": "./endpoints/index.js",
+    "./scripts/generate-configuration": "./scripts/generate-configuration.js",
+    "./scripts/split-configuration": "./scripts/split-configuration.js",
+    "./scripts/join-configuration": "./scripts/join-configuration.js",
     "./lib/*": "./lib/*",
     "./config/*": "./config/*"
   }

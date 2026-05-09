@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { authApi } from "@rutba/pos-shared/lib/api";
+import { RiderEndpoints } from "@rutba/api-provider/endpoints";
 
 const STATUS_OPTIONS = ["available", "off_duty"];
 
@@ -15,7 +15,7 @@ export default function ProfilePage() {
 
   const load = () => {
     if (!jwt) return;
-    authApi.get('/rider/me', {}, jwt)
+    RiderEndpoints.fetchMyProfile()
       .then((res) => {
         const data = res.data || res;
         setProfile(data);
@@ -33,7 +33,7 @@ export default function ProfilePage() {
     if (!jwt) return;
     try {
       setSaving(true);
-      await authApi.put('/rider/me/status', { status }, jwt);
+      await RiderEndpoints.putUpdateStatus({ status });
       load();
     } catch (err) {
       alert(err?.response?.data?.error?.message || 'Failed to update status');

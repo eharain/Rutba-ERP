@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { CustomersEndpoints } from '@rutba/pos-shared/lib/endpoints';
+import { CustomersEndpoints } from '@rutba/api-provider/endpoints';
 
 export default function CreateCustomerForm({
     initialValue = '',
@@ -74,3 +74,4 @@ export default function CreateCustomerForm({
         </form>
     );
 }
+

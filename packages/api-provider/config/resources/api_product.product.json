@@ -1,0 +1,156 @@
+{
+  "uid": "api::product.product",
+  "policies": {
+    "product.find": {
+      "policies": [
+        {
+          "key": "fullAccess",
+          "grants": [
+            "accounts_admin",
+            "accounts_manager",
+            "accounts_staff",
+            "accounts_viewer_admin",
+            "accounts_viewer_manager",
+            "accounts_viewer_staff",
+            "auth_admin",
+            "auth_manager",
+            "auth_staff",
+            "cms_admin",
+            "cms_manager",
+            "cms_staff",
+            "sale_admin",
+            "sale_manager",
+            "sale_staff",
+            "stock_admin",
+            "stock_manager",
+            "stock_staff",
+            "webuser_admin",
+            "webuser_manager",
+            "webuser_staff",
+            "web_user"
+          ],
+          "query": {
+            "fields": [
+              "id",
+              "name",
+              "sku",
+              "barcode",
+              "price",
+              "cost",
+              "stock",
+              "status"
+            ],
+            "populate": {
+              "brand": true,
+              "categories": true,
+              "variants": true,
+              "images": true
+            },
+            "pagination": {
+              "pageSize": 50
+            },
+            "sort": [
+              "name:asc"
+            ]
+          }
+        }
+      ]
+    },
+    "product.findOne": {
+      "policies": [
+        {
+          "key": "fullAccess",
+          "grants": [
+            "accounts_admin",
+            "accounts_manager",
+            "accounts_staff",
+            "accounts_viewer_admin",
+            "accounts_viewer_manager",
+            "accounts_viewer_staff",
+            "auth_admin",
+            "auth_manager",
+            "auth_staff",
+            "cms_admin",
+            "cms_manager",
+            "cms_staff",
+            "sale_admin",
+            "sale_manager",
+            "sale_staff",
+            "stock_admin",
+            "stock_manager",
+            "stock_staff",
+            "webuser_admin",
+            "webuser_manager",
+            "webuser_staff",
+            "web_user"
+          ],
+          "query": {
+            "populate": {
+              "brand": true,
+              "categories": true,
+              "variants": {
+                "populate": {
+                  "attributes": true
+                }
+              },
+              "images": true,
+              "seo": true
+            }
+          }
+        }
+      ]
+    },
+    "product.create": {
+      "policies": [
+        {
+          "key": "productCreate",
+          "grants": [
+            "auth_admin",
+            "auth_manager",
+            "cms_admin",
+            "cms_manager",
+            "cms_staff",
+            "stock_admin",
+            "stock_manager"
+          ],
+          "body": {
+            "createdBy": "$user.id",
+            "createdAt": "$now"
+          }
+        }
+      ]
+    },
+    "product.update": {
+      "policies": [
+        {
+          "key": "productUpdate",
+          "grants": [
+            "auth_admin",
+            "auth_manager",
+            "cms_admin",
+            "cms_manager",
+            "cms_staff",
+            "stock_admin",
+            "stock_manager"
+          ],
+          "body": {
+            "updatedBy": "$user.id",
+            "updatedAt": "$now"
+          }
+        }
+      ]
+    },
+    "product.delete": {
+      "policies": [
+        {
+          "key": "productDelete",
+          "grants": [
+            "auth_admin",
+            "cms_admin",
+            "stock_admin"
+          ]
+        }
+      ]
+    }
+  }
+}

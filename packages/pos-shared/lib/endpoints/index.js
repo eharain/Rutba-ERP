@@ -30,8 +30,6 @@ export { TermTypesEndpoints, TermsEndpoints } from './term-types.js';
 export { CrmLeadsEndpoints } from './crm-leads.js';
 export { StockInputsEndpoints } from './stock-inputs.js';
 export { NotificationTemplatesEndpoints } from './notification-templates.js';
-export { DISABLED_PLACEHOLDERS } from './access-metadata.js';
-export { DisabledPlaceholderEndpoints } from './disabled-placeholders.js';
 
 export {
     SalesEndpointsMeta,

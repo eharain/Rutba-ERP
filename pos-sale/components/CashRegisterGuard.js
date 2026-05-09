@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useUtil } from '@rutba/pos-shared/context/UtilContext';
-import { CashRegistersEndpoints } from '@rutba/pos-shared/lib/endpoints';
+import { CashRegistersEndpoints } from '@rutba/api-provider/endpoints';
 
 const EXPIRY_HOURS = 20;
 
@@ -264,3 +264,4 @@ function OpenRegisterModal({ onClose, onOpened, status, expiredRegister }) {
         </div>
     );
 }
+
