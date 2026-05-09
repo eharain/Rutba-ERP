@@ -3,7 +3,7 @@ import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { MediaLibraryEndpoints, MediaUtilsEndpoints } from "@rutba/api-provider/endpoints";
-import { UploadEndpoints } from "@rutba/pos-shared/lib/endpoints";
+import { UploadEndpoints } from "@rutba/api-provider/endpoints";
 import { useToast } from "../components/Toast";
 
 const PAGE_SIZE = 30;

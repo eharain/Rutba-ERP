@@ -9,7 +9,7 @@
     "join:configuration": "node ./scripts/join-configuration.js"
   },
   "exports": {
-    ".": "./index.js",
+    ".": [ "./index.js", "./storage.js", "./api.js" ],
     "./config": "./config/configuration.source.js",
     "./config/source": "./config/configuration.source.js",
     "./config/domains": "./config/domains.json",
@@ -21,6 +21,9 @@
     "./scripts/split-configuration": "./scripts/split-configuration.js",
     "./scripts/join-configuration": "./scripts/join-configuration.js",
     "./lib/*": "./lib/*",
-    "./config/*": "./config/*"
+    "./config/*": "./config/*",
+    "./endpoints/*": "./endpoints/*",
+    "./scripts/*": "./scripts/*",
+    "./pos/*": "./pos/*"
   }
 }

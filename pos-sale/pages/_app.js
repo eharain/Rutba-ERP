@@ -4,7 +4,7 @@ import { AuthProvider } from "@rutba/pos-shared/context/AuthContext";
 import { CartProvider } from "@rutba/pos-shared/context/CartContext";
 import { UtilProvider, useUtil } from "@rutba/pos-shared/context/UtilContext";
 import BranchDeskModal from "@rutba/pos-shared/components/BranchDeskModal";
-import { AppContextEndpoints } from "../../packages/api-provider/endpoints/index.js";
+import { AppContextEndpoints } from "@rutba/api-provider/endpoints/index.js";
 
 AppContextEndpoints.setAppName('sale');
 

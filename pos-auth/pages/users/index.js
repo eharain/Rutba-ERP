@@ -3,7 +3,7 @@ import Link from "next/link";
 import Layout from "../../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import AppAccessGate from "../../components/AppAccessGate";
-import { AuthAdminEndpoints, AppAccessesEndpoints } from "../../lib/endpoints";
+import { AuthAdminEndpoints, AppAccessesEndpoints } from "../rutba/api-provider/enpoints";
 
 export default function UsersPage() {
     const [users, setUsers] = useState([]);

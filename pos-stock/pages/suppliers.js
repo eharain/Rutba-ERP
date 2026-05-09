@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import { SuppliersEndpoints, ProductsEndpoints } from "../../packages/api-provider/endpoints/index.js";
+import { SuppliersEndpoints, ProductsEndpoints } from "@rutba/api-provider/endpoints/index.js";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
 import FileView from "@rutba/pos-shared/components/FileView";
 

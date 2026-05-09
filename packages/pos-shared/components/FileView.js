@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { storage } from '../lib/storage';
-import { StraipImageUrl, isImage, isPDF, isVideo } from '../lib/api';
-import { MediaLibraryEndpoints, UploadEndpoints } from '../lib/endpoints';
+import { StraipImageUrl, isImage, isPDF, isVideo } from "@rutba/api-provider/lib/api.js";
+import { MediaLibraryEndpoints, UploadEndpoints } from "@rutba/api-provider/endpoints";
 import StrapiMediaLibrary from './StrapiMediaLibrary';
 // Utility functions
 

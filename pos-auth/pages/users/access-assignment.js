@@ -4,7 +4,7 @@ import Layout from "../../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import AppAccessGate from "../../components/AppAccessGate";
 import PermissionCheck from "@rutba/pos-shared/components/PermissionCheck";
-import { AuthAdminEndpoints, AppAccessesEndpoints } from "../../lib/endpoints";
+import { AuthAdminEndpoints, AppAccessesEndpoints } from "../rutba/api-provider/enpoints";
 import UserAccessFilters from "../../components/UserAccessFilters";
 import UserAccessCard from "../../components/UserAccessCard";
 

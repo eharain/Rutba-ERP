@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { marked } from '../lib/marked.esm.js';
 import { markedVideoEmbed } from '../lib/marked-video-embed.js';
-import { IMAGE_URL } from '../lib/api';
+import { IMAGE_URL } from '@rutba/api-provider/lib/api.js';
 import VideoInsertDialog from './VideoInsertDialog';
 import StrapiMediaLibrary from './StrapiMediaLibrary';
 

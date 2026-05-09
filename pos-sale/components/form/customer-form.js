@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { CustomersEndpoints } from '../../../packages/api-provider/endpoints/index.js';
+import { CustomersEndpoints } from '@rutba/api-provider/endpoints/index.js';
 
 export default function CustomerForm({
     customer,

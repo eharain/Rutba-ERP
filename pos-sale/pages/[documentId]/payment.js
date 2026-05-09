@@ -4,7 +4,7 @@ import Link from "next/link";
 import Layout from "../../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
-import { PaymentsEndpoints } from "../../../packages/api-provider/endpoints/index.js";
+import { PaymentsEndpoints } from "@rutba/api-provider/endpoints/index.js";
 
 export default function PaymentRedirectPage() {
     const router = useRouter();

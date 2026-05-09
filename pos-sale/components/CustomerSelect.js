@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { parseContactLine } from '@rutba/pos-shared/lib/utils';
 import CustomerForm from './form/customer-form';
-import { CustomersEndpoints } from '../../packages/api-provider/endpoints/index.js';
+import { CustomersEndpoints } from '@rutba/api-provider/endpoints/index.js';
 
 export default function CustomerSelect({ value, onChange, disabled }) {
     const [query, setQuery] = useState('');

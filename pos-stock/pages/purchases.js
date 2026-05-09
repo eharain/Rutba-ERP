@@ -18,7 +18,7 @@ import {
     fetchEnumsValues,
     fetchPurchaseByIdDocumentIdOrPO,
     savePurchase,
-} from "@rutba/pos-shared/lib/pos";
+} from "@rutba/api-provider/";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
 import { PermissionCheck } from "@rutba/pos-shared/components/PermissionCheck";
 export default function PurchasesPage() {

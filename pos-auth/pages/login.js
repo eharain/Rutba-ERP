@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { AuthEndpoints } from "../../packages/api-provider/endpoints/index.js";
+import { AuthEndpoints } from "@rutba/api-provider/endpoints/index.js";
 
 export default function Login() {
     const { login, logout, user, jwt } = useAuth();

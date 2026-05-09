@@ -6,7 +6,7 @@ import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { BrandsEndpoints, CategoriesEndpoints, MediaUtilsEndpoints, ProductsEndpoints, PurchasesEndpoints, SuppliersEndpoints, TermTypesEndpoints } from "@rutba/api-provider/endpoints";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
 import { ProductFilter } from "@rutba/pos-shared/components/filter/product-filter";
-import { fetchProducts } from "@rutba/pos-shared/lib/pos";
+import { fetchProducts } from "@rutba/api-provider/";
 import Link from "next/link";
 import { useToast } from "../components/Toast";
 import BulkProductActions from "@rutba/pos-shared/components/BulkProductActions";

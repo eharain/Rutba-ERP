@@ -3,8 +3,8 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import Layout from '../../components/Layout';
 import ProtectedRoute from '@rutba/pos-shared/components/ProtectedRoute';
-import { StockItemsEndpoints, PurchaseItemsEndpoints, ProductsEndpoints } from '../../../packages/api-provider/endpoints/index.js';
-import { loadProduct } from '@rutba/pos-shared/lib/pos';
+import { StockItemsEndpoints, PurchaseItemsEndpoints, ProductsEndpoints } from '@rutba/api-provider/endpoints/index.js';
+import { loadProduct } from '@rutba/api-provider/';
 import { useUtil } from '@rutba/pos-shared/context/UtilContext';
 import StrapiImage from '@rutba/pos-shared/components/StrapiImage';
 

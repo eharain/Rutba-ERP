@@ -3,7 +3,7 @@ import Link from "next/link";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
-import { CashRegistersEndpoints, PaymentsEndpoints, CashRegisterTransactionEndpoints } from "../../packages/api-provider/endpoints/index.js";
+import { CashRegistersEndpoints, PaymentsEndpoints, CashRegisterTransactionEndpoints } from "@rutba/api-provider/endpoints/index.js";
 
 const EXPIRY_HOURS = 20;
 

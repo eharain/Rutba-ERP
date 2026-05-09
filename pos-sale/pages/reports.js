@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import PermissionCheck from "@rutba/pos-shared/components/PermissionCheck";
-import { fetchSales, fetchReturns } from "@rutba/pos-shared/lib/pos";
+import { fetchSales, fetchReturns } from "@rutba/api-provider/";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 
 export default function Reports() {

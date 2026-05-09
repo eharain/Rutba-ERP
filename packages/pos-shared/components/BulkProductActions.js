@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ProductsEndpoints } from "../lib/endpoints";
+import { ProductsEndpoints } from "@rutba/api-provider/endpoints";
 
 /**
  * BulkProductActions — reusable toolbar for bulk product operations.
