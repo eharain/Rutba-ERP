@@ -58,6 +58,12 @@ rutba-web/src/
 - pos-strapi uses plain JavaScript (the Strapi codebase is not TypeScript). Treat the CMS as a JS project and do not rely on auto-generated TypeScript artifacts from the Strapi instance.
 - **Draft / Publish**: Strapi v5 `draftAndPublish` creates two DB rows per entity sharing the same `documentId` but each with a unique numeric `id`. Always fetch and work with the **draft** version. Publish only when the user explicitly requests it. For the rutba-web storefront (public-facing), do NOT add `status: 'draft'` to API calls. The web app should only display published content. Draft/publish workflow is managed in the CMS (rutba-cms) where editors explicitly publish content.
 - **Media attachments**: Reference media by numeric `id`, not `documentId`, to avoid ambiguity between draft and published rows.
+- Public vs authenticated web API guard domains & role assignment:
+  - Separate public and authenticated web traffic into distinct API-guard domains (for example: web_public and web_user) and enforce guards in Strapi and backend route handlers.
+  - Assign registered users (users-permissions authenticated accounts) the users-permissions role web_user on registration or approval.
+  - Protect authenticated endpoints behind the web_user guard/domain and expose public endpoints under the web_public guard/domain; avoid mixing both guards on the same route.
+  - Surface the user's role (including web_user) in session/claims and use it in server-side guards to choose the correct API domain and permissions.
+  - Document guard-domain mappings and role expectations in the access metadata aggregator so UI and server guards remain consistent.
 
 ## Domain Rules
 
@@ -98,6 +104,20 @@ rutba-web/src/
   - Use metadata primarily for discovery and UI visibility; keep authorization enforcement in server-side guards.
 - Prefer fixing API access issues by adding endpoint/access-metadata entries and shared endpoint definitions rather than introducing bypass-path workarounds. Define and reuse shared endpoint definitions (metadata + access rules) across services to ensure consistent enforcement and avoid ad-hoc access logic.
 - When adding new workflows that require approvals, register the workflow’s required approval scopes and reuse the same manager-scoped guard.
+
+### pos-auth: User Management Screens
+
+- Show app access in expandable sections per user (accordion/expandable row).
+- Add pagination controls and a page-size selector to both Users and Access Assignment lists.
+- Make user names link to their edit user pages (use dedicated edit routes).
+- Ensure UI visibility follows authorization: hide actions the current user cannot perform and enforce the same rules server-side.
+- Assign registered users the users-permissions role web_user on registration/approval and surface this role in the user edit screen.
+- Manage and display the separation between web_public and web_user API domains in user-access views so admins can confirm guard/role mappings.
+
+### pos-auth: Additional Access Rules
+
+- Enforce web_public vs web_user separation in service-layer guards and document the mapping in the access metadata aggregator.
+- Use session claims to avoid extra lookups where safe, but validate role-to-guard mappings server-side for sensitive actions.
 
 ### pos-auth: User Management Screens
 
