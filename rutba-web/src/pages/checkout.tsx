@@ -119,13 +119,13 @@ export default function CheckoutPage() {
     },
   });
 
-  const handlePlaceOrder = async () => {
+  const handlePlaceOrder = async (opts?: { allowNoDelivery?: boolean }) => {
     const userEmail = session?.data?.user?.email;
     if (!userEmail) {
       showError("You must be logged in to place an order.");
       return;
     }
-    if (!selectedDeliveryMethod) {
+    if (!selectedDeliveryMethod && !opts?.allowNoDelivery) {
       showError("Please select a delivery method.");
       return;
     }
@@ -142,7 +142,7 @@ export default function CheckoutPage() {
       0
     );
     const totalSavings = originalSubtotal - calculatedSubtotal;
-    const totalWithDelivery = calculatedSubtotal + selectedDeliveryMethod.cost;
+    const totalWithDelivery = calculatedSubtotal + (selectedDeliveryMethod?.cost ?? 0);
 
     const formattedItems = cartItems.map((item) => {
       const itemQty = Number(item.qty || 1);
@@ -175,13 +175,13 @@ export default function CheckoutPage() {
       total: totalWithDelivery,
       original_subtotal: totalSavings > 0 ? originalSubtotal : undefined,
       savings: totalSavings > 0 ? totalSavings : undefined,
-      delivery_method_id: selectedDeliveryMethod.methodDocumentId,
-      delivery_zone_id: selectedDeliveryMethod.zoneDocumentId,
-      delivery_cost: selectedDeliveryMethod.cost,
+      delivery_method_id: selectedDeliveryMethod?.methodDocumentId,
+      delivery_zone_id: selectedDeliveryMethod?.zoneDocumentId,
+      delivery_cost: selectedDeliveryMethod?.cost ?? 0,
       delivery_cost_breakdown: {
-        base_cost: selectedDeliveryMethod.cost,
-        is_free_shipping: selectedDeliveryMethod.isFreeShipping,
-        service_provider: selectedDeliveryMethod.serviceProvider,
+        base_cost: selectedDeliveryMethod?.cost ?? 0,
+        is_free_shipping: selectedDeliveryMethod?.isFreeShipping ?? false,
+        service_provider: selectedDeliveryMethod?.serviceProvider ?? "manual_contact",
       },
     });
   };
@@ -316,7 +316,11 @@ export default function CheckoutPage() {
                     <ArrowLeftIcon className="h-3.5 w-3.5" />
                     Edit shipping address
                   </button>
-                  <FormCheckoutDeliveryMethod onConfirm={handlePlaceOrder} isPlacingOrder={isPlacingOrder} />
+                  <FormCheckoutDeliveryMethod
+                    onConfirm={() => handlePlaceOrder()}
+                    onNoDeliveryConfirm={() => handlePlaceOrder({ allowNoDelivery: true })}
+                    isPlacingOrder={isPlacingOrder}
+                  />
                 </>
               )}
             </div>

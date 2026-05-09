@@ -1,6 +1,6 @@
 'use strict';
 import { createContext, useContext, useEffect, useState } from "react";
-import { storage } from "../lib/storage";
+import { storage } from "@rutba/api-provider/lib/storage";
 
 const CartContext = createContext();
 

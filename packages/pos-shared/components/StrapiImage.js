@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { IMAGE_URL } from "@rutba/api-provider/lib/api.js";
+import { IMAGE_URL } from "@rutba/api-provider/lib/api";
 
 /**
  * StrapiImage component

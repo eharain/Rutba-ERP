@@ -1,7 +1,7 @@
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 import SaleInvoicePrint from '../components/print/SaleInvoicePrint';
-import { fetchSaleByIdOrInvoice } from '@rutba/api-provider/';
+import { fetchSaleByIdOrInvoice } from '@rutba/api-provider/pos';
 import SaleModel from '@rutba/pos-shared/context/domain/sale/SaleModel.js';
 const PrintInvoicePage = () => {
     const router = useRouter();

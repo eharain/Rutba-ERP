@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/router";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { storage } from "@rutba/pos-shared/lib/storage";
+import { storage } from "@rutba/api-provider/lib/storage";
 
 /**
  * OAuth-like authorize endpoint.
