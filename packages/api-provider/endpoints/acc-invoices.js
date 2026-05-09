@@ -8,8 +8,8 @@ export const AccInvoicesEndpoints = {
         },
     }),
 
-    fetchList: (opts = {}) => {
-        const ep = AccInvoicesEndpoints.list(opts);
+    fetchList: (sort = {}) => {
+        const ep = AccInvoicesEndpoints.list(sort);
         return authApi.fetch(ep.path, ep.params);
     },
 };

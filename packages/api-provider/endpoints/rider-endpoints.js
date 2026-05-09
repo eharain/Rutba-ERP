@@ -42,15 +42,3 @@ export const RiderEndpoints = {
   },
 };
 
-export const SaleOrdersEndpoints = {
-  messages: (documentId) => ({ path: `/sale-orders/${documentId}/messages` }),
-
-  fetchMessages: (documentId) => {
-    const ep = SaleOrdersEndpoints.messages(documentId);
-    return authApi.get(ep.path, ep.params);
-  },
-  postSendMessage: (documentId, data) => {
-    const ep = SaleOrdersEndpoints.messages(documentId);
-    return authApi.post(ep.path, data);
-  },
-};

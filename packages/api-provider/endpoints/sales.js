@@ -1,5 +1,4 @@
 import { authApi } from '../lib/api.js';
-import { AuthApiEndpoints } from './http-client.js';
 import { dataNode } from '../pos/search.js';
 import { generateNextInvoiceNumber, getUser } from '../utils.js';
 
@@ -9,6 +8,13 @@ import { generateNextInvoiceNumber, getUser } from '../utils.js';
  */
 export const SalesEndpoints = {
 
+    /** Resource metadata for policy generation */
+    meta: {
+        uid: 'api::sale.sale',
+        domains: ['sale'],
+        roles: ['admin', 'manager', 'staff']
+    },
+
     /**
      * List sales with optional sort / filters / populate overrides.
      * @param {number} page
@@ -17,6 +23,10 @@ export const SalesEndpoints = {
      */
     list: (page = 1, pageSize = 200, { sort, filters, populate } = {}) => ({
         path: '/sales',
+        action: 'find',
+        method: 'get',
+        apps: ['sale'],
+        approle: ['admin', 'manager', 'staff'],
         params: {
             sort: sort ?? ['createdAt:desc'],
             filters: filters ?? undefined,
@@ -31,6 +41,10 @@ export const SalesEndpoints = {
      */
     byId: (idOrInvoice) => ({
         path: '/sales/',
+        action: 'findOne',
+        method: 'get',
+        apps: ['sale'],
+        approle: ['admin', 'manager', 'staff'],
         params: {
             filters: {
                 $or: [
@@ -68,6 +82,10 @@ export const SalesEndpoints = {
      */
     exchangeReturns: (saleDocId) => ({
         path: '/sale-returns/',
+        action: 'find',
+        method: 'get',
+        apps: ['sale'],
+        approle: ['admin', 'manager', 'staff'],
         params: {
             filters: {
                 type: { $eq: 'Exchange' },
@@ -78,25 +96,49 @@ export const SalesEndpoints = {
     }),
 
     /** Create a new sale — body is provided by the caller as { data }. */
-    create: () => ({ path: '/sales' }),
+    create: () => ({
+        path: '/sales',
+        action: 'create',
+        method: 'post',
+        apps: ['sale'],
+        approle: ['admin', 'manager', 'staff']
+    }),
 
     /**
      * Update a sale by documentId — body provided by caller as { data }.
      * @param {string} documentId
      */
-    update: (documentId) => ({ path: `/sales/${documentId}` }),
+    update: (documentId) => ({
+        path: `/sales/${documentId}`,
+        action: 'update',
+        method: 'put',
+        apps: ['sale'],
+        approle: ['admin', 'manager']
+    }),
 
     /**
      * Cancel a sale.
      * @param {string} documentId
      */
-    cancel: (documentId) => ({ path: `/sales/${documentId}/cancel` }),
+    cancel: (documentId) => ({
+        path: `/sales/${documentId}/cancel`,
+        action: 'cancel',
+        method: 'put',
+        apps: ['sale'],
+        approle: ['admin', 'manager']
+    }),
 
     /**
      * Save notes on a sale — body provided by caller as { data: { notes } }.
      * @param {string} documentId
      */
-    saveNotes: (documentId) => ({ path: `/sales/${documentId}` }),
+    saveNotes: (documentId) => ({
+        path: `/sales/${documentId}`,
+        action: 'saveNotes',
+        method: 'put',
+        apps: ['sale'],
+        approle: ['admin', 'manager', 'staff']
+    }),
 
     /**
      * Custom route: find sale documentIds that contain a stock item matching term.
@@ -164,6 +206,118 @@ export const SalesEndpoints = {
     putSaveNotes: (documentId, notes) => {
         const ep = SalesEndpoints.saveNotes(documentId);
         return authApi.put(ep.path, { data: { notes: notes || '' } });
+    },
+
+    /**
+     * Fetch a generic entity list (sales, purchases, products, …).
+     * Previously standalone function, now part of the endpoint object.
+     * @param {string} entities - plural entity name
+     * @param {number} page
+     * @param {number} rowsPerPage
+     */
+    fetchEntities: async (entities, page, rowsPerPage = 100) => {
+        return await authApi.fetch('/' + entities, {
+            sort: ['id:desc'],
+            populate: ['logo'],
+            pagination: { page, pageSize: rowsPerPage },
+        });
+    },
+
+    /**
+     * Fetch a paginated list of sales.
+     * Previously standalone function, now part of the endpoint object.
+     * @param {number} page
+     * @param {number} rowsPerPage
+     * @param {{ sort?, filters?, populate? }} opts
+     */
+    fetchSales: async (page, rowsPerPage = 200, { sort, filters, populate } = {}) => {
+        const ep = SalesEndpoints.list(page, rowsPerPage, { sort, filters, populate });
+        return await authApi.fetch(ep.path, ep.params);
+    },
+
+    /**
+     * Fetch a single sale by documentId, numeric id, or invoice_no.
+     * Also hydrates _exchangeReturns from the populated relation.
+     * Previously standalone function, now part of the endpoint object.
+     * @param {string|number} id
+     */
+    fetchSaleByIdOrInvoice: async (id) => {
+        const byIdEp = SalesEndpoints.byId(id);
+        const res = await authApi.get(byIdEp.path, byIdEp.params);
+        const data = res?.data ?? res;
+        const sale = Array.isArray(data) ? data[0] : data;
+        if (sale) {
+            const populated = sale.exchange_returns;
+            if (Array.isArray(populated) && populated.length > 0) {
+                sale._exchangeReturns = populated;
+            } else if (populated && typeof populated === 'object' && !Array.isArray(populated)) {
+                sale._exchangeReturns = [populated];
+            }
+            if (!sale._exchangeReturns?.length) {
+                const saleDocId = sale.documentId || sale.id;
+                try {
+                    const excEp = SalesEndpoints.exchangeReturns(saleDocId);
+                    const excRes = await authApi.get(excEp.path, excEp.params);
+                    const excData = excRes?.data ?? excRes;
+                    const excReturns = Array.isArray(excData) ? excData : excData ? [excData] : [];
+                    if (excReturns.length > 0) {
+                        sale._exchangeReturns = excReturns;
+                    }
+                } catch (err) {
+                    console.error('Failed to load exchange returns', err);
+                }
+            }
+        }
+        return sale;
+    },
+
+    /**
+     * Create a new draft sale owned by the current user.
+     * Previously standalone function, now part of the endpoint object.
+     * @returns {{ data, id, nameSingular, namePlural }}
+     */
+    createSale: async () => {
+        const user = getUser();
+        const data = {
+            invoice_no: generateNextInvoiceNumber(),
+            sale_date: new Date().toISOString(),
+            total: 0,
+            owners: { connect: [user.documentId] },
+        };
+        const res = await SalesEndpoints.postCreate(data);
+        const rdata = res?.data ?? res;
+        return { data: rdata, id: rdata.documentId ?? rdata.id, nameSingular: 'sale', namePlural: 'sales' };
+    },
+
+    /**
+     * Search sales by customer name/phone or invoice number.
+     * Previously standalone function, now part of the endpoint object.
+     * @param {string} searchTerm
+     * @param {number} page
+     * @param {number} rowsPerPage
+     */
+    searchSales: async (searchTerm, page = 1, rowsPerPage = 5) => {
+        const hasSearch = searchTerm && searchTerm.trim().length > 0;
+        const query = {
+            populate: {
+                customer: true,
+                logo: true,
+                gallery: true,
+                items: { populate: { product: true } },
+            },
+            pagination: { page, pageSize: rowsPerPage },
+        };
+        if (hasSearch) {
+            query.filters = {
+                $or: [
+                    { customer: { $or: [{ name: { $containsi: searchTerm } }, { phone: { $containsi: searchTerm } }] } },
+                    { invoice_no: { $eq: searchTerm } },
+                ],
+            };
+        }
+        const qs = (await import('qs')).default;
+        const res = await authApi.fetch(`/sales?${qs.stringify(query, { encodeValuesOnly: true })}`);
+        return dataNode(res);
     },
 };
 
@@ -248,113 +402,3 @@ export const SalesEndpointRules = {
         allowedBodyFields: ['notes'],
     },
 };
-
-/**
- * Fetch a generic entity list (sales, purchases, products, …).
- * @param {string} entities - plural entity name
- * @param {number} page
- * @param {number} rowsPerPage
- */
-export async function fetchEntities(entities, page, rowsPerPage = 100) {
-    return await AuthApiEndpoints.fetch('/' + entities, {
-        sort: ['id:desc'],
-        populate: ['logo'],
-        pagination: { page, pageSize: rowsPerPage },
-    });
-}
-
-/**
- * Fetch a paginated list of sales.
- * @param {number} page
- * @param {number} rowsPerPage
- * @param {{ sort?, filters?, populate? }} opts
- */
-export async function fetchSales(page, rowsPerPage = 200, { sort, filters, populate } = {}) {
-    const ep = SalesEndpoints.list(page, rowsPerPage, { sort, filters, populate });
-    return await AuthApiEndpoints.fetch(ep.path, ep.params);
-}
-
-/**
- * Fetch a single sale by documentId, numeric id, or invoice_no.
- * Also hydrates _exchangeReturns from the populated relation.
- * @param {string|number} id
- */
-export async function fetchSaleByIdOrInvoice(id) {
-    const byIdEp = SalesEndpoints.byId(id);
-    const res = await AuthApiEndpoints.get(byIdEp.path, byIdEp.params);
-    const data = res?.data ?? res;
-    const sale = Array.isArray(data) ? data[0] : data;
-    if (sale) {
-        const populated = sale.exchange_returns;
-        if (Array.isArray(populated) && populated.length > 0) {
-            sale._exchangeReturns = populated;
-        } else if (populated && typeof populated === 'object' && !Array.isArray(populated)) {
-            sale._exchangeReturns = [populated];
-        }
-        if (!sale._exchangeReturns?.length) {
-            const saleDocId = sale.documentId || sale.id;
-            try {
-                const excEp = SalesEndpoints.exchangeReturns(saleDocId);
-                const excRes = await AuthApiEndpoints.get(excEp.path, excEp.params);
-                const excData = excRes?.data ?? excRes;
-                const excReturns = Array.isArray(excData) ? excData : excData ? [excData] : [];
-                if (excReturns.length > 0) {
-                    sale._exchangeReturns = excReturns;
-                }
-            } catch (err) {
-                console.error('Failed to load exchange returns', err);
-            }
-        }
-    }
-    return sale;
-}
-
-/**
- * Create a new draft sale owned by the current user.
- * @returns {{ data, id, nameSingular, namePlural }}
- */
-export async function createSale() {
-    const user = getUser();
-    const data = {
-        invoice_no: generateNextInvoiceNumber(),
-        sale_date: new Date().toISOString(),
-        total: 0,
-        owners: { connect: [user.documentId] },
-    };
-    const res = await SalesEndpoints.postCreate(data);
-    const rdata = res?.data ?? res;
-    return { data: rdata, id: rdata.documentId ?? rdata.id, nameSingular: 'sale', namePlural: 'sales' };
-}
-
-/**
- * Search sales by customer name/phone or invoice number.
- * @param {string} searchTerm
- * @param {number} page
- * @param {number} rowsPerPage
- */
-export async function searchSales(searchTerm, page = 1, rowsPerPage = 5) {
-    const hasSearch = searchTerm && searchTerm.trim().length > 0;
-    const query = {
-        populate: {
-            customer: true,
-            logo: true,
-            gallery: true,
-            items: { populate: { product: true } },
-        },
-        pagination: { page, pageSize: rowsPerPage },
-    };
-    if (hasSearch) {
-        query.filters = {
-            $or: [
-                { customer: { $or: [{ name: { $containsi: searchTerm } }, { phone: { $containsi: searchTerm } }] } },
-                { invoice_no: { $eq: searchTerm } },
-            ],
-        };
-    }
-    const qs = (await import('qs')).default;
-    const res = await AuthApiEndpoints.fetch(`/sales?${qs.stringify(query, { encodeValuesOnly: true })}`);
-    return dataNode(res);
-}
-
-
-

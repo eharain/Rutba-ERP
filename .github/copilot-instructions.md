@@ -1,5 +1,9 @@
 # Copilot Instructions — rutba-web
 
+## General Guidelines
+- Prefer fast, scoped edits: inspect a few known files directly instead of performing broad repo-wide or snapshot searches when the task can be handled locally.
+- Avoid repository-wide scans unless necessary; when a broader search is required, document the rationale and the intended scope before proceeding.
+
 ## Tech Stack
 
 | Layer | Technology |

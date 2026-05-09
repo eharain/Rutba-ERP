@@ -1,12 +1,4 @@
-import { api, authApi } from '../lib/api.js';
-
-export const PublicApiEndpoints = {
-    fetch: (path, params) => api.fetch(path, params),
-    get: (path, params) => api.get(path, params),
-    post: (path, data) => api.post(path, data),
-    put: (path, data) => api.put(path, data),
-    del: (path) => api.del(path),
-};
+import { authApi } from './api.js';
 
 export const AuthApiEndpoints = {
     fetch: (path, params) => authApi.fetch(path, params),

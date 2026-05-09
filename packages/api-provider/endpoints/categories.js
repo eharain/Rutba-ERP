@@ -1,5 +1,4 @@
 import { authApi } from '../lib/api.js';
-import { AuthApiEndpoints } from './http-client.js';
 import { dataNode } from '../pos/search.js';
 
 /**
@@ -7,6 +6,13 @@ import { dataNode } from '../pos/search.js';
  * Centralised path + params definitions for the /categories content-type.
  */
 export const CategoriesEndpoints = {
+
+    /** Resource metadata for policy generation */
+    meta: {
+        uid: 'api::category.category',
+        domains: ['stock', 'sale', 'cms'],
+        roles: ['admin', 'manager', 'staff']
+    },
 
     /**
      * Paged category list.
@@ -16,6 +22,10 @@ export const CategoriesEndpoints = {
      */
     listPaged: (page = 1, pageSize = 100, { sort, populate } = {}) => ({
         path: '/categories',
+        action: 'find',
+        method: 'get',
+        apps: ['stock', 'sale', 'cms'],
+        approle: ['admin', 'manager', 'staff'],
         params: {
             sort: sort ?? ['name:asc'],
             populate: populate ?? { parent: true, childern: true, logo: true, gallery: true },
@@ -29,6 +39,10 @@ export const CategoriesEndpoints = {
      */
     listAll: ({ sort, populate, pageSize = 100 } = {}) => ({
         path: '/categories',
+        action: 'find',
+        method: 'get',
+        apps: ['stock', 'sale', 'cms'],
+        approle: ['admin', 'manager', 'staff'],
         params: {
             sort: sort ?? ['name:asc'],
             populate: populate ?? { parent: true, childern: true, logo: true, gallery: true },
@@ -43,6 +57,10 @@ export const CategoriesEndpoints = {
      */
     list: ({ search, sort, populate, page = 1, pageSize = 100 } = {}) => ({
         path: '/categories',
+        action: 'find',
+        method: 'get',
+        apps: ['stock', 'sale', 'cms'],
+        approle: ['admin', 'manager', 'staff'],
         params: {
             sort: sort ?? ['name:asc'],
             populate: populate ?? { logo: true },
@@ -53,6 +71,10 @@ export const CategoriesEndpoints = {
 
     listDraft: ({ search, sort, populate, pagination } = {}) => ({
         path: '/categories',
+        action: 'find',
+        method: 'get',
+        apps: ['stock', 'cms'],
+        approle: ['admin', 'manager'],
         params: {
             status: 'draft',
             sort: sort ?? ['name:asc'],
@@ -64,6 +86,10 @@ export const CategoriesEndpoints = {
 
     listPublished: ({ pageSize = 500 } = {}) => ({
         path: '/categories',
+        action: 'find',
+        method: 'get',
+        apps: ['stock', 'sale', 'cms'],
+        approle: ['admin', 'manager', 'staff'],
         params: {
             status: 'published',
             fields: ['documentId'],
@@ -73,6 +99,10 @@ export const CategoriesEndpoints = {
 
     byIdDraft: (documentId, { populate } = {}) => ({
         path: `/categories/${documentId}`,
+        action: 'findOne',
+        method: 'get',
+        apps: ['stock', 'cms'],
+        approle: ['admin', 'manager'],
         params: {
             status: 'draft',
             ...(populate ? { populate } : {}),
@@ -81,6 +111,10 @@ export const CategoriesEndpoints = {
 
     byIdPublished: (documentId, { fields, populate } = {}) => ({
         path: `/categories/${documentId}`,
+        action: 'findOne',
+        method: 'get',
+        apps: ['stock', 'sale', 'cms'],
+        approle: ['admin', 'manager', 'staff'],
         params: {
             status: 'published',
             ...(fields ? { fields } : {}),
@@ -88,8 +122,21 @@ export const CategoriesEndpoints = {
         },
     }),
 
-    publish: (documentId) => ({ path: `/categories/${documentId}/publish` }),
-    unpublish: (documentId) => ({ path: `/categories/${documentId}/unpublish` }),
+    publish: (documentId) => ({
+        path: `/categories/${documentId}/publish`,
+        action: 'publish',
+        method: 'post',
+        apps: ['stock', 'cms'],
+        approle: ['admin', 'manager']
+    }),
+
+    unpublish: (documentId) => ({
+        path: `/categories/${documentId}/unpublish`,
+        action: 'unpublish',
+        method: 'post',
+        apps: ['stock', 'cms'],
+        approle: ['admin', 'manager']
+    }),
 
     /** Async: fetch category list (single page). */
     fetchList: (opts = {}) => {
@@ -124,19 +171,37 @@ export const CategoriesEndpoints = {
     },
 
     /** Create a new category — body provided by caller as { data }. */
-    create: () => ({ path: '/categories' }),
+    create: () => ({
+        path: '/categories',
+        action: 'create',
+        method: 'post',
+        apps: ['stock', 'cms'],
+        approle: ['admin', 'manager']
+    }),
 
     /**
      * Update a category by documentId — body provided by caller as { data }.
      * @param {string} documentId
      */
-    update: (documentId) => ({ path: `/categories/${documentId}` }),
+    update: (documentId) => ({
+        path: `/categories/${documentId}`,
+        action: 'update',
+        method: 'put',
+        apps: ['stock', 'cms'],
+        approle: ['admin', 'manager']
+    }),
 
     /**
      * Delete a category by documentId.
      * @param {string} documentId
      */
-    del: (documentId) => ({ path: `/categories/${documentId}` }),
+    del: (documentId) => ({
+        path: `/categories/${documentId}`,
+        action: 'delete',
+        method: 'delete',
+        apps: ['stock', 'cms'],
+        approle: ['admin']
+    }),
 
     /** Async: create a new category. */
     postCreate: (data) => authApi.post('/categories', { data }),
@@ -150,6 +215,43 @@ export const CategoriesEndpoints = {
 
     postPublish: (documentId) => authApi.post(`/categories/${documentId}/publish`, {}),
     postUnpublish: (documentId) => authApi.post(`/categories/${documentId}/unpublish`, {}),
+
+    /**
+     * Fetch a paginated list of categories.
+     * Previously standalone function, now part of the endpoint object.
+     * @param {number} page
+     * @param {number} rowsPerPage
+     */
+    fetchCategories: async (page, rowsPerPage) => {
+        const ep = CategoriesEndpoints.list({ page, pageSize: rowsPerPage ?? 100 });
+        return await authApi.fetch(ep.path, ep.params);
+    },
+
+    /**
+     * Search categories by name or code.
+     * Previously standalone function, now part of the endpoint object.
+     * @param {string} searchTerm
+     * @param {number} page
+     * @param {number} rowsPerPage
+     */
+    searchCategories: async (searchTerm, page = 1, rowsPerPage = 5) => {
+        const hasSearch = searchTerm && searchTerm.trim().length > 0;
+        const qs = (await import('qs')).default;
+        const query = {
+            populate: ['logo', 'gallery', { parent: { populate: ['logo', 'gallery'] } }],
+            pagination: { page, pageSize: rowsPerPage },
+            ...(hasSearch && {
+                filters: {
+                    $or: [
+                        { name: { $containsi: searchTerm } },
+                        { code: { $eq: searchTerm } },
+                    ],
+                },
+            }),
+        };
+        const res = await authApi.fetch(`/categories?${qs.stringify(query, { encodeValuesOnly: true })}`);
+        return dataNode(res);
+    },
 };
 
 /**
@@ -171,42 +273,10 @@ export const CategoriesEndpointRules = {
 
     /** DELETE /api/categories/:id */
     delete: {},
+
+    /** POST /api/categories/:id/publish */
+    publish: {},
+
+    /** POST /api/categories/:id/unpublish */
+    unpublish: {},
 };
-
-/**
- * Fetch a paginated list of categories.
- * @param {number} page
- * @param {number} rowsPerPage
- */
-export async function fetchCategories(page, rowsPerPage) {
-    const ep = CategoriesEndpoints.list({ page, pageSize: rowsPerPage ?? 100 });
-    return await AuthApiEndpoints.fetch(ep.path, ep.params);
-}
-
-/**
- * Search categories by name or code.
- * @param {string} searchTerm
- * @param {number} page
- * @param {number} rowsPerPage
- */
-export async function searchCategories(searchTerm, page = 1, rowsPerPage = 5) {
-    const hasSearch = searchTerm && searchTerm.trim().length > 0;
-    const qs = (await import('qs')).default;
-    const query = {
-        populate: ['logo', 'gallery', { parent: { populate: ['logo', 'gallery'] } }],
-        pagination: { page, pageSize: rowsPerPage },
-        ...(hasSearch && {
-            filters: {
-                $or: [
-                    { name: { $containsi: searchTerm } },
-                    { code: { $eq: searchTerm } },
-                ],
-            },
-        }),
-    };
-    const res = await AuthApiEndpoints.fetch(`/categories?${qs.stringify(query, { encodeValuesOnly: true })}`);
-    return dataNode(res);
-}
-
-
-

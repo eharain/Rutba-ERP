@@ -8,8 +8,8 @@ export const AccJournalEntriesEndpoints = {
         },
     }),
 
-    fetchList: (opts = {}) => {
-        const ep = AccJournalEntriesEndpoints.list(opts);
+    fetchList: (sort = {}) => {
+        const ep = AccJournalEntriesEndpoints.list(sort);
         return authApi.fetch(ep.path, ep.params);
     },
 };
