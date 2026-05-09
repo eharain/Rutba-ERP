@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { MediaUtilsEndpoints, SiteSettingEndpoints } from "../../packages/api-provider/endpoints/index.js";
+import { MediaUtilsEndpoints, SiteSettingEndpoints } from "@rutba/api-provider/endpoints/index.js";
 import { APP_URLS } from "@rutba/pos-shared/lib/roles";
 import AdminModeToggle from "@rutba/pos-shared/components/AdminModeToggle";
 import NavAppSwitcher from "@rutba/pos-shared/components/NavAppSwitcher";

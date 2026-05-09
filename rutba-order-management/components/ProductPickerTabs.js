@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { BrandsEndpoints, CategoriesEndpoints, MediaUtilsEndpoints, SuppliersEndpoints, TermTypesEndpoints, PurchasesEndpoints } from "../../packages/api-provider/endpoints/index.js";
+import { BrandsEndpoints, CategoriesEndpoints, MediaUtilsEndpoints, SuppliersEndpoints, TermTypesEndpoints, PurchasesEndpoints } from "@rutba/api-provider/endpoints/index.js";
 import { ProductFilter } from "@rutba/pos-shared/components/filter/product-filter";
-import { fetchProducts } from "@rutba/pos-shared/lib/pos";
+import { fetchProducts } from "@rutba/api-provider/";
 import Link from "next/link";
 
 const DEFAULT_PAGE_SIZE = 25;

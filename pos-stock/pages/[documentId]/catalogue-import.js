@@ -3,8 +3,8 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import Layout from '../../components/Layout';
 import ProtectedRoute from '@rutba/pos-shared/components/ProtectedRoute';
-import { StockHelpersEndpoints, TermTypesEndpoints, ProductsEndpoints, UploadEndpoints } from '../../../packages/api-provider/endpoints/index.js';
-import { saveProduct } from '@rutba/pos-shared/lib/pos/save';
+import { StockHelpersEndpoints, TermTypesEndpoints, ProductsEndpoints, UploadEndpoints } from '@rutba/api-provider/endpoints/index.js';
+import { saveProduct } from '@rutba/api-provider/save';
 
 function getEntryId(entry) {
     return entry?.documentId || entry?.id;

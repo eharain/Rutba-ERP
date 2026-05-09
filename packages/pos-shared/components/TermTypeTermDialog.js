@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { TermTypesEndpoints, TermsEndpoints } from '../lib/endpoints';
+import { TermTypesEndpoints, TermsEndpoints } from "@'rutba/api-provider/enpoints'";
 
 function getEntryId(entry) {
     return entry?.documentId || entry?.id;

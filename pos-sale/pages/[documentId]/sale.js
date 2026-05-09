@@ -17,7 +17,7 @@ import CashDrawTopUpModal from '../../components/CashDrawTopUpModal';
 
 import { useUtil } from '@rutba/pos-shared/context/UtilContext';
 
-import SaleModel from '../../../packages/pos-shared/context/domain/sale/SaleModel.js';
+import SaleModel from '../@rutba/pos-shared/context/domain/sale/SaleModel.js';
 import SaleApi from '@rutba/pos-shared/lib/saleApi';
 
 export default function SalePage() {

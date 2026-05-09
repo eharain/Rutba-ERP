@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import { BranchesEndpoints, StockItemsEndpoints } from "../../packages/api-provider/endpoints/index.js";
+import { BranchesEndpoints, StockItemsEndpoints } from "@rutba/api-provider/endpoints/index.js";
 import {
     Table,
     TableHead,

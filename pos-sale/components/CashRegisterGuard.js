@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useUtil } from '@rutba/pos-shared/context/UtilContext';
-import { CashRegistersEndpoints } from '../../packages/api-provider/endpoints/index.js';
+import { CashRegistersEndpoints } from '@rutba/api-provider/endpoints/index.js';
 
 const EXPIRY_HOURS = 20;
 

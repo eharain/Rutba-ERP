@@ -3,7 +3,7 @@ import * as XLSX from 'xlsx';
 import Layout from '../components/Layout';
 import ProtectedRoute from '@rutba/pos-shared/components/ProtectedRoute';
 import PermissionCheck from '@rutba/pos-shared/components/PermissionCheck';
-import { StockInputsEndpoints, BrandsEndpoints, CategoriesEndpoints, SuppliersEndpoints } from '../../packages/api-provider/endpoints/index.js';
+import { StockInputsEndpoints, BrandsEndpoints, CategoriesEndpoints, SuppliersEndpoints } from '@rutba/api-provider/endpoints/index.js';
 import { useUtil } from '@rutba/pos-shared/context/UtilContext';
 
 // ── Column mapping (mirrors export-catalog/utils/excel-helper.js) ──

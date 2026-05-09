@@ -1,8 +1,8 @@
 // /pos-desk/components/purchase-receive.js
 import React, { useEffect, useState } from 'react';
-import { PurchaseItemsEndpoints, PurchasesEndpoints } from '../../../packages/api-provider/endpoints/index.js';
+import { PurchaseItemsEndpoints, PurchasesEndpoints } from '@rutba/api-provider/endpoints/index.js';
 import { Table, TableHead, TableBody, TableRow, TableCell } from '@rutba/pos-shared/components/Table';
-import {generateStockItems} from '@rutba/pos-shared/lib/pos/create';
+import {generateStockItems} from '@rutba/api-provider//create';
 import { useUtil } from '@rutba/pos-shared/context/UtilContext';
 
 const PurchaseReceiveList = ({ purchase, onComplete }) => {

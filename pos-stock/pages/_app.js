@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { AuthProvider } from "@rutba/pos-shared/context/AuthContext";
 import { UtilProvider } from "@rutba/pos-shared/context/UtilContext";
-import { AppContextEndpoints } from "../../packages/api-provider/endpoints/index.js";
+import { AppContextEndpoints } from "@rutba/api-provider/endpoints/index.js";
 
 AppContextEndpoints.setAppName('stock');
 

@@ -1,6 +1,6 @@
 ﻿import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { StraipImageUrl, isImage, isPDF } from '../lib/api';
-import { MediaLibraryEndpoints, UploadEndpoints } from '../lib/endpoints';
+import { StraipImageUrl, isImage, isPDF } from '@rutba/api-provider/lib/api.js';
+import { MediaLibraryEndpoints, UploadEndpoints } from "@rutba/api-provider/endpoints";
 
 /**
  * StrapiMediaLibrary - modal component that browses Strapi media with

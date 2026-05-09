@@ -13,10 +13,10 @@ import {
 } from "@rutba/pos-shared/components/Table";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import { BranchesEndpoints, StockHelpersEndpoints, StockItemsEndpoints } from "../../packages/api-provider/endpoints/index.js";
+import { BranchesEndpoints, StockHelpersEndpoints, StockItemsEndpoints } from "@rutba/api-provider/endpoints/index.js";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
-import { loadProduct } from "@rutba/pos-shared/lib/pos/fetchs";
-import { searchStockItems } from "@rutba/pos-shared/lib/pos";
+import { loadProduct } from "@rutba/api-provider//fetchs";
+import { searchStockItems } from "@rutba/api-provider/";
 
 export default function StockItemsPage() {
     const router = useRouter();

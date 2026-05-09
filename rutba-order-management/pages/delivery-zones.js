@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { DeliveryZonesEndpoints } from "../../packages/api-provider/endpoints/index.js";
+import { DeliveryZonesEndpoints } from "@rutba/api-provider/endpoints/index.js";
 import { useToast } from "../components/Toast";
 
 const ZONE_TYPES = ["domestic_own_rider", "domestic_courier", "international"];

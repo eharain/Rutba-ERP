@@ -1,9 +1,8 @@
 ﻿'use client'
 import { createContext, useContext, useState, useEffect, useMemo, useCallback } from "react";
 import { storage } from "../lib/storage";
-import { api, getAppName, refreshAccessToken, onSessionExpired } from "../lib/api";
+import { api, getAppName, refreshAccessToken, onSessionExpired, API_URL } from "@rutba/api-provider/lib/api.js";
 import axios from "axios";
-import { API_URL } from "../lib/api-url-resolver";
 
 const AuthContext = createContext();
 

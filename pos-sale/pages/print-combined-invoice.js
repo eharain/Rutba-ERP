@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import SaleInvoicePrint from '../components/print/SaleInvoicePrint';
-import { fetchSaleByIdOrInvoice } from '@rutba/pos-shared/lib/pos';
-import SaleModel from '../../packages/pos-shared/context/domain/sale/SaleModel.js';
+import { fetchSaleByIdOrInvoice } from '@rutba/api-provider/';
+import SaleModel from '@rutba/pos-shared/context/domain/sale/SaleModel.js';
 
 const PrintCombinedInvoicePage = () => {
     const [sale, setSale] = useState(null);
