@@ -52,7 +52,7 @@
     "start:cms": "node scripts/js/load-env.js -- npm run start --workspace=rutba-cms",
     "start:social": "node scripts/js/load-env.js -- npm run start --workspace=rutba-social",
 
-    "build:strapi": "node scripts/js/load-env.js -- npm --prefix pos-strapi run build",
+
     "build:auth": "node scripts/js/load-env.js -- npm run build --workspace=pos-auth",
     "build:stock": "node scripts/js/load-env.js -- npm run build --workspace=pos-stock",
     "build:sale": "node scripts/js/load-env.js -- npm run build --workspace=pos-sale",
@@ -66,6 +66,7 @@
     "build:payroll": "node scripts/js/load-env.js -- npm run build --workspace=rutba-payroll",
     "build:cms": "node scripts/js/load-env.js -- npm run build --workspace=rutba-cms",
     "build:social": "node scripts/js/load-env.js -- npm run build --workspace=rutba-social",
+    "build:strapi": "node scripts/js/load-env.js -- npm --prefix pos-strapi run build",
 
     "build:all": "node scripts/js/run-app.js build",
     "start:all": "node scripts/js/run-app.js start",

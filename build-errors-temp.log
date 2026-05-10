@@ -1,0 +1,44 @@
+
+> rutba@1.0.0 build:all
+> node scripts/js/run-app.js build
+
+[36m[run-app][0m Building 14 app(s) sequentially
+[36m[run-app][0m ── build:auth ──
+
+> rutba@1.0.0 build:auth
+> node scripts/js/load-env.js -- npm run build --workspace=pos-auth
+
+[env] Environment Mode: file | Environment: development | Target: POS_AUTH
+
+> pos-auth@0.1.0 build
+> next build
+
+▲ Next.js 16.2.1 (Turbopack)
+- Experiments (use with caution):
+  ✓ disableOptimizedLoading
+
+  Running TypeScript ...
+  Finished TypeScript in 141ms ...
+  Creating an optimized production build ...
+
+> rutba@1.0.0 build:all
+> node scripts/js/run-app.js build
+
+[36m[run-app][0m Building 14 app(s) sequentially
+[36m[run-app][0m ── build:auth ──
+
+> rutba@1.0.0 build:auth
+> node scripts/js/load-env.js -- npm run build --workspace=pos-auth
+
+[env] Environment Mode: file | Environment: development | Target: POS_AUTH
+
+> pos-auth@0.1.0 build
+> next build
+
+▲ Next.js 16.2.1 (Turbopack)
+- Experiments (use with caution):
+  ✓ disableOptimizedLoading
+
+  Running TypeScript ...
+  Finished TypeScript in 141ms ...
+  Creating an optimized production build ...

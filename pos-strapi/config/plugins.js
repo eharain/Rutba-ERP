@@ -1,10 +1,43 @@
+const fs = require('fs');
+const path = require('path');
 
-const { loadConfiguration } = require('@rutba/api-provider');
+function readJsonSafe(filePath, fallback = {}) {
+    try {
+        return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    } catch {
+        return fallback;
+    }
+}
+
+function loadApiProviderConfiguration() {
+    const domains = require('@rutba/api-provider/config/domains');
+    const publicResources = require('@rutba/api-provider/config/public-resources');
+
+    const domainsPath = require.resolve('@rutba/api-provider/config/domains');
+    const configRoot = path.dirname(domainsPath);
+    const resourcesDir = path.join(configRoot, 'resources');
+
+    const resources = {};
+    if (fs.existsSync(resourcesDir)) {
+        const files = fs.readdirSync(resourcesDir).filter((name) => name.toLowerCase().endsWith('.json'));
+        for (const fileName of files) {
+            const item = readJsonSafe(path.join(resourcesDir, fileName), null);
+            if (!item || typeof item.uid !== 'string') continue;
+            resources[item.uid] = item.policies || {};
+        }
+    }
+
+    return {
+        domains,
+        publicResources,
+        resources,
+    };
+}
 
 // ── Derive bypass paths and domains from api-provider config ─────────────────
 // publicResources keys are "METHOD /path" — extract unique paths only.
 // These routes bypass the api-guard-pro interceptor (no auth required).
-const _apiConfig = loadConfiguration();
+const _apiConfig = loadApiProviderConfiguration();
 
 const PUBLIC_BYPASS_PATHS = [...new Set(
     Object.keys(_apiConfig.publicResources || {}).map((key) => {
