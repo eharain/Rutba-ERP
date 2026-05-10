@@ -1,6 +1,9 @@
-import { authApi } from '@/lib/api.js';
-import { createClientProxy } from '@/providers/createClientProxy.js';
-import { PaySalaryStructuresEndpoints } from '@/api/pay-salary-structures.js';
+import { authApi } from '../lib/api.js';
+import { createClientProxy } from '../providers/createClientProxy.js';
+import { PaySalaryStructuresEndpoints as PaySalaryStructuresEndpointsApi } from '../api/pay-salary-structures.js';
 
-export default createClientProxy(PaySalaryStructuresEndpoints, authApi);
-export const PaySalaryStructuresEndpointsProxy = createClientProxy(PaySalaryStructuresEndpoints, authApi);
+const endpoints = createClientProxy(PaySalaryStructuresEndpointsApi, authApi);
+
+export default endpoints;
+export const PaySalaryStructuresEndpoints = endpoints;
+

@@ -1,4 +1,4 @@
-import { WebCategoriesEndpoints } from '@/api/web/categories.js';
+import { WebCategoriesEndpoints } from '../../api/web/categories.js';
 import { createWebClientProxy } from './createWebClientProxy.js';
 
 export function createWebCategoriesService(config = {}) {
@@ -11,3 +11,4 @@ export function createWebCategoriesService(config = {}) {
 
   return { endpoints: proxy, getCategories };
 }
+

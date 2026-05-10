@@ -3,7 +3,8 @@ import { useRouter } from 'next/router';
 import Layout from '../../components/Layout';
 import ProtectedRoute from '@rutba/pos-shared/components/ProtectedRoute';
 import { StockHelpersEndpoints, CategoriesEndpoints, BrandsEndpoints, SuppliersEndpoints, ProductsEndpoints, StockItemsEndpoints } from '@rutba/api-provider/endpoints/index.js';
-import { saveProduct, loadProduct } from '@rutba/api-provider/pos';
+import { fetchProducts, saveProduct, loadProduct } from '@rutba/api-provider/endpoints/products.js';
+
 import { useUtil } from '@rutba/pos-shared/context/UtilContext';
 import FileView from '@rutba/pos-shared/components/FileView';
 import MarkdownEditor from '@rutba/pos-shared/components/MarkdownEditor';

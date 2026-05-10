@@ -1,14 +1,16 @@
-import { authApi } from '@/lib/api.js';
-import { createClientProxy } from '@/providers/createClientProxy.js';
-import { ProductsEndpoints } from '@/api/products.js';
+import { authApi } from '../lib/api.js';
+import { createClientProxy } from '../providers/createClientProxy.js';
+import { ProductsEndpoints as ProductsEndpointsApi } from '../api/products.js';
 import { dataNode } from '../pos/search.js';
 import { getBranch, getUser } from '../utils.js';
 
-export default createClientProxy(ProductsEndpoints, authApi);
-export const ProductsEndpointsProxy = createClientProxy(ProductsEndpoints, authApi);
+const endpoints = createClientProxy(ProductsEndpointsApi, authApi);
+
+export default endpoints;
+export const ProductsEndpoints = endpoints;
 
 // Create a reusable proxy instance for helpers
-const proxy = createClientProxy(ProductsEndpoints, authApi);
+const proxy = createClientProxy(ProductsEndpointsApi, authApi);
 
 /**
  * Helper: Extract data node from Strapi response.

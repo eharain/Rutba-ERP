@@ -12,33 +12,75 @@ const CMS_DETAIL_FIELDS = [
   'gallery_priority', 'related_pages_priority',
 ];
 
-const CMS_DETAIL_POPULATE = [
-  'featured_image',
-  'background_image',
-  'gallery',
-  'hero_product_groups.products.gallery',
-  'hero_product_groups.products.logo',
-  'hero_product_groups.products.brands',
-  'hero_product_groups.products.categories',
-  'hero_product_groups.products.variants',
-  'hero_product_groups.products.variants.terms',
-  'hero_product_groups.products.variants.terms.term_types',
-  'hero_product_groups.cover_image',
-  'hero_product_groups.offers',
-  'brand_groups.brands.logo',
-  'category_groups.categories.logo',
-  'product_groups.products.gallery',
-  'product_groups.products.logo',
-  'product_groups.products.brands',
-  'product_groups.products.categories',
-  'product_groups.products.variants',
-  'product_groups.products.variants.terms',
-  'product_groups.products.variants.terms.term_types',
-  'product_groups.cover_image',
-  'product_groups.offers',
-  'related_pages.featured_image',
-  'footer.pinned_pages',
-];
+const populate = {
+    featured_image: true,
+    background_image: true,
+    gallery: true,
+
+    hero_product_groups: {
+        populate: {
+            cover_image: true,
+            offers: true,
+            products: {
+                populate: {
+                    gallery: true,
+                    logo: true,
+                    brands: true,
+                    categories: true,
+                    variants: {
+                        populate: {
+                            terms: { populate: { term_types: true } }
+                        }
+                    }
+                }
+            }
+        }
+    },
+
+    brand_groups: {
+        populate: {
+            brands: { populate: { logo: true } }
+        }
+    },
+
+    category_groups: {
+        populate: {
+            categories: { populate: { logo: true } }
+        }
+    },
+
+    product_groups: {
+        populate: {
+            cover_image: true,
+            offers: true,
+            products: {
+                populate: {
+                    gallery: true,
+                    logo: true,
+                    brands: true,
+                    categories: true,
+                    variants: {
+                        populate: {
+                            terms: { populate: { term_types: true } }
+                        }
+                    }
+                }
+            }
+        }
+    },
+
+    related_pages: {
+        populate: {
+            featured_image: true
+        }
+    },
+
+    footer: {
+        populate: {
+            pinned_pages: true
+        }
+    },
+};
 
 export const WebCmsPagesEndpoints = {
   list: (pageSize = 50) => ({
@@ -70,7 +112,7 @@ export const WebCmsPagesEndpoints = {
     params: {
       filters: { slug: { $eq: slug } },
       fields: CMS_DETAIL_FIELDS,
-      populate: CMS_DETAIL_POPULATE,
+      populate: populate,
     },
   }),
 

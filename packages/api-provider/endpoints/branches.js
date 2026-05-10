@@ -1,9 +1,11 @@
-import { authApi } from '@/lib/api.js';
-import { createClientProxy } from '@/providers/createClientProxy.js';
-import { BranchesEndpoints } from '@/api/branches.js';
+import { authApi } from '../lib/api.js';
+import { createClientProxy } from '../providers/createClientProxy.js';
+import { BranchesEndpoints as BranchesEndpointsApi } from '../api/branches.js';
 
-export default createClientProxy(BranchesEndpoints, authApi);
-export const BranchesEndpointsProxy = createClientProxy(BranchesEndpoints, authApi);
+const endpoints = createClientProxy(BranchesEndpointsApi, authApi);
+
+export default endpoints;
+export const BranchesEndpoints = endpoints;
 
 
 /**
@@ -31,7 +33,7 @@ export function dataNode(res) {
  * @deprecated Use BranchesEndpointsProxy.searchBranches() instead
  */
 export async function searchBranches(searchTerm, page = 1, rowsPerPage = 5) {
-    const proxy = createClientProxy(BranchesEndpoints, authApi);
+    const proxy = createClientProxy(BranchesEndpointsApi, authApi);
     const res = await proxy.searchBranches(searchTerm, page, rowsPerPage);
     return dataNode(res);
 }

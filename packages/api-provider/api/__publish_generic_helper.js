@@ -9,7 +9,7 @@ export function publishMethods(contentType) {
 
 export function standard(contentType) {
     return {
-        create: (data) => ({ path: `/${contentType}`, action: 'create', method: 'post', data, data }),
+        create: (data) => ({ path: `/${contentType}`, action: 'create', method: 'post', data }),
         del: (documentId) => ({ path: `/${contentType}/${documentId}`, action: 'delete', method: 'delete' }),
     }
 }

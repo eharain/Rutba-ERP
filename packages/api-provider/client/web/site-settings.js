@@ -1,4 +1,4 @@
-import { WebSiteSettingsEndpoints } from '@/api/web/site-settings.js';
+import { WebSiteSettingsEndpoints } from '../../api/web/site-settings.js';
 import { createWebClientProxy } from './createWebClientProxy.js';
 
 export const SITE_SETTINGS_DEFAULTS = {
@@ -34,3 +34,4 @@ export function createWebSiteSettingsService(config = {}) {
 
   return { endpoints: proxy, getSiteSettings };
 }
+

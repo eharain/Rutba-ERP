@@ -1,6 +1,9 @@
-import { authApi } from '@/lib/api.js';
-import { createClientProxy } from '@/providers/createClientProxy.js';
-import { CashRegisterTransactionEndpoints } from '@/api/cash-register-transactions.js';
+import { authApi } from '../lib/api.js';
+import { createClientProxy } from '../providers/createClientProxy.js';
+import { CashRegisterTransactionEndpoints as CashRegisterTransactionEndpointsApi } from '../api/cash-register-transactions.js';
 
-export default createClientProxy(CashRegisterTransactionEndpoints, authApi);
-export const CashRegisterTransactionEndpointsProxy = createClientProxy(CashRegisterTransactionEndpoints, authApi);
+const endpoints = createClientProxy(CashRegisterTransactionEndpointsApi, authApi);
+
+export default endpoints;
+export const CashRegisterTransactionEndpoints = endpoints;
+

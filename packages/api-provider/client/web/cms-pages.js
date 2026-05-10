@@ -1,4 +1,4 @@
-import { WebCmsPagesEndpoints } from '@/api/web/cms-pages.js';
+import { WebCmsPagesEndpoints } from '../../api/web/cms-pages.js';
 import { createWebClientProxy } from './createWebClientProxy.js';
 
 export function createWebCmsPagesService(config = {}) {
@@ -53,3 +53,4 @@ export async function getCmsPageBySlugSSR(slug, config = {}) {
   const pages = res?.data ?? [];
   return pages.length > 0 ? pages[0] : null;
 }
+

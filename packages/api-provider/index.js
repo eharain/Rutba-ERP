@@ -12,11 +12,14 @@ function loadConfiguration(overrides = {}) {
   return toJSONConfiguration(overrides);
 }
 
+export * from './pos/index';
+
 module.exports = {
   CONFIG_ROOT,
   DEFAULT_API_URL,
   loadConfiguration,
   createConfiguration,
   getApiConfiguration,
-  toJSONConfiguration,
+    toJSONConfiguration,
+
 };

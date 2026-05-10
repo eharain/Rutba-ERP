@@ -1,6 +1,9 @@
-import { authApi } from '@/lib/api.js';
-import { createClientProxy } from '@/providers/createClientProxy.js';
-import { DeliveryMethodsEndpoints } from '@/api/delivery-methods.js';
+import { authApi } from '../lib/api.js';
+import { createClientProxy } from '../providers/createClientProxy.js';
+import { DeliveryMethodsEndpoints as DeliveryMethodsEndpointsApi } from '../api/delivery-methods.js';
 
-export default createClientProxy(DeliveryMethodsEndpoints, authApi);
-export const DeliveryMethodsEndpointsProxy = createClientProxy(DeliveryMethodsEndpoints, authApi);
+const endpoints = createClientProxy(DeliveryMethodsEndpointsApi, authApi);
+
+export default endpoints;
+export const DeliveryMethodsEndpoints = endpoints;
+

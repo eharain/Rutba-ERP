@@ -1,6 +1,9 @@
-import { authApi } from '@/lib/api.js';
-import { createClientProxy } from '@/providers/createClientProxy.js';
-import { WebAuthEndpointRules } from '@/api/web.js';
+import { authApi } from '../lib/api.js';
+import { createClientProxy } from '../providers/createClientProxy.js';
+import { WebAuthEndpointRules as WebAuthEndpointRulesApi } from '../api/web.js';
 
-export default createClientProxy(WebAuthEndpointRules, authApi);
-export const WebAuthEndpointRulesProxy = createClientProxy(WebAuthEndpointRules, authApi);
+const endpoints = createClientProxy(WebAuthEndpointRulesApi, authApi);
+
+export default endpoints;
+export const WebAuthEndpointRules = endpoints;
+

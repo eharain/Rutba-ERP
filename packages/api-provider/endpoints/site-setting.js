@@ -1,6 +1,9 @@
-import { authApi } from '@/lib/api.js';
-import { createClientProxy } from '@/providers/createClientProxy.js';
-import { SiteSettingEndpoints } from '@/api/site-setting.js';
+import { authApi } from '../lib/api.js';
+import { createClientProxy } from '../providers/createClientProxy.js';
+import { SiteSettingEndpoints as SiteSettingEndpointsApi } from '../api/site-setting.js';
 
-export default createClientProxy(SiteSettingEndpoints, authApi);
-export const SiteSettingEndpointsProxy = createClientProxy(SiteSettingEndpoints, authApi);
+const endpoints = createClientProxy(SiteSettingEndpointsApi, authApi);
+
+export default endpoints;
+export const SiteSettingEndpoints = endpoints;
+

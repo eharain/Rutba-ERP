@@ -1,6 +1,9 @@
-import { authApi } from '@/lib/api.js';
-import { createClientProxy } from '@/providers/createClientProxy.js';
-import { SocialRepliesEndpoints } from '@/api/social-replies.js';
+import { authApi } from '../lib/api.js';
+import { createClientProxy } from '../providers/createClientProxy.js';
+import { SocialRepliesEndpoints as SocialRepliesEndpointsApi } from '../api/social-replies.js';
 
-export default createClientProxy(SocialRepliesEndpoints, authApi);
-export const SocialRepliesEndpointsProxy = createClientProxy(SocialRepliesEndpoints, authApi);
+const endpoints = createClientProxy(SocialRepliesEndpointsApi, authApi);
+
+export default endpoints;
+export const SocialRepliesEndpoints = endpoints;
+

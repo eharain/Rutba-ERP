@@ -1,4 +1,4 @@
-import { WebBrandsEndpoints } from '@/api/web/brands.js';
+import { WebBrandsEndpoints } from '../../api/web/brands.js';
 import { createWebClientProxy } from './createWebClientProxy.js';
 
 export function createWebBrandsService(config = {}) {
@@ -11,3 +11,4 @@ export function createWebBrandsService(config = {}) {
 
   return { endpoints: proxy, getBrands };
 }
+

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, Fragment } from "react";
-import { fetchProducts } from "@rutba/api-provider/";
+import { fetchProducts } from '@rutba/api-provider/endpoints/products.js';
 import { ProductsEndpoints, BrandsEndpoints, CategoriesEndpoints, SuppliersEndpoints, TermTypesEndpoints, PurchasesEndpoints } from "@rutba/api-provider/endpoints/index.js";
 import SearchableSelect from "@rutba/pos-shared/components/SearchableSelect";
 

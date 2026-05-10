@@ -1,5 +1,5 @@
-import { WebCheckoutEndpoints } from '@/api/web/checkout.js';
-import { WebOrdersEndpoints } from '@/api/web/orders.js';
+import { WebCheckoutEndpoints } from '../../api/web/checkout.js';
+import { WebOrdersEndpoints } from '../../api/web/orders.js';
 import { createWebClientProxy } from './createWebClientProxy.js';
 
 export function createWebCheckoutService(config = {}) {
@@ -30,3 +30,4 @@ export function createWebCheckoutService(config = {}) {
     checkoutItem,
   };
 }
+

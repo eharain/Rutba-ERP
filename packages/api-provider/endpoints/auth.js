@@ -1,6 +1,9 @@
-import { authApi } from '@/lib/api.js';
-import { createClientProxy } from '@/providers/createClientProxy.js';
-import { AuthEndpoints } from '@/api/auth.js';
+import { authApi } from '../lib/api.js';
+import { createClientProxy } from '../providers/createClientProxy.js';
+import { AuthEndpoints as AuthEndpointsApi } from '../api/auth.js';
 
-export default createClientProxy(AuthEndpoints, authApi);
-export const AuthEndpointsProxy = createClientProxy(AuthEndpoints, authApi);
+const endpoints = createClientProxy(AuthEndpointsApi, authApi);
+
+export default endpoints;
+export const AuthEndpoints = endpoints;
+
