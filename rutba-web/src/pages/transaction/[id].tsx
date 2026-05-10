@@ -4,16 +4,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Spinner from "@/components/ui/spinner";
 import useErrorHandler from "@/hooks/useErrorHandler";
-import useTransactionService from "@/services/transaction";
+import { createWebOrdersService } from "@rutba/api-provider/client/web";
 import { OrderInterface } from "@/types/api/order";
 import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
+import { BASE_URL } from "@/static/const";
 
 export default function OrderDetailGuest() {
   const router = useRouter();
   const { showError } = useErrorHandler();
-  const { getTransactionWithSecret } = useTransactionService();
+  const ordersService = createWebOrdersService({ baseURL: BASE_URL });
 
   const [validToView, setValidToView] = useState(false);
   const [dataTransaction, setDataTransaction] = useState<OrderInterface | null>(
@@ -22,7 +23,7 @@ export default function OrderDetailGuest() {
   const [secret, setSecret] = useState("");
 
   const { mutate: mutateGetTransaction, isPending: isLoading } = useMutation({
-    mutationFn: getTransactionWithSecret,
+    mutationFn: ordersService.getTransactionWithSecret,
     onSuccess: (data) => {
         setDataTransaction(data);
         setValidToView(true);

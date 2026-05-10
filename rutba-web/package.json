@@ -12,6 +12,7 @@
 		"lint": "next lint"
 	},
 	"dependencies": {
+		"@rutba/api-provider": "file:../packages/api-provider",
 		"@hookform/resolvers": "^3.10.0",
 		"@radix-ui/react-accordion": "^1.2.12",
 		"@radix-ui/react-avatar": "^1.1.11",

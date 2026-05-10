@@ -1,7 +1,8 @@
 import useErrorHandler from "@/hooks/useErrorHandler";
 import { useStoreCart } from "@/store/store-cart";
 import { CartInterface, CartTermInfo } from "@/types/api/cart";
-import useProductsService from "./products";
+import { createWebProductsService } from "@rutba/api-provider/client/web";
+import { BASE_URL } from "@/static/const";
 
 export interface cartLocalStorage {
   productId: number | null;
@@ -17,7 +18,7 @@ export interface cartLocalStorage {
 export const useCartService = () => {
   const { showError } = useErrorHandler();
   const { setCartItem } = useStoreCart();
-  const { productInArrayId } = useProductsService();
+  const productsService = createWebProductsService({ baseURL: BASE_URL });
 
   /**
    * Adds a product to the cart.
@@ -141,7 +142,7 @@ export const useCartService = () => {
     
     if (cartData.length > 0) {
       const ids = cartData.map((item) => item.productId) as number[];
-      const data = await productInArrayId(ids);
+      const data = await productsService.productInArrayId(ids);
       // Filter data, if the item in cart and the variant not available on the api.
       const filteredCartData = cartData.filter((item) => {
         const product = data.find((product) => item.productId === product.id);

@@ -2,11 +2,12 @@ import ProductCard from "@/components/product-list/product-card";
 import { useQuery } from "@tanstack/react-query";
 import { SkeletonProduct } from "../skeleton";
 import { ErrorCard } from "../errors/error-card";
-import useProductsService from "@/services/products";
+import { createWebProductsService } from "@rutba/api-provider/client/web";
 import { getVariantTermSummary } from "@/types/api/product";
+import { BASE_URL } from "@/static/const";
 
 export default function FeaturedSneakers() {
-  const { getFeaturedSneakers } = useProductsService();
+  const productsService = createWebProductsService({ baseURL: BASE_URL });
 
   const {
     data: products,
@@ -16,7 +17,7 @@ export default function FeaturedSneakers() {
   } = useQuery({
     queryKey: ["featured-sneakers"],
     queryFn: async () => {
-      return getFeaturedSneakers();
+      return productsService.getFeaturedSneakers();
     },
   });
 

@@ -13,7 +13,8 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowLeftIcon, CheckCircleIcon } from "lucide-react";
 import useErrorHandler from "@/hooks/useErrorHandler";
-import useCheckoutService from "@/services/checkout";
+import { createWebCheckoutService } from "@rutba/api-provider/client/web";
+import { BASE_URL } from "@/static/const";
 
 type CheckoutStep = "SHIPPING_INFORMATION" | "DELIVERY_METHOD";
 
@@ -23,7 +24,7 @@ export default function CheckoutPage() {
   const router = useRouter();
   const session = useSession();
   const { showError } = useErrorHandler();
-  const { checkoutItem } = useCheckoutService();
+  const checkoutService = createWebCheckoutService({ baseURL: BASE_URL });
   const { getCart, clearCart } = useCartService();
   const { cartItem } = useStoreCart();
 
@@ -80,7 +81,7 @@ export default function CheckoutPage() {
 
   // ── Place order mutation ─────────────────────────────────────────────────
   const { mutate: placeOrder, isPending: isPlacingOrder } = useMutation({
-    mutationFn: checkoutItem,
+    mutationFn: checkoutService.checkoutItem,
     onSuccess: (response) => {
       const phoneNumber = "+923245303530";
       const orderId = response?.order_id || "N/A";

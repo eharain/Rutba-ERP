@@ -3,12 +3,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Spinner from "@/components/ui/spinner";
-import useDeliveryService from "@/services/delivery";
+import { createWebDeliveryService } from "@rutba/api-provider/client/web";
 import { OrderMessage } from "@/types/api/delivery";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/router";
 import { useMemo, useState } from "react";
+import { BASE_URL } from "@/static/const";
 
 const STATUS_ORDER = [
   "PENDING_PAYMENT",
@@ -35,7 +36,7 @@ const STATUS_LABELS: Record<string, string> = {
 export default function OrderTrackingPage() {
   const router = useRouter();
   const session = useSession();
-  const { getOrderTracking, getOrderMessages, sendOrderMessage } = useDeliveryService();
+  const deliveryService = createWebDeliveryService({ baseURL: BASE_URL });
 
   const orderId = router.query.orderId as string | undefined;
   const secretFromQuery = router.query.secret as string | undefined;
@@ -51,7 +52,7 @@ export default function OrderTrackingPage() {
     refetch: refetchTracking,
   } = useQuery({
     queryKey: ["order-tracking", orderId, secretFromQuery],
-    queryFn: () => getOrderTracking(orderId as string, secretFromQuery as string),
+    queryFn: () => deliveryService.getOrderTracking(orderId as string, secretFromQuery as string),
     enabled: canTrack,
     refetchInterval: 15000,
   });
@@ -62,13 +63,13 @@ export default function OrderTrackingPage() {
     refetch: refetchMessages,
   } = useQuery({
     queryKey: ["order-messages", orderId],
-    queryFn: () => getOrderMessages(orderId as string, session.data?.jwt),
+    queryFn: () => deliveryService.getOrderMessages(orderId as string, session.data?.jwt),
     enabled: Boolean(orderId),
     refetchInterval: 10000,
   });
 
   const { mutate: mutateSendMessage, isPending: isSendingMessage } = useMutation({
-    mutationFn: () => sendOrderMessage(orderId as string, messageInput.trim(), session.data?.jwt as string),
+    mutationFn: () => deliveryService.sendOrderMessage(orderId as string, messageInput.trim(), session.data?.jwt as string),
     onSuccess: () => {
       setMessageInput("");
       refetchMessages();

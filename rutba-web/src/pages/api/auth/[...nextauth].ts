@@ -1,9 +1,12 @@
 import NextAuth, { User } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
-import { signInWithCredential, signInWithProviders } from "@/services/auth";
+import { createWebAuthService } from "@rutba/api-provider/client/web";
+import { BASE_URL } from "@/static/const";
 import { Session } from "next-auth";
 import { JWT } from "next-auth/jwt";
+
+const authService = createWebAuthService({ baseURL: BASE_URL });
 
 export default NextAuth({
   providers: [
@@ -29,7 +32,7 @@ export default NextAuth({
          * We can expect it contains two properties: `email` and `password`
          */
         try {
-          const response = await signInWithCredential({
+          const response = await authService.signInWithCredential({
             email: credentials.email,
             password: credentials.password,
           });
@@ -84,10 +87,12 @@ export default NextAuth({
         }
         // else, you need to fetch to the backend with the access token
         else {
-          const response = await signInWithProviders({
+          const responseData = await authService.signInWithProviders({
             provider: account?.provider,
             access_token: account?.access_token,
           });
+
+          const response = { data: responseData };
 
           if (response) {
             console.log(response, "as");

@@ -3,10 +3,11 @@ import { Star } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { ErrorCard } from "../errors/error-card";
 import { SkeletonProductReview } from "../skeleton";
-import useReviewsService from "@/services/reviews";
+import { createWebReviewsService } from "@rutba/api-provider/client/web";
+import { BASE_URL } from "@/static/const";
 
 export default function Reviews({ slug }: { slug: string }) {
-  const { getProductReviews } = useReviewsService();
+  const reviewsService = createWebReviewsService({ baseURL: BASE_URL });
 
   const {
     data: reviews,
@@ -16,7 +17,7 @@ export default function Reviews({ slug }: { slug: string }) {
   } = useQuery({
     queryKey: ["reviews", slug],
     queryFn: async () => {
-      return getProductReviews(slug as string);
+      return reviewsService.getProductReviews(slug as string);
     },
   });
 

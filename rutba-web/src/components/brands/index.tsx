@@ -6,11 +6,11 @@ import { Swiper, SwiperSlide } from "swiper/react";
 import "swiper/css";
 
 import { useQuery } from "@tanstack/react-query";
-import { IMAGE_URL } from "@/static/const";
+import { BASE_URL, IMAGE_URL } from "@/static/const";
 import { ErrorCard } from "../errors/error-card";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/router";
-import useBrandsService from "@/services/brands";
+import { createWebBrandsService } from "@rutba/api-provider/client/web";
 
 export default function BrandList({
   activeBrand,
@@ -20,7 +20,7 @@ export default function BrandList({
   clearQuerySearch?: boolean;
 }) {
   const router = useRouter();
-  const { getBrands } = useBrandsService();
+  const brandsService = createWebBrandsService({ baseURL: BASE_URL });
 
   const {
     data: brands,
@@ -30,7 +30,7 @@ export default function BrandList({
   } = useQuery({
     queryKey: ["brand-list"],
     queryFn: async () => {
-      return await getBrands();
+      return await brandsService.getBrands();
     },
   });
 

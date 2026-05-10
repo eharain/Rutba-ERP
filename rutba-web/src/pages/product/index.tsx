@@ -4,9 +4,10 @@ import ProductListItem from "@/components/product-list";
 // import ProductCollectionFilter from "@/components/product-list/product-collection-filter";
 import ProductFilter from "@/components/product-list/product-filter";
 import ProductSort from "@/components/product-list/product-sort";
-import { getHighestProductPrice } from "@/services/products";
+import { createWebProductsService } from "@rutba/api-provider/client/web";
 import { useRouter } from "next/router";
 import { useSiteSettings } from "@/hooks/use-site-settings";
+import { BASE_URL } from "@/static/const";
 
 /**
  * Retrieves the highest product price from the server.
@@ -14,7 +15,8 @@ import { useSiteSettings } from "@/hooks/use-site-settings";
  * @return {Promise<object>} The highest product price.
  */
 export async function getServerSideProps() {
-  const products = await getHighestProductPrice();
+  const productsService = createWebProductsService({ baseURL: BASE_URL });
+  const products = await productsService.getHighestProductPrice();
   
   let price = 0;
   if (products) {

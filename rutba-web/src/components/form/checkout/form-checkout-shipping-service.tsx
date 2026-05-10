@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import Spinner from "@/components/ui/spinner";
 import useErrorHandler from "@/hooks/useErrorHandler";
-import useCheckoutService from "@/services/checkout";
+import { createWebCheckoutService } from "@rutba/api-provider/client/web";
 import { IMAGE_URL } from "@/static/const";
 import { countryList } from "@/static/country";
 import { useStoreCheckout } from "@/store/store-checkout";
@@ -13,6 +13,7 @@ import { RateItemInterface, RatesInterface } from "@/types/api/checkout";
 import { useMutation } from "@tanstack/react-query";
 import { ArrowLeftCircle, BoxesIcon, Map, User } from "lucide-react";
 import { useEffect, useState } from "react";
+import { BASE_URL } from "@/static/const";
 
 export default function FormCheckoutShippingService({
   parcelSize,
@@ -27,7 +28,7 @@ export default function FormCheckoutShippingService({
   cartData: CartInterface[];
 }) {
   const { showError } = useErrorHandler();
-  const { getShippingRate, checkoutItem } = useCheckoutService();
+  const checkoutService = createWebCheckoutService({ baseURL: BASE_URL });
 
   const {
     setCurrentForm,
@@ -56,7 +57,7 @@ export default function FormCheckoutShippingService({
     isError,
     error,
   } = useMutation({
-    mutationFn: getShippingRate,
+    mutationFn: checkoutService.getShippingRate,
     onSuccess: (data) => {
       setShippingRate(data);
     },
@@ -68,7 +69,7 @@ export default function FormCheckoutShippingService({
   // hit api checkout and redirect to stripe url after success
   const { mutate: mutateCheckoutItem, isPending: loadingCheckout } =
     useMutation({
-      mutationFn: checkoutItem as (data: any) => Promise<any>,
+      mutationFn: checkoutService.checkoutItem as (data: any) => Promise<any>,
       onSuccess: (data) => {
         window.location.href = data.url;
       },

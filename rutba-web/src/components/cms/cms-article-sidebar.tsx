@@ -1,9 +1,10 @@
 import NextImage from "@/components/next-image";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import useCmsPagesService from "@/services/cms-pages";
+import { createWebCmsPagesService } from "@rutba/api-provider/client/web";
 import { IMAGE_URL } from "@/static/const";
 import { getPageUrl, PageType, PAGE_TYPE_LABELS } from "@/lib/cms-page-types";
+import { BASE_URL } from "@/static/const";
 
 interface CmsArticleSidebarProps {
   /** The page type currently being viewed (blog or news) */
@@ -21,11 +22,11 @@ function SidebarSection({
   type: PageType;
   currentDocumentId?: string;
 }) {
-  const { getCmsPagesByType } = useCmsPagesService();
+  const cmsPagesService = createWebCmsPagesService({ baseURL: BASE_URL });
 
   const { data: pages } = useQuery({
     queryKey: ["cms-sidebar", type],
-    queryFn: () => getCmsPagesByType(type),
+    queryFn: () => cmsPagesService.getCmsPagesByType(type),
     staleTime: 60_000,
   });
 

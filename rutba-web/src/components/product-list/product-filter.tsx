@@ -24,8 +24,9 @@ import { Slider } from "@/components/ui/slider";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { currencyFormat } from "@/lib/use-currency";
-import useCategoriesService from "@/services/categories";
+import { createWebCategoriesService } from "@rutba/api-provider/client/web";
 import { useQuery } from "@tanstack/react-query";
+import { BASE_URL } from "@/static/const";
 
 export interface Filter {
   category: string | null;
@@ -43,11 +44,11 @@ export default function ProductFilter({
 
   const [isModalOpen, setModalOpen] = useState(false);
 
-  const { getCategories } = useCategoriesService();
+  const categoriesService = createWebCategoriesService({ baseURL: BASE_URL });
   const { data: categories } = useQuery({
     queryKey: ["categories"],
     queryFn: async () => {
-      return await getCategories();
+      return await categoriesService.getCategories();
     },
   });
   const [filterForm, setFilterForm] = useState({

@@ -2,11 +2,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
-import { createLead } from "@/services/leads";
+import { createWebLeadsService } from "@rutba/api-provider/client/web";
 import useErrorHandler from "@/hooks/useErrorHandler";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { BASE_URL } from "@/static/const";
 
 const SOURCES = ["Website", "Referral", "Social Media", "Other"];
+const leadsService = createWebLeadsService({ baseURL: BASE_URL });
 
 export default function FormLeadCapture() {
   const { handleRejection } = useErrorHandler();
@@ -25,7 +27,7 @@ export default function FormLeadCapture() {
 
     setIsLoading(true);
     try {
-      await createLead({
+      await leadsService.createLead({
         name,
         email: email || undefined,
         phone: phone || undefined,

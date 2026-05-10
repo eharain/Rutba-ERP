@@ -2,11 +2,12 @@ import DetailTransactionCard from "@/components/transaction/detail-transaction-c
 import ProfileLayout from "@/components/layouts/profile-layout";
 import { useRouter } from "next/router";
 import { useSession } from "next-auth/react";
-import useTransactionService from "@/services/transaction";
+import { createWebOrdersService } from "@rutba/api-provider/client/web";
 import { useQuery } from "@tanstack/react-query";
 import { ErrorCard } from "@/components/errors/error-card";
+import { BASE_URL } from "@/static/const";
 export default function Transaction() {
-  const { getMyTransactionById } = useTransactionService();
+  const ordersService = createWebOrdersService({ baseURL: BASE_URL });
   const router = useRouter();
   const session = useSession();
 
@@ -19,7 +20,7 @@ export default function Transaction() {
   } = useQuery({
     queryKey: ["my-transaction", router.query.id],
     queryFn: async () => {
-      return await getMyTransactionById(router.query.id as string);
+      return await ordersService.getMyTransactionById(router.query.id as string, session.data?.jwt);
     },
     enabled: !!session.data && !!router.query.id,
   });

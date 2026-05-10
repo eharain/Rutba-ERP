@@ -6,12 +6,13 @@ import { useRouter } from "next/router";
 import { ChevronLeft, ChevronRight, Search } from "lucide-react";
 import ReactPaginate from "react-paginate";
 import { buttonVariants } from "../ui/button";
-import useProductsService from "@/services/products";
+import { createWebProductsService } from "@rutba/api-provider/client/web";
 import { getVariantTermSummary } from "@/types/api/product";
+import { BASE_URL } from "@/static/const";
 
 export default function ProductListItem() {
   const router = useRouter();
-  const { getProducts } = useProductsService();
+  const productsService = createWebProductsService({ baseURL: BASE_URL });
 
   const { brand, category, collection, minPrice, maxPrice, sort, page } =
     router.query;
@@ -33,7 +34,7 @@ export default function ProductListItem() {
       sort,
     ],
     queryFn: async () => {
-      return getProducts(
+      return productsService.getProducts(
         {
           brand: brand as string,
           category: category as string,

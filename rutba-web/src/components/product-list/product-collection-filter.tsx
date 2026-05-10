@@ -20,19 +20,20 @@ import { useQuery } from "@tanstack/react-query";
 import { ChevronsUpDown, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
-import useProductsService from "@/services/products";
+import { createWebProductsService } from "@rutba/api-provider/client/web";
+import { BASE_URL } from "@/static/const";
 
 export default function ProductCollectionFilter() {
   const router = useRouter();
   const { query } = router;
-  const { getCollections } = useProductsService();
+  const productsService = createWebProductsService({ baseURL: BASE_URL });
 
   const [collectionSelect, setCollectionSelect] = useState<string | null>(null);
 
   const { data: collections, isLoading } = useQuery({
     queryKey: ["collection-list"],
     queryFn: async () => {
-      return await getCollections();
+      return await productsService.getCollections();
     },
     staleTime: Infinity,
   });
