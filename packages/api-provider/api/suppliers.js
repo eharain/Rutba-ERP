@@ -4,6 +4,12 @@
  */
 export const SuppliersEndpoints = {
 
+    meta: {
+        uid: 'api::supplier.supplier',
+        domains: ['stock', 'purchase'],
+        roles: ['admin', 'manager', 'staff']
+    },
+
     /**
      * Paged supplier list.
      * @param {number} page
@@ -12,6 +18,10 @@ export const SuppliersEndpoints = {
      */
     listPaged: (page = 1, pageSize = 100, { sort, populate } = {}) => ({
         path: '/suppliers',
+        action: 'find',
+        method: 'get',
+        apps: ['stock', 'purchase'],
+        approle: ['admin', 'manager', 'staff'],
         params: {
             sort: sort ?? ['name:asc'],
             populate: populate ?? { logo: true, gallery: true },
@@ -25,6 +35,10 @@ export const SuppliersEndpoints = {
      */
     listAll: ({ sort, populate, pageSize = 100 } = {}) => ({
         path: '/suppliers',
+        action: 'find',
+        method: 'get',
+        apps: ['stock', 'purchase'],
+        approle: ['admin', 'manager', 'staff'],
         params: {
             sort: sort ?? ['name:asc'],
             populate: populate ?? { logo: true, gallery: true },
@@ -38,6 +52,10 @@ export const SuppliersEndpoints = {
      */
     list: ({ search, sort, populate, page = 1, pageSize = 100 } = {}) => ({
         path: '/suppliers',
+        action: 'find',
+        method: 'get',
+        apps: ['stock', 'purchase'],
+        approle: ['admin', 'manager', 'staff'],
         params: {
             sort: sort ?? ['name:asc'],
             populate: populate ?? { logo: true },
@@ -48,9 +66,23 @@ export const SuppliersEndpoints = {
 /** Async: fetch all suppliers across pages. */
 
     /** Create a new supplier. */
-    create: (data) => ({ path: '/suppliers', action: 'create', method: 'post', data , data }),
+    create: (data) => ({
+        path: '/suppliers',
+        action: 'create',
+        method: 'post',
+        apps: ['stock', 'purchase'],
+        approle: ['admin', 'manager', 'staff'],
+        data,
+    }),
 
     /** Update a supplier by documentId. */
-    update: (documentId, data) => ({ path: `/suppliers/${documentId}`, action: 'update', method: 'put', data , data }),
+    update: (documentId, data) => ({
+        path: `/suppliers/${documentId}`,
+        action: 'update',
+        method: 'put',
+        apps: ['stock', 'purchase'],
+        approle: ['admin', 'manager', 'staff'],
+        data,
+    }),
 /** Async: update a supplier by documentId. */
 };

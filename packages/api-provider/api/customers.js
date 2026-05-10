@@ -4,12 +4,22 @@
  */
 export const CustomersEndpoints = {
 
+    meta: {
+        uid: 'api::customer.customer',
+        domains: ['sale', 'crm', 'delivery', 'web-authenticated', 'web-user'],
+        roles: ['admin', 'manager', 'staff', 'user']
+    },
+
     /**
      * Look up a customer by exact email or phone (duplicate check).
      * @param {{ email?, phone? }} opts
      */
     findByContact: ({ email, phone } = {}) => ({
         path: '/customers',
+        action: 'find',
+        method: 'get',
+        apps: ['sale', 'crm', 'delivery', 'web-authenticated', 'web-user'],
+        approle: ['admin', 'manager', 'staff', 'user'],
         params: {
             filters: {
                 ...(email ? { email: { $eq: email } } : {}),
@@ -20,7 +30,14 @@ export const CustomersEndpoints = {
     }),
 
     /** Create a new customer — body provided by caller as { data }. */
-    create: (data) => ({ path: '/customers' , data }),
+    create: (data) => ({
+        path: '/customers',
+        action: 'create',
+        method: 'post',
+        apps: ['sale', 'crm', 'delivery', 'web-authenticated', 'web-user'],
+        approle: ['admin', 'manager', 'staff', 'user'],
+        data,
+    }),
 
     /**
      * Search customers by name or phone (case-insensitive contains).
@@ -29,6 +46,10 @@ export const CustomersEndpoints = {
      */
     search: (q, pageSize = 10) => ({
         path: '/customers',
+        action: 'find',
+        method: 'get',
+        apps: ['sale', 'crm', 'delivery', 'web-authenticated', 'web-user'],
+        approle: ['admin', 'manager', 'staff', 'user'],
         params: {
             filters: {
                 $or: [
@@ -44,7 +65,14 @@ export const CustomersEndpoints = {
      * Update a customer by documentId — body provided by caller as { data }.
      * @param {string} documentId
      */
-    update: (documentId, data) => ({ path: `/customers/${documentId}` , data }),
+    update: (documentId, data) => ({
+        path: `/customers/${documentId}`,
+        action: 'update',
+        method: 'put',
+        apps: ['sale', 'crm', 'delivery', 'web-authenticated', 'web-user'],
+        approle: ['admin', 'manager', 'staff', 'user'],
+        data,
+    }),
 
 };
 

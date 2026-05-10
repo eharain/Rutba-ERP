@@ -3,12 +3,22 @@
  * Pure endpoint descriptors for the /term-types resource.
  */
 export const TermTypesEndpoints = {
+    meta: {
+        uid: 'api::term-type.term-type',
+        domains: ['stock', 'sale'],
+        roles: ['admin', 'manager', 'staff']
+    },
+
     /**
      * List variant term-types (is_variant = true) with their terms.
      * @param {{ page?, pageSize? }} opts
      */
     listVariants: ({ page = 1, pageSize = 500 } = {}) => ({
         path: '/term-types',
+        action: 'find',
+        method: 'get',
+        apps: ['stock', 'sale'],
+        approle: ['admin', 'manager', 'staff'],
         params: {
             filters: { is_variant: true },
             populate: { terms: true },
@@ -23,6 +33,10 @@ export const TermTypesEndpoints = {
      */
     listWithTerms: ({ sort, populate } = {}) => ({
         path: '/term-types',
+        action: 'find',
+        method: 'get',
+        apps: ['stock', 'sale'],
+        approle: ['admin', 'manager', 'staff'],
         params: {
             sort: sort ?? ['name:asc'],
             populate: populate ?? { terms: true },
@@ -35,16 +49,40 @@ export const TermTypesEndpoints = {
      */
     list: ({ sort } = {}) => ({
         path: '/term-types',
+        action: 'find',
+        method: 'get',
+        apps: ['stock', 'sale'],
+        approle: ['admin', 'manager', 'staff'],
         params: { sort: sort ?? ['name:asc'] },
     }),
 
     /** Create a term-type. */
-    create: (data) => ({ path: '/term-types', action: 'create', method: 'post', data , data }),
+    create: (data) => ({
+        path: '/term-types',
+        action: 'create',
+        method: 'post',
+        apps: ['stock', 'sale'],
+        approle: ['admin', 'manager', 'staff'],
+        data,
+    }),
 
     /** Update a term-type by id/documentId. */
-    update: (id, data) => ({ path: `/term-types/${id}`, action: 'update', method: 'put', data , data }),
+    update: (id, data) => ({
+        path: `/term-types/${id}`,
+        action: 'update',
+        method: 'put',
+        apps: ['stock', 'sale'],
+        approle: ['admin', 'manager', 'staff'],
+        data,
+    }),
 
-    del: (id) => ({ path: `/term-types/${id}`, action: 'delete', method: 'delete' }),
+    del: (id) => ({
+        path: `/term-types/${id}`,
+        action: 'delete',
+        method: 'delete',
+        apps: ['stock', 'sale'],
+        approle: ['admin', 'manager'],
+    }),
 
 };
 

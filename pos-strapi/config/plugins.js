@@ -1,53 +1,56 @@
 const fs = require('fs');
 const path = require('path');
 
-function readJsonSafe(filePath, fallback = {}) {
-    try {
-        return JSON.parse(fs.readFileSync(filePath, 'utf8'));
-    } catch {
-        return fallback;
-    }
-}
-
-function loadApiProviderConfiguration() {
+function loadApiProviderDomains() {
     const domains = require('@rutba/api-provider/config/domains');
-    const publicResources = require('@rutba/api-provider/config/public-resources');
 
-    const domainsPath = require.resolve('@rutba/api-provider/config/domains');
-    const configRoot = path.dirname(domainsPath);
-    const resourcesDir = path.join(configRoot, 'resources');
-
-    const resources = {};
-    if (fs.existsSync(resourcesDir)) {
-        const files = fs.readdirSync(resourcesDir).filter((name) => name.toLowerCase().endsWith('.json'));
-        for (const fileName of files) {
-            const item = readJsonSafe(path.join(resourcesDir, fileName), null);
-            if (!item || typeof item.uid !== 'string') continue;
-            resources[item.uid] = item.policies || {};
-        }
-    }
-
-    return {
-        domains,
-        publicResources,
-        resources,
-    };
+    return { domains };
 }
 
-// ── Derive bypass paths and domains from api-provider config ─────────────────
-// publicResources keys are "METHOD /path" — extract unique paths only.
-// These routes bypass the api-guard-pro interceptor (no auth required).
-const _apiConfig = loadApiProviderConfiguration();
+function normalizeBypassPath(rawPath) {
+    const withApiPrefix = rawPath.startsWith('/') ? rawPath : `/api/${rawPath}`;
+    const withoutQuery = withApiPrefix.split('?')[0];
+    return withoutQuery.replace(/\/\$\{[^}]+\}/g, ':param').replace(/\/+$/, '') || withoutQuery;
+}
 
-const PUBLIC_BYPASS_PATHS = [...new Set(
-    Object.keys(_apiConfig.publicResources || {}).map((key) => {
-        // key format: "GET /api/orders/checkout" — take the path portion
-        const parts = key.trim().split(/\s+/);
-        const rawPath = parts.length >= 2 ? parts[1] : parts[0];
-        // strip trailing param segments so prefix matching covers all variants
-        return rawPath.replace(/:[\w]+$/, '').replace(/\/$/, '') || rawPath;
-    })
-)];
+function buildPublicBypassPathsFromApiProviderWeb() {
+    const paths = new Set();
+
+    try {
+        const packageJsonPath = require.resolve('@rutba/api-provider/package.json');
+        const packageRoot = path.dirname(packageJsonPath);
+        const webApiDir = path.join(packageRoot, 'api', 'web');
+
+        if (!fs.existsSync(webApiDir)) return [];
+
+        const files = fs
+            .readdirSync(webApiDir)
+            .filter((name) => name.toLowerCase().endsWith('.js') && name !== 'index.js')
+            .sort((a, b) => a.localeCompare(b));
+
+        const pathRegex = /path\s*:\s*(?:`([^`]+)`|'([^']+)'|"([^"]+)")/g;
+
+        for (const fileName of files) {
+            const content = fs.readFileSync(path.join(webApiDir, fileName), 'utf8');
+
+            let match;
+            while ((match = pathRegex.exec(content))) {
+                const candidate = (match[1] || match[2] || match[3] || '').trim();
+                if (!candidate) continue;
+                paths.add(normalizeBypassPath(candidate));
+            }
+        }
+    } catch {
+        return [];
+    }
+
+    return [...paths];
+}
+
+// ── Derive bypass paths and domains from api-provider source ─────────────────
+const _apiConfig = loadApiProviderDomains();
+
+const PUBLIC_BYPASS_PATHS = buildPublicBypassPathsFromApiProviderWeb();
 
 const FIXED_BYPASS_PATHS = [
     '/api/auth',

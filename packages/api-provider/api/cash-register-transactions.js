@@ -13,6 +13,14 @@ export const CashRegisterTransactionEndpoints = {
         approle: ['admin', 'user'],
         data,
     }),
+    postCreate: (data) => ({
+        path: '/cash-register-transactions',
+        action: 'create',
+        method: 'post',
+        apps: ['sale'],
+        approle: ['admin', 'user'],
+        data,
+    }),
 
     /**
      * List transactions for a specific cash register.
@@ -29,6 +37,21 @@ export const CashRegisterTransactionEndpoints = {
             filters: { cash_register: { documentId: { $eq: registerDocumentId } } },
             sort: sort ?? ['transaction_date:asc'],
             pagination: { page, pageSize },
+        },
+    }),
+    fetchByRegister: (registerDocumentId, { page = 1, pageSize = 500, sort, useDocumentId = true, populate } = {}) => ({
+        path: '/cash-register-transactions',
+        action: 'find',
+        method: 'get',
+        apps: ['sale'],
+        approle: ['admin', 'user'],
+        params: {
+            filters: useDocumentId
+                ? { cash_register: { documentId: { $eq: registerDocumentId } } }
+                : { cash_register: { id: { $eq: registerDocumentId } } },
+            sort: sort ?? ['transaction_date:asc'],
+            pagination: { page, pageSize },
+            ...(populate ? { populate } : {}),
         },
     }),
 
