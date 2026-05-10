@@ -17,8 +17,8 @@ function buildPublicBypassPathsFromApiProviderWeb() {
     const paths = new Set();
 
     try {
-        const packageJsonPath = require.resolve('@rutba/api-provider/package.json');
-        const packageRoot = path.dirname(packageJsonPath);
+        const domainsPath = require.resolve('@rutba/api-provider/config/domains');
+        const packageRoot = path.dirname(path.dirname(domainsPath));
         const webApiDir = path.join(packageRoot, 'api', 'web');
 
         if (!fs.existsSync(webApiDir)) return [];

@@ -17,7 +17,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { pathToFileURL } = require('url');
+const { createRequire } = require('module');
 
 const domainsConfig = require('@rutba/api-provider/config/domains');
 const rolesConfig = require('@rutba/api-provider/config/roles');
@@ -152,8 +152,8 @@ function upsertGeneratedPolicy(resources, uid, action, grants) {
 }
 
 async function buildResourcesFromApiProviderSource(strapi) {
-  const packageJsonPath = require.resolve('@rutba/api-provider/package.json');
-  const packageRoot = path.dirname(packageJsonPath);
+  const domainsPath = require.resolve('@rutba/api-provider/config/domains');
+  const packageRoot = path.dirname(path.dirname(domainsPath));
   const apiDir = path.join(packageRoot, 'api');
 
   /** @type {Record<string, any>} */
@@ -175,7 +175,7 @@ async function buildResourcesFromApiProviderSource(strapi) {
 
     let mod;
     try {
-      mod = await import(pathToFileURL(fullPath).href);
+      mod = cjsRequire(fullPath);
     } catch (err) {
       strapi.log.warn(`[api-provider-seed] failed to import source file ${fileName}: ${err.message}`);
       continue;
