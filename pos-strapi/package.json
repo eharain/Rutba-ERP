@@ -22,7 +22,7 @@
   },
   "dependencies": {
     "@easypost/api": "^8.8.0",
-    "@rutba/api-provider": "@rutba/api-provider",
+    "@rutba/api-provider": "file://../packages/api-provider",
     "@strapi/plugin-cloud": "5.43.0",
     "@strapi/plugin-users-permissions": "5.43.0",
     "@strapi/provider-email-nodemailer": "^5.43.0",
