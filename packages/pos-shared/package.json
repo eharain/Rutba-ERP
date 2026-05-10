@@ -2,6 +2,11 @@
   "name": "@rutba/pos-shared",
   "version": "1.0.0",
   "private": true,
+  "scripts": {
+    "validate:exports": "node ./scripts/validate-exports.mjs",
+    "validate": "npm run validate:exports",
+    "build": "npm run validate"
+  },
   "dependencies": {
     "@rutba/api-provider": "1.0.0"
   },
@@ -9,7 +14,7 @@
     "./lib/*": "./lib/*",
     "./context/*": "./context/*",
     "./components/*": "./components/*",
-    "./domain/*": "./domain/*",
+    "./domain/*": "./context/domain/*",
     "./styles/*": "./styles/*"
   }
 }

@@ -181,5 +181,5 @@ export const UploadClient = createClientProxy(UploadEndpoints, authApi);
 import { WebOrdersEndpoints } from '@/api/web-orders.js';
 export const WebOrdersClient = createClientProxy(WebOrdersEndpoints, authApi);
 
-import { WebAuthEndpointRules } from '@/api/web.js';
-export const WebAuthEndpointRules = createClientProxy(WebAuthEndpointRules, authApi);
+import { WebAuthEndpointRules as WebAuthEndpointRulesApi } from '@/api/web.js';
+export const WebAuthEndpointRules = createClientProxy(WebAuthEndpointRulesApi, authApi);
