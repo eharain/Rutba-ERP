@@ -1,3 +1,5 @@
+import { storage } from '../lib/storage.js';
+
 /**
  * createClientProxy
  * 
@@ -47,6 +49,85 @@
  */
 export function createClientProxy(api, authApi) {
 
+    const getStoredRole = () => {
+        try {
+            const storedRole = storage.getItem('role');
+            if (storedRole) return storedRole;
+        } catch (_) {}
+
+        try {
+            const user = storage.getJSON('user');
+            if (user?.role?.name) return user.role.name;
+            if (user?.role?.type) return user.role.type;
+            if (user?.role) return String(user.role);
+        } catch (_) {}
+
+        try {
+            if (typeof localStorage !== 'undefined') {
+                return localStorage.getItem('role') || null;
+            }
+        } catch (_) {}
+        try {
+            if (typeof sessionStorage !== 'undefined') {
+                return sessionStorage.getItem('role') || null;
+            }
+        } catch (_) {}
+        return null;
+    };
+
+    const getDomainHint = (ep) => {
+        const apps = Array.isArray(ep?.apps) ? ep.apps.filter(Boolean) : [];
+        if (apps.length) return apps.join(',');
+        const path = String(ep?.path || '').split('?')[0];
+        const first = path.split('/').filter(Boolean)[0];
+        return first || null;
+    };
+
+    function toHttpMethod(key, explicitMethod) {
+        if (explicitMethod) return explicitMethod.toUpperCase();
+        if (key.startsWith('post')) return 'POST';
+        if (key.startsWith('put')) return 'PUT';
+        if (key.startsWith('patch')) return 'PATCH';
+        if (key.startsWith('del') || key.startsWith('delete')) return 'DELETE';
+        return 'GET';
+    }
+
+    function buildProxyError(error, key, ep, stackStartFn) {
+        const method = toHttpMethod(key, ep?.method);
+        const path = ep?.path || '<no-path>';
+        const action = ep?.action ? ` action=${ep.action}` : '';
+        const statusCode = error?.response?.status;
+        const status = statusCode ? ` status=${statusCode}` : '';
+        const serverMessage = error?.response?.data?.error?.message || error?.response?.data?.message || '';
+        const baseMessage = error?.message || String(error);
+        const detail = serverMessage && serverMessage !== baseMessage ? ` server="${serverMessage}"` : '';
+        const permissionTag = statusCode === 403 ? ' PERMISSION_DENIED' : '';
+        const role = getStoredRole();
+        const domain = getDomainHint(ep);
+        const fixHint = (role || domain) ? ` fix(role=${role || 'unknown'}, domain=${domain || 'unknown'})` : '';
+
+        const wrapped = new Error(
+            `[api-provider proxy]${permissionTag} method=${key} -> ${method} ${path}${action}${status}${fixHint}${detail} | ${baseMessage}`,
+            { cause: error }
+        );
+        if (typeof Error.captureStackTrace === 'function') {
+            Error.captureStackTrace(wrapped, stackStartFn || buildProxyError);
+        }
+
+        wrapped.name = 'ApiProviderProxyError';
+        wrapped.proxyMethod = key;
+        wrapped.proxyPath = path;
+        wrapped.proxyHttpMethod = method;
+        wrapped.proxyAction = ep?.action || null;
+        wrapped.status = statusCode;
+        wrapped.permissionDenied = statusCode === 403;
+        wrapped.permissionMethod = key;
+        wrapped.permissionRole = role;
+        wrapped.permissionDomain = domain;
+        wrapped.responseData = error?.response?.data;
+        return wrapped;
+    }
+
     const proxy = {};
 
     Object.entries(api).forEach(([key, fn]) => {
@@ -57,15 +138,23 @@ export function createClientProxy(api, authApi) {
             return;
         }
 
-        proxy[key] = async (...args) => {
+        proxy[key] = async function proxiedMethod(...args) {
 
-            // Call the descriptor function
-            const ep = fn(...args);
+            let ep;
+            try {
+                ep = fn(...args);
+            } catch (error) {
+                throw buildProxyError(error, key, { path: '<descriptor-build>' }, proxiedMethod);
+            }
 
             // If no endpoint descriptor returned (no path), call original function
             // This allows mixed usage during migration period
             if (!ep?.path) {
-                return fn(...args);
+                try {
+                    return fn(...args);
+                } catch (error) {
+                    throw buildProxyError(error, key, { path: '<direct-call>' }, proxiedMethod);
+                }
             }
 
             // Helper: merge params into path as query string if both params and data exist
@@ -89,37 +178,41 @@ export function createClientProxy(api, authApi) {
             };
 
             // Infer HTTP method from function name prefix
-            if (explicitMethod === 'POST' || key.startsWith('post')) {
+            try {
+                if (explicitMethod === 'POST' || key.startsWith('post')) {
                 // POST: send data in body; if params exist, merge into path as query string
-                const path = ep.params ? await pathWithParams(ep.path, ep.params) : ep.path;
-                return authApi.post(path, wrapData(ep.data));
-            }
+                    const path = ep.params ? await pathWithParams(ep.path, ep.params) : ep.path;
+                    return await authApi.post(path, wrapData(ep.data));
+                }
 
-            if (explicitMethod === 'PUT' || key.startsWith('put')) {
+                if (explicitMethod === 'PUT' || key.startsWith('put')) {
                 // PUT: send data in body; if params exist, merge into path as query string
-                const path = ep.params ? await pathWithParams(ep.path, ep.params) : ep.path;
-                return authApi.put(path, wrapData(ep.data));
-            }
+                    const path = ep.params ? await pathWithParams(ep.path, ep.params) : ep.path;
+                    return await authApi.put(path, wrapData(ep.data));
+                }
 
-            if (explicitMethod === 'PATCH' || key.startsWith('patch')) {
+                if (explicitMethod === 'PATCH' || key.startsWith('patch')) {
                 // PATCH: send data in body; if params exist, merge into path as query string
-                const path = ep.params ? await pathWithParams(ep.path, ep.params) : ep.path;
-                return authApi.patch(path, wrapData(ep.data));
-            }
+                    const path = ep.params ? await pathWithParams(ep.path, ep.params) : ep.path;
+                    return await authApi.patch(path, wrapData(ep.data));
+                }
 
-            if (explicitMethod === 'DELETE' || key.startsWith('del') || key.startsWith('delete')) {
+                if (explicitMethod === 'DELETE' || key.startsWith('del') || key.startsWith('delete')) {
                 // DELETE: typically no body, but may have params in query string
-                const path = ep.params ? await pathWithParams(ep.path, ep.params) : ep.path;
-                return authApi.del(path);
-            }
+                    const path = ep.params ? await pathWithParams(ep.path, ep.params) : ep.path;
+                    return await authApi.del(path);
+                }
 
-            // Special provider hint for pagination across all pages
-            if (ep.provider?.getAll) {
-                return authApi.getAll(ep.path, ep.params);
-            }
+                // Special provider hint for pagination across all pages
+                if (ep.provider?.getAll) {
+                    return await authApi.getAll(ep.path, ep.params);
+                }
 
-            // Default: GET request (for fetch*, list*, by*, search*, get*, or no prefix)
-            return authApi.fetch(ep.path, ep.params);
+                // Default: GET request (for fetch*, list*, by*, search*, get*, or no prefix)
+                return await authApi.fetch(ep.path, ep.params);
+            } catch (error) {
+                throw buildProxyError(error, key, ep, proxiedMethod);
+            }
         };
     });
 

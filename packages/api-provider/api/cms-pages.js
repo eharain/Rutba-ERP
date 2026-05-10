@@ -7,6 +7,12 @@ import __publish_generic_helper from "./__publish_generic_helper.js";
 
 export const CmsPagesEndpoints = {
 
+    meta: {
+        uid: 'api::cms-page.cms-page',
+        domains: ['cms', 'auth', 'stock', 'sale', 'web-public', 'web-authenticated', 'web-user'],
+        roles: ['admin', 'manager', 'staff', 'public', 'user']
+    },
+
     /**
      * List published CMS pages (storefront / public-facing reads).
      * Sort, fields, and populate mirror the existing web service calls.
@@ -14,6 +20,10 @@ export const CmsPagesEndpoints = {
      */
     list: ({ pageType, sort, pageSize = 50 } = {}) => ({
         path: '/cms-pages',
+        action: 'find',
+        method: 'get',
+        apps: ['cms', 'auth', 'stock', 'sale', 'web-public', 'web-authenticated', 'web-user'],
+        approle: ['admin', 'manager', 'staff', 'public', 'user'],
         params: {
             sort: sort ?? ['sort_order:asc', 'createdAt:desc'],
             fields: ['title', 'slug', 'excerpt', 'page_type', 'sort_order', 'enable_contact_form', 'createdAt', 'updatedAt', 'publishedAt'],
@@ -35,6 +45,10 @@ export const CmsPagesEndpoints = {
 
         return {
             path: '/cms-pages',
+            action: 'find',
+            method: 'get',
+            apps: ['cms', 'auth', 'stock'],
+            approle: ['admin', 'manager', 'staff'],
             params: {
                 status: 'draft',
                 sort: sort ?? ['sort_order:asc', 'createdAt:desc'],
@@ -51,6 +65,10 @@ export const CmsPagesEndpoints = {
      */
     listPublished: ({ pageSize = 200 } = {}) => ({
         path: '/cms-pages',
+        action: 'find',
+        method: 'get',
+        apps: ['cms', 'auth', 'stock', 'sale', 'web-public', 'web-authenticated', 'web-user'],
+        approle: ['admin', 'manager', 'staff', 'public', 'user'],
         params: {
             status: 'published',
             fields: ['documentId'],
@@ -65,6 +83,10 @@ export const CmsPagesEndpoints = {
 
     bySlug: slug => ({
         path: '/cms-pages',
+        action: 'find',
+        method: 'get',
+        apps: ['cms', 'auth', 'stock', 'sale', 'web-public', 'web-authenticated', 'web-user'],
+        approle: ['admin', 'manager', 'staff', 'public', 'user'],
         params: {
             filters: { slug: { $eq: slug } },
             fields: ['title', 'slug', 'excerpt', 'content', 'page_type', 'sort_order', 'enable_contact_form', 'createdAt', 'updatedAt', 'publishedAt', 'excerpt_priority', 'featured_image_priority', 'content_priority', 'gallery_priority', 'related_pages_priority'],
@@ -86,6 +108,10 @@ export const CmsPagesEndpoints = {
      */
     bySlugCheck: (slug) => ({
         path: '/cms-pages',
+        action: 'find',
+        method: 'get',
+        apps: ['cms', 'auth', 'stock', 'sale', 'web-public', 'web-authenticated', 'web-user'],
+        approle: ['admin', 'manager', 'staff', 'public', 'user'],
         params: {
             filters: { slug: { $eq: slug } },
             fields: ['id', 'documentId', 'slug'],
@@ -98,6 +124,10 @@ export const CmsPagesEndpoints = {
      */
     headerData: () => ({
         path: '/cms-pages',
+        action: 'find',
+        method: 'get',
+        apps: ['cms', 'auth', 'stock', 'sale', 'web-public', 'web-authenticated', 'web-user'],
+        approle: ['admin', 'manager', 'staff', 'public', 'user'],
         params: {
             filters: { slug: { $eq: 'index' } },
             fields: ['title', 'slug', 'excerpt', 'content', 'page_type', 'sort_order', 'enable_contact_form', 'createdAt', 'updatedAt', 'publishedAt'],
@@ -111,11 +141,19 @@ export const CmsPagesEndpoints = {
 
     byIdDraft: (documentId, params = {}) => ({
         path: `/cms-pages/${documentId}`,
+        action: 'findOne',
+        method: 'get',
+        apps: ['cms', 'auth', 'stock'],
+        approle: ['admin', 'manager', 'staff'],
         params: { status: 'draft', ...params },
     }),
 
     byIdPublished: (documentId, params = {}) => ({
         path: `/cms-pages/${documentId}`,
+        action: 'findOne',
+        method: 'get',
+        apps: ['cms', 'auth', 'stock', 'sale', 'web-public', 'web-authenticated', 'web-user'],
+        approle: ['admin', 'manager', 'staff', 'public', 'user'],
         params: { status: 'published', ...params },
     }),
     ...__publish_generic_helper('cms-pages'),

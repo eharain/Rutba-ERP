@@ -8,6 +8,12 @@
  */
 export const BranchesEndpoints = {
 
+    meta: {
+        uid: 'api::branch.branch',
+        domains: ['accounts', 'accounts-ap', 'accounts-ar', 'accounts-viewer', 'hr', 'sale', 'social', 'stock'],
+        roles: ['admin', 'manager', 'staff']
+    },
+
     /**
      * Search branches by name or code with optional filters.
      * @param {string} searchTerm
@@ -19,6 +25,10 @@ export const BranchesEndpoints = {
 
         return {
             path: '/branches',
+            action: 'find',
+            method: 'get',
+            apps: ['accounts', 'accounts-ap', 'accounts-ar', 'accounts-viewer', 'hr', 'sale', 'social', 'stock'],
+            approle: ['admin', 'manager', 'staff'],
             params: {
                 populate: ['logo', 'gallery', 'currency', { categories: { populate: ['logo', 'gallery'] } }],
                 pagination: { page, pageSize: rowsPerPage },
@@ -40,6 +50,10 @@ export const BranchesEndpoints = {
      */
     listWithDesks: ({ sort, populate } = {}) => ({
         path: '/branches',
+        action: 'find',
+        method: 'get',
+        apps: ['accounts', 'accounts-ap', 'accounts-ar', 'accounts-viewer', 'hr', 'sale', 'social', 'stock'],
+        approle: ['admin', 'manager', 'staff'],
         params: {
             sort: sort ?? ['name:asc'],
             populate: populate ?? { desks: true, currency: true },
@@ -53,6 +67,10 @@ export const BranchesEndpoints = {
      */
     list: ({ sort, populate } = {}) => ({
         path: '/branches',
+        action: 'find',
+        method: 'get',
+        apps: ['accounts', 'accounts-ap', 'accounts-ar', 'accounts-viewer', 'hr', 'sale', 'social', 'stock'],
+        approle: ['admin', 'manager', 'staff'],
         params: {
             sort: sort ?? ['name:asc'],
             populate: populate ?? true,
@@ -66,6 +84,10 @@ export const BranchesEndpoints = {
      */
     byId: (documentId, { populate } = {}) => ({
         path: `/branches/${documentId}`,
+        action: 'findOne',
+        method: 'get',
+        apps: ['accounts', 'accounts-ap', 'accounts-ar', 'accounts-viewer', 'hr', 'sale', 'social', 'stock'],
+        approle: ['admin', 'manager', 'staff'],
         params: { populate: populate ?? { desks: true, currency: true } },
     }),
 
@@ -73,7 +95,14 @@ export const BranchesEndpoints = {
      * Update a branch by documentId — body provided by caller as { data }.
      * @param {string} documentId
      */
-    update: (documentId, data) => ({ path: `/branches/${documentId}` , data }),
+    update: (documentId, data) => ({
+        path: `/branches/${documentId}`,
+        action: 'update',
+        method: 'put',
+        apps: ['accounts', 'accounts-ap', 'accounts-ar', 'accounts-viewer', 'hr', 'sale', 'social', 'stock'],
+        approle: ['admin'],
+        data,
+    }),
 
     /**
      * Get archive statistics for a branch.
