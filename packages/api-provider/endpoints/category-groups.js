@@ -1,6 +1,9 @@
-import { authApi } from '@/lib/api.js';
-import { createClientProxy } from '@/providers/createClientProxy.js';
-import { CategoryGroupsEndpoints } from '@/api/category-groups.js';
+import { authApi } from '../lib/api.js';
+import { createClientProxy } from '../providers/createClientProxy.js';
+import { CategoryGroupsEndpoints as CategoryGroupsEndpointsApi } from '../api/category-groups.js';
 
-export default createClientProxy(CategoryGroupsEndpoints, authApi);
-export const CategoryGroupsEndpointsProxy = createClientProxy(CategoryGroupsEndpoints, authApi);
+const endpoints = createClientProxy(CategoryGroupsEndpointsApi, authApi);
+
+export default endpoints;
+export const CategoryGroupsEndpoints = endpoints;
+

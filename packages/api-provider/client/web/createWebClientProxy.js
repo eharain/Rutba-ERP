@@ -72,3 +72,4 @@ export function createWebClientProxy(api, {
   proxy.$axios = client;
   return proxy;
 }
+

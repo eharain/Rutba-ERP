@@ -1,4 +1,4 @@
-import { WebLeadsEndpoints } from '@/api/web/leads.js';
+import { WebLeadsEndpoints } from '../../api/web/leads.js';
 import { createWebClientProxy } from './createWebClientProxy.js';
 
 export function createWebLeadsService(config = {}) {
@@ -16,3 +16,4 @@ export function createWebLeadsService(config = {}) {
 
   return { endpoints: proxy, createLead };
 }
+

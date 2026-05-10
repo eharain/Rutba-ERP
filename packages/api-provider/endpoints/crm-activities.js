@@ -1,6 +1,9 @@
-import { authApi } from '@/lib/api.js';
-import { createClientProxy } from '@/providers/createClientProxy.js';
-import { CrmActivitiesEndpoints } from '@/api/crm-activities.js';
+import { authApi } from '../lib/api.js';
+import { createClientProxy } from '../providers/createClientProxy.js';
+import { CrmActivitiesEndpoints as CrmActivitiesEndpointsApi } from '../api/crm-activities.js';
 
-export default createClientProxy(CrmActivitiesEndpoints, authApi);
-export const CrmActivitiesEndpointsProxy = createClientProxy(CrmActivitiesEndpoints, authApi);
+const endpoints = createClientProxy(CrmActivitiesEndpointsApi, authApi);
+
+export default endpoints;
+export const CrmActivitiesEndpoints = endpoints;
+

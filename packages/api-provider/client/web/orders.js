@@ -1,4 +1,4 @@
-import { WebOrdersEndpoints } from '@/api/web/orders.js';
+import { WebOrdersEndpoints } from '../../api/web/orders.js';
 import { createWebClientProxy } from './createWebClientProxy.js';
 
 export function createWebOrdersService(config = {}) {
@@ -27,3 +27,4 @@ export function createWebOrdersService(config = {}) {
     getMyTransactionById,
   };
 }
+

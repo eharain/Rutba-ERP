@@ -1,6 +1,9 @@
-import { authApi } from '@/lib/api.js';
-import { createClientProxy } from '@/providers/createClientProxy.js';
-import { BrandGroupsEndpoints } from '@/api/brand-groups.js';
+import { authApi } from '../lib/api.js';
+import { createClientProxy } from '../providers/createClientProxy.js';
+import { BrandGroupsEndpoints as BrandGroupsEndpointsApi } from '../api/brand-groups.js';
 
-export default createClientProxy(BrandGroupsEndpoints, authApi);
-export const BrandGroupsEndpointsProxy = createClientProxy(BrandGroupsEndpoints, authApi);
+const endpoints = createClientProxy(BrandGroupsEndpointsApi, authApi);
+
+export default endpoints;
+export const BrandGroupsEndpoints = endpoints;
+

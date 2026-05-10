@@ -1,6 +1,9 @@
-import { authApi } from '@/lib/api.js';
-import { createClientProxy } from '@/providers/createClientProxy.js';
-import { MediaUtilsEndpoints } from '@/api/media-utils.js';
+import { authApi } from '../lib/api.js';
+import { createClientProxy } from '../providers/createClientProxy.js';
+import { MediaUtilsEndpoints as MediaUtilsEndpointsApi } from '../api/media-utils.js';
 
-export default createClientProxy(MediaUtilsEndpoints, authApi);
-export const MediaUtilsEndpointsProxy = createClientProxy(MediaUtilsEndpoints, authApi);
+const endpoints = createClientProxy(MediaUtilsEndpointsApi, authApi);
+
+export default endpoints;
+export const MediaUtilsEndpoints = endpoints;
+

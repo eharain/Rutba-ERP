@@ -48,6 +48,7 @@ export const AccAccountsEndpoints = {
         path: '/acc-accounts',
         action: 'create',
         method: 'post',
+        data,
     }),
 
     /**
@@ -58,6 +59,7 @@ export const AccAccountsEndpoints = {
         path: `/acc-accounts/${documentId}`,
         action: 'update',
         method: 'put',
+        data,
     }),
 
     /**

@@ -1,4 +1,4 @@
-import { WebProductGroupsEndpoints } from '@/api/web/product-groups.js';
+import { WebProductGroupsEndpoints } from '../../api/web/product-groups.js';
 import { createWebClientProxy } from './createWebClientProxy.js';
 
 export function createWebProductGroupsService(config = {}) {
@@ -10,3 +10,4 @@ export function createWebProductGroupsService(config = {}) {
 
   return { endpoints: proxy, getProductGroupBySlug };
 }
+

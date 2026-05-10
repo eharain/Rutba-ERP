@@ -1,4 +1,4 @@
-import { WebReviewsEndpoints } from '@/api/web/reviews.js';
+import { WebReviewsEndpoints } from '../../api/web/reviews.js';
 import { createWebClientProxy } from './createWebClientProxy.js';
 
 export function createWebReviewsService(config = {}) {
@@ -15,3 +15,4 @@ export function createWebReviewsService(config = {}) {
 
   return { endpoints: proxy, getProductReviews, getProductReviewCount };
 }
+

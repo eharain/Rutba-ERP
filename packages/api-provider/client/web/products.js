@@ -1,6 +1,6 @@
 import _ from 'lodash';
-import { WebProductsEndpoints } from '@/api/web/products.js';
-import { WebCollectionsEndpoints } from '@/api/web/collections.js';
+import { WebProductsEndpoints } from '../../api/web/products.js';
+import { WebCollectionsEndpoints } from '../../api/web/collections.js';
 import { createWebClientProxy } from './createWebClientProxy.js';
 
 export function createWebProductsService(config = {}) {
@@ -60,3 +60,4 @@ export function createWebProductsService(config = {}) {
     getHighestProductPrice,
   };
 }
+

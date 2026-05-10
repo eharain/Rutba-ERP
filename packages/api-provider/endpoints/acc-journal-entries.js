@@ -1,6 +1,9 @@
-import { authApi } from '@/lib/api.js';
-import { createClientProxy } from '@/providers/createClientProxy.js';
-import { AccJournalEntriesEndpoints } from '@/api/acc-journal-entries.js';
+import { authApi } from '../lib/api.js';
+import { createClientProxy } from '../providers/createClientProxy.js';
+import { AccJournalEntriesEndpoints as AccJournalEntriesEndpointsApi } from '../api/acc-journal-entries.js';
 
-export default createClientProxy(AccJournalEntriesEndpoints, authApi);
-export const AccJournalEntriesEndpointsProxy = createClientProxy(AccJournalEntriesEndpoints, authApi);
+const endpoints = createClientProxy(AccJournalEntriesEndpointsApi, authApi);
+
+export default endpoints;
+export const AccJournalEntriesEndpoints = endpoints;
+

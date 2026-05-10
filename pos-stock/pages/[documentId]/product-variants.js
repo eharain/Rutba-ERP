@@ -4,7 +4,7 @@ import Link from 'next/link';
 import Layout from '../../components/Layout';
 import ProtectedRoute from '@rutba/pos-shared/components/ProtectedRoute';
 import { StockHelpersEndpoints, TermTypesEndpoints, StockItemsEndpoints, ProductsEndpoints } from '@rutba/api-provider/endpoints/index.js';
-import { saveProduct } from '@rutba/api-provider/pos/save';
+import { fetchProducts, saveProduct } from '@rutba/api-provider/endpoints/products.js';
 import ProductGalleryManager from '@rutba/pos-shared/components/ProductGalleryManager';
 import ProductVariantManager from '@rutba/pos-shared/components/ProductVariantManager';
 import TermTypeTermDialog from '@rutba/pos-shared/components/TermTypeTermDialog';

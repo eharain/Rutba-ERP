@@ -1,6 +1,9 @@
-import { authApi } from '@/lib/api.js';
-import { createClientProxy } from '@/providers/createClientProxy.js';
-import { SaleReturnItemsEndpoints } from '@/api/sale-return-items.js';
+import { authApi } from '../lib/api.js';
+import { createClientProxy } from '../providers/createClientProxy.js';
+import { SaleReturnItemsEndpoints as SaleReturnItemsEndpointsApi } from '../api/sale-return-items.js';
 
-export default createClientProxy(SaleReturnItemsEndpoints, authApi);
-export const SaleReturnItemsEndpointsProxy = createClientProxy(SaleReturnItemsEndpoints, authApi);
+const endpoints = createClientProxy(SaleReturnItemsEndpointsApi, authApi);
+
+export default endpoints;
+export const SaleReturnItemsEndpoints = endpoints;
+

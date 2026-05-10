@@ -1,4 +1,4 @@
-import { WebDeliveryEndpoints } from '@/api/web/delivery.js';
+import { WebDeliveryEndpoints } from '../../api/web/delivery.js';
 import { createWebClientProxy } from './createWebClientProxy.js';
 
 export function createWebDeliveryService(config = {}) {
@@ -32,3 +32,4 @@ export function createWebDeliveryService(config = {}) {
 
   return { endpoints: proxy, getDeliveryMethods, getOrderMessages, sendOrderMessage, getOrderTracking };
 }
+

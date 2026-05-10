@@ -16,7 +16,7 @@ import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { BranchesEndpoints, StockHelpersEndpoints, StockItemsEndpoints } from "@rutba/api-provider/endpoints/index.js";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
 import { loadProduct } from "@rutba/api-provider/pos/fetchs";
-import { searchStockItems } from "@rutba/api-provider/";
+import { searchStockItems } from "@rutba/api-provider/pos/search";
 
 export default function StockItemsPage() {
     const router = useRouter();

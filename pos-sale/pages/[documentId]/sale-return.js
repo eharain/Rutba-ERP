@@ -4,7 +4,7 @@ import Layout from "../../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import CashRegisterGuard from "../../components/CashRegisterGuard";
 import { SaleReturnsEndpoints, SaleReturnItemsEndpoints, SalesEndpoints, StockItemsEndpoints, PaymentsEndpoints, CashRegisterTransactionEndpoints, BranchesEndpoints } from "@rutba/api-provider/endpoints/index.js";
-import { fetchSaleByIdOrInvoice } from "@rutba/api-provider/";
+import { fetchSaleByIdOrInvoice } from "@rutba/api-provider/pos/fetchs";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
 import { getCashRegister } from "@rutba/pos-shared/lib/utils";
 import Link from "next/link";

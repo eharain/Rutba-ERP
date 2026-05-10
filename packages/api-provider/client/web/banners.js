@@ -1,4 +1,4 @@
-import { WebBannersEndpoints } from '@/api/web/banners.js';
+import { WebBannersEndpoints } from '../../api/web/banners.js';
 import { createWebClientProxy } from './createWebClientProxy.js';
 
 export function createWebBannersService(config = {}) {
@@ -11,3 +11,4 @@ export function createWebBannersService(config = {}) {
 
   return { endpoints: proxy, getBanners };
 }
+

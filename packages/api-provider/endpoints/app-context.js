@@ -1,6 +1,9 @@
-import { authApi } from '@/lib/api.js';
-import { createClientProxy } from '@/providers/createClientProxy.js';
-import { AppContextEndpoints } from '@/api/app-context.js';
+import { authApi } from '../lib/api.js';
+import { createClientProxy } from '../providers/createClientProxy.js';
+import { AppContextEndpoints as AppContextEndpointsApi } from '../api/app-context.js';
 
-export default createClientProxy(AppContextEndpoints, authApi);
-export const AppContextEndpointsProxy = createClientProxy(AppContextEndpoints, authApi);
+const endpoints = createClientProxy(AppContextEndpointsApi, authApi);
+
+export default endpoints;
+export const AppContextEndpoints = endpoints;
+

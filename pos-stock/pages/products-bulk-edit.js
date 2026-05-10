@@ -8,7 +8,8 @@ import {
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import PermissionCheck from "@rutba/pos-shared/components/PermissionCheck";
-import { fetchProducts, saveProduct } from "@rutba/api-provider/";
+import { fetchProducts, saveProduct } from '@rutba/api-provider/endpoints/products.js';
+
 import { MediaUtilsEndpoints, StockItemsEndpoints, BrandsEndpoints, CategoriesEndpoints, SuppliersEndpoints, TermTypesEndpoints, PurchasesEndpoints } from "@rutba/api-provider/endpoints/index.js";
 import { ProductFilter } from "@rutba/pos-shared/components/filter/product-filter";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";

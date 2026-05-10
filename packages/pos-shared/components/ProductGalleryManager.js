@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { StraipImageUrl, isImage, relationConnects } from "@rutba/api-provider/lib/api";
-import { ProductsEndpoints, UploadEndpoints, TermTypesEndpoints } from "@rutba/api-provider/endpoints";
-import { saveProduct } from '@rutba/api-provider/pos/save';
+import { ProductsEndpoints } from '@rutba/api-provider/endpoints/index.js';
+import { saveProduct } from '@rutba/api-provider/endpoints/products.js';
 import StrapiMediaLibrary from './StrapiMediaLibrary';
 import TermTypeTermDialog from './TermTypeTermDialog';
 
@@ -467,7 +467,7 @@ export default function ProductGalleryManager({ productId, onUpdate }) {
                 logo: imagesToAssign[0],
             };
 
-            await saveProduct('new', payload);
+            await saveProduct.postCreate(payload);
 
             // Remove assigned images from parent
             await ProductsEndpoints.putUpdate(parentDocId, {
@@ -518,7 +518,7 @@ export default function ProductGalleryManager({ productId, onUpdate }) {
                     gallery: [img.id],
                     logo: img.id,
                 };
-                await saveProduct('new', payload);
+                await saveProduct.postCreate(payload);
                 created++;
             }
 
@@ -626,7 +626,7 @@ export default function ProductGalleryManager({ productId, onUpdate }) {
                 is_variant: true,
                 ...relationConnects({ terms: [term] }),
             };
-            await saveProduct('new', payload);
+            await ProductsEndpoints.postCreate(payload);
             await loadData();
             if (onUpdate) onUpdate();
             setTermForms(prev => ({ ...prev, [getEntryId(term)]: getDefaultVariantForm() }));
@@ -663,7 +663,7 @@ export default function ProductGalleryManager({ productId, onUpdate }) {
                     is_variant: true,
                     ...relationConnects({ terms: [term] }),
                 };
-                await saveProduct('new', payload);
+                await ProductsEndpoints.postCreate(payload);
                 created++;
             }
             await loadData();

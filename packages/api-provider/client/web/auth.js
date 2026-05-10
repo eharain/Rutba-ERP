@@ -1,4 +1,4 @@
-import { WebAuthEndpoints } from '@/api/web/auth.js';
+import { WebAuthEndpoints } from '../../api/web/auth.js';
 import { createWebClientProxy } from './createWebClientProxy.js';
 
 export function createWebAuthService(config = {}) {
@@ -31,3 +31,4 @@ export function createWebAuthService(config = {}) {
     signUpWithCredential,
   };
 }
+

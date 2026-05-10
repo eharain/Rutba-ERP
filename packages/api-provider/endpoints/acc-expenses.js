@@ -1,6 +1,9 @@
-import { authApi } from '@/lib/api.js';
-import { createClientProxy } from '@/providers/createClientProxy.js';
-import { AccExpensesEndpoints } from '@/api/acc-expenses.js';
+import { authApi } from '../lib/api.js';
+import { createClientProxy } from '../providers/createClientProxy.js';
+import { AccExpensesEndpoints as AccExpensesEndpointsApi } from '../api/acc-expenses.js';
 
-export default createClientProxy(AccExpensesEndpoints, authApi);
-export const AccExpensesEndpointsProxy = createClientProxy(AccExpensesEndpoints, authApi);
+const endpoints = createClientProxy(AccExpensesEndpointsApi, authApi);
+
+export default endpoints;
+export const AccExpensesEndpoints = endpoints;
+

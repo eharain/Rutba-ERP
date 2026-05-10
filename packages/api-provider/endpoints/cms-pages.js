@@ -1,6 +1,9 @@
-import { authApi } from '@/lib/api.js';
-import { createClientProxy } from '@/providers/createClientProxy.js';
-import { CmsPagesEndpoints } from '@/api/cms-pages.js';
+import { authApi } from '../lib/api.js';
+import { createClientProxy } from '../providers/createClientProxy.js';
+import { CmsPagesEndpoints as CmsPagesEndpointsApi } from '../api/cms-pages.js';
 
-export default createClientProxy(CmsPagesEndpoints, authApi);
-export const CmsPagesEndpointsProxy = createClientProxy(CmsPagesEndpoints, authApi);
+const endpoints = createClientProxy(CmsPagesEndpointsApi, authApi);
+
+export default endpoints;
+export const CmsPagesEndpoints = endpoints;
+
