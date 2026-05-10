@@ -37,11 +37,7 @@ export const BrandGroupsEndpoints = {
         },
     }),
 
-    create: () => ({ path: '/brand-groups' }),
-    updateDraft: (documentId) => ({ path: `/brand-groups/${documentId}` }),
-    publish: (documentId) => ({ path: `/brand-groups/${documentId}/publish` }),
-    unpublish: (documentId) => ({ path: `/brand-groups/${documentId}/unpublish` }),
-    del: (documentId) => ({ path: `/brand-groups/${documentId}` }),
+    
 
     fetchListDraft: (opts = {}) => {
         const ep = BrandGroupsEndpoints.listDraft(opts);
@@ -59,6 +55,14 @@ export const BrandGroupsEndpoints = {
         const ep = BrandGroupsEndpoints.byIdPublished(documentId, opts);
         return authApi.fetch(ep.path, ep.params);
     },
+
+
+    create: () => ({ path: '/brand-groups' }),
+    updateDraft: (documentId) => ({ path: `/brand-groups/${documentId}` }),
+    publish: (documentId) => ({ path: `/brand-groups/${documentId}/publish` }),
+    unpublish: (documentId) => ({ path: `/brand-groups/${documentId}/unpublish` }),
+    del: (documentId) => ({ path: `/brand-groups/${documentId}` }),
+
     postCreate: (data) => authApi.post('/brand-groups', { data }),
     putUpdateDraft: (documentId, data) => authApi.put(`/brand-groups/${documentId}`, { data, status: 'draft' }),
     postPublish: (documentId) => authApi.post(`/brand-groups/${documentId}/publish`, {}),

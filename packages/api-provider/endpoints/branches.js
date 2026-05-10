@@ -1,12 +1,35 @@
 import { api, authApi } from '../lib/api.js';
 import { AuthApiEndpoints } from '../lib/http-client.js';
-import { dataNode } from '../pos/search.js';
+
+export function dataNode(res) {
+    return res.data?.data ?? res.data ?? res;
+}
+
 
 /**
  * BranchesEndpoints
  * Each `fetch*` method owns the full async call — callers use a single await.
  */
 export const BranchesEndpoints = {
+
+    searchBranches(searchTerm, page = 1, rowsPerPage = 5) {
+        const hasSearch = searchTerm && searchTerm.trim().length > 0;
+
+       return {
+            params: {
+                populate: ['logo', 'gallery', 'currency', { categories: { populate: ['logo', 'gallery'] } }],
+                pagination: { page, pageSize: rowsPerPage },
+                ...(hasSearch && {
+                    filters: {
+                        $or: [
+                            { name: { $containsi: searchTerm } },
+                            { code: { $eq: searchTerm } },
+                        ],
+                    },
+                }),
+            }
+        };
+    },
 
     /**
      * List all branches with their desks and currency populated.
@@ -89,37 +112,6 @@ export const BranchesEndpoints = {
     },
 };
 
-/**
- * BranchesEndpointRules
- * Per-endpoint requestRules stored in the api-guard-pro resource record.
- */
-export const BranchesEndpointRules = {
-    /** GET /api/branches — list with desks/bank populate */
-    listWithDesks: {
-        injectPopulate: { desks: true, bank_accounts: true },
-    },
-
-    /** GET /api/branches — list (minimal) */
-    list: {},
-
-    /** GET /api/branches/:id — byId with full detail */
-    byId: {
-        injectPopulate: { desks: true, bank_accounts: true, logo: true },
-    },
-
-    /** PUT /api/branches/:id — update */
-    update: {},
-
-    /** POST /api/branches/:id/archive-stock — archive */
-    archiveStock: {},
-
-    /** POST /api/branches/:id/unarchive-stock — unarchive */
-    unarchiveStock: {},
-};
-
-
-
-
 
 /**
  * Search branches by name or code.
@@ -129,19 +121,10 @@ export const BranchesEndpointRules = {
  */
 export async function searchBranches(searchTerm, page = 1, rowsPerPage = 5) {
     const hasSearch = searchTerm && searchTerm.trim().length > 0;
+
+    const ep = BranchesEndpoints.searchBranches(searchTerm, page, rowsPerPage);
+
     const qs = (await import('qs')).default;
-    const query = {
-        populate: ['logo', 'gallery', 'currency', { categories: { populate: ['logo', 'gallery'] } }],
-        pagination: { page, pageSize: rowsPerPage },
-        ...(hasSearch && {
-            filters: {
-                $or: [
-                    { name: { $containsi: searchTerm } },
-                    { code: { $eq: searchTerm } },
-                ],
-            },
-        }),
-    };
-    const res = await AuthApiEndpoints.fetch(`/branches?${qs.stringify(query, { encodeValuesOnly: true })}`);
+    const res = await AuthApiEndpoints.fetch(`/branches?${qs.stringify(ep.params, { encodeValuesOnly: true })}`);
     return dataNode(res);
 }

@@ -1,9 +1,11 @@
 {
   "name": "@rutba/api-provider",
   "version": "1.0.0",
+  "type": "module",
   "private": true,
   "main": "index.js",
   "scripts": {
+    "combine:endpoints": "node ./scripts/combine-endpoints.js",
     "generate:configuration": "node ./scripts/generate-configuration.js",
     "split:configuration": "node ./scripts/split-configuration.js",
     "join:configuration": "node ./scripts/join-configuration.js"
