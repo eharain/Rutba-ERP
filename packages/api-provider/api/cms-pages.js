@@ -3,7 +3,7 @@
  * Centralised path + params definitions for the /cms-pages content-type.
  * Covers both the admin (pos-shared / rutba-cms) draft flows and the web storefront read flows.
  */
-import __publish_generic_helper from "./__publish_generic_helper";
+import __publish_generic_helper from "./__publish_generic_helper.js";
 
 export const CmsPagesEndpoints = {
 

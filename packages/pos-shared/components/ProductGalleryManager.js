@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { StraipImageUrl, isImage, relationConnects } from "@rutba/api-provider/lib/api";
-import { ProductsEndpoints } from '@rutba/api-provider/endpoints/index.js';
-import { saveProduct } from '@rutba/api-provider/endpoints/products.js';
+import { ProductsEndpoints, UploadEndpoints, TermTypesEndpoints } from '@rutba/api-provider/endpoints/index.js';
 import StrapiMediaLibrary from './StrapiMediaLibrary';
 import TermTypeTermDialog from './TermTypeTermDialog';
 
@@ -61,7 +60,7 @@ export default function ProductGalleryManager({ productId, onUpdate }) {
         if (!productId) return;
         setLoading(true);
         try {
-            const res = await ProductsEndpoints.fetchById(productId);
+            const res = await ProductsEndpoints.byId(productId);
             const prod = res.data || res;
             setProduct(prod);
             const loadedVariants = prod.variants || [];
@@ -151,7 +150,7 @@ export default function ProductGalleryManager({ productId, onUpdate }) {
         const edits = getVariantEdit(variantDocId, variant);
         setSavingVariant(prev => ({ ...prev, [variantDocId]: true }));
         try {
-            await ProductsEndpoints.putUpdate(variantDocId, {
+            await ProductsEndpoints.update(variantDocId, {
                 name: edits.name,
                 selling_price: parseFloat(edits.selling_price) || 0,
                 offer_price: edits.offer_price ? parseFloat(edits.offer_price) : null,
@@ -208,7 +207,7 @@ export default function ProductGalleryManager({ productId, onUpdate }) {
                 const newIds = selectedFiles.map(f => f.id).filter(id => !existingIds.has(id));
                 if (newIds.length > 0) {
                     const updatedGallery = [...parentGallery.map(g => g.id), ...newIds];
-                    await ProductsEndpoints.putUpdate(getEntryId(product), {
+                    await ProductsEndpoints.update(getEntryId(product), {
                         gallery: updatedGallery
                     });
                 }
@@ -222,7 +221,7 @@ export default function ProductGalleryManager({ productId, onUpdate }) {
                 const newIds = selectedFiles.map(f => f.id).filter(id => !existingIds.has(id));
                 if (newIds.length > 0) {
                     const updatedGallery = [...vGallery.map(g => g.id), ...newIds];
-                    await ProductsEndpoints.putUpdate(mediaLibraryTarget, {
+                    await ProductsEndpoints.update(mediaLibraryTarget, {
                         gallery: updatedGallery
                     });
                 }
@@ -254,10 +253,10 @@ export default function ProductGalleryManager({ productId, onUpdate }) {
             const newIds = imagesToMove.filter(id => !existingIds.has(id));
             const newVariantGallery = [...variantGallery.map(g => g.id), ...newIds];
 
-            await ProductsEndpoints.putUpdate(getEntryId(product), {
+            await ProductsEndpoints.update(getEntryId(product), {
                 gallery: remainingParentGallery.map(g => g.id)
             });
-            await ProductsEndpoints.putUpdate(variantDocId, {
+            await ProductsEndpoints.update(variantDocId, {
                 gallery: newVariantGallery
             });
 
@@ -288,7 +287,7 @@ export default function ProductGalleryManager({ productId, onUpdate }) {
             const newIds = imagesToCopy.filter(id => !existingIds.has(id));
             const newVariantGallery = [...variantGallery.map(g => g.id), ...newIds];
 
-            await ProductsEndpoints.putUpdate(variantDocId, {
+            await ProductsEndpoints.update(variantDocId, {
                 gallery: newVariantGallery
             });
 
@@ -321,10 +320,10 @@ export default function ProductGalleryManager({ productId, onUpdate }) {
             const newParentIds = imagesToMove.filter(id => !existingParentIds.has(id));
             const newParentGallery = [...parentGallery.map(g => g.id), ...newParentIds];
 
-            await ProductsEndpoints.putUpdate(variantDocId, {
+            await ProductsEndpoints.update(variantDocId, {
                 gallery: remainingVariantGallery.map(g => g.id)
             });
-            await ProductsEndpoints.putUpdate(getEntryId(product), {
+            await ProductsEndpoints.update(getEntryId(product), {
                 gallery: newParentGallery
             });
 
@@ -354,7 +353,7 @@ export default function ProductGalleryManager({ productId, onUpdate }) {
             const newParentIds = imagesToCopy.filter(id => !existingParentIds.has(id));
             const newParentGallery = [...parentGallery.map(g => g.id), ...newParentIds];
 
-            await ProductsEndpoints.putUpdate(getEntryId(product), {
+            await ProductsEndpoints.update(getEntryId(product), {
                 gallery: newParentGallery
             });
 
@@ -389,10 +388,10 @@ export default function ProductGalleryManager({ productId, onUpdate }) {
             const newIds = imagesToMove.filter(id => !existingTargetIds.has(id));
             const newTargetGallery = [...targetGallery.map(g => g.id), ...newIds];
 
-            await ProductsEndpoints.putUpdate(sourceVariantDocId, {
+            await ProductsEndpoints.update(sourceVariantDocId, {
                 gallery: remainingSourceGallery.map(g => g.id)
             });
-            await ProductsEndpoints.putUpdate(targetVariantDocId, {
+            await ProductsEndpoints.update(targetVariantDocId, {
                 gallery: newTargetGallery
             });
 
@@ -426,7 +425,7 @@ export default function ProductGalleryManager({ productId, onUpdate }) {
             const newIds = imagesToCopy.filter(id => !existingTargetIds.has(id));
             const newTargetGallery = [...targetGallery.map(g => g.id), ...newIds];
 
-            await ProductsEndpoints.putUpdate(targetVariantDocId, {
+            await ProductsEndpoints.update(targetVariantDocId, {
                 gallery: newTargetGallery
             });
 
@@ -467,10 +466,10 @@ export default function ProductGalleryManager({ productId, onUpdate }) {
                 logo: imagesToAssign[0],
             };
 
-            await saveProduct.postCreate(payload);
+            await ProductsEndpoints.create(payload);
 
             // Remove assigned images from parent
-            await ProductsEndpoints.putUpdate(parentDocId, {
+            await ProductsEndpoints.update(parentDocId, {
                 gallery: remainingParentGallery.map(g => g.id)
             });
 
@@ -518,13 +517,13 @@ export default function ProductGalleryManager({ productId, onUpdate }) {
                     gallery: [img.id],
                     logo: img.id,
                 };
-                await saveProduct.postCreate(payload);
+                await ProductsEndpoints.create(payload);
                 created++;
             }
 
             // Remove assigned images from parent
             const remainingParentGallery = parentGallery.filter(img => !selectedParentImages.has(img.id));
-            await ProductsEndpoints.putUpdate(parentDocId, {
+            await ProductsEndpoints.update(parentDocId, {
                 gallery: remainingParentGallery.map(g => g.id)
             });
 
@@ -545,7 +544,7 @@ export default function ProductGalleryManager({ productId, onUpdate }) {
 
     const loadTermTypes = useCallback(async () => {
         try {
-            const res = await TermTypesEndpoints.fetchVariants();
+            const res = await TermTypesEndpoints.listVariants();
             const types = res?.data ?? res;
             setTermTypes(types || []);
         } catch (err) {
@@ -626,7 +625,7 @@ export default function ProductGalleryManager({ productId, onUpdate }) {
                 is_variant: true,
                 ...relationConnects({ terms: [term] }),
             };
-            await ProductsEndpoints.postCreate(payload);
+            await ProductsEndpoints.create(payload);
             await loadData();
             if (onUpdate) onUpdate();
             setTermForms(prev => ({ ...prev, [getEntryId(term)]: getDefaultVariantForm() }));
@@ -663,7 +662,7 @@ export default function ProductGalleryManager({ productId, onUpdate }) {
                     is_variant: true,
                     ...relationConnects({ terms: [term] }),
                 };
-                await ProductsEndpoints.postCreate(payload);
+                await ProductsEndpoints.create(payload);
                 created++;
             }
             await loadData();

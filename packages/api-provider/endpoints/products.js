@@ -33,7 +33,7 @@ export function extractData(res) {
  * @param {Array} items - Array of { stock_item, quantity, price }
  */
 export async function saveProductItems(documentId, items) {
-    return proxy.putUpdate(documentId, {
+    return proxy.update(documentId, {
         items: items.map((i) => ({
             stock_item: i.stock_item.id,
             quantity: i.quantity,
@@ -65,8 +65,8 @@ export async function saveProduct(id, formData) {
         ? { ...convertedFormData }
         : { ...convertedFormData, id };
     return isUpdate
-        ? proxy.putUpdate(id, data)
-        : proxy.postCreate(data);
+        ? proxy.update(id, data)
+        : proxy.create(data);
 }
 
 /**
@@ -127,7 +127,7 @@ export async function createProduct() {
         branches: { connect: [branch.documentId] },
         owners: { connect: [user.documentId] },
     };
-    const res = await proxy.postCreate(data);
+    const res = await proxy.create(data);
     const rdata = res?.data ?? res;
     return { 
         data: rdata, 

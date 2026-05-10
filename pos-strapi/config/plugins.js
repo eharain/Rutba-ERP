@@ -57,6 +57,9 @@ const FIXED_BYPASS_PATHS = [
     '/api/api-guard-pro/me/permissions',
     '/api/me/stock-items-search',
     '/api/users-permissions/me/stock-items-search',
+    '/api/cash-registers/active',
+    '/api/cash-registers/open',
+    '/api/cash-registers',
     '/uploads',
     '/users-permissions',
 ];
