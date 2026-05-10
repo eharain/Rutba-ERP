@@ -12,7 +12,7 @@ function loadConfiguration(overrides = {}) {
   return toJSONConfiguration(overrides);
 }
 
-export * from './pos/index';
+export * from './pos/index.js';
 
 module.exports = {
   CONFIG_ROOT,

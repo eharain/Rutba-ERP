@@ -1,4 +1,4 @@
-import __publish_generic_helper from "./__publish_generic_helper";
+import __publish_generic_helper from "./__publish_generic_helper.js";
 
 export const CmsFootersEndpoints = {
     listDraft: ({ sort, populate, pagination, filters } = {}) => ({

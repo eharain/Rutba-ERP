@@ -12,7 +12,7 @@
  * `policy.uid`).
  */
 
-const { loadConfiguration } = require('@rutba/api-provider');
+const { toJSONConfiguration } = require('@rutba/api-provider/config/source');
 
 async function seedApiProvider(strapi) {
   if (!strapi.plugin('api-guard-pro')) {
@@ -26,7 +26,7 @@ async function seedApiProvider(strapi) {
     return;
   }
 
-  const config = loadConfiguration();
+  const config = toJSONConfiguration();
   const payload = {
     domains: config.domains || {},
     roles: config.roles || {},

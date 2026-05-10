@@ -1,99 +1,76 @@
-﻿// Re-exported from endpoint files for backward compatibility.
+﻿// Re-exported compatibility helpers backed by current endpoint methods.
 import { SalesEndpoints } from '../endpoints/sales.js';
 import { PurchasesEndpoints } from '../endpoints/purchases.js';
 import { SaleReturnsEndpoints } from '../endpoints/sale-returns.js';
 import { CategoriesEndpoints } from '../endpoints/categories.js';
 import { BrandsEndpoints } from '../endpoints/brands.js';
 import { EnumsEndpoints } from '../endpoints/enums.js';
-import { ProductsEndpoints } from '../endpoints/products.js';
 import { PurchaseItemsEndpoints } from '../endpoints/purchase-items.js';
+import { fetchProducts as fetchProductsHelper, loadProduct as loadProductHelper } from '../endpoints/products.js';
 
-// export const fetchEntities = SalesEndpoints.fetchEntities;
-// export const fetchSales = SalesEndpoints.fetchSales;
-// export const fetchSaleByIdOrInvoice = SalesEndpoints.fetchSaleByIdOrInvoice;
-// export const fetchPurchaseByIdDocumentIdOrPO = PurchasesEndpoints.fetchPurchaseByIdDocumentIdOrPO;
-// export const fetchPurchases = PurchasesEndpoints.fetchPurchases;
-// export const fetchReturns = SaleReturnsEndpoints.fetchReturns;
-// export const fetchCategories = CategoriesEndpoints.fetchCategories;
-// export const fetchBrands = BrandsEndpoints.fetchBrands;
-// export const fetchEnumsValues = EnumsEndpoints.fetchEnumsValues;
-// export const fetchProducts = ProductsEndpoints.fetchProducts;
-// export const loadProduct = ProductsEndpoints.loadProduct;
+function extractData(res) {
+    return res?.data?.data ?? res?.data ?? res;
+}
 
+export async function fetchEntities(entities, page = 1, rowsPerPage = 100) {
+    const key = String(entities || '').toLowerCase();
 
-
-export async function fetchEntities(entities, page, rowsPerPage = 100) {
-    const endpoints =
-        Object.keys({ SaleReturnsEndpoints, PurchasesEndpoints, CategoriesEndpoints, BrandsEndpoints, EnumsEndpoints, ProductsEndpoints, PurchaseItemsEndpoints }).reduce((acc, key, { }) => {
-            return { ...acc, [key.replace('Endpoints', '')]: eval(key), [key.replace('Endpoints', '').toLocaleLowerCase()]: eval(key) }
-        })
-
-    const ep = endpoints[entities];
-    if (ep) {
-        return await ep.fetchEntities(page, rowsPerPage);
+    if (key === 'sales' || key === 'sale') return fetchSales(page, rowsPerPage);
+    if (key === 'purchases' || key === 'purchase') return fetchPurchases(page, rowsPerPage);
+    if (key === 'salereturns' || key === 'sale-returns' || key === 'returns') return fetchReturns(page, rowsPerPage);
+    if (key === 'categories' || key === 'category') return fetchCategories(page, rowsPerPage);
+    if (key === 'brands' || key === 'brand') return fetchBrands(page, rowsPerPage);
+    if (key === 'purchaseitems' || key === 'purchase-items') {
+        console.warn('fetchEntities does not support purchase-items without a purchase document id');
+        return null;
     }
+
     console.warn(`No endpoints found for entity: ${entities}`);
+    return null;
 }
 
 export async function fetchSales(page, rowsPerPage = 200, { sort, filters, populate } = {}) {
-    return await SalesEndpoints.Sales(page, rowsPerPage, { sort, filters, populate });
+    return SalesEndpoints.list(page, rowsPerPage, { sort, filters, populate });
 }
 
-export async function fetchReturns(page, rowsPerPage = 100) {
-    return await SaleReturnsEndpoints.list(page, rowsPerPage);
+export async function fetchReturns(page, rowsPerPage = 100, opts = {}) {
+    return SaleReturnsEndpoints.list(page, rowsPerPage, opts);
 }
 
-// Fetch purchases for reports
-export async function fetchPurchases(page, rowsPerPage = 100) {
-    return await PurchasesEndpoints.list(page, rowsPerPage);
+export async function fetchPurchases(page, rowsPerPage = 100, opts = {}) {
+    return PurchasesEndpoints.list(page, rowsPerPage, opts);
 }
 
-//fetchCategories 
-export async function fetchCategories(page, rowsPerPage) {
-    return await CategoriesEndpoints.list(page, rowsPerPage);
+export async function fetchCategories(page = 1, rowsPerPage = 100) {
+    return CategoriesEndpoints.list({ page, pageSize: rowsPerPage });
 }
 
-//fetchBrands
-export async function fetchBrands(page, rowsPerPage) {
-    return await BrandsEndpoints.list(page, rowsPerPage);
+export async function fetchBrands(page = 1, rowsPerPage = 100) {
+    return BrandsEndpoints.list({ page, pageSize: rowsPerPage });
 }
 
-
-
-// Fetch a sale or purchase by id or invoice_no
 export async function fetchSaleByIdOrInvoice(id) {
-    let res;
-    res = SalesEndpoints.fetchSaleByIdOrInvoice(id);
-    let data = res?.data ?? res;
-    const sale = Array.isArray(data) ? data[0] : data;
-
-    return sale;
-}
-
-export async function fetchPurchaseByIdDocumentIdOrPO(id) {
-
-    let res = await PurchaseItemsEndpoints.fetchById(id);
-
-    let data = dataNode(res);
+    const res = await SalesEndpoints.byId(id);
+    const data = extractData(res);
     return Array.isArray(data) ? data[0] : data;
 }
 
+export async function fetchPurchaseByIdDocumentIdOrPO(id) {
+    const res = await PurchasesEndpoints.byId(id);
+    const data = extractData(res);
+    return Array.isArray(data) ? data[0] : data;
+}
 
 export async function fetchEnumsValues(name, field) {
-    const res = EnumsEndpoints.fetchEnumsValues(name, field);
-    console.log('res', res)
-    let data = dataNode(res);
+    const res = await EnumsEndpoints.values(name, field);
+    const data = extractData(res);
     return data?.values;
 }
 
-
 export async function fetchProducts(filters, page, rowsPerPage, sort) {
-    const res = await ProductsEndpoints.fetchProducts(filters, page, rowsPerPage, sort);
-    return res;
+    return fetchProductsHelper(filters, page, rowsPerPage, sort);
 }
 
 export async function loadProduct(id) {
-    const res = await ProductsEndpoints.loadProduct(id);
-    let prod = res.data || res;
-    return prod;
+    return loadProductHelper(id);
 }
