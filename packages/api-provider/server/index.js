@@ -180,5 +180,5 @@ export const UploadServer = createStrapiProxy(UploadEndpoints);
 import { WebOrdersEndpoints } from '@/api/web-orders.js';
 export const WebOrdersServer = createStrapiProxy(WebOrdersEndpoints);
 
-import { WebAuthEndpointRules } from '@/api/web.js';
-export const WebAuthEndpointRules = createStrapiProxy(WebAuthEndpointRules);
+import { WebAuthEndpointRules as WebAuthEndpointRulesApi } from '@/api/web.js';
+export const WebAuthEndpointRules = createStrapiProxy(WebAuthEndpointRulesApi);
