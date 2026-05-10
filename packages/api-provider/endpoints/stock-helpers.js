@@ -1,6 +1,6 @@
-import { getStockStatus, relationConnects } from '../lib/api.js';
+import { authApi } from '@/lib/api.js';
+import { createClientProxy } from '@/lib/providers/createClientProxy.js';
+import { StockHelpersEndpoints } from '@/api/stock-helpers.js';
 
-export const StockHelpersEndpoints = {
-    getStockStatus: () => getStockStatus(),
-    relationConnects: (relations) => relationConnects(relations),
-};
+export default createClientProxy(StockHelpersEndpoints, authApi);
+export const StockHelpersEndpointsProxy = createClientProxy(StockHelpersEndpoints, authApi);

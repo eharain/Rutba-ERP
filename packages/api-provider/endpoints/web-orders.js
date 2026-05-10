@@ -1,6 +1,6 @@
-import { authApi } from '../lib/api.js';
+import { authApi } from '@/lib/api.js';
+import { createClientProxy } from '@/lib/providers/createClientProxy.js';
+import { WebOrdersEndpoints } from '@/api/web-orders.js';
 
-export const WebOrdersEndpoints = {
-    byId: (orderId, params = {}) => ({ path: `/web-orders/${orderId}`, params }),
-    fetchById: (orderId, params = {}, jwt) => authApi.get(`/web-orders/${orderId}`, params, jwt),
-};
+export default createClientProxy(WebOrdersEndpoints, authApi);
+export const WebOrdersEndpointsProxy = createClientProxy(WebOrdersEndpoints, authApi);

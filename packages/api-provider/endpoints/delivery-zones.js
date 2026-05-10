@@ -1,18 +1,6 @@
-import { authApi } from '../lib/api.js';
+import { authApi } from '@/lib/api.js';
+import { createClientProxy } from '@/lib/providers/createClientProxy.js';
+import { DeliveryZonesEndpoints } from '@/api/delivery-zones.js';
 
-export const DeliveryZonesEndpoints = {
-    list: ({ sort, pagination } = {}) => ({
-        path: '/delivery-zones',
-        params: {
-            sort: sort ?? ['createdAt:desc'],
-            pagination: pagination ?? { pageSize: 200 },
-        },
-    }),
-    create: () => ({ path: '/delivery-zones' }),
-
-    fetchList: (opts = {}) => {
-        const ep = DeliveryZonesEndpoints.list(opts);
-        return authApi.fetch(ep.path, ep.params);
-    },
-    postCreate: (data) => authApi.post('/delivery-zones', data),
-};
+export default createClientProxy(DeliveryZonesEndpoints, authApi);
+export const DeliveryZonesEndpointsProxy = createClientProxy(DeliveryZonesEndpoints, authApi);

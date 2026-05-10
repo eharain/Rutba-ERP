@@ -1,8 +1,6 @@
-import { getAdminMode, getAppName, setAdminMode, setAppName } from '../lib/api.js';
+import { authApi } from '@/lib/api.js';
+import { createClientProxy } from '@/lib/providers/createClientProxy.js';
+import { AppContextEndpoints } from '@/api/app-context.js';
 
-export const AppContextEndpoints = {
-    setAppName: (name) => setAppName(name),
-    getAppName: () => getAppName(),
-    setAdminMode: (enabled) => setAdminMode(enabled),
-    getAdminMode: () => getAdminMode(),
-};
+export default createClientProxy(AppContextEndpoints, authApi);
+export const AppContextEndpointsProxy = createClientProxy(AppContextEndpoints, authApi);

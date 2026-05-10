@@ -1,16 +1,6 @@
-import { authApi } from '../lib/api.js';
+import { authApi } from '@/lib/api.js';
+import { createClientProxy } from '@/lib/providers/createClientProxy.js';
+import { HrAttendancesEndpoints } from '@/api/hr-attendances.js';
 
-export const HrAttendancesEndpoints = {
-    list: ({ sort, populate } = {}) => ({
-        path: '/hr-attendances',
-        params: {
-            sort: sort ?? ['date:desc'],
-            populate: populate ?? 'employee',
-        },
-    }),
-
-    fetchList: (opts = {}) => {
-        const ep = HrAttendancesEndpoints.list(opts);
-        return authApi.fetch(ep.path, ep.params);
-    },
-};
+export default createClientProxy(HrAttendancesEndpoints, authApi);
+export const HrAttendancesEndpointsProxy = createClientProxy(HrAttendancesEndpoints, authApi);

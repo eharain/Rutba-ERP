@@ -1,21 +1,6 @@
-export const WebAuthEndpointRules = {
-  localSignIn: {},
-  localRegister: {},
-  providerCallback: {},
-};
+import { authApi } from '@/lib/api.js';
+import { createClientProxy } from '@/lib/providers/createClientProxy.js';
+import { WebAuthEndpointRules } from '@/api/web.js';
 
-export const WebCheckoutEndpointRules = {
-  validateAddress: {},
-  shippingRate: {},
-};
-
-export const WebDeliveryEndpointRules = {
-  calculateDelivery: {},
-  tracking: {},
-  getMessages: {},
-  sendMessage: {},
-};
-
-export const WebLeadsEndpointRules = {
-  create: {},
-};
+export default createClientProxy(WebAuthEndpointRules, authApi);
+export const WebAuthEndpointRulesProxy = createClientProxy(WebAuthEndpointRules, authApi);
