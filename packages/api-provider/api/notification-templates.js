@@ -20,36 +20,12 @@ export const NotificationTemplatesEndpoints = {
         },
     }),
 
-    create: () => ({ path: '/notification-templates' }),
+    create: (data) => ({ path: '/notification-templates' , data }),
 
-    update: (documentId) => ({ path: `/notification-templates/${documentId}` }),
+    update: (documentId, data) => ({ path: `/notification-templates/${documentId}` , data }),
 
     remove: (documentId) => ({ path: `/notification-templates/${documentId}` }),
 
-    fetchList: (opts = {}) => {
-        const ep = NotificationTemplatesEndpoints.list(opts);
-        return authApi.fetch(ep.path, ep.params);
-    },
-
-    fetchById: (documentId, opts = {}) => {
-        const ep = NotificationTemplatesEndpoints.byId(documentId, opts);
-        return authApi.fetch(ep.path, ep.params);
-    },
-
-    postCreate: (data) => {
-        const ep = NotificationTemplatesEndpoints.create();
-        return authApi.post(ep.path, { data });
-    },
-
-    putUpdate: (documentId, data) => {
-        const ep = NotificationTemplatesEndpoints.update(documentId);
-        return authApi.put(ep.path, { data });
-    },
-
-    deleteById: (documentId) => {
-        const ep = NotificationTemplatesEndpoints.remove(documentId);
-        return authApi.del(ep.path);
-    },
 };
 
 /**

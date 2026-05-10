@@ -5,9 +5,4 @@ export const AccExpensesEndpoints = {
             sort: sort ?? ['date:desc'],
         },
     }),
-
-    fetchList: (opts = {}) => {
-        const ep = AccExpensesEndpoints.list(opts);
-        return authApi.fetch(ep.path, ep.params);
-    },
 };

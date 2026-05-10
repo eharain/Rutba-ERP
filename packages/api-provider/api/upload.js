@@ -10,8 +10,6 @@ export const UploadEndpoints = {
 
     /** Upload one or more files to the Strapi media library. */
     upload: () => ({ path: '/upload' }),
-
-    /** Async: upload one or more files to the Strapi media library. */
     uploadFiles: (files, ref, field, refId, info) => {
         const form = new FormData();
         if (Array.isArray(files)) {

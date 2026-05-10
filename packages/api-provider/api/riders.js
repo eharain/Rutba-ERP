@@ -8,13 +8,7 @@ export const RidersEndpoints = {
             ...(fields ? { fields } : {}),
         },
     }),
-    create: () => ({ path: '/riders' }),
-    update: (documentId) => ({ path: `/riders/${documentId}` }),
+    create: (data) => ({ path: '/riders' , data }),
+    update: (documentId, data) => ({ path: `/riders/${documentId}` , data }),
 
-    fetchList: (opts = {}) => {
-        const ep = RidersEndpoints.list(opts);
-        return authApi.fetch(ep.path, ep.params);
-    },
-    postCreate: (data) => authApi.post('/riders', data),
-    putUpdate: (documentId, data) => authApi.put(`/riders/${documentId}`, data),
 };

@@ -15,22 +15,8 @@ export const SiteSettingEndpoints = {
         },
     }),
 
-    updateDraft: () => ({ path: '/site-setting' }),
-    publish: () => ({ path: '/site-setting/publish' }),
-    discard: () => ({ path: '/site-setting/discard' }),
+    updateDraft: (data) => ({ path: '/site-setting', action: 'updateDraft', method: 'put', data }),
+    publish: (data) => ({ path: '/site-setting/publish', action: 'publish', method: 'post', data }),
+    discard: (data) => ({ path: '/site-setting/discard', action: 'discard', method: 'post', data }),
 
-    fetchDraft: (opts = {}) => {
-        const ep = SiteSettingEndpoints.getDraft(opts);
-        return authApi.fetch(ep.path, ep.params);
-    },
-
-    fetchPublished: (opts = {}) => {
-        const ep = SiteSettingEndpoints.getPublished(opts);
-        return authApi.fetch(ep.path, ep.params);
-    },
-
-    putUpdateDraft: (data) => authApi.put('/site-setting', data, { status: 'draft' }),
-    putUpdate: (data) => authApi.put('/site-setting', data),
-    postPublish: () => authApi.post('/site-setting/publish', {}),
-    postDiscard: () => authApi.post('/site-setting/discard', {}),
 };

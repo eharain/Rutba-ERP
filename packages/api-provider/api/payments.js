@@ -1,6 +1,6 @@
 /**
  * PaymentsEndpoints
- * Each `fetch*` method owns the full async call — callers use a single await.
+ * Pure endpoint descriptors for the /payments resource.
  */
 export const PaymentsEndpoints = {
 
@@ -21,8 +21,8 @@ export const PaymentsEndpoints = {
         },
     }),
 
-    /** Create a new payment — body provided by caller as { data }. */
-    create: () => ({ path: '/payments' }),
+    /** Create a new payment. */
+    create: (data) => ({ path: '/payments', action: 'create', method: 'post', data , data }),
 
     /**
      * Fetch a payment by documentId.
@@ -36,47 +36,16 @@ export const PaymentsEndpoints = {
         },
     }),
 
-    /**
-     * Update a payment by documentId — body provided by caller as { data }.
-     * @param {string} documentId
-     */
-    update: (documentId) => ({ path: `/payments/${documentId}` }),
+    /** Update a payment by documentId. */
+    update: (documentId, data) => ({ path: `/payments/${documentId}`, action: 'update', method: 'put', data , data }),
 
     /**
      * Create a refund payment — body provided by caller as { data }.
      * Refunds are regular payment records with a negative amount and type 'refund'.
      */
     createRefund: () => ({ path: '/payments' }),
-
-    /** Async: fetch payments for a specific cash register. */
-    fetchByRegister: (registerId, opts = {}) => {
-        const ep = PaymentsEndpoints.byRegister(registerId, opts);
-        return authApi.fetch(ep.path, ep.params);
-    },
-
-    /** Async: fetch a single payment by documentId. */
-    fetchById: (documentId, opts = {}) => {
-        const ep = PaymentsEndpoints.byId(documentId, opts);
-        return authApi.fetch(ep.path, ep.params);
-    },
-
-    /** Async: create a new payment. */
-    postCreate: (data) => {
-        const ep = PaymentsEndpoints.create();
-        return authApi.post(ep.path, { data });
-    },
-
-    /** Async: update a payment by documentId. */
-    putUpdate: (documentId, data) => {
-        const ep = PaymentsEndpoints.update(documentId);
-        return authApi.put(ep.path, { data });
-    },
-
-    /** Async: create a refund payment (negative amount, type 'refund'). */
-    postRefund: (data) => {
-        const ep = PaymentsEndpoints.createRefund();
-        return authApi.post(ep.path, { data });
-    },
+/** Async: fetch a single payment by documentId. */
+/** Async: update a payment by documentId. */
 };
 
 /**

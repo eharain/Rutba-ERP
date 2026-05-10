@@ -1,4 +1,4 @@
-import { createStrapiProxy } from '@/lib/providers/createStrapiProxy.js';
+import { createStrapiProxy } from '@/providers/createStrapiProxy.js';
 
 import { AccAccountsEndpoints } from '@/api/acc-accounts.js';
 export const AccAccountsServer = createStrapiProxy(AccAccountsEndpoints);

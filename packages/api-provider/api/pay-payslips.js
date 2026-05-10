@@ -7,8 +7,4 @@ export const PayPayslipsEndpoints = {
         },
     }),
 
-    fetchList: (opts = {}) => {
-        const ep = PayPayslipsEndpoints.list(opts);
-        return authApi.fetch(ep.path, ep.params);
-    },
 };

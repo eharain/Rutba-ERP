@@ -3,6 +3,7 @@
  * Centralised path + params definitions for the /cms-pages content-type.
  * Covers both the admin (pos-shared / rutba-cms) draft flows and the web storefront read flows.
  */
+import __publish_generic_helper from "./__publish_generic_helper";
 
 export const CmsPagesEndpoints = {
 
@@ -117,113 +118,6 @@ export const CmsPagesEndpoints = {
         path: `/cms-pages/${documentId}`,
         params: { status: 'published', ...params },
     }),
-
-    /** Create a new CMS page — body provided by caller as { data }. */
-    create: () => ({ path: '/cms-pages' }),
-
-    /**
-     * Update a CMS page by documentId — body provided by caller as { data }.
-     * @param {string} documentId
-     */
-    update: (documentId) => ({ path: `/cms-pages/${documentId}` }),
-
-    /**
-     * Publish a CMS page — custom Strapi action.
-     * @param {string} documentId
-     */
-    publish: (documentId) => ({ path: `/cms-pages/${documentId}/publish` }),
-
-    /**
-     * Unpublish a CMS page — custom Strapi action.
-     * @param {string} documentId
-     */
-    unpublish: (documentId) => ({ path: `/cms-pages/${documentId}/unpublish` }),
-
-    fetchListDraft: (opts = {}) => {
-        const ep = CmsPagesEndpoints.listDraft(opts);
-        return authApi.fetch(ep.path, ep.params);
-    },
-
-    fetchAllDraft: (opts = {}) => {
-        const ep = CmsPagesEndpoints.listDraft(opts);
-        return authApi.getAll(ep.path, ep.params);
-    },
-
-    fetchListPublished: (opts = {}) => {
-        const ep = CmsPagesEndpoints.listPublished(opts);
-        return authApi.fetch(ep.path, ep.params);
-    },
-
-    fetchBySlugCheck: (slug) => {
-        const ep = CmsPagesEndpoints.bySlugCheck(slug);
-        return authApi.fetch(ep.path, ep.params);
-    },
-
-    fetchByIdDraft: (documentId, params = {}) => {
-        const ep = CmsPagesEndpoints.byIdDraft(documentId, params);
-        return authApi.fetch(ep.path, ep.params);
-    },
-
-    fetchByIdPublished: (documentId, params = {}) => {
-        const ep = CmsPagesEndpoints.byIdPublished(documentId, params);
-        return authApi.fetch(ep.path, ep.params);
-    },
-
-    postCreate: (data) => authApi.post('/cms-pages', { data }),
-    putUpdate: (documentId, data) => authApi.put(`/cms-pages/${documentId}`, { data }),
-    putUpdateDraft: (documentId, data) => authApi.put(`/cms-pages/${documentId}`, { data, status: 'draft' }),
-    postPublish: (documentId) => authApi.post(`/cms-pages/${documentId}/publish`, {}),
-    postUnpublish: (documentId) => authApi.post(`/cms-pages/${documentId}/unpublish`, {}),
-    delById: (documentId) => authApi.del(`/cms-pages/${documentId}`),
+    ...__publish_generic_helper('cms-pages'),
 };
 
-/**
- * CmsPagesEndpointRules
- * Per-endpoint requestRules stored in the api-guard-pro resource record.
- */
-export const CmsPagesEndpointRules = {
-    /** GET /api/cms-pages — list all pages */
-    list: {
-        injectPopulate: { hero: true, sections: true },
-        injectSort: ['createdAt:desc'],
-    },
-
-    /** GET /api/cms-pages — listPublished */
-    listPublished: {
-        filters: { publishedAt: { $notNull: true } },
-        injectSort: ['createdAt:desc'],
-    },
-
-    /** GET /api/cms-pages — listDraft */
-    listDraft: {
-        filters: { publishedAt: { $null: true } },
-    },
-
-    /**
-     * GET /api/cms-pages — bySlug
-     * Client passes: ?slug=<value>
-     */
-    bySlug: {
-        filters: { slug: { $eq: '$query.slug' } },
-        injectPopulate: { hero: true, sections: true, seo: true },
-    },
-
-    /** GET /api/cms-pages — header data subset */
-    headerData: {
-        filters: { showInHeader: true },
-        injectPopulate: { hero: true },
-        injectSort: ['sortOrder:asc'],
-    },
-
-    /** POST /api/cms-pages */
-    create: {},
-
-    /** PUT /api/cms-pages/:id */
-    update: {},
-
-    /** PUT /api/cms-pages/:id/publish */
-    publish: {},
-
-    /** PUT /api/cms-pages/:id/unpublish */
-    unpublish: {},
-};

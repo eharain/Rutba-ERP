@@ -1,3 +1,5 @@
+import __publish_generic_helper from "./__publish_generic_helper";
+
 export const CmsFootersEndpoints = {
     listDraft: ({ sort, populate, pagination, filters } = {}) => ({
         path: '/cms-footers',
@@ -36,31 +38,6 @@ export const CmsFootersEndpoints = {
         },
     }),
 
-    create: () => ({ path: '/cms-footers' }),
-    updateDraft: (documentId) => ({ path: `/cms-footers/${documentId}` }),
-    publish: (documentId) => ({ path: `/cms-footers/${documentId}/publish` }),
-    unpublish: (documentId) => ({ path: `/cms-footers/${documentId}/unpublish` }),
-    del: (documentId) => ({ path: `/cms-footers/${documentId}` }),
+    ...__publish_generic_helper('cms-footers'),
 
-    fetchListDraft: (opts = {}) => {
-        const ep = CmsFootersEndpoints.listDraft(opts);
-        return authApi.fetch(ep.path, ep.params);
-    },
-    fetchListPublished: (opts = {}) => {
-        const ep = CmsFootersEndpoints.listPublished(opts);
-        return authApi.fetch(ep.path, ep.params);
-    },
-    fetchByIdDraft: (documentId, opts = {}) => {
-        const ep = CmsFootersEndpoints.byIdDraft(documentId, opts);
-        return authApi.fetch(ep.path, ep.params);
-    },
-    fetchByIdPublished: (documentId, opts = {}) => {
-        const ep = CmsFootersEndpoints.byIdPublished(documentId, opts);
-        return authApi.fetch(ep.path, ep.params);
-    },
-    postCreate: (data) => authApi.post('/cms-footers', { data }),
-    putUpdateDraft: (documentId, data) => authApi.put(`/cms-footers/${documentId}`, { data, status: 'draft' }),
-    postPublish: (documentId) => authApi.post(`/cms-footers/${documentId}/publish`, {}),
-    postUnpublish: (documentId) => authApi.post(`/cms-footers/${documentId}/unpublish`, {}),
-    delById: (documentId) => authApi.del(`/cms-footers/${documentId}`),
 };

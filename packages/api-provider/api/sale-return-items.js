@@ -1,29 +1,19 @@
 /**
  * SaleReturnItemsEndpoints
- * Each `post*` / `put*` method owns the full async call — callers use a single await.
+ * Pure endpoint descriptors for the /sale-return-items resource.
  */
 export const SaleReturnItemsEndpoints = {
 
-    /** Create a new sale return item — body provided by caller as { data }. */
-    create: () => ({ path: '/sale-return-items' }),
+    /** Create a new sale return item. */
+    create: (data) => ({ path: '/sale-return-items', action: 'create', method: 'post', data , data }),
 
     /**
      * Update a sale return item by documentId — body provided by caller as { data }.
      * @param {string} documentId
      */
-    update: (documentId) => ({ path: `/sale-return-items/${documentId}` }),
+    update: (documentId, data) => ({ path: `/sale-return-items/${documentId}` , data }),
+/** Async: update a sale return item by documentId. */
 
-    /** Async: create a new sale return item. */
-    postCreate: (data) => {
-        const ep = SaleReturnItemsEndpoints.create();
-        return authApi.post(ep.path, { data });
-    },
-
-    /** Async: update a sale return item by documentId. */
-    putUpdate: (documentId, data) => {
-        const ep = SaleReturnItemsEndpoints.update(documentId);
-        return authApi.put(ep.path, { data });
-    },
 };
 
 /**

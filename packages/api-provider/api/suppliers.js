@@ -45,55 +45,12 @@ export const SuppliersEndpoints = {
             ...(search ? { filters: { name: { $containsi: search } } } : {}),
         },
     }),
+/** Async: fetch all suppliers across pages. */
 
-    /** Async: fetch supplier list (single page). */
-    fetchList: (opts = {}) => {
-        const ep = SuppliersEndpoints.list(opts);
-        return authApi.fetch(ep.path, ep.params);
-    },
+    /** Create a new supplier. */
+    create: (data) => ({ path: '/suppliers', action: 'create', method: 'post', data , data }),
 
-    /** Async: fetch all suppliers across pages. */
-    fetchAll: (opts = {}) => {
-        const ep = SuppliersEndpoints.list(opts);
-        return authApi.getAll(ep.path, ep.params);
-    },
-
-    /** Create a new supplier — body provided by caller as { data }. */
-    create: () => ({ path: '/suppliers' }),
-
-    /**
-     * Update a supplier by documentId — body provided by caller as { data }.
-     * @param {string} documentId
-     */
-    update: (documentId) => ({ path: `/suppliers/${documentId}` }),
-
-    /** Async: create a new supplier. */
-    postCreate: (data) => authApi.post('/suppliers', { data }),
-
-    /** Async: update a supplier by documentId. */
-    putUpdate: (documentId, data) => authApi.put(`/suppliers/${documentId}`, { data }),
-
-    /** Async: delete a supplier by documentId. */
-    putDelete: (documentId) => authApi.del(`/suppliers/${documentId}`),
-};
-
-/**
- * SuppliersEndpointRules
- * Per-endpoint requestRules stored in the api-guard-pro resource record.
- */
-export const SuppliersEndpointRules = {
-    /** GET /api/suppliers — list */
-    list: {
-        injectPopulate: { logo: true },
-        injectSort: ['name:asc'],
-    },
-
-    /** POST /api/suppliers */
-    create: {},
-
-    /** PUT /api/suppliers/:id */
-    update: {},
-
-    /** DELETE /api/suppliers/:id */
-    delete: {},
+    /** Update a supplier by documentId. */
+    update: (documentId, data) => ({ path: `/suppliers/${documentId}`, action: 'update', method: 'put', data , data }),
+/** Async: update a supplier by documentId. */
 };

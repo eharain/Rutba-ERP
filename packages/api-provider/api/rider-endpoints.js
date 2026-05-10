@@ -1,41 +1,13 @@
 export const RiderEndpoints = {
-  myProfile: () => ({ path: '/rider/me' }),
-  updateStatus: () => ({ path: '/rider/me/status' }),
-  deliveryOffers: () => ({ path: '/rider/delivery-offers' }),
-  acceptDeliveryOffer: (offerDocumentId) => ({ path: `/rider/delivery-offers/${offerDocumentId}/accept` }),
-  rejectDeliveryOffer: (offerDocumentId) => ({ path: `/rider/delivery-offers/${offerDocumentId}/reject` }),
+  myProfile: () => ({ path: '/rider/me', action: 'findOne', method: 'get' }),
+  updateStatus: (data) => ({ path: '/rider/me/status', action: 'updateStatus', method: 'put', data }),
+  deliveryOffers: () => ({ path: '/rider/delivery-offers', action: 'find', method: 'get' }),
+  acceptDeliveryOffer: (offerDocumentId, data) => ({ path: `/rider/delivery-offers/${offerDocumentId}/accept`, action: 'accept', method: 'post', data }),
+  rejectDeliveryOffer: (offerDocumentId, data) => ({ path: `/rider/delivery-offers/${offerDocumentId}/reject`, action: 'reject', method: 'post', data }),
   deliveries: ({ status } = {}) => ({
     path: '/rider/deliveries',
     params: status ? { status } : undefined,
   }),
-  updateDeliveryStatus: (orderDocumentId) => ({ path: `/rider/deliveries/${orderDocumentId}/status` }),
+  updateDeliveryStatus: (orderDocumentId, data) => ({ path: `/rider/deliveries/${orderDocumentId}/status`, action: 'updateDeliveryStatus', method: 'put', data }),
 
-  fetchMyProfile: () => {
-    const ep = RiderEndpoints.myProfile();
-    return authApi.get(ep.path, ep.params);
-  },
-  putUpdateStatus: (data) => {
-    const ep = RiderEndpoints.updateStatus();
-    return authApi.put(ep.path, data);
-  },
-  fetchDeliveryOffers: () => {
-    const ep = RiderEndpoints.deliveryOffers();
-    return authApi.get(ep.path, ep.params);
-  },
-  postAcceptDeliveryOffer: (offerDocumentId, data = {}) => {
-    const ep = RiderEndpoints.acceptDeliveryOffer(offerDocumentId);
-    return authApi.post(ep.path, data);
-  },
-  postRejectDeliveryOffer: (offerDocumentId, data = {}) => {
-    const ep = RiderEndpoints.rejectDeliveryOffer(offerDocumentId);
-    return authApi.post(ep.path, data);
-  },
-  fetchDeliveries: (opts = {}) => {
-    const ep = RiderEndpoints.deliveries(opts);
-    return authApi.get(ep.path, ep.params);
-  },
-  postUpdateDeliveryStatus: (orderDocumentId, data) => {
-    const ep = RiderEndpoints.updateDeliveryStatus(orderDocumentId);
-    return authApi.post(ep.path, data);
-  },
 };

@@ -1,5 +1,3 @@
-import { dataNode } from '../pos/search.js';
-
 /**
  * CategoriesEndpoints
  * Centralised path + params definitions for the /categories content-type.
@@ -136,58 +134,26 @@ export const CategoriesEndpoints = {
         apps: ['stock', 'cms'],
         approle: ['admin', 'manager']
     }),
-
-    /** Async: fetch category list (single page). */
-    fetchList: (opts = {}) => {
-        const ep = CategoriesEndpoints.list(opts);
-        return authApi.fetch(ep.path, ep.params);
-    },
-
-    fetchListDraft: (opts = {}) => {
-        const ep = CategoriesEndpoints.listDraft(opts);
-        return authApi.fetch(ep.path, ep.params);
-    },
-
-    fetchListPublished: (opts = {}) => {
-        const ep = CategoriesEndpoints.listPublished(opts);
-        return authApi.fetch(ep.path, ep.params);
-    },
-
-    fetchByIdDraft: (documentId, opts = {}) => {
-        const ep = CategoriesEndpoints.byIdDraft(documentId, opts);
-        return authApi.fetch(ep.path, ep.params);
-    },
-
-    fetchByIdPublished: (documentId, opts = {}) => {
-        const ep = CategoriesEndpoints.byIdPublished(documentId, opts);
-        return authApi.fetch(ep.path, ep.params);
-    },
-
     /** Async: fetch all categories across pages. */
-    fetchAll: (opts = {}) => {
-        const ep = CategoriesEndpoints.list(opts);
-        return authApi.getAll(ep.path, ep.params);
-    },
 
-    /** Create a new category — body provided by caller as { data }. */
-    create: () => ({
+    /** Create a new category. */
+    create: (data) => ({
         path: '/categories',
         action: 'create',
         method: 'post',
         apps: ['stock', 'cms'],
-        approle: ['admin', 'manager']
+        approle: ['admin', 'manager'],
+        data,
     }),
 
-    /**
-     * Update a category by documentId — body provided by caller as { data }.
-     * @param {string} documentId
-     */
-    update: (documentId) => ({
+    /** Update a category by documentId. */
+    update: (documentId, data) => ({
         path: `/categories/${documentId}`,
         action: 'update',
         method: 'put',
         apps: ['stock', 'cms'],
-        approle: ['admin', 'manager']
+        approle: ['admin', 'manager'],
+        data,
     }),
 
     /**
@@ -202,29 +168,13 @@ export const CategoriesEndpoints = {
         approle: ['admin']
     }),
 
-    /** Async: create a new category. */
-    postCreate: (data) => authApi.post('/categories', { data }),
-
-    /** Async: update a category by documentId. */
-    putUpdate: (documentId, data) => authApi.put(`/categories/${documentId}`, { data }),
-    putUpdateDraft: (documentId, data) => authApi.put(`/categories/${documentId}`, { data, status: 'draft' }),
-
-    /** Async: delete a category by documentId. */
-    putDelete: (documentId) => authApi.del(`/categories/${documentId}`),
-
-    postPublish: (documentId) => authApi.post(`/categories/${documentId}/publish`, {}),
-    postUnpublish: (documentId) => authApi.post(`/categories/${documentId}/unpublish`, {}),
 
     /**
      * Fetch a paginated list of categories.
      * Previously standalone function, now part of the endpoint object.
      * @param {number} page
      * @param {number} rowsPerPage
-     */
-    fetchCategories: async (page, rowsPerPage) => {
-        const ep = CategoriesEndpoints.list({ page, pageSize: rowsPerPage ?? 100 });
-        return await authApi.fetch(ep.path, ep.params);
-    },
+      */
 
     /**
      * Search categories by name or code.
@@ -233,10 +183,10 @@ export const CategoriesEndpoints = {
      * @param {number} page
      * @param {number} rowsPerPage
      */
-    searchCategories: async (searchTerm, page = 1, rowsPerPage = 5) => {
+    searchCategories: (searchTerm, page = 1, rowsPerPage = 5) => {
         const hasSearch = searchTerm && searchTerm.trim().length > 0;
-        const qs = (await import('qs')).default;
-        const query = {
+
+        return {
             populate: ['logo', 'gallery', { parent: { populate: ['logo', 'gallery'] } }],
             pagination: { page, pageSize: rowsPerPage },
             ...(hasSearch && {
@@ -248,34 +198,6 @@ export const CategoriesEndpoints = {
                 },
             }),
         };
-        const res = await authApi.fetch(`/categories?${qs.stringify(query, { encodeValuesOnly: true })}`);
-        return dataNode(res);
+
     },
-};
-
-/**
- * CategoriesEndpointRules
- * Per-endpoint requestRules stored in the api-guard-pro resource record.
- */
-export const CategoriesEndpointRules = {
-    /** GET /api/categories — list */
-    list: {
-        injectPopulate: { logo: true, parent: true },
-        injectSort: ['name:asc'],
-    },
-
-    /** POST /api/categories */
-    create: {},
-
-    /** PUT /api/categories/:id */
-    update: {},
-
-    /** DELETE /api/categories/:id */
-    delete: {},
-
-    /** POST /api/categories/:id/publish */
-    publish: {},
-
-    /** POST /api/categories/:id/unpublish */
-    unpublish: {},
 };

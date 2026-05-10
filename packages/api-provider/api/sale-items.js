@@ -1,8 +1,6 @@
-import { StockItemsEndpoints } from './stock-items.js';
-
 /**
  * SaleItemsEndpoints
- * Each `fetch*` / `post*` / `put*` method owns the full async call — callers use a single await.
+ * Pure endpoint descriptors for the /sale-items resource.
  */
 export const SaleItemsEndpoints = {
 
@@ -12,25 +10,24 @@ export const SaleItemsEndpoints = {
         roles: ['admin', 'manager', 'staff']
     },
 
-    /** Create a new sale item — body provided by caller as { data }. */
-    create: () => ({
+    /** Create a new sale item. */
+    create: (data) => ({
         path: '/sale-items',
         action: 'create',
         method: 'post',
         apps: ['sale', 'stock'],
-        approle: ['admin', 'manager', 'staff']
+        approle: ['admin', 'manager', 'staff'],
+        data,
     }),
 
-    /**
-     * Update a sale item by documentId — body provided by caller as { data }.
-     * @param {string} documentId
-     */
-    update: (documentId) => ({
+    /** Update a sale item by documentId. */
+    update: (documentId, data) => ({
         path: `/sale-items/${documentId}`,
         action: 'update',
         method: 'put',
         apps: ['sale', 'stock'],
-        approle: ['admin', 'manager']
+        approle: ['admin', 'manager'],
+        data,
     }),
 
     /**
@@ -46,22 +43,13 @@ export const SaleItemsEndpoints = {
     }),
 
     /** Async: create a new sale item. */
-    postCreate: (data) => {
-        const ep = SaleItemsEndpoints.create();
-        return authApi.post(ep.path, { data });
-    },
+
 
     /** Async: update a sale item by documentId. */
-    putUpdate: (documentId, data) => {
-        const ep = SaleItemsEndpoints.update(documentId);
-        return authApi.put(ep.path, { data });
-    },
+
 
     /** Async: disconnect a sale item from its sale. */
-    putDisconnect: (documentId) => {
-        const ep = SaleItemsEndpoints.disconnect(documentId);
-        return authApi.put(ep.path, { data: { sale: { set: [] }, product: { set: [] } } });
-    },
+
 
     /**
      * Save an array of sale items: creates each sale item and marks each stock item as Sold.

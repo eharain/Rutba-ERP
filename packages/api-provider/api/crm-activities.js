@@ -6,8 +6,4 @@ export const CrmActivitiesEndpoints = {
         },
     }),
 
-    fetchList: (opts = {}) => {
-        const ep = CrmActivitiesEndpoints.list(opts);
-        return authApi.fetch(ep.path, ep.params);
-    },
 };

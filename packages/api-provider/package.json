@@ -27,6 +27,9 @@
     "./endpoints/*": "./endpoints/*",
     "./scripts/*": "./scripts/*",
     "./pos": "./pos/index.js",
-    "./pos/*": "./pos/*"
+    "./pos/*": "./pos/*",
+    "./api/*": "./api/*",
+    "./client": "./client/index.js",
+    "./server": "./server/index.js"
   }
 }

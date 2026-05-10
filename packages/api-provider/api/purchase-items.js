@@ -1,9 +1,6 @@
-import { prepareForPut } from '../utils.js';
-import { dataNode } from '../pos/search.js';
-
 /**
  * PurchaseItemsEndpoints
- * Each `fetch*` method owns the full async call — callers use a single await.
+ * Pure endpoint descriptors for the /purchase-items resource.
  */
 export const PurchaseItemsEndpoints = {
 
@@ -30,13 +27,14 @@ export const PurchaseItemsEndpoints = {
         },
     }),
 
-    /** Create a new purchase item — body provided by caller as { data }. */
-    create: () => ({
+    /** Create a new purchase item. */
+    create: (data) => ({
         path: '/purchase-items',
         action: 'create',
         method: 'post',
         apps: ['purchase', 'stock'],
-        approle: ['admin', 'manager', 'staff']
+        approle: ['admin', 'manager', 'staff'],
+        data,
     }),
 
     /**
@@ -56,7 +54,7 @@ export const PurchaseItemsEndpoints = {
      * Update a purchase item by documentId — body provided by caller as { data }.
      * @param {string} documentId
      */
-    update: (documentId) => ({
+    update: (documentId, data) => ({
         path: `/purchase-items/${documentId}`,
         action: 'update',
         method: 'put',
@@ -65,25 +63,19 @@ export const PurchaseItemsEndpoints = {
     }),
 
     /** Async: fetch purchase items by product documentId. */
-    fetchByProduct: (productDocId, opts = {}) => {
-        const ep = PurchaseItemsEndpoints.byProduct(productDocId, opts);
-        return authApi.fetch(ep.path, ep.params);
-    },
+
 
     /** Async: fetch all purchase items for a given purchase. */
-    fetchList: (purchaseDocId, opts = {}) => {
-        const ep = PurchaseItemsEndpoints.list(purchaseDocId, opts);
-        return authApi.fetch(ep.path, ep.params);
-    },
+
 
     /** Async: create a new purchase item. */
-    postCreate: (data) => authApi.post('/purchase-items', { data }),
+
 
     /** Async: update a purchase item by documentId. */
-    putUpdate: (documentId, data) => authApi.put(`/purchase-items/${documentId}`, { data }),
+
 
     /** Async: delete a purchase item by documentId. */
-    putDelete: (documentId) => authApi.del(`/purchase-items/${documentId}`),
+
 
     /**
      * Save a single purchase item — PUT if it already exists (id > -1), POST otherwise.

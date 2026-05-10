@@ -6,11 +6,6 @@ export const DeliveryZonesEndpoints = {
             pagination: pagination ?? { pageSize: 200 },
         },
     }),
-    create: () => ({ path: '/delivery-zones' }),
+    create: (data) => ({ path: '/delivery-zones' , data }),
 
-    fetchList: (opts = {}) => {
-        const ep = DeliveryZonesEndpoints.list(opts);
-        return authApi.fetch(ep.path, ep.params);
-    },
-    postCreate: (data) => authApi.post('/delivery-zones', data),
 };

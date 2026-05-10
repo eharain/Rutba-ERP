@@ -1,9 +1,6 @@
-import { dataNode } from '../pos/search.js';
-import { generateNextInvoiceNumber, getUser } from '../utils.js';
-
 /**
  * SalesEndpoints
- * Each `fetch*` method owns the full async call — callers use a single await.
+ * Pure endpoint descriptors for the /sales resource.
  */
 export const SalesEndpoints = {
 
@@ -94,49 +91,44 @@ export const SalesEndpoints = {
         },
     }),
 
-    /** Create a new sale — body is provided by the caller as { data }. */
-    create: () => ({
+    /** Create a new sale. */
+    create: (data) => ({
         path: '/sales',
         action: 'create',
         method: 'post',
         apps: ['sale'],
-        approle: ['admin', 'manager', 'staff']
+        approle: ['admin', 'manager', 'staff'],
+        data,
     }),
 
-    /**
-     * Update a sale by documentId — body provided by caller as { data }.
-     * @param {string} documentId
-     */
-    update: (documentId) => ({
+    /** Update a sale by documentId. */
+    update: (documentId, data) => ({
         path: `/sales/${documentId}`,
         action: 'update',
         method: 'put',
         apps: ['sale'],
-        approle: ['admin', 'manager']
+        approle: ['admin', 'manager'],
+        data,
     }),
 
-    /**
-     * Cancel a sale.
-     * @param {string} documentId
-     */
-    cancel: (documentId) => ({
+    /** Cancel a sale. */
+    cancel: (documentId, data) => ({
         path: `/sales/${documentId}/cancel`,
         action: 'cancel',
         method: 'put',
         apps: ['sale'],
-        approle: ['admin', 'manager']
+        approle: ['admin', 'manager'],
+        data,
     }),
 
-    /**
-     * Save notes on a sale — body provided by caller as { data: { notes } }.
-     * @param {string} documentId
-     */
-    saveNotes: (documentId) => ({
+    /** Save notes on a sale. */
+    saveNotes: (documentId, data) => ({
         path: `/sales/${documentId}`,
         action: 'saveNotes',
         method: 'put',
         apps: ['sale'],
-        approle: ['admin', 'manager', 'staff']
+        approle: ['admin', 'manager', 'staff'],
+        data,
     }),
 
     /**

@@ -6,8 +6,4 @@ export const PayPayrollRunsEndpoints = {
         },
     }),
 
-    fetchList: (opts = {}) => {
-        const ep = PayPayrollRunsEndpoints.list(opts);
-        return authApi.fetch(ep.path, ep.params);
-    },
 };

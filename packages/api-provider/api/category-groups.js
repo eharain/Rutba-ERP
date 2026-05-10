@@ -1,3 +1,5 @@
+import { __publish_generic_helper } from './__publish_generic_helper'
+
 export const CategoryGroupsEndpoints = {
     listDraft: ({ sort, populate, pagination } = {}) => ({
         path: '/category-groups',
@@ -35,31 +37,6 @@ export const CategoryGroupsEndpoints = {
         },
     }),
 
-    create: () => ({ path: '/category-groups' }),
-    updateDraft: (documentId) => ({ path: `/category-groups/${documentId}` }),
-    publish: (documentId) => ({ path: `/category-groups/${documentId}/publish` }),
-    unpublish: (documentId) => ({ path: `/category-groups/${documentId}/unpublish` }),
-    del: (documentId) => ({ path: `/category-groups/${documentId}` }),
+    ...__publish_generic_helper('category-groups'),
 
-    fetchListDraft: (opts = {}) => {
-        const ep = CategoryGroupsEndpoints.listDraft(opts);
-        return authApi.fetch(ep.path, ep.params);
-    },
-    fetchListPublished: (opts = {}) => {
-        const ep = CategoryGroupsEndpoints.listPublished(opts);
-        return authApi.fetch(ep.path, ep.params);
-    },
-    fetchByIdDraft: (documentId, opts = {}) => {
-        const ep = CategoryGroupsEndpoints.byIdDraft(documentId, opts);
-        return authApi.fetch(ep.path, ep.params);
-    },
-    fetchByIdPublished: (documentId, opts = {}) => {
-        const ep = CategoryGroupsEndpoints.byIdPublished(documentId, opts);
-        return authApi.fetch(ep.path, ep.params);
-    },
-    postCreate: (data) => authApi.post('/category-groups', { data }),
-    putUpdateDraft: (documentId, data) => authApi.put(`/category-groups/${documentId}`, { data, status: 'draft' }),
-    postPublish: (documentId) => authApi.post(`/category-groups/${documentId}/publish`, {}),
-    postUnpublish: (documentId) => authApi.post(`/category-groups/${documentId}/unpublish`, {}),
-    delById: (documentId) => authApi.del(`/category-groups/${documentId}`),
 };

@@ -1,5 +1,5 @@
 import { authApi } from '@/lib/api.js';
-import { createClientProxy } from '@/lib/providers/createClientProxy.js';
+import { createClientProxy } from '@/providers/createClientProxy.js';
 import { WebOrdersEndpoints } from '@/api/web-orders.js';
 
 export default createClientProxy(WebOrdersEndpoints, authApi);

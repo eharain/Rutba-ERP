@@ -20,7 +20,7 @@ export const CustomersEndpoints = {
     }),
 
     /** Create a new customer — body provided by caller as { data }. */
-    create: () => ({ path: '/customers' }),
+    create: (data) => ({ path: '/customers' , data }),
 
     /**
      * Search customers by name or phone (case-insensitive contains).
@@ -44,31 +44,8 @@ export const CustomersEndpoints = {
      * Update a customer by documentId — body provided by caller as { data }.
      * @param {string} documentId
      */
-    update: (documentId) => ({ path: `/customers/${documentId}` }),
+    update: (documentId, data) => ({ path: `/customers/${documentId}` , data }),
 
-    /** Async: search customers by name or phone. */
-    fetchSearch: (q, pageSize = 10) => {
-        const ep = CustomersEndpoints.search(q, pageSize);
-        return authApi.fetch(ep.path, ep.params);
-    },
-
-    /** Async: find customer by exact email or phone. */
-    fetchByContact: (opts = {}) => {
-        const ep = CustomersEndpoints.findByContact(opts);
-        return authApi.fetch(ep.path, ep.params);
-    },
-
-    /** Async: create a new customer. */
-    postCreate: (data) => {
-        const ep = CustomersEndpoints.create();
-        return authApi.post(ep.path, { data });
-    },
-
-    /** Async: update a customer by documentId. */
-    putUpdate: (documentId, data) => {
-        const ep = CustomersEndpoints.update(documentId);
-        return authApi.put(ep.path, { data });
-    },
 };
 
 /**
