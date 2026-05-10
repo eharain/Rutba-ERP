@@ -3,15 +3,8 @@ export const SocialAccountsEndpoints = {
         path: '/social-accounts',
         params: { sort: sort ?? ['createdAt:desc'] },
     }),
-    create: () => ({ path: '/social-accounts' }),
-    update: (documentId) => ({ path: `/social-accounts/${documentId}` }),
-    del: (documentId) => ({ path: `/social-accounts/${documentId}` }),
+    create: (data) => ({ path: '/social-accounts', action: 'create', method: 'post', data , data }),
+    update: (documentId, data) => ({ path: `/social-accounts/${documentId}`, action: 'update', method: 'put', data , data }),
+    del: (documentId) => ({ path: `/social-accounts/${documentId}`, action: 'delete', method: 'delete' }),
 
-    fetchList: (opts = {}) => {
-        const ep = SocialAccountsEndpoints.list(opts);
-        return authApi.fetch(ep.path, ep.params);
-    },
-    postCreate: (data) => authApi.post('/social-accounts', data),
-    putUpdate: (documentId, data) => authApi.put(`/social-accounts/${documentId}`, data),
-    putDelete: (documentId) => authApi.del(`/social-accounts/${documentId}`),
 };

@@ -35,31 +35,10 @@ export const SaleOffersEndpoints = {
         },
     }),
 
-    create: () => ({ path: '/sale-offers' }),
-    updateDraft: (documentId) => ({ path: `/sale-offers/${documentId}` }),
+    create: (data) => ({ path: '/sale-offers' , data }),
+    updateDraft: (documentId, data) => ({ path: `/sale-offers/${documentId}` , data }),
     publish: (documentId) => ({ path: `/sale-offers/${documentId}/publish` }),
     unpublish: (documentId) => ({ path: `/sale-offers/${documentId}/unpublish` }),
     del: (documentId) => ({ path: `/sale-offers/${documentId}` }),
 
-    fetchListDraft: (opts = {}) => {
-        const ep = SaleOffersEndpoints.listDraft(opts);
-        return authApi.fetch(ep.path, ep.params);
-    },
-    fetchListPublished: (opts = {}) => {
-        const ep = SaleOffersEndpoints.listPublished(opts);
-        return authApi.fetch(ep.path, ep.params);
-    },
-    fetchByIdDraft: (documentId, opts = {}) => {
-        const ep = SaleOffersEndpoints.byIdDraft(documentId, opts);
-        return authApi.fetch(ep.path, ep.params);
-    },
-    fetchByIdPublished: (documentId, opts = {}) => {
-        const ep = SaleOffersEndpoints.byIdPublished(documentId, opts);
-        return authApi.fetch(ep.path, ep.params);
-    },
-    postCreate: (data) => authApi.post('/sale-offers', { data }),
-    putUpdateDraft: (documentId, data) => authApi.put(`/sale-offers/${documentId}`, { data, status: 'draft' }),
-    postPublish: (documentId) => authApi.post(`/sale-offers/${documentId}/publish`, {}),
-    postUnpublish: (documentId) => authApi.post(`/sale-offers/${documentId}/unpublish`, {}),
-    delById: (documentId) => authApi.del(`/sale-offers/${documentId}`),
 };

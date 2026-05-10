@@ -6,8 +6,4 @@ export const AccInvoicesEndpoints = {
         },
     }),
 
-    fetchList: (sort = {}) => {
-        const ep = AccInvoicesEndpoints.list(sort);
-        return authApi.fetch(ep.path, ep.params);
-    },
 };

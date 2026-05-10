@@ -1,7 +1,5 @@
 export const SocialRepliesEndpoints = {
     list: (params = {}) => ({ path: '/social-replies', params }),
-    del: (documentId) => ({ path: `/social-replies/${documentId}` }),
+    del: (documentId) => ({ path: `/social-replies/${documentId}`, action: 'delete', method: 'delete' }),
 
-    fetchList: (params = {}) => authApi.fetch('/social-replies', params),
-    putDelete: (documentId) => authApi.del(`/social-replies/${documentId}`),
 };

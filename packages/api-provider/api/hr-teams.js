@@ -8,19 +8,7 @@ export const HrTeamsEndpoints = {
     }),
 
     appRoleOptions: () => ({ path: '/hr-teams/app-role-options' }),
-    create: () => ({ path: '/hr-teams' }),
-    update: (documentId) => ({ path: `/hr-teams/${documentId}` }),
+    create: (data) => ({ path: '/hr-teams' , data }),
+    update: (documentId, data) => ({ path: `/hr-teams/${documentId}` , data }),
 
-    fetchList: (opts = {}) => {
-        const ep = HrTeamsEndpoints.list(opts);
-        return authApi.fetch(ep.path, ep.params);
-    },
-
-    fetchAppRoleOptions: () => {
-        const ep = HrTeamsEndpoints.appRoleOptions();
-        return authApi.fetch(ep.path, ep.params);
-    },
-
-    postCreate: (data) => authApi.post('/hr-teams', { data }),
-    putUpdate: (documentId, data) => authApi.put(`/hr-teams/${documentId}`, { data }),
 };

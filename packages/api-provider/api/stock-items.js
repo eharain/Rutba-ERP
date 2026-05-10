@@ -1,9 +1,6 @@
-import { dataNode } from '../pos/search.js';
-import { getBranch } from '../utils.js';
-
 /**
  * StockItemsEndpoints
- * Each `fetch*` method owns the full async call — callers use a single await.
+ * Pure endpoint descriptors for the /stock-items resource.
  */
 export const StockItemsEndpoints = {
 
@@ -131,8 +128,15 @@ export const StockItemsEndpoints = {
         },
     }),
 
-    /** Create one or more stock items — body provided by caller as { data }. */
-    create: () => ({ path: '/stock-items' }),
+    /** Create one or more stock items. */
+    create: (data) => ({
+        path: '/stock-items',
+        action: 'create',
+        method: 'post',
+        apps: ['stock'],
+        approle: ['admin', 'manager', 'staff'],
+        data,
+    }),
 
     /**
      * Search stock items by barcode (exact match).
@@ -162,11 +166,15 @@ export const StockItemsEndpoints = {
         params: populate ? { populate } : undefined,
     }),
 
-    /**
-     * Update a stock item by documentId — body provided by caller as { data }.
-     * @param {string} documentId
-     */
-    update: (documentId) => ({ path: `/stock-items/${documentId}` }),
+    /** Update a stock item by documentId. */
+    update: (documentId, data) => ({
+        path: `/stock-items/${documentId}`,
+        action: 'update',
+        method: 'put',
+        apps: ['stock'],
+        approle: ['admin', 'manager'],
+        data,
+    }),
 
     /**
      * List stock items by product documentId (for counting or transfer).
@@ -190,70 +198,37 @@ export const StockItemsEndpoints = {
     transfer: () => ({ path: '/stock-items/transfer' }),
 
     /** Async: fetch paginated list (branch-scoped search). */
-    fetchList: (page, pageSize, opts = {}) => {
-        const ep = StockItemsEndpoints.list(page, pageSize, opts);
-        return authApi.fetch(ep.path, ep.params);
-    },
+
 
     /** Async: fetch stock items belonging to a product. */
-    fetchByProduct: (productDocId, opts = {}) => {
-        const ep = StockItemsEndpoints.byProduct(productDocId, opts);
-        return authApi.fetch(ep.path, ep.params);
-    },
+
 
     /** Async: fetch stock items belonging to a product via the branch-scoped route. */
-    fetchListByProduct: (productDocId, opts = {}) => {
-        const ep = StockItemsEndpoints.listByProduct(productDocId, opts);
-        return authApi.fetch(ep.path, ep.params);
-    },
+
 
     /** Async: check whether a barcode already exists. */
-    fetchCheckBarcode: (barcode) => {
-        const ep = StockItemsEndpoints.checkBarcode(barcode);
-        return authApi.fetch(ep.path, ep.params);
-    },
+
 
     /** Async: search stock items by barcode. */
-    fetchByBarcode: (barcode) => {
-        const ep = StockItemsEndpoints.searchByBarcode(barcode);
-        return authApi.fetch(ep.path, ep.params);
-    },
+
 
     /** Async: search stock items by name. */
-    fetchByName: (name) => {
-        const ep = StockItemsEndpoints.searchByName(name);
-        return authApi.fetch(ep.path, ep.params);
-    },
+
 
     /** Async: fetch a single stock item by id. */
-    fetchById: (id, opts = {}) => {
-        const ep = StockItemsEndpoints.byId(id, opts);
-        return authApi.fetch(ep.path, ep.params);
-    },
+
 
     /** Async: fetch orphan groups. */
-    fetchOrphanGroups: (opts = {}) => {
-        const ep = StockItemsEndpoints.orphanGroups(opts);
-        return authApi.fetch(ep.path, ep.params);
-    },
+
 
     /** Async: fetch items within an orphan group. */
-    fetchOrphanGroupItems: (opts = {}) => {
-        const ep = StockItemsEndpoints.orphanGroupItems(opts);
-        return authApi.fetch(ep.path, ep.params);
-    },
+
 
     /** Async: create a new stock item. */
-    postCreate: (data) => {
-        const ep = StockItemsEndpoints.create();
-        return authApi.post(ep.path, { data });
-    },
+
 
     /** Async: update a stock item by documentId. */
-    putUpdate: (documentId, data) => {
-        const ep = StockItemsEndpoints.update(documentId);
-        return authApi.put(ep.path, { data });
-    },
+
 
     /**
      * Generate and persist stock items for a received purchase item.

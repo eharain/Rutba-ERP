@@ -30,13 +30,14 @@ export const SaleReturnsEndpoints = {
         },
     }),
 
-    /** Create a new sale return — body provided by caller as { data }. */
-    create: () => ({
+    /** Create a new sale return. */
+    create: (data) => ({
         path: '/sale-returns',
         action: 'create',
         method: 'post',
         apps: ['sale', 'return'],
-        approle: ['admin', 'manager', 'staff']
+        approle: ['admin', 'manager', 'staff'],
+        data,
     }),
 
     /**
@@ -60,16 +61,14 @@ export const SaleReturnsEndpoints = {
         },
     }),
 
-    /**
-     * Update a sale return by documentId — body provided by caller as { data }.
-     * @param {string} documentId
-     */
-    update: (documentId) => ({
+    /** Update a sale return by documentId. */
+    update: (documentId, data) => ({
         path: `/sale-returns/${documentId}`,
         action: 'update',
         method: 'put',
         apps: ['sale', 'return'],
-        approle: ['admin', 'manager']
+        approle: ['admin', 'manager'],
+        data,
     }),
 
     /**
@@ -95,30 +94,8 @@ export const SaleReturnsEndpoints = {
         apps: ['sale', 'return'],
         approle: ['admin', 'manager']
     }),
-
-    /** Async: fetch paginated list of sale returns. */
-    fetchList: (page, pageSize, opts = {}) => {
-        const ep = SaleReturnsEndpoints.list(page, pageSize, opts);
-        return authApi.fetch(ep.path, ep.params);
-    },
-
-    /** Async: fetch a single sale return by documentId. */
-    fetchById: (documentId) => {
-        const ep = SaleReturnsEndpoints.byId(documentId);
-        return authApi.fetch(ep.path, ep.params);
-    },
-
-    /** Async: create a new sale return. */
-    postCreate: (data) => {
-        const ep = SaleReturnsEndpoints.create();
-        return authApi.post(ep.path, { data });
-    },
-
-    /** Async: update a sale return by documentId. */
-    putUpdate: (documentId, data) => {
-        const ep = SaleReturnsEndpoints.update(documentId);
-        return authApi.put(ep.path, { data });
-    },
+/** Async: fetch a single sale return by documentId. */
+/** Async: update a sale return by documentId. */
 
     /**
      * Fetch a paginated list of sale returns.
@@ -126,10 +103,7 @@ export const SaleReturnsEndpoints = {
      * @param {number} page
      * @param {number} rowsPerPage
      */
-    fetchReturns: async (page, rowsPerPage = 100) => {
-        const ep = SaleReturnsEndpoints.list(page, rowsPerPage);
-        return await authApi.fetch(ep.path, ep.params);
-    },
+
 };
 
 /**

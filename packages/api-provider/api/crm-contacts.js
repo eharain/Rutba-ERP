@@ -11,13 +11,4 @@ export const CrmContactsEndpoints = {
         params,
     }),
 
-    fetchList: (opts = {}) => {
-        const ep = CrmContactsEndpoints.list(opts);
-        return authApi.fetch(ep.path, ep.params);
-    },
-
-    fetchById: (documentId, params = {}) => {
-        const ep = CrmContactsEndpoints.byId(documentId, params);
-        return authApi.fetch(ep.path, ep.params);
-    },
 };

@@ -34,12 +34,7 @@ export const EnumsEndpoints = {
      * @param {string} name - content-type UID or short name (e.g. 'stock-item')
      * @param {string} field - field name (e.g. 'status')
      */
-    fetchEnumsValues: async (name, field) => {
-        const ep = EnumsEndpoints.values(name, field);
-        const res = await authApi.fetch(ep.path);
-        const data = dataNode(res);
-        return data?.values;
-    },
+
 };
 
 /**

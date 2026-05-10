@@ -1,5 +1,5 @@
 import { authApi } from '@/lib/api.js';
-import { createClientProxy } from '@/lib/providers/createClientProxy.js';
+import { createClientProxy } from '@/providers/createClientProxy.js';
 import { PaymentsEndpoints } from '@/api/payments.js';
 
 export default createClientProxy(PaymentsEndpoints, authApi);

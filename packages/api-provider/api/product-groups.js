@@ -35,31 +35,10 @@ export const ProductGroupsEndpoints = {
         },
     }),
 
-    create: () => ({ path: '/product-groups' }),
-    updateDraft: (documentId) => ({ path: `/product-groups/${documentId}` }),
-    publish: (documentId) => ({ path: `/product-groups/${documentId}/publish` }),
-    unpublish: (documentId) => ({ path: `/product-groups/${documentId}/unpublish` }),
-    del: (documentId) => ({ path: `/product-groups/${documentId}` }),
+    create: (data) => ({ path: '/product-groups', action: 'create', method: 'post', data , data }),
+    updateDraft: (documentId, data) => ({ path: `/product-groups/${documentId}`, action: 'update', method: 'put', params: { status: 'draft' }, data , data }),
+    publish: (documentId) => ({ path: `/product-groups/${documentId}/publish`, action: 'publish', method: 'post' }),
+    unpublish: (documentId) => ({ path: `/product-groups/${documentId}/unpublish`, action: 'unpublish', method: 'post' }),
+    del: (documentId) => ({ path: `/product-groups/${documentId}`, action: 'delete', method: 'delete' }),
 
-    fetchListDraft: (opts = {}) => {
-        const ep = ProductGroupsEndpoints.listDraft(opts);
-        return authApi.fetch(ep.path, ep.params);
-    },
-    fetchListPublished: (opts = {}) => {
-        const ep = ProductGroupsEndpoints.listPublished(opts);
-        return authApi.fetch(ep.path, ep.params);
-    },
-    fetchByIdDraft: (documentId, opts = {}) => {
-        const ep = ProductGroupsEndpoints.byIdDraft(documentId, opts);
-        return authApi.fetch(ep.path, ep.params);
-    },
-    fetchByIdPublished: (documentId, opts = {}) => {
-        const ep = ProductGroupsEndpoints.byIdPublished(documentId, opts);
-        return authApi.fetch(ep.path, ep.params);
-    },
-    postCreate: (data) => authApi.post('/product-groups', { data }),
-    putUpdateDraft: (documentId, data) => authApi.put(`/product-groups/${documentId}`, { data, status: 'draft' }),
-    postPublish: (documentId) => authApi.post(`/product-groups/${documentId}/publish`, {}),
-    postUnpublish: (documentId) => authApi.post(`/product-groups/${documentId}/unpublish`, {}),
-    delById: (documentId) => authApi.del(`/product-groups/${documentId}`),
 };

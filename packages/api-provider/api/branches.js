@@ -2,14 +2,23 @@
 
 /**
  * BranchesEndpoints
- * Each `fetch*` method owns the full async call — callers use a single await.
+ * Pure endpoint descriptors for the /branches resource.
+ * All methods return { path, params?, data? } objects.
+ * Transport execution happens via createClientProxy in /endpoints/branches.js.
  */
 export const BranchesEndpoints = {
 
+    /**
+     * Search branches by name or code with optional filters.
+     * @param {string} searchTerm
+     * @param {number} page
+     * @param {number} rowsPerPage
+     */
     searchBranches(searchTerm, page = 1, rowsPerPage = 5) {
         const hasSearch = searchTerm && searchTerm.trim().length > 0;
 
-       return {
+        return {
+            path: '/branches',
             params: {
                 populate: ['logo', 'gallery', 'currency', { categories: { populate: ['logo', 'gallery'] } }],
                 pagination: { page, pageSize: rowsPerPage },
@@ -27,18 +36,15 @@ export const BranchesEndpoints = {
 
     /**
      * List all branches with their desks and currency populated.
-     * Replaces the qs-string path: /branches?populate[0]=desks&populate[1]=currency
+     * @param {{ sort?, populate? }} opts
      */
-    listWithDesks: () => ({
+    listWithDesks: ({ sort, populate } = {}) => ({
         path: '/branches',
         params: {
-            populate: { desks: true, currency: true },
+            sort: sort ?? ['name:asc'],
+            populate: populate ?? { desks: true, currency: true },
         },
     }),
-    fetchListWithDesks: () => {
-        const ep = BranchesEndpoints.listWithDesks();
-        return api.get(ep.path, ep.params);
-    },
 
     /**
      * Simple list of branches (no nested populate).
@@ -56,54 +62,41 @@ export const BranchesEndpoints = {
     /**
      * Fetch a single branch by documentId with desks and currency populated.
      * @param {string} documentId
+     * @param {{ populate? }} opts
      */
-    byId: (documentId) => ({
+    byId: (documentId, { populate } = {}) => ({
         path: `/branches/${documentId}`,
-        params: { populate: { desks: true, currency: true } },
+        params: { populate: populate ?? { desks: true, currency: true } },
     }),
 
     /**
      * Update a branch by documentId — body provided by caller as { data }.
      * @param {string} documentId
      */
-    update: (documentId) => ({ path: `/branches/${documentId}` }),
+    update: (documentId, data) => ({ path: `/branches/${documentId}` , data }),
 
-    /** Async: fetch branches list. */
-    fetchList: (opts = {}) => {
-        const ep = BranchesEndpoints.list(opts);
-        return authApi.fetch(ep.path, ep.params);
-    },
+    /**
+     * Get archive statistics for a branch.
+     * @param {string} branchDocumentId
+     */
+    archiveStats: (branchDocumentId) => ({
+        path: `/branches/${branchDocumentId}/archive-stats`,
+    }),
 
-    /** Async: fetch a single branch by documentId. */
-    fetchById: (documentId) => {
-        const ep = BranchesEndpoints.byId(documentId);
-        return authApi.fetch(ep.path, ep.params);
-    },
+    /**
+     * Archive stock items for a branch.
+     * @param {string} branchDocumentId
+     */
+    archiveStock: (branchDocumentId) => ({
+        path: `/branches/${branchDocumentId}/archive-stock`,
+    }),
 
-    /** Async: fetch branches with desks and currency. */
-    fetchWithDesks: () => {
-        const ep = BranchesEndpoints.listWithDesks();
-        return authApi.fetch(ep.path, ep.params);
-    },
-
-    /** Async: update a branch by documentId. */
-    putUpdate: (documentId, data) => {
-        const ep = BranchesEndpoints.update(documentId);
-        return authApi.put(ep.path, { data });
-    },
-
-    /** Async: fetch archive statistics for a branch. */
-    fetchArchiveStats: (branchDocumentId) => authApi.get(`/branches/${branchDocumentId}/archive-stats`),
-
-    /** Async: archive stock items for a branch. */
-    postArchiveStock: (branchDocumentId, data) => {
-        return authApi.post(`/branches/${branchDocumentId}/archive-stock`, data);
-    },
-
-    /** Async: unarchive (restore) stock items for a branch. */
-    postUnarchiveStock: (branchDocumentId, data) => {
-        return authApi.post(`/branches/${branchDocumentId}/unarchive-stock`, data);
-    },
+    /**
+     * Unarchive (restore) stock items for a branch.
+     * @param {string} branchDocumentId
+     */
+    unarchiveStock: (branchDocumentId) => ({
+        path: `/branches/${branchDocumentId}/unarchive-stock`,
+    }),
 };
-
 

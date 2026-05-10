@@ -6,8 +6,4 @@ export const HrDepartmentsEndpoints = {
         },
     }),
 
-    fetchList: (opts = {}) => {
-        const ep = HrDepartmentsEndpoints.list(opts);
-        return authApi.fetch(ep.path, ep.params);
-    },
 };

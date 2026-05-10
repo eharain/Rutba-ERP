@@ -159,6 +159,13 @@ async function post(path, data, jwt) {
     return res.data;
 }
 
+async function patch(path, data, jwt) {
+    const res = await axios.patch(`${API_URL}${path}`, data, {
+        headers: { "Content-Type": "application/json", ...authHeaders(jwt) },
+    });
+    return res.data;
+}
+
 async function put(path, data, jwt) {
     const res = await axios.put(`${API_URL}${path}`, data, {
         headers: { "Content-Type": "application/json", ...authHeaders(jwt) },
@@ -303,6 +310,7 @@ export const authApi = {
     get: (path, data) => authCall(get, path, data),
     getAll: (path, params) => authCall(getAll, path, params),
     post: (path, data) => authCall(post, path, data),
+    patch: (path, data) => authCall(patch, path, data),
     put: (path, data) => authCall(put, path, data),
     del: (path) => authCall(del, path),
     uploadFile: (file, ref, field, refId, info) => authCall(uploadFile, file, ref, field, refId, info),
@@ -310,13 +318,14 @@ export const authApi = {
     /**
      * Fire a request described by an endpoint descriptor `{ path, params?, method? }`.
      * Defaults to GET (same channel as `authApi.fetch`).
-     * @param {{ path: string, params?: object, method?: 'GET'|'POST'|'PUT'|'DELETE' }} ep
-     * @param {object} [body]   Only used for POST / PUT.
+     * @param {{ path: string, params?: object, method?: 'GET'|'POST'|'PUT'|'PATCH'|'DELETE' }} ep
+     * @param {object} [body]   Only used for POST / PUT / PATCH.
      */
     call: (ep, body) => {
         const method = (ep.method ?? 'GET').toUpperCase();
         switch (method) {
             case 'POST':   return authCall(post, ep.path, body ?? ep.params);
+            case 'PATCH':  return authCall(patch, ep.path, body ?? ep.params);
             case 'PUT':    return authCall(put,  ep.path, body ?? ep.params);
             case 'DELETE': return authCall(del,  ep.path);
             default:       return authCall(get,  ep.path, ep.params);

@@ -7,8 +7,4 @@ export const HrAttendancesEndpoints = {
         },
     }),
 
-    fetchList: (opts = {}) => {
-        const ep = HrAttendancesEndpoints.list(opts);
-        return authApi.fetch(ep.path, ep.params);
-    },
 };

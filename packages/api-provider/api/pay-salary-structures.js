@@ -6,8 +6,4 @@ export const PaySalaryStructuresEndpoints = {
         },
     }),
 
-    fetchList: (opts = {}) => {
-        const ep = PaySalaryStructuresEndpoints.list(opts);
-        return authApi.fetch(ep.path, ep.params);
-    },
 };

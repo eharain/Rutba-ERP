@@ -1,13 +1,12 @@
-import { dataNode } from '../pos/search.js';
-
 /**
  * BrandsEndpoints
- * Centralised path + params definitions for the /brands content-type.
+ * Pure endpoint descriptors for the /brands resource.
+ * All methods return { path, params?, data? } objects.
+ * Transport execution happens via createClientProxy in /endpoints/brands.js.
  *
  * Covers both the pos-stock management UI (draft/publish flows)
  * and simple list/paginated lookups used across other pages.
  */
-
 export const BrandsEndpoints = {
 
     meta: {
@@ -108,20 +107,8 @@ export const BrandsEndpoints = {
         },
     }),
 
-    /** Async: fetch brand list (single page). */
-    fetchList: (opts = {}) => {
-        const ep = BrandsEndpoints.list(opts);
-        return authApi.fetch(ep.path, ep.params);
-    },
-
-    /** Async: fetch all brands across pages. */
-    fetchAll: (opts = {}) => {
-        const ep = BrandsEndpoints.list(opts);
-        return authApi.getAll(ep.path, ep.params);
-    },
-
     /** Create a new brand — body provided by caller as { data }. */
-    create: () => ({
+    create: (data) => ({
         path: '/brands',
         action: 'create',
         method: 'post',
@@ -133,7 +120,7 @@ export const BrandsEndpoints = {
      * Update a brand by documentId — body provided by caller as { data }.
      * @param {string} documentId
      */
-    update: (documentId) => ({
+    update: (documentId, data) => ({
         path: `/brands/${documentId}`,
         action: 'update',
         method: 'put',
@@ -141,6 +128,11 @@ export const BrandsEndpoints = {
         approle: ['admin', 'manager']
     }),
 
+    /**
+     * Fetch brand by ID in draft status.
+     * @param {string} documentId
+     * @param {{ populate? }} opts
+     */
     byIdDraft: (documentId, { populate } = {}) => ({
         path: `/brands/${documentId}`,
         action: 'findOne',
@@ -150,6 +142,11 @@ export const BrandsEndpoints = {
         params: { status: 'draft', ...(populate ? { populate } : {}) },
     }),
 
+    /**
+     * Fetch brand by ID in published status.
+     * @param {string} documentId
+     * @param {{ fields?, populate? }} opts
+     */
     byIdPublished: (documentId, { fields, populate } = {}) => ({
         path: `/brands/${documentId}`,
         action: 'findOne',
@@ -157,6 +154,15 @@ export const BrandsEndpoints = {
         apps: ['stock', 'brand'],
         approle: ['admin', 'manager', 'staff'],
         params: { status: 'published', ...(fields ? { fields } : {}), ...(populate ? { populate } : {}) },
+    }),
+
+    /**
+     * Update brand in draft status.
+     * @param {string} documentId
+     */
+    updateDraft: (documentId, data) => ({
+        path: `/brands/${documentId}`,
+        params: { status: 'draft' },
     }),
 
     /**
@@ -194,92 +200,4 @@ export const BrandsEndpoints = {
         apps: ['stock', 'brand'],
         approle: ['admin', 'manager']
     }),
-
-    /**
-     * Fetch a paginated list of brands.
-     * Previously standalone function, now part of the endpoint object.
-     * @param {number} page
-     * @param {number} rowsPerPage
-     */
-    fetchBrands: async (page, rowsPerPage) => {
-        const ep = BrandsEndpoints.list({ page, pageSize: rowsPerPage ?? 100 });
-        return await authApi.fetch(ep.path, ep.params);
-    },
-};
-
-Object.assign(BrandsEndpoints, {
-    async postCreate(data) {
-        const ep = BrandsEndpoints.create();
-        const res = await authApi.post(ep.path, { data });
-        return res?.data ?? res;
-    },
-    async putUpdate(documentId, data) {
-        const ep = BrandsEndpoints.update(documentId);
-        const res = await authApi.put(ep.path, { data });
-        return res?.data ?? res;
-    },
-    fetchByIdDraft(documentId, opts = {}) {
-        const ep = BrandsEndpoints.byIdDraft(documentId, opts);
-        return authApi.fetch(ep.path, ep.params);
-    },
-    fetchByIdPublished(documentId, opts = {}) {
-        const ep = BrandsEndpoints.byIdPublished(documentId, opts);
-        return authApi.fetch(ep.path, ep.params);
-    },
-    putUpdateDraft(documentId, data) {
-        return authApi.put(`/brands/${documentId}`, { data, status: 'draft' });
-    },
-    postPublish(documentId) {
-        return authApi.post(`/brands/${documentId}/publish`, {});
-    },
-    postUnpublish(documentId) {
-        return authApi.post(`/brands/${documentId}/unpublish`, {});
-    },
-    delById(documentId) {
-        return authApi.del(`/brands/${documentId}`);
-    },
-    async putDelete(documentId) {
-        const ep = BrandsEndpoints.del(documentId);
-        return authApi.del(ep.path);
-    },
-});
-
-/**
- * BrandsEndpointRules
- * Per-endpoint requestRules stored in the api-guard-pro resource record.
- */
-export const BrandsEndpointRules = {
-    /** GET /api/brands — list (all statuses) */
-    list: {
-        injectPopulate: { logo: true, categories: true },
-        injectSort: ['name:asc'],
-    },
-
-    /** GET /api/brands — listPublished (status=published) */
-    listPublished: {
-        filters: { publishedAt: { $notNull: true } },
-        injectPopulate: { logo: true },
-        injectSort: ['name:asc'],
-    },
-
-    /** GET /api/brands — listDraft */
-    listDraft: {
-        filters: { publishedAt: { $null: true } },
-        injectPopulate: { logo: true },
-    },
-
-    /** POST /api/brands */
-    create: {},
-
-    /** PUT /api/brands/:id */
-    update: {},
-
-    /** DELETE /api/brands/:id */
-    delete: {},
-
-    /** PUT /api/brands/:id/publish */
-    publish: {},
-
-    /** PUT /api/brands/:id/unpublish */
-    unpublish: {},
 };

@@ -8,18 +8,9 @@ export const SaleOrdersEndpoints = {
         },
     }),
     byId: (documentId, params = {}) => ({ path: `/sale-orders/${documentId}`, params }),
-    create: () => ({ path: '/sale-orders' }),
-    update: (documentId) => ({ path: `/sale-orders/${documentId}` }),
-    updateStatus: (documentId) => ({ path: `/sale-orders/${documentId}/update-status` }),
-    assignRider: (documentId) => ({ path: `/sale-orders/${documentId}/assign-rider` }),
+    create: (data) => ({ path: '/sale-orders', action: 'create', method: 'post', data , data }),
+    update: (documentId, data) => ({ path: `/sale-orders/${documentId}`, action: 'update', method: 'put', data , data }),
+    updateStatus: (documentId, data) => ({ path: `/sale-orders/${documentId}/update-status`, action: 'updateStatus', method: 'post', data }),
+    assignRider: (documentId, data) => ({ path: `/sale-orders/${documentId}/assign-rider`, action: 'assignRider', method: 'post', data }),
 
-    fetchList: (opts = {}) => {
-        const ep = SaleOrdersEndpoints.list(opts);
-        return authApi.fetch(ep.path, ep.params);
-    },
-    fetchById: (documentId, params = {}) => authApi.fetch(`/sale-orders/${documentId}`, params),
-    postCreate: (data) => authApi.post('/sale-orders', data),
-    putUpdate: (documentId, data) => authApi.put(`/sale-orders/${documentId}`, data),
-    postUpdateStatus: (documentId, data) => authApi.post(`/sale-orders/${documentId}/update-status`, data),
-    postAssignRider: (documentId, data) => authApi.post(`/sale-orders/${documentId}/assign-rider`, data),
 };
