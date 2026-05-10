@@ -1,16 +1,6 @@
-import { authApi } from '../lib/api.js';
+import { authApi } from '@/lib/api.js';
+import { createClientProxy } from '@/lib/providers/createClientProxy.js';
+import { PayPayslipsEndpoints } from '@/api/pay-payslips.js';
 
-export const PayPayslipsEndpoints = {
-    list: ({ sort, populate } = {}) => ({
-        path: '/pay-payslips',
-        params: {
-            sort: sort ?? ['createdAt:desc'],
-            populate: populate ?? ['employee'],
-        },
-    }),
-
-    fetchList: (opts = {}) => {
-        const ep = PayPayslipsEndpoints.list(opts);
-        return authApi.fetch(ep.path, ep.params);
-    },
-};
+export default createClientProxy(PayPayslipsEndpoints, authApi);
+export const PayPayslipsEndpointsProxy = createClientProxy(PayPayslipsEndpoints, authApi);

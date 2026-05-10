@@ -1,15 +1,6 @@
-import { authApi } from '../lib/api.js';
+import { authApi } from '@/lib/api.js';
+import { createClientProxy } from '@/lib/providers/createClientProxy.js';
+import { HrDepartmentsEndpoints } from '@/api/hr-departments.js';
 
-export const HrDepartmentsEndpoints = {
-    list: ({ sort } = {}) => ({
-        path: '/hr-departments',
-        params: {
-            sort: sort ?? ['name:asc'],
-        },
-    }),
-
-    fetchList: (opts = {}) => {
-        const ep = HrDepartmentsEndpoints.list(opts);
-        return authApi.fetch(ep.path, ep.params);
-    },
-};
+export default createClientProxy(HrDepartmentsEndpoints, authApi);
+export const HrDepartmentsEndpointsProxy = createClientProxy(HrDepartmentsEndpoints, authApi);

@@ -1,25 +1,6 @@
-import { authApi } from '../lib/api.js';
+import { authApi } from '@/lib/api.js';
+import { createClientProxy } from '@/lib/providers/createClientProxy.js';
+import { CrmContactsEndpoints } from '@/api/crm-contacts.js';
 
-export const CrmContactsEndpoints = {
-    list: ({ sort } = {}) => ({
-        path: '/crm-contacts',
-        params: {
-            sort: sort ?? ['createdAt:desc'],
-        },
-    }),
-
-    byId: (documentId, params = {}) => ({
-        path: `/crm-contacts/${documentId}`,
-        params,
-    }),
-
-    fetchList: (opts = {}) => {
-        const ep = CrmContactsEndpoints.list(opts);
-        return authApi.fetch(ep.path, ep.params);
-    },
-
-    fetchById: (documentId, params = {}) => {
-        const ep = CrmContactsEndpoints.byId(documentId, params);
-        return authApi.fetch(ep.path, ep.params);
-    },
-};
+export default createClientProxy(CrmContactsEndpoints, authApi);
+export const CrmContactsEndpointsProxy = createClientProxy(CrmContactsEndpoints, authApi);

@@ -1,6 +1,6 @@
-import { authApi } from '../lib/api.js';
+import { authApi } from '@/lib/api.js';
+import { createClientProxy } from '@/lib/providers/createClientProxy.js';
+import { ReturnRequestsEndpoints } from '@/api/return-requests.js';
 
-export const ReturnRequestsEndpoints = {
-    create: () => ({ path: '/return-requests' }),
-    postCreate: (data, jwt) => authApi.post('/return-requests', data, jwt),
-};
+export default createClientProxy(ReturnRequestsEndpoints, authApi);
+export const ReturnRequestsEndpointsProxy = createClientProxy(ReturnRequestsEndpoints, authApi);

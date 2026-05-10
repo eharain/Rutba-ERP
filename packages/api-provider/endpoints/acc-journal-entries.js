@@ -1,15 +1,6 @@
-import { authApi } from '../lib/api.js';
+import { authApi } from '@/lib/api.js';
+import { createClientProxy } from '@/lib/providers/createClientProxy.js';
+import { AccJournalEntriesEndpoints } from '@/api/acc-journal-entries.js';
 
-export const AccJournalEntriesEndpoints = {
-    list: ({ sort } = {}) => ({
-        path: '/acc-journal-entries',
-        params: {
-            sort: sort ?? ['date:desc'],
-        },
-    }),
-
-    fetchList: (sort = {}) => {
-        const ep = AccJournalEntriesEndpoints.list(sort);
-        return authApi.fetch(ep.path, ep.params);
-    },
-};
+export default createClientProxy(AccJournalEntriesEndpoints, authApi);
+export const AccJournalEntriesEndpointsProxy = createClientProxy(AccJournalEntriesEndpoints, authApi);

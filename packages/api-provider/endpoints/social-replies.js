@@ -1,9 +1,6 @@
-import { authApi } from '../lib/api.js';
+import { authApi } from '@/lib/api.js';
+import { createClientProxy } from '@/lib/providers/createClientProxy.js';
+import { SocialRepliesEndpoints } from '@/api/social-replies.js';
 
-export const SocialRepliesEndpoints = {
-    list: (params = {}) => ({ path: '/social-replies', params }),
-    del: (documentId) => ({ path: `/social-replies/${documentId}` }),
-
-    fetchList: (params = {}) => authApi.fetch('/social-replies', params),
-    putDelete: (documentId) => authApi.del(`/social-replies/${documentId}`),
-};
+export default createClientProxy(SocialRepliesEndpoints, authApi);
+export const SocialRepliesEndpointsProxy = createClientProxy(SocialRepliesEndpoints, authApi);

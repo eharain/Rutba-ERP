@@ -1,9 +1,6 @@
-import { IMAGE_URL, StraipImageUrl, isImage, isPDF, isVideo } from '../lib/api.js';
+import { authApi } from '@/lib/api.js';
+import { createClientProxy } from '@/lib/providers/createClientProxy.js';
+import { MediaUtilsEndpoints } from '@/api/media-utils.js';
 
-export const MediaUtilsEndpoints = {
-    imageBaseUrl: () => IMAGE_URL,
-    strapiImageUrl: (file) => StraipImageUrl(file),
-    isImage: (file) => isImage(file),
-    isPDF: (file) => isPDF(file),
-    isVideo: (file) => isVideo(file),
-};
+export default createClientProxy(MediaUtilsEndpoints, authApi);
+export const MediaUtilsEndpointsProxy = createClientProxy(MediaUtilsEndpoints, authApi);

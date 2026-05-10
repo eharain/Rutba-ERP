@@ -1,15 +1,6 @@
-import { authApi } from '../lib/api.js';
+import { authApi } from '@/lib/api.js';
+import { createClientProxy } from '@/lib/providers/createClientProxy.js';
+import { PayPayrollRunsEndpoints } from '@/api/pay-payroll-runs.js';
 
-export const PayPayrollRunsEndpoints = {
-    list: ({ sort } = {}) => ({
-        path: '/pay-payroll-runs',
-        params: {
-            sort: sort ?? ['period_start:desc'],
-        },
-    }),
-
-    fetchList: (opts = {}) => {
-        const ep = PayPayrollRunsEndpoints.list(opts);
-        return authApi.fetch(ep.path, ep.params);
-    },
-};
+export default createClientProxy(PayPayrollRunsEndpoints, authApi);
+export const PayPayrollRunsEndpointsProxy = createClientProxy(PayPayrollRunsEndpoints, authApi);

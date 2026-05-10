@@ -1,15 +1,6 @@
-import { authApi } from '../lib/api.js';
+import { authApi } from '@/lib/api.js';
+import { createClientProxy } from '@/lib/providers/createClientProxy.js';
+import { AccAccountsEndpoints } from '@/api/acc-accounts.js';
 
-export const AccAccountsEndpoints = {
-    list: ({ sort } = {}) => ({
-        path: '/acc-accounts',
-        params: {
-            sort: sort ?? ['code:asc'],
-        },
-    }),
-
-    fetchList: (opts = {}) => {
-        const ep = AccAccountsEndpoints.list(opts);
-        return authApi.fetch(ep.path, ep.params);
-    },
-};
+export default createClientProxy(AccAccountsEndpoints, authApi);
+export const AccAccountsEndpointsProxy = createClientProxy(AccAccountsEndpoints, authApi);

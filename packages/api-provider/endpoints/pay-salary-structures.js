@@ -1,15 +1,6 @@
-import { authApi } from '../lib/api.js';
+import { authApi } from '@/lib/api.js';
+import { createClientProxy } from '@/lib/providers/createClientProxy.js';
+import { PaySalaryStructuresEndpoints } from '@/api/pay-salary-structures.js';
 
-export const PaySalaryStructuresEndpoints = {
-    list: ({ sort } = {}) => ({
-        path: '/pay-salary-structures',
-        params: {
-            sort: sort ?? ['name:asc'],
-        },
-    }),
-
-    fetchList: (opts = {}) => {
-        const ep = PaySalaryStructuresEndpoints.list(opts);
-        return authApi.fetch(ep.path, ep.params);
-    },
-};
+export default createClientProxy(PaySalaryStructuresEndpoints, authApi);
+export const PaySalaryStructuresEndpointsProxy = createClientProxy(PaySalaryStructuresEndpoints, authApi);
