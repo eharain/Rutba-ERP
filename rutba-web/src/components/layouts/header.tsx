@@ -25,10 +25,11 @@ import { ErrorCard } from "../errors/error-card";
 import { IMAGE_URL } from "@/static/const";
 import { useStoreCart } from "@/store/store-cart";
 import { useSession } from "next-auth/react";
-import useCmsPagesService from "@/services/cms-pages";
+import { createWebCmsPagesService } from "@rutba/api-provider/client/web";
 import { BrandInterface } from "@/types/api/brand";
 import { CategoryInterface } from "@/types/api/category";
 import { CmsPageInterface } from "@/types/api/cms-page";
+import { BASE_URL } from "@/static/const";
 
 function BrandHeader({ brands }: { brands: BrandInterface[] }) {
   return (
@@ -80,7 +81,7 @@ function CategoryHeader({ categories }: { categories: CategoryInterface[] }) {
 export default function Header() {
   const { cartItem } = useStoreCart();
   const session = useSession();
-  const { getCmsHeaderData } = useCmsPagesService();
+  const cmsPagesService = createWebCmsPagesService({ baseURL: BASE_URL });
   const settings = useSiteSettings();
 
   const {
@@ -90,7 +91,7 @@ export default function Header() {
     error: cmsError,
   } = useQuery({
     queryKey: ["cms-header-data"],
-    queryFn: getCmsHeaderData,
+    queryFn: () => cmsPagesService.getCmsHeaderData(),
     staleTime: Infinity,
   });
 

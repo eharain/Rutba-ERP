@@ -1,0 +1,14 @@
+export { WebAuthEndpoints } from './auth.js';
+export { WebBannersEndpoints } from './banners.js';
+export { WebBrandsEndpoints } from './brands.js';
+export { WebCategoriesEndpoints } from './categories.js';
+export { WebCheckoutEndpoints } from './checkout.js';
+export { WebCmsPagesEndpoints } from './cms-pages.js';
+export { WebCollectionsEndpoints } from './collections.js';
+export { WebDeliveryEndpoints } from './delivery.js';
+export { WebLeadsEndpoints } from './leads.js';
+export { WebOrdersEndpoints } from './orders.js';
+export { WebProductGroupsEndpoints } from './product-groups.js';
+export { WebProductsEndpoints } from './products.js';
+export { WebReviewsEndpoints } from './reviews.js';
+export { WebSiteSettingsEndpoints } from './site-settings.js';

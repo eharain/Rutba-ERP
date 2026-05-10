@@ -9,13 +9,13 @@ import "swiper/css/pagination";
 
 import { useQuery } from "@tanstack/react-query";
 import { SkeletonBanner } from "../skeleton";
-import { IMAGE_URL } from "@/static/const";
+import { BASE_URL, IMAGE_URL } from "@/static/const";
 import Link from "next/link";
 import { ErrorCard } from "../errors/error-card";
-import useBannersService from "@/services/banners";
+import { createWebBannersService } from "@rutba/api-provider/client/web";
 
 export default function HeroSlider() {
-  const { getBanners } = useBannersService();
+  const bannersService = createWebBannersService({ baseURL: BASE_URL });
 
   const {
     data: banner,
@@ -25,7 +25,7 @@ export default function HeroSlider() {
   } = useQuery({
     queryKey: ["hero-slider"],
     queryFn: async () => {
-      return await getBanners();
+      return await bannersService.getBanners();
     },
   });
 

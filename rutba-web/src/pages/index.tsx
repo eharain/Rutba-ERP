@@ -1,12 +1,13 @@
 import LayoutMain from "@/components/layouts";
 import CmsPageContent from "@/components/cms/cms-page-content";
 import { useQuery } from "@tanstack/react-query";
-import useCmsPagesService from "@/services/cms-pages";
+import { createWebCmsPagesService } from "@rutba/api-provider/client/web";
 import { SkeletonBanner } from "@/components/skeleton";
 import { ErrorCard } from "@/components/errors/error-card";
+import { BASE_URL } from "@/static/const";
 
 export default function Home() {
-  const { getCmsPageBySlug } = useCmsPagesService();
+  const cmsPagesService = createWebCmsPagesService({ baseURL: BASE_URL });
 
   const {
     data: page,
@@ -15,7 +16,7 @@ export default function Home() {
     error,
   } = useQuery({
     queryKey: ["cms-page", "index"],
-    queryFn: () => getCmsPageBySlug("index"),
+    queryFn: () => cmsPagesService.getCmsPageBySlug("index"),
     staleTime: 60_000,
   });
 

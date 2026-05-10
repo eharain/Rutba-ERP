@@ -13,8 +13,9 @@ import { countryList } from "@/static/country";
 import { useStoreCheckout } from "@/store/store-checkout";
 import useErrorHandler from "@/hooks/useErrorHandler";
 import Spinner from "@/components/ui/spinner";
-import useDeliveryService from "@/services/delivery";
+import { createWebDeliveryService } from "@rutba/api-provider/client/web";
 import { useCartService } from "@/services/cart";
+import { BASE_URL } from "@/static/const";
 
 interface Props {
   onDeliveryMethodsReady: () => void;
@@ -22,7 +23,7 @@ interface Props {
 
 export default function FormCheckoutShippingInformation({ onDeliveryMethodsReady }: Props) {
   const { showError } = useErrorHandler();
-  const { getDeliveryMethods } = useDeliveryService();
+  const deliveryService = createWebDeliveryService({ baseURL: BASE_URL });
   const { getCart } = useCartService();
   const {
     formShippingInformation,
@@ -60,7 +61,7 @@ export default function FormCheckoutShippingInformation({ onDeliveryMethodsReady
         ...new Set(cartItems.map((i) => i.sourceGroupId).filter(Boolean) as string[]),
       ];
 
-      const options = await getDeliveryMethods({
+      const options = await deliveryService.getDeliveryMethods({
         productGroupDocumentIds,
         destination: { city: data.city, country: data.country },
         cartTotal,

@@ -10,10 +10,10 @@ import NextImage from "../next-image";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import useDebounce from "@/hooks/useDebounce";
-import { IMAGE_URL } from "@/static/const";
+import { BASE_URL, IMAGE_URL } from "@/static/const";
 import { SearchIcon } from "lucide-react";
 import Highlighter from "react-highlight-words";
-import useProductsService from "@/services/products";
+import { createWebProductsService } from "@rutba/api-provider/client/web";
 import { currencyFormat } from "@/lib/use-currency";
 
 export interface propsInterface {
@@ -21,7 +21,7 @@ export interface propsInterface {
 }
 
 export default function SearchModal(props: propsInterface) {
-  const { searchProduct } = useProductsService();
+  const productsService = createWebProductsService({ baseURL: BASE_URL });
 
   const [openModal, setOpenModal] = useState(false);
   const [search, setSearch] = useState("");
@@ -33,7 +33,7 @@ export default function SearchModal(props: propsInterface) {
     queryKey: ["search", debounceSearch],
     queryFn: async () => {
       if (search) {
-        return await searchProduct(search);
+        return await productsService.searchProduct(search);
       } else {
         return [];
       }

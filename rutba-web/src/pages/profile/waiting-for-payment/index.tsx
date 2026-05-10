@@ -9,14 +9,15 @@ import {
 } from "@/components/ui/card";
 import NextImage from "@/components/next-image";
 import Link from "next/link";
-import useTransactionService from "@/services/transaction";
+import { createWebOrdersService } from "@rutba/api-provider/client/web";
 import { useQuery } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 import { ErrorCard } from "@/components/errors/error-card";
 import { SkeletonTransactionList } from "@/components/skeleton";
+import { BASE_URL } from "@/static/const";
 
 export default function Transaction() {
-  const { getMyTransaction } = useTransactionService();
+  const ordersService = createWebOrdersService({ baseURL: BASE_URL });
   const session = useSession();
 
   const {
@@ -27,7 +28,11 @@ export default function Transaction() {
   } = useQuery({
     queryKey: ["my-transaction-unpaid"],
     queryFn: async () => {
-      return await getMyTransaction("UNPAID");
+      const result = await ordersService.getMyTransaction(session.data?.jwt);
+      return {
+        ...result,
+        data: (result?.data ?? []).filter((item: any) => item?.payment_status === "UNPAID"),
+      };
     },
     enabled: !!session.data,
   });

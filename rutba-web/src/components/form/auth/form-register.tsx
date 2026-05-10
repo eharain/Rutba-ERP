@@ -11,10 +11,13 @@ import {
 } from "@/validations/auth-validation";
 
 import useErrorHandler from "@/hooks/useErrorHandler";
-import { signUpWithCredential } from "@/services/auth";
+import { createWebAuthService } from "@rutba/api-provider/client/web";
+import { BASE_URL } from "@/static/const";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import Link from "next/link";
 // import GoogleAuthButton from "./google-auth-button";
+
+const authService = createWebAuthService({ baseURL: BASE_URL });
 
 export default function FormRegister() {
   const { handleRejection } = useErrorHandler();
@@ -37,7 +40,7 @@ export default function FormRegister() {
   > = async (data) => {
     try {
       setIsLoading(true);
-      await signUpWithCredential({
+      await authService.signUpWithCredential({
         name: data.name,
         email: data.email,
         password: data.password,

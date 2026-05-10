@@ -10,11 +10,20 @@ import LayoutMain from "@/components/layouts";
 import ProductCard from "@/components/product-list/product-card";
 import { SkeletonProductDetail } from "@/components/skeleton";
 import { ErrorCard } from "@/components/errors/error-card";
-import { IMAGE_URL } from "@/static/const";
-import { getProductGroupBySlug, ProductGroupDetailResponse } from "@/services/product-groups";
+import { BASE_URL, IMAGE_URL } from "@/static/const";
+import { createWebProductGroupsService } from "@rutba/api-provider/client/web";
+import { CmsProductGroupInterface } from "@/types/api/cms-page";
+import { MetaInterface } from "@/types/api/meta";
 import { sortProducts, getProductCardProps } from "@/components/cms/layouts/sort-products";
 import { useSiteSettings } from "@/hooks/use-site-settings";
 import type { SortOption } from "@/components/cms/layouts/GroupHeader";
+
+interface ProductGroupDetailResponse {
+  data: CmsProductGroupInterface;
+  meta: {
+    pagination: MetaInterface;
+  };
+}
 
 const PAGE_SIZE_OPTIONS = [12, 24, 48, 96];
 const SORT_OPTIONS: { value: string; label: string }[] = [
@@ -28,12 +37,13 @@ export const getServerSideProps: GetServerSideProps<{
   initialData: ProductGroupDetailResponse | null;
   slug: string;
 }> = async (context) => {
+  const productGroupsService = createWebProductGroupsService({ baseURL: BASE_URL });
   const slug = context.params?.slug as string;
   const page = parseInt(context.query.page as string, 10) || 1;
   const pageSize = parseInt(context.query.pageSize as string, 10) || 24;
 
   try {
-    const data = await getProductGroupBySlug(slug, page, pageSize);
+    const data = await productGroupsService.getProductGroupBySlug(slug, page, pageSize) as ProductGroupDetailResponse;
     return { props: { initialData: data, slug } };
   } catch {
     return { props: { initialData: null, slug } };
@@ -44,6 +54,7 @@ export default function ProductGroupPage({
   initialData,
   slug: ssrSlug,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const productGroupsService = createWebProductGroupsService({ baseURL: BASE_URL });
   const router = useRouter();
   const settings = useSiteSettings();
   const slug = (router.query.slug as string) ?? ssrSlug;
@@ -57,7 +68,7 @@ export default function ProductGroupPage({
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["product-group", slug, page, pageSize],
-    queryFn: () => getProductGroupBySlug(slug, page, pageSize),
+    queryFn: () => productGroupsService.getProductGroupBySlug(slug, page, pageSize),
     enabled: !!slug,
     staleTime: 60_000,
     initialData: initialData ?? undefined,

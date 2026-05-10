@@ -1,10 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
-import { getSiteSettings, SiteSettingsInterface, SITE_SETTINGS_DEFAULTS } from "@/services/site-settings";
+import { createWebSiteSettingsService, SITE_SETTINGS_DEFAULTS } from "@rutba/api-provider/client/web";
+import { BASE_URL } from "@/static/const";
 
-export function useSiteSettings(): SiteSettingsInterface {
+const siteSettingsService = createWebSiteSettingsService({ baseURL: BASE_URL });
+
+export function useSiteSettings() {
   const { data } = useQuery({
     queryKey: ["site-settings"],
-    queryFn: getSiteSettings,
+    queryFn: () => siteSettingsService.getSiteSettings(),
     staleTime: Infinity,
     gcTime: Infinity,
   });

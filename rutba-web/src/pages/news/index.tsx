@@ -5,12 +5,16 @@ import { useQuery } from "@tanstack/react-query";
 import { SkeletonProduct } from "@/components/skeleton";
 import { ErrorCard } from "@/components/errors/error-card";
 import { IMAGE_URL } from "@/static/const";
-import useCmsPagesService, { getCmsPagesByTypeSSR } from "@/services/cms-pages";
+import {
+  createWebCmsPagesService,
+  getCmsPagesByTypeSSR,
+} from "@rutba/api-provider/client/web";
 import { CmsPageInterface } from "@/types/api/cms-page";
 import { getPageUrl } from "@/lib/cms-page-types";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Head from "next/head";
 import { useSiteSettings } from "@/hooks/use-site-settings";
+import { BASE_URL } from "@/static/const";
 
 const PAGE_TYPE = "news";
 
@@ -18,7 +22,7 @@ export const getServerSideProps: GetServerSideProps<{
   initialPages: CmsPageInterface[];
 }> = async () => {
   try {
-    const pages = await getCmsPagesByTypeSSR(PAGE_TYPE);
+    const pages = await getCmsPagesByTypeSSR(PAGE_TYPE, { baseURL: BASE_URL });
     return { props: { initialPages: pages ?? [] } };
   } catch {
     return { props: { initialPages: [] } };
@@ -28,7 +32,7 @@ export const getServerSideProps: GetServerSideProps<{
 export default function NewsIndex({
   initialPages,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const { getCmsPagesByType } = useCmsPagesService();
+  const cmsPagesService = createWebCmsPagesService({ baseURL: BASE_URL });
   const settings = useSiteSettings();
 
   const {
@@ -38,7 +42,7 @@ export default function NewsIndex({
     error,
   } = useQuery({
     queryKey: ["cms-pages-list", PAGE_TYPE],
-    queryFn: () => getCmsPagesByType(PAGE_TYPE),
+    queryFn: () => cmsPagesService.getCmsPagesByType(PAGE_TYPE),
     staleTime: 60_000,
     initialData: initialPages.length > 0 ? initialPages : undefined,
   });

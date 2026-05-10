@@ -21,7 +21,7 @@ import { ErrorCard } from "@/components/errors/error-card";
 import { useStoreCart } from "@/store/store-cart";
 // import Reviews from "@/components/product-detail/reviews";
 // import useReviewsService from "@/services/reviews";
-import useProductsService from "@/services/products";
+import { createWebProductsService } from "@rutba/api-provider/client/web";
 import { currencyFormat } from "@/lib/use-currency";
 import { marked } from "marked";
 import { markedVideoEmbed } from "@/lib/marked-video-embed";
@@ -35,7 +35,7 @@ marked.use(markedVideoEmbed({ imageBaseUrl: IMAGE_URL }));
 export default function ProductDetail() {
   const cartStore = useStoreCart();
   const router = useRouter();
-  const { getProductDetail } = useProductsService();
+  const productsService = createWebProductsService({ baseURL: BASE_URL });
 
   const { slug } = router.query;
   const offerId = router.query.offerId as string | undefined;
@@ -51,7 +51,7 @@ export default function ProductDetail() {
   } = useQuery({
     queryKey: ["products", slug],
     queryFn: async () => {
-      return getProductDetail(slug as string);
+      return productsService.getProductDetail(slug as string);
     },
     enabled: !!slug,
   });

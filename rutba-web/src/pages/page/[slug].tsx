@@ -8,9 +8,13 @@ import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/router";
 import { SkeletonProductDetail } from "@/components/skeleton";
 import { ErrorCard } from "@/components/errors/error-card";
-import useCmsPagesService, { getCmsPageBySlugSSR } from "@/services/cms-pages";
+import {
+  createWebCmsPagesService,
+  getCmsPageBySlugSSR,
+} from "@rutba/api-provider/client/web";
 import { CmsPageDetailInterface } from "@/types/api/cms-page";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import { BASE_URL } from "@/static/const";
 
 /**
  * Compatibility route for /page/:slug links.
@@ -37,7 +41,7 @@ export default function PageCompatibility({
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
   const slug = (router.query.slug as string) ?? ssrSlug;
-  const { getCmsPageBySlug } = useCmsPagesService();
+  const cmsPagesService = createWebCmsPagesService({ baseURL: BASE_URL });
 
   const {
     data: page,
@@ -46,7 +50,7 @@ export default function PageCompatibility({
     error,
   } = useQuery({
     queryKey: ["cms-page", slug],
-    queryFn: () => getCmsPageBySlug(slug as string),
+    queryFn: () => cmsPagesService.getCmsPageBySlug(slug as string),
     enabled: !!slug,
     staleTime: 60_000,
     initialData: initialPage ?? undefined,

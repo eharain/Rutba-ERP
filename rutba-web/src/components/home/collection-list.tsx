@@ -6,12 +6,12 @@ import "swiper/css";
 import Link from "next/link";
 import { SkeletonCollectionList } from "../skeleton";
 import { useQuery } from "@tanstack/react-query";
-import { IMAGE_URL } from "@/static/const";
+import { BASE_URL, IMAGE_URL } from "@/static/const";
 import { ErrorCard } from "../errors/error-card";
-import useProductsService from "@/services/products";
+import { createWebProductsService } from "@rutba/api-provider/client/web";
 
 export default function CollectionList() {
-  const { getCollections } = useProductsService();
+  const productsService = createWebProductsService({ baseURL: BASE_URL });
 
   const {
     data: collections,
@@ -21,7 +21,7 @@ export default function CollectionList() {
   } = useQuery({
     queryKey: ["collection-list"],
     queryFn: async () => {
-      return await getCollections();
+      return await productsService.getCollections();
     },
   });
 
