@@ -109,6 +109,7 @@ export const BrandsEndpoints = {
         },
     }),
 
+
     /** Async: fetch brand list (single page). */
     fetchList: (opts = {}) => {
         const ep = BrandsEndpoints.list(opts);
@@ -250,24 +251,7 @@ Object.assign(BrandsEndpoints, {
  * Per-endpoint requestRules stored in the api-guard-pro resource record.
  */
 export const BrandsEndpointRules = {
-    /** GET /api/brands — list (all statuses) */
-    list: {
-        injectPopulate: { logo: true, categories: true },
-        injectSort: ['name:asc'],
-    },
 
-    /** GET /api/brands — listPublished (status=published) */
-    listPublished: {
-        filters: { publishedAt: { $notNull: true } },
-        injectPopulate: { logo: true },
-        injectSort: ['name:asc'],
-    },
-
-    /** GET /api/brands — listDraft */
-    listDraft: {
-        filters: { publishedAt: { $null: true } },
-        injectPopulate: { logo: true },
-    },
 
     /** POST /api/brands */
     create: {},

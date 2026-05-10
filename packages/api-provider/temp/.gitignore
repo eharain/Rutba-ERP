@@ -1,0 +1,7 @@
+# Temporary generated files from combine-endpoints script
+# These are automatically generated and should not be committed to git
+# The temp directory itself is tracked, but all generated content is ignored
+
+*
+!.gitignore
+!.gitkeep

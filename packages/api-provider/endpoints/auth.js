@@ -1,16 +1,16 @@
 import { api } from '../lib/api.js';
 
 export const AuthEndpoints = {
-    forgotPassword: () => ({ path: '/auth/forgot-password' }),
-    resetPassword: () => ({ path: '/auth/reset-password' }),
+    forgotPassword: (email) => ({ path: '/auth/forgot-password' , data: { email } }),
+    resetPassword: ({ code, password, passwordConfirmation }) => ({ path: '/auth/reset-password', data: { code, password, passwordConfirmation } }),
 
     postForgotPassword: (email) => {
-        const ep = AuthEndpoints.forgotPassword();
-        return api.post(ep.path, { email });
+        const ep = AuthEndpoints.forgotPassword(email);
+        return api.post(ep.path, ep.data);
     },
 
     postResetPassword: ({ code, password, passwordConfirmation }) => {
-        const ep = AuthEndpoints.resetPassword();
-        return api.post(ep.path, { code, password, passwordConfirmation });
+        const ep = AuthEndpoints.resetPassword({ code, password, passwordConfirmation });
+        return api.post(ep.path, ep.data)
     },
 };

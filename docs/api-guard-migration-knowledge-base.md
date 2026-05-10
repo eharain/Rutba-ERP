@@ -27,7 +27,6 @@ Migration goal: make `strapi-api-guard-pro` the authoritative route/resource gua
   - `PLUGIN_PERMISSION_ENTRIES`, `PUBLIC_PERMISSION_ENTRIES`
 
 ### Shared endpoint registry
-- `packages/pos-shared/lib/endpoints/registry.js`
 - `packages/pos-shared/lib/endpoints/index.js`
 - Endpoint modules in `packages/pos-shared/lib/endpoints/*.js`
 
