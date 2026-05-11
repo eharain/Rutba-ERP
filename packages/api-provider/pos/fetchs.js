@@ -1,12 +1,15 @@
 ﻿// Re-exported compatibility helpers backed by current endpoint methods.
-import { SalesEndpoints } from '../endpoints/sales.js';
-import { PurchasesEndpoints } from '../endpoints/purchases.js';
-import { SaleReturnsEndpoints } from '../endpoints/sale-returns.js';
-import { CategoriesEndpoints } from '../endpoints/categories.js';
-import { BrandsEndpoints } from '../endpoints/brands.js';
-import { EnumsEndpoints } from '../endpoints/enums.js';
-import { PurchaseItemsEndpoints } from '../endpoints/purchase-items.js';
-import { fetchProducts as fetchProductsHelper, loadProduct as loadProductHelper } from '../endpoints/products.js';
+import {
+    SalesEndpoints,
+    PurchasesEndpoints,
+    SaleReturnsEndpoints,
+    CategoriesEndpoints,
+    BrandsEndpoints,
+    EnumsEndpoints,
+    PurchaseItemsEndpoints,
+    fetchProducts as fetchProductsHelper,
+    loadProduct as loadProductHelper,
+} from '../endpoints/index.js';
 
 function extractData(res) {
     return res?.data?.data ?? res?.data ?? res;

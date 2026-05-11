@@ -2,8 +2,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '../../components/Layout';
 import ProtectedRoute from '@rutba/pos-shared/components/ProtectedRoute';
-import { StockHelpersEndpoints, CategoriesEndpoints, BrandsEndpoints, SuppliersEndpoints, ProductsEndpoints, StockItemsEndpoints } from '@rutba/api-provider/endpoints/index.js';
-import { fetchProducts, saveProduct, loadProduct } from '@rutba/api-provider/endpoints/products.js';
+import { StockHelpersEndpoints, CategoriesEndpoints, BrandsEndpoints, SuppliersEndpoints, ProductsEndpoints, StockItemsEndpoints, fetchProducts, saveProduct, loadProduct } from '@rutba/api-provider/endpoints';
 
 import { useUtil } from '@rutba/pos-shared/context/UtilContext';
 import FileView from '@rutba/pos-shared/components/FileView';
