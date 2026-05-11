@@ -11,7 +11,7 @@ import ProductCard from "@/components/product-list/product-card";
 import { SkeletonProductDetail } from "@/components/skeleton";
 import { ErrorCard } from "@/components/errors/error-card";
 import { BASE_URL, IMAGE_URL } from "@/static/const";
-import { createWebProductGroupsService } from "@rutba/api-provider/client/web";
+import { createWebProductGroupsService } from "@/services";
 import { CmsProductGroupInterface } from "@/types/api/cms-page";
 import { MetaInterface } from "@/types/api/meta";
 import { sortProducts, getProductCardProps } from "@/components/cms/layouts/sort-products";

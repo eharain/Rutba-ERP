@@ -5,10 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { SkeletonProduct } from "@/components/skeleton";
 import { ErrorCard } from "@/components/errors/error-card";
 import { IMAGE_URL } from "@/static/const";
-import {
-  createWebCmsPagesService,
-  getCmsPagesByTypeSSR,
-} from "@rutba/api-provider/client/web";
+import {  createWebCmsPagesService,  getCmsPagesByTypeSSR,} from "../../services";
 import { CmsPageInterface } from "@/types/api/cms-page";
 import { getPageUrl } from "@/lib/cms-page-types";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";

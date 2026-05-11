@@ -1,9 +1,3 @@
-import { authApi } from '../lib/api.js';
-import { createClientProxy } from '../providers/createClientProxy.js';
-import { CmsFootersEndpoints as CmsFootersEndpointsApi } from '../api/cms-footers.js';
-
-const endpoints = createClientProxy(CmsFootersEndpointsApi, authApi);
-
+import endpoints, { CmsFootersEndpoints } from '../providers/generated/client/cms-footers.js';
 export default endpoints;
-export const CmsFootersEndpoints = endpoints;
-
+export { CmsFootersEndpoints };

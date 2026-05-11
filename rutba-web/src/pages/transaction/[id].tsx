@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Spinner from "@/components/ui/spinner";
 import useErrorHandler from "@/hooks/useErrorHandler";
-import { createWebOrdersService } from "@rutba/api-provider/client/web";
+import { createWebOrdersService } from "@/services";
 import { OrderInterface } from "@/types/api/order";
 import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/router";

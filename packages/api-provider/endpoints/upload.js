@@ -1,9 +1,3 @@
-import { authApi } from '../lib/api.js';
-import { createClientProxy } from '../providers/createClientProxy.js';
-import { UploadEndpoints as UploadEndpointsApi } from '../api/upload.js';
-
-const endpoints = createClientProxy(UploadEndpointsApi, authApi);
-
+import endpoints, { UploadEndpoints } from '../providers/generated/client/upload.js';
 export default endpoints;
-export const UploadEndpoints = endpoints;
-
+export { UploadEndpoints };

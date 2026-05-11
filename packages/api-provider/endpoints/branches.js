@@ -1,12 +1,6 @@
-import { authApi } from '../lib/api.js';
-import { createClientProxy } from '../providers/createClientProxy.js';
-import { BranchesEndpoints as BranchesEndpointsApi } from '../api/branches.js';
-
-const endpoints = createClientProxy(BranchesEndpointsApi, authApi);
-
+import endpoints, { BranchesEndpoints } from '../providers/generated/client/branches.js';
 export default endpoints;
-export const BranchesEndpoints = endpoints;
-
+export { BranchesEndpoints };
 
 /**
  * Helper: Extract data node from Strapi response.
@@ -17,7 +11,6 @@ export const BranchesEndpoints = endpoints;
 export function dataNode(res) {
     return res.data?.data ?? res.data ?? res;
 }
-
 
 /**
  * LEGACY HELPER: Search branches by name or code.
@@ -33,7 +26,7 @@ export function dataNode(res) {
  * @deprecated Use BranchesEndpointsProxy.searchBranches() instead
  */
 export async function searchBranches(searchTerm, page = 1, rowsPerPage = 5) {
-    const proxy = createClientProxy(BranchesEndpointsApi, authApi);
+    const proxy = endpoints;
     const res = await proxy.searchBranches(searchTerm, page, rowsPerPage);
     return dataNode(res);
 }

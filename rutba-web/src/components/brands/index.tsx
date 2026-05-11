@@ -10,7 +10,7 @@ import { BASE_URL, IMAGE_URL } from "@/static/const";
 import { ErrorCard } from "../errors/error-card";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/router";
-import { createWebBrandsService } from "@rutba/api-provider/client/web";
+import { createWebBrandsService } from "@/services/";
 
 export default function BrandList({
   activeBrand,

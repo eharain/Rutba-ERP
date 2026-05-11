@@ -13,7 +13,7 @@ import Link from "next/link";
 import { CmsPageInterface } from "@/types/api/cms-page";
 import { getPageUrl } from "@/lib/cms-page-types";
 import { useSiteSettings } from "@/hooks/use-site-settings";
-import { IMAGE_URL } from "@/static/const";
+import { resolveMediaUrl } from "@/lib/media-url";
 
 export interface propsInterface {
   trigger: React.JSX.Element;
@@ -33,7 +33,7 @@ export default function MenuSideBarMobile(props: propsInterface) {
           <SheetTitle className="flex justify-start">
             {settings.site_logo?.url ? (
               <img
-                src={IMAGE_URL + settings.site_logo.url}
+                src={resolveMediaUrl(settings.site_logo.url)}
                 alt={settings.site_name}
                 className="h-7 w-auto"
               />

@@ -8,7 +8,7 @@ import { SkeletonCollectionList } from "../skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { BASE_URL, IMAGE_URL } from "@/static/const";
 import { ErrorCard } from "../errors/error-card";
-import { createWebProductsService } from "@rutba/api-provider/client/web";
+import { createWebProductsService } from "@/services/";
 
 export default function CollectionList() {
   const productsService = createWebProductsService({ baseURL: BASE_URL });

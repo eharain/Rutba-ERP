@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Spinner from "@/components/ui/spinner";
-import { createWebDeliveryService } from "@rutba/api-provider/client/web";
+import { createWebDeliveryService } from "@/services";
 import { OrderMessage } from "@/types/api/delivery";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";

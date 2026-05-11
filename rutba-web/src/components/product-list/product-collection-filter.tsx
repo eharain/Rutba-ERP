@@ -20,7 +20,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ChevronsUpDown, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
-import { createWebProductsService } from "@rutba/api-provider/client/web";
+import { createWebProductsService } from "@/services";
 import { BASE_URL } from "@/static/const";
 
 export default function ProductCollectionFilter() {

@@ -1,7 +1,7 @@
 import LayoutMain from "@/components/layouts";
 import CmsPageContent from "@/components/cms/cms-page-content";
 import { useQuery } from "@tanstack/react-query";
-import { createWebCmsPagesService } from "@rutba/api-provider/client/web";
+import { createWebCmsPagesService } from "@/services";
 import { SkeletonBanner } from "@/components/skeleton";
 import { ErrorCard } from "@/components/errors/error-card";
 import { BASE_URL } from "@/static/const";

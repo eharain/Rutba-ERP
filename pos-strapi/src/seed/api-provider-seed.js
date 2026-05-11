@@ -17,7 +17,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { createRequire } = require('module');
+const { pathToFileURL } = require('url');
 
 const domainsConfig = require('@rutba/api-provider/config/domains');
 const rolesConfig = require('@rutba/api-provider/config/roles');
@@ -92,18 +92,26 @@ function inferUidFromPath(endpointPath, contentTypeLookup) {
     if (contentTypeLookup.has(singular)) return contentTypeLookup.get(singular);
   }
 
-function createSeedInvocationArgs(fn) {
-  const arity = typeof fn?.length === 'number' ? fn.length : 0;
-  if (!arity) return [];
-  return new Array(arity).fill(undefined);
-}
-
   if (key.endsWith('s')) {
     const singular = key.slice(0, -1);
     if (contentTypeLookup.has(singular)) return contentTypeLookup.get(singular);
   }
 
   return null;
+}
+
+function createSeedInvocationArgs(fn) {
+  const arity = typeof fn?.length === 'number' ? fn.length : 0;
+  if (!arity) return [];
+  return new Array(arity).fill(undefined);
+}
+
+function isDescriptorMethodName(methodName) {
+  const name = String(methodName || '').toLowerCase();
+  if (!name || name === 'meta') return false;
+
+  // Only allow pure endpoint descriptor-style methods.
+  return /^(list|by|get|find|search|create|update|del|delete|remove|publish|unpublish|archive|unarchive|assign|process|open|close|transfer|validate|shipping|tracking|messages|send)/.test(name);
 }
 
 function expandGrantsFromDomainAndLevel(domains, roleLevels, domainMap, roleMap) {
@@ -175,7 +183,7 @@ async function buildResourcesFromApiProviderSource(strapi) {
 
     let mod;
     try {
-      mod = cjsRequire(fullPath);
+      mod = await import(pathToFileURL(fullPath).href);
     } catch (err) {
       strapi.log.warn(`[api-provider-seed] failed to import source file ${fileName}: ${err.message}`);
       continue;
@@ -190,6 +198,11 @@ async function buildResourcesFromApiProviderSource(strapi) {
 
       for (const [methodName, value] of Object.entries(exported)) {
         if (methodName === 'meta' || typeof value !== 'function') continue;
+        if (!isDescriptorMethodName(methodName)) continue;
+
+        // Seed extraction only supports pure descriptor builders.
+        // Skip async/orchestration helpers to avoid side effects and runtime failures.
+        if (value.constructor?.name === 'AsyncFunction') continue;
 
         let descriptor;
         try {
@@ -198,9 +211,16 @@ async function buildResourcesFromApiProviderSource(strapi) {
           continue;
         }
 
+        // Ignore promise-returning helpers (non-descriptor methods).
+        if (descriptor && typeof descriptor.then === 'function') {
+          descriptor.catch(() => {});
+          continue;
+        }
+
         if (!descriptor || typeof descriptor !== 'object') continue;
 
         const endpointPath = descriptor.path || descriptor.url;
+        if (String(endpointPath || '').startsWith('/upload')) continue;
         const uid = metaUid || inferUidFromPath(endpointPath, contentTypeLookup);
         if (!uid) continue;
 

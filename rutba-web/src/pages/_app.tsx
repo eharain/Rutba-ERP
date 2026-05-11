@@ -6,7 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import Head from "next/head";
 import { useSiteSettings } from "@/hooks/use-site-settings";
-import { IMAGE_URL } from "@/static/const";
+import { resolveMediaUrl } from "@/lib/media-url";
 // import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 
 const queryClient = new QueryClient();
@@ -15,7 +15,7 @@ function SiteHead() {
   const settings = useSiteSettings();
   const title = `${settings.site_name} - ${settings.site_tagline || ""}`.trim();
   const description = settings.site_description || "";
-  const faviconUrl = settings.favicon?.url ? IMAGE_URL + settings.favicon.url : "/favicon.png";
+  const faviconUrl = settings.favicon?.url ? resolveMediaUrl(settings.favicon.url) : "/favicon.png";
 
   return (
     <Head>

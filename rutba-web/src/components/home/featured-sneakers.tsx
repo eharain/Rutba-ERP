@@ -2,7 +2,7 @@ import ProductCard from "@/components/product-list/product-card";
 import { useQuery } from "@tanstack/react-query";
 import { SkeletonProduct } from "../skeleton";
 import { ErrorCard } from "../errors/error-card";
-import { createWebProductsService } from "@rutba/api-provider/client/web";
+import { createWebProductsService } from "@/services/";
 import { getVariantTermSummary } from "@/types/api/product";
 import { BASE_URL } from "@/static/const";
 

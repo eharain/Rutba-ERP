@@ -1,9 +1,3 @@
-import { authApi } from '../lib/api.js';
-import { createClientProxy } from '../providers/createClientProxy.js';
-import { PayPayslipsEndpoints as PayPayslipsEndpointsApi } from '../api/pay-payslips.js';
-
-const endpoints = createClientProxy(PayPayslipsEndpointsApi, authApi);
-
+import endpoints, { PayPayslipsEndpoints } from '../providers/generated/client/pay-payslips.js';
 export default endpoints;
-export const PayPayslipsEndpoints = endpoints;
-
+export { PayPayslipsEndpoints };

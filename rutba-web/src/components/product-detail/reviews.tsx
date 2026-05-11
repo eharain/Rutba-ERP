@@ -3,7 +3,7 @@ import { Star } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { ErrorCard } from "../errors/error-card";
 import { SkeletonProductReview } from "../skeleton";
-import { createWebReviewsService } from "@rutba/api-provider/client/web";
+import { createWebReviewsService } from "@/services";
 import { BASE_URL } from "@/static/const";
 
 export default function Reviews({ slug }: { slug: string }) {
