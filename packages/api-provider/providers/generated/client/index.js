@@ -59,5 +59,4 @@ export * from './term-types.js';
 export * from './terms.js';
 export * from './upload.js';
 export * from './web-orders.js';
-export * from './web.js';
 export * from './web/index.js';

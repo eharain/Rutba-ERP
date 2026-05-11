@@ -58,17 +58,7 @@ export { SuppliersEndpoints } from '../providers/generated/client/suppliers.js';
 export { TermsEndpoints } from '../providers/generated/client/terms.js';
 export { TermTypesEndpoints } from '../providers/generated/client/term-types.js';
 export { UploadEndpoints } from '../providers/generated/client/upload.js';
-export { WebAuthEndpointRules } from '../providers/generated/client/web.js';
 export { WebOrdersEndpoints } from '../providers/generated/client/web-orders.js';
 
-export { dataNode, searchBranches } from './helpers/branches.js';
-export {
-    dataNode as extractData,
-    saveProductItems,
-    saveProduct,
-    fetchProducts,
-    loadProduct,
-    searchProduct,
-    createProduct,
-    searchProducts,
-} from './helpers/products.js';
+export { searchBranches } from './helpers/branches.js';
+export { saveProductItems, saveProduct, fetchProducts, loadProduct, searchProduct, createProduct, searchProducts } from './helpers/products.js';

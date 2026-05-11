@@ -6,7 +6,7 @@ import endpoints from '../../providers/generated/client/branches.js';
  * @param {object} res - Response from authApi
  * @returns {any} Unwrapped data
  */
-export function dataNode(res) {
+function dataNode(res) {
     return res.data?.data ?? res.data ?? res;
 }
 

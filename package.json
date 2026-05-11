@@ -52,7 +52,7 @@
     "start:cms": "node scripts/js/load-env.js -- npm run start --workspace=rutba-cms",
     "start:social": "node scripts/js/load-env.js -- npm run start --workspace=rutba-social",
 
-
+    "build:api": "node scripts/js/load-env.js -- npm run build --workspace=@rutba/api-provider",
     "build:auth": "node scripts/js/load-env.js -- npm run build --workspace=pos-auth",
     "build:stock": "node scripts/js/load-env.js -- npm run build --workspace=pos-stock",
     "build:sale": "node scripts/js/load-env.js -- npm run build --workspace=pos-sale",

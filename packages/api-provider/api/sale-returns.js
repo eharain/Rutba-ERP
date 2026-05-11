@@ -105,39 +105,3 @@ export const SaleReturnsEndpoints = {
      */
 
 };
-
-/**
- * SaleReturnsEndpointRules
- * Per-endpoint requestRules stored in the api-guard-pro resource record.
- */
-export const SaleReturnsEndpointRules = {
-    /** GET /api/sale-returns — paginated list */
-    list: {},
-
-    /**
-     * GET /api/sale-returns/:id — byId
-     * Client passes: documentId in URL path param
-     * Server injects: full populate
-     */
-    byId: {
-        injectPopulate: {
-            sale: { populate: { customer: true } },
-            items: { populate: { product: true, items: true } },
-            payments: true,
-            cash_register: true,
-            returned_by_user: true,
-        },
-    },
-
-    /** POST /api/sale-returns — create */
-    create: {},
-
-    /** PUT /api/sale-returns/:id — update */
-    update: {},
-
-    /** PUT /api/sale-returns/:id/publish */
-    publish: {},
-
-    /** PUT /api/sale-returns/:id/unpublish */
-    unpublish: {},
-};

@@ -93,31 +93,3 @@ export const PurchaseItemsEndpoints = {
     },
 };
 
-/**
- * PurchaseItemsEndpointRules
- * Per-endpoint requestRules stored in the api-guard-pro resource record.
- */
-export const PurchaseItemsEndpointRules = {
-    /** GET /api/purchase-items — paginated list */
-    list: {},
-
-    /**
-     * GET /api/purchase-items — byProduct
-     * Client passes: ?productDocId=<documentId>
-     * Server injects: filter by purchase_items belonging to a product
-     */
-    byProduct: {
-        filters: {
-            product: { documentId: { $eq: '$query.productDocId' } },
-        },
-    },
-
-    /** POST /api/purchase-items — create */
-    create: {},
-
-    /** PUT /api/purchase-items/:id — update */
-    update: {},
-
-    /** DELETE /api/purchase-items/:id */
-    delete: {},
-};

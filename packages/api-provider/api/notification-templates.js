@@ -61,26 +61,3 @@ export const NotificationTemplatesEndpoints = {
     }),
 
 };
-
-/**
- * NotificationTemplatesEndpointRules
- * Per-endpoint requestRules stored in the api-guard-pro resource record.
- */
-export const NotificationTemplatesEndpointRules = {
-    /** GET /api/notification-templates — list */
-    list: {
-        injectSort: ['name:asc'],
-    },
-
-    /** GET /api/notification-templates/:id — byId */
-    byId: {},
-
-    /** POST /api/notification-templates */
-    create: {},
-
-    /** PUT /api/notification-templates/:id */
-    update: {},
-
-    /** DELETE /api/notification-templates/:id */
-    delete: {},
-};

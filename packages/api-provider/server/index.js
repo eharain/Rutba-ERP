@@ -1,4 +1,5 @@
 import { createStrapiProxy } from '@/providers/createStrapiProxy.js';
+export { buildResourcesFromApiProviderSource } from '@/server/access-guard/index.js';
 
 import { AccAccountsEndpoints } from '@/api/acc-accounts.js';
 export const AccAccountsServer = createStrapiProxy(AccAccountsEndpoints);

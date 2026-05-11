@@ -1,5 +1,3 @@
-import { dataNode } from '../pos/search.js';
-
 /**
  * EnumsEndpoints
  * Centralised path definitions for the custom /enums Strapi route.
@@ -35,14 +33,4 @@ export const EnumsEndpoints = {
      * @param {string} field - field name (e.g. 'status')
      */
 
-};
-
-/**
- * EnumsEndpointRules
- * Per-endpoint requestRules stored in the api-guard-pro resource record.
- * Enums are read-only config lookups; no extra rules needed.
- */
-export const EnumsEndpointRules = {
-    /** GET /api/enums/:name/:field */
-    values: {},
 };
