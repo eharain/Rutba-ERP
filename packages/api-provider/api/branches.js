@@ -1,5 +1,3 @@
-
-
 /**
  * BranchesEndpoints
  * Pure endpoint descriptors for the /branches resource.

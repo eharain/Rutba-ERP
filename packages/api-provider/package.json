@@ -10,7 +10,7 @@
     "validate:exports": "node ./scripts/validate-exports.mjs",
     "validate:web-proxies": "node ./scripts/validate-web-proxies.mjs",
     "validate": "npm run validate:exports && npm run validate:web-proxies",
-    "build": "npm run validate"
+    "build": "npm run  scaffold:endpoint-providers && npm run validate"
   },
   "exports": {
     ".": [ "./index.js", "./storage.js", "./api.js" ],
@@ -31,6 +31,8 @@
     "./client/web/*": "./client/web/*",
     "./api/web": "./api/web/index.js",
     "./api/web/*": "./api/web/*",
-    "./server": "./server/index.js"
+    "./server": "./server/index.js",
+    "./server/access-guard": "./server/access-guard/index.js",
+    "./server/access-guard/*": "./server/access-guard/*"
   }
 }

@@ -4,13 +4,19 @@
  */
 export const CashRegisterTransactionEndpoints = {
 
+    meta: {
+        uid: 'api::cash-register-transaction.cash-register-transaction',
+        domains: ['accounts', 'sale', 'accounts-ar', 'accounts-ap'],
+        roles: ['admin', 'manager', 'staff']
+    },
+
     /** Create a new cash register transaction. */
     create: (data) => ({
         path: '/cash-register-transactions',
         action: 'create',
         method: 'post',
         apps: ['sale'],
-        approle: ['admin', 'user'],
+        approle: ['admin', 'manager', 'staff'],
         data,
     }),
     postCreate: (data) => ({
@@ -18,7 +24,7 @@ export const CashRegisterTransactionEndpoints = {
         action: 'create',
         method: 'post',
         apps: ['sale'],
-        approle: ['admin', 'user'],
+        approle: ['admin', 'manager', 'staff'],
         data,
     }),
 
@@ -32,7 +38,7 @@ export const CashRegisterTransactionEndpoints = {
         action: 'find',
         method: 'get',
         apps: ['sale'],
-        approle: ['admin', 'user'],
+        approle: ['admin', 'manager', 'staff'],
         params: {
             filters: { cash_register: { documentId: { $eq: registerDocumentId } } },
             sort: sort ?? ['transaction_date:asc'],
@@ -44,7 +50,7 @@ export const CashRegisterTransactionEndpoints = {
         action: 'find',
         method: 'get',
         apps: ['sale'],
-        approle: ['admin', 'user'],
+        approle: ['admin', 'manager', 'staff'],
         params: {
             filters: useDocumentId
                 ? { cash_register: { documentId: { $eq: registerDocumentId } } }

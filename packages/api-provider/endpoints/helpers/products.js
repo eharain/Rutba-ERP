@@ -13,9 +13,6 @@ function dataNode(res) {
     return res.data?.data ?? res.data ?? res;
 }
 
-export { dataNode };
-
-
 /**
  * ORCHESTRATION HELPERS
  * These helpers coordinate multiple endpoints or add business logic on top
