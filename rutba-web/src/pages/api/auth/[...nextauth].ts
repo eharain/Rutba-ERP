@@ -1,7 +1,7 @@
 import NextAuth, { User } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
-import { createWebAuthService } from "@rutba/api-provider/client/web";
+import { createWebAuthService } from "@/services";
 import { BASE_URL } from "@/static/const";
 import { Session } from "next-auth";
 import { JWT } from "next-auth/jwt";

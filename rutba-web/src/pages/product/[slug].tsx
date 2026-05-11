@@ -21,7 +21,7 @@ import { ErrorCard } from "@/components/errors/error-card";
 import { useStoreCart } from "@/store/store-cart";
 // import Reviews from "@/components/product-detail/reviews";
 // import useReviewsService from "@/services/reviews";
-import { createWebProductsService } from "@rutba/api-provider/client/web";
+import { createWebProductsService } from "@/services";
 import { currencyFormat } from "@/lib/use-currency";
 import { marked } from "marked";
 import { markedVideoEmbed } from "@/lib/marked-video-embed";

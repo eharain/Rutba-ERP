@@ -1,16 +1,11 @@
-import { authApi } from '../lib/api.js';
-import { createClientProxy } from '../providers/createClientProxy.js';
-import { ProductsEndpoints as ProductsEndpointsApi } from '../api/products.js';
 import { dataNode } from '../pos/search.js';
 import { getBranch, getUser } from '../utils.js';
-
-const endpoints = createClientProxy(ProductsEndpointsApi, authApi);
-
+import endpoints, { ProductsEndpoints } from '../providers/generated/client/products.js';
 export default endpoints;
-export const ProductsEndpoints = endpoints;
+export { ProductsEndpoints };
 
 // Create a reusable proxy instance for helpers
-const proxy = createClientProxy(ProductsEndpointsApi, authApi);
+const proxy = endpoints;
 
 /**
  * Helper: Extract data node from Strapi response.
@@ -152,4 +147,3 @@ export async function searchProducts(searchTerm, page = 1, rowsPerPage = 5) {
     const res = await proxy.search(searchTerm?.trim() || '', page, rowsPerPage);
     return dataNode(res);
 }
-

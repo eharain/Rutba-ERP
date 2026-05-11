@@ -23,9 +23,10 @@ import { useQuery } from "@tanstack/react-query";
 import { SkeletonBrand, SkeletonCategory } from "../skeleton";
 import { ErrorCard } from "../errors/error-card";
 import { IMAGE_URL } from "@/static/const";
+import { resolveMediaUrl } from "@/lib/media-url";
 import { useStoreCart } from "@/store/store-cart";
 import { useSession } from "next-auth/react";
-import { createWebCmsPagesService } from "@rutba/api-provider/client/web";
+import { createWebCmsPagesService } from "@/services/";
 import { BrandInterface } from "@/types/api/brand";
 import { CategoryInterface } from "@/types/api/category";
 import { CmsPageInterface } from "@/types/api/cms-page";
@@ -110,7 +111,7 @@ export default function Header() {
               <Link href="/">
                 {settings.site_logo?.url ? (
                   <img
-                    src={IMAGE_URL + settings.site_logo.url}
+                    src={resolveMediaUrl(settings.site_logo.url)}
                     alt={settings.site_name}
                     className="h-8 md:h-10 w-auto mr-10"
                   />

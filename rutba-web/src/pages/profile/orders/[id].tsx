@@ -2,7 +2,7 @@ import DetailTransactionCard from "@/components/transaction/detail-transaction-c
 import ProfileLayout from "@/components/layouts/profile-layout";
 import { useRouter } from "next/router";
 import { useSession } from "next-auth/react";
-import { createWebOrdersService } from "@rutba/api-provider/client/web";
+import { createWebOrdersService } from "@/services";
 import { useQuery } from "@tanstack/react-query";
 import { ErrorCard } from "@/components/errors/error-card";
 import { BASE_URL } from "@/static/const";

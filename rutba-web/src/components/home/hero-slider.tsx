@@ -12,7 +12,7 @@ import { SkeletonBanner } from "../skeleton";
 import { BASE_URL, IMAGE_URL } from "@/static/const";
 import Link from "next/link";
 import { ErrorCard } from "../errors/error-card";
-import { createWebBannersService } from "@rutba/api-provider/client/web";
+import { createWebBannersService } from "@/services/";
 
 export default function HeroSlider() {
   const bannersService = createWebBannersService({ baseURL: BASE_URL });

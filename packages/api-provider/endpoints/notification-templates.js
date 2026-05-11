@@ -1,9 +1,3 @@
-import { authApi } from '../lib/api.js';
-import { createClientProxy } from '../providers/createClientProxy.js';
-import { NotificationTemplatesEndpoints as NotificationTemplatesEndpointsApi } from '../api/notification-templates.js';
-
-const endpoints = createClientProxy(NotificationTemplatesEndpointsApi, authApi);
-
+import endpoints, { NotificationTemplatesEndpoints } from '../providers/generated/client/notification-templates.js';
 export default endpoints;
-export const NotificationTemplatesEndpoints = endpoints;
-
+export { NotificationTemplatesEndpoints };

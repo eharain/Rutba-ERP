@@ -6,7 +6,7 @@ import { useRouter } from "next/router";
 import { ChevronLeft, ChevronRight, Search } from "lucide-react";
 import ReactPaginate from "react-paginate";
 import { buttonVariants } from "../ui/button";
-import { createWebProductsService } from "@rutba/api-provider/client/web";
+import { createWebProductsService } from "@/services";
 import { getVariantTermSummary } from "@/types/api/product";
 import { BASE_URL } from "@/static/const";
 

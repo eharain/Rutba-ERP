@@ -1,7 +1,7 @@
 import useErrorHandler from "@/hooks/useErrorHandler";
 import { useStoreCart } from "@/store/store-cart";
 import { CartInterface, CartTermInfo } from "@/types/api/cart";
-import { createWebProductsService } from "@rutba/api-provider/client/web";
+import { createWebProductsService } from "@/services/";
 import { BASE_URL } from "@/static/const";
 
 export interface cartLocalStorage {

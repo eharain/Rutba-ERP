@@ -1,9 +1,3 @@
-import { authApi } from '../lib/api.js';
-import { createClientProxy } from '../providers/createClientProxy.js';
-import { HrTeamsEndpoints as HrTeamsEndpointsApi } from '../api/hr-teams.js';
-
-const endpoints = createClientProxy(HrTeamsEndpointsApi, authApi);
-
+import endpoints, { HrTeamsEndpoints } from '../providers/generated/client/hr-teams.js';
 export default endpoints;
-export const HrTeamsEndpoints = endpoints;
-
+export { HrTeamsEndpoints };

@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { createWebSiteSettingsService, SITE_SETTINGS_DEFAULTS } from "@rutba/api-provider/client/web";
+import { createWebSiteSettingsService, SITE_SETTINGS_DEFAULTS } from "@/services";
 import { BASE_URL } from "@/static/const";
 
 const siteSettingsService = createWebSiteSettingsService({ baseURL: BASE_URL });

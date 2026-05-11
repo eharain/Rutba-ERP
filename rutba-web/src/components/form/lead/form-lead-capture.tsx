@@ -2,7 +2,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
-import { createWebLeadsService } from "@rutba/api-provider/client/web";
+import { createWebLeadsService } from "@/services/";
 import useErrorHandler from "@/hooks/useErrorHandler";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { BASE_URL } from "@/static/const";

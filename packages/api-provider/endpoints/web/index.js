@@ -1,0 +1,14 @@
+export { default as WebAuthEndpoints } from './auth.js';
+export { default as WebBannersEndpoints } from './banners.js';
+export { default as WebBrandsEndpoints } from './brands.js';
+export { default as WebCategoriesEndpoints } from './categories.js';
+export { default as WebCheckoutEndpoints } from './checkout.js';
+export { default as WebCmsPagesEndpoints } from './cms-pages.js';
+export { default as WebCollectionsEndpoints } from './collections.js';
+export { default as WebDeliveryEndpoints } from './delivery.js';
+export { default as WebLeadsEndpoints } from './leads.js';
+export { default as WebOrdersEndpoints } from './orders.js';
+export { default as WebProductGroupsEndpoints } from './product-groups.js';
+export { default as WebProductsEndpoints } from './products.js';
+export { default as WebReviewsEndpoints } from './reviews.js';
+export { default as WebSiteSettingsEndpoints } from './site-settings.js';

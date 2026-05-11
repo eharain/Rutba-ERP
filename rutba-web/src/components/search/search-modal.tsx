@@ -13,7 +13,7 @@ import useDebounce from "@/hooks/useDebounce";
 import { BASE_URL, IMAGE_URL } from "@/static/const";
 import { SearchIcon } from "lucide-react";
 import Highlighter from "react-highlight-words";
-import { createWebProductsService } from "@rutba/api-provider/client/web";
+import { createWebProductsService } from "@/services";
 import { currencyFormat } from "@/lib/use-currency";
 
 export interface propsInterface {

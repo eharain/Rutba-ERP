@@ -8,7 +8,7 @@ import { ErrorCard } from "@/components/errors/error-card";
 import {
   createWebCmsPagesService,
   getCmsPageBySlugSSR,
-} from "@rutba/api-provider/client/web";
+} from "@/services";
 import { CmsPageDetailInterface } from "@/types/api/cms-page";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { BASE_URL } from "@/static/const";

@@ -1,9 +1,3 @@
-import { authApi } from '../lib/api.js';
-import { createClientProxy } from '../providers/createClientProxy.js';
-import { SaleReturnsEndpoints as SaleReturnsEndpointsApi } from '../api/sale-returns.js';
-
-const endpoints = createClientProxy(SaleReturnsEndpointsApi, authApi);
-
+import endpoints, { SaleReturnsEndpoints } from '../providers/generated/client/sale-returns.js';
 export default endpoints;
-export const SaleReturnsEndpoints = endpoints;
-
+export { SaleReturnsEndpoints };

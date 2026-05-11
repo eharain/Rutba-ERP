@@ -13,7 +13,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowLeftIcon, CheckCircleIcon } from "lucide-react";
 import useErrorHandler from "@/hooks/useErrorHandler";
-import { createWebCheckoutService } from "@rutba/api-provider/client/web";
+import { createWebCheckoutService } from "@/services/";
 import { BASE_URL } from "@/static/const";
 
 type CheckoutStep = "SHIPPING_INFORMATION" | "DELIVERY_METHOD";

@@ -13,7 +13,7 @@ import { countryList } from "@/static/country";
 import { useStoreCheckout } from "@/store/store-checkout";
 import useErrorHandler from "@/hooks/useErrorHandler";
 import Spinner from "@/components/ui/spinner";
-import { createWebDeliveryService } from "@rutba/api-provider/client/web";
+import { createWebDeliveryService } from "@/services/";
 import { useCartService } from "@/services/cart";
 import { BASE_URL } from "@/static/const";
 

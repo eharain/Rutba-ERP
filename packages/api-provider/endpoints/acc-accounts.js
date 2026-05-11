@@ -1,8 +1,3 @@
-import { authApi } from '../lib/api.js';
-import { createClientProxy } from '../providers/createClientProxy.js';
-import { AccAccountsEndpoints as AccAccountsEndpointsApi } from '../api/acc-accounts.js';
-
-const endpoints = createClientProxy(AccAccountsEndpointsApi, authApi);
-
+import endpoints, { AccAccountsEndpoints } from '../providers/generated/client/acc-accounts.js';
 export default endpoints;
-export const AccAccountsEndpoints = endpoints;
+export { AccAccountsEndpoints };

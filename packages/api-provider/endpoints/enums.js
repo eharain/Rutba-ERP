@@ -1,9 +1,3 @@
-import { authApi } from '../lib/api.js';
-import { createClientProxy } from '../providers/createClientProxy.js';
-import { EnumsEndpoints as EnumsEndpointsApi } from '../api/enums.js';
-
-const endpoints = createClientProxy(EnumsEndpointsApi, authApi);
-
+import endpoints, { EnumsEndpoints } from '../providers/generated/client/enums.js';
 export default endpoints;
-export const EnumsEndpoints = endpoints;
-
+export { EnumsEndpoints };

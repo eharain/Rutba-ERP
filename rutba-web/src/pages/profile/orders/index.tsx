@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/card";
 import NextImage from "@/components/next-image";
 import Link from "next/link";
-import { createWebOrdersService } from "@rutba/api-provider/client/web";
+import { createWebOrdersService } from "@/services";
 import { useQuery } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 import { ErrorCard } from "@/components/errors/error-card";

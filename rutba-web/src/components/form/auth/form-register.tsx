@@ -11,7 +11,7 @@ import {
 } from "@/validations/auth-validation";
 
 import useErrorHandler from "@/hooks/useErrorHandler";
-import { createWebAuthService } from "@rutba/api-provider/client/web";
+import { createWebAuthService } from "@/services/";
 import { BASE_URL } from "@/static/const";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import Link from "next/link";

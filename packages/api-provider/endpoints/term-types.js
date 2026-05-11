@@ -1,9 +1,3 @@
-import { authApi } from '../lib/api.js';
-import { createClientProxy } from '../providers/createClientProxy.js';
-import { TermTypesEndpoints as TermTypesEndpointsApi } from '../api/term-types.js';
-
-const endpoints = createClientProxy(TermTypesEndpointsApi, authApi);
-
+import endpoints, { TermTypesEndpoints } from '../providers/generated/client/term-types.js';
 export default endpoints;
-export const TermTypesEndpoints = endpoints;
-
+export { TermTypesEndpoints };

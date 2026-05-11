@@ -24,7 +24,7 @@ import { Slider } from "@/components/ui/slider";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { currencyFormat } from "@/lib/use-currency";
-import { createWebCategoriesService } from "@rutba/api-provider/client/web";
+import { createWebCategoriesService } from "@/services";
 import { useQuery } from "@tanstack/react-query";
 import { BASE_URL } from "@/static/const";
 

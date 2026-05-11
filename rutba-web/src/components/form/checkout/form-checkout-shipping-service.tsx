@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import Spinner from "@/components/ui/spinner";
 import useErrorHandler from "@/hooks/useErrorHandler";
-import { createWebCheckoutService } from "@rutba/api-provider/client/web";
+import { createWebCheckoutService } from "@/services/";
 import { IMAGE_URL } from "@/static/const";
 import { countryList } from "@/static/country";
 import { useStoreCheckout } from "@/store/store-checkout";

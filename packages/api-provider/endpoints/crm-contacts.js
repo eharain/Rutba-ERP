@@ -1,9 +1,3 @@
-import { authApi } from '../lib/api.js';
-import { createClientProxy } from '../providers/createClientProxy.js';
-import { CrmContactsEndpoints as CrmContactsEndpointsApi } from '../api/crm-contacts.js';
-
-const endpoints = createClientProxy(CrmContactsEndpointsApi, authApi);
-
+import endpoints, { CrmContactsEndpoints } from '../providers/generated/client/crm-contacts.js';
 export default endpoints;
-export const CrmContactsEndpoints = endpoints;
-
+export { CrmContactsEndpoints };

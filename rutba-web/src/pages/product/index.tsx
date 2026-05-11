@@ -4,7 +4,7 @@ import ProductListItem from "@/components/product-list";
 // import ProductCollectionFilter from "@/components/product-list/product-collection-filter";
 import ProductFilter from "@/components/product-list/product-filter";
 import ProductSort from "@/components/product-list/product-sort";
-import { createWebProductsService } from "@rutba/api-provider/client/web";
+import { createWebProductsService } from "@/services";
 import { useRouter } from "next/router";
 import { useSiteSettings } from "@/hooks/use-site-settings";
 import { BASE_URL } from "@/static/const";

@@ -1,9 +1,3 @@
-import { authApi } from '../lib/api.js';
-import { createClientProxy } from '../providers/createClientProxy.js';
-import { WebOrdersEndpoints as WebOrdersEndpointsApi } from '../api/web-orders.js';
-
-const endpoints = createClientProxy(WebOrdersEndpointsApi, authApi);
-
+import endpoints, { WebOrdersEndpoints } from '../providers/generated/client/web-orders.js';
 export default endpoints;
-export const WebOrdersEndpoints = endpoints;
-
+export { WebOrdersEndpoints };
