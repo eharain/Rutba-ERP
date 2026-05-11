@@ -1,8 +1,5 @@
-import { dataNode } from '../pos/search.js';
-import { getBranch, getUser } from '../utils.js';
-import endpoints, { ProductsEndpoints } from '../providers/generated/client/products.js';
-export default endpoints;
-export { ProductsEndpoints };
+import { getBranch, getUser } from '../../utils.js';
+import endpoints from '../../providers/generated/client/products.js';
 
 // Create a reusable proxy instance for helpers
 const proxy = endpoints;
@@ -12,9 +9,12 @@ const proxy = endpoints;
  * @param {object} res - Response from authApi
  * @returns {any} Unwrapped data
  */
-export function extractData(res) {
+function dataNode(res) {
     return res.data?.data ?? res.data ?? res;
 }
+
+export { dataNode };
+
 
 /**
  * ORCHESTRATION HELPERS
@@ -93,7 +93,7 @@ export async function fetchProducts(filters, page, rowsPerPage, sort) {
  */
 export async function loadProduct(id) {
     const res = await proxy.byId(id);
-    return extractData(res);
+    return dataNode(res);
 }
 
 /**
@@ -124,11 +124,11 @@ export async function createProduct() {
     };
     const res = await proxy.create(data);
     const rdata = res?.data ?? res;
-    return { 
-        data: rdata, 
-        id: rdata.documentId ?? rdata.id, 
-        nameSingular: 'product', 
-        namePlural: 'products' 
+    return {
+        data: rdata,
+        id: rdata.documentId ?? rdata.id,
+        nameSingular: 'product',
+        namePlural: 'products'
     };
 }
 

@@ -1,9 +1,6 @@
 ﻿// Each entity-specific create function lives in its endpoint file.
 // This orchestrator delegates by name for backward compatibility.
-import { SalesEndpoints } from '../endpoints/sales.js';
-import { PurchasesEndpoints } from '../endpoints/purchases.js';
-import { StockItemsEndpoints } from '../endpoints/stock-items.js';
-import { createProduct } from '../endpoints/products.js';
+import { SalesEndpoints, PurchasesEndpoints, StockItemsEndpoints } from '../endpoints/index.js';
 import { generateNextInvoiceNumber, generateNextPONumber, getBranch, getUser } from '../utils.js';
 
 const callCreate = (endpoints, payload) => {
@@ -45,7 +42,6 @@ export async function createPurchase() {
     return { data, id: data?.documentId ?? data?.id, nameSingular: 'purchase', namePlural: 'purchases' };
 }
 
-export { createProduct };
 
 export async function generateStockItems(purchase, item, quantity) {
     const qty = Math.max(0, Number(quantity || 0));
@@ -72,14 +68,4 @@ export async function generateStockItems(purchase, item, quantity) {
     return created;
 }
 
-/**
- * Create a new entity by type name.
- * @param {'sale'|'sales'|'purchase'|'purchases'|'product'|'products'} name
- */
-export async function createNewEntity(name) {
-    const n = name.toLowerCase();
-    if (n === 'sale' || n === 'sales') return await createSale();
-    if (n === 'purchase' || n === 'purchases') return await createPurchase();
-    if (n === 'product' || n === 'products') return await createProduct();
-    throw new Error('Unknown entity type: ' + name);
-}
+

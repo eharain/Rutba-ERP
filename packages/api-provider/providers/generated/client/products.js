@@ -106,6 +106,25 @@ async function fetchByIdPublished(...args) {
     return byIdPublished(...args);
 }
 
+// Backward-compatible orchestration helper expected by existing imports:
+// import { fetchProducts } from '@rutba/api-provider/endpoints/products.js'
+async function fetchProducts(filters = {}, page = 1, rowsPerPage = 100, sort) {
+    const { searchText } = filters || {};
+    if (searchText && String(searchText).trim().length > 0) {
+        return search(String(searchText).trim(), page, rowsPerPage);
+    }
+
+    return list(page, rowsPerPage, {
+        brands: filters?.brands,
+        categories: filters?.categories,
+        suppliers: filters?.suppliers,
+        purchases: filters?.purchases,
+        parentOnly: filters?.parentOnly,
+        status: filters?.status,
+        sort,
+    });
+}
+
 const endpoints = {
     listAll,
     list,
@@ -133,8 +152,10 @@ const endpoints = {
     fetchByParent,
     fetchByIdDraft,
     fetchByIdPublished,
+    fetchProducts,
     meta: ProductsEndpointsApi.meta,
 };
 
 export default endpoints;
 export const ProductsEndpoints = endpoints;
+export { fetchProducts };

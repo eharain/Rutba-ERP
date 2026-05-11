@@ -1,10 +1,12 @@
 // Moved to their endpoint files -- re-exported for backward compatibility.
-import { StockItemsEndpoints } from '../endpoints/stock-items.js';
-import { ProductsEndpoints } from '../endpoints/products.js';
-import { SalesEndpoints } from '../endpoints/sales.js';
-import { PurchasesEndpoints } from '../endpoints/purchases.js';
-import { BranchesEndpoints } from '../endpoints/branches.js';
-import { CategoriesEndpoints } from '../endpoints/categories.js';
+import {
+    StockItemsEndpoints,
+    ProductsEndpoints,
+    SalesEndpoints,
+    PurchasesEndpoints,
+    BranchesEndpoints,
+    CategoriesEndpoints,
+} from '../endpoints/index.js';
 
 export const searchStockItemsByName = StockItemsEndpoints.searchStockItemsByName;
 export const searchStockItemsByBarcode = StockItemsEndpoints.searchStockItemsByBarcode;
@@ -22,10 +24,12 @@ export function dataNode(res) {
 
 // General full-text search across multiple entities (stays here).
 export async function fetchSearch(searchTerm, page, rowsPerPage) {
-    const { ProductsEndpoints } = await import('../endpoints/products.js');
-    const { PurchasesEndpoints } = await import('../endpoints/purchases.js');
-    const { SalesEndpoints } = await import('../endpoints/sales.js');
-    const { StockItemsEndpoints } = await import('../endpoints/stock-items.js');
+    const {
+        ProductsEndpoints,
+        PurchasesEndpoints,
+        SalesEndpoints,
+        StockItemsEndpoints,
+    } = await import('../endpoints/index.js');
 
     const [products, purchases, sales, stockItems] = await Promise.allSettled([
         ProductsEndpoints.searchProducts(searchTerm, page, rowsPerPage),

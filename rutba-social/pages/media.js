@@ -642,8 +642,10 @@ export default function MediaPage() {
                                                         <tr key={file.id} className={isActive ? 'table-primary' : ''} style={{ cursor: 'pointer' }}
                                                             draggable onDragStart={(e) => handleFileDragStart(e, file.id)}
                                                             onClick={(e) => toggleFileSelect(file.id, e)}>
-                                                            <td>{fileIsImage ? <img src={src} alt="" style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 4 }} draggable={false} />
-                                                                : <i className={`fas ${MediaUtilsEndpoints.isPDF(file) ? 'fa-file-pdf text-danger' : 'fa-file text-secondary'} fa-lg`} />}
+                                                            <td>
+                                                                {fileIsImage ? <img src={src} alt="" style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 4 }} draggable={false} />
+                                                                    : <i className={`fas ${MediaUtilsEndpoints.isPDF(file) ? 'fa-file-pdf text-danger' : 'fa-file text-secondary'} fa-lg`} />}
+                                                            </td>
                                                             <td className="text-truncate" style={{ maxWidth: 250 }} title={file.name}>{file.name}</td>
                                                             <td>{file.folder ? <span className="badge bg-light text-dark"><i className="fas fa-folder fa-xs me-1 text-warning" />{file.folder.name}</span> : <span className="text-muted">—</span>}</td>
                                                             <td><span className="badge bg-light text-dark">{file.ext}</span></td>

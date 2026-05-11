@@ -21,7 +21,7 @@
     "./endpoints": "./endpoints/index.js",
     "./lib/*": "./lib/*",
     "./config/*": "./config/*",
-    "./endpoints/*": "./endpoints/*",
+    "./endpoints/*": "./providers/generated/client/*",
     "./scripts/*": "./scripts/*",
     "./pos": "./pos/index.js",
     "./pos/*": "./pos/*",
