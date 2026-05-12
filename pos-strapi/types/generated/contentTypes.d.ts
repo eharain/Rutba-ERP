@@ -3791,6 +3791,356 @@ export interface ApiTermTerm extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface PluginApiProApiInterface extends Struct.CollectionTypeSchema {
+  collectionName: 'api_pro_interfaces';
+  info: {
+    displayName: 'API Interface';
+    pluralName: 'api-interfaces';
+    singularName: 'api-interface';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  pluginOptions: {
+    'content-manager': {
+      visible: false;
+    };
+    'content-type-builder': {
+      visible: false;
+    };
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    filePath: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.Unique;
+    key: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.Unique;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'plugin::api-pro.api-interface'
+    > &
+      Schema.Attribute.Private;
+    methods: Schema.Attribute.Relation<
+      'oneToMany',
+      'plugin::api-pro.api-interface-method'
+    >;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    publishedAt: Schema.Attribute.DateTime;
+    status: Schema.Attribute.Enumeration<['generated', 'modified', 'manual']> &
+      Schema.Attribute.DefaultTo<'generated'>;
+    uid: Schema.Attribute.String;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface PluginApiProApiInterfaceMethod
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'api_pro_interface_methods';
+  info: {
+    displayName: 'API Interface Method';
+    pluralName: 'api-interface-methods';
+    singularName: 'api-interface-method';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  pluginOptions: {
+    'content-manager': {
+      visible: false;
+    };
+    'content-type-builder': {
+      visible: false;
+    };
+  };
+  attributes: {
+    action: Schema.Attribute.String;
+    apiInterface: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::api-pro.api-interface'
+    >;
+    appRoles: Schema.Attribute.JSON;
+    apps: Schema.Attribute.JSON;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    inputSignature: Schema.Attribute.JSON;
+    key: Schema.Attribute.String & Schema.Attribute.Required;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'plugin::api-pro.api-interface-method'
+    > &
+      Schema.Attribute.Private;
+    method: Schema.Attribute.String & Schema.Attribute.Required;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    path: Schema.Attribute.String & Schema.Attribute.Required;
+    policies: Schema.Attribute.Relation<
+      'oneToMany',
+      'plugin::api-pro.api-method-policy'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    routeTokens: Schema.Attribute.JSON;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface PluginApiProApiMethodPolicy
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'api_pro_method_policies';
+  info: {
+    displayName: 'API Method Policy';
+    pluralName: 'api-method-policies';
+    singularName: 'api-method-policy';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  pluginOptions: {
+    'content-manager': {
+      visible: false;
+    };
+    'content-type-builder': {
+      visible: false;
+    };
+  };
+  attributes: {
+    bodyTemplate: Schema.Attribute.JSON & Schema.Attribute.DefaultTo<{}>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    filtersTemplate: Schema.Attribute.JSON & Schema.Attribute.DefaultTo<{}>;
+    interfaceMethod: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::api-pro.api-interface-method'
+    >;
+    key: Schema.Attribute.String & Schema.Attribute.Required;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'plugin::api-pro.api-method-policy'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String;
+    populateTemplate: Schema.Attribute.JSON & Schema.Attribute.DefaultTo<{}>;
+    publishedAt: Schema.Attribute.DateTime;
+    queryTemplate: Schema.Attribute.JSON & Schema.Attribute.DefaultTo<{}>;
+    resolverMode: Schema.Attribute.Enumeration<['strict', 'lenient']> &
+      Schema.Attribute.DefaultTo<'strict'>;
+    roleKey: Schema.Attribute.String & Schema.Attribute.Required;
+    templateVersion: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<1>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface PluginApiProAppDomain extends Struct.CollectionTypeSchema {
+  collectionName: 'api_pro_app_domains';
+  info: {
+    description: 'Shallow app domain grouping';
+    displayName: 'App Domain';
+    pluralName: 'app-domains';
+    singularName: 'app-domain';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  pluginOptions: {
+    'content-manager': {
+      visible: false;
+    };
+    'content-type-builder': {
+      visible: false;
+    };
+  };
+  attributes: {
+    appRoles: Schema.Attribute.Relation<
+      'manyToMany',
+      'plugin::api-pro.app-role'
+    >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    description: Schema.Attribute.Text;
+    isActive: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    key: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.Unique;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'plugin::api-pro.app-domain'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    publishedAt: Schema.Attribute.DateTime;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface PluginApiProAppRole extends Struct.CollectionTypeSchema {
+  collectionName: 'api_pro_app_roles';
+  info: {
+    description: 'Role mapped to Strapi admin role for app context validation';
+    displayName: 'App Role';
+    pluralName: 'app-roles';
+    singularName: 'app-role';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  pluginOptions: {
+    'content-manager': {
+      visible: false;
+    };
+    'content-type-builder': {
+      visible: false;
+    };
+  };
+  attributes: {
+    adminRoleCode: Schema.Attribute.String & Schema.Attribute.Required;
+    appDomains: Schema.Attribute.Relation<
+      'manyToMany',
+      'plugin::api-pro.app-domain'
+    >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    description: Schema.Attribute.Text;
+    isActive: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    key: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.Unique;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'plugin::api-pro.app-role'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    publishedAt: Schema.Attribute.DateTime;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    users: Schema.Attribute.Relation<
+      'manyToMany',
+      'plugin::users-permissions.user'
+    >;
+  };
+}
+
+export interface PluginApiProRecordingEntry
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'api_pro_recording_entries';
+  info: {
+    displayName: 'Recording Entry';
+    pluralName: 'recording-entries';
+    singularName: 'recording-entry';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  pluginOptions: {
+    'content-manager': {
+      visible: false;
+    };
+    'content-type-builder': {
+      visible: false;
+    };
+  };
+  attributes: {
+    body: Schema.Attribute.JSON;
+    claimedContext: Schema.Attribute.JSON;
+    count: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<1>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    headers: Schema.Attribute.JSON;
+    lastSeenAt: Schema.Attribute.DateTime;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'plugin::api-pro.recording-entry'
+    > &
+      Schema.Attribute.Private;
+    method: Schema.Attribute.String & Schema.Attribute.Required;
+    path: Schema.Attribute.String & Schema.Attribute.Required;
+    publishedAt: Schema.Attribute.DateTime;
+    query: Schema.Attribute.JSON;
+    recordKey: Schema.Attribute.String & Schema.Attribute.Required;
+    routeTemplate: Schema.Attribute.String;
+    session: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::api-pro.recording-session'
+    >;
+    statusCode: Schema.Attribute.Integer;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    urlParts: Schema.Attribute.JSON;
+  };
+}
+
+export interface PluginApiProRecordingSession
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'api_pro_recording_sessions';
+  info: {
+    displayName: 'Recording Session';
+    pluralName: 'recording-sessions';
+    singularName: 'recording-session';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  pluginOptions: {
+    'content-manager': {
+      visible: false;
+    };
+    'content-type-builder': {
+      visible: false;
+    };
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    entries: Schema.Attribute.Relation<
+      'oneToMany',
+      'plugin::api-pro.recording-entry'
+    >;
+    key: Schema.Attribute.UID<'name'>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'plugin::api-pro.recording-session'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    publishedAt: Schema.Attribute.DateTime;
+    resolvedAppName: Schema.Attribute.String;
+    resolvedRoleKey: Schema.Attribute.String;
+    startedAt: Schema.Attribute.DateTime;
+    startedByUserId: Schema.Attribute.Integer;
+    status: Schema.Attribute.Enumeration<['idle', 'recording', 'stopped']> &
+      Schema.Attribute.DefaultTo<'idle'>;
+    stoppedAt: Schema.Attribute.DateTime;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface PluginContentReleasesRelease
   extends Struct.CollectionTypeSchema {
   collectionName: 'strapi_releases';
@@ -4539,6 +4889,13 @@ declare module '@strapi/strapi' {
       'api::supplier.supplier': ApiSupplierSupplier;
       'api::term-type.term-type': ApiTermTypeTermType;
       'api::term.term': ApiTermTerm;
+      'plugin::api-pro.api-interface': PluginApiProApiInterface;
+      'plugin::api-pro.api-interface-method': PluginApiProApiInterfaceMethod;
+      'plugin::api-pro.api-method-policy': PluginApiProApiMethodPolicy;
+      'plugin::api-pro.app-domain': PluginApiProAppDomain;
+      'plugin::api-pro.app-role': PluginApiProAppRole;
+      'plugin::api-pro.recording-entry': PluginApiProRecordingEntry;
+      'plugin::api-pro.recording-session': PluginApiProRecordingSession;
       'plugin::content-releases.release': PluginContentReleasesRelease;
       'plugin::content-releases.release-action': PluginContentReleasesReleaseAction;
       'plugin::i18n.locale': PluginI18NLocale;

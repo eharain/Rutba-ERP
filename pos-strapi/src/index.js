@@ -3,6 +3,7 @@
 const seedApiProvider = require('./seed/api-provider-seed');
 const seedAccounting = require('./seed/accounting-seed');
 const runJsonSeeds = require('./seed/json-seed-runner');
+const { resolveHrRolesForUser } = require('./utils/hr-role-provider');
 
 async function ensureUsersPermissionsDefaults(strapi) {
     try {
@@ -56,6 +57,21 @@ module.exports = {
 
     async bootstrap({ strapi }) {
         await ensureUsersPermissionsDefaults(strapi);
+
+        // ─── Register HR team-role provider with api-pro ─────────────
+        // api-pro's bootstrap runs before this (plugin bootstraps fire before
+        // the app's), so strapi.apiPro is normally available here. Guard
+        // anyway so this block is safe when api-pro is disabled.
+        try {
+            if (typeof strapi.apiPro?.registerRoleProvider === 'function') {
+                strapi.apiPro.registerRoleProvider(resolveHrRolesForUser);
+                strapi.log.info('[bootstrap] Registered HR role provider with api-pro');
+            } else {
+                strapi.log.warn('[bootstrap] api-pro.registerRoleProvider unavailable; HR roles will not be merged into /me/permissions');
+            }
+        } catch (err) {
+            strapi.log.error('[bootstrap] HR role provider registration failed: ' + err.message);
+        }
 
         // ─── Phase 1: Seed api-guard-pro from api-provider config ───
         try {

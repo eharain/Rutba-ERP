@@ -69,7 +69,17 @@ const FIXED_BYPASS_PATHS = [
 ];
 
 const ALL_BYPASS_PATHS = [...new Set([...FIXED_BYPASS_PATHS, ...PUBLIC_BYPASS_PATHS])];
-const API_PRO_PLUGIN_PATH = path.resolve(__dirname, '..', '..', 'packages', 'strapi-api-pro');
+// Strapi's plugin loader does `path.dirname(require.resolve(resolve))` and then
+// appends the `./strapi-server` export path on top. If `resolve` points to a
+// directory, require.resolve follows `main` ("./dist/server/index.js") and the
+// dirname becomes `<plugin>/dist/server` — then Strapi appends the same export
+// path producing a double `dist/server/dist/server/...` that doesn't exist,
+// and the plugin is silently skipped. Pointing `resolve` at the package.json
+// makes dirname the package root, which is what Strapi expects.
+const API_PRO_PLUGIN_PATH = path.join(
+    path.resolve(__dirname, '..', '..', 'packages', 'strapi-api-pro'),
+    'package.json'
+);
 
 // domains from configuration.json (used by plugin setup service for upsert)
 const DOMAINS_FROM_CONFIG = Object.entries(_apiConfig.domains || {}).map(([key, d]) => ({
