@@ -1,6 +1,6 @@
 import pluginPkg from '../../package.json';
-import { Puzzle } from '@strapi/icons';
 import { getTrad } from './utils';
+import PluginIcon from './components/PluginIcon';
 
 const name = pluginPkg.strapi.name;
 
@@ -8,7 +8,7 @@ export default {
   register(app) {
     app.addMenuLink({
       to: `/plugins/${name}`,
-      icon: Puzzle,
+      icon: PluginIcon,
       intlLabel: {
         id: getTrad('plugin.name'),
         defaultMessage: 'Strapi API Pro',

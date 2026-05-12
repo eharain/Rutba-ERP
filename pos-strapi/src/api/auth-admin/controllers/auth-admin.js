@@ -18,11 +18,11 @@ function sanitizeUser(user) {
 }
 
 function deriveDomainAccessFromUser(user) {
-  const roles = user?.api_guard_roles || [];
+  const roles = user?.app_roles || [];
 
   const appKeys = [...new Set(
     roles
-      .map((role) => role?.domain?.key)
+      .flatMap((role) => (role?.appDomains || []).map((d) => d?.key))
       .filter(Boolean)
   )];
 
@@ -30,7 +30,7 @@ function deriveDomainAccessFromUser(user) {
   const adminKeys = [...new Set(
     roles
       .filter((role) => /admin/i.test(role?.key || ''))
-      .map((role) => role?.domain?.key)
+      .flatMap((role) => (role?.appDomains || []).map((d) => d?.key))
       .filter(Boolean)
   )];
 
@@ -54,7 +54,7 @@ async function resolveDomainKeys(strapi, values = []) {
     return [...new Set(directKeys)];
   }
 
-  const domains = await strapi.db.query('plugin::api-guard-pro.domain').findMany({
+  const domains = await strapi.db.query('plugin::api-pro.app-domain').findMany({
     where: { id: { $in: numericIds } },
     select: ['key'],
   });
@@ -76,10 +76,10 @@ async function requireAuthAdmin(ctx, strapi) {
   const fullUser = await strapi.query('plugin::users-permissions.user').findOne({
     where: { id: user.id },
     populate: {
-      api_guard_roles: {
+      app_roles: {
         select: ['key'],
         populate: {
-          domain: { select: ['key'] },
+          appDomains: { select: ['key'] },
         },
       },
     },
@@ -87,8 +87,8 @@ async function requireAuthAdmin(ctx, strapi) {
 
   // Admin = has an AGP role whose key matches the admin convention (*_admin/*-admin)
   // and whose domain is the auth app
-  const isAuthAdmin = (fullUser?.api_guard_roles || []).some((role) =>
-    /admin/i.test(role?.key || '') && role?.domain?.key === AUTH_APP_KEY
+  const isAuthAdmin = (fullUser?.app_roles || []).some((role) =>
+    /admin/i.test(role?.key || '') && (role?.appDomains || []).some((d) => d?.key === AUTH_APP_KEY)
   );
   if (!isAuthAdmin) {
     ctx.forbidden('Auth app admin access is required.');
@@ -103,9 +103,9 @@ async function fetchUserById(strapi, id) {
     where: { id },
     populate: {
       role: true,
-      api_guard_roles: {
+      app_roles: {
         populate: {
-          domain: true,
+          appDomains: true,
         },
       },
     },
@@ -113,17 +113,17 @@ async function fetchUserById(strapi, id) {
 }
 
 async function listDomainsWithUserCounts(strapi) {
-  const domains = await strapi.db.query('plugin::api-guard-pro.domain').findMany({
+  const domains = await strapi.db.query('plugin::api-pro.app-domain').findMany({
     where: { isActive: true },
     orderBy: { id: 'asc' },
-    select: ['id', 'documentId', 'key', 'name', 'description', 'strapiRoleType'],
+    select: ['id', 'documentId', 'key', 'name', 'description'],
   });
 
   const users = await strapi.query('plugin::users-permissions.user').findMany({
     populate: {
-      api_guard_roles: {
+      app_roles: {
         populate: {
-          domain: {
+          appDomains: {
             select: ['key'],
           },
         },
@@ -134,8 +134,8 @@ async function listDomainsWithUserCounts(strapi) {
   const usersByDomainKey = new Map();
   for (const user of users || []) {
     const domainKeys = new Set(
-      (user.api_guard_roles || [])
-        .map((role) => role?.domain?.key)
+      (user.app_roles || [])
+        .flatMap((role) => (role?.appDomains || []).map((d) => d?.key))
         .filter(Boolean)
     );
 
@@ -158,9 +158,9 @@ module.exports = {
     const users = await strapi.query('plugin::users-permissions.user').findMany({
       populate: {
         role: true,
-        api_guard_roles: {
+        app_roles: {
           populate: {
-            domain: true,
+            appDomains: true,
           },
         },
       },
@@ -220,7 +220,7 @@ module.exports = {
       confirmed: payload.confirmed,
       blocked: payload.blocked,
       role: payload.role,
-      api_guard_roles: roleIds,
+      app_roles: roleIds,
     });
 
     const user = await fetchUserById(strapi, created.id);
@@ -253,7 +253,7 @@ module.exports = {
       confirmed: payload.confirmed,
       blocked: payload.blocked,
       role: payload.role,
-      api_guard_roles: roleIds,
+      app_roles: roleIds,
     };
 
     if (payload.password) {
@@ -311,7 +311,7 @@ module.exports = {
       return ctx.badRequest('Key and name are required.');
     }
 
-    const existing = await strapi.db.query('plugin::api-guard-pro.domain').findOne({
+    const existing = await strapi.db.query('plugin::api-pro.app-domain').findOne({
       where: { key },
       select: ['id'],
     });
@@ -320,15 +320,12 @@ module.exports = {
       return ctx.badRequest('A domain with this key already exists.');
     }
 
-    await strapi.db.query('plugin::api-guard-pro.domain').create({
+    await strapi.db.query('plugin::api-pro.app-domain').create({
       data: {
         key,
         name,
         description: payload.description || '',
         isActive: true,
-        strapiRoleType: payload.strapiRoleType || 'authenticated',
-        matchMode: 'header',
-        matchKey: 'x-rutba-app',
       },
     });
 
@@ -343,7 +340,7 @@ module.exports = {
     const id = Number(ctx.params.id);
     if (!id) return ctx.badRequest('Invalid domain id.');
 
-    const domain = await strapi.db.query('plugin::api-guard-pro.domain').findOne({
+    const domain = await strapi.db.query('plugin::api-pro.app-domain').findOne({
       where: { id },
       select: ['id', 'key'],
     });
@@ -354,7 +351,7 @@ module.exports = {
       return ctx.badRequest('Core web domains cannot be deleted.');
     }
 
-    await strapi.db.query('plugin::api-guard-pro.domain').update({
+    await strapi.db.query('plugin::api-pro.app-domain').update({
       where: { id },
       data: { isActive: false },
     });

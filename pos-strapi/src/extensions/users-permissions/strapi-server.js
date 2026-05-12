@@ -1,6 +1,6 @@
+// @ts-nocheck
 const meRoute = require('./routes/me');
 const meController = require('./controllers/me');
-const { resolveGuardRoles } = require('../../utils/guard-roles');
 // @ts-ignore
 const meSchema = require('./content-types/me/schema.json');
 // @ts-ignore
@@ -46,28 +46,32 @@ async function ensureUsersPermissionsDefaultRole() {
   }
 }
 
-async function ensureWebUserGuardRole(userId) {
+async function ensureWebUserAppRole(userId) {
   if (!userId) return;
 
   const user = await strapi.query('plugin::users-permissions.user').findOne({
     where: { id: userId },
     populate: {
       role: { select: ['type'] },
-      api_guard_roles: { select: ['id', 'key'] },
+      app_roles: { select: ['id', 'key'] },
     },
   });
 
   if (!user || user.role?.type !== 'authenticated') return;
 
-  const { roleIds } = await resolveGuardRoles(strapi, { roleKeys: ['web_user'] });
+  const roleRows = await strapi.db.query('plugin::api-pro.app-role').findMany({
+    where: { key: { $in: ['web_user'] }, isActive: true },
+    select: ['id'],
+  });
+  const roleIds = (roleRows || []).map((r) => Number(r.id)).filter(Boolean);
   if (!roleIds.length) return;
 
-  const existing = new Set((user.api_guard_roles || []).map((r) => Number(r.id)));
+  const existing = new Set((user.app_roles || []).map((r) => Number(r.id)));
   const mergedRoleIds = [...existing, ...roleIds.filter((id) => !existing.has(id))];
 
   await strapi.query('plugin::users-permissions.user').update({
     where: { id: user.id },
-    data: { api_guard_roles: mergedRoleIds },
+    data: { app_roles: mergedRoleIds },
   });
 }
 
@@ -114,7 +118,7 @@ module.exports = (plugin) => {
     authController.register = async (ctx) => {
       await ensureUsersPermissionsDefaultRole();
       await originalRegister(ctx);
-      await ensureWebUserGuardRole(ctx?.body?.user?.id);
+      await ensureWebUserAppRole(ctx?.body?.user?.id);
       return ctx;
     };
   }

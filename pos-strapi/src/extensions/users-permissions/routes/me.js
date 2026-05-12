@@ -23,6 +23,22 @@ module.exports = [
     },
     {
         method: "GET",
+        path: "/api-pro/me/permissions",
+        handler: "me.mePermissions",
+        config: {
+            prefix: '',
+        }
+    },
+    {
+        method: "POST",
+        path: "/api-pro/me/permissions",
+        handler: "me.mePermissions",
+        config: {
+            prefix: '',
+        }
+    },
+    {
+        method: "GET",
         path: "/me/stock-items-search",
         handler: "me.stockItemsSearch",
         config: {

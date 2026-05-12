@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Typography, Textarea, Grid, GridItem } from '@strapi/design-system';
+import { Box, Typography, Textarea, Flex } from '@strapi/design-system';
 
 const SAMPLE_CONTEXT = {
   strapi: { request: { method: 'GET', path: '/cms-footers/123' } },
@@ -63,8 +63,8 @@ const Policies = () => {
       <Typography variant="beta">Method Policies</Typography>
       <Typography variant="omega">Template variables: strapi.*, user.*, claim.*, input.*</Typography>
 
-      <Grid gap={4} paddingTop={4}>
-        <GridItem col={6} s={12}>
+      <Flex gap={4} wrap="wrap" paddingTop={4} alignItems="flex-start">
+        <Box style={{ flex: '1 1 420px', minWidth: 320 }}>
           <Textarea
             label="Policy Template JSON"
             name="policy-template"
@@ -72,12 +72,12 @@ const Policies = () => {
             onChange={(e) => setTemplate(e.target.value)}
             placeholder="Enter template JSON"
           />
-        </GridItem>
-        <GridItem col={6} s={12}>
+        </Box>
+        <Box style={{ flex: '1 1 420px', minWidth: 320 }}>
           <Typography variant="sigma">Resolved Preview (sample context)</Typography>
           <pre>{JSON.stringify(preview, null, 2)}</pre>
-        </GridItem>
-      </Grid>
+        </Box>
+      </Flex>
 
       <Box paddingTop={3}>
         <Typography variant="pi">Quick tokens: {'{{input.id}}'}, {'{{input.fields}}'}, {'{{input.populate}}'}, {'{{claim.roleKey}}'}, {'{{user.id}}'}, {'{{strapi.request.path}}'}</Typography>

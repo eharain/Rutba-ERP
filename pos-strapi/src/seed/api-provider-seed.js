@@ -3,7 +3,7 @@
 /**
  * api-provider-seed.js
  *
- * Seeds the strapi-api-guard-pro plugin.
+ * Seeds the strapi-api-pro plugin.
  *
  * Source of truth:
  * - domains/roles: `@rutba/api-provider/config`
@@ -22,12 +22,12 @@ const { buildAccessGuardProPayload } = require('@rutba/api-provider/server/acces
  * @param {any} strapi
  */
 async function seedApiProvider(strapi) {
-    if (!strapi.plugin('api-guard-pro')) {
-        strapi.log.warn('[api-provider-seed] api-guard-pro plugin not found — skipping seed');
+    if (!strapi.plugin('api-pro')) {
+        strapi.log.warn('[api-provider-seed] api-pro plugin not found — skipping seed');
         return;
     }
 
-    const service = strapi.service('plugin::api-guard-pro.data-transfer');
+    const service = strapi.service('plugin::api-pro.data-transfer');
     if (!service || typeof service.importData !== 'function') {
         strapi.log.warn('[api-provider-seed] data-transfer service unavailable — skipping seed');
         return;
