@@ -1,7 +1,12 @@
-import { createWebClientProxy } from '../client/web/createWebClientProxy.js';
-import { WebAuthEndpoints } from '../api/web/auth.js';
-import { WebProductsEndpoints } from '../api/web/products.js';
-import { WebOrdersEndpoints } from '../api/web/orders.js';
+import { executeEndpoint } from '../providers/generated/client/___core__.js';
+import { WebAuthEndpoints as WebAuthApiEndpoints } from '../api/web/auth.js';
+import { WebProductsEndpoints as WebProductsApiEndpoints } from '../api/web/products.js';
+import { WebOrdersEndpoints as WebOrdersApiEndpoints } from '../api/web/orders.js';
+import {
+  WebAuthEndpoints as WebAuthClientEndpoints,
+  WebProductsEndpoints as WebProductsClientEndpoints,
+  WebOrdersEndpoints as WebOrdersClientEndpoints,
+} from '../providers/generated/client/web/index.js';
 
 function assert(condition, message) {
   if (!condition) {
@@ -9,79 +14,81 @@ function assert(condition, message) {
   }
 }
 
-function createAxiosMock() {
+function createClientMock() {
   const calls = [];
   return {
     calls,
-    request: async (config) => {
-      calls.push(config);
+    fetch: async (path, params) => {
+      calls.push({ method: 'get', path, params });
+      return { ok: true, method: 'get', path, params };
+    },
+    post: async (path, data) => {
+      calls.push({ method: 'post', path, data });
+      return { ok: true, method: 'post', path, data };
+    },
+    put: async (path, data) => {
+      calls.push({ method: 'put', path, data });
+      return { ok: true, method: 'put', path, data };
+    },
+    patch: async (path, data) => {
+      calls.push({ method: 'patch', path, data });
+      return { ok: true, method: 'patch', path, data };
+    },
+    del: async (path) => {
+      calls.push({ method: 'delete', path });
       return {
-        data: {
-          ok: true,
-          method: config.method,
-          url: config.url,
-          params: config.params,
-          payload: config.data,
-        },
+        ok: true,
+        method: 'delete',
+        path,
       };
     },
   };
 }
 
-async function testDirectProxyDispatch() {
-  const axiosMock = createAxiosMock();
-  const proxy = createWebClientProxy(WebAuthEndpoints, { axiosInstance: axiosMock });
+async function testDispatchCore() {
+  const clientMock = createClientMock();
 
-  await proxy.localSignIn();
-  await proxy.providerCallback('google', 'token-1');
+  await executeEndpoint(clientMock, 'localSignIn', WebAuthApiEndpoints.localSignIn());
+  await executeEndpoint(clientMock, 'providerCallback', WebAuthApiEndpoints.providerCallback('google', 'token-1'));
+  await executeEndpoint(clientMock, 'search', WebProductsApiEndpoints.search('nike'));
+  await executeEndpoint(clientMock, 'create', WebOrdersApiEndpoints.create({ order_id: 'ORD-1' }));
 
-  assert(axiosMock.calls.length === 2, 'Expected 2 proxy calls for auth endpoints.');
+  assert(clientMock.calls.length === 4, 'Expected 4 dispatched calls from endpoint descriptors.');
 
-  const [signIn, provider] = axiosMock.calls;
+  const [signIn, provider, search, createOrder] = clientMock.calls;
   assert(signIn.method === 'post', 'localSignIn should dispatch POST.');
-  assert(signIn.url === '/auth/local', 'localSignIn path mismatch.');
+  assert(signIn.path === '/auth/local', 'localSignIn path mismatch.');
 
   assert(provider.method === 'get', 'providerCallback should dispatch GET.');
-  assert(provider.url === '/auth/google/callback', 'providerCallback path mismatch.');
+  assert(provider.path === '/auth/google/callback', 'providerCallback path mismatch.');
   assert(provider.params?.access_token === 'token-1', 'providerCallback params mismatch.');
+
+  const ep = WebProductsApiEndpoints.search('nike');
+  assert(search.path === '/products', 'Products search path mismatch.');
+  assert(search.method === 'get', 'Products search method mismatch.');
+  assert(search.params?.filters?.name?.$contains === ep.params.filters.name.$contains, 'Products search params mismatch.');
+
+  assert(createOrder.path === '/orders', 'Orders create path mismatch.');
+  assert(createOrder.method === 'post', 'Orders create method mismatch.');
+  assert(createOrder.data?.data?.order_id === 'ORD-1', 'Orders create payload mismatch.');
 }
 
-async function testDescriptorToProxyMapping() {
-  const axiosMock = createAxiosMock();
-  const authProxy = createWebClientProxy(WebAuthEndpoints, { axiosInstance: axiosMock });
-  const productsProxy = createWebClientProxy(WebProductsEndpoints, { axiosInstance: axiosMock });
+function testGeneratedClientSurface() {
+  assert(typeof WebAuthClientEndpoints.localSignIn === 'function', 'Generated web auth client missing localSignIn.');
+  assert(typeof WebAuthClientEndpoints.localRegister === 'function', 'Generated web auth client missing localRegister.');
+  assert(typeof WebAuthClientEndpoints.providerCallback === 'function', 'Generated web auth client missing providerCallback.');
 
-  const ordersProxy = createWebClientProxy(WebOrdersEndpoints, { axiosInstance: axiosMock });
+  assert(typeof WebProductsClientEndpoints.search === 'function', 'Generated web products client missing search.');
+  assert(typeof WebProductsClientEndpoints.list === 'function', 'Generated web products client missing list.');
 
-  await authProxy.localSignIn();
-  await authProxy.localRegister();
-  await productsProxy.search('nike');
-  await ordersProxy.create({ data: { order_id: 'ORD-1' } });
-
-  assert(axiosMock.calls.length === 4, 'Expected 4 endpoint-driven proxy calls.');
-
-  const [signIn, signUp, search, createOrder] = axiosMock.calls;
-
-  assert(signIn.url === '/auth/local', 'Auth endpoint->proxy signIn mapping mismatch.');
-  assert(signIn.method === 'post', 'Auth endpoint->proxy signIn method mismatch.');
-
-  assert(signUp.url === '/auth/local/register', 'Auth endpoint->proxy signUp mapping mismatch.');
-  assert(signUp.method === 'post', 'Auth endpoint->proxy signUp method mismatch.');
-
-  const ep = WebProductsEndpoints.search('nike');
-  assert(search.url === '/products', 'Products endpoint->proxy search path mismatch.');
-  assert(search.method === 'get', 'Products endpoint->proxy search method mismatch.');
-  assert(search.params?.filters?.name?.$contains === ep.params.filters.name.$contains, 'Products endpoint->proxy search params mismatch.');
-
-  assert(createOrder.url === '/orders', 'Orders endpoint->proxy create path mismatch.');
-  assert(createOrder.method === 'post', 'Orders endpoint->proxy create method mismatch.');
-  assert(createOrder.data?.data?.order_id === 'ORD-1', 'Orders endpoint->proxy create payload mismatch.');
+  assert(typeof WebOrdersClientEndpoints.create === 'function', 'Generated web orders client missing create.');
+  assert(typeof WebOrdersClientEndpoints.byId === 'function', 'Generated web orders client missing byId.');
 }
 
 async function main() {
-  await testDirectProxyDispatch();
-  await testDescriptorToProxyMapping();
-  console.log('Web proxy validation passed (dispatch + endpoint mappings).');
+  await testDispatchCore();
+  testGeneratedClientSurface();
+  console.log('Web proxy validation passed (dispatch core + generated client surface).');
 }
 
 main().catch((error) => {

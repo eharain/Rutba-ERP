@@ -19,6 +19,7 @@
     "./config/domains": "./config/domains.json",
     "./config/roles": "./config/roles.json",
     "./endpoints": "./endpoints/index.js",
+    "./endpoints/index.js": "./endpoints/index.js",
     "./lib/*": "./lib/*",
     "./config/*": "./config/*",
     "./endpoints/*": "./providers/generated/client/*",

@@ -6,3 +6,5 @@ export const AppContextEndpoints = {
   setAdminMode: (enabled) => setAdminMode(enabled),
   getAdminMode: () => getAdminMode(),
 };
+
+

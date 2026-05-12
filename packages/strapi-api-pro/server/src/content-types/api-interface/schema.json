@@ -1,0 +1,50 @@
+{
+  "kind": "collectionType",
+  "collectionName": "api_pro_interfaces",
+  "info": {
+    "singularName": "api-interface",
+    "pluralName": "api-interfaces",
+    "displayName": "API Interface"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {
+    "content-manager": {
+      "visible": false
+    },
+    "content-type-builder": {
+      "visible": false
+    }
+  },
+  "attributes": {
+    "key": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "filePath": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "uid": {
+      "type": "string"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": ["generated", "modified", "manual"],
+      "default": "generated"
+    },
+    "methods": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "plugin::api-pro.api-interface-method",
+      "mappedBy": "apiInterface"
+    }
+  }
+}

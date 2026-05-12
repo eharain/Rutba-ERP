@@ -1,0 +1,56 @@
+{
+  "kind": "collectionType",
+  "collectionName": "api_pro_recording_sessions",
+  "info": {
+    "singularName": "recording-session",
+    "pluralName": "recording-sessions",
+    "displayName": "Recording Session"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {
+    "content-manager": {
+      "visible": false
+    },
+    "content-type-builder": {
+      "visible": false
+    }
+  },
+  "attributes": {
+    "key": {
+      "type": "uid",
+      "targetField": "name"
+    },
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": ["idle", "recording", "stopped"],
+      "default": "idle"
+    },
+    "startedAt": {
+      "type": "datetime"
+    },
+    "stoppedAt": {
+      "type": "datetime"
+    },
+    "startedByUserId": {
+      "type": "integer"
+    },
+    "resolvedAppName": {
+      "type": "string"
+    },
+    "resolvedRoleKey": {
+      "type": "string"
+    },
+    "entries": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "plugin::api-pro.recording-entry",
+      "mappedBy": "session"
+    }
+  }
+}
