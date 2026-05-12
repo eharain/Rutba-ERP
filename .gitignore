@@ -33,3 +33,4 @@ package-lock.json
 /scripts/seed-cms-pages.js
 /packages/strapi-api-pro/.vs
 /packages/strapi-api-pro/.github
+/packages/strapi-api-pro/.claude
