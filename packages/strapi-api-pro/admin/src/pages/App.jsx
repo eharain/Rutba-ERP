@@ -7,7 +7,7 @@ import DomainsRoles from './DomainsRoles';
 import Users from './Users';
 
 const App = () => {
-  const [page, setPage] = React.useState('recordings');
+  const [page, setPage] = React.useState('domains-roles');
 
   const renderPage = () => {
     if (page === 'interfaces') return <Interfaces />;

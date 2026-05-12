@@ -152,6 +152,29 @@ async function build(strapi, userId) {
   const strapiRole = user.role || null;
   const strapiPermissions = Array.isArray(strapiRole?.permissions) ? strapiRole.permissions : [];
 
+  // Group the user's app_roles by app/domain so the client can render a
+  // role-selector menu per app. Each entry: app domain key → array of roles
+  // the user can choose from when acting in that app.
+  const rolesByApp = {};
+  for (const role of appRoles) {
+    const roleKey = normalizeKey(role);
+    if (!roleKey) continue;
+    const domains = Array.isArray(role.appDomains) ? role.appDomains : [];
+    if (domains.length === 0) {
+      // Role with no domain restriction — present under a wildcard key so
+      // clients can recognise it.
+      rolesByApp['*'] = rolesByApp['*'] || [];
+      rolesByApp['*'].push({ key: roleKey, name: role.name || roleKey });
+      continue;
+    }
+    for (const d of domains) {
+      const domainKey = normalizeKey(d);
+      if (!domainKey) continue;
+      rolesByApp[domainKey] = rolesByApp[domainKey] || [];
+      rolesByApp[domainKey].push({ key: roleKey, name: role.name || roleKey });
+    }
+  }
+
   return {
     role: strapiRole?.name || null,
     roleType: strapiRole?.type || null,
@@ -161,6 +184,7 @@ async function build(strapi, userId) {
       key: r.key,
       name: r.name || r.key,
     })),
+    rolesByApp,
     permissions,
     strapiPermissions,
     sessionTimeout,

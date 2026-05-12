@@ -2,26 +2,25 @@
 
 // Claim resolution for api-pro.
 //
-// pos-strapi sends ONE header that affects authorization: `x-rutba-app`
-// (the current application/domain the user is acting in). It optionally
-// sends `x-rutba-app-admin: true` to request admin elevation when the user
-// holds an admin role for that app. NO role-claim header is sent — the
-// role is DERIVED from the user's assigned app_roles intersected with the
-// current app context.
+// pos-strapi sends TWO authorization-affecting headers:
+//   x-rutba-app       — which app/domain the user is acting in
+//   x-rutba-app-role  — which of the user's roles for that app is active
+//                       (client renders a role-selector menu when the user
+//                        holds more than one role for the app)
 //
-// This service produces a normalized claim object that downstream services
-// (request-interceptor, me-permissions) consume.
+// The active role is CLAIMED via header — the server validates that:
+//   1. The role exists in api_pro_app_roles
+//   2. The user actually holds that role (via user.app_roles)
+//   3. The role's appDomains includes the claimed app
+//
+// When the user holds exactly one role for the active app, the role header
+// is optional — the single match is auto-selected.
 
 const APP_ROLE_UID = 'plugin::api-pro.app-role';
 
 function getHeader(ctx, key) {
   const raw = ctx?.request?.headers?.[String(key).toLowerCase()];
   return typeof raw === 'string' ? raw.trim() : '';
-}
-
-function readBoolHeader(ctx, key) {
-  const v = ctx?.request?.headers?.[String(key).toLowerCase()];
-  return v === true || v === 'true' || v === '1' || v === 1;
 }
 
 function normalizeKey(value) {
@@ -39,12 +38,11 @@ function createValidationError(message, code, status = 403) {
   return err;
 }
 
-// Read header configuration each call so config overrides apply.
 function readHeaderKeys(strapi) {
   const cfg = strapi.config.get('plugin::api-pro') || {};
   return {
     domain: (cfg.headerDomainKey || 'x-rutba-app').toLowerCase(),
-    elevated: (cfg.headerElevatedKey || 'x-rutba-app-admin').toLowerCase(),
+    role: (cfg.headerRoleKey || 'x-rutba-app-role').toLowerCase(),
   };
 }
 
@@ -77,9 +75,41 @@ function filterRolesByApp(appRoles, appName) {
   });
 }
 
-// Resolve the api-pro claim for the current request. Throws an error with
-// .status when validation is strict and a required signal is missing; returns
-// the claim object on success.
+// Pick the active role: explicit claim from header if valid, otherwise
+// auto-select if the user has exactly one role for the active app.
+function pickActiveRole(rolesForApp, claimedRoleKey) {
+  if (claimedRoleKey) {
+    const match = rolesForApp.find((r) => normalizeKey(r) === claimedRoleKey);
+    if (!match) {
+      throw createValidationError(
+        `Claimed role '${claimedRoleKey}' is not assigned to the current user for this app`,
+        'ROLE_NOT_ASSIGNED'
+      );
+    }
+    return match;
+  }
+
+  if (rolesForApp.length === 1) {
+    return rolesForApp[0]; // unambiguous — auto-select
+  }
+
+  if (rolesForApp.length > 1) {
+    const choices = rolesForApp.map((r) => normalizeKey(r)).filter(Boolean).join(', ');
+    throw createValidationError(
+      `User holds multiple roles for this app — claim one via the role header (choices: ${choices})`,
+      'ROLE_CLAIM_AMBIGUOUS',
+      400
+    );
+  }
+
+  throw createValidationError(
+    'User has no app_role assigned for the active app',
+    'NO_ACTIVE_ROLE'
+  );
+}
+
+// Resolve the api-pro claim for the current request. Throws on missing/invalid
+// signals with .status set so the middleware can respond properly.
 async function resolveClaim(ctx, strapi, { requireApp = true, requireActiveRole = true } = {}) {
   const user = ctx?.state?.user;
   if (!user?.id) {
@@ -88,7 +118,7 @@ async function resolveClaim(ctx, strapi, { requireApp = true, requireActiveRole 
 
   const headerKeys = readHeaderKeys(strapi);
   const appName = getHeader(ctx, headerKeys.domain);
-  const elevated = readBoolHeader(ctx, headerKeys.elevated);
+  const claimedRoleKey = getHeader(ctx, headerKeys.role).toLowerCase() || null;
 
   if (requireApp && !appName) {
     throw createValidationError(
@@ -99,21 +129,19 @@ async function resolveClaim(ctx, strapi, { requireApp = true, requireActiveRole 
   }
 
   const appRoles = await loadUserAppRoles(strapi, user.id);
-  const activeRoles = filterRolesByApp(appRoles, appName);
+  const rolesForApp = filterRolesByApp(appRoles, appName);
 
-  if (requireActiveRole && appName && activeRoles.length === 0) {
-    throw createValidationError(
-      `User has no app_role assigned for app '${appName}'`,
-      'NO_ACTIVE_ROLE',
-      403
-    );
+  let activeRole = null;
+  if (requireActiveRole && appName) {
+    activeRole = pickActiveRole(rolesForApp, claimedRoleKey);
+  } else if (claimedRoleKey && rolesForApp.length > 0) {
+    // Best-effort match without throwing.
+    activeRole = rolesForApp.find((r) => normalizeKey(r) === claimedRoleKey) || null;
   }
 
-  const activeRoleKeys = activeRoles.map((r) => normalizeKey(r)).filter(Boolean);
   const activeDomainKeys = Array.from(
     new Set(
-      activeRoles
-        .flatMap((r) => (Array.isArray(r.appDomains) ? r.appDomains : []))
+      (activeRole?.appDomains || [])
         .map((d) => normalizeKey(d))
         .filter(Boolean)
     )
@@ -126,18 +154,31 @@ async function resolveClaim(ctx, strapi, { requireApp = true, requireActiveRole 
       username: user.username || null,
     },
     appName: appName || null,
-    elevated,
-    roleKeys: activeRoleKeys,
+    // The active claimed role — this is what request-interceptor uses to
+    // pick which policies apply.
+    roleKey: activeRole ? normalizeKey(activeRole) : null,
+    domainKey: appName ? appName.toLowerCase() : null,
     domainKeys: activeDomainKeys,
-    // Full role objects retained for /me/permissions response shaping.
-    appRoles: activeRoles.map((r) => ({
+    // Full active-role detail retained for /me/permissions shaping.
+    activeRole: activeRole
+      ? {
+          id: activeRole.id,
+          key: activeRole.key,
+          name: activeRole.name || activeRole.key,
+          adminRoleCode: activeRole.adminRoleCode || null,
+          appDomains: Array.isArray(activeRole.appDomains)
+            ? activeRole.appDomains.map((d) => ({ id: d.id, key: d.key, name: d.name || d.key }))
+            : [],
+        }
+      : null,
+    // All of the user's roles for the active app — surface so the
+    // /me/permissions response and any client UI can render the role
+    // selector menu.
+    rolesForApp: rolesForApp.map((r) => ({
       id: r.id,
       key: r.key,
       name: r.name || r.key,
       adminRoleCode: r.adminRoleCode || null,
-      appDomains: Array.isArray(r.appDomains)
-        ? r.appDomains.map((d) => ({ id: d.id, key: d.key, name: d.name || d.key }))
-        : [],
     })),
   };
 }

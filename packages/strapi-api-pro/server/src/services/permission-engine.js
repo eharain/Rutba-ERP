@@ -119,9 +119,54 @@ function clearCache(strapi, userId) {
   else strapi.apiPro?.cache?.clearAll?.();
 }
 
+// Look up the single policy that applies to the (claimed role × content-type
+// × action) tuple. Returns at most one row because the (interface × method ×
+// role) composite key is unique.
+async function getPolicyForActionAndRole(strapi, { user, roleKey, contentTypeUid, actionName }) {
+  const userId = user?.id;
+  if (!userId || !roleKey || !contentTypeUid || !actionName) return null;
+  const lower = String(roleKey).toLowerCase();
+
+  const cache = strapi.apiPro?.cache;
+  const key = `u:${userId}:r:${lower}:p:${contentTypeUid}:${actionName}`;
+  if (cache) {
+    const hit = cache.get(key);
+    if (hit !== undefined) return hit;
+  }
+
+  let row = null;
+  try {
+    row = await strapi.db.query(POLICY_UID).findOne({
+      where: {
+        roleKey: lower,
+        interfaceMethod: {
+          action: actionName,
+          apiInterface: { uid: contentTypeUid },
+        },
+      },
+      populate: { interfaceMethod: { populate: { apiInterface: true } } },
+    });
+  } catch (error) {
+    strapi.log.warn(`[api-pro] policy lookup failed: ${error?.message}; falling back`);
+    const method = await strapi.db.query('plugin::api-pro.api-interface-method').findOne({
+      where: { action: actionName, apiInterface: { uid: contentTypeUid } },
+      select: ['id'],
+    });
+    if (method) {
+      row = await strapi.db.query(POLICY_UID).findOne({
+        where: { roleKey: lower, interfaceMethod: { id: method.id } },
+      });
+    }
+  }
+
+  if (cache) cache.set(key, row);
+  return row;
+}
+
 module.exports = {
   resolveUserRoleKeys,
   parseRouteHandler,
   getPoliciesForAction,
+  getPolicyForActionAndRole,
   clearCache,
 };

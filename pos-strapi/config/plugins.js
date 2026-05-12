@@ -110,7 +110,18 @@ module.exports = ({ env }) => ({
             denyByDefault: true,
 
             // ── Header bridging ─────────────────────────────────────
+            // Client sends two authorization headers:
+            //   x-rutba-app       — which app/domain the user is acting in
+            //   x-rutba-app-role  — which of the user's roles for that app
+            //                        the user is currently playing (admin /
+            //                        cashier / accountant / etc.). Required
+            //                        when the user holds more than one role
+            //                        for the active app.
+            //
+            // headerElevatedKey is retained as a deprecated config key for
+            // backward compatibility; the plugin ignores it at runtime.
             headerDomainKey: 'x-rutba-app',
+            headerRoleKey: 'x-rutba-app-role',
             headerElevatedKey: 'x-rutba-app-admin',
 
             // ── Enforcement mode ────────────────────────────────────

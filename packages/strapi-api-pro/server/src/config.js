@@ -19,11 +19,22 @@ module.exports = {
     sessionTimeout: 3600,
 
     // ── Header bridging ─────────────────────────────────────────────────
-    // The plugin reads ctx headers using these keys to derive the active
-    // app/domain claim and admin elevation. Role is NEVER claimed via header —
-    // it's resolved from user.app_roles intersected with the active app.
+    // The plugin reads ctx headers using these keys to derive the active claim.
+    //   x-rutba-app       — which app/domain the user is currently acting in
+    //   x-rutba-app-role  — which of the user's roles for that app is active
+    //                       (the client renders a role-selector menu when the
+    //                        user holds more than one role for the app)
+    //
+    // Role is REQUIRED when the user holds multiple roles for the active app;
+    // optional when they hold exactly one (in which case it's auto-selected).
+    //
+    // The elevation header was an interim AGP-era idea (admin bypass via
+    // x-rutba-app-admin: true). Superseded by explicit role-selection —
+    // the user just picks their admin role from the menu. The config key
+    // is retained as a no-op for backward compatibility.
     headerDomainKey: 'x-rutba-app',
-    headerElevatedKey: 'x-rutba-app-admin',
+    headerRoleKey: 'x-rutba-app-role',
+    headerElevatedKey: 'x-rutba-app-admin', // deprecated — ignored at runtime
 
     // ── Bypass paths ────────────────────────────────────────────────────
     // Prefix-matched paths that skip interceptor + context validation.

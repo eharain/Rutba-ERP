@@ -6,10 +6,13 @@ import {
   Flex,
   TextInput,
   Textarea,
+  SingleSelect,
+  SingleSelectOption,
 } from '@strapi/design-system';
 import { useFetchClient } from '@strapi/strapi/admin';
 
 const api = (p) => `/api-pro${p}`;
+const PAGE_SIZE = 25;
 
 const blankDomain = { key: '', name: '', description: '' };
 const blankRole = { key: '', name: '', description: '', adminRoleCode: '', appDomains: [] };
@@ -26,6 +29,15 @@ const DomainsRoles = () => {
   const [message, setMessage] = React.useState('');
   const [loading, setLoading] = React.useState(false);
 
+  // Role list filters / pagination
+  const [roleSearch, setRoleSearch] = React.useState('');
+  const [roleDomainFilter, setRoleDomainFilter] = React.useState('');
+  const [rolePage, setRolePage] = React.useState(1);
+
+  // Seed state
+  const [seeding, setSeeding] = React.useState(false);
+  const [seedResult, setSeedResult] = React.useState(null);
+
   const load = React.useCallback(async () => {
     setLoading(true);
     try {
@@ -39,9 +51,23 @@ const DomainsRoles = () => {
     }
   }, [get]);
 
-  React.useEffect(() => {
-    load();
-  }, [load]);
+  React.useEffect(() => { load(); }, [load]);
+
+  const runSeed = async () => {
+    if (!window.confirm('Re-seed domains, roles, interfaces, methods and policies from @rutba/api-provider? This is idempotent — existing rows are updated by key, no data is destroyed.')) return;
+    setSeeding(true);
+    setSeedResult(null);
+    setMessage('');
+    try {
+      const { data } = await post(api('/admin/seed'), {});
+      setSeedResult(data?.data || null);
+      await load();
+    } catch (error) {
+      setMessage(error?.response?.data?.error?.message || 'Seed failed.');
+    } finally {
+      setSeeding(false);
+    }
+  };
 
   const saveDomain = async () => {
     if (!draftDomain.key || !draftDomain.name) {
@@ -136,29 +162,52 @@ const DomainsRoles = () => {
     }));
   };
 
-  const rolesByDomain = React.useMemo(() => {
-    const map = new Map();
-    map.set('__none__', { label: 'Unassigned', roles: [] });
-    for (const d of domains) {
-      map.set(String(d.id), { label: `${d.key} — ${d.name}`, roles: [] });
-    }
-    for (const r of roles) {
-      const ds = Array.isArray(r.appDomains) ? r.appDomains : [];
-      if (ds.length === 0) {
-        map.get('__none__').roles.push(r);
-      } else {
-        for (const d of ds) {
-          const k = String(d.id);
-          if (map.has(k)) map.get(k).roles.push(r);
-        }
+  // Filtered + paginated roles
+  const filteredRoles = React.useMemo(() => {
+    const q = roleSearch.trim().toLowerCase();
+    return roles.filter((r) => {
+      if (q) {
+        const inText = (r.key || '').toLowerCase().includes(q) || (r.name || '').toLowerCase().includes(q);
+        if (!inText) return false;
       }
-    }
-    return Array.from(map.entries());
-  }, [domains, roles]);
+      if (roleDomainFilter) {
+        const has = (r.appDomains || []).some((d) => String(d.id) === roleDomainFilter);
+        if (!has) return false;
+      }
+      return true;
+    });
+  }, [roles, roleSearch, roleDomainFilter]);
+
+  React.useEffect(() => { setRolePage(1); }, [roleSearch, roleDomainFilter]);
+
+  const totalRolePages = Math.max(1, Math.ceil(filteredRoles.length / PAGE_SIZE));
+  const safeRolePage = Math.min(rolePage, totalRolePages);
+  const pagedRoles = filteredRoles.slice((safeRolePage - 1) * PAGE_SIZE, safeRolePage * PAGE_SIZE);
 
   return (
     <Box>
-      <Typography variant="beta">App Domains & Roles</Typography>
+      <Flex justifyContent="space-between" alignItems="center" wrap="wrap" gap={2}>
+        <Box>
+          <Typography variant="beta">App Domains & Roles</Typography>
+          <Typography variant="omega" textColor="neutral600">
+            {domains.length} domain(s) · {roles.length} role(s) total
+          </Typography>
+        </Box>
+        <Flex gap={2}>
+          <Button variant="secondary" onClick={load} disabled={loading}>Refresh</Button>
+          <Button onClick={runSeed} loading={seeding}>Re-seed from api-provider</Button>
+        </Flex>
+      </Flex>
+
+      {seedResult && (
+        <Box paddingTop={2}>
+          <Typography variant="pi" textColor="success700">
+            Seed OK — domains={seedResult.domains}, roles={seedResult.roles}, interfaces={seedResult.interfaces},
+            methods={seedResult.methods}, policies={seedResult.policies} (scanned {seedResult.descriptorsScanned} descriptors)
+          </Typography>
+        </Box>
+      )}
+
       {message && (
         <Box paddingTop={2}>
           <Typography textColor="danger700">{message}</Typography>
@@ -168,59 +217,39 @@ const DomainsRoles = () => {
       <Flex gap={6} alignItems="flex-start" wrap="wrap" paddingTop={4}>
         {/* ── Domains column ────────────────────────────────────────── */}
         <Box style={{ flex: '1 1 320px', minWidth: 280 }}>
-          <Typography variant="delta">Domains</Typography>
+          <Typography variant="delta">Domains ({domains.length})</Typography>
 
           <Box paddingTop={3} style={{ border: '1px solid #e0e0e0', borderRadius: 8, padding: 12 }}>
             <Typography variant="sigma">
               {editingDomainId ? `Edit domain #${editingDomainId}` : 'New domain'}
             </Typography>
             <Box paddingTop={2}>
-              <TextInput
-                label="Key"
-                placeholder="e.g. web-authenticated"
-                value={draftDomain.key}
-                onChange={(e) => setDraftDomain({ ...draftDomain, key: e.target.value })}
-              />
+              <TextInput label="Key" placeholder="e.g. web-authenticated" value={draftDomain.key}
+                onChange={(e) => setDraftDomain({ ...draftDomain, key: e.target.value })} />
             </Box>
             <Box paddingTop={2}>
-              <TextInput
-                label="Name"
-                value={draftDomain.name}
-                onChange={(e) => setDraftDomain({ ...draftDomain, name: e.target.value })}
-              />
+              <TextInput label="Name" value={draftDomain.name}
+                onChange={(e) => setDraftDomain({ ...draftDomain, name: e.target.value })} />
             </Box>
             <Box paddingTop={2}>
-              <Textarea
-                label="Description"
-                value={draftDomain.description}
-                onChange={(e) => setDraftDomain({ ...draftDomain, description: e.target.value })}
-              />
+              <Textarea label="Description" value={draftDomain.description}
+                onChange={(e) => setDraftDomain({ ...draftDomain, description: e.target.value })} />
             </Box>
             <Flex gap={2} paddingTop={3}>
               <Button onClick={saveDomain} loading={loading}>
                 {editingDomainId ? 'Update' : 'Create'}
               </Button>
               {editingDomainId && (
-                <Button
-                  variant="tertiary"
-                  onClick={() => {
-                    setEditingDomainId(null);
-                    setDraftDomain(blankDomain);
-                  }}
-                >
+                <Button variant="tertiary" onClick={() => { setEditingDomainId(null); setDraftDomain(blankDomain); }}>
                   Cancel
                 </Button>
               )}
             </Flex>
           </Box>
 
-          <Box paddingTop={4}>
+          <Box paddingTop={4} style={{ maxHeight: 480, overflowY: 'auto' }}>
             {domains.map((d) => (
-              <Flex
-                key={d.id}
-                justifyContent="space-between"
-                alignItems="center"
-                padding={2}
+              <Flex key={d.id} justifyContent="space-between" alignItems="center" padding={2}
                 style={{ border: '1px solid #e0e0e0', borderRadius: 8, marginBottom: 6 }}
               >
                 <Box>
@@ -240,69 +269,44 @@ const DomainsRoles = () => {
 
         {/* ── Roles column ──────────────────────────────────────────── */}
         <Box style={{ flex: '2 1 480px', minWidth: 360 }}>
-          <Typography variant="delta">Roles</Typography>
+          <Typography variant="delta">Roles ({roles.length})</Typography>
 
           <Box paddingTop={3} style={{ border: '1px solid #e0e0e0', borderRadius: 8, padding: 12 }}>
             <Typography variant="sigma">
               {editingRoleId ? `Edit role #${editingRoleId}` : 'New role'}
             </Typography>
             <Flex gap={2} paddingTop={2} wrap="wrap">
-              <Box style={{ flex: '1 1 200px' }}>
-                <TextInput
-                  label="Key"
-                  placeholder="e.g. web_user"
-                  value={draftRole.key}
-                  onChange={(e) => setDraftRole({ ...draftRole, key: e.target.value })}
-                />
+              <Box style={{ flex: '1 1 180px' }}>
+                <TextInput label="Key" placeholder="e.g. accountant" value={draftRole.key}
+                  onChange={(e) => setDraftRole({ ...draftRole, key: e.target.value })} />
               </Box>
-              <Box style={{ flex: '1 1 200px' }}>
-                <TextInput
-                  label="Name"
-                  value={draftRole.name}
-                  onChange={(e) => setDraftRole({ ...draftRole, name: e.target.value })}
-                />
+              <Box style={{ flex: '1 1 180px' }}>
+                <TextInput label="Name" value={draftRole.name}
+                  onChange={(e) => setDraftRole({ ...draftRole, name: e.target.value })} />
               </Box>
-              <Box style={{ flex: '1 1 200px' }}>
-                <TextInput
-                  label="Admin Role Code"
-                  value={draftRole.adminRoleCode}
+              <Box style={{ flex: '1 1 180px' }}>
+                <TextInput label="Admin Role Code" value={draftRole.adminRoleCode}
                   placeholder="(defaults to key)"
-                  onChange={(e) => setDraftRole({ ...draftRole, adminRoleCode: e.target.value })}
-                />
+                  onChange={(e) => setDraftRole({ ...draftRole, adminRoleCode: e.target.value })} />
               </Box>
             </Flex>
             <Box paddingTop={2}>
-              <Textarea
-                label="Description"
-                value={draftRole.description}
-                onChange={(e) => setDraftRole({ ...draftRole, description: e.target.value })}
-              />
+              <Textarea label="Description" value={draftRole.description}
+                onChange={(e) => setDraftRole({ ...draftRole, description: e.target.value })} />
             </Box>
             <Box paddingTop={2}>
               <Typography variant="pi" textColor="neutral600">Assign to domains</Typography>
-              <Flex gap={2} wrap="wrap" paddingTop={1}>
+              <Flex gap={2} wrap="wrap" paddingTop={1} style={{ maxHeight: 100, overflowY: 'auto' }}>
                 {domains.map((d) => {
                   const id = `role-domain-${d.id}`;
                   const checked = draftRole.appDomains.includes(String(d.id));
                   return (
-                    <label
-                      key={d.id}
-                      htmlFor={id}
-                      style={{
-                        cursor: 'pointer',
-                        padding: '2px 8px',
-                        border: '1px solid #ccc',
-                        borderRadius: 12,
-                        background: checked ? '#e8eaf6' : 'transparent',
-                      }}
+                    <label key={d.id} htmlFor={id}
+                      style={{ cursor: 'pointer', padding: '2px 8px', border: '1px solid #ccc',
+                        borderRadius: 12, background: checked ? '#e8eaf6' : 'transparent', fontSize: 11 }}
                     >
-                      <input
-                        id={id}
-                        type="checkbox"
-                        checked={checked}
-                        onChange={() => toggleRoleDomain(d.id)}
-                        style={{ marginRight: 4 }}
-                      />
+                      <input id={id} type="checkbox" checked={checked}
+                        onChange={() => toggleRoleDomain(d.id)} style={{ marginRight: 4 }} />
                       {d.key}
                     </label>
                   );
@@ -314,54 +318,81 @@ const DomainsRoles = () => {
                 {editingRoleId ? 'Update' : 'Create'}
               </Button>
               {editingRoleId && (
-                <Button
-                  variant="tertiary"
-                  onClick={() => {
-                    setEditingRoleId(null);
-                    setDraftRole(blankRole);
-                  }}
-                >
+                <Button variant="tertiary" onClick={() => { setEditingRoleId(null); setDraftRole(blankRole); }}>
                   Cancel
                 </Button>
               )}
             </Flex>
           </Box>
 
-          <Box paddingTop={4}>
-            {rolesByDomain.map(([domainId, group]) => (
-              <Box
-                key={domainId}
-                style={{ border: '1px solid #e0e0e0', borderRadius: 8, marginBottom: 8, overflow: 'hidden' }}
+          {/* ── filters ─────────────────────────────────────────── */}
+          <Flex gap={3} paddingTop={4} wrap="wrap" alignItems="flex-end">
+            <Box style={{ flex: '1 1 220px' }}>
+              <TextInput label="Search roles" placeholder="key or name"
+                value={roleSearch}
+                onChange={(e) => setRoleSearch(e.target.value)} />
+            </Box>
+            <Box style={{ flex: '1 1 200px' }}>
+              <SingleSelect label="Filter by domain" placeholder="All domains"
+                value={roleDomainFilter}
+                onChange={(v) => setRoleDomainFilter(v || '')}
+                onClear={() => setRoleDomainFilter('')}
               >
-                <Box style={{ padding: '6px 10px', background: '#f4f4f8' }}>
-                  <Typography variant="pi" fontWeight="semiBold" textColor="neutral600">
-                    {group.label} · {group.roles.length} role(s)
-                  </Typography>
-                </Box>
-                {group.roles.map((r) => (
-                  <Flex
-                    key={`${domainId}-${r.id}`}
-                    justifyContent="space-between"
-                    alignItems="center"
-                    padding={2}
-                    style={{ borderTop: '1px solid #f0f0f4' }}
-                  >
-                    <Box>
-                      <Typography variant="sigma">{r.name}</Typography>
-                      <Typography variant="pi" textColor="neutral500">
-                        {r.key}
-                        {r.adminRoleCode && r.adminRoleCode !== r.key ? ` · admin=${r.adminRoleCode}` : ''}
-                      </Typography>
-                    </Box>
-                    <Flex gap={1}>
-                      <Button variant="tertiary" onClick={() => editRole(r)}>Edit</Button>
-                      <Button variant="danger-light" onClick={() => deleteRole(r)}>Delete</Button>
-                    </Flex>
-                  </Flex>
+                {domains.map((d) => (
+                  <SingleSelectOption key={d.id} value={String(d.id)}>
+                    {d.key}
+                  </SingleSelectOption>
                 ))}
-              </Box>
+              </SingleSelect>
+            </Box>
+            <Typography variant="pi" textColor="neutral500">
+              {filteredRoles.length} of {roles.length}
+            </Typography>
+          </Flex>
+
+          <Box paddingTop={2} style={{ maxHeight: 480, overflowY: 'auto' }}>
+            {pagedRoles.length === 0 && (
+              <Typography variant="pi" textColor="neutral500" paddingTop={2}>
+                No roles match the current filters.
+              </Typography>
+            )}
+            {pagedRoles.map((r) => (
+              <Flex key={r.id} justifyContent="space-between" alignItems="center" padding={2}
+                style={{ border: '1px solid #e0e0e0', borderRadius: 8, marginBottom: 6 }}
+              >
+                <Box style={{ minWidth: 0, flex: 1 }}>
+                  <Typography variant="sigma">{r.name}</Typography>
+                  <Typography variant="pi" textColor="neutral500">
+                    {r.key}
+                    {r.adminRoleCode && r.adminRoleCode !== r.key ? ` · admin=${r.adminRoleCode}` : ''}
+                  </Typography>
+                  <Flex gap={1} paddingTop={1} wrap="wrap">
+                    {(r.appDomains || []).map((d) => (
+                      <span key={d.id}
+                        style={{ background: '#f0f0f4', color: '#666', padding: '1px 6px',
+                          borderRadius: 8, fontSize: 10 }}>
+                        {d.key}
+                      </span>
+                    ))}
+                  </Flex>
+                </Box>
+                <Flex gap={1}>
+                  <Button variant="tertiary" onClick={() => editRole(r)}>Edit</Button>
+                  <Button variant="danger-light" onClick={() => deleteRole(r)}>Delete</Button>
+                </Flex>
+              </Flex>
             ))}
           </Box>
+
+          <Flex justifyContent="space-between" alignItems="center" paddingTop={2}>
+            <Button variant="secondary" disabled={safeRolePage <= 1}
+              onClick={() => setRolePage((p) => Math.max(1, p - 1))}>Prev</Button>
+            <Typography variant="pi">
+              Page {safeRolePage} / {totalRolePages}
+            </Typography>
+            <Button variant="secondary" disabled={safeRolePage >= totalRolePages}
+              onClick={() => setRolePage((p) => Math.min(totalRolePages, p + 1))}>Next</Button>
+          </Flex>
         </Box>
       </Flex>
     </Box>

@@ -9,24 +9,14 @@ import {
 import { useFetchClient } from '@strapi/strapi/admin';
 
 const api = (p) => `/api-pro${p}`;
+const PAGE_SIZE = 15;
 
 const StatusBadge = ({ status }) => {
-  const color =
-    status === 'recording' ? '#1f8a45' : status === 'stopped' ? '#666' : '#999';
-  const bg =
-    status === 'recording' ? '#e6f7ec' : status === 'stopped' ? '#f0f0f0' : '#f8f8f8';
+  const color = status === 'recording' ? '#1f8a45' : status === 'stopped' ? '#666' : '#999';
+  const bg = status === 'recording' ? '#e6f7ec' : status === 'stopped' ? '#f0f0f0' : '#f8f8f8';
   return (
-    <span
-      style={{
-        background: bg,
-        color,
-        padding: '2px 8px',
-        borderRadius: 12,
-        fontSize: 11,
-        fontWeight: 600,
-        textTransform: 'uppercase',
-      }}
-    >
+    <span style={{ background: bg, color, padding: '2px 8px', borderRadius: 12,
+      fontSize: 11, fontWeight: 600, textTransform: 'uppercase' }}>
       {status || 'unknown'}
     </span>
   );
@@ -36,23 +26,11 @@ const EntryRow = ({ entry }) => {
   const [expanded, setExpanded] = React.useState(false);
   return (
     <Box style={{ borderTop: '1px solid #f0f0f4' }}>
-      <Flex
-        justifyContent="space-between"
-        alignItems="center"
-        padding={2}
-        style={{ cursor: 'pointer' }}
-        onClick={() => setExpanded((v) => !v)}
-      >
+      <Flex justifyContent="space-between" alignItems="center" padding={2}
+        style={{ cursor: 'pointer' }} onClick={() => setExpanded((v) => !v)}>
         <Flex gap={2} alignItems="center">
-          <span
-            style={{
-              padding: '1px 6px',
-              border: '1px solid #ccc',
-              borderRadius: 4,
-              fontSize: 10,
-              fontWeight: 600,
-            }}
-          >
+          <span style={{ padding: '1px 6px', border: '1px solid #ccc', borderRadius: 4,
+            fontSize: 10, fontWeight: 600 }}>
             {(entry.method || 'GET').toUpperCase()}
           </span>
           <Typography variant="pi">{entry.path}</Typography>
@@ -98,34 +76,29 @@ const Recordings = () => {
   const [newLabel, setNewLabel] = React.useState('');
   const [loading, setLoading] = React.useState(false);
   const [message, setMessage] = React.useState('');
+  const [search, setSearch] = React.useState('');
+  const [statusFilter, setStatusFilter] = React.useState('');
+  const [page, setPage] = React.useState(1);
 
   const loadSessions = React.useCallback(async () => {
     setLoading(true);
     try {
       const { data } = await get(api('/recordings'));
       setSessions(data?.data || []);
-    } catch {
-      setMessage('Failed to load sessions.');
-    } finally {
-      setLoading(false);
-    }
+    } catch { setMessage('Failed to load sessions.'); }
+    finally { setLoading(false); }
   }, [get]);
 
-  React.useEffect(() => {
-    loadSessions();
-  }, [loadSessions]);
+  React.useEffect(() => { loadSessions(); }, [loadSessions]);
 
-  const loadEntries = React.useCallback(
-    async (sessionId) => {
-      try {
-        const { data } = await get(api(`/recordings/${sessionId}/entries`));
-        setEntries((e) => ({ ...e, [sessionId]: data?.data || [] }));
-      } catch {
-        setEntries((e) => ({ ...e, [sessionId]: [] }));
-      }
-    },
-    [get]
-  );
+  const loadEntries = React.useCallback(async (sessionId) => {
+    try {
+      const { data } = await get(api(`/recordings/${sessionId}/entries`));
+      setEntries((e) => ({ ...e, [sessionId]: data?.data || [] }));
+    } catch {
+      setEntries((e) => ({ ...e, [sessionId]: [] }));
+    }
+  }, [get]);
 
   const start = async () => {
     setMessage('');
@@ -150,6 +123,69 @@ const Recordings = () => {
 
   const activeSession = sessions.find((s) => s.status === 'recording');
 
+  const filtered = React.useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return sessions.filter((s) => {
+      if (statusFilter && s.status !== statusFilter) return false;
+      if (q) {
+        const hit = (s.name || '').toLowerCase().includes(q) ||
+                    (s.resolvedAppName || '').toLowerCase().includes(q) ||
+                    (s.resolvedRoleKey || '').toLowerCase().includes(q);
+        if (!hit) return false;
+      }
+      return true;
+    });
+  }, [sessions, search, statusFilter]);
+
+  React.useEffect(() => { setPage(1); }, [search, statusFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const paged = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+  const renderRow = (s) => {
+    const isOpen = selectedSession === s.id;
+    const sessionEntries = entries[s.id] || [];
+    return (
+      <Box key={s.id} style={{ border: '1px solid #e0e0e0', borderRadius: 8,
+        marginTop: 8, overflow: 'hidden' }}>
+        <Flex justifyContent="space-between" alignItems="center" padding={3}
+          style={{ background: isOpen ? '#f4f4f8' : 'transparent', cursor: 'pointer' }}
+          onClick={() => {
+            const next = isOpen ? null : s.id;
+            setSelectedSession(next);
+            if (next && !entries[s.id]) loadEntries(s.id);
+          }}
+        >
+          <Box>
+            <Flex gap={2} alignItems="center">
+              <Typography variant="sigma">{s.name}</Typography>
+              <StatusBadge status={s.status} />
+            </Flex>
+            <Typography variant="pi" textColor="neutral500">
+              started {s.startedAt || '?'} · stopped {s.stoppedAt || '–'} ·
+              app={s.resolvedAppName || '–'} · role={s.resolvedRoleKey || '–'}
+            </Typography>
+          </Box>
+          <Typography variant="pi">{isOpen ? '▼' : '▶'}</Typography>
+        </Flex>
+        {isOpen && (
+          <Box>
+            {sessionEntries.length === 0 ? (
+              <Box padding={3}>
+                <Typography variant="pi" textColor="neutral500">
+                  No entries captured (entry-recording middleware is not yet wired).
+                </Typography>
+              </Box>
+            ) : (
+              sessionEntries.map((e) => <EntryRow key={e.id} entry={e} />)
+            )}
+          </Box>
+        )}
+      </Box>
+    );
+  };
+
   return (
     <Box>
       <Typography variant="beta">API Recordings</Typography>
@@ -160,23 +196,14 @@ const Recordings = () => {
       <Box paddingTop={4} style={{ border: '1px solid #e0e0e0', borderRadius: 8, padding: 12 }}>
         <Flex gap={3} alignItems="flex-end" wrap="wrap">
           <Box style={{ flex: '1 1 240px' }}>
-            <TextInput
-              label="Session label (optional)"
-              value={newLabel}
+            <TextInput label="Session label (optional)" value={newLabel}
               onChange={(e) => setNewLabel(e.target.value)}
               placeholder="e.g. pos-desk happy path"
-              disabled={Boolean(activeSession)}
-            />
+              disabled={Boolean(activeSession)} />
           </Box>
-          {activeSession ? (
-            <Button variant="danger" onClick={stop} loading={loading}>
-              Stop active session
-            </Button>
-          ) : (
-            <Button onClick={start} loading={loading}>
-              Start Recording
-            </Button>
-          )}
+          {activeSession
+            ? <Button variant="danger" onClick={stop} loading={loading}>Stop active session</Button>
+            : <Button onClick={start} loading={loading}>Start Recording</Button>}
           <Button variant="secondary" onClick={loadSessions}>Refresh</Button>
         </Flex>
         {activeSession && (
@@ -196,65 +223,51 @@ const Recordings = () => {
       </Box>
 
       <Box paddingTop={4}>
-        <Typography variant="delta">Sessions ({sessions.length})</Typography>
+        <Flex justifyContent="space-between" alignItems="flex-end" wrap="wrap" gap={2}>
+          <Typography variant="delta">Sessions ({sessions.length})</Typography>
+          <Flex gap={2} wrap="wrap" alignItems="flex-end">
+            <Box style={{ flex: '0 0 220px' }}>
+              <TextInput label="Search" placeholder="name, app or role"
+                value={search} onChange={(e) => setSearch(e.target.value)} />
+            </Box>
+            <Box style={{ flex: '0 0 160px' }}>
+              <Typography variant="pi" textColor="neutral600">Status</Typography>
+              <select value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                style={{ width: '100%', padding: '8px', border: '1px solid #c0c0cf',
+                  borderRadius: 4, marginTop: 4 }}>
+                <option value="">All status</option>
+                <option value="recording">Recording</option>
+                <option value="stopped">Stopped</option>
+                <option value="idle">Idle</option>
+              </select>
+            </Box>
+          </Flex>
+        </Flex>
+
+        {filtered.length !== sessions.length && (
+          <Typography variant="pi" textColor="neutral500" paddingTop={1}>
+            {filtered.length} of {sessions.length}
+          </Typography>
+        )}
+
         {sessions.length === 0 && (
           <Typography variant="pi" textColor="neutral500" paddingTop={2}>
             No recording sessions yet. Start one above.
           </Typography>
         )}
-        {sessions.map((s) => {
-          const isOpen = selectedSession === s.id;
-          const sessionEntries = entries[s.id] || [];
-          return (
-            <Box
-              key={s.id}
-              style={{
-                border: '1px solid #e0e0e0',
-                borderRadius: 8,
-                marginTop: 8,
-                overflow: 'hidden',
-              }}
-            >
-              <Flex
-                justifyContent="space-between"
-                alignItems="center"
-                padding={3}
-                style={{ background: isOpen ? '#f4f4f8' : 'transparent', cursor: 'pointer' }}
-                onClick={() => {
-                  const next = isOpen ? null : s.id;
-                  setSelectedSession(next);
-                  if (next && !entries[s.id]) loadEntries(s.id);
-                }}
-              >
-                <Box>
-                  <Flex gap={2} alignItems="center">
-                    <Typography variant="sigma">{s.name}</Typography>
-                    <StatusBadge status={s.status} />
-                  </Flex>
-                  <Typography variant="pi" textColor="neutral500">
-                    started {s.startedAt || '?'} · stopped {s.stoppedAt || '–'} ·
-                    app={s.resolvedAppName || '–'} · role={s.resolvedRoleKey || '–'}
-                  </Typography>
-                </Box>
-                <Typography variant="pi">{isOpen ? '▼' : '▶'}</Typography>
-              </Flex>
 
-              {isOpen && (
-                <Box>
-                  {sessionEntries.length === 0 ? (
-                    <Box padding={3}>
-                      <Typography variant="pi" textColor="neutral500">
-                        No entries captured (entry-recording middleware is not yet wired).
-                      </Typography>
-                    </Box>
-                  ) : (
-                    sessionEntries.map((e) => <EntryRow key={e.id} entry={e} />)
-                  )}
-                </Box>
-              )}
-            </Box>
-          );
-        })}
+        {paged.map(renderRow)}
+
+        {totalPages > 1 && (
+          <Flex justifyContent="space-between" alignItems="center" paddingTop={2}>
+            <Button variant="secondary" disabled={safePage <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}>Prev</Button>
+            <Typography variant="pi">Page {safePage} / {totalPages}</Typography>
+            <Button variant="secondary" disabled={safePage >= totalPages}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>Next</Button>
+          </Flex>
+        )}
       </Box>
     </Box>
   );
