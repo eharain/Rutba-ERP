@@ -69,17 +69,6 @@ const FIXED_BYPASS_PATHS = [
 ];
 
 const ALL_BYPASS_PATHS = [...new Set([...FIXED_BYPASS_PATHS, ...PUBLIC_BYPASS_PATHS])];
-// Strapi's plugin loader does `path.dirname(require.resolve(resolve))` and then
-// appends the `./strapi-server` export path on top. If `resolve` points to a
-// directory, require.resolve follows `main` ("./dist/server/index.js") and the
-// dirname becomes `<plugin>/dist/server` — then Strapi appends the same export
-// path producing a double `dist/server/dist/server/...` that doesn't exist,
-// and the plugin is silently skipped. Pointing `resolve` at the package.json
-// makes dirname the package root, which is what Strapi expects.
-const API_PRO_PLUGIN_PATH = path.join(
-    path.resolve(__dirname, '..', '..', 'packages', 'strapi-api-pro'),
-    'package.json'
-);
 
 // domains from configuration.json (used by plugin setup service for upsert)
 const DOMAINS_FROM_CONFIG = Object.entries(_apiConfig.domains || {}).map(([key, d]) => ({
@@ -93,9 +82,29 @@ module.exports = ({ env }) => ({
         enabled: true,
     },
 
+    // ── api-pro plugin ──────────────────────────────────────────────
+    // Auto-discovered from node_modules (strapi-api-pro is declared as a
+    // file: dependency in package.json — Strapi reads pkg.strapi.name='api-pro'
+    // and registers it). We deliberately DO NOT set `resolve` here:
+    //
+    //   • If `resolve` is a directory, Strapi's server loader does
+    //     path.dirname(require.resolve(<dir>)) which follows the package's
+    //     `main` field into `<dir>/dist/server/index.js` and dirname's the
+    //     parent — leaving pathToPlugin pointing INSIDE dist/server. The
+    //     loader then appends the `./strapi-server` export on top
+    //     (`./dist/server/index.js`) producing a non-existent doubled path,
+    //     and silently skips the plugin with no log.
+    //   • If `resolve` points to package.json, the server loader works but
+    //     the ADMIN loader treats `plugin.path` as a directory and does
+    //     `path.join(<file>, 'package.json')` — which produces an invalid
+    //     path that doesn't exist, so the plugin is omitted from
+    //     `.strapi/client/app.js` and the sidebar icon never appears.
+    //
+    // Auto-discovery avoids both bugs because it passes `package.json` as
+    // the resolve value AND the admin loader's `plugin.path` branch is not
+    // taken for `type: 'module'` plugins.
     'api-pro': {
         enabled: true,
-        resolve: API_PRO_PLUGIN_PATH,
         config: {
             interceptorEnabled: true,
             denyByDefault: true,

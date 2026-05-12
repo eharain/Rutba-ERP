@@ -1729,167 +1729,167 @@ var routes$1 = {
         method: "GET",
         path: "/users",
         handler: "users.list",
-        config: { middlewares: ["plugin::api-pro.appContext"], policies: [] }
+        config: { policies: [] }
       },
       {
         method: "GET",
         path: "/users/role-options",
         handler: "users.roleOptions",
-        config: { middlewares: ["plugin::api-pro.appContext"], policies: [] }
+        config: { policies: [] }
       },
       {
         method: "PUT",
         path: "/users/:id/roles",
         handler: "users.assignRoles",
-        config: { middlewares: ["plugin::api-pro.appContext"], policies: [] }
+        config: { policies: [] }
       },
       // ── Recordings ───────────────────────────────────────────────────
       {
         method: "POST",
         path: "/recordings/start",
         handler: "recordings.start",
-        config: { middlewares: ["plugin::api-pro.appContext"], policies: [] }
+        config: { policies: [] }
       },
       {
         method: "POST",
         path: "/recordings/stop",
         handler: "recordings.stop",
-        config: { middlewares: ["plugin::api-pro.appContext"], policies: [] }
+        config: { policies: [] }
       },
       {
         method: "GET",
         path: "/recordings",
         handler: "recordings.list",
-        config: { middlewares: ["plugin::api-pro.appContext"], policies: [] }
+        config: { policies: [] }
       },
       {
         method: "GET",
         path: "/recordings/:sessionId/entries",
         handler: "recordings.entries",
-        config: { middlewares: ["plugin::api-pro.appContext"], policies: [] }
+        config: { policies: [] }
       },
       // ── Interfaces ───────────────────────────────────────────────────
       {
         method: "GET",
         path: "/interfaces",
         handler: "interfaces.list",
-        config: { middlewares: ["plugin::api-pro.appContext"], policies: [] }
+        config: { policies: [] }
       },
       {
         method: "POST",
         path: "/interfaces/from-recordings",
         handler: "interfaces.createFromRecordings",
-        config: { middlewares: ["plugin::api-pro.appContext"], policies: [] }
+        config: { policies: [] }
       },
       {
         method: "POST",
         path: "/interfaces/from-content-type",
         handler: "interfaces.createFromContentType",
-        config: { middlewares: ["plugin::api-pro.appContext"], policies: [] }
+        config: { policies: [] }
       },
       {
         method: "PATCH",
         path: "/interfaces/:interfaceId/methods",
         handler: "interfaces.upsertMethod",
-        config: { middlewares: ["plugin::api-pro.appContext"], policies: [] }
+        config: { policies: [] }
       },
       {
         method: "GET",
         path: "/interfaces/lint-scaffold",
         handler: "interfaces.lintScaffold",
-        config: { middlewares: ["plugin::api-pro.appContext"], policies: [] }
+        config: { policies: [] }
       },
       {
         method: "POST",
         path: "/interfaces/validate-alignment",
         handler: "interfaces.validateAlignment",
-        config: { middlewares: ["plugin::api-pro.appContext"], policies: [] }
+        config: { policies: [] }
       },
       {
         method: "POST",
         path: "/interfaces/preview-guided-fix",
         handler: "interfaces.previewGuidedFix",
-        config: { middlewares: ["plugin::api-pro.appContext"], policies: [] }
+        config: { policies: [] }
       },
       {
         method: "GET",
         path: "/interfaces/:interfaceKey/scaffold",
         handler: "interfaces.scaffold",
-        config: { middlewares: ["plugin::api-pro.appContext"], policies: [] }
+        config: { policies: [] }
       },
       // ── Domains & Roles ──────────────────────────────────────────────
       {
         method: "GET",
         path: "/domains",
         handler: "domains.listDomains",
-        config: { middlewares: ["plugin::api-pro.appContext"], policies: [] }
+        config: { policies: [] }
       },
       {
         method: "POST",
         path: "/domains",
         handler: "domains.createDomain",
-        config: { middlewares: ["plugin::api-pro.appContext"], policies: [] }
+        config: { policies: [] }
       },
       {
         method: "PUT",
         path: "/domains/:id",
         handler: "domains.updateDomain",
-        config: { middlewares: ["plugin::api-pro.appContext"], policies: [] }
+        config: { policies: [] }
       },
       {
         method: "DELETE",
         path: "/domains/:id",
         handler: "domains.deleteDomain",
-        config: { middlewares: ["plugin::api-pro.appContext"], policies: [] }
+        config: { policies: [] }
       },
       {
         method: "GET",
         path: "/roles",
         handler: "domains.listRoles",
-        config: { middlewares: ["plugin::api-pro.appContext"], policies: [] }
+        config: { policies: [] }
       },
       {
         method: "POST",
         path: "/roles",
         handler: "domains.createRole",
-        config: { middlewares: ["plugin::api-pro.appContext"], policies: [] }
+        config: { policies: [] }
       },
       {
         method: "PUT",
         path: "/roles/:id",
         handler: "domains.updateRole",
-        config: { middlewares: ["plugin::api-pro.appContext"], policies: [] }
+        config: { policies: [] }
       },
       {
         method: "DELETE",
         path: "/roles/:id",
         handler: "domains.deleteRole",
-        config: { middlewares: ["plugin::api-pro.appContext"], policies: [] }
+        config: { policies: [] }
       },
       // ── Method Policies ──────────────────────────────────────────────
       {
         method: "GET",
         path: "/policies",
         handler: "policies.list",
-        config: { middlewares: ["plugin::api-pro.appContext"], policies: [] }
+        config: { policies: [] }
       },
       {
         method: "GET",
         path: "/policies/:interfaceKey/:methodKey/:roleKey",
         handler: "policies.findOne",
-        config: { middlewares: ["plugin::api-pro.appContext"], policies: [] }
+        config: { policies: [] }
       },
       {
         method: "PUT",
         path: "/policies/:interfaceKey/:methodKey/:roleKey",
         handler: "policies.upsert",
-        config: { middlewares: ["plugin::api-pro.appContext"], policies: [] }
+        config: { policies: [] }
       },
       {
         method: "DELETE",
         path: "/policies/:interfaceKey/:methodKey/:roleKey",
         handler: "policies.remove",
-        config: { middlewares: ["plugin::api-pro.appContext"], policies: [] }
+        config: { policies: [] }
       },
       // ── Health ───────────────────────────────────────────────────────
       {
