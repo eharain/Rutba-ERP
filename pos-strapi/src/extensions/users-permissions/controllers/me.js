@@ -1,3 +1,4 @@
+// @ts-nocheck
 'use strict';
 const { createCoreController } = require('@strapi/strapi').factories;
 
@@ -11,56 +12,55 @@ module.exports = createCoreController('plugin::users-permissions.me', ({ strapi 
                 return ctx.unauthorized("You must be logged in");
             }
 
-            // ── Load user with Strapi role + AGP roles (with their domains) ──
+            // ── Load user with Strapi role + API-Pro app roles (with their domains) ──
             const fullUser = await strapi.db.query('plugin::users-permissions.user').findOne({
                 where: { id: user.id },
                 populate: {
                     role: { select: ['type', 'name', 'id'] },
-                    api_guard_roles: {
-                        populate: { domains: true },
+                    app_roles: {
+                        populate: { appDomains: true },
                     },
                 },
             });
 
             const roleType = fullUser?.role?.type;
-            const guardRoles = fullUser?.api_guard_roles || [];
+            const appRoles = fullUser?.app_roles || [];
 
-            // ── Build unique domain list from assigned guard roles ─────────────
+            // ── Build unique domain list from assigned app roles ─────────────
             const domains = [];
-            const guardRoleKeys = [];
+            const appRoleKeys = [];
 
-            for (const role of guardRoles) {
+            for (const role of appRoles) {
                 if (!role.isActive) continue;
-                guardRoleKeys.push(role.key);
-                for (const domain of role.domains || []) {
+                appRoleKeys.push(role.key);
+                for (const domain of role.appDomains || []) {
                     if (!domains.find((d) => d.key === domain.key)) {
                         domains.push({ key: domain.key, name: domain.name, roleKey: role.key });
                     }
                 }
             }
 
-            // ── Load active policies granted to resolved roles ────────────────
+            // ── Load active method policies granted to resolved app roles ─────
             let permissions = {};
-            if (guardRoleKeys.length) {
+            if (appRoleKeys.length) {
                 const knex = strapi.db.connection;
-                const policyRows = await knex('guard_policies')
-                    .join('guard_policies_grants_lnk', 'guard_policies_grants_lnk.policy_id', 'guard_policies.id')
-                    .join('guard_roles', 'guard_roles.id', 'guard_policies_grants_lnk.role_id')
-                    .whereIn('guard_roles.key', guardRoleKeys)
-                    .where('guard_policies.is_active', true)
+                const policyRows = await knex('api_pro_method_policies')
+                    .join('api_pro_interface_methods', 'api_pro_interface_methods.id', 'api_pro_method_policies.interface_method_id')
+                    .join('api_pro_interfaces', 'api_pro_interfaces.id', 'api_pro_interface_methods.api_interface_id')
+                    .whereIn('api_pro_method_policies.role_key', appRoleKeys)
                     .select(
-                        'guard_policies.key',
-                        'guard_policies.content_type_uid',
-                        'guard_policies.action_name',
-                        'guard_policies.query',
-                        'guard_policies.filters',
-                        'guard_policies.body'
+                        'api_pro_method_policies.key',
+                        'api_pro_interfaces.uid',
+                        'api_pro_interface_methods.action',
+                        'api_pro_method_policies.query_template',
+                        'api_pro_method_policies.filters_template',
+                        'api_pro_method_policies.body_template'
                     )
                     .catch(() => []);
 
                 for (const policy of policyRows) {
-                    const ctUid = policy.content_type_uid;
-                    const action = policy.action_name;
+                    const ctUid = policy.uid;
+                    const action = policy.action;
                     if (!ctUid || !action) continue;
                     if (!permissions[ctUid]) permissions[ctUid] = {};
                     if (!permissions[ctUid][action]) {
@@ -70,9 +70,9 @@ module.exports = createCoreController('plugin::users-permissions.me', ({ strapi 
                     if (!permissions[ctUid][action].policies.find((p) => p.key === policy.key)) {
                         permissions[ctUid][action].policies.push({
                             key: policy.key,
-                            query: typeof policy.query === 'string' ? JSON.parse(policy.query) : (policy.query || {}),
-                            filters: typeof policy.filters === 'string' ? JSON.parse(policy.filters) : (policy.filters || {}),
-                            body: typeof policy.body === 'string' ? JSON.parse(policy.body) : (policy.body || {}),
+                            query: typeof policy.query_template === 'string' ? JSON.parse(policy.query_template) : (policy.query_template || {}),
+                            filters: typeof policy.filters_template === 'string' ? JSON.parse(policy.filters_template) : (policy.filters_template || {}),
+                            body: typeof policy.body_template === 'string' ? JSON.parse(policy.body_template) : (policy.body_template || {}),
                         });
                     }
                 }
@@ -93,6 +93,7 @@ module.exports = createCoreController('plugin::users-permissions.me', ({ strapi 
                 role: fullUser?.role?.name,
                 roleType,
                 domains,
+                appRoles: appRoles.map((r) => ({ key: r.key, name: r.name || r.key })),
                 permissions,
                 strapiPermissions,
                 sessionTimeout: DEFAULT_SESSION_TIMEOUT,

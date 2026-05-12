@@ -1,3 +1,4 @@
+// @ts-nocheck
 const fs = require('fs');
 const path = require('path');
 
@@ -57,7 +58,7 @@ const FIXED_BYPASS_PATHS = [
     '/api/users/me',
     '/api/me/permissions',
     '/api/users-permissions/me/permissions',
-    '/api/api-guard-pro/me/permissions',
+    '/api/api-pro/me/permissions',
     '/api/me/stock-items-search',
     '/api/users-permissions/me/stock-items-search',
     '/api/cash-registers/active',
@@ -68,6 +69,7 @@ const FIXED_BYPASS_PATHS = [
 ];
 
 const ALL_BYPASS_PATHS = [...new Set([...FIXED_BYPASS_PATHS, ...PUBLIC_BYPASS_PATHS])];
+const API_PRO_PLUGIN_PATH = path.resolve(__dirname, '..', '..', 'packages', 'strapi-api-pro');
 
 // domains from configuration.json (used by plugin setup service for upsert)
 const DOMAINS_FROM_CONFIG = Object.entries(_apiConfig.domains || {}).map(([key, d]) => ({
@@ -81,8 +83,9 @@ module.exports = ({ env }) => ({
         enabled: true,
     },
 
-    'api-guard-pro': {
+    'api-pro': {
         enabled: true,
+        resolve: API_PRO_PLUGIN_PATH,
         config: {
             interceptorEnabled: true,
             denyByDefault: true,
@@ -128,7 +131,7 @@ module.exports = ({ env }) => ({
     'users-permissions': {
         config: {
             register: {
-                allowedFields: ['displayName','api_guard_roles'], // add your custom fields here
+                allowedFields: ['displayName','app_roles'], // add your custom fields here
             },
             jwtManagement: 'refresh',
             sessions: {

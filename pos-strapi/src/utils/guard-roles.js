@@ -1,19 +1,19 @@
+// @ts-nocheck
 'use strict';
 
 /**
  * guard-roles.js
  *
- * Utility for resolving api-guard-pro role IDs from domain keys.
+ * Utility for resolving api-pro app role IDs from domain keys.
  *
- * Guard roles are stored as flat keys (e.g. `sale_admin`, `stock_staff`) and
- * linked to domains via the guard_roles_domain_lnk table. There is no `level`
- * column on guard_roles — level is encoded in the role key by convention.
+ * App roles are stored as flat keys (e.g. `sale_admin`, `stock_staff`) and
+ * linked to app domains.
  *
  * For direct role key assignment (e.g. from hr_teams.app_roles) use roleKeys.
  * For domain-scoped resolution use domainKeys (returns all roles for those domains).
  */
 
-const ROLE_UID = 'plugin::api-guard-pro.role';
+const ROLE_UID = 'plugin::api-pro.app-role';
 
 /**
  * @param {object} strapi
@@ -32,7 +32,7 @@ async function resolveGuardRoles(strapi, { domainKeys = [], roleKeys = [] } = {}
     roles = await strapi.db.query(ROLE_UID).findMany({
       where: {
         isActive: true,
-        domain: { key: { $in: domains } },
+        appDomains: { key: { $in: domains } },
       },
       select: ['id', 'key'],
     });

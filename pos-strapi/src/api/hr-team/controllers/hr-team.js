@@ -1,3 +1,4 @@
+// @ts-nocheck
 'use strict';
 
 const { createCoreController } = require('@strapi/strapi').factories;
@@ -19,7 +20,7 @@ async function sanitizeAppRolesForTeam(strapi, appRoles) {
   if (!Array.isArray(appRoles)) return [];
   const keys = [...new Set(appRoles.map((k) => String(k).trim()).filter(Boolean))];
   if (!keys.length) return [];
-  const valid = await strapi.db.query('plugin::api-guard-pro.role').findMany({
+  const valid = await strapi.db.query('plugin::api-pro.app-role').findMany({
     where: { key: { $in: keys }, isActive: true },
     select: ['key'],
   });
@@ -28,9 +29,9 @@ async function sanitizeAppRolesForTeam(strapi, appRoles) {
 
 // ── Return all guard domains with their roles for team assignment UI ──────────
 async function getAppRoleOptions(strapi) {
-  const domains = await strapi.db.query('plugin::api-guard-pro.domain').findMany({
+  const domains = await strapi.db.query('plugin::api-pro.app-domain').findMany({
     where: { isActive: true },
-    populate: { roles: { where: { isActive: true }, select: ['key', 'name'] } },
+    populate: { appRoles: { where: { isActive: true }, select: ['key', 'name'] } },
     select: ['key', 'name', 'description'],
   });
   return domains
@@ -39,7 +40,7 @@ async function getAppRoleOptions(strapi) {
       domainKey: d.key,
       domainName: d.name,
       description: d.description,
-      roles: (d.roles || []).map((r) => ({ key: r.key, name: r.name || r.key })),
+      roles: (d.appRoles || []).map((r) => ({ key: r.key, name: r.name || r.key })),
     }));
 }
 

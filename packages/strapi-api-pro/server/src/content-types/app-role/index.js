@@ -2,14 +2,6 @@
 
 const schema = require('./schema.json');
 
-
-
-
-
-'use strict';
-
-const schema = require('./schema.json');
-
 // ─── Lifecycle note ─────────────────────────────────────────────────────────
 // Strapi initialization order:
 //   1. Plugin extensions (strapi-server.js in consuming apps) — run first
