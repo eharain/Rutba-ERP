@@ -3,62 +3,45 @@
 /**
  * api-provider-seed.js
  *
- * Seeds the strapi-api-pro plugin.
+ * Seeds the strapi-api-pro plugin from @rutba/api-provider.
  *
  * Source of truth:
- * - domains/roles: `@rutba/api-provider/config`
- * - resources/policies/grants: `@rutba/api-provider` source endpoint descriptors
- *   (api/*.js)
+ * - domains/roles: `@rutba/api-provider/config/{domains,roles}.json`
+ * - interfaces/methods/policies: `@rutba/api-provider/api/*.js` endpoint descriptors
  *
- * Idempotent: delegates to the plugin's `data-transfer` service, which upserts
- * by stable keys (`domain.key`, `role.key`, `resource.content_type_uid`,
- * `policy.uid`).
+ * Delegates to the plugin's `seeder` service which is idempotent — re-running
+ * upserts by stable keys (domain.key, role.key, interface.key, method composite
+ * key, policy composite key).
  */
-
-// @ts-ignore
-const { buildAccessGuardProPayload } = require('@rutba/api-provider/server/access-guard');
 
 /**
  * @param {any} strapi
  */
 async function seedApiProvider(strapi) {
-    if (!strapi.plugin('api-pro')) {
+    const plugin = strapi.plugin('api-pro');
+    if (!plugin) {
         strapi.log.warn('[api-provider-seed] api-pro plugin not found — skipping seed');
         return;
     }
 
-    const service = strapi.service('plugin::api-pro.data-transfer');
-    if (!service || typeof service.importData !== 'function') {
-        strapi.log.warn('[api-provider-seed] data-transfer service unavailable — skipping seed');
+    const seederService = plugin.service('seeder');
+    if (!seederService || typeof seederService.runFullSeed !== 'function') {
+        strapi.log.warn('[api-provider-seed] api-pro.seeder service unavailable — skipping seed');
         return;
     }
 
-    const payload = await buildAccessGuardProPayload(strapi);
+    const result = await seederService.runFullSeed(strapi);
 
-    const domainCount = Object.keys(payload.domains).length;
-    const roleCount = Object.keys(payload.roles).length;
-    const resourceCount = Object.keys(payload.resources).length;
-
-    strapi.log.info(`[api-provider-seed] importing domains=${domainCount} roles=${roleCount} resources=${resourceCount}`);
-
-    const results = await service.importData(payload, /* clean */ false);
-
-    /** @param {any} b */
-    const fmt = (b) => `created=${b?.created ?? 0} updated=${b?.updated ?? 0} errors=${b?.errors?.length ?? 0}`;
-
-    strapi.log.info(`[api-provider-seed] domains:    ${fmt(results?.domains)}`);
-    strapi.log.info(`[api-provider-seed] roles:      ${fmt(results?.roles)}`);
-    strapi.log.info(`[api-provider-seed] resources:  ${fmt(results?.resources)}`);
-    strapi.log.info(`[api-provider-seed] policies:   ${fmt(results?.policies)}`);
-
-    for (const bucket of ['domains', 'roles', 'resources', 'policies']) {
-        const errs = results?.[bucket]?.errors || [];
-        for (const e of errs) {
-            strapi.log.warn(`[api-provider-seed] ${bucket} error: ${JSON.stringify(e)}`);
-        }
+    if (!result?.ok) {
+        strapi.log.error(`[api-provider-seed] seed failed: ${result?.error || 'unknown error'}`);
+        return;
     }
 
-    strapi.log.info('[api-provider-seed] complete ✓');
+    strapi.log.info(
+        `[api-provider-seed] complete: domains=${result.domains} roles=${result.roles} ` +
+        `interfaces=${result.interfaces} methods=${result.methods} policies=${result.policies} ` +
+        `(scanned ${result.descriptorsScanned} descriptors)`
+    );
 }
 
 module.exports = seedApiProvider;

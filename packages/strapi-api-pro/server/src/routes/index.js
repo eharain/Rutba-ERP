@@ -198,6 +198,14 @@ module.exports = {
         config: { policies: [] },
       },
 
+      // ── Admin tools ──────────────────────────────────────────────────
+      {
+        method: 'POST',
+        path: '/admin/seed',
+        handler: 'admin-tools.seed',
+        config: { policies: [] },
+      },
+
       // ── Health ───────────────────────────────────────────────────────
       {
         method: 'GET',

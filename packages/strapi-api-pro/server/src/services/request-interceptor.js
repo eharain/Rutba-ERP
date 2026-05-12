@@ -2,29 +2,35 @@
 
 // Runtime request interceptor.
 //
+// Claim model: the client explicitly claims (app, role) via headers — the
+// server validates the claim against the user's app_roles and uses the
+// CLAIMED role's policies (singular) to gate the request. If the user holds
+// only one role for the active app, the role header is optional and gets
+// auto-selected.
+//
 // On each non-bypassed request:
-//   1. Resolve route → { contentTypeUid, actionName }.
-//   2. Look up matching policies (cache-backed via permission-engine).
-//   3. Honor denyByDefault when no policy matches.
-//   4. Honor enforcementMode: 'off' / 'audit' / 'hybrid' / 'enforce'.
-//   5. Resolve each policy's filters/populate/fields/body/query templates with
+//   1. Resolve the claim via services/context.resolveClaim (validates headers
+//      against the user's app_roles).
+//   2. Parse route → { contentTypeUid, actionName }.
+//   3. Look up the policy for (contentTypeUid, actionName, claim.roleKey).
+//      Single role → at most one policy row matches (composite key
+//      `${interfaceKey}:${methodName}:${roleKey}`).
+//   4. Honor denyByDefault when no policy matches.
+//   5. Honor enforcementMode: 'off' / 'audit' / 'hybrid' / 'enforce'.
+//   6. Resolve the policy's filters/populate/body/query templates with
 //      $-tokens against the live request context.
-//   6. Merge resolved fragments across all matching policies:
-//      • filters  → $or-wrap for ≥2 policies (any role grants access)
-//      • populate → deep-merge union
-//      • fields   → array union (most permissive)
-//      • body     → deep-merge (later policy overrides on scalars)
-//      • query    → deep-merge
-//   7. Inject the merged fragment into ctx.query / ctx.request.body.
-//   8. x-rutba-app-admin elevation: skip filter injection (full read) but keep
-//      field/body restrictions.
+//   7. Inject the resolved fragment into ctx.query / ctx.request.body.
+//
+// No multi-policy merge anymore — the model is "user picks a role, that role's
+// policy applies". If unrestricted access is needed, give the user an admin
+// role and let them switch to it from the role-selector menu.
 
 const engine = require('./permission-engine');
 const resolver = require('./policy-resolver');
+const contextSvc = require('./context');
 
 const NON_INJECTABLE_METHODS = new Set(['OPTIONS', 'HEAD']);
 
-// ── merge helpers ───────────────────────────────────────────────────────────
 function isPlainObject(v) {
   return v !== null && typeof v === 'object' && !Array.isArray(v);
 }
@@ -44,43 +50,6 @@ function deepMerge(target, source) {
   return out;
 }
 
-function unionFields(...lists) {
-  const out = new Set();
-  for (const list of lists) {
-    if (Array.isArray(list)) {
-      for (const f of list) if (typeof f === 'string') out.add(f);
-    }
-  }
-  return Array.from(out);
-}
-
-// Merge resolved policy fragments across N policies.
-function mergeFragments(fragments) {
-  if (fragments.length === 0) return null;
-  if (fragments.length === 1) return fragments[0];
-
-  const nonEmptyFilters = fragments
-    .map((f) => f.filters)
-    .filter((x) => isPlainObject(x) && Object.keys(x).length > 0);
-
-  const merged = {
-    filters:
-      nonEmptyFilters.length === 0 ? {}
-      : nonEmptyFilters.length === 1 ? nonEmptyFilters[0]
-      : { $or: nonEmptyFilters },
-    populate: fragments.reduce((acc, f) => deepMerge(acc, f.populate || {}), {}),
-    fields: unionFields(...fragments.map((f) => f.fields)),
-    body: fragments.reduce((acc, f) => deepMerge(acc, f.body || {}), {}),
-    query: fragments.reduce((acc, f) => deepMerge(acc, f.query || {}), {}),
-  };
-  return merged;
-}
-
-// Convert a stored policy row's templates into a resolved fragment.
-// `fields` is treated as a special case: it lives inside `queryTemplate.fields`
-// or `populateTemplate.fields` only by convention; for now we read it from a
-// top-level `fields` key on the resolved query (since the schema doesn't have
-// a separate fieldsTemplate column yet).
 function resolveOnePolicy(policy, tokenCtx) {
   const r = resolver.resolvePolicyTemplates(policy, tokenCtx);
   return {
@@ -92,11 +61,10 @@ function resolveOnePolicy(policy, tokenCtx) {
   };
 }
 
-// ── injection ───────────────────────────────────────────────────────────────
-function injectIntoQuery(ctx, fragment, { skipFilters = false } = {}) {
+function injectIntoQuery(ctx, fragment) {
   ctx.query = ctx.query || {};
 
-  if (!skipFilters && fragment.filters && Object.keys(fragment.filters).length > 0) {
+  if (fragment.filters && Object.keys(fragment.filters).length > 0) {
     ctx.query.filters = deepMerge(
       isPlainObject(ctx.query.filters) ? ctx.query.filters : {},
       fragment.filters
@@ -138,29 +106,10 @@ function injectIntoBody(ctx, fragment) {
   }
 }
 
-// ── claim helpers ───────────────────────────────────────────────────────────
-function readClaim(ctx, strapi) {
-  const cfg = strapi.config.get('plugin::api-pro') || {};
-  const headerDomainKey = (cfg.headerDomainKey || 'x-rutba-app').toLowerCase();
-  const headerElevatedKey = (cfg.headerElevatedKey || 'x-rutba-app-admin').toLowerCase();
-  const headers = ctx.request?.headers || {};
-
-  const appName = String(headers[headerDomainKey] || '').trim() || null;
-  const elevatedRaw = headers[headerElevatedKey];
-  const elevated =
-    elevatedRaw === true ||
-    elevatedRaw === 'true' ||
-    elevatedRaw === '1' ||
-    elevatedRaw === 1;
-
-  return { appName, elevated };
-}
-
 // ── main entry ──────────────────────────────────────────────────────────────
-// Called from the global Koa middleware installed in bootstrap.js.
 // Returns:
-//   { status: 'allowed' | 'denied' | 'audited' | 'skipped', reason?: string, policies?: number }
-// The middleware decides whether to short-circuit with 403 based on this.
+//   { status: 'allowed' | 'denied' | 'audited' | 'skipped', reason?, policies? }
+// The middleware decides whether to short-circuit with 403 based on status.
 async function process(ctx, strapi) {
   const cfg = strapi.config.get('plugin::api-pro') || {};
   const mode = cfg.enforcementMode || 'hybrid';
@@ -173,46 +122,67 @@ async function process(ctx, strapi) {
   const parsed = engine.parseRouteHandler(handler);
   if (!parsed) return { status: 'skipped', reason: 'unrecognized route handler' };
 
-  const policies = await engine.getPoliciesForAction(strapi, {
+  // Resolve the claim (validates headers; throws on invalid claim). Lenient
+  // mode lets us skip enforcement when the user simply hasn't picked an app
+  // yet (e.g. probing endpoints from the admin) — we treat that as 'skipped'
+  // rather than fail hard.
+  let claim;
+  try {
+    claim = await contextSvc.resolveClaim(ctx, strapi, {
+      requireApp: false,
+      requireActiveRole: false,
+    });
+  } catch (error) {
+    return { status: 'skipped', reason: `claim resolve failed: ${error?.code || error?.message}` };
+  }
+
+  if (!claim.appName || !claim.roleKey) {
+    // No active app or role — nothing to enforce against in this request.
+    return { status: 'skipped', reason: 'no active app/role claim' };
+  }
+
+  ctx.state.apiProClaim = {
+    appName: claim.appName,
+    roleKey: claim.roleKey,
+    domainKey: claim.domainKey,
+    domainKeys: claim.domainKeys,
+  };
+
+  const policy = await engine.getPolicyForActionAndRole(strapi, {
     user,
+    roleKey: claim.roleKey,
     contentTypeUid: parsed.contentTypeUid,
     actionName: parsed.actionName,
   });
 
-  if (policies.length === 0) {
+  if (!policy) {
     if (cfg.denyByDefault && (mode === 'enforce' || mode === 'hybrid')) {
-      return { status: 'denied', reason: 'no matching policy', policies: 0 };
+      return { status: 'denied', reason: `no policy for role '${claim.roleKey}' on ${parsed.contentTypeUid}.${parsed.actionName}`, policies: 0 };
     }
     return { status: 'allowed', reason: 'no policy / lenient', policies: 0 };
   }
 
   if (mode === 'audit') {
-    return { status: 'audited', policies: policies.length };
+    return { status: 'audited', policies: 1 };
   }
-
-  const claim = readClaim(ctx, strapi);
-  ctx.state.apiProClaim = { appName: claim.appName, elevated: claim.elevated };
 
   const tokenCtx = resolver.buildTokenContext({
     strapiCtx: ctx,
     user,
-    claim: { appName: claim.appName, elevated: claim.elevated },
+    claim: ctx.state.apiProClaim,
   });
 
-  const fragments = policies.map((p) => resolveOnePolicy(p, tokenCtx));
-  const merged = mergeFragments(fragments);
-  if (!merged) return { status: 'allowed', policies: 0 };
+  const fragment = resolveOnePolicy(policy, tokenCtx);
 
-  injectIntoQuery(ctx, merged, { skipFilters: claim.elevated });
-  injectIntoBody(ctx, merged);
+  injectIntoQuery(ctx, fragment);
+  injectIntoBody(ctx, fragment);
 
-  ctx.state.apiProPolicy = merged;
-  return { status: 'allowed', policies: policies.length };
+  ctx.state.apiProPolicy = fragment;
+  return { status: 'allowed', policies: 1 };
 }
 
 module.exports = {
   process,
   // exported for tests
-  mergeFragments,
   deepMerge,
 };

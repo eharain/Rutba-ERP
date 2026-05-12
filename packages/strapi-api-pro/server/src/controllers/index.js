@@ -7,6 +7,7 @@ const users = require('./users');
 const me = require('./me');
 const domains = require('./domains');
 const policies = require('./policies');
+const adminTools = require('./admin-tools');
 
 module.exports = {
   health,
@@ -16,4 +17,5 @@ module.exports = {
   me,
   domains,
   policies,
+  'admin-tools': adminTools,
 };

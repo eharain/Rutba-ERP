@@ -13,6 +13,7 @@ const fileStore = require('./file-store');
 const sync = require('./sync');
 const policies = require('./policies');
 const scaffold = require('./scaffold');
+const seeder = require('./seeder');
 
 module.exports = {
   context,
@@ -28,4 +29,5 @@ module.exports = {
   sync,
   policies,
   scaffold,
+  seeder,
 };
