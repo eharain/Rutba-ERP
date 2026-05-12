@@ -58,7 +58,7 @@ const index = {
         defaultMessage: "Strapi API Pro"
       },
       Component: async () => {
-        const { default: App } = await Promise.resolve().then(() => require("../_chunks/App-GFfmkfKF.js"));
+        const { default: App } = await Promise.resolve().then(() => require("../_chunks/App-BJ1fiSMc.js"));
         return App;
       }
     });

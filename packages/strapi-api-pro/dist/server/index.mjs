@@ -11,7 +11,7 @@ var register$1 = ({ strapi: strapi2 }) => {
   }
   strapi2.log.info("[api-pro] register");
 };
-const POLICY_UID$4 = "plugin::api-pro.api-method-policy";
+const POLICY_UID$5 = "plugin::api-pro.api-method-policy";
 function normalizeRoleKey(value) {
   if (typeof value === "string") return value.toLowerCase();
   if (value && typeof value === "object") {
@@ -53,7 +53,7 @@ async function getPoliciesForAction(strapi2, { user, contentTypeUid, actionName 
   }
   let policies2 = [];
   try {
-    policies2 = await strapi2.db.query(POLICY_UID$4).findMany({
+    policies2 = await strapi2.db.query(POLICY_UID$5).findMany({
       where: {
         roleKey: { $in: roleKeys },
         interfaceMethod: {
@@ -73,7 +73,7 @@ async function getPoliciesForAction(strapi2, { user, contentTypeUid, actionName 
     if (methodIds.length === 0) {
       policies2 = [];
     } else {
-      policies2 = await strapi2.db.query(POLICY_UID$4).findMany({
+      policies2 = await strapi2.db.query(POLICY_UID$5).findMany({
         where: { roleKey: { $in: roleKeys }, interfaceMethod: { id: { $in: methodIds } } }
       });
     }
@@ -97,7 +97,7 @@ async function getPolicyForActionAndRole(strapi2, { user, roleKey, contentTypeUi
   }
   let row = null;
   try {
-    row = await strapi2.db.query(POLICY_UID$4).findOne({
+    row = await strapi2.db.query(POLICY_UID$5).findOne({
       where: {
         roleKey: lower,
         interfaceMethod: {
@@ -114,7 +114,7 @@ async function getPolicyForActionAndRole(strapi2, { user, roleKey, contentTypeUi
       select: ["id"]
     });
     if (method) {
-      row = await strapi2.db.query(POLICY_UID$4).findOne({
+      row = await strapi2.db.query(POLICY_UID$5).findOne({
         where: { roleKey: lower, interfaceMethod: { id: method.id } }
       });
     }
@@ -329,17 +329,17 @@ var context$1 = {
   filterRolesByApp
 };
 const engine = permissionEngine$1;
-const resolver = policyResolver$1;
+const resolver$1 = policyResolver$1;
 const contextSvc = context$1;
 const NON_INJECTABLE_METHODS = /* @__PURE__ */ new Set(["OPTIONS", "HEAD"]);
-function isPlainObject(v) {
+function isPlainObject$1(v) {
   return v !== null && typeof v === "object" && !Array.isArray(v);
 }
 function deepMerge(target, source) {
-  if (!isPlainObject(source)) return source;
-  const out = { ...isPlainObject(target) ? target : {} };
+  if (!isPlainObject$1(source)) return source;
+  const out = { ...isPlainObject$1(target) ? target : {} };
   for (const [k, v] of Object.entries(source)) {
-    if (isPlainObject(v) && isPlainObject(out[k])) {
+    if (isPlainObject$1(v) && isPlainObject$1(out[k])) {
       out[k] = deepMerge(out[k], v);
     } else if (Array.isArray(v) && Array.isArray(out[k])) {
       out[k] = Array.from(/* @__PURE__ */ new Set([...out[k], ...v]));
@@ -350,12 +350,12 @@ function deepMerge(target, source) {
   return out;
 }
 function resolveOnePolicy(policy, tokenCtx) {
-  const r = resolver.resolvePolicyTemplates(policy, tokenCtx);
+  const r = resolver$1.resolvePolicyTemplates(policy, tokenCtx);
   return {
-    filters: isPlainObject(r.filters) ? r.filters : {},
-    populate: isPlainObject(r.populate) ? r.populate : {},
-    body: isPlainObject(r.body) ? r.body : {},
-    query: isPlainObject(r.query) ? r.query : {},
+    filters: isPlainObject$1(r.filters) ? r.filters : {},
+    populate: isPlainObject$1(r.populate) ? r.populate : {},
+    body: isPlainObject$1(r.body) ? r.body : {},
+    query: isPlainObject$1(r.query) ? r.query : {},
     fields: Array.isArray(r.query?.fields) ? r.query.fields : []
   };
 }
@@ -363,14 +363,14 @@ function injectIntoQuery(ctx, fragment) {
   ctx.query = ctx.query || {};
   if (fragment.filters && Object.keys(fragment.filters).length > 0) {
     ctx.query.filters = deepMerge(
-      isPlainObject(ctx.query.filters) ? ctx.query.filters : {},
+      isPlainObject$1(ctx.query.filters) ? ctx.query.filters : {},
       fragment.filters
     );
   }
   if (fragment.populate && Object.keys(fragment.populate).length > 0) {
     if (!ctx.query.populate) {
       ctx.query.populate = fragment.populate;
-    } else if (isPlainObject(ctx.query.populate)) {
+    } else if (isPlainObject$1(ctx.query.populate)) {
       ctx.query.populate = deepMerge(ctx.query.populate, fragment.populate);
     }
   }
@@ -389,10 +389,10 @@ function injectIntoBody(ctx, fragment) {
   if (!fragment.body || Object.keys(fragment.body).length === 0) return;
   if (NON_INJECTABLE_METHODS.has((ctx.request?.method || "").toUpperCase())) return;
   if (!ctx.request) return;
-  if (isPlainObject(ctx.request.body?.data)) {
+  if (isPlainObject$1(ctx.request.body?.data)) {
     ctx.request.body.data = deepMerge(ctx.request.body.data, fragment.body);
   } else {
-    ctx.request.body = deepMerge(isPlainObject(ctx.request.body) ? ctx.request.body : {}, fragment.body);
+    ctx.request.body = deepMerge(isPlainObject$1(ctx.request.body) ? ctx.request.body : {}, fragment.body);
   }
 }
 async function process$1(ctx, strapi2) {
@@ -437,7 +437,7 @@ async function process$1(ctx, strapi2) {
   if (mode === "audit") {
     return { status: "audited", policies: 1 };
   }
-  const tokenCtx = resolver.buildTokenContext({
+  const tokenCtx = resolver$1.buildTokenContext({
     strapiCtx: ctx,
     user,
     claim: ctx.state.apiProClaim
@@ -623,8 +623,8 @@ var fileStore$4 = {
 };
 const fileStore$3 = fileStore$4;
 const INTERFACE_UID$2 = "plugin::api-pro.api-interface";
-const METHOD_UID$2 = "plugin::api-pro.api-interface-method";
-const POLICY_UID$3 = "plugin::api-pro.api-method-policy";
+const METHOD_UID$3 = "plugin::api-pro.api-interface-method";
+const POLICY_UID$4 = "plugin::api-pro.api-method-policy";
 function methodCompositeKey(interfaceKey, methodKey) {
   return `${interfaceKey}:${methodKey}`;
 }
@@ -652,7 +652,7 @@ async function upsertInterface(strapi2, interfaceKey, data) {
 }
 async function upsertMethod$1(strapi2, interfaceRow, methodData) {
   const compositeKey = methodCompositeKey(interfaceRow.key, methodData.key || methodData.id);
-  const existing = await strapi2.db.query(METHOD_UID$2).findOne({
+  const existing = await strapi2.db.query(METHOD_UID$3).findOne({
     where: { key: compositeKey }
   });
   const payload = {
@@ -668,16 +668,16 @@ async function upsertMethod$1(strapi2, interfaceRow, methodData) {
     apiInterface: interfaceRow.id
   };
   if (existing) {
-    return strapi2.db.query(METHOD_UID$2).update({
+    return strapi2.db.query(METHOD_UID$3).update({
       where: { id: existing.id },
       data: payload
     });
   }
-  return strapi2.db.query(METHOD_UID$2).create({ data: payload });
+  return strapi2.db.query(METHOD_UID$3).create({ data: payload });
 }
 async function upsertPolicy(strapi2, interfaceKey, methodKey, roleKey, data) {
   const compositeMethodKey = methodCompositeKey(interfaceKey, methodKey);
-  const method = await strapi2.db.query(METHOD_UID$2).findOne({
+  const method = await strapi2.db.query(METHOD_UID$3).findOne({
     where: { key: compositeMethodKey }
   });
   if (!method) {
@@ -685,7 +685,7 @@ async function upsertPolicy(strapi2, interfaceKey, methodKey, roleKey, data) {
     return null;
   }
   const compositeKey = policyCompositeKey(interfaceKey, methodKey, roleKey);
-  const existing = await strapi2.db.query(POLICY_UID$3).findOne({
+  const existing = await strapi2.db.query(POLICY_UID$4).findOne({
     where: { key: compositeKey }
   });
   const payload = {
@@ -701,12 +701,12 @@ async function upsertPolicy(strapi2, interfaceKey, methodKey, roleKey, data) {
     interfaceMethod: method.id
   };
   if (existing) {
-    return strapi2.db.query(POLICY_UID$3).update({
+    return strapi2.db.query(POLICY_UID$4).update({
       where: { id: existing.id },
       data: payload
     });
   }
-  return strapi2.db.query(POLICY_UID$3).create({ data: payload });
+  return strapi2.db.query(POLICY_UID$4).create({ data: payload });
 }
 async function syncInterfaceWrite(strapi2, interfaceKey) {
   const fileData = await fileStore$3.readInterface(strapi2, interfaceKey);
@@ -726,22 +726,22 @@ async function syncPolicyWrite(strapi2, interfaceKey, methodKey, roleKey) {
 async function syncInterfaceDelete(strapi2, interfaceKey) {
   const row = await strapi2.db.query(INTERFACE_UID$2).findOne({ where: { key: interfaceKey } });
   if (!row) return;
-  const methods = await strapi2.db.query(METHOD_UID$2).findMany({
+  const methods = await strapi2.db.query(METHOD_UID$3).findMany({
     where: { apiInterface: row.id },
     select: ["id"]
   });
   const methodIds = methods.map((m) => m.id);
   if (methodIds.length > 0) {
-    await strapi2.db.query(POLICY_UID$3).deleteMany({
+    await strapi2.db.query(POLICY_UID$4).deleteMany({
       where: { interfaceMethod: { id: { $in: methodIds } } }
     });
-    await strapi2.db.query(METHOD_UID$2).deleteMany({ where: { id: { $in: methodIds } } });
+    await strapi2.db.query(METHOD_UID$3).deleteMany({ where: { id: { $in: methodIds } } });
   }
   await strapi2.db.query(INTERFACE_UID$2).delete({ where: { id: row.id } });
 }
 async function syncPolicyDelete(strapi2, interfaceKey, methodKey, roleKey) {
   const compositeKey = policyCompositeKey(interfaceKey, methodKey, roleKey);
-  await strapi2.db.query(POLICY_UID$3).deleteMany({ where: { key: compositeKey } });
+  await strapi2.db.query(POLICY_UID$4).deleteMany({ where: { key: compositeKey } });
 }
 async function syncAll(strapi2) {
   await fileStore$3.ensureStorage(strapi2);
@@ -1904,6 +1904,18 @@ var adminTools$1 = {
     }
   }
 };
+var play$3 = {
+  async run(ctx) {
+    const body = ctx.request.body?.data || ctx.request.body || {};
+    try {
+      const result = await strapi.plugin("api-pro").service("play").play(strapi, body);
+      ctx.body = { data: result };
+    } catch (error) {
+      ctx.status = error?.status || 500;
+      ctx.body = { error: { message: error?.message || "Play failed" } };
+    }
+  }
+};
 const health = health$1;
 const recordings$2 = recordings$3;
 const interfaces$2 = interfaces$3;
@@ -1912,6 +1924,7 @@ const me = me$1;
 const domains = domains$1;
 const policies$4 = policies$5;
 const adminTools = adminTools$1;
+const play$2 = play$3;
 var controllers$1 = {
   health,
   recordings: recordings$2,
@@ -1920,7 +1933,8 @@ var controllers$1 = {
   me,
   domains,
   policies: policies$4,
-  "admin-tools": adminTools
+  "admin-tools": adminTools,
+  play: play$2
 };
 var routes$1 = {
   "content-api": {
@@ -2124,6 +2138,13 @@ var routes$1 = {
         method: "POST",
         path: "/admin/seed",
         handler: "admin-tools.seed",
+        config: { policies: [] }
+      },
+      // ── Play as role (dry-run + optional real fetch for read actions) ──
+      {
+        method: "POST",
+        path: "/play",
+        handler: "play.run",
         config: { policies: [] }
       },
       // ── Health ───────────────────────────────────────────────────────
@@ -2349,8 +2370,8 @@ var interfaces$1 = {
   previewAlignment,
   resolveApiProviderPaths
 };
-const POLICY_UID$2 = "plugin::api-pro.api-method-policy";
-const USER_UID$1 = "plugin::users-permissions.user";
+const POLICY_UID$3 = "plugin::api-pro.api-method-policy";
+const USER_UID$2 = "plugin::users-permissions.user";
 function normalizeKey(value) {
   if (typeof value === "string") return value.toLowerCase();
   if (value && typeof value === "object" && typeof value.key === "string") {
@@ -2383,7 +2404,7 @@ function shapePolicyForResponse(policy) {
   };
 }
 async function loadUser(strapi2, userId) {
-  return strapi2.db.query(USER_UID$1).findOne({
+  return strapi2.db.query(USER_UID$2).findOne({
     where: { id: userId },
     populate: {
       role: true,
@@ -2393,7 +2414,7 @@ async function loadUser(strapi2, userId) {
 }
 async function loadPoliciesForRoles(strapi2, roleKeys) {
   if (roleKeys.length === 0) return [];
-  return strapi2.db.query(POLICY_UID$2).findMany({
+  return strapi2.db.query(POLICY_UID$3).findMany({
     where: { roleKey: { $in: roleKeys } },
     populate: { interfaceMethod: { populate: { apiInterface: true } } }
   });
@@ -2498,10 +2519,10 @@ var mePermissions$1 = {
   build,
   gatherExtraRoleKeys
 };
-const USER_UID = "plugin::users-permissions.user";
+const USER_UID$1 = "plugin::users-permissions.user";
 const APP_ROLE_UID$1 = "plugin::api-pro.app-role";
 async function listUsers(strapi2) {
-  return await strapi2.db.query(USER_UID).findMany({
+  return await strapi2.db.query(USER_UID$1).findMany({
     orderBy: { id: "asc" },
     select: ["id", "username", "email", "displayName", "blocked", "confirmed"],
     populate: {
@@ -2531,18 +2552,18 @@ async function assignUserAppRoles(strapi2, userId, roleIds) {
     throw err;
   }
   const validRoleIds = (Array.isArray(roleIds) ? roleIds : []).map(Number).filter((v) => Number.isFinite(v) && v > 0);
-  const user = await strapi2.db.query(USER_UID).findOne({ where: { id } });
+  const user = await strapi2.db.query(USER_UID$1).findOne({ where: { id } });
   if (!user) {
     const err = new Error("User not found");
     err.status = 404;
     throw err;
   }
-  await strapi2.entityService.update(USER_UID, id, {
+  await strapi2.entityService.update(USER_UID$1, id, {
     data: {
       app_roles: { set: validRoleIds }
     }
   });
-  return await strapi2.db.query(USER_UID).findOne({
+  return await strapi2.db.query(USER_UID$1).findOne({
     where: { id },
     select: ["id", "username", "email", "displayName"],
     populate: {
@@ -2558,9 +2579,9 @@ var users$1 = {
   listAppRoleOptions,
   assignUserAppRoles
 };
-const METHOD_UID$1 = "plugin::api-pro.api-interface-method";
+const METHOD_UID$2 = "plugin::api-pro.api-interface-method";
 async function lintMethodAlignment(strapi2) {
-  const methods = await strapi2.db.query(METHOD_UID$1).findMany({
+  const methods = await strapi2.db.query(METHOD_UID$2).findMany({
     select: ["id", "name", "path", "inputSignature", "method"],
     populate: {
       apiInterface: {
@@ -2598,7 +2619,7 @@ var scaffoldRunner$1 = {
 };
 const fileStore$2 = fileStore$4;
 const sync$1 = sync$2;
-const POLICY_UID$1 = "plugin::api-pro.api-method-policy";
+const POLICY_UID$2 = "plugin::api-pro.api-method-policy";
 function shape(row) {
   if (!row) return null;
   return {
@@ -2628,7 +2649,7 @@ async function list(strapi2, { interfaceKey, methodKey, roleKey } = {}) {
       where.interfaceMethod.name = methodKey;
     }
   }
-  const rows = await strapi2.db.query(POLICY_UID$1).findMany({
+  const rows = await strapi2.db.query(POLICY_UID$2).findMany({
     where,
     populate: { interfaceMethod: { populate: { apiInterface: true } } },
     orderBy: { roleKey: "asc" }
@@ -2636,7 +2657,7 @@ async function list(strapi2, { interfaceKey, methodKey, roleKey } = {}) {
   return rows.map(shape);
 }
 async function findOne(strapi2, { interfaceKey, methodKey, roleKey }) {
-  const row = await strapi2.db.query(POLICY_UID$1).findOne({
+  const row = await strapi2.db.query(POLICY_UID$2).findOne({
     where: {
       key: `${interfaceKey}:${methodKey}:${String(roleKey).toLowerCase()}`
     },
@@ -2689,7 +2710,7 @@ async function findForMethod(strapi2, { interfaceKey, methodKey }) {
     err.status = 404;
     throw err;
   }
-  const rows = await strapi2.db.query(POLICY_UID$1).findMany({
+  const rows = await strapi2.db.query(POLICY_UID$2).findMany({
     where: { interfaceMethod: { id: method.id } },
     orderBy: { roleKey: "asc" }
   });
@@ -2876,8 +2897,8 @@ const { pathToFileURL } = require$$2;
 const APP_DOMAIN_UID = "plugin::api-pro.app-domain";
 const APP_ROLE_UID = "plugin::api-pro.app-role";
 const INTERFACE_UID = "plugin::api-pro.api-interface";
-const METHOD_UID = "plugin::api-pro.api-interface-method";
-const POLICY_UID = "plugin::api-pro.api-method-policy";
+const METHOD_UID$1 = "plugin::api-pro.api-interface-method";
+const POLICY_UID$1 = "plugin::api-pro.api-method-policy";
 function resolveApiProviderRoot(strapi2) {
   const cwd = strapi2?.dirs?.app?.root || process.cwd();
   try {
@@ -3078,7 +3099,7 @@ async function seedInterfacesAndMethods(strapi2, descriptors) {
     interfaceCount += 1;
     for (const d of group) {
       const methodKey = `${interfaceKey}:${d.methodName}`;
-      const methodRow = await upsertByKey(strapi2, METHOD_UID, methodKey, {
+      const methodRow = await upsertByKey(strapi2, METHOD_UID$1, methodKey, {
         key: methodKey,
         name: d.methodName,
         action: d.action,
@@ -3113,7 +3134,7 @@ async function seedPolicies(strapi2, descriptors, methodByCompositeKey, rolesCon
       const policyKey = `${interfaceKey}:${d.methodName}:${roleKey}`;
       const level = rolesConfig?.[roleKey]?.level || "unknown";
       const templates = defaultTemplatesForLevel(level, d.action);
-      await upsertByKey(strapi2, POLICY_UID, policyKey, {
+      await upsertByKey(strapi2, POLICY_UID$1, policyKey, {
         key: policyKey,
         name: `${humanize(roleKey)} → ${d.methodName}`,
         roleKey,
@@ -3155,6 +3176,164 @@ var seeder$1 = {
   resolveApiProviderRoot,
   walkApiDescriptors
 };
+const resolver = policyResolver$1;
+const METHOD_UID = "plugin::api-pro.api-interface-method";
+const POLICY_UID = "plugin::api-pro.api-method-policy";
+const USER_UID = "plugin::users-permissions.user";
+const SAFE_FIND_ACTIONS = /* @__PURE__ */ new Set(["find", "findOne"]);
+async function loadMethod(strapi2, interfaceKey, methodName) {
+  const method = await strapi2.db.query(METHOD_UID).findOne({
+    where: { key: `${interfaceKey}:${methodName}` },
+    populate: { apiInterface: true }
+  });
+  if (!method) {
+    const err = new Error(`method '${interfaceKey}:${methodName}' not found`);
+    err.status = 404;
+    throw err;
+  }
+  return method;
+}
+async function loadPolicy(strapi2, methodId, roleKey) {
+  return strapi2.db.query(POLICY_UID).findOne({
+    where: { interfaceMethod: { id: methodId }, roleKey: String(roleKey).toLowerCase() }
+  });
+}
+async function loadActAsUser(strapi2, userId) {
+  if (!userId) return null;
+  return strapi2.db.query(USER_UID).findOne({
+    where: { id: Number(userId) },
+    populate: { role: true, app_roles: { populate: { appDomains: true } } }
+  });
+}
+function isPlainObject(v) {
+  return v !== null && typeof v === "object" && !Array.isArray(v);
+}
+function mergeQuery(base, fragment) {
+  const out = { ...isPlainObject(base) ? base : {} };
+  if (!isPlainObject(fragment)) return out;
+  if (isPlainObject(fragment.filters)) {
+    out.filters = isPlainObject(out.filters) ? { ...out.filters, ...fragment.filters } : fragment.filters;
+  }
+  if (isPlainObject(fragment.populate) && Object.keys(fragment.populate).length > 0) {
+    out.populate = fragment.populate;
+  } else if (fragment.populate === "*") {
+    out.populate = "*";
+  }
+  return out;
+}
+async function play$1(strapi2, params) {
+  const {
+    interfaceKey,
+    methodName,
+    roleKey,
+    actAsUserId = null,
+    pathParams = {},
+    queryParams = {},
+    bodyData = {},
+    documentId = null
+  } = params || {};
+  if (!interfaceKey || !methodName || !roleKey) {
+    const err = new Error("interfaceKey, methodName and roleKey are required");
+    err.status = 400;
+    throw err;
+  }
+  const method = await loadMethod(strapi2, interfaceKey, methodName);
+  const policy = await loadPolicy(strapi2, method.id, roleKey);
+  const uid = method.apiInterface?.uid || null;
+  const action = method.action || methodName;
+  let user = null;
+  if (actAsUserId) {
+    user = await loadActAsUser(strapi2, actAsUserId);
+    if (!user) {
+      const err = new Error(`actAsUserId=${actAsUserId} not found`);
+      err.status = 404;
+      throw err;
+    }
+  }
+  const tokenCtx = {
+    user: user ? { id: user.id, email: user.email, username: user.username, ...user } : { id: null, email: null, username: "admin-preview" },
+    claim: {
+      appName: "(play-preview)",
+      roleKey: String(roleKey).toLowerCase(),
+      domainKey: null
+    },
+    query: queryParams || {},
+    params: { ...pathParams || {}, ...documentId ? { documentId } : {} },
+    body: bodyData || {},
+    strapi: {
+      request: { method: String(method.method || "GET").toUpperCase(), path: method.path }
+    }
+  };
+  const resolved = policy ? {
+    filters: resolver.resolveDeep(policy.filtersTemplate || {}, tokenCtx),
+    populate: resolver.resolveDeep(policy.populateTemplate || {}, tokenCtx),
+    body: resolver.resolveDeep(policy.bodyTemplate || {}, tokenCtx),
+    query: resolver.resolveDeep(policy.queryTemplate || {}, tokenCtx)
+  } : { filters: {}, populate: {}, body: {}, query: {} };
+  const finalQuery = mergeQuery(
+    { ...queryParams || {} },
+    { filters: resolved.filters, populate: resolved.populate, ...resolved.query || {} }
+  );
+  const result = {
+    method: {
+      uid,
+      action,
+      method: method.method,
+      path: method.path,
+      interfaceKey,
+      methodName
+    },
+    policyFound: Boolean(policy),
+    actAsUser: user ? { id: user.id, email: user.email, username: user.username } : null,
+    tokenContext: {
+      // Slim user dump to avoid leaking sensitive fields (e.g. password hash).
+      user: user ? { id: user.id, email: user.email, username: user.username } : tokenCtx.user,
+      claim: tokenCtx.claim,
+      query: tokenCtx.query,
+      params: tokenCtx.params,
+      body: tokenCtx.body
+    },
+    resolved,
+    finalQuery,
+    response: null,
+    executed: false,
+    executionError: null
+  };
+  if (uid && SAFE_FIND_ACTIONS.has(action)) {
+    try {
+      if (action === "findOne") {
+        const target = documentId || pathParams?.documentId || pathParams?.id || null;
+        if (!target) {
+          result.executionError = "findOne requires a documentId (or id) in path params to execute";
+        } else {
+          const doc = await strapi2.documents(uid).findOne({
+            documentId: String(target),
+            ...finalQuery.populate ? { populate: finalQuery.populate } : {},
+            ...finalQuery.filters ? { filters: finalQuery.filters } : {}
+          });
+          result.response = doc;
+          result.executed = true;
+        }
+      } else {
+        const docs = await strapi2.documents(uid).findMany({
+          ...finalQuery.filters ? { filters: finalQuery.filters } : {},
+          ...finalQuery.populate ? { populate: finalQuery.populate } : {},
+          ...finalQuery.pagination ? { pagination: finalQuery.pagination } : { pagination: { pageSize: 10 } },
+          ...finalQuery.sort ? { sort: finalQuery.sort } : {},
+          ...finalQuery.fields ? { fields: finalQuery.fields } : {}
+        });
+        result.response = docs;
+        result.executed = true;
+      }
+    } catch (error) {
+      result.executionError = error?.message || String(error);
+    }
+  }
+  return result;
+}
+var play_1 = {
+  play: play$1
+};
 const context = context$1;
 const recordings = recordings$1;
 const interfaces = interfaces$1;
@@ -3169,6 +3348,7 @@ const sync = sync$2;
 const policies$2 = policies$3;
 const scaffold = scaffold$1;
 const seeder = seeder$1;
+const play = play_1;
 var services$1 = {
   context,
   recordings,
@@ -3183,7 +3363,8 @@ var services$1 = {
   sync,
   policies: policies$2,
   scaffold,
-  seeder
+  seeder,
+  play
 };
 var policies$1 = {};
 var appContext$1 = (config2, { strapi: strapi2 }) => {

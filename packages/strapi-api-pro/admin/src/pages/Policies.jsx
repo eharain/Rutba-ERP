@@ -194,8 +194,192 @@ const BrowseTree = ({ interfaces, roleCount, onOpenMethod }) => {
   );
 };
 
+// ── Play modal: "act as role" preview against the real Strapi endpoint ────
+const PlayModal = ({ open, selection, roleKey, method, onClose }) => {
+  const { post } = useFetchClient();
+  const [documentId, setDocumentId] = React.useState('');
+  const [queryRaw, setQueryRaw] = React.useState('{}');
+  const [bodyRaw, setBodyRaw] = React.useState('{}');
+  const [actAsUserId, setActAsUserId] = React.useState('');
+  const [running, setRunning] = React.useState(false);
+  const [result, setResult] = React.useState(null);
+  const [error, setError] = React.useState('');
+
+  React.useEffect(() => {
+    if (!open) {
+      setResult(null);
+      setError('');
+    }
+  }, [open]);
+
+  if (!open) return null;
+
+  const isFind = (method?.action || '').toLowerCase() === 'find';
+  const isFindOne = (method?.action || '').toLowerCase() === 'findone';
+  const isMutation = !isFind && !isFindOne;
+
+  const safeParse = (raw) => {
+    if (!raw || !raw.trim()) return {};
+    try { return JSON.parse(raw); } catch (e) { throw new Error(`Invalid JSON: ${e.message}`); }
+  };
+
+  const run = async () => {
+    setRunning(true);
+    setError('');
+    setResult(null);
+    try {
+      const payload = {
+        interfaceKey: selection.interfaceKey,
+        methodName: selection.methodName,
+        roleKey,
+        actAsUserId: actAsUserId ? Number(actAsUserId) : null,
+        pathParams: {},
+        queryParams: safeParse(queryRaw),
+        bodyData: safeParse(bodyRaw),
+        documentId: documentId || null,
+      };
+      const { data } = await post(api('/play'), payload);
+      setResult(data?.data || null);
+    } catch (err) {
+      setError(err?.response?.data?.error?.message || err?.message || 'Play failed.');
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  return (
+    <Box style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+      background: 'rgba(0,0,0,0.5)', zIndex: 1100, display: 'flex',
+      alignItems: 'center', justifyContent: 'center' }} onClick={onClose}>
+      <Box style={{ background: '#fff', borderRadius: 8, padding: 16,
+        maxWidth: 1100, width: '94%', maxHeight: '90vh', overflow: 'auto' }}
+        onClick={(e) => e.stopPropagation()}>
+        <Flex justifyContent="space-between" alignItems="flex-start" gap={2}>
+          <Box>
+            <Typography variant="beta">Play as role</Typography>
+            <Flex gap={2} alignItems="center" paddingTop={1} wrap="wrap">
+              <span style={{ padding: '1px 6px', border: '1px solid #ccc',
+                borderRadius: 4, fontSize: 10, fontWeight: 700,
+                fontFamily: 'ui-monospace, Menlo, monospace' }}>
+                {(method?.method || 'GET').toUpperCase()}
+              </span>
+              <code style={{ fontSize: 12 }}>{method?.path || '?'}</code>
+              <Typography variant="pi" textColor="neutral500">as</Typography>
+              <code style={{ fontSize: 12, background: '#e8eaf6', color: '#4945ff',
+                padding: '1px 6px', borderRadius: 4 }}>{roleKey}</code>
+            </Flex>
+          </Box>
+          <Button variant="secondary" onClick={onClose}>Close</Button>
+        </Flex>
+
+        <Flex gap={3} paddingTop={3} wrap="wrap" alignItems="flex-end">
+          {isFindOne && (
+            <Box style={{ flex: '1 1 220px' }}>
+              <TextInput label="documentId" value={documentId}
+                onChange={(e) => setDocumentId(e.target.value)}
+                placeholder="required for findOne" />
+            </Box>
+          )}
+          <Box style={{ flex: '1 1 160px' }}>
+            <TextInput label="Act as user (id)" value={actAsUserId}
+              onChange={(e) => setActAsUserId(e.target.value)}
+              placeholder="(empty = current admin)" />
+          </Box>
+          <Button onClick={run} loading={running}>Run</Button>
+        </Flex>
+
+        <Flex gap={3} paddingTop={3} wrap="wrap" alignItems="flex-start">
+          <Box style={{ flex: '1 1 300px' }}>
+            <Typography variant="pi" fontWeight="semiBold">Query (JSON)</Typography>
+            <Textarea name="query" value={queryRaw}
+              onChange={(e) => setQueryRaw(e.target.value)} />
+            <Typography variant="pi" textColor="neutral500">
+              e.g. {`{ "pagination": { "pageSize": 5 } }`}
+            </Typography>
+          </Box>
+          {isMutation && (
+            <Box style={{ flex: '1 1 300px' }}>
+              <Typography variant="pi" fontWeight="semiBold">Body (JSON)</Typography>
+              <Textarea name="body" value={bodyRaw}
+                onChange={(e) => setBodyRaw(e.target.value)} />
+              <Typography variant="pi" textColor="neutral500">
+                Mutations are NOT executed — only the resolved body is shown.
+              </Typography>
+            </Box>
+          )}
+        </Flex>
+
+        {error && (
+          <Box paddingTop={3}>
+            <Typography textColor="danger700">{error}</Typography>
+          </Box>
+        )}
+
+        {result && (
+          <Box paddingTop={3} style={{ borderTop: '1px solid #e0e0e0', marginTop: 12 }}>
+            <Flex gap={3} alignItems="flex-start" paddingTop={3} style={{ overflowX: 'auto' }}>
+              <Box style={{ flex: '0 0 280px' }}>
+                <Typography variant="sigma">Token context</Typography>
+                <Typography variant="pi" textColor="neutral500">
+                  {result.actAsUser
+                    ? `as user #${result.actAsUser.id} (${result.actAsUser.email || result.actAsUser.username})`
+                    : 'as current admin'}
+                </Typography>
+                <pre style={{ background: '#f4f4f8', padding: 8, borderRadius: 4,
+                  fontSize: 11, margin: 0, marginTop: 4, maxHeight: 220, overflowY: 'auto' }}>
+                  {JSON.stringify(result.tokenContext, null, 2)}
+                </pre>
+              </Box>
+              <Box style={{ flex: '0 0 280px' }}>
+                <Typography variant="sigma">Resolved templates</Typography>
+                <Typography variant="pi" textColor={result.policyFound ? 'success700' : 'warning700'}>
+                  {result.policyFound ? 'policy found' : 'no policy for this role'}
+                </Typography>
+                {['filters', 'populate', 'body', 'query'].map((k) => (
+                  <Box key={k} paddingTop={1}>
+                    <Typography variant="pi" fontWeight="semiBold">{k}</Typography>
+                    <pre style={{ background: '#fafafa', padding: 6, borderRadius: 4,
+                      fontSize: 10, margin: 0, maxHeight: 100, overflowY: 'auto' }}>
+                      {JSON.stringify(result.resolved?.[k] || {}, null, 2)}
+                    </pre>
+                  </Box>
+                ))}
+              </Box>
+              <Box style={{ flex: '1 1 320px', minWidth: 280 }}>
+                <Typography variant="sigma">Strapi response</Typography>
+                {result.executed ? (
+                  <>
+                    <Typography variant="pi" textColor="success700">executed</Typography>
+                    <pre style={{ background: '#f4f4f8', padding: 8, borderRadius: 4,
+                      fontSize: 11, margin: 0, marginTop: 4, maxHeight: 320, overflowY: 'auto' }}>
+                      {JSON.stringify(result.response, null, 2)}
+                    </pre>
+                  </>
+                ) : (
+                  <Typography variant="pi" textColor="neutral500">
+                    {result.executionError
+                      ? `Not executed: ${result.executionError}`
+                      : 'Not executed (mutation action — preview only).'}
+                  </Typography>
+                )}
+                <Box paddingTop={2}>
+                  <Typography variant="pi" fontWeight="semiBold">Final query sent to Strapi</Typography>
+                  <pre style={{ background: '#fafafa', padding: 6, borderRadius: 4,
+                    fontSize: 10, margin: 0, maxHeight: 140, overflowY: 'auto' }}>
+                    {JSON.stringify(result.finalQuery, null, 2)}
+                  </pre>
+                </Box>
+              </Box>
+            </Flex>
+          </Box>
+        )}
+      </Box>
+    </Box>
+  );
+};
+
 // ── Role column inside the Method Editor ──────────────────────────────────
-const RoleColumn = ({ role, value, onChange, onRemove, sample }) => {
+const RoleColumn = ({ role, value, onChange, onRemove, sample, selection, method, onPlay }) => {
   const [rawByField, setRawByField] = React.useState({});
 
   const previews = React.useMemo(() => {
@@ -215,7 +399,7 @@ const RoleColumn = ({ role, value, onChange, onRemove, sample }) => {
       <Flex justifyContent="space-between" alignItems="flex-start" paddingBottom={2}
         style={{ position: 'sticky', top: 0, background: '#fff', zIndex: 2,
           borderBottom: '1px solid #f0f0f4' }}>
-        <Box>
+        <Box style={{ minWidth: 0, flex: 1 }}>
           <Typography variant="sigma">{role.name || role.key}</Typography>
           <Typography variant="pi" textColor="neutral500">
             <code>{role.key}</code>
@@ -231,9 +415,16 @@ const RoleColumn = ({ role, value, onChange, onRemove, sample }) => {
             </Flex>
           )}
         </Box>
-        <Button variant="danger-light" onClick={onRemove} title="Remove policy for this role">
-          ×
-        </Button>
+        <Flex gap={1}>
+          {onPlay && (
+            <Button variant="secondary" onClick={() => onPlay(role)} title="Play as this role">
+              ▶ Play
+            </Button>
+          )}
+          <Button variant="danger-light" onClick={onRemove} title="Remove policy for this role">
+            ×
+          </Button>
+        </Flex>
       </Flex>
 
       {TEMPLATE_FIELDS.map((field) => {
@@ -383,6 +574,9 @@ const MethodEditor = ({ selection, onBack }) => {
     [allRoles, policies, initialPolicies]
   );
 
+  // Play modal state — opened from a role column
+  const [playRoleKey, setPlayRoleKey] = React.useState(null);
+
   return (
     <Box>
       {/* Sticky header */}
@@ -490,23 +684,46 @@ const MethodEditor = ({ selection, onBack }) => {
                 value={value}
                 onChange={(next) => updateRole(role.key, next)}
                 onRemove={() => removeRole(role.key)}
+                onPlay={(r) => setPlayRoleKey(r.key)}
                 sample={SAMPLE_CONTEXT}
+                selection={selection}
+                method={methodInfo}
               />
             );
           })}
         </Flex>
       )}
+
+      <PlayModal
+        open={Boolean(playRoleKey)}
+        selection={selection}
+        roleKey={playRoleKey}
+        method={methodInfo}
+        onClose={() => setPlayRoleKey(null)}
+      />
     </Box>
   );
 };
 
 // ── Page shell ────────────────────────────────────────────────────────────
-const Policies = () => {
+const Policies = ({ initialSelection, onConsumeInitialSelection }) => {
   const { get } = useFetchClient();
   const [interfaces, setInterfaces] = React.useState([]);
   const [roleCount, setRoleCount] = React.useState(0);
   const [view, setView] = React.useState('browse');
   const [selection, setSelection] = React.useState(null);
+
+  // If another page deep-linked us with a (interface, method) selection, jump
+  // into the Method Editor immediately and consume the parent prop so back-
+  // navigating doesn't re-open it.
+  React.useEffect(() => {
+    if (initialSelection) {
+      setSelection(initialSelection);
+      setView('method');
+      onConsumeInitialSelection?.();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialSelection]);
 
   React.useEffect(() => {
     (async () => {
