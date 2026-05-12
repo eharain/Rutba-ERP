@@ -4119,6 +4119,7 @@ export interface PluginApiProRecordingSession
       'oneToMany',
       'plugin::api-pro.recording-entry'
     >;
+    filters: Schema.Attribute.JSON & Schema.Attribute.DefaultTo<{}>;
     key: Schema.Attribute.UID<'name'>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
