@@ -31,3 +31,5 @@ package-lock.json
 /dev-output.log
 /next
 /scripts/seed-cms-pages.js
+/packages/strapi-api-pro/.vs
+/packages/strapi-api-pro/.github
