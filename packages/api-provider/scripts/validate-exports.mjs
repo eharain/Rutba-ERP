@@ -121,7 +121,8 @@ function validateExportPath(targetPath) {
 async function validateCoreLoaders() {
     const coreModules = [
         './api/web/index.js',
-        './client/web/createWebClientProxy.js',
+        './client/index.js',
+        './endpoints/index.js',
     ];
 
     for (const relativePath of coreModules) {

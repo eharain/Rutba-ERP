@@ -2,7 +2,6 @@ export { AccAccountsEndpoints } from './acc-accounts.js';
 export { AccExpensesEndpoints } from './acc-expenses.js';
 export { AccInvoicesEndpoints } from './acc-invoices.js';
 export { AccJournalEntriesEndpoints } from './acc-journal-entries.js';
-export { AppContextEndpoints } from './app-context.js';
 export { AuthAdminEndpoints } from './auth-admin.js';
 export { AuthApiEndpoints, PublicApiEndpoints } from '../lib/http-client.js';
 export { AuthEndpoints } from './auth.js';

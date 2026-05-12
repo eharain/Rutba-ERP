@@ -1,0 +1,65 @@
+{
+  "kind": "collectionType",
+  "collectionName": "api_pro_interface_methods",
+  "info": {
+    "singularName": "api-interface-method",
+    "pluralName": "api-interface-methods",
+    "displayName": "API Interface Method"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {
+    "content-manager": {
+      "visible": false
+    },
+    "content-type-builder": {
+      "visible": false
+    }
+  },
+  "attributes": {
+    "key": {
+      "type": "string",
+      "required": true
+    },
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "action": {
+      "type": "string"
+    },
+    "method": {
+      "type": "string",
+      "required": true
+    },
+    "path": {
+      "type": "string",
+      "required": true
+    },
+    "routeTokens": {
+      "type": "json"
+    },
+    "inputSignature": {
+      "type": "json"
+    },
+    "apps": {
+      "type": "json"
+    },
+    "appRoles": {
+      "type": "json"
+    },
+    "apiInterface": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::api-pro.api-interface",
+      "inversedBy": "methods"
+    },
+    "policies": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "plugin::api-pro.api-method-policy",
+      "mappedBy": "interfaceMethod"
+    }
+  }
+}

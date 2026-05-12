@@ -13,8 +13,6 @@ export const AccInvoicesServer = createStrapiProxy(AccInvoicesEndpoints);
 import { AccJournalEntriesEndpoints } from '@/api/acc-journal-entries.js';
 export const AccJournalEntriesServer = createStrapiProxy(AccJournalEntriesEndpoints);
 
-import { AppContextEndpoints } from '@/api/app-context.js';
-export const AppContextServer = createStrapiProxy(AppContextEndpoints);
 
 import { AuthAdminEndpoints } from '@/api/auth-admin.js';
 export const AuthAdminServer = createStrapiProxy(AuthAdminEndpoints);

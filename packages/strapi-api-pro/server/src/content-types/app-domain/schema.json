@@ -1,0 +1,46 @@
+{
+  "kind": "collectionType",
+  "collectionName": "api_pro_app_domains",
+  "info": {
+    "singularName": "app-domain",
+    "pluralName": "app-domains",
+    "displayName": "App Domain",
+    "description": "Shallow app domain grouping"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {
+    "content-manager": {
+      "visible": false
+    },
+    "content-type-builder": {
+      "visible": false
+    }
+  },
+  "attributes": {
+    "key": {
+      "type": "string",
+      "required": true,
+      "unique": true,
+      "regex": "^[a-z][a-z0-9_-]*$"
+    },
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "description": {
+      "type": "text"
+    },
+    "isActive": {
+      "type": "boolean",
+      "default": true
+    },
+    "appRoles": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::api-pro.app-role",
+      "mappedBy": "appDomains"
+    }
+  }
+}

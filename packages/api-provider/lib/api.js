@@ -291,6 +291,11 @@ async function authCall(fn, ...args) {
     try {
         return await fn(...args, jwt);
     } catch (err) {
+        if (err?.response?.status === 403 && _adminMode && _appName) {
+            _adminMode = false;
+            try { localStorage.setItem('adminMode', '0'); } catch (_) {}
+            return await fn(...args, jwt);
+        }
         if (err?.response?.status !== 401) throw err;
         const newJwt = await refreshAccessToken();
         if (!newJwt) {

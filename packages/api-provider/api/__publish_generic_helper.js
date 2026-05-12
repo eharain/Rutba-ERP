@@ -1,4 +1,4 @@
-
+/*not managed*/
 export function publishMethods(contentType) {
     return {
         updateDraft: (documentId, data) => ({ path: `/${contentType}/${documentId}`, action: 'update', method: 'put', params: { status: 'draft' }, data, data }),

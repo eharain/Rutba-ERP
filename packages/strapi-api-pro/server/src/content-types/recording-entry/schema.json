@@ -1,0 +1,68 @@
+{
+  "kind": "collectionType",
+  "collectionName": "api_pro_recording_entries",
+  "info": {
+    "singularName": "recording-entry",
+    "pluralName": "recording-entries",
+    "displayName": "Recording Entry"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {
+    "content-manager": {
+      "visible": false
+    },
+    "content-type-builder": {
+      "visible": false
+    }
+  },
+  "attributes": {
+    "recordKey": {
+      "type": "string",
+      "required": true
+    },
+    "method": {
+      "type": "string",
+      "required": true
+    },
+    "path": {
+      "type": "string",
+      "required": true
+    },
+    "routeTemplate": {
+      "type": "string"
+    },
+    "statusCode": {
+      "type": "integer"
+    },
+    "query": {
+      "type": "json"
+    },
+    "body": {
+      "type": "json"
+    },
+    "headers": {
+      "type": "json"
+    },
+    "claimedContext": {
+      "type": "json"
+    },
+    "urlParts": {
+      "type": "json"
+    },
+    "count": {
+      "type": "integer",
+      "default": 1
+    },
+    "lastSeenAt": {
+      "type": "datetime"
+    },
+    "session": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::api-pro.recording-session",
+      "inversedBy": "entries"
+    }
+  }
+}

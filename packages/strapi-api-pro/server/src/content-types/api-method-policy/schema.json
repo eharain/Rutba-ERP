@@ -1,0 +1,64 @@
+{
+  "kind": "collectionType",
+  "collectionName": "api_pro_method_policies",
+  "info": {
+    "singularName": "api-method-policy",
+    "pluralName": "api-method-policies",
+    "displayName": "API Method Policy"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {
+    "content-manager": {
+      "visible": false
+    },
+    "content-type-builder": {
+      "visible": false
+    }
+  },
+  "attributes": {
+    "key": {
+      "type": "string",
+      "required": true
+    },
+    "name": {
+      "type": "string"
+    },
+    "roleKey": {
+      "type": "string",
+      "required": true
+    },
+    "resolverMode": {
+      "type": "enumeration",
+      "enum": ["strict", "lenient"],
+      "default": "strict"
+    },
+    "filtersTemplate": {
+      "type": "json",
+      "default": {}
+    },
+    "populateTemplate": {
+      "type": "json",
+      "default": {}
+    },
+    "bodyTemplate": {
+      "type": "json",
+      "default": {}
+    },
+    "queryTemplate": {
+      "type": "json",
+      "default": {}
+    },
+    "templateVersion": {
+      "type": "integer",
+      "default": 1
+    },
+    "interfaceMethod": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::api-pro.api-interface-method",
+      "inversedBy": "policies"
+    }
+  }
+}

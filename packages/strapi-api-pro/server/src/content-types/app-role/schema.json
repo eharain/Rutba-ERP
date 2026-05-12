@@ -1,0 +1,59 @@
+{
+  "kind": "collectionType",
+  "collectionName": "api_pro_app_roles",
+  "info": {
+    "singularName": "app-role",
+    "pluralName": "app-roles",
+    "displayName": "App Role",
+    "description": "Role mapped to Strapi admin role for app context validation"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {
+    "content-manager": {
+      "visible": false
+    },
+    "content-type-builder": {
+      "visible": false
+    }
+  },
+  "attributes": {
+    "key": {
+      "type": "string",
+      "required": true,
+      "unique": true,
+      "regex": "^[a-z][a-z0-9_-]*$"
+    },
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "description": {
+      "type": "text"
+    },
+    "isActive": {
+      "type": "boolean",
+      "default": true
+    },
+    "adminRoleCode": {
+      "type": "string",
+      "required": true
+    },
+    "appDomains": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::api-pro.app-domain",
+      "inversedBy": "appRoles"
+    },
+    "users": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::users-permissions.user",
+      "mappedBy": "app_roles",
+      "configurable": false,
+      "writable": false,
+      "visible": true
+    }
+  }
+}

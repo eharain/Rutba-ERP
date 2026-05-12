@@ -3,7 +3,6 @@ export * from './acc-accounts.js';
 export * from './acc-expenses.js';
 export * from './acc-invoices.js';
 export * from './acc-journal-entries.js';
-export * from './app-context.js';
 export * from './auth-admin.js';
 export * from './auth.js';
 export * from './branches.js';
