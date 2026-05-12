@@ -14,19 +14,11 @@ import FiltersBuilder from '../components/QueryBuilders/FiltersBuilder';
 import PopulateBuilder from '../components/QueryBuilders/PopulateBuilder';
 import KeyValueEditor from '../components/QueryBuilders/KeyValueEditor';
 
-const BUILDERS = {
-  filtersTemplate: FiltersBuilder,
-  populateTemplate: PopulateBuilder,
-  bodyTemplate: KeyValueEditor,
-  queryTemplate: KeyValueEditor,
-};
-
 const api = (p) => `/api-pro${p}`;
-const PAGE_SIZE = 20;
 
-// ── Sample context for live $-token preview in the Editor ─────────────────
+// ── Sample context for live $-token preview ───────────────────────────────
 const SAMPLE_CONTEXT = {
-  user: { id: 9, email: 'user@example.com', branch: { id: 2 } },
+  user: { id: 9, email: 'user@example.com', branch: { id: 2 }, hr_employee: { documentId: 'abc' } },
   claim: { appName: 'pos-desk', roleKey: 'pos_desk_cashier', domainKey: 'pos-desk' },
   query: { q: 'shoes' },
   params: { documentId: 'abc123' },
@@ -34,7 +26,6 @@ const SAMPLE_CONTEXT = {
   strapi: { request: { method: 'GET', path: '/api/products' } },
 };
 
-// ── $-syntax resolver (mirrors server/src/services/policy-resolver.js) ────
 function resolveToken(value, context) {
   if (typeof value !== 'string' || !value.startsWith('$')) return value;
   if (value === '$today') return new Date().toISOString().split('T')[0];
@@ -60,156 +51,230 @@ function resolveDeep(value, context) {
   if (typeof value === 'string' && value.startsWith('$')) return resolveToken(value, context);
   return value;
 }
-function safeParse(raw, fallback = {}) {
-  if (!raw || !raw.trim()) return fallback;
-  try { return JSON.parse(raw); } catch (e) { return { __parseError: e.message }; }
+
+const BUILDERS = {
+  filtersTemplate: FiltersBuilder,
+  populateTemplate: PopulateBuilder,
+  bodyTemplate: KeyValueEditor,
+  queryTemplate: KeyValueEditor,
+};
+const TEMPLATE_FIELDS = ['filtersTemplate', 'populateTemplate', 'queryTemplate', 'bodyTemplate'];
+const TEMPLATE_LABELS = {
+  filtersTemplate: 'Filters',
+  populateTemplate: 'Populate',
+  queryTemplate: 'Query (sort/fields/pagination)',
+  bodyTemplate: 'Body (force / overwrite)',
+};
+
+function emptyPolicy() {
+  return {
+    filtersTemplate: {},
+    populateTemplate: {},
+    bodyTemplate: {},
+    queryTemplate: {},
+    resolverMode: 'strict',
+  };
 }
 
-// ── Inline editor — replaces the row when "Edit" is clicked ───────────────
-const InlineEditor = ({ interfaces, roles, selection, onSaved, onCancel }) => {
-  const { get, put, del } = useFetchClient();
-  const { interfaceKey, methodName, roleKey } = selection;
-  const [templates, setTemplates] = React.useState({
-    filtersTemplate: '{}',
-    populateTemplate: '{}',
-    bodyTemplate: '{}',
-    queryTemplate: '{}',
-  });
-  const [message, setMessage] = React.useState('');
-  const [loading, setLoading] = React.useState(false);
-  // showRawByField[fieldName] = boolean. Default false → use builder (when one
-  // exists for that field); true → raw JSON textarea.
-  const [showRawByField, setShowRawByField] = React.useState({
-    filtersTemplate: false,
-    populateTemplate: false,
-    bodyTemplate: false,
-    queryTemplate: false,
-  });
-  const toggleRaw = (field) => setShowRawByField((s) => ({ ...s, [field]: !s[field] }));
+// ── Interface → Method tree (Browse) ──────────────────────────────────────
+const BrowseTree = ({ interfaces, roleCount, onOpenMethod }) => {
+  const [search, setSearch] = React.useState('');
+  const [collapsed, setCollapsed] = React.useState({});
 
-  React.useEffect(() => {
-    if (!interfaceKey || !methodName || !roleKey) return;
-    (async () => {
-      try {
-        const { data } = await get(api(`/policies/${interfaceKey}/${methodName}/${roleKey}`));
-        const p = data?.data || {};
-        setTemplates({
-          filtersTemplate: JSON.stringify(p.filtersTemplate || {}, null, 2),
-          populateTemplate: JSON.stringify(p.populateTemplate || {}, null, 2),
-          bodyTemplate: JSON.stringify(p.bodyTemplate || {}, null, 2),
-          queryTemplate: JSON.stringify(p.queryTemplate || {}, null, 2),
-        });
-      } catch {
-        setTemplates({
-          filtersTemplate: '{}', populateTemplate: '{}', bodyTemplate: '{}', queryTemplate: '{}',
-        });
-      }
-    })();
-  }, [get, interfaceKey, methodName, roleKey]);
+  const filtered = React.useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return interfaces;
+    return interfaces.filter((i) =>
+      (i.key || '').toLowerCase().includes(q) ||
+      (i.name || '').toLowerCase().includes(q) ||
+      (i.uid || '').toLowerCase().includes(q) ||
+      (Array.isArray(i.methods) && i.methods.some((m) => (m.name || '').toLowerCase().includes(q)))
+    );
+  }, [interfaces, search]);
 
-  const previews = React.useMemo(() => {
-    const out = {};
-    for (const k of Object.keys(templates)) {
-      const parsed = safeParse(templates[k]);
-      out[k] = parsed && parsed.__parseError ? { error: parsed.__parseError } : resolveDeep(parsed, SAMPLE_CONTEXT);
-    }
-    return out;
-  }, [templates]);
-
-  const save = async () => {
-    const payload = {
-      filtersTemplate: safeParse(templates.filtersTemplate),
-      populateTemplate: safeParse(templates.populateTemplate),
-      bodyTemplate: safeParse(templates.bodyTemplate),
-      queryTemplate: safeParse(templates.queryTemplate),
-    };
-    for (const [k, v] of Object.entries(payload)) {
-      if (v && v.__parseError) { setMessage(`Invalid JSON in ${k}: ${v.__parseError}`); return; }
-    }
-    setLoading(true);
-    setMessage('');
-    try {
-      await put(api(`/policies/${interfaceKey}/${methodName}/${roleKey}`), payload);
-      onSaved?.();
-    } catch (error) {
-      setMessage(error?.response?.data?.error?.message || 'Save failed.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const remove = async () => {
-    if (!window.confirm(`Delete policy ${interfaceKey} / ${methodName} / ${roleKey}?`)) return;
-    setLoading(true);
-    try {
-      await del(api(`/policies/${interfaceKey}/${methodName}/${roleKey}`));
-      onSaved?.();
-    } catch (error) {
-      setMessage(error?.response?.data?.error?.message || 'Delete failed.');
-    } finally {
-      setLoading(false);
-    }
+  const toggle = (key) => setCollapsed((c) => ({ ...c, [key]: !c[key] }));
+  const expandAll = () => setCollapsed({});
+  const collapseAll = () => {
+    const all = {};
+    for (const i of filtered) all[i.key] = true;
+    setCollapsed(all);
   };
 
   return (
-    <Box style={{ border: '2px solid #4945ff', borderRadius: 8, padding: 16, marginBottom: 12 }}>
-      <Flex justifyContent="space-between" alignItems="center">
-        <Typography variant="delta">
-          Editing: <code>{interfaceKey}</code> / <code>{methodName}</code> / <code>{roleKey}</code>
-        </Typography>
+    <Box>
+      <Flex justifyContent="space-between" alignItems="flex-end" wrap="wrap" gap={2} paddingTop={3}>
+        <Box style={{ flex: '1 1 300px' }}>
+          <TextInput label="Search interfaces / methods"
+            placeholder="key, uid, or method name (e.g. cash, findOne)"
+            value={search} onChange={(e) => setSearch(e.target.value)} />
+        </Box>
         <Flex gap={2}>
-          <Button variant="danger-light" onClick={remove} disabled={loading}>Delete</Button>
-          <Button variant="secondary" onClick={onCancel}>Cancel</Button>
-          <Button onClick={save} loading={loading}>Save</Button>
+          <Button variant="tertiary" onClick={expandAll}>Expand all</Button>
+          <Button variant="tertiary" onClick={collapseAll}>Collapse all</Button>
         </Flex>
       </Flex>
 
-      <Box paddingTop={2}>
-        <Typography variant="pi" textColor="neutral600">
-          Tokens: <code>$user.id</code>, <code>$user.branch.id</code>, <code>$claim.roleKey</code>, <code>$claim.appName</code>, <code>$query.q</code>, <code>$params.documentId</code>, <code>$body.x</code>, <code>$today</code>, <code>$now</code>
-        </Typography>
-      </Box>
-
-      {message && (
-        <Box paddingTop={2}>
-          <Typography textColor="danger700">{message}</Typography>
+      {filtered.length === 0 && (
+        <Box paddingTop={3}>
+          <Typography variant="pi" textColor="neutral500">
+            {interfaces.length === 0
+              ? 'No interfaces yet — run "Re-seed from api-provider" on Domains & Roles to import defaults.'
+              : 'No interfaces match the search.'}
+          </Typography>
         </Box>
       )}
 
-      {['filtersTemplate', 'populateTemplate', 'queryTemplate', 'bodyTemplate'].map((field) => {
+      <Box paddingTop={3}>
+        {filtered.map((iface) => {
+          const methods = Array.isArray(iface.methods) ? iface.methods : [];
+          const isCollapsed = collapsed[iface.key];
+          return (
+            <Box key={iface.key} style={{
+              border: '1px solid #e0e0e0', borderRadius: 8, marginBottom: 8, overflow: 'hidden',
+            }}>
+              <Flex justifyContent="space-between" alignItems="center"
+                style={{ cursor: 'pointer', padding: '8px 12px', background: '#f4f4f8' }}
+                onClick={() => toggle(iface.key)}>
+                <Box style={{ minWidth: 0, flex: 1 }}>
+                  <Flex gap={2} alignItems="center">
+                    <Typography variant="sigma">{iface.name}</Typography>
+                    <code style={{ fontSize: 10, color: '#666' }}>{iface.uid}</code>
+                  </Flex>
+                  <Typography variant="pi" textColor="neutral500">
+                    {iface.key} · {methods.length} method{methods.length === 1 ? '' : 's'}
+                  </Typography>
+                </Box>
+                <Typography variant="pi">{isCollapsed ? '▶' : '▼'}</Typography>
+              </Flex>
+              {!isCollapsed && methods.map((m) => (
+                <Flex key={m.id} justifyContent="space-between" alignItems="center"
+                  style={{ padding: '6px 12px', borderTop: '1px solid #f0f0f4' }}>
+                  <Flex gap={2} alignItems="center" style={{ minWidth: 0, flex: 1 }}>
+                    <span style={{ padding: '1px 6px', border: '1px solid #ccc',
+                      borderRadius: 4, fontSize: 10, fontWeight: 700,
+                      fontFamily: 'ui-monospace, Menlo, monospace' }}>
+                      {(m.method || 'GET').toUpperCase()}
+                    </span>
+                    <Typography variant="sigma">{m.name}</Typography>
+                    <span style={{ background: '#e8eaf6', color: '#4945ff',
+                      padding: '0 6px', borderRadius: 8, fontSize: 10, fontWeight: 600 }}>
+                      {m.action || '?'}
+                    </span>
+                    <Typography variant="pi" textColor="neutral500"
+                      style={{ fontFamily: 'ui-monospace, Menlo, monospace', whiteSpace: 'nowrap',
+                        overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {m.path}
+                    </Typography>
+                  </Flex>
+                  <Button variant="tertiary"
+                    onClick={() => onOpenMethod({ interfaceKey: iface.key, methodName: m.name, action: m.action, path: m.path, httpMethod: m.method, interfaceName: iface.name, interfaceUid: iface.uid })}>
+                    Edit policies →
+                  </Button>
+                </Flex>
+              ))}
+              {!isCollapsed && methods.length === 0 && (
+                <Box padding={3}>
+                  <Typography variant="pi" textColor="neutral500">
+                    This interface has no methods yet.
+                  </Typography>
+                </Box>
+              )}
+            </Box>
+          );
+        })}
+      </Box>
+
+      <Box paddingTop={2}>
+        <Typography variant="pi" textColor="neutral500">
+          {filtered.length} interface{filtered.length === 1 ? '' : 's'} ·
+          {' '}{roleCount} role{roleCount === 1 ? '' : 's'} available system-wide
+        </Typography>
+      </Box>
+    </Box>
+  );
+};
+
+// ── Role column inside the Method Editor ──────────────────────────────────
+const RoleColumn = ({ role, value, onChange, onRemove, sample }) => {
+  const [rawByField, setRawByField] = React.useState({});
+
+  const previews = React.useMemo(() => {
+    const out = {};
+    for (const f of TEMPLATE_FIELDS) {
+      out[f] = resolveDeep(value?.[f] || {}, sample);
+    }
+    return out;
+  }, [value, sample]);
+
+  return (
+    <Box style={{
+      flex: '0 0 460px', minWidth: 420, maxWidth: 480,
+      border: '1px solid #e0e0e0', borderRadius: 8, padding: 12,
+      background: '#fff', maxHeight: '70vh', overflowY: 'auto',
+    }}>
+      <Flex justifyContent="space-between" alignItems="flex-start" paddingBottom={2}
+        style={{ position: 'sticky', top: 0, background: '#fff', zIndex: 2,
+          borderBottom: '1px solid #f0f0f4' }}>
+        <Box>
+          <Typography variant="sigma">{role.name || role.key}</Typography>
+          <Typography variant="pi" textColor="neutral500">
+            <code>{role.key}</code>
+          </Typography>
+          {role.appDomains?.length > 0 && (
+            <Flex gap={1} paddingTop={1} wrap="wrap">
+              {role.appDomains.map((d) => (
+                <span key={d.id} style={{ background: '#f0f0f4', color: '#666',
+                  padding: '0 6px', borderRadius: 8, fontSize: 10 }}>
+                  {d.key}
+                </span>
+              ))}
+            </Flex>
+          )}
+        </Box>
+        <Button variant="danger-light" onClick={onRemove} title="Remove policy for this role">
+          ×
+        </Button>
+      </Flex>
+
+      {TEMPLATE_FIELDS.map((field) => {
         const Builder = BUILDERS[field];
-        const hasBuilder = Boolean(Builder);
-        const showRaw = !hasBuilder || showRawByField[field];
-        const parsedValue = (() => { try { return JSON.parse(templates[field] || '{}'); } catch { return {}; } })();
+        const showRaw = !!rawByField[field];
+        const fieldValue = value?.[field] || {};
         return (
           <Box key={field} paddingTop={3}>
             <Flex justifyContent="space-between" alignItems="center">
-              <Typography variant="sigma">{field}</Typography>
-              {hasBuilder && (
-                <Button variant="tertiary" onClick={() => toggleRaw(field)}>
-                  {showRaw ? 'Use visual builder' : 'Show raw JSON'}
-                </Button>
+              <Typography variant="pi" fontWeight="semiBold">{TEMPLATE_LABELS[field]}</Typography>
+              <button type="button" onClick={() => setRawByField((s) => ({ ...s, [field]: !s[field] }))}
+                style={{ border: 'none', background: 'transparent', color: '#4945ff',
+                  cursor: 'pointer', fontSize: 10, padding: 0 }}>
+                {showRaw ? 'visual' : 'raw JSON'}
+              </button>
+            </Flex>
+            <Box paddingTop={1}>
+              {showRaw ? (
+                <Textarea name={field}
+                  value={JSON.stringify(fieldValue, null, 2)}
+                  onChange={(e) => {
+                    try {
+                      onChange({ ...value, [field]: JSON.parse(e.target.value || '{}') });
+                    } catch {
+                      // ignore invalid JSON while typing
+                    }
+                  }} />
+              ) : (
+                <Builder
+                  value={fieldValue}
+                  onChange={(next) => onChange({ ...value, [field]: next || {} })}
+                />
               )}
-            </Flex>
-            <Flex gap={2} alignItems="flex-start" wrap="wrap" paddingTop={1}>
-              <Box style={{ flex: '1 1 360px', minWidth: 300 }}>
-                {showRaw ? (
-                  <Textarea name={field} value={templates[field]}
-                    onChange={(e) => setTemplates((t) => ({ ...t, [field]: e.target.value }))} />
-                ) : (
-                  <Builder
-                    value={parsedValue}
-                    onChange={(nextObj) => setTemplates((t) => ({ ...t, [field]: JSON.stringify(nextObj || {}, null, 2) }))}
-                  />
-                )}
-              </Box>
-              <Box style={{ flex: '1 1 360px', minWidth: 300 }}>
-                <Typography variant="pi" textColor="neutral500">Resolved (sample context)</Typography>
-                <pre style={{ background: '#f4f4f8', padding: 8, borderRadius: 4, fontSize: 11, margin: 0 }}>
-                  {JSON.stringify(previews[field], null, 2)}
-                </pre>
-              </Box>
-            </Flex>
+            </Box>
+            <Box paddingTop={1}>
+              <Typography variant="pi" textColor="neutral500">Resolved (sample $-context)</Typography>
+              <pre style={{ background: '#fafafa', padding: 6, borderRadius: 4,
+                fontSize: 10, margin: 0, maxHeight: 100, overflowY: 'auto' }}>
+                {JSON.stringify(previews[field], null, 2)}
+              </pre>
+            </Box>
           </Box>
         );
       })}
@@ -217,305 +282,216 @@ const InlineEditor = ({ interfaces, roles, selection, onSaved, onCancel }) => {
   );
 };
 
-// ── Browse tab ────────────────────────────────────────────────────────────
-const Browse = ({ interfaces, roles }) => {
-  const { get } = useFetchClient();
-  const [interfaceKey, setInterfaceKey] = React.useState('');
-  const [methodName, setMethodName] = React.useState('');
-  const [roleKey, setRoleKey] = React.useState('');
-  const [search, setSearch] = React.useState('');
-  const [policies, setPolicies] = React.useState([]);
-  const [loading, setLoading] = React.useState(false);
-  const [page, setPage] = React.useState(1);
-  const [editing, setEditing] = React.useState(null); // { interfaceKey, methodName, roleKey }
+// ── Method Editor (comparative role columns) ──────────────────────────────
+const MethodEditor = ({ selection, onBack }) => {
+  const { get, put } = useFetchClient();
+  const [methodInfo, setMethodInfo] = React.useState(null);
+  const [allRoles, setAllRoles] = React.useState([]);
+  // Working state: { [roleKey]: { filtersTemplate, ... } | null (= delete) }
+  const [policies, setPolicies] = React.useState({});
+  const [initialPolicies, setInitialPolicies] = React.useState({});
+  const [loading, setLoading] = React.useState(true);
+  const [saving, setSaving] = React.useState(false);
+  const [message, setMessage] = React.useState('');
+  const [addRoleKey, setAddRoleKey] = React.useState('');
+  const [roleSearch, setRoleSearch] = React.useState('');
 
-  const currentInterface = interfaces.find((i) => i.key === interfaceKey);
-  const methodOptions = (currentInterface?.methods || []).map((m) => m.name);
+  const { interfaceKey, methodName } = selection;
 
   const load = React.useCallback(async () => {
     setLoading(true);
+    setMessage('');
     try {
-      const params = new URLSearchParams();
-      if (interfaceKey) params.set('interfaceKey', interfaceKey);
-      if (methodName) params.set('methodKey', methodName);
-      if (roleKey) params.set('roleKey', roleKey);
-      const { data } = await get(api(`/policies?${params.toString()}`));
-      setPolicies(data?.data || []);
-    } catch {
-      setPolicies([]);
+      const { data } = await get(api(`/policies/method/${interfaceKey}/${methodName}`));
+      const d = data?.data || {};
+      setMethodInfo(d.method || null);
+      setAllRoles(d.allRoles || []);
+      setPolicies(d.policies || {});
+      setInitialPolicies(d.policies || {});
+    } catch (error) {
+      setMessage(error?.response?.data?.error?.message || 'Failed to load method policies.');
     } finally {
       setLoading(false);
     }
-  }, [get, interfaceKey, methodName, roleKey]);
+  }, [get, interfaceKey, methodName]);
 
   React.useEffect(() => { load(); }, [load]);
-  React.useEffect(() => { setPage(1); }, [interfaceKey, methodName, roleKey, search]);
 
-  const filtered = React.useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return policies;
-    return policies.filter((p) =>
-      (p.roleKey || '').toLowerCase().includes(q) ||
-      (p.key || '').toLowerCase().includes(q) ||
-      (p.name || '').toLowerCase().includes(q)
-    );
-  }, [policies, search]);
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const safePage = Math.min(page, totalPages);
-  const paged = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
-
-  // Parse method name out of composite key `${interfaceKey}:${methodName}`
-  const methodNameOf = (p) => {
-    const k = p.interfaceMethod?.key || '';
-    const colon = k.indexOf(':');
-    return colon > 0 ? k.slice(colon + 1) : p.interfaceMethod?.name || '';
-  };
-  const interfaceKeyOf = (p) => {
-    const k = p.interfaceMethod?.key || '';
-    const colon = k.indexOf(':');
-    return colon > 0 ? k.slice(0, colon) : '';
+  const updateRole = (roleKey, next) => {
+    setPolicies((p) => ({ ...p, [roleKey]: next }));
   };
 
-  const summarize = (obj) => {
-    if (!obj || typeof obj !== 'object') return '';
-    const keys = Object.keys(obj);
-    if (keys.length === 0) return '(empty)';
-    return keys.slice(0, 3).join(', ') + (keys.length > 3 ? `, +${keys.length - 3}` : '');
+  const addRole = () => {
+    if (!addRoleKey) return;
+    if (policies[addRoleKey] != null) { setAddRoleKey(''); return; }
+    setPolicies((p) => ({ ...p, [addRoleKey]: emptyPolicy() }));
+    setAddRoleKey('');
   };
 
-  const openEditor = (p) =>
-    setEditing({ interfaceKey: interfaceKeyOf(p), methodName: methodNameOf(p), roleKey: p.roleKey });
-
-  const closeEditor = (refresh) => {
-    setEditing(null);
-    if (refresh) load();
+  const removeRole = (roleKey) => {
+    // null in state = mark for deletion on save
+    setPolicies((p) => ({ ...p, [roleKey]: null }));
   };
 
-  return (
-    <Box paddingTop={4}>
-      <Flex gap={3} wrap="wrap" alignItems="flex-end">
-        <Box style={{ flex: '1 1 200px', minWidth: 180 }}>
-          <SingleSelect label="Interface" value={interfaceKey} onChange={setInterfaceKey}
-            placeholder="All interfaces" onClear={() => setInterfaceKey('')}>
-            {interfaces.map((i) => (
-              <SingleSelectOption key={i.id} value={i.key}>{i.key}</SingleSelectOption>
-            ))}
-          </SingleSelect>
-        </Box>
-        <Box style={{ flex: '1 1 200px', minWidth: 180 }}>
-          <SingleSelect label="Method" value={methodName} onChange={setMethodName}
-            placeholder="All methods" disabled={!currentInterface}
-            onClear={() => setMethodName('')}>
-            {methodOptions.map((m) => (
-              <SingleSelectOption key={m} value={m}>{m}</SingleSelectOption>
-            ))}
-          </SingleSelect>
-        </Box>
-        <Box style={{ flex: '1 1 200px', minWidth: 180 }}>
-          <SingleSelect label="Role" value={roleKey} onChange={setRoleKey}
-            placeholder="All roles" onClear={() => setRoleKey('')}>
-            {roles.map((r) => (
-              <SingleSelectOption key={r.id} value={r.key}>{r.key}</SingleSelectOption>
-            ))}
-          </SingleSelect>
-        </Box>
-        <Box style={{ flex: '1 1 200px' }}>
-          <TextInput label="Search" placeholder="role, key or name"
-            value={search} onChange={(e) => setSearch(e.target.value)} />
-        </Box>
-        <Typography variant="pi" textColor="neutral500">
-          {filtered.length} match{filtered.length === 1 ? '' : 'es'}
-        </Typography>
-      </Flex>
+  const undoRemove = (roleKey) => {
+    setPolicies((p) => ({ ...p, [roleKey]: initialPolicies[roleKey] || emptyPolicy() }));
+  };
 
-      <Box paddingTop={3}>
-        {editing && (
-          <InlineEditor
-            interfaces={interfaces}
-            roles={roles}
-            selection={editing}
-            onSaved={() => closeEditor(true)}
-            onCancel={() => closeEditor(false)}
-          />
-        )}
-
-        {loading && <Typography textColor="neutral500">Loading…</Typography>}
-
-        {!loading && paged.length === 0 && (
-          <Typography variant="pi" textColor="neutral500">
-            {policies.length === 0
-              ? 'No policies match the current filters. Run "Re-seed from api-provider" on Domains & Roles to import defaults.'
-              : 'No policies match the search.'}
-          </Typography>
-        )}
-
-        {!loading && paged.map((p) => {
-          const ik = interfaceKeyOf(p);
-          const mn = methodNameOf(p);
-          const isOpen = editing && editing.interfaceKey === ik && editing.methodName === mn && editing.roleKey === p.roleKey;
-          if (isOpen) return null;
-          return (
-            <Flex key={p.id} justifyContent="space-between" alignItems="center" padding={2}
-              style={{ border: '1px solid #e0e0e0', borderRadius: 8, marginBottom: 6 }}
-            >
-              <Box style={{ flex: 1, minWidth: 0 }}>
-                <Flex gap={2} alignItems="center" wrap="wrap">
-                  <Typography variant="sigma">{p.roleKey}</Typography>
-                  <span style={{ padding: '1px 6px', background: '#e8eaf6', borderRadius: 8, fontSize: 10 }}>
-                    {ik}
-                  </span>
-                  <span style={{ padding: '1px 6px', background: '#fff3e0', borderRadius: 8, fontSize: 10 }}>
-                    {mn}
-                  </span>
-                </Flex>
-                <Typography variant="pi" textColor="neutral500">
-                  filters: {summarize(p.filtersTemplate)} · populate: {summarize(p.populateTemplate)} ·{' '}
-                  body: {summarize(p.bodyTemplate)} · query: {summarize(p.queryTemplate)}
-                </Typography>
-              </Box>
-              <Button variant="tertiary" onClick={() => openEditor(p)}>Edit</Button>
-            </Flex>
-          );
-        })}
-      </Box>
-
-      {totalPages > 1 && (
-        <Flex justifyContent="space-between" alignItems="center" paddingTop={2}>
-          <Button variant="secondary" disabled={safePage <= 1}
-            onClick={() => setPage((x) => Math.max(1, x - 1))}>Prev</Button>
-          <Typography variant="pi">Page {safePage} / {totalPages}</Typography>
-          <Button variant="secondary" disabled={safePage >= totalPages}
-            onClick={() => setPage((x) => Math.min(totalPages, x + 1))}>Next</Button>
-        </Flex>
-      )}
-    </Box>
-  );
-};
-
-// ── Comparative tab ───────────────────────────────────────────────────────
-const Comparative = ({ interfaces, roles }) => {
-  const { get } = useFetchClient();
-  const [interfaceKey, setInterfaceKey] = React.useState('');
-  const [methodName, setMethodName] = React.useState('');
-  const [selectedRoleKeys, setSelectedRoleKeys] = React.useState([]);
-  const [policiesByRole, setPoliciesByRole] = React.useState({});
-  const [roleSearch, setRoleSearch] = React.useState('');
-  const [loading, setLoading] = React.useState(false);
-
-  const currentInterface = interfaces.find((i) => i.key === interfaceKey);
-  const methodOptions = (currentInterface?.methods || []).map((m) => m.name);
-
-  React.useEffect(() => {
-    if (currentInterface && !methodOptions.includes(methodName)) setMethodName('');
-  }, [currentInterface, methodOptions, methodName]);
-
-  const load = React.useCallback(async () => {
-    if (!interfaceKey || !methodName || selectedRoleKeys.length === 0) {
-      setPoliciesByRole({});
-      return;
+  const saveAll = async () => {
+    setSaving(true);
+    setMessage('');
+    try {
+      const { data } = await put(api(`/policies/method/${interfaceKey}/${methodName}`), { policies });
+      const r = data?.data || {};
+      setMessage(`Saved ${r.saved?.length || 0} · deleted ${r.deleted?.length || 0}` +
+        (r.errors?.length ? ` · ${r.errors.length} error(s)` : ''));
+      await load();
+    } catch (error) {
+      setMessage(error?.response?.data?.error?.message || 'Save failed.');
+    } finally {
+      setSaving(false);
     }
-    setLoading(true);
-    const out = {};
-    await Promise.all(
-      selectedRoleKeys.map(async (rk) => {
-        try {
-          const { data } = await get(api(`/policies/${interfaceKey}/${methodName}/${rk}`));
-          out[rk] = data?.data || null;
-        } catch { out[rk] = null; }
-      })
-    );
-    setPoliciesByRole(out);
-    setLoading(false);
-  }, [get, interfaceKey, methodName, selectedRoleKeys]);
-
-  React.useEffect(() => { load(); }, [load]);
-
-  const filteredRoleOptions = React.useMemo(() => {
-    const q = roleSearch.trim().toLowerCase();
-    return roles.filter((r) => !q || (r.key || '').toLowerCase().includes(q) || (r.name || '').toLowerCase().includes(q));
-  }, [roles, roleSearch]);
-
-  const toggleRole = (key) => {
-    setSelectedRoleKeys((prev) => {
-      if (prev.includes(key)) return prev.filter((k) => k !== key);
-      if (prev.length >= 6) return prev; // hard cap to keep view usable
-      return [...prev, key];
-    });
   };
 
-  return (
-    <Box paddingTop={4}>
-      <Flex gap={3} wrap="wrap" alignItems="flex-end">
-        <Box style={{ flex: '1 1 200px', minWidth: 180 }}>
-          <SingleSelect label="Interface" value={interfaceKey} onChange={setInterfaceKey} placeholder="Choose">
-            {interfaces.map((i) => <SingleSelectOption key={i.id} value={i.key}>{i.key}</SingleSelectOption>)}
-          </SingleSelect>
-        </Box>
-        <Box style={{ flex: '1 1 200px', minWidth: 180 }}>
-          <SingleSelect label="Method" value={methodName} onChange={setMethodName}
-            placeholder="Choose" disabled={!currentInterface}>
-            {methodOptions.map((m) => <SingleSelectOption key={m} value={m}>{m}</SingleSelectOption>)}
-          </SingleSelect>
-        </Box>
-        <Box style={{ flex: '1 1 220px' }}>
-          <TextInput label="Filter roles" placeholder="key or name"
-            value={roleSearch} onChange={(e) => setRoleSearch(e.target.value)} />
-        </Box>
-      </Flex>
+  const dirty = React.useMemo(() => {
+    const ka = new Set([...Object.keys(policies), ...Object.keys(initialPolicies)]);
+    for (const k of ka) {
+      if (JSON.stringify(policies[k] || null) !== JSON.stringify(initialPolicies[k] || null)) return true;
+    }
+    return false;
+  }, [policies, initialPolicies]);
 
-      <Box paddingTop={3}>
-        <Typography variant="pi" textColor="neutral600">
-          Pick up to 6 roles to compare side-by-side · {selectedRoleKeys.length} / 6 selected
-        </Typography>
-        <Flex gap={1} wrap="wrap" paddingTop={1} style={{ maxHeight: 100, overflowY: 'auto' }}>
-          {filteredRoleOptions.map((r) => {
-            const checked = selectedRoleKeys.includes(r.key);
-            const disabled = !checked && selectedRoleKeys.length >= 6;
-            return (
-              <label key={r.id} style={{ cursor: disabled ? 'not-allowed' : 'pointer',
-                padding: '2px 8px', border: '1px solid #ccc', borderRadius: 12,
-                background: checked ? '#e8eaf6' : 'transparent', fontSize: 11, opacity: disabled ? 0.5 : 1 }}>
-                <input type="checkbox" checked={checked} disabled={disabled}
-                  onChange={() => toggleRole(r.key)} style={{ marginRight: 4 }} />
-                {r.key}
-              </label>
-            );
-          })}
+  // Filter the visible role columns by search (just for visibility; doesn't affect save)
+  const presentRoles = React.useMemo(() => {
+    const list = [];
+    for (const role of allRoles) {
+      if (policies[role.key] !== undefined) list.push(role);
+    }
+    return list;
+  }, [allRoles, policies]);
+
+  const visibleRoles = React.useMemo(() => {
+    const q = roleSearch.trim().toLowerCase();
+    if (!q) return presentRoles;
+    return presentRoles.filter((r) =>
+      (r.key || '').toLowerCase().includes(q) || (r.name || '').toLowerCase().includes(q)
+    );
+  }, [presentRoles, roleSearch]);
+
+  const addableRoles = React.useMemo(() =>
+    allRoles.filter((r) => policies[r.key] == null && !initialPolicies[r.key]),
+    [allRoles, policies, initialPolicies]
+  );
+
+  return (
+    <Box>
+      {/* Sticky header */}
+      <Box style={{ position: 'sticky', top: 0, background: '#fff', zIndex: 10,
+        borderBottom: '1px solid #e0e0e0', paddingBottom: 8, marginBottom: 8 }}>
+        <Flex justifyContent="space-between" alignItems="center" wrap="wrap" gap={2}>
+          <Box>
+            <Button variant="tertiary" onClick={onBack}>← back to browse</Button>
+            <Box paddingTop={1}>
+              <Flex gap={2} alignItems="center" wrap="wrap">
+                <Typography variant="beta">{selection.interfaceName || interfaceKey}</Typography>
+                <Typography variant="pi" textColor="neutral500">/</Typography>
+                <Typography variant="sigma">{methodName}</Typography>
+                {methodInfo && (
+                  <>
+                    <span style={{ padding: '1px 6px', border: '1px solid #ccc',
+                      borderRadius: 4, fontSize: 10, fontWeight: 700,
+                      fontFamily: 'ui-monospace, Menlo, monospace' }}>
+                      {(methodInfo.method || 'GET').toUpperCase()}
+                    </span>
+                    <code style={{ fontSize: 11, color: '#666' }}>{methodInfo.path}</code>
+                  </>
+                )}
+              </Flex>
+              {selection.interfaceUid && (
+                <Typography variant="pi" textColor="neutral500">
+                  <code style={{ fontSize: 11 }}>{selection.interfaceUid}.{methodInfo?.action || methodName}</code>
+                </Typography>
+              )}
+            </Box>
+          </Box>
+          <Flex gap={2} alignItems="center">
+            {dirty && <Typography variant="pi" textColor="warning700">unsaved changes</Typography>}
+            <Button variant="secondary" onClick={load} disabled={saving}>Reload</Button>
+            <Button onClick={saveAll} loading={saving} disabled={!dirty}>Save All</Button>
+          </Flex>
+        </Flex>
+
+        {message && (
+          <Box paddingTop={2}>
+            <Typography textColor={message.startsWith('Saved') ? 'success700' : 'danger700'}>
+              {message}
+            </Typography>
+          </Box>
+        )}
+
+        <Flex gap={3} paddingTop={3} wrap="wrap" alignItems="flex-end">
+          <Box style={{ flex: '0 0 260px' }}>
+            <SingleSelect label="Add policy for role"
+              placeholder={addableRoles.length === 0 ? 'all roles already configured' : 'pick a role…'}
+              value={addRoleKey}
+              onChange={(v) => setAddRoleKey(v || '')}
+              onClear={() => setAddRoleKey('')}
+              disabled={addableRoles.length === 0}
+            >
+              {addableRoles.map((r) => (
+                <SingleSelectOption key={r.id} value={r.key}>{r.key}</SingleSelectOption>
+              ))}
+            </SingleSelect>
+          </Box>
+          <Button onClick={addRole} disabled={!addRoleKey}>+ Add column</Button>
+          <Box style={{ flex: '0 0 260px' }}>
+            <TextInput label="Filter visible columns" placeholder="role key or name"
+              value={roleSearch} onChange={(e) => setRoleSearch(e.target.value)} />
+          </Box>
+          <Typography variant="pi" textColor="neutral500">
+            {presentRoles.length} role policy column{presentRoles.length === 1 ? '' : 's'} ·
+            {' '}showing {visibleRoles.length}
+          </Typography>
         </Flex>
       </Box>
 
-      {loading && <Typography textColor="neutral500" paddingTop={2}>Loading…</Typography>}
-
-      {interfaceKey && methodName && selectedRoleKeys.length > 0 && !loading && (
-        <Flex gap={3} paddingTop={3} alignItems="flex-start" style={{ overflowX: 'auto' }}>
-          {selectedRoleKeys.map((rk) => {
-            const p = policiesByRole[rk];
+      {loading ? (
+        <Typography textColor="neutral500">Loading…</Typography>
+      ) : presentRoles.length === 0 ? (
+        <Box paddingTop={4}>
+          <Typography variant="pi" textColor="neutral500">
+            No role policies for this method yet. Add one via the "Add policy for role" picker above.
+          </Typography>
+        </Box>
+      ) : (
+        <Flex gap={3} alignItems="flex-start" style={{ overflowX: 'auto', paddingBottom: 12 }}>
+          {visibleRoles.map((role) => {
+            const value = policies[role.key];
+            if (value === null) {
+              // Marked for deletion
+              return (
+                <Box key={role.key} style={{
+                  flex: '0 0 280px', border: '1px dashed #d02b20', borderRadius: 8,
+                  padding: 12, background: '#fcecea',
+                }}>
+                  <Typography variant="sigma">{role.name || role.key}</Typography>
+                  <Typography variant="pi" textColor="danger700" paddingTop={1}>
+                    Marked for deletion. Save All to apply.
+                  </Typography>
+                  <Box paddingTop={2}>
+                    <Button variant="tertiary" onClick={() => undoRemove(role.key)}>Undo</Button>
+                  </Box>
+                </Box>
+              );
+            }
             return (
-              <Box key={rk} style={{ flex: '0 0 280px', border: '1px solid #e0e0e0',
-                borderRadius: 8, padding: 12, background: p ? 'transparent' : '#fafafa' }}>
-                <Typography variant="sigma">{rk}</Typography>
-                {p ? (
-                  <Box paddingTop={2}>
-                    {['filtersTemplate', 'populateTemplate', 'queryTemplate', 'bodyTemplate'].map((f) => {
-                      const value = p[f];
-                      const isEmpty = !value || (typeof value === 'object' && Object.keys(value).length === 0);
-                      return (
-                        <Box key={f} paddingTop={2}>
-                          <Typography variant="pi" fontWeight="semiBold" textColor="neutral600">{f}</Typography>
-                          <pre style={{ background: '#f4f4f8', padding: 6, borderRadius: 4, fontSize: 11, margin: 0 }}>
-                            {isEmpty ? '(empty)' : JSON.stringify(value, null, 2)}
-                          </pre>
-                        </Box>
-                      );
-                    })}
-                  </Box>
-                ) : (
-                  <Box paddingTop={2}>
-                    <Typography variant="pi" textColor="neutral400">No policy for this role.</Typography>
-                  </Box>
-                )}
-              </Box>
+              <RoleColumn key={role.key}
+                role={role}
+                value={value}
+                onChange={(next) => updateRole(role.key, next)}
+                onRemove={() => removeRole(role.key)}
+                sample={SAMPLE_CONTEXT}
+              />
             );
           })}
         </Flex>
@@ -527,39 +503,43 @@ const Comparative = ({ interfaces, roles }) => {
 // ── Page shell ────────────────────────────────────────────────────────────
 const Policies = () => {
   const { get } = useFetchClient();
-  const [tab, setTab] = React.useState('browse');
   const [interfaces, setInterfaces] = React.useState([]);
-  const [roles, setRoles] = React.useState([]);
+  const [roleCount, setRoleCount] = React.useState(0);
+  const [view, setView] = React.useState('browse');
+  const [selection, setSelection] = React.useState(null);
 
   React.useEffect(() => {
     (async () => {
       try {
         const [i, r] = await Promise.all([get(api('/interfaces')), get(api('/roles'))]);
         setInterfaces(i?.data?.data || []);
-        setRoles(r?.data?.data || []);
-      } catch { /* surfaced inside the tab */ }
+        setRoleCount((r?.data?.data || []).length);
+      } catch { /* surfaced inside views */ }
     })();
   }, [get]);
 
+  const openMethod = (sel) => {
+    setSelection(sel);
+    setView('method');
+  };
+  const backToBrowse = () => {
+    setView('browse');
+    setSelection(null);
+  };
+
   return (
     <Box>
-      <Typography variant="beta">Method Policies</Typography>
-      <Typography variant="omega" textColor="neutral600">
-        {interfaces.length} interface(s) · {roles.length} role(s) available
-      </Typography>
-      <Flex gap={2} paddingTop={2}>
-        <Button variant={tab === 'browse' ? 'default' : 'secondary'} onClick={() => setTab('browse')}>
-          Browse & Edit
-        </Button>
-        <Button variant={tab === 'comparative' ? 'default' : 'secondary'} onClick={() => setTab('comparative')}>
-          Comparative
-        </Button>
-      </Flex>
-
-      {tab === 'browse'
-        ? <Browse interfaces={interfaces} roles={roles} />
-        : <Comparative interfaces={interfaces} roles={roles} />
-      }
+      {view === 'browse' ? (
+        <>
+          <Typography variant="beta">Method Policies</Typography>
+          <Typography variant="omega" textColor="neutral600">
+            Pick a method to edit its policies for all roles side-by-side.
+          </Typography>
+          <BrowseTree interfaces={interfaces} roleCount={roleCount} onOpenMethod={openMethod} />
+        </>
+      ) : (
+        <MethodEditor selection={selection} onBack={backToBrowse} />
+      )}
     </Box>
   );
 };

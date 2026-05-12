@@ -57,7 +57,7 @@ const index = {
         defaultMessage: "Strapi API Pro"
       },
       Component: async () => {
-        const { default: App } = await import("../_chunks/App-CBEJGC6t.mjs");
+        const { default: App } = await import("../_chunks/App-BhKopWkP.mjs");
         return App;
       }
     });

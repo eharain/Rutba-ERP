@@ -108,9 +108,113 @@ async function remove(strapi, { interfaceKey, methodKey, roleKey }) {
   return { interfaceKey, methodKey, roleKey: normalizedRoleKey, deleted: true };
 }
 
+// Bulk fetch all role policies for a single (interface, method). Used by
+// the Comparative Editor so the UI gets a `{ roleKey: templates }` map plus
+// the list of all available roles (so it can offer to ADD a policy for a
+// role that doesn't have one yet).
+async function findForMethod(strapi, { interfaceKey, methodKey }) {
+  const METHOD_UID = 'plugin::api-pro.api-interface-method';
+  const ROLE_UID = 'plugin::api-pro.app-role';
+
+  const method = await strapi.db.query(METHOD_UID).findOne({
+    where: { key: `${interfaceKey}:${methodKey}` },
+    populate: { apiInterface: true },
+  });
+  if (!method) {
+    const err = new Error(`method '${interfaceKey}:${methodKey}' not found`);
+    err.status = 404;
+    throw err;
+  }
+
+  const rows = await strapi.db.query(POLICY_UID).findMany({
+    where: { interfaceMethod: { id: method.id } },
+    orderBy: { roleKey: 'asc' },
+  });
+
+  const policies = {};
+  for (const r of rows) {
+    policies[r.roleKey] = {
+      id: r.id,
+      key: r.key,
+      name: r.name,
+      resolverMode: r.resolverMode,
+      filtersTemplate: r.filtersTemplate || {},
+      populateTemplate: r.populateTemplate || {},
+      bodyTemplate: r.bodyTemplate || {},
+      queryTemplate: r.queryTemplate || {},
+      templateVersion: r.templateVersion,
+    };
+  }
+
+  const allRoles = await strapi.db.query(ROLE_UID).findMany({
+    where: { isActive: true },
+    populate: { appDomains: { select: ['id', 'key', 'name'] } },
+    orderBy: { key: 'asc' },
+  });
+
+  return {
+    interfaceKey,
+    methodKey,
+    method: {
+      id: method.id,
+      action: method.action,
+      method: method.method,
+      path: method.path,
+      apiInterfaceUid: method.apiInterface?.uid || null,
+      apiInterfaceKey: method.apiInterface?.key || null,
+    },
+    policies,
+    allRoles: allRoles.map((r) => ({
+      id: r.id,
+      key: r.key,
+      name: r.name || r.key,
+      adminRoleCode: r.adminRoleCode || null,
+      appDomains: Array.isArray(r.appDomains)
+        ? r.appDomains.map((d) => ({ id: d.id, key: d.key, name: d.name || d.key }))
+        : [],
+    })),
+  };
+}
+
+// Bulk upsert: accepts { [roleKey]: templates } and saves each. Roles with
+// a null/false value are DELETED (so the UI can remove a role's policy by
+// passing null). Each row goes file-first then DB-sync (idempotent).
+async function bulkUpsertForMethod(strapi, { interfaceKey, methodKey, policies }) {
+  if (!interfaceKey || !methodKey) {
+    const err = new Error('interfaceKey and methodKey are required');
+    err.status = 400;
+    throw err;
+  }
+  if (!policies || typeof policies !== 'object') {
+    const err = new Error('policies must be an object keyed by roleKey');
+    err.status = 400;
+    throw err;
+  }
+
+  const results = { saved: [], deleted: [], errors: [] };
+  for (const [rawRoleKey, value] of Object.entries(policies)) {
+    const roleKey = String(rawRoleKey).toLowerCase();
+    try {
+      if (value === null || value === false) {
+        await remove(strapi, { interfaceKey, methodKey, roleKey });
+        results.deleted.push(roleKey);
+      } else {
+        await upsert(strapi, { interfaceKey, methodKey, roleKey, data: value });
+        results.saved.push(roleKey);
+      }
+    } catch (error) {
+      results.errors.push({ roleKey, message: error?.message || 'unknown error' });
+    }
+  }
+
+  return results;
+}
+
 module.exports = {
   list,
   findOne,
   upsert,
   remove,
+  findForMethod,
+  bulkUpsertForMethod,
 };

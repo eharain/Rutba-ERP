@@ -197,6 +197,19 @@ module.exports = {
         handler: 'policies.remove',
         config: { policies: [] },
       },
+      // ── Comparative editor: bulk fetch / save all policies for a method ─
+      {
+        method: 'GET',
+        path: '/policies/method/:interfaceKey/:methodKey',
+        handler: 'policies.findForMethod',
+        config: { policies: [] },
+      },
+      {
+        method: 'PUT',
+        path: '/policies/method/:interfaceKey/:methodKey',
+        handler: 'policies.bulkUpsertForMethod',
+        config: { policies: [] },
+      },
 
       // ── Admin tools ──────────────────────────────────────────────────
       {

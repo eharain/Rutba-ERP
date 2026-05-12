@@ -59,4 +59,33 @@ module.exports = {
       sendError(ctx, error?.status || 400, error?.message || 'Failed to delete policy');
     }
   },
+
+  // ── Method-level bulk endpoints (Comparative Editor) ─────────────────────
+  async findForMethod(ctx) {
+    const { interfaceKey, methodKey } = ctx.params;
+    try {
+      const data = await strapi
+        .plugin('api-pro')
+        .service('policies')
+        .findForMethod(strapi, { interfaceKey, methodKey });
+      ctx.body = { data };
+    } catch (error) {
+      sendError(ctx, error?.status || 500, error?.message || 'Failed to load method policies');
+    }
+  },
+
+  async bulkUpsertForMethod(ctx) {
+    const { interfaceKey, methodKey } = ctx.params;
+    const body = ctx.request.body?.data || ctx.request.body || {};
+    const policies = body.policies || {};
+    try {
+      const data = await strapi
+        .plugin('api-pro')
+        .service('policies')
+        .bulkUpsertForMethod(strapi, { interfaceKey, methodKey, policies });
+      ctx.body = { data };
+    } catch (error) {
+      sendError(ctx, error?.status || 400, error?.message || 'Failed to save method policies');
+    }
+  },
 };
