@@ -1,4 +1,5 @@
-import require$$0$7 from "path";
+import require$$0$7 from "fs";
+import require$$1 from "path";
 function getDefaultExportFromCjs(x) {
   return x && x.__esModule && Object.prototype.hasOwnProperty.call(x, "default") ? x["default"] : x;
 }
@@ -9,21 +10,833 @@ var register$1 = ({ strapi: strapi2 }) => {
   }
   strapi2.log.info("[api-pro] register");
 };
-var bootstrap$1 = ({ strapi: strapi2 }) => {
-  strapi2.log.info("[api-pro] bootstrap");
+const POLICY_UID$3 = "plugin::api-pro.api-method-policy";
+function normalizeRoleKey(value) {
+  if (typeof value === "string") return value.toLowerCase();
+  if (value && typeof value === "object") {
+    if (typeof value.key === "string") return value.key.toLowerCase();
+    if (typeof value.name === "string") return value.name.toLowerCase();
+  }
+  return null;
+}
+function resolveUserRoleKeys(user) {
+  if (!user) return [];
+  const fromAppRoles = Array.isArray(user.app_roles) ? user.app_roles.map(normalizeRoleKey).filter(Boolean) : [];
+  if (fromAppRoles.length > 0) return Array.from(new Set(fromAppRoles));
+  const strapiRoleName = typeof user.role === "string" ? user.role : user.role && typeof user.role === "object" ? user.role.name || user.role.type : null;
+  const key = normalizeRoleKey(strapiRoleName);
+  return key ? [key] : [];
+}
+function parseRouteHandler(handler) {
+  if (typeof handler !== "string" || !handler.includes("::")) return null;
+  const lastDot = handler.lastIndexOf(".");
+  if (lastDot < 0) return null;
+  return {
+    contentTypeUid: handler.slice(0, lastDot),
+    actionName: handler.slice(lastDot + 1)
+  };
+}
+function makeCacheKey(userId, contentTypeUid, actionName) {
+  return `u:${userId}:p:${contentTypeUid}:${actionName}`;
+}
+async function getPoliciesForAction(strapi2, { user, contentTypeUid, actionName }) {
+  const userId = user?.id;
+  if (!userId || !contentTypeUid || !actionName) return [];
+  const roleKeys = resolveUserRoleKeys(user);
+  if (roleKeys.length === 0) return [];
+  const cache = strapi2.apiPro?.cache;
+  const key = makeCacheKey(userId, contentTypeUid, actionName);
+  if (cache) {
+    const hit = cache.get(key);
+    if (hit !== void 0) return hit;
+  }
+  let policies2 = [];
+  try {
+    policies2 = await strapi2.db.query(POLICY_UID$3).findMany({
+      where: {
+        roleKey: { $in: roleKeys },
+        interfaceMethod: {
+          action: actionName,
+          apiInterface: { uid: contentTypeUid }
+        }
+      },
+      populate: { interfaceMethod: { populate: { apiInterface: true } } }
+    });
+  } catch (error) {
+    strapi2.log.warn(`[api-pro] nested policy lookup failed: ${error?.message}; falling back`);
+    const methods = await strapi2.db.query("plugin::api-pro.api-interface-method").findMany({
+      where: { action: actionName, apiInterface: { uid: contentTypeUid } },
+      select: ["id"]
+    });
+    const methodIds = methods.map((m) => m.id);
+    if (methodIds.length === 0) {
+      policies2 = [];
+    } else {
+      policies2 = await strapi2.db.query(POLICY_UID$3).findMany({
+        where: { roleKey: { $in: roleKeys }, interfaceMethod: { id: { $in: methodIds } } }
+      });
+    }
+  }
+  if (cache) cache.set(key, policies2);
+  return policies2;
+}
+function clearCache(strapi2, userId) {
+  if (userId) strapi2.apiPro?.cache?.clearUser?.(userId);
+  else strapi2.apiPro?.cache?.clearAll?.();
+}
+var permissionEngine$1 = {
+  resolveUserRoleKeys,
+  parseRouteHandler,
+  getPoliciesForAction,
+  clearCache
+};
+const ALLOWED_ROOTS = /* @__PURE__ */ new Set(["user", "claim", "query", "params", "body", "strapi"]);
+function resolveToken(value, context2) {
+  if (typeof value !== "string" || !value.startsWith("$")) return value;
+  if (value === "$today") return (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
+  if (value === "$now") return (/* @__PURE__ */ new Date()).toISOString();
+  const parts = value.slice(1).split(".");
+  if (parts.length === 0) return void 0;
+  const [root] = parts;
+  if (!ALLOWED_ROOTS.has(root)) return void 0;
+  let result = context2;
+  for (const part of parts) {
+    if (result === void 0 || result === null) return void 0;
+    result = result[part];
+  }
+  return result;
+}
+function resolveDeep(value, context2) {
+  if (Array.isArray(value)) {
+    return value.map((v) => resolveDeep(v, context2)).filter((v) => v !== void 0);
+  }
+  if (value !== null && typeof value === "object") {
+    const out = {};
+    for (const [k, v] of Object.entries(value)) {
+      const resolved = resolveDeep(v, context2);
+      if (resolved !== void 0) out[k] = resolved;
+    }
+    return out;
+  }
+  if (typeof value === "string" && value.startsWith("$")) {
+    return resolveToken(value, context2);
+  }
+  return value;
+}
+function buildTokenContext({ strapiCtx, user = null, claim = null } = {}) {
+  return {
+    user: user || strapiCtx?.state?.user || null,
+    claim: claim || strapiCtx?.state?.apiProClaim || null,
+    query: strapiCtx?.query || {},
+    params: strapiCtx?.params || {},
+    body: strapiCtx?.request?.body?.data || strapiCtx?.request?.body || {},
+    strapi: {
+      request: {
+        method: strapiCtx?.request?.method || null,
+        path: strapiCtx?.request?.path || null
+      }
+    }
+  };
+}
+function resolvePolicyTemplates(policy = {}, context2 = {}) {
+  return {
+    filters: resolveDeep(policy.filtersTemplate || {}, context2),
+    populate: resolveDeep(policy.populateTemplate || {}, context2),
+    body: resolveDeep(policy.bodyTemplate || {}, context2),
+    query: resolveDeep(policy.queryTemplate || {}, context2)
+  };
+}
+var policyResolver$1 = {
+  resolveToken,
+  resolveDeep,
+  buildTokenContext,
+  resolvePolicyTemplates
+};
+const engine = permissionEngine$1;
+const resolver = policyResolver$1;
+const NON_INJECTABLE_METHODS = /* @__PURE__ */ new Set(["OPTIONS", "HEAD"]);
+function isPlainObject(v) {
+  return v !== null && typeof v === "object" && !Array.isArray(v);
+}
+function deepMerge(target, source) {
+  if (!isPlainObject(source)) return source;
+  const out = { ...isPlainObject(target) ? target : {} };
+  for (const [k, v] of Object.entries(source)) {
+    if (isPlainObject(v) && isPlainObject(out[k])) {
+      out[k] = deepMerge(out[k], v);
+    } else if (Array.isArray(v) && Array.isArray(out[k])) {
+      out[k] = Array.from(/* @__PURE__ */ new Set([...out[k], ...v]));
+    } else {
+      out[k] = v;
+    }
+  }
+  return out;
+}
+function unionFields(...lists) {
+  const out = /* @__PURE__ */ new Set();
+  for (const list2 of lists) {
+    if (Array.isArray(list2)) {
+      for (const f of list2) if (typeof f === "string") out.add(f);
+    }
+  }
+  return Array.from(out);
+}
+function mergeFragments(fragments) {
+  if (fragments.length === 0) return null;
+  if (fragments.length === 1) return fragments[0];
+  const nonEmptyFilters = fragments.map((f) => f.filters).filter((x) => isPlainObject(x) && Object.keys(x).length > 0);
+  const merged = {
+    filters: nonEmptyFilters.length === 0 ? {} : nonEmptyFilters.length === 1 ? nonEmptyFilters[0] : { $or: nonEmptyFilters },
+    populate: fragments.reduce((acc, f) => deepMerge(acc, f.populate || {}), {}),
+    fields: unionFields(...fragments.map((f) => f.fields)),
+    body: fragments.reduce((acc, f) => deepMerge(acc, f.body || {}), {}),
+    query: fragments.reduce((acc, f) => deepMerge(acc, f.query || {}), {})
+  };
+  return merged;
+}
+function resolveOnePolicy(policy, tokenCtx) {
+  const r = resolver.resolvePolicyTemplates(policy, tokenCtx);
+  return {
+    filters: isPlainObject(r.filters) ? r.filters : {},
+    populate: isPlainObject(r.populate) ? r.populate : {},
+    body: isPlainObject(r.body) ? r.body : {},
+    query: isPlainObject(r.query) ? r.query : {},
+    fields: Array.isArray(r.query?.fields) ? r.query.fields : []
+  };
+}
+function injectIntoQuery(ctx, fragment, { skipFilters = false } = {}) {
+  ctx.query = ctx.query || {};
+  if (!skipFilters && fragment.filters && Object.keys(fragment.filters).length > 0) {
+    ctx.query.filters = deepMerge(
+      isPlainObject(ctx.query.filters) ? ctx.query.filters : {},
+      fragment.filters
+    );
+  }
+  if (fragment.populate && Object.keys(fragment.populate).length > 0) {
+    if (!ctx.query.populate) {
+      ctx.query.populate = fragment.populate;
+    } else if (isPlainObject(ctx.query.populate)) {
+      ctx.query.populate = deepMerge(ctx.query.populate, fragment.populate);
+    }
+  }
+  if (fragment.fields && fragment.fields.length > 0) {
+    const requested = Array.isArray(ctx.query.fields) ? ctx.query.fields : [];
+    ctx.query.fields = requested.length > 0 ? requested.filter((f) => fragment.fields.includes(f)) : fragment.fields.slice();
+  }
+  if (fragment.query && Object.keys(fragment.query).length > 0) {
+    for (const [k, v] of Object.entries(fragment.query)) {
+      if (k === "fields" || k === "filters" || k === "populate") continue;
+      ctx.query[k] = v;
+    }
+  }
+}
+function injectIntoBody(ctx, fragment) {
+  if (!fragment.body || Object.keys(fragment.body).length === 0) return;
+  if (NON_INJECTABLE_METHODS.has((ctx.request?.method || "").toUpperCase())) return;
+  if (!ctx.request) return;
+  if (isPlainObject(ctx.request.body?.data)) {
+    ctx.request.body.data = deepMerge(ctx.request.body.data, fragment.body);
+  } else {
+    ctx.request.body = deepMerge(isPlainObject(ctx.request.body) ? ctx.request.body : {}, fragment.body);
+  }
+}
+function readClaim(ctx, strapi2) {
+  const cfg = strapi2.config.get("plugin::api-pro") || {};
+  const headerDomainKey = (cfg.headerDomainKey || "x-rutba-app").toLowerCase();
+  const headerElevatedKey = (cfg.headerElevatedKey || "x-rutba-app-admin").toLowerCase();
+  const headers = ctx.request?.headers || {};
+  const appName = String(headers[headerDomainKey] || "").trim() || null;
+  const elevatedRaw = headers[headerElevatedKey];
+  const elevated = elevatedRaw === true || elevatedRaw === "true" || elevatedRaw === "1" || elevatedRaw === 1;
+  return { appName, elevated };
+}
+async function process$1(ctx, strapi2) {
+  const cfg = strapi2.config.get("plugin::api-pro") || {};
+  const mode = cfg.enforcementMode || "hybrid";
+  if (mode === "off") return { status: "skipped", reason: "enforcement off" };
+  const user = ctx.state?.user;
+  if (!user?.id) return { status: "skipped", reason: "no authenticated user" };
+  const handler = ctx.state?.route?.handler;
+  const parsed = engine.parseRouteHandler(handler);
+  if (!parsed) return { status: "skipped", reason: "unrecognized route handler" };
+  const policies2 = await engine.getPoliciesForAction(strapi2, {
+    user,
+    contentTypeUid: parsed.contentTypeUid,
+    actionName: parsed.actionName
+  });
+  if (policies2.length === 0) {
+    if (cfg.denyByDefault && (mode === "enforce" || mode === "hybrid")) {
+      return { status: "denied", reason: "no matching policy", policies: 0 };
+    }
+    return { status: "allowed", reason: "no policy / lenient", policies: 0 };
+  }
+  if (mode === "audit") {
+    return { status: "audited", policies: policies2.length };
+  }
+  const claim = readClaim(ctx, strapi2);
+  ctx.state.apiProClaim = { appName: claim.appName, elevated: claim.elevated };
+  const tokenCtx = resolver.buildTokenContext({
+    strapiCtx: ctx,
+    user,
+    claim: { appName: claim.appName, elevated: claim.elevated }
+  });
+  const fragments = policies2.map((p) => resolveOnePolicy(p, tokenCtx));
+  const merged = mergeFragments(fragments);
+  if (!merged) return { status: "allowed", policies: 0 };
+  injectIntoQuery(ctx, merged, { skipFilters: claim.elevated });
+  injectIntoBody(ctx, merged);
+  ctx.state.apiProPolicy = merged;
+  return { status: "allowed", policies: policies2.length };
+}
+var requestInterceptor$1 = {
+  process: process$1,
+  // exported for tests
+  mergeFragments,
+  deepMerge
+};
+const fs = require$$0$7.promises;
+const path$1 = require$$1;
+const SAFE_KEY_REGEX = /^[a-z0-9][a-z0-9_-]*$/i;
+function assertSafeKey(label, value) {
+  if (typeof value !== "string" || !SAFE_KEY_REGEX.test(value)) {
+    throw new Error(`[api-pro] file-store: invalid ${label} '${value}'`);
+  }
+}
+function storageRoot(strapi2) {
+  const cfg = strapi2.config.get("plugin::api-pro") || {};
+  const dir = cfg.storageDir || ".api-pro";
+  const root = strapi2.dirs?.app?.root || process.cwd();
+  return path$1.resolve(root, dir);
+}
+function interfacesDir(strapi2) {
+  return path$1.join(storageRoot(strapi2), "interfaces");
+}
+function policiesRoot(strapi2) {
+  return path$1.join(storageRoot(strapi2), "policies");
+}
+function interfaceFile(strapi2, interfaceKey) {
+  assertSafeKey("interfaceKey", interfaceKey);
+  return path$1.join(interfacesDir(strapi2), `${interfaceKey}.json`);
+}
+function policyDir(strapi2, interfaceKey, methodKey) {
+  assertSafeKey("interfaceKey", interfaceKey);
+  assertSafeKey("methodKey", methodKey);
+  return path$1.join(policiesRoot(strapi2), interfaceKey, methodKey);
+}
+function policyFile(strapi2, interfaceKey, methodKey, roleKey) {
+  assertSafeKey("roleKey", roleKey);
+  return path$1.join(policyDir(strapi2, interfaceKey, methodKey), `${roleKey}.json`);
+}
+async function ensureDir(dir) {
+  await fs.mkdir(dir, { recursive: true });
+}
+async function readJsonSafe(filePath) {
+  try {
+    const raw = await fs.readFile(filePath, "utf8");
+    return JSON.parse(raw);
+  } catch (error) {
+    if (error?.code === "ENOENT") return null;
+    throw error;
+  }
+}
+async function writeJsonAtomic(filePath, value) {
+  await ensureDir(path$1.dirname(filePath));
+  const tmp = `${filePath}.${process.pid}.${Date.now()}.tmp`;
+  await fs.writeFile(tmp, JSON.stringify(value, null, 2), "utf8");
+  await fs.rename(tmp, filePath);
+}
+async function listJsonFiles(dir) {
+  try {
+    const entries = await fs.readdir(dir, { withFileTypes: true });
+    return entries.filter((e) => e.isFile() && e.name.endsWith(".json")).map((e) => e.name);
+  } catch (error) {
+    if (error?.code === "ENOENT") return [];
+    throw error;
+  }
+}
+async function listInterfaces$1(strapi2) {
+  const names = await listJsonFiles(interfacesDir(strapi2));
+  const out = [];
+  for (const name of names) {
+    const key = name.slice(0, -5);
+    const data = await readJsonSafe(path$1.join(interfacesDir(strapi2), name));
+    if (data) out.push({ key, data });
+  }
+  return out;
+}
+async function readInterface(strapi2, interfaceKey) {
+  return readJsonSafe(interfaceFile(strapi2, interfaceKey));
+}
+async function writeInterface(strapi2, interfaceKey, data) {
+  await writeJsonAtomic(interfaceFile(strapi2, interfaceKey), {
+    ...data,
+    key: interfaceKey
+  });
+}
+async function deleteInterface(strapi2, interfaceKey) {
+  try {
+    await fs.unlink(interfaceFile(strapi2, interfaceKey));
+  } catch (error) {
+    if (error?.code !== "ENOENT") throw error;
+  }
+  const dir = path$1.join(policiesRoot(strapi2), interfaceKey);
+  await fs.rm(dir, { recursive: true, force: true });
+}
+async function listPoliciesForMethod(strapi2, interfaceKey, methodKey) {
+  const dir = policyDir(strapi2, interfaceKey, methodKey);
+  const names = await listJsonFiles(dir);
+  const out = [];
+  for (const name of names) {
+    const roleKey = name.slice(0, -5);
+    const data = await readJsonSafe(path$1.join(dir, name));
+    if (data) out.push({ roleKey, data });
+  }
+  return out;
+}
+async function listAllPolicies(strapi2) {
+  const root = policiesRoot(strapi2);
+  let interfaceDirs;
+  try {
+    interfaceDirs = await fs.readdir(root, { withFileTypes: true });
+  } catch (error) {
+    if (error?.code === "ENOENT") return [];
+    throw error;
+  }
+  const out = [];
+  for (const i of interfaceDirs) {
+    if (!i.isDirectory()) continue;
+    const interfaceKey = i.name;
+    let methodDirs;
+    try {
+      methodDirs = await fs.readdir(path$1.join(root, interfaceKey), { withFileTypes: true });
+    } catch {
+      continue;
+    }
+    for (const m of methodDirs) {
+      if (!m.isDirectory()) continue;
+      const methodKey = m.name;
+      const policies2 = await listPoliciesForMethod(strapi2, interfaceKey, methodKey);
+      for (const p of policies2) {
+        out.push({ interfaceKey, methodKey, ...p });
+      }
+    }
+  }
+  return out;
+}
+async function readPolicy(strapi2, interfaceKey, methodKey, roleKey) {
+  return readJsonSafe(policyFile(strapi2, interfaceKey, methodKey, roleKey));
+}
+async function writePolicy(strapi2, interfaceKey, methodKey, roleKey, data) {
+  await writeJsonAtomic(policyFile(strapi2, interfaceKey, methodKey, roleKey), {
+    ...data,
+    interfaceKey,
+    methodKey,
+    roleKey
+  });
+}
+async function deletePolicy(strapi2, interfaceKey, methodKey, roleKey) {
+  try {
+    await fs.unlink(policyFile(strapi2, interfaceKey, methodKey, roleKey));
+  } catch (error) {
+    if (error?.code !== "ENOENT") throw error;
+  }
+}
+async function ensureStorage(strapi2) {
+  await ensureDir(interfacesDir(strapi2));
+  await ensureDir(policiesRoot(strapi2));
+}
+var fileStore$4 = {
+  storageRoot,
+  interfacesDir,
+  policiesRoot,
+  interfaceFile,
+  policyFile,
+  ensureStorage,
+  listInterfaces: listInterfaces$1,
+  readInterface,
+  writeInterface,
+  deleteInterface,
+  listPoliciesForMethod,
+  listAllPolicies,
+  readPolicy,
+  writePolicy,
+  deletePolicy
+};
+const fileStore$3 = fileStore$4;
+const INTERFACE_UID$1 = "plugin::api-pro.api-interface";
+const METHOD_UID$1 = "plugin::api-pro.api-interface-method";
+const POLICY_UID$2 = "plugin::api-pro.api-method-policy";
+function methodCompositeKey(interfaceKey, methodKey) {
+  return `${interfaceKey}:${methodKey}`;
+}
+function policyCompositeKey(interfaceKey, methodKey, roleKey) {
+  return `${interfaceKey}:${methodKey}:${roleKey}`;
+}
+async function upsertInterface(strapi2, interfaceKey, data) {
+  const existing = await strapi2.db.query(INTERFACE_UID$1).findOne({
+    where: { key: interfaceKey }
+  });
+  const payload = {
+    key: interfaceKey,
+    name: data.name || data.label || interfaceKey,
+    filePath: data.filePath || `api/${interfaceKey}.js`,
+    uid: data.uid || data.contentType || null,
+    status: data.status || "manual"
+  };
+  if (existing) {
+    return strapi2.db.query(INTERFACE_UID$1).update({
+      where: { id: existing.id },
+      data: payload
+    });
+  }
+  return strapi2.db.query(INTERFACE_UID$1).create({ data: payload });
+}
+async function upsertMethod$1(strapi2, interfaceRow, methodData) {
+  const compositeKey = methodCompositeKey(interfaceRow.key, methodData.key || methodData.id);
+  const existing = await strapi2.db.query(METHOD_UID$1).findOne({
+    where: { key: compositeKey }
+  });
+  const payload = {
+    key: compositeKey,
+    name: methodData.name || methodData.label || methodData.key || methodData.id,
+    action: methodData.action || methodData.key || methodData.id,
+    method: String(methodData.method || methodData.httpMethod || "GET").toLowerCase(),
+    path: methodData.path || "",
+    routeTokens: Array.isArray(methodData.routeTokens) ? methodData.routeTokens : [],
+    inputSignature: Array.isArray(methodData.inputSignature) ? methodData.inputSignature : [],
+    apps: Array.isArray(methodData.apps) ? methodData.apps : [],
+    appRoles: Array.isArray(methodData.appRoles) ? methodData.appRoles : [],
+    apiInterface: interfaceRow.id
+  };
+  if (existing) {
+    return strapi2.db.query(METHOD_UID$1).update({
+      where: { id: existing.id },
+      data: payload
+    });
+  }
+  return strapi2.db.query(METHOD_UID$1).create({ data: payload });
+}
+async function upsertPolicy(strapi2, interfaceKey, methodKey, roleKey, data) {
+  const compositeMethodKey = methodCompositeKey(interfaceKey, methodKey);
+  const method = await strapi2.db.query(METHOD_UID$1).findOne({
+    where: { key: compositeMethodKey }
+  });
+  if (!method) {
+    strapi2.log.warn(`[api-pro] sync: policy refers to missing method '${compositeMethodKey}', skipping`);
+    return null;
+  }
+  const compositeKey = policyCompositeKey(interfaceKey, methodKey, roleKey);
+  const existing = await strapi2.db.query(POLICY_UID$2).findOne({
+    where: { key: compositeKey }
+  });
+  const payload = {
+    key: compositeKey,
+    name: data.name || compositeKey,
+    roleKey,
+    resolverMode: data.resolverMode === "lenient" ? "lenient" : "strict",
+    filtersTemplate: data.filtersTemplate || {},
+    populateTemplate: data.populateTemplate || {},
+    bodyTemplate: data.bodyTemplate || {},
+    queryTemplate: data.queryTemplate || {},
+    templateVersion: Number.isInteger(data.templateVersion) ? data.templateVersion : 1,
+    interfaceMethod: method.id
+  };
+  if (existing) {
+    return strapi2.db.query(POLICY_UID$2).update({
+      where: { id: existing.id },
+      data: payload
+    });
+  }
+  return strapi2.db.query(POLICY_UID$2).create({ data: payload });
+}
+async function syncInterfaceWrite(strapi2, interfaceKey) {
+  const fileData = await fileStore$3.readInterface(strapi2, interfaceKey);
+  if (!fileData) return null;
+  const row = await upsertInterface(strapi2, interfaceKey, fileData);
+  const methods = Array.isArray(fileData.methods) ? fileData.methods : [];
+  for (const m of methods) {
+    await upsertMethod$1(strapi2, row, m);
+  }
+  return row;
+}
+async function syncPolicyWrite(strapi2, interfaceKey, methodKey, roleKey) {
+  const data = await fileStore$3.readPolicy(strapi2, interfaceKey, methodKey, roleKey);
+  if (!data) return null;
+  return upsertPolicy(strapi2, interfaceKey, methodKey, roleKey, data);
+}
+async function syncInterfaceDelete(strapi2, interfaceKey) {
+  const row = await strapi2.db.query(INTERFACE_UID$1).findOne({ where: { key: interfaceKey } });
+  if (!row) return;
+  const methods = await strapi2.db.query(METHOD_UID$1).findMany({
+    where: { apiInterface: row.id },
+    select: ["id"]
+  });
+  const methodIds = methods.map((m) => m.id);
+  if (methodIds.length > 0) {
+    await strapi2.db.query(POLICY_UID$2).deleteMany({
+      where: { interfaceMethod: { id: { $in: methodIds } } }
+    });
+    await strapi2.db.query(METHOD_UID$1).deleteMany({ where: { id: { $in: methodIds } } });
+  }
+  await strapi2.db.query(INTERFACE_UID$1).delete({ where: { id: row.id } });
+}
+async function syncPolicyDelete(strapi2, interfaceKey, methodKey, roleKey) {
+  const compositeKey = policyCompositeKey(interfaceKey, methodKey, roleKey);
+  await strapi2.db.query(POLICY_UID$2).deleteMany({ where: { key: compositeKey } });
+}
+async function syncAll(strapi2) {
+  await fileStore$3.ensureStorage(strapi2);
+  const interfaces2 = await fileStore$3.listInterfaces(strapi2);
+  let iCount = 0;
+  let mCount = 0;
+  for (const { key, data } of interfaces2) {
+    const row = await upsertInterface(strapi2, key, data);
+    const methods = Array.isArray(data.methods) ? data.methods : [];
+    for (const m of methods) {
+      await upsertMethod$1(strapi2, row, m);
+      mCount += 1;
+    }
+    iCount += 1;
+  }
+  const policies2 = await fileStore$3.listAllPolicies(strapi2);
+  let pCount = 0;
+  for (const p of policies2) {
+    const result = await upsertPolicy(strapi2, p.interfaceKey, p.methodKey, p.roleKey, p.data);
+    if (result) pCount += 1;
+  }
+  strapi2.apiPro?.cache?.clearAll?.();
+  return { interfaces: iCount, methods: mCount, policies: pCount };
+}
+var sync$2 = {
+  syncAll,
+  syncInterfaceWrite,
+  syncInterfaceDelete,
+  syncPolicyWrite,
+  syncPolicyDelete
+};
+const TTL_DEFAULT_MS = 3e4;
+const MAX_ENTRIES_DEFAULT = 5e3;
+function createPermissionCache({ ttlMs = TTL_DEFAULT_MS, maxEntries = MAX_ENTRIES_DEFAULT } = {}) {
+  const store = /* @__PURE__ */ new Map();
+  function get(key) {
+    const entry = store.get(key);
+    if (!entry) return void 0;
+    if (entry.expiresAt < Date.now()) {
+      store.delete(key);
+      return void 0;
+    }
+    store.delete(key);
+    store.set(key, entry);
+    return entry.value;
+  }
+  function set(key, value) {
+    if (store.has(key)) store.delete(key);
+    store.set(key, { value, expiresAt: Date.now() + ttlMs });
+    if (store.size > maxEntries) {
+      const oldestKey = store.keys().next().value;
+      store.delete(oldestKey);
+    }
+  }
+  function clearUser(userId) {
+    const prefix = `u:${userId}:`;
+    for (const key of store.keys()) {
+      if (key.startsWith(prefix)) store.delete(key);
+    }
+  }
+  function clearAll() {
+    store.clear();
+  }
+  return {
+    get,
+    set,
+    clearUser,
+    clearAll,
+    size: () => store.size
+  };
+}
+function buildBypassMatcher(paths = []) {
+  const list2 = paths.filter((p) => typeof p === "string" && p.length > 0);
+  return (path2) => {
+    if (!path2) return false;
+    for (const prefix of list2) {
+      if (path2 === prefix || path2.startsWith(`${prefix}/`)) return true;
+    }
+    return false;
+  };
+}
+function registerCacheInvalidationHooks(strapi2) {
+  const invalidate = () => strapi2.apiPro?.cache?.clearAll?.();
+  const targets = [
+    "plugin::api-pro.app-role",
+    "plugin::api-pro.app-domain",
+    "plugin::api-pro.api-method-policy"
+  ];
+  for (const uid of targets) {
+    try {
+      strapi2.db.lifecycles.subscribe({
+        models: [uid],
+        afterCreate: invalidate,
+        afterUpdate: invalidate,
+        afterDelete: invalidate,
+        afterCreateMany: invalidate,
+        afterUpdateMany: invalidate,
+        afterDeleteMany: invalidate
+      });
+    } catch (error) {
+      strapi2.log.warn(`[api-pro] failed to subscribe lifecycle for ${uid}: ${error?.message}`);
+    }
+  }
+}
+function installInterceptor(strapi2) {
+  const config2 = strapi2.config.get("plugin::api-pro") || {};
+  if (config2.interceptorEnabled === false) {
+    strapi2.log.info("[api-pro] interceptor disabled by config");
+    return;
+  }
+  const isBypassed = buildBypassMatcher(config2.bypassPaths);
+  const interceptor = requestInterceptor$1;
+  strapi2.server.use(async (ctx, next) => {
+    if (isBypassed(ctx.path)) {
+      return next();
+    }
+    try {
+      const result = await interceptor.process(ctx, strapi2);
+      if (result.status === "denied") {
+        ctx.status = 403;
+        ctx.body = {
+          error: {
+            code: "API_PRO_FORBIDDEN",
+            message: result.reason || "Request denied by api-pro policy"
+          }
+        };
+        return;
+      }
+    } catch (error) {
+      strapi2.log.error(`[api-pro] interceptor error on ${ctx.method} ${ctx.path}: ${error?.stack || error?.message}`);
+    }
+    return next();
+  });
+}
+var bootstrap$1 = async ({ strapi: strapi2 }) => {
+  const config2 = strapi2.config.get("plugin::api-pro") || {};
+  const cache = createPermissionCache(config2.cache || {});
+  const roleProviders = [];
+  strapi2.apiPro = Object.freeze({
+    cache,
+    roleProviders,
+    getConfig: () => strapi2.config.get("plugin::api-pro") || {},
+    isBypassed: buildBypassMatcher(config2.bypassPaths),
+    clearCache: (userId) => userId ? cache.clearUser(userId) : cache.clearAll(),
+    clearAllCache: () => cache.clearAll(),
+    // pos-strapi (or any consumer) calls this from its own bootstrap to inject
+    // additional role keys derived from external context — e.g. hr_* roles
+    // pulled from HR team membership. The fn receives (user, { strapi }) and
+    // should return an array of role-key strings.
+    registerRoleProvider(fn) {
+      if (typeof fn !== "function") {
+        throw new Error("[api-pro] registerRoleProvider expects a function");
+      }
+      roleProviders.push(fn);
+    }
+  });
+  registerCacheInvalidationHooks(strapi2);
+  installInterceptor(strapi2);
+  try {
+    const sync2 = sync$2;
+    const result = await sync2.syncAll(strapi2);
+    strapi2.log.info(
+      `[api-pro] file→DB sync ok (interfaces=${result.interfaces}, methods=${result.methods}, policies=${result.policies})`
+    );
+  } catch (error) {
+    strapi2.log.error(`[api-pro] file→DB sync failed: ${error?.stack || error?.message}`);
+  }
+  strapi2.log.info(
+    `[api-pro] bootstrap ok (enforcementMode=${config2.enforcementMode || "hybrid"}, denyByDefault=${config2.denyByDefault !== false}, cacheTTL=${config2.cache?.ttlMs || TTL_DEFAULT_MS}ms)`
+  );
 };
 var destroy$1 = () => {
 };
+const ENFORCEMENT_MODES = ["hybrid", "enforce", "audit", "off"];
 var config$1 = {
   default: {
-    apiProviderRoot: "../../api-provider",
+    // ── Runtime enforcement ─────────────────────────────────────────────
+    interceptorEnabled: true,
+    denyByDefault: true,
+    enforcementMode: "hybrid",
+    enforceOwnership: true,
+    sessionTimeout: 3600,
+    // ── Header bridging ─────────────────────────────────────────────────
+    // The plugin reads ctx headers using these keys to derive the active
+    // app/domain claim and admin elevation. Role is NEVER claimed via header —
+    // it's resolved from user.app_roles intersected with the active app.
+    headerDomainKey: "x-rutba-app",
+    headerElevatedKey: "x-rutba-app-admin",
+    // ── Bypass paths ────────────────────────────────────────────────────
+    // Prefix-matched paths that skip interceptor + context validation.
+    // pos-strapi extends this with public routes derived from @rutba/api-provider.
+    bypassPaths: [
+      "/admin",
+      "/content-manager",
+      "/content-type-builder",
+      "/i18n",
+      "/users-permissions",
+      "/api/auth",
+      "/api/users/me",
+      "/api/me/permissions",
+      "/api/users-permissions/me/permissions",
+      "/api/api-pro/me/permissions",
+      "/api/api-guard-pro/me/permissions",
+      "/uploads",
+      "/_health",
+      "/documentation"
+    ],
+    // ── Domain registry ─────────────────────────────────────────────────
+    // pos-strapi populates this from @rutba/api-provider/config/domains.
+    // Each entry: { key: string, name: string, aliasKeys?: string[] }.
+    domains: [],
+    // ── Permission cache ────────────────────────────────────────────────
+    cache: {
+      enabled: true,
+      ttlMs: 3e4,
+      maxEntries: 5e3
+    },
+    // ── Authoring (file-based source of truth for interfaces/policies) ──
+    // Files under {strapi.dirs.app.root}/{storageDir} are canonical;
+    // DB tables (api_pro_interfaces, api_pro_interface_methods,
+    // api_pro_method_policies) are mirrored on boot for runtime reads.
+    storageDir: ".api-pro",
+    // ── Scaffold integration (TypeScript client generation) ─────────────
+    // Used by services/interfaces.js + services/scaffold.js to emit
+    // typed clients into the @rutba/api-provider package.
+    apiProviderRoot: "../../packages/api-provider",
     interfacesDir: "api",
     scaffoldScript: "scripts/scaffold-endpoint-providers.mjs",
     generatedClientDir: "providers/generated/client"
   },
   validator(config2) {
     if (!config2 || typeof config2 !== "object") {
-      throw new Error("[api-pro] invalid plugin config");
+      throw new Error("[api-pro] invalid plugin config: must be an object");
+    }
+    if (config2.bypassPaths != null && !Array.isArray(config2.bypassPaths)) {
+      throw new Error("[api-pro] config.bypassPaths must be an array of strings");
+    }
+    if (config2.domains != null) {
+      if (!Array.isArray(config2.domains)) {
+        throw new Error("[api-pro] config.domains must be an array");
+      }
+      for (const entry of config2.domains) {
+        if (!entry || typeof entry !== "object" || typeof entry.key !== "string") {
+          throw new Error("[api-pro] config.domains entries require a string `key`");
+        }
+      }
+    }
+    if (config2.enforcementMode != null && !ENFORCEMENT_MODES.includes(config2.enforcementMode)) {
+      throw new Error(
+        `[api-pro] config.enforcementMode must be one of: ${ENFORCEMENT_MODES.join(", ")} (got '${config2.enforcementMode}')`
+      );
+    }
+    if (config2.cache != null && typeof config2.cache !== "object") {
+      throw new Error("[api-pro] config.cache must be an object");
     }
   }
 };
@@ -671,6 +1484,21 @@ var interfaces$3 = {
   async lintScaffold(ctx) {
     const data = await strapi.plugin("api-pro").service("scaffoldRunner").lintMethodAlignment(strapi);
     ctx.body = { data };
+  },
+  async scaffold(ctx) {
+    const { interfaceKey } = ctx.params;
+    if (!interfaceKey) {
+      ctx.status = 400;
+      ctx.body = { error: { message: "interfaceKey is required" } };
+      return;
+    }
+    try {
+      const data = await strapi.plugin("api-pro").service("scaffold").generate(strapi, interfaceKey);
+      ctx.body = { data };
+    } catch (error) {
+      ctx.status = error?.status || 500;
+      ctx.body = { error: { message: error?.message || "Failed to scaffold interface" } };
+    }
   }
 };
 var users$3 = {
@@ -700,250 +1528,483 @@ var users$3 = {
     }
   }
 };
+var me$1 = {
+  async permissions(ctx) {
+    const user = ctx.state?.user;
+    if (!user?.id) {
+      ctx.status = 401;
+      ctx.body = { error: { code: "AUTH_REQUIRED", message: "Authenticated user required" } };
+      return;
+    }
+    const payload = await strapi.plugin("api-pro").service("mePermissions").build(strapi, user.id);
+    ctx.body = payload;
+  }
+};
+const DOMAIN_UID = "plugin::api-pro.app-domain";
+const ROLE_UID = "plugin::api-pro.app-role";
+function pickDomainInput(body) {
+  const data = body?.data || body || {};
+  return {
+    key: typeof data.key === "string" ? data.key.toLowerCase().trim() : void 0,
+    name: typeof data.name === "string" ? data.name.trim() : void 0,
+    description: typeof data.description === "string" ? data.description : void 0,
+    isActive: typeof data.isActive === "boolean" ? data.isActive : void 0
+  };
+}
+function pickRoleInput(body) {
+  const data = body?.data || body || {};
+  return {
+    key: typeof data.key === "string" ? data.key.toLowerCase().trim() : void 0,
+    name: typeof data.name === "string" ? data.name.trim() : void 0,
+    description: typeof data.description === "string" ? data.description : void 0,
+    isActive: typeof data.isActive === "boolean" ? data.isActive : void 0,
+    adminRoleCode: typeof data.adminRoleCode === "string" ? data.adminRoleCode : void 0,
+    appDomains: Array.isArray(data.appDomains) ? data.appDomains.map(Number).filter(Boolean) : void 0
+  };
+}
+function sendError$1(ctx, status, message, code) {
+  ctx.status = status;
+  ctx.body = { error: { code: code || "API_PRO_ERROR", message } };
+}
+var domains$1 = {
+  // ── Domains ───────────────────────────────────────────────────────────
+  async listDomains(ctx) {
+    const data = await strapi.db.query(DOMAIN_UID).findMany({
+      populate: { appRoles: true },
+      orderBy: { key: "asc" }
+    });
+    ctx.body = { data };
+  },
+  async createDomain(ctx) {
+    const input = pickDomainInput(ctx.request.body);
+    if (!input.key || !input.name) {
+      return sendError$1(ctx, 400, "key and name are required", "VALIDATION_FAILED");
+    }
+    try {
+      const data = await strapi.db.query(DOMAIN_UID).create({ data: input });
+      strapi.apiPro?.clearAllCache?.();
+      ctx.body = { data };
+    } catch (error) {
+      sendError$1(ctx, 400, error?.message || "Failed to create domain");
+    }
+  },
+  async updateDomain(ctx) {
+    const id = Number(ctx.params.id);
+    if (!id) return sendError$1(ctx, 400, "id is required", "VALIDATION_FAILED");
+    const input = pickDomainInput(ctx.request.body);
+    const data = await strapi.db.query(DOMAIN_UID).update({
+      where: { id },
+      data: input
+    });
+    if (!data) return sendError$1(ctx, 404, `domain ${id} not found`, "NOT_FOUND");
+    strapi.apiPro?.clearAllCache?.();
+    ctx.body = { data };
+  },
+  async deleteDomain(ctx) {
+    const id = Number(ctx.params.id);
+    if (!id) return sendError$1(ctx, 400, "id is required", "VALIDATION_FAILED");
+    const data = await strapi.db.query(DOMAIN_UID).delete({ where: { id } });
+    if (!data) return sendError$1(ctx, 404, `domain ${id} not found`, "NOT_FOUND");
+    strapi.apiPro?.clearAllCache?.();
+    ctx.body = { data };
+  },
+  // ── Roles ─────────────────────────────────────────────────────────────
+  async listRoles(ctx) {
+    const data = await strapi.db.query(ROLE_UID).findMany({
+      populate: { appDomains: true },
+      orderBy: { key: "asc" }
+    });
+    ctx.body = { data };
+  },
+  async createRole(ctx) {
+    const input = pickRoleInput(ctx.request.body);
+    if (!input.key || !input.name) {
+      return sendError$1(ctx, 400, "key and name are required", "VALIDATION_FAILED");
+    }
+    const payload = {
+      ...input,
+      adminRoleCode: input.adminRoleCode || input.key,
+      appDomains: input.appDomains || []
+    };
+    try {
+      const data = await strapi.db.query(ROLE_UID).create({ data: payload });
+      strapi.apiPro?.clearAllCache?.();
+      ctx.body = { data };
+    } catch (error) {
+      sendError$1(ctx, 400, error?.message || "Failed to create role");
+    }
+  },
+  async updateRole(ctx) {
+    const id = Number(ctx.params.id);
+    if (!id) return sendError$1(ctx, 400, "id is required", "VALIDATION_FAILED");
+    const input = pickRoleInput(ctx.request.body);
+    const data = await strapi.db.query(ROLE_UID).update({
+      where: { id },
+      data: input
+    });
+    if (!data) return sendError$1(ctx, 404, `role ${id} not found`, "NOT_FOUND");
+    strapi.apiPro?.clearAllCache?.();
+    ctx.body = { data };
+  },
+  async deleteRole(ctx) {
+    const id = Number(ctx.params.id);
+    if (!id) return sendError$1(ctx, 400, "id is required", "VALIDATION_FAILED");
+    const data = await strapi.db.query(ROLE_UID).delete({ where: { id } });
+    if (!data) return sendError$1(ctx, 404, `role ${id} not found`, "NOT_FOUND");
+    strapi.apiPro?.clearAllCache?.();
+    ctx.body = { data };
+  }
+};
+function sendError(ctx, status, message, code) {
+  ctx.status = status;
+  ctx.body = { error: { code: code || "API_PRO_ERROR", message } };
+}
+var policies$5 = {
+  async list(ctx) {
+    const { interfaceKey, methodKey, roleKey } = ctx.query || {};
+    const data = await strapi.plugin("api-pro").service("policies").list(strapi, { interfaceKey, methodKey, roleKey });
+    ctx.body = { data };
+  },
+  async findOne(ctx) {
+    const { interfaceKey, methodKey, roleKey } = ctx.params;
+    const data = await strapi.plugin("api-pro").service("policies").findOne(strapi, { interfaceKey, methodKey, roleKey });
+    if (!data) return sendError(ctx, 404, "policy not found", "NOT_FOUND");
+    ctx.body = { data };
+  },
+  async upsert(ctx) {
+    const { interfaceKey, methodKey, roleKey } = ctx.params;
+    const body = ctx.request.body?.data || ctx.request.body || {};
+    try {
+      const data = await strapi.plugin("api-pro").service("policies").upsert(strapi, { interfaceKey, methodKey, roleKey, data: body });
+      ctx.body = { data };
+    } catch (error) {
+      sendError(ctx, error?.status || 400, error?.message || "Failed to save policy");
+    }
+  },
+  async remove(ctx) {
+    const { interfaceKey, methodKey, roleKey } = ctx.params;
+    try {
+      const data = await strapi.plugin("api-pro").service("policies").remove(strapi, { interfaceKey, methodKey, roleKey });
+      ctx.body = { data };
+    } catch (error) {
+      sendError(ctx, error?.status || 400, error?.message || "Failed to delete policy");
+    }
+  }
+};
 const health = health$1;
 const recordings$2 = recordings$3;
 const interfaces$2 = interfaces$3;
 const users$2 = users$3;
+const me = me$1;
+const domains = domains$1;
+const policies$4 = policies$5;
 var controllers$1 = {
   health,
   recordings: recordings$2,
   interfaces: interfaces$2,
-  users: users$2
+  users: users$2,
+  me,
+  domains,
+  policies: policies$4
 };
 var routes$1 = {
+  "content-api": {
+    type: "content-api",
+    routes: [
+      {
+        method: "GET",
+        path: "/me/permissions",
+        handler: "me.permissions",
+        config: {
+          policies: []
+        }
+      }
+    ]
+  },
   admin: {
     type: "admin",
     routes: [
+      // ── Users ────────────────────────────────────────────────────────
       {
         method: "GET",
         path: "/users",
         handler: "users.list",
-        config: {
-          middlewares: ["plugin::api-pro.appContext"],
-          policies: []
-        }
+        config: { middlewares: ["plugin::api-pro.appContext"], policies: [] }
       },
       {
         method: "GET",
         path: "/users/role-options",
         handler: "users.roleOptions",
-        config: {
-          middlewares: ["plugin::api-pro.appContext"],
-          policies: []
-        }
+        config: { middlewares: ["plugin::api-pro.appContext"], policies: [] }
       },
       {
         method: "PUT",
         path: "/users/:id/roles",
         handler: "users.assignRoles",
-        config: {
-          middlewares: ["plugin::api-pro.appContext"],
-          policies: []
-        }
+        config: { middlewares: ["plugin::api-pro.appContext"], policies: [] }
       },
+      // ── Recordings ───────────────────────────────────────────────────
       {
         method: "POST",
         path: "/recordings/start",
         handler: "recordings.start",
-        config: {
-          middlewares: ["plugin::api-pro.appContext"],
-          policies: []
-        }
+        config: { middlewares: ["plugin::api-pro.appContext"], policies: [] }
       },
       {
         method: "POST",
         path: "/recordings/stop",
         handler: "recordings.stop",
-        config: {
-          middlewares: ["plugin::api-pro.appContext"],
-          policies: []
-        }
+        config: { middlewares: ["plugin::api-pro.appContext"], policies: [] }
       },
       {
         method: "GET",
         path: "/recordings",
         handler: "recordings.list",
-        config: {
-          middlewares: ["plugin::api-pro.appContext"],
-          policies: []
-        }
+        config: { middlewares: ["plugin::api-pro.appContext"], policies: [] }
       },
       {
         method: "GET",
         path: "/recordings/:sessionId/entries",
         handler: "recordings.entries",
-        config: {
-          middlewares: ["plugin::api-pro.appContext"],
-          policies: []
-        }
+        config: { middlewares: ["plugin::api-pro.appContext"], policies: [] }
       },
-      {
-        method: "GET",
-        path: "/interfaces/lint-scaffold",
-        handler: "interfaces.lintScaffold",
-        config: {
-          middlewares: ["plugin::api-pro.appContext"],
-          policies: []
-        }
-      },
-      {
-        method: "POST",
-        path: "/interfaces/validate-alignment",
-        handler: "interfaces.validateAlignment",
-        config: {
-          middlewares: ["plugin::api-pro.appContext"],
-          policies: []
-        }
-      },
-      {
-        method: "POST",
-        path: "/interfaces/preview-guided-fix",
-        handler: "interfaces.previewGuidedFix",
-        config: {
-          middlewares: ["plugin::api-pro.appContext"],
-          policies: []
-        }
-      },
+      // ── Interfaces ───────────────────────────────────────────────────
       {
         method: "GET",
         path: "/interfaces",
         handler: "interfaces.list",
-        config: {
-          middlewares: ["plugin::api-pro.appContext"],
-          policies: []
-        }
+        config: { middlewares: ["plugin::api-pro.appContext"], policies: [] }
       },
       {
         method: "POST",
         path: "/interfaces/from-recordings",
         handler: "interfaces.createFromRecordings",
-        config: {
-          middlewares: ["plugin::api-pro.appContext"],
-          policies: []
-        }
+        config: { middlewares: ["plugin::api-pro.appContext"], policies: [] }
       },
       {
         method: "POST",
         path: "/interfaces/from-content-type",
         handler: "interfaces.createFromContentType",
-        config: {
-          middlewares: ["plugin::api-pro.appContext"],
-          policies: []
-        }
+        config: { middlewares: ["plugin::api-pro.appContext"], policies: [] }
       },
       {
         method: "PATCH",
         path: "/interfaces/:interfaceId/methods",
         handler: "interfaces.upsertMethod",
-        config: {
-          middlewares: ["plugin::api-pro.appContext"],
-          policies: []
-        }
+        config: { middlewares: ["plugin::api-pro.appContext"], policies: [] }
       },
+      {
+        method: "GET",
+        path: "/interfaces/lint-scaffold",
+        handler: "interfaces.lintScaffold",
+        config: { middlewares: ["plugin::api-pro.appContext"], policies: [] }
+      },
+      {
+        method: "POST",
+        path: "/interfaces/validate-alignment",
+        handler: "interfaces.validateAlignment",
+        config: { middlewares: ["plugin::api-pro.appContext"], policies: [] }
+      },
+      {
+        method: "POST",
+        path: "/interfaces/preview-guided-fix",
+        handler: "interfaces.previewGuidedFix",
+        config: { middlewares: ["plugin::api-pro.appContext"], policies: [] }
+      },
+      {
+        method: "GET",
+        path: "/interfaces/:interfaceKey/scaffold",
+        handler: "interfaces.scaffold",
+        config: { middlewares: ["plugin::api-pro.appContext"], policies: [] }
+      },
+      // ── Domains & Roles ──────────────────────────────────────────────
+      {
+        method: "GET",
+        path: "/domains",
+        handler: "domains.listDomains",
+        config: { middlewares: ["plugin::api-pro.appContext"], policies: [] }
+      },
+      {
+        method: "POST",
+        path: "/domains",
+        handler: "domains.createDomain",
+        config: { middlewares: ["plugin::api-pro.appContext"], policies: [] }
+      },
+      {
+        method: "PUT",
+        path: "/domains/:id",
+        handler: "domains.updateDomain",
+        config: { middlewares: ["plugin::api-pro.appContext"], policies: [] }
+      },
+      {
+        method: "DELETE",
+        path: "/domains/:id",
+        handler: "domains.deleteDomain",
+        config: { middlewares: ["plugin::api-pro.appContext"], policies: [] }
+      },
+      {
+        method: "GET",
+        path: "/roles",
+        handler: "domains.listRoles",
+        config: { middlewares: ["plugin::api-pro.appContext"], policies: [] }
+      },
+      {
+        method: "POST",
+        path: "/roles",
+        handler: "domains.createRole",
+        config: { middlewares: ["plugin::api-pro.appContext"], policies: [] }
+      },
+      {
+        method: "PUT",
+        path: "/roles/:id",
+        handler: "domains.updateRole",
+        config: { middlewares: ["plugin::api-pro.appContext"], policies: [] }
+      },
+      {
+        method: "DELETE",
+        path: "/roles/:id",
+        handler: "domains.deleteRole",
+        config: { middlewares: ["plugin::api-pro.appContext"], policies: [] }
+      },
+      // ── Method Policies ──────────────────────────────────────────────
+      {
+        method: "GET",
+        path: "/policies",
+        handler: "policies.list",
+        config: { middlewares: ["plugin::api-pro.appContext"], policies: [] }
+      },
+      {
+        method: "GET",
+        path: "/policies/:interfaceKey/:methodKey/:roleKey",
+        handler: "policies.findOne",
+        config: { middlewares: ["plugin::api-pro.appContext"], policies: [] }
+      },
+      {
+        method: "PUT",
+        path: "/policies/:interfaceKey/:methodKey/:roleKey",
+        handler: "policies.upsert",
+        config: { middlewares: ["plugin::api-pro.appContext"], policies: [] }
+      },
+      {
+        method: "DELETE",
+        path: "/policies/:interfaceKey/:methodKey/:roleKey",
+        handler: "policies.remove",
+        config: { middlewares: ["plugin::api-pro.appContext"], policies: [] }
+      },
+      // ── Health ───────────────────────────────────────────────────────
       {
         method: "GET",
         path: "/health",
         handler: "health.check",
-        config: {
-          middlewares: ["plugin::api-pro.appContext"],
-          policies: []
-        }
+        config: { policies: [] }
       }
     ]
   }
 };
-const APP_ROLE_UID$1 = "plugin::api-pro.app-role";
 function getHeader(ctx, key) {
-  const value = ctx?.request?.headers?.[key.toLowerCase()];
-  return typeof value === "string" ? value.trim() : "";
+  const raw = ctx?.request?.headers?.[String(key).toLowerCase()];
+  return typeof raw === "string" ? raw.trim() : "";
 }
-function normalizeClaims(ctx) {
-  const appName = getHeader(ctx, "x-rutba-app") || getHeader(ctx, "x-app-name");
-  const roleKey = getHeader(ctx, "x-rutba-app-role") || getHeader(ctx, "x-app-role");
-  const domainKey = getHeader(ctx, "x-rutba-app-domain") || getHeader(ctx, "x-app-domain");
+function readBoolHeader(ctx, key) {
+  const v = ctx?.request?.headers?.[String(key).toLowerCase()];
+  return v === true || v === "true" || v === "1" || v === 1;
+}
+function normalizeKey$1(value) {
+  if (typeof value === "string") return value.toLowerCase();
+  if (value && typeof value === "object" && typeof value.key === "string") {
+    return value.key.toLowerCase();
+  }
+  return null;
+}
+function createValidationError(message, code, status = 403) {
+  const err = new Error(message);
+  err.code = code;
+  err.status = status;
+  return err;
+}
+function readHeaderKeys(strapi2) {
+  const cfg = strapi2.config.get("plugin::api-pro") || {};
   return {
-    appName,
-    roleKey,
-    domainKey
+    domain: (cfg.headerDomainKey || "x-rutba-app").toLowerCase(),
+    elevated: (cfg.headerElevatedKey || "x-rutba-app-admin").toLowerCase()
   };
 }
-function normalizeUserRoleKeys(user) {
-  const raw = user?.api_guard_roles;
-  if (!Array.isArray(raw)) return [];
-  return raw.map((entry) => {
-    if (typeof entry === "string") return entry.toLowerCase();
-    if (entry && typeof entry.key === "string") return entry.key.toLowerCase();
-    return null;
-  }).filter(Boolean);
+async function loadUserAppRoles(strapi2, userId) {
+  if (!userId) return [];
+  try {
+    const user = await strapi2.db.query("plugin::users-permissions.user").findOne({
+      where: { id: userId },
+      populate: { app_roles: { populate: { appDomains: true } }, role: true }
+    });
+    return Array.isArray(user?.app_roles) ? user.app_roles : [];
+  } catch (error) {
+    strapi2.log.warn(`[api-pro] failed to load app_roles for user ${userId}: ${error?.message}`);
+    return [];
+  }
 }
-function createValidationError(message, code = "INVALID_CONTEXT_CLAIM", status = 403) {
-  const error = new Error(message);
-  error.code = code;
-  error.status = status;
-  return error;
+function filterRolesByApp(appRoles, appName) {
+  if (!appName) return appRoles;
+  const wanted = appName.toLowerCase();
+  return appRoles.filter((role) => {
+    const domains2 = Array.isArray(role.appDomains) ? role.appDomains : [];
+    if (domains2.length === 0) return true;
+    return domains2.some((d) => normalizeKey$1(d) === wanted);
+  });
 }
-async function validateClaimContext(ctx, strapi2) {
-  const claims = normalizeClaims(ctx);
+async function resolveClaim(ctx, strapi2, { requireApp = true, requireActiveRole = true } = {}) {
   const user = ctx?.state?.user;
   if (!user?.id) {
-    throw createValidationError("Authenticated user is required for app context validation", "AUTH_REQUIRED", 401);
+    throw createValidationError("Authenticated user required", "AUTH_REQUIRED", 401);
   }
-  if (!claims.appName) {
-    throw createValidationError("Missing appName claim header (x-rutba-app)", "APP_CLAIM_REQUIRED", 400);
+  const headerKeys = readHeaderKeys(strapi2);
+  const appName = getHeader(ctx, headerKeys.domain);
+  const elevated = readBoolHeader(ctx, headerKeys.elevated);
+  if (requireApp && !appName) {
+    throw createValidationError(
+      `Missing app context header '${headerKeys.domain}'`,
+      "APP_CONTEXT_REQUIRED",
+      400
+    );
   }
-  if (!claims.roleKey) {
-    throw createValidationError("Missing role claim header (x-rutba-app-role)", "ROLE_CLAIM_REQUIRED", 400);
+  const appRoles = await loadUserAppRoles(strapi2, user.id);
+  const activeRoles = filterRolesByApp(appRoles, appName);
+  if (requireActiveRole && appName && activeRoles.length === 0) {
+    throw createValidationError(
+      `User has no app_role assigned for app '${appName}'`,
+      "NO_ACTIVE_ROLE",
+      403
+    );
   }
-  const claimedRoleKey = claims.roleKey.toLowerCase();
-  const userRoleKeys = normalizeUserRoleKeys(user);
-  if (!userRoleKeys.includes(claimedRoleKey)) {
-    throw createValidationError(`Claimed role '${claims.roleKey}' is not assigned to current user`, "ROLE_NOT_ASSIGNED", 403);
-  }
-  const matchedRole = await strapi2.db.query(APP_ROLE_UID$1).findOne({
-    where: {
-      key: claimedRoleKey,
-      isActive: true
-    },
-    populate: {
-      appDomains: true
-    }
-  });
-  if (!matchedRole) {
-    throw createValidationError(`Claimed app role '${claims.roleKey}' is not configured`, "ROLE_NOT_CONFIGURED", 403);
-  }
-  const domainKeys = Array.isArray(matchedRole.appDomains) ? matchedRole.appDomains.map((d) => String(d?.key || "").toLowerCase()).filter(Boolean) : [];
-  if (claims.domainKey) {
-    const dk = claims.domainKey.toLowerCase();
-    if (domainKeys.length > 0 && !domainKeys.includes(dk)) {
-      throw createValidationError(`Claimed domain '${claims.domainKey}' is not allowed for role '${claims.roleKey}'`, "DOMAIN_NOT_ALLOWED", 403);
-    }
-  }
+  const activeRoleKeys = activeRoles.map((r) => normalizeKey$1(r)).filter(Boolean);
+  const activeDomainKeys = Array.from(
+    new Set(
+      activeRoles.flatMap((r) => Array.isArray(r.appDomains) ? r.appDomains : []).map((d) => normalizeKey$1(d)).filter(Boolean)
+    )
+  );
   return {
-    claim: {
-      appName: claims.appName,
-      roleKey: claimedRoleKey,
-      domainKey: claims.domainKey || null
-    },
     user: {
       id: user.id,
       email: user.email || null,
       username: user.username || null
     },
-    role: {
-      key: matchedRole.key,
-      name: matchedRole.name || matchedRole.key,
-      adminRoleCode: matchedRole.adminRoleCode,
-      domainKeys
-    },
-    audit: {
-      validationSource: "x-rutba-app/x-rutba-app-role headers",
-      validatedAt: (/* @__PURE__ */ new Date()).toISOString()
-    }
+    appName: appName || null,
+    elevated,
+    roleKeys: activeRoleKeys,
+    domainKeys: activeDomainKeys,
+    // Full role objects retained for /me/permissions response shaping.
+    appRoles: activeRoles.map((r) => ({
+      id: r.id,
+      key: r.key,
+      name: r.name || r.key,
+      adminRoleCode: r.adminRoleCode || null,
+      appDomains: Array.isArray(r.appDomains) ? r.appDomains.map((d) => ({ id: d.id, key: d.key, name: d.name || d.key })) : []
+    }))
   };
 }
 var context$1 = {
-  normalizeClaims,
-  validateClaimContext
+  resolveClaim,
+  loadUserAppRoles,
+  filterRolesByApp
 };
 const SESSION_UID = "plugin::api-pro.recording-session";
 const ENTRY_UID = "plugin::api-pro.recording-entry";
@@ -999,7 +2060,7 @@ var recordings$1 = {
   listEntries,
   getActiveSession
 };
-const path = require$$0$7;
+const path = require$$1;
 const API_INTERFACE_UID = "plugin::api-pro.api-interface";
 const API_METHOD_UID = "plugin::api-pro.api-interface-method";
 function extractRouteTokens(routePath) {
@@ -1142,92 +2203,136 @@ var interfaces$1 = {
   previewAlignment,
   resolveApiProviderPaths
 };
-const TOKEN_REGEX = /\{\{\s*([a-zA-Z0-9_.]+)\s*\}\}/g;
-const ALLOWED_ROOTS = /* @__PURE__ */ new Set(["strapi", "user", "claim", "input"]);
-function getByPath(source, dottedPath) {
-  return dottedPath.split(".").reduce((acc, segment) => {
-    if (acc == null) return void 0;
-    if (typeof acc !== "object") return void 0;
-    return acc[segment];
-  }, source);
+const POLICY_UID$1 = "plugin::api-pro.api-method-policy";
+const USER_UID$1 = "plugin::users-permissions.user";
+function normalizeKey(value) {
+  if (typeof value === "string") return value.toLowerCase();
+  if (value && typeof value === "object" && typeof value.key === "string") {
+    return value.key.toLowerCase();
+  }
+  return null;
 }
-function resolveToken(context2, token, strict) {
-  const [root] = token.split(".");
-  if (!ALLOWED_ROOTS.has(root)) {
-    throw new Error(`Policy template token root '${root}' is not allowed`);
+function uniqueBy(items, keyFn) {
+  const seen = /* @__PURE__ */ new Set();
+  const out = [];
+  for (const item of items) {
+    const key = keyFn(item);
+    if (key == null || seen.has(key)) continue;
+    seen.add(key);
+    out.push(item);
   }
-  const value = getByPath(context2, token);
-  if (value === void 0 && strict) {
-    throw new Error(`Policy template token '${token}' resolved to undefined`);
-  }
-  return value;
+  return out;
 }
-function resolveStringTemplate(value, context2, strict) {
-  const matches = [...value.matchAll(TOKEN_REGEX)];
-  if (matches.length === 0) return value;
-  if (matches.length === 1 && matches[0][0] === value.trim()) {
-    const token = matches[0][1];
-    const tokenValue = resolveToken(context2, token, strict);
-    return tokenValue === void 0 ? null : tokenValue;
-  }
-  return value.replace(TOKEN_REGEX, (_, token) => {
-    const tokenValue = resolveToken(context2, token, strict);
-    if (tokenValue == null) return "";
-    if (typeof tokenValue === "object") return JSON.stringify(tokenValue);
-    return String(tokenValue);
+function shapePolicyForResponse(policy) {
+  return {
+    id: policy.id,
+    key: policy.key,
+    name: policy.name || policy.key,
+    roleKey: policy.roleKey,
+    resolverMode: policy.resolverMode || "strict",
+    filtersTemplate: policy.filtersTemplate || {},
+    populateTemplate: policy.populateTemplate || {},
+    bodyTemplate: policy.bodyTemplate || {},
+    queryTemplate: policy.queryTemplate || {}
+  };
+}
+async function loadUser(strapi2, userId) {
+  return strapi2.db.query(USER_UID$1).findOne({
+    where: { id: userId },
+    populate: {
+      role: true,
+      app_roles: { populate: { appDomains: true } }
+    }
   });
 }
-function resolveNode(node, context2, strict) {
-  if (Array.isArray(node)) {
-    return node.map((item) => resolveNode(item, context2, strict));
-  }
-  if (node && typeof node === "object") {
-    const output = {};
-    for (const [key, value] of Object.entries(node)) {
-      output[key] = resolveNode(value, context2, strict);
-    }
-    return output;
-  }
-  if (typeof node === "string") {
-    return resolveStringTemplate(node, context2, strict);
-  }
-  return node;
+async function loadPoliciesForRoles(strapi2, roleKeys) {
+  if (roleKeys.length === 0) return [];
+  return strapi2.db.query(POLICY_UID$1).findMany({
+    where: { roleKey: { $in: roleKeys } },
+    populate: { interfaceMethod: { populate: { apiInterface: true } } }
+  });
 }
-function buildContextBundle({ strapiCtx = {}, user = {}, claim = {}, input = {} } = {}) {
-  return {
-    strapi: {
-      request: {
-        method: strapiCtx?.request?.method || null,
-        path: strapiCtx?.request?.path || null,
-        query: strapiCtx?.request?.query || {}
+async function gatherExtraRoleKeys(strapi2, user) {
+  const providers = strapi2.apiPro?.roleProviders || [];
+  const extras = [];
+  for (const provide of providers) {
+    try {
+      const result = await provide(user, { strapi: strapi2 });
+      if (Array.isArray(result)) {
+        for (const k of result) {
+          const normalized = normalizeKey(k);
+          if (normalized) extras.push(normalized);
+        }
       }
-    },
-    user: {
-      id: user?.id || null,
-      email: user?.email || null,
-      username: user?.username || null
-    },
-    claim: {
-      appName: claim?.appName || null,
-      roleKey: claim?.roleKey || null,
-      domainKey: claim?.domainKey || null
-    },
-    input: input || {}
-  };
+    } catch (error) {
+      strapi2.log.warn(`[api-pro] role provider failed: ${error?.message}`);
+    }
+  }
+  return extras;
 }
-function resolvePolicyTemplates(policy = {}, options2 = {}) {
-  const strict = options2.resolverMode !== "lenient";
-  const context2 = buildContextBundle(options2);
+async function build(strapi2, userId) {
+  const cfg = strapi2.config.get("plugin::api-pro") || {};
+  const sessionTimeout = Number.isFinite(cfg.sessionTimeout) ? cfg.sessionTimeout : 3600;
+  const user = await loadUser(strapi2, userId);
+  if (!user) {
+    return {
+      role: null,
+      roleType: null,
+      domains: [],
+      appRoles: [],
+      permissions: {},
+      strapiPermissions: [],
+      sessionTimeout
+    };
+  }
+  const appRoles = Array.isArray(user.app_roles) ? user.app_roles : [];
+  const directRoleKeys = appRoles.map((r) => normalizeKey(r)).filter(Boolean);
+  const extraRoleKeys = await gatherExtraRoleKeys(strapi2, user);
+  const allRoleKeys = Array.from(/* @__PURE__ */ new Set([...directRoleKeys, ...extraRoleKeys]));
+  const domainEntries = [];
+  for (const role of appRoles) {
+    const roleKey = normalizeKey(role);
+    const domains3 = Array.isArray(role.appDomains) ? role.appDomains : [];
+    for (const d of domains3) {
+      const domainKey = normalizeKey(d);
+      if (!domainKey) continue;
+      domainEntries.push({
+        key: domainKey,
+        name: d.name || domainKey,
+        roleKey
+      });
+    }
+  }
+  const domains2 = uniqueBy(domainEntries, (e) => `${e.key}|${e.roleKey}`);
+  const policies2 = await loadPoliciesForRoles(strapi2, allRoleKeys);
+  const permissions = {};
+  for (const policy of policies2) {
+    const ctUid = policy.interfaceMethod?.apiInterface?.uid;
+    const action = policy.interfaceMethod?.action;
+    if (!ctUid || !action) continue;
+    permissions[ctUid] = permissions[ctUid] || {};
+    permissions[ctUid][action] = permissions[ctUid][action] || { allowed: true, policies: [] };
+    permissions[ctUid][action].policies.push(shapePolicyForResponse(policy));
+  }
+  const strapiRole = user.role || null;
+  const strapiPermissions = Array.isArray(strapiRole?.permissions) ? strapiRole.permissions : [];
   return {
-    filters: resolveNode(policy.filtersTemplate || {}, context2, strict),
-    populate: resolveNode(policy.populateTemplate || {}, context2, strict),
-    body: resolveNode(policy.bodyTemplate || {}, context2, strict),
-    query: resolveNode(policy.queryTemplate || {}, context2, strict)
+    role: strapiRole?.name || null,
+    roleType: strapiRole?.type || null,
+    domains: domains2,
+    appRoles: appRoles.map((r) => ({
+      id: r.id,
+      key: r.key,
+      name: r.name || r.key
+    })),
+    permissions,
+    strapiPermissions,
+    sessionTimeout
   };
 }
-var policyResolver$1 = {
-  buildContextBundle,
-  resolvePolicyTemplates
+var mePermissions$1 = {
+  build,
+  gatherExtraRoleKeys
 };
 const USER_UID = "plugin::users-permissions.user";
 const APP_ROLE_UID = "plugin::api-pro.app-role";
@@ -1327,31 +2432,237 @@ async function lintMethodAlignment(strapi2) {
 var scaffoldRunner$1 = {
   lintMethodAlignment
 };
+const fileStore$2 = fileStore$4;
+const sync$1 = sync$2;
+const POLICY_UID = "plugin::api-pro.api-method-policy";
+function shape(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    key: row.key,
+    name: row.name,
+    roleKey: row.roleKey,
+    resolverMode: row.resolverMode,
+    filtersTemplate: row.filtersTemplate || {},
+    populateTemplate: row.populateTemplate || {},
+    bodyTemplate: row.bodyTemplate || {},
+    queryTemplate: row.queryTemplate || {},
+    templateVersion: row.templateVersion,
+    interfaceMethod: row.interfaceMethod ? { id: row.interfaceMethod.id, key: row.interfaceMethod.key, name: row.interfaceMethod.name } : null
+  };
+}
+async function list(strapi2, { interfaceKey, methodKey, roleKey } = {}) {
+  const where = {};
+  if (roleKey) where.roleKey = String(roleKey).toLowerCase();
+  if (interfaceKey || methodKey) {
+    where.interfaceMethod = {};
+    if (methodKey && interfaceKey) {
+      where.interfaceMethod.key = `${interfaceKey}:${methodKey}`;
+    } else if (interfaceKey) {
+      where.interfaceMethod.apiInterface = { key: interfaceKey };
+    } else if (methodKey) {
+      where.interfaceMethod.name = methodKey;
+    }
+  }
+  const rows = await strapi2.db.query(POLICY_UID).findMany({
+    where,
+    populate: { interfaceMethod: { populate: { apiInterface: true } } },
+    orderBy: { roleKey: "asc" }
+  });
+  return rows.map(shape);
+}
+async function findOne(strapi2, { interfaceKey, methodKey, roleKey }) {
+  const row = await strapi2.db.query(POLICY_UID).findOne({
+    where: {
+      key: `${interfaceKey}:${methodKey}:${String(roleKey).toLowerCase()}`
+    },
+    populate: { interfaceMethod: { populate: { apiInterface: true } } }
+  });
+  return shape(row);
+}
+async function upsert(strapi2, { interfaceKey, methodKey, roleKey, data }) {
+  if (!interfaceKey || !methodKey || !roleKey) {
+    const err = new Error("interfaceKey, methodKey and roleKey are required");
+    err.status = 400;
+    throw err;
+  }
+  const normalizedRoleKey = String(roleKey).toLowerCase();
+  const fileData = {
+    name: data?.name || `${interfaceKey}:${methodKey}:${normalizedRoleKey}`,
+    resolverMode: data?.resolverMode === "lenient" ? "lenient" : "strict",
+    filtersTemplate: data?.filtersTemplate || {},
+    populateTemplate: data?.populateTemplate || {},
+    bodyTemplate: data?.bodyTemplate || {},
+    queryTemplate: data?.queryTemplate || {},
+    templateVersion: Number.isInteger(data?.templateVersion) ? data.templateVersion : 1
+  };
+  await fileStore$2.writePolicy(strapi2, interfaceKey, methodKey, normalizedRoleKey, fileData);
+  await sync$1.syncPolicyWrite(strapi2, interfaceKey, methodKey, normalizedRoleKey);
+  strapi2.apiPro?.clearAllCache?.();
+  return findOne(strapi2, { interfaceKey, methodKey, roleKey: normalizedRoleKey });
+}
+async function remove(strapi2, { interfaceKey, methodKey, roleKey }) {
+  if (!interfaceKey || !methodKey || !roleKey) {
+    const err = new Error("interfaceKey, methodKey and roleKey are required");
+    err.status = 400;
+    throw err;
+  }
+  const normalizedRoleKey = String(roleKey).toLowerCase();
+  await fileStore$2.deletePolicy(strapi2, interfaceKey, methodKey, normalizedRoleKey);
+  await sync$1.syncPolicyDelete(strapi2, interfaceKey, methodKey, normalizedRoleKey);
+  strapi2.apiPro?.clearAllCache?.();
+  return { interfaceKey, methodKey, roleKey: normalizedRoleKey, deleted: true };
+}
+var policies$3 = {
+  list,
+  findOne,
+  upsert,
+  remove
+};
+const fileStore$1 = fileStore$4;
+const INTERFACE_UID = "plugin::api-pro.api-interface";
+const CRUD_OPTIONS = {
+  find: ["filters", "populate", "fields", "pagination", "sort", "publicationState", "locale"],
+  findOne: ["populate", "fields", "publicationState", "locale"],
+  create: ["populate", "fields"],
+  update: ["populate", "fields"],
+  delete: []
+};
+function camelCase(input) {
+  return String(input || "").replace(/[-_\s]+([a-z0-9])/gi, (_, c) => c.toUpperCase()).replace(/^(.)/, (c) => c.toLowerCase());
+}
+function templatizePath(path2) {
+  return String(path2 || "").replace(/:([a-zA-Z_][\w]*)/g, (_, name) => `\${${name}}`);
+}
+function queryOptionsForMethod(method) {
+  const action = String(method.action || method.name || "").toLowerCase();
+  if (CRUD_OPTIONS[action]) return CRUD_OPTIONS[action];
+  const allKeys = /* @__PURE__ */ new Set();
+  Object.values(CRUD_OPTIONS).forEach((arr) => arr.forEach((k) => allKeys.add(k)));
+  return Array.from(allKeys);
+}
+function clientVerbForMethod(method) {
+  const httpMethod = String(method.method || "GET").toLowerCase();
+  if (httpMethod === "patch") return "put";
+  return ["get", "post", "put", "delete"].includes(httpMethod) ? httpMethod : "get";
+}
+function emitMethod(method) {
+  const name = method.name || method.action || method.key;
+  const path2 = templatizePath(method.path);
+  const verb = clientVerbForMethod(method);
+  const tokens = Array.isArray(method.routeTokens) ? method.routeTokens : [];
+  const optionKeys = queryOptionsForMethod(method);
+  const positionalArgs = tokens.map((t) => `${t}: string`);
+  const bodyArg = ["post", "put"].includes(verb) ? "body?: Record<string, unknown>" : null;
+  const optionsArg = optionKeys.length > 0 ? `{ ${optionKeys.join(", ")} }: { ${optionKeys.map((k) => `${k}?: unknown`).join("; ")} } = {}` : null;
+  const args = [...positionalArgs, ...bodyArg ? [bodyArg] : [], ...optionsArg ? [optionsArg] : []].join(", ");
+  const paramsObject = optionKeys.length > 0 ? `{ params: { ${optionKeys.join(", ")} } }` : null;
+  let callArgs;
+  if (verb === "get" || verb === "delete") {
+    callArgs = paramsObject ? `\`${path2}\`, ${paramsObject}` : `\`${path2}\``;
+  } else {
+    const body = bodyArg ? "body" : "{}";
+    callArgs = paramsObject ? `\`${path2}\`, ${body}, ${paramsObject}` : `\`${path2}\`, ${body}`;
+  }
+  return `    ${name}: (${args}) =>
+      client.${verb}(${callArgs}),`;
+}
+function emitInterface({ key, name, methods }) {
+  const fnName = `${camelCase(key)}Api`;
+  const methodsCode = methods.map(emitMethod).join("\n\n");
+  return [
+    `// Auto-generated by strapi-api-pro — do not edit manually.`,
+    `// Interface: ${name || key}`,
+    `import type { StrapiClient } from '../client';`,
+    ``,
+    `export function ${fnName}(client: StrapiClient) {`,
+    `  return {`,
+    methodsCode,
+    `  };`,
+    `}`,
+    ``
+  ].join("\n");
+}
+async function generate(strapi2, interfaceKey) {
+  const fileData = await fileStore$1.readInterface(strapi2, interfaceKey);
+  if (fileData) {
+    return {
+      code: emitInterface({
+        key: fileData.key || interfaceKey,
+        name: fileData.name || fileData.label || interfaceKey,
+        methods: Array.isArray(fileData.methods) ? fileData.methods : []
+      }),
+      source: "file"
+    };
+  }
+  const row = await strapi2.db.query(INTERFACE_UID).findOne({
+    where: { key: interfaceKey },
+    populate: { methods: true }
+  });
+  if (!row) {
+    const err = new Error(`Interface '${interfaceKey}' not found`);
+    err.status = 404;
+    throw err;
+  }
+  return {
+    code: emitInterface({
+      key: row.key,
+      name: row.name,
+      methods: Array.isArray(row.methods) ? row.methods : []
+    }),
+    source: "db"
+  };
+}
+var scaffold$1 = {
+  generate,
+  emitInterface,
+  emitMethod,
+  templatizePath,
+  camelCase
+};
 const context = context$1;
 const recordings = recordings$1;
 const interfaces = interfaces$1;
 const policyResolver = policyResolver$1;
+const permissionEngine = permissionEngine$1;
+const requestInterceptor = requestInterceptor$1;
+const mePermissions = mePermissions$1;
 const users = users$1;
 const scaffoldRunner = scaffoldRunner$1;
+const fileStore = fileStore$4;
+const sync = sync$2;
+const policies$2 = policies$3;
+const scaffold = scaffold$1;
 var services$1 = {
   context,
   recordings,
   interfaces,
   policyResolver,
+  permissionEngine,
+  requestInterceptor,
+  mePermissions,
   users,
-  scaffoldRunner
+  scaffoldRunner,
+  fileStore,
+  sync,
+  policies: policies$2,
+  scaffold
 };
 var policies$1 = {};
 var appContext$1 = (config2, { strapi: strapi2 }) => {
+  const required = config2?.required !== false;
+  const requireApp = config2?.requireApp !== false;
+  const requireActiveRole = config2?.requireActiveRole !== false;
   return async (ctx, next) => {
-    const shouldValidate = config2?.required !== false;
-    if (!shouldValidate) {
-      await next();
-      return;
+    if (!required) {
+      return next();
+    }
+    if (strapi2.apiPro?.isBypassed?.(ctx.path)) {
+      return next();
     }
     try {
-      const resolved = await strapi2.plugin("api-pro").service("context").validateClaimContext(ctx, strapi2);
-      ctx.state.apiProContext = resolved;
+      const claim = await strapi2.plugin("api-pro").service("context").resolveClaim(ctx, strapi2, { requireApp, requireActiveRole });
+      ctx.state.apiProClaim = claim;
     } catch (error) {
       ctx.status = error?.status || 403;
       ctx.body = {

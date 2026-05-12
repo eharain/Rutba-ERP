@@ -52,7 +52,7 @@ const index = {
         defaultMessage: "Strapi API Pro"
       },
       Component: async () => {
-        const { default: App } = await import("../_chunks/App-BeWysPin.mjs");
+        const { default: App } = await import("../_chunks/App-B7BHXCGU.mjs");
         return App;
       }
     });
