@@ -1,104 +1,99 @@
 'use strict';
 
-const TOKEN_REGEX = /\{\{\s*([a-zA-Z0-9_.]+)\s*\}\}/g;
-const ALLOWED_ROOTS = new Set(['strapi', 'user', 'claim', 'input']);
+// Policy template token resolver.
+//
+// Tokens use $-prefixed syntax, matching AGP. A token IS the full string value —
+// they are NOT substrings inside a larger string. So a policy like:
+//
+//   { "owner": "$user.id", "branch": "$user.branch.id" }
+//
+// resolves to { "owner": 42, "branch": 7 } given a user with those fields.
+//
+// Supported roots: $user, $claim, $query, $params, $body, $strapi
+// Special scalars: $today (yyyy-mm-dd), $now (full ISO)
+//
+// See memory: feedback_policy_token_syntax.
 
-function getByPath(source, dottedPath) {
-  return dottedPath.split('.').reduce((acc, segment) => {
-    if (acc == null) return undefined;
-    if (typeof acc !== 'object') return undefined;
-    return acc[segment];
-  }, source);
+const ALLOWED_ROOTS = new Set(['user', 'claim', 'query', 'params', 'body', 'strapi']);
+
+function resolveToken(value, context) {
+  if (typeof value !== 'string' || !value.startsWith('$')) return value;
+
+  if (value === '$today') return new Date().toISOString().split('T')[0];
+  if (value === '$now') return new Date().toISOString();
+
+  const parts = value.slice(1).split('.');
+  if (parts.length === 0) return undefined;
+
+  const [root] = parts;
+  if (!ALLOWED_ROOTS.has(root)) return undefined;
+
+  let result = context;
+  for (const part of parts) {
+    if (result === undefined || result === null) return undefined;
+    result = result[part];
+  }
+  return result;
 }
 
-function resolveToken(context, token, strict) {
-  const [root] = token.split('.');
-  if (!ALLOWED_ROOTS.has(root)) {
-    throw new Error(`Policy template token root '${root}' is not allowed`);
+// Recursively walk a plain object / array and resolve any $-token string leaves.
+// Used so filter trees like { $or: [{ invoice_no: "$query.q" }] } resolve correctly.
+// Undefined tokens are STRIPPED from the result — they do not survive to the
+// final filter/body. This matches AGP's behavior.
+function resolveDeep(value, context) {
+  if (Array.isArray(value)) {
+    return value
+      .map((v) => resolveDeep(v, context))
+      .filter((v) => v !== undefined);
   }
-
-  const value = getByPath(context, token);
-  if (value === undefined && strict) {
-    throw new Error(`Policy template token '${token}' resolved to undefined`);
+  if (value !== null && typeof value === 'object') {
+    const out = {};
+    for (const [k, v] of Object.entries(value)) {
+      const resolved = resolveDeep(v, context);
+      if (resolved !== undefined) out[k] = resolved;
+    }
+    return out;
   }
-
+  if (typeof value === 'string' && value.startsWith('$')) {
+    return resolveToken(value, context);
+  }
   return value;
 }
 
-function resolveStringTemplate(value, context, strict) {
-  const matches = [...value.matchAll(TOKEN_REGEX)];
-  if (matches.length === 0) return value;
-
-  if (matches.length === 1 && matches[0][0] === value.trim()) {
-    const token = matches[0][1];
-    const tokenValue = resolveToken(context, token, strict);
-    return tokenValue === undefined ? null : tokenValue;
-  }
-
-  return value.replace(TOKEN_REGEX, (_, token) => {
-    const tokenValue = resolveToken(context, token, strict);
-    if (tokenValue == null) return '';
-    if (typeof tokenValue === 'object') return JSON.stringify(tokenValue);
-    return String(tokenValue);
-  });
-}
-
-function resolveNode(node, context, strict) {
-  if (Array.isArray(node)) {
-    return node.map((item) => resolveNode(item, context, strict));
-  }
-
-  if (node && typeof node === 'object') {
-    const output = {};
-    for (const [key, value] of Object.entries(node)) {
-      output[key] = resolveNode(value, context, strict);
-    }
-    return output;
-  }
-
-  if (typeof node === 'string') {
-    return resolveStringTemplate(node, context, strict);
-  }
-
-  return node;
-}
-
-function buildContextBundle({ strapiCtx = {}, user = {}, claim = {}, input = {} } = {}) {
+// Build the standard token context bundle from a Koa ctx + an api-pro claim.
+// Pulls Strapi v5 body shape ({ data: ... }) out so $body.* points at the
+// inner object the caller actually wrote.
+function buildTokenContext({ strapiCtx, user = null, claim = null } = {}) {
   return {
+    user: user || strapiCtx?.state?.user || null,
+    claim: claim || strapiCtx?.state?.apiProClaim || null,
+    query: strapiCtx?.query || {},
+    params: strapiCtx?.params || {},
+    body: strapiCtx?.request?.body?.data || strapiCtx?.request?.body || {},
     strapi: {
       request: {
         method: strapiCtx?.request?.method || null,
         path: strapiCtx?.request?.path || null,
-        query: strapiCtx?.request?.query || {},
       },
     },
-    user: {
-      id: user?.id || null,
-      email: user?.email || null,
-      username: user?.username || null,
-    },
-    claim: {
-      appName: claim?.appName || null,
-      roleKey: claim?.roleKey || null,
-      domainKey: claim?.domainKey || null,
-    },
-    input: input || {},
   };
 }
 
-function resolvePolicyTemplates(policy = {}, options = {}) {
-  const strict = options.resolverMode !== 'lenient';
-  const context = buildContextBundle(options);
-
+// Resolve all four template fields of a stored api-method-policy row.
+// Returns plain objects with $-tokens substituted; safe to merge straight into
+// ctx.query / ctx.request.body.
+function resolvePolicyTemplates(policy = {}, context = {}) {
   return {
-    filters: resolveNode(policy.filtersTemplate || {}, context, strict),
-    populate: resolveNode(policy.populateTemplate || {}, context, strict),
-    body: resolveNode(policy.bodyTemplate || {}, context, strict),
-    query: resolveNode(policy.queryTemplate || {}, context, strict),
+    filters: resolveDeep(policy.filtersTemplate || {}, context),
+    populate: resolveDeep(policy.populateTemplate || {}, context),
+    body: resolveDeep(policy.bodyTemplate || {}, context),
+    query: resolveDeep(policy.queryTemplate || {}, context),
   };
 }
 
 module.exports = {
-  buildContextBundle,
+  resolveToken,
+  resolveDeep,
+  buildTokenContext,
   resolvePolicyTemplates,
 };

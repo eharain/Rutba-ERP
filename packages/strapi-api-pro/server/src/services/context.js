@@ -1,117 +1,149 @@
 'use strict';
 
+// Claim resolution for api-pro.
+//
+// pos-strapi sends ONE header that affects authorization: `x-rutba-app`
+// (the current application/domain the user is acting in). It optionally
+// sends `x-rutba-app-admin: true` to request admin elevation when the user
+// holds an admin role for that app. NO role-claim header is sent — the
+// role is DERIVED from the user's assigned app_roles intersected with the
+// current app context.
+//
+// This service produces a normalized claim object that downstream services
+// (request-interceptor, me-permissions) consume.
+
 const APP_ROLE_UID = 'plugin::api-pro.app-role';
 
 function getHeader(ctx, key) {
-  const value = ctx?.request?.headers?.[key.toLowerCase()];
-  return typeof value === 'string' ? value.trim() : '';
+  const raw = ctx?.request?.headers?.[String(key).toLowerCase()];
+  return typeof raw === 'string' ? raw.trim() : '';
 }
 
-function normalizeClaims(ctx) {
-  const appName = getHeader(ctx, 'x-rutba-app') || getHeader(ctx, 'x-app-name');
-  const roleKey = getHeader(ctx, 'x-rutba-app-role') || getHeader(ctx, 'x-app-role');
-  const domainKey = getHeader(ctx, 'x-rutba-app-domain') || getHeader(ctx, 'x-app-domain');
+function readBoolHeader(ctx, key) {
+  const v = ctx?.request?.headers?.[String(key).toLowerCase()];
+  return v === true || v === 'true' || v === '1' || v === 1;
+}
 
+function normalizeKey(value) {
+  if (typeof value === 'string') return value.toLowerCase();
+  if (value && typeof value === 'object' && typeof value.key === 'string') {
+    return value.key.toLowerCase();
+  }
+  return null;
+}
+
+function createValidationError(message, code, status = 403) {
+  const err = new Error(message);
+  err.code = code;
+  err.status = status;
+  return err;
+}
+
+// Read header configuration each call so config overrides apply.
+function readHeaderKeys(strapi) {
+  const cfg = strapi.config.get('plugin::api-pro') || {};
   return {
-    appName,
-    roleKey,
-    domainKey,
+    domain: (cfg.headerDomainKey || 'x-rutba-app').toLowerCase(),
+    elevated: (cfg.headerElevatedKey || 'x-rutba-app-admin').toLowerCase(),
   };
 }
 
-function normalizeUserRoleKeys(user) {
-  const raw = user?.api_guard_roles;
-  if (!Array.isArray(raw)) return [];
-
-  return raw
-    .map((entry) => {
-      if (typeof entry === 'string') return entry.toLowerCase();
-      if (entry && typeof entry.key === 'string') return entry.key.toLowerCase();
-      return null;
-    })
-    .filter(Boolean);
+// Load the user's app_roles with domains populated. Falls back to fetching
+// from DB if `ctx.state.user.app_roles` isn't already hydrated (which it
+// usually isn't — users-permissions returns a thin user object).
+async function loadUserAppRoles(strapi, userId) {
+  if (!userId) return [];
+  try {
+    const user = await strapi.db.query('plugin::users-permissions.user').findOne({
+      where: { id: userId },
+      populate: { app_roles: { populate: { appDomains: true } }, role: true },
+    });
+    return Array.isArray(user?.app_roles) ? user.app_roles : [];
+  } catch (error) {
+    strapi.log.warn(`[api-pro] failed to load app_roles for user ${userId}: ${error?.message}`);
+    return [];
+  }
 }
 
-function createValidationError(message, code = 'INVALID_CONTEXT_CLAIM', status = 403) {
-  const error = new Error(message);
-  error.code = code;
-  error.status = status;
-  return error;
-}
-
-async function validateClaimContext(ctx, strapi) {
-  const claims = normalizeClaims(ctx);
-  const user = ctx?.state?.user;
-
-  if (!user?.id) {
-    throw createValidationError('Authenticated user is required for app context validation', 'AUTH_REQUIRED', 401);
-  }
-
-  if (!claims.appName) {
-    throw createValidationError('Missing appName claim header (x-rutba-app)', 'APP_CLAIM_REQUIRED', 400);
-  }
-
-  if (!claims.roleKey) {
-    throw createValidationError('Missing role claim header (x-rutba-app-role)', 'ROLE_CLAIM_REQUIRED', 400);
-  }
-
-  const claimedRoleKey = claims.roleKey.toLowerCase();
-  const userRoleKeys = normalizeUserRoleKeys(user);
-
-  if (!userRoleKeys.includes(claimedRoleKey)) {
-    throw createValidationError(`Claimed role '${claims.roleKey}' is not assigned to current user`, 'ROLE_NOT_ASSIGNED', 403);
-  }
-
-  const matchedRole = await strapi.db.query(APP_ROLE_UID).findOne({
-    where: {
-      key: claimedRoleKey,
-      isActive: true,
-    },
-    populate: {
-      appDomains: true,
-    },
+// Filter the user's app_roles down to those that include the current app
+// in their appDomains. A role with no domains is treated as global.
+function filterRolesByApp(appRoles, appName) {
+  if (!appName) return appRoles;
+  const wanted = appName.toLowerCase();
+  return appRoles.filter((role) => {
+    const domains = Array.isArray(role.appDomains) ? role.appDomains : [];
+    if (domains.length === 0) return true;
+    return domains.some((d) => normalizeKey(d) === wanted);
   });
+}
 
-  if (!matchedRole) {
-    throw createValidationError(`Claimed app role '${claims.roleKey}' is not configured`, 'ROLE_NOT_CONFIGURED', 403);
+// Resolve the api-pro claim for the current request. Throws an error with
+// .status when validation is strict and a required signal is missing; returns
+// the claim object on success.
+async function resolveClaim(ctx, strapi, { requireApp = true, requireActiveRole = true } = {}) {
+  const user = ctx?.state?.user;
+  if (!user?.id) {
+    throw createValidationError('Authenticated user required', 'AUTH_REQUIRED', 401);
   }
 
-  const domainKeys = Array.isArray(matchedRole.appDomains)
-    ? matchedRole.appDomains.map((d) => String(d?.key || '').toLowerCase()).filter(Boolean)
-    : [];
+  const headerKeys = readHeaderKeys(strapi);
+  const appName = getHeader(ctx, headerKeys.domain);
+  const elevated = readBoolHeader(ctx, headerKeys.elevated);
 
-  if (claims.domainKey) {
-    const dk = claims.domainKey.toLowerCase();
-    if (domainKeys.length > 0 && !domainKeys.includes(dk)) {
-      throw createValidationError(`Claimed domain '${claims.domainKey}' is not allowed for role '${claims.roleKey}'`, 'DOMAIN_NOT_ALLOWED', 403);
-    }
+  if (requireApp && !appName) {
+    throw createValidationError(
+      `Missing app context header '${headerKeys.domain}'`,
+      'APP_CONTEXT_REQUIRED',
+      400
+    );
   }
+
+  const appRoles = await loadUserAppRoles(strapi, user.id);
+  const activeRoles = filterRolesByApp(appRoles, appName);
+
+  if (requireActiveRole && appName && activeRoles.length === 0) {
+    throw createValidationError(
+      `User has no app_role assigned for app '${appName}'`,
+      'NO_ACTIVE_ROLE',
+      403
+    );
+  }
+
+  const activeRoleKeys = activeRoles.map((r) => normalizeKey(r)).filter(Boolean);
+  const activeDomainKeys = Array.from(
+    new Set(
+      activeRoles
+        .flatMap((r) => (Array.isArray(r.appDomains) ? r.appDomains : []))
+        .map((d) => normalizeKey(d))
+        .filter(Boolean)
+    )
+  );
 
   return {
-    claim: {
-      appName: claims.appName,
-      roleKey: claimedRoleKey,
-      domainKey: claims.domainKey || null,
-    },
     user: {
       id: user.id,
       email: user.email || null,
       username: user.username || null,
     },
-    role: {
-      key: matchedRole.key,
-      name: matchedRole.name || matchedRole.key,
-      adminRoleCode: matchedRole.adminRoleCode,
-      domainKeys,
-    },
-    audit: {
-      validationSource: 'x-rutba-app/x-rutba-app-role headers',
-      validatedAt: new Date().toISOString(),
-    },
+    appName: appName || null,
+    elevated,
+    roleKeys: activeRoleKeys,
+    domainKeys: activeDomainKeys,
+    // Full role objects retained for /me/permissions response shaping.
+    appRoles: activeRoles.map((r) => ({
+      id: r.id,
+      key: r.key,
+      name: r.name || r.key,
+      adminRoleCode: r.adminRoleCode || null,
+      appDomains: Array.isArray(r.appDomains)
+        ? r.appDomains.map((d) => ({ id: d.id, key: d.key, name: d.name || d.key }))
+        : [],
+    })),
   };
 }
 
 module.exports = {
-  normalizeClaims,
-  validateClaimContext,
+  resolveClaim,
+  loadUserAppRoles,
+  filterRolesByApp,
 };

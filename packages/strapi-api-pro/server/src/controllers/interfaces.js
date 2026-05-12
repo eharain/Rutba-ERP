@@ -83,4 +83,20 @@ module.exports = {
     const data = await strapi.plugin('api-pro').service('scaffoldRunner').lintMethodAlignment(strapi);
     ctx.body = { data };
   },
+
+  async scaffold(ctx) {
+    const { interfaceKey } = ctx.params;
+    if (!interfaceKey) {
+      ctx.status = 400;
+      ctx.body = { error: { message: 'interfaceKey is required' } };
+      return;
+    }
+    try {
+      const data = await strapi.plugin('api-pro').service('scaffold').generate(strapi, interfaceKey);
+      ctx.body = { data };
+    } catch (error) {
+      ctx.status = error?.status || 500;
+      ctx.body = { error: { message: error?.message || 'Failed to scaffold interface' } };
+    }
+  },
 };
