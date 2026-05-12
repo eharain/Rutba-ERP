@@ -563,6 +563,660 @@ const Interfaces = () => {
     /* @__PURE__ */ jsx(ScaffoldModal, { iface: scaffolding, onClose: () => setScaffolding(null) })
   ] });
 };
+const tokens = {
+  primary: "#4945ff",
+  danger: "#d02b20",
+  warning: "#b76b00",
+  neutral100: "#fafafa",
+  neutral200: "#f0f0f4",
+  neutral300: "#e0e0e8",
+  neutral500: "#888894",
+  neutral700: "#454552",
+  radius: 4,
+  radiusLarge: 8,
+  monoFont: 'ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace'
+};
+const OPERATORS = [
+  { value: "$eq", label: "= equals" },
+  { value: "$ne", label: "≠ not equals" },
+  { value: "$gt", label: "> greater than" },
+  { value: "$gte", label: "≥ greater or equal" },
+  { value: "$lt", label: "< less than" },
+  { value: "$lte", label: "≤ less or equal" },
+  { value: "$contains", label: "⊃ contains" },
+  { value: "$notContains", label: "∌ not contains" },
+  { value: "$startsWith", label: "↦ starts with" },
+  { value: "$endsWith", label: "⤇ ends with" },
+  { value: "$in", label: "∈ in (comma list)" },
+  { value: "$notIn", label: "∉ not in (comma list)" },
+  { value: "$null", label: "∅ is null" },
+  { value: "$notNull", label: "∃ is not null" }
+];
+const NO_VALUE_OPS = /* @__PURE__ */ new Set(["$null", "$notNull"]);
+const LIST_OPS = /* @__PURE__ */ new Set(["$in", "$notIn"]);
+const MAX_DEPTH = 4;
+let _idSeq = 0;
+const nextId = () => `n${++_idSeq}`;
+function maybeNumber(v) {
+  if (typeof v !== "string") return v;
+  if (v === "") return v;
+  if (v.startsWith("$")) return v;
+  if (/^-?\d+$/.test(v)) return Number(v);
+  if (/^-?\d*\.\d+$/.test(v)) return Number(v);
+  if (v === "true") return true;
+  if (v === "false") return false;
+  return v;
+}
+function buildLeaf(operator, rawValue) {
+  if (NO_VALUE_OPS.has(operator)) return { [operator]: true };
+  if (LIST_OPS.has(operator)) {
+    const list = String(rawValue || "").split(",").map((s) => maybeNumber(s.trim())).filter((v) => v !== "");
+    return { [operator]: list };
+  }
+  return { [operator]: maybeNumber(rawValue) };
+}
+function nestByPath(path, leaf) {
+  const parts = String(path || "").split(".").filter(Boolean);
+  if (parts.length === 0) return null;
+  return parts.reduceRight((acc, part) => ({ [part]: acc }), leaf);
+}
+function buildFilterObject(node) {
+  if (!node) return null;
+  if (node.type === "condition") {
+    if (!node.path || !node.operator) return null;
+    return nestByPath(node.path, buildLeaf(node.operator, node.value));
+  }
+  const children = (node.children || []).map(buildFilterObject).filter(Boolean);
+  if (children.length === 0) return null;
+  if (children.length === 1) return children[0];
+  return { [node.logic]: children };
+}
+const OP_KEYS = new Set(OPERATORS.map((o) => o.value));
+function parseLeaf(obj) {
+  for (const key of OP_KEYS) {
+    if (Object.prototype.hasOwnProperty.call(obj, key)) {
+      let value = obj[key];
+      if (LIST_OPS.has(key) && Array.isArray(value)) value = value.join(",");
+      if (NO_VALUE_OPS.has(key)) value = "";
+      if (value == null) value = "";
+      return { operator: key, value: String(value) };
+    }
+  }
+  return null;
+}
+function flattenConditions(obj, pathParts, out) {
+  if (!obj || typeof obj !== "object" || Array.isArray(obj)) return;
+  const leaf = parseLeaf(obj);
+  if (leaf) {
+    out.push({ path: pathParts.join("."), ...leaf });
+    return;
+  }
+  for (const [k, v] of Object.entries(obj)) {
+    if (k === "$and" || k === "$or") continue;
+    flattenConditions(v, [...pathParts, k], out);
+  }
+}
+function parseTree(obj, depth = 0) {
+  if (!obj || typeof obj !== "object" || Array.isArray(obj)) {
+    return { id: nextId(), type: "group", logic: "$and", children: [] };
+  }
+  if (depth > MAX_DEPTH) {
+    return { id: nextId(), type: "group", logic: "$and", children: [] };
+  }
+  const keys = Object.keys(obj);
+  if (keys.length === 1 && (keys[0] === "$or" || keys[0] === "$and")) {
+    const logic = keys[0];
+    const arr = Array.isArray(obj[logic]) ? obj[logic] : [];
+    return {
+      id: nextId(),
+      type: "group",
+      logic,
+      children: arr.map((c) => parseTree(c, depth + 1))
+    };
+  }
+  const out = [];
+  flattenConditions(obj, [], out);
+  const children = out.map((c) => ({
+    id: nextId(),
+    type: "condition",
+    path: c.path,
+    operator: c.operator,
+    value: c.value
+  }));
+  return { id: nextId(), type: "group", logic: "$and", children };
+}
+function parseFilterObject(obj) {
+  if (!obj || typeof obj !== "object") {
+    return { id: nextId(), type: "group", logic: "$and", children: [] };
+  }
+  return parseTree(obj, 0);
+}
+const Pill = ({ active, color, children, onClick, title }) => /* @__PURE__ */ jsx("button", { type: "button", onClick, title, style: {
+  border: `1px solid ${active ? color : tokens.neutral300}`,
+  background: active ? `${color}1a` : "#fff",
+  color: active ? color : tokens.neutral700,
+  padding: "2px 8px",
+  borderRadius: 12,
+  fontSize: 11,
+  fontWeight: 600,
+  cursor: "pointer",
+  fontFamily: tokens.monoFont
+}, children });
+const ConditionRow = ({ node, depth, onChange, onRemove }) => {
+  const noValue = NO_VALUE_OPS.has(node.operator);
+  return /* @__PURE__ */ jsxs(Flex, { gap: 1, alignItems: "center", wrap: "wrap", style: {
+    padding: 6,
+    marginBottom: 4,
+    background: tokens.neutral100,
+    borderRadius: tokens.radius,
+    border: `1px solid ${tokens.neutral200}`
+  }, children: [
+    /* @__PURE__ */ jsx(
+      "input",
+      {
+        type: "text",
+        value: node.path || "",
+        placeholder: "field.path (e.g. branch.id)",
+        onChange: (e) => onChange({ ...node, path: e.target.value }),
+        style: {
+          flex: "1 1 160px",
+          minWidth: 120,
+          padding: "4px 6px",
+          border: `1px solid ${tokens.neutral300}`,
+          borderRadius: tokens.radius,
+          fontFamily: tokens.monoFont,
+          fontSize: 12
+        }
+      }
+    ),
+    /* @__PURE__ */ jsx(
+      "select",
+      {
+        value: node.operator || "$eq",
+        onChange: (e) => onChange({ ...node, operator: e.target.value }),
+        style: {
+          padding: "4px 6px",
+          border: `1px solid ${tokens.neutral300}`,
+          borderRadius: tokens.radius,
+          fontSize: 12,
+          fontFamily: tokens.monoFont
+        },
+        children: OPERATORS.map((o) => /* @__PURE__ */ jsx("option", { value: o.value, children: o.label }, o.value))
+      }
+    ),
+    /* @__PURE__ */ jsx(
+      "input",
+      {
+        type: "text",
+        value: node.value || "",
+        placeholder: noValue ? "(no value)" : "value or $user.id",
+        disabled: noValue,
+        onChange: (e) => onChange({ ...node, value: e.target.value }),
+        style: {
+          flex: "1 1 160px",
+          minWidth: 120,
+          padding: "4px 6px",
+          border: `1px solid ${tokens.neutral300}`,
+          borderRadius: tokens.radius,
+          fontFamily: tokens.monoFont,
+          fontSize: 12,
+          background: noValue ? tokens.neutral200 : "#fff"
+        }
+      }
+    ),
+    /* @__PURE__ */ jsx("button", { type: "button", onClick: onRemove, title: "Remove condition", style: {
+      border: "none",
+      background: "transparent",
+      color: tokens.danger,
+      cursor: "pointer",
+      fontSize: 16,
+      padding: "0 6px"
+    }, children: "×" })
+  ] });
+};
+const GroupNode = ({ node, depth, onChange, onRemove, canRemove }) => {
+  const isAnd = node.logic === "$and";
+  const updateChild = (idx, next) => {
+    const children = node.children.slice();
+    if (next === null) children.splice(idx, 1);
+    else children[idx] = next;
+    onChange({ ...node, children });
+  };
+  const addCondition = () => onChange({
+    ...node,
+    children: [...node.children, { id: nextId(), type: "condition", path: "", operator: "$eq", value: "" }]
+  });
+  const addGroup = () => {
+    if (depth >= MAX_DEPTH) return;
+    onChange({
+      ...node,
+      children: [...node.children, { id: nextId(), type: "group", logic: "$and", children: [] }]
+    });
+  };
+  return /* @__PURE__ */ jsxs(Box, { style: {
+    padding: 8,
+    marginBottom: 6,
+    border: `1px solid ${isAnd ? tokens.primary : tokens.warning}`,
+    borderLeft: `4px solid ${isAnd ? tokens.primary : tokens.warning}`,
+    borderRadius: tokens.radiusLarge,
+    background: depth === 0 ? "#fff" : `${tokens.neutral100}`
+  }, children: [
+    /* @__PURE__ */ jsxs(Flex, { justifyContent: "space-between", alignItems: "center", paddingBottom: 2, children: [
+      /* @__PURE__ */ jsxs(Flex, { gap: 1, children: [
+        /* @__PURE__ */ jsx(
+          Pill,
+          {
+            active: isAnd,
+            color: tokens.primary,
+            onClick: () => onChange({ ...node, logic: "$and" }),
+            children: "AND"
+          }
+        ),
+        /* @__PURE__ */ jsx(
+          Pill,
+          {
+            active: !isAnd,
+            color: tokens.warning,
+            onClick: () => onChange({ ...node, logic: "$or" }),
+            children: "OR"
+          }
+        ),
+        /* @__PURE__ */ jsxs(Typography, { variant: "pi", textColor: "neutral500", children: [
+          node.children.length,
+          " ",
+          node.children.length === 1 ? "item" : "items"
+        ] })
+      ] }),
+      canRemove && /* @__PURE__ */ jsx("button", { type: "button", onClick: onRemove, title: "Remove group", style: {
+        border: "none",
+        background: "transparent",
+        color: tokens.danger,
+        cursor: "pointer",
+        fontSize: 14,
+        padding: "0 6px"
+      }, children: "× group" })
+    ] }),
+    node.children.map((child, idx) => child.type === "group" ? /* @__PURE__ */ jsx(
+      GroupNode,
+      {
+        node: child,
+        depth: depth + 1,
+        onChange: (n) => updateChild(idx, n),
+        onRemove: () => updateChild(idx, null),
+        canRemove: true
+      },
+      child.id
+    ) : /* @__PURE__ */ jsx(
+      ConditionRow,
+      {
+        node: child,
+        depth: depth + 1,
+        onChange: (n) => updateChild(idx, n),
+        onRemove: () => updateChild(idx, null)
+      },
+      child.id
+    )),
+    /* @__PURE__ */ jsxs(Flex, { gap: 1, paddingTop: 1, children: [
+      /* @__PURE__ */ jsx(Pill, { color: tokens.primary, onClick: addCondition, children: "+ condition" }),
+      depth < MAX_DEPTH && /* @__PURE__ */ jsx(Pill, { color: tokens.warning, onClick: addGroup, children: "+ group" })
+    ] })
+  ] });
+};
+function FiltersBuilder({ value, onChange }) {
+  const [tree, setTree] = React.useState(() => parseFilterObject(value));
+  const lastValueRef = React.useRef(value);
+  React.useEffect(() => {
+    if (lastValueRef.current !== value) {
+      lastValueRef.current = value;
+      setTree(parseFilterObject(value));
+    }
+  }, [value]);
+  const updateTree = (next) => {
+    setTree(next);
+    const obj = buildFilterObject(next) || {};
+    lastValueRef.current = obj;
+    onChange?.(obj);
+  };
+  return /* @__PURE__ */ jsxs(Box, { children: [
+    /* @__PURE__ */ jsx(GroupNode, { node: tree, depth: 0, onChange: updateTree, onRemove: () => {
+    }, canRemove: false }),
+    /* @__PURE__ */ jsxs(Typography, { variant: "pi", textColor: "neutral500", children: [
+      "Path uses dot notation (e.g. ",
+      /* @__PURE__ */ jsx("code", { children: "branch.id" }),
+      ", ",
+      /* @__PURE__ */ jsx("code", { children: "author.email" }),
+      "). Value can be a literal or a ",
+      /* @__PURE__ */ jsx("code", { children: "$user.id" }),
+      " / ",
+      /* @__PURE__ */ jsx("code", { children: "$today" }),
+      " / ",
+      /* @__PURE__ */ jsx("code", { children: "$query.q" }),
+      " token."
+    ] })
+  ] });
+}
+const PATH_RE = /^[a-zA-Z_*][\w*]*(\.[a-zA-Z_][\w]*)*$/;
+function pathsToPopulate(paths) {
+  if (!Array.isArray(paths) || paths.length === 0) return {};
+  if (paths.includes("*")) return "*";
+  const out = {};
+  for (const raw of paths) {
+    const parts = String(raw || "").split(".").filter(Boolean);
+    if (parts.length === 0) continue;
+    let cursor = out;
+    for (let i = 0; i < parts.length; i += 1) {
+      const part = parts[i];
+      const isLeaf = i === parts.length - 1;
+      if (isLeaf) {
+        if (cursor[part] === void 0) cursor[part] = true;
+      } else {
+        if (cursor[part] === void 0 || cursor[part] === true) {
+          cursor[part] = { populate: {} };
+        } else if (!cursor[part].populate) {
+          cursor[part].populate = {};
+        }
+        cursor = cursor[part].populate;
+      }
+    }
+  }
+  return out;
+}
+function populateToPaths(value) {
+  if (value === "*" || value === true) return ["*"];
+  if (!value || typeof value !== "object") return [];
+  if (Array.isArray(value)) return value.filter((v) => typeof v === "string");
+  const out = [];
+  const walk = (node, prefix) => {
+    if (!node || typeof node !== "object") return;
+    for (const [k, v] of Object.entries(node)) {
+      const path = prefix ? `${prefix}.${k}` : k;
+      if (v === true || v == null) {
+        out.push(path);
+      } else if (typeof v === "object" && v.populate) {
+        walk(v.populate, path);
+      } else {
+        out.push(path);
+      }
+    }
+  };
+  walk(value, "");
+  return out;
+}
+function pathsToTree(paths) {
+  const root = {};
+  for (const path of paths) {
+    if (path === "*") {
+      root["*"] = root["*"] || { children: {}, full: "*" };
+      continue;
+    }
+    const parts = String(path || "").split(".").filter(Boolean);
+    let cursor = root;
+    let acc = [];
+    for (const part of parts) {
+      acc.push(part);
+      cursor[part] = cursor[part] || { children: {}, full: acc.join(".") };
+      cursor = cursor[part].children;
+    }
+  }
+  return root;
+}
+function TreeNode({ name, node, depth, onRemove }) {
+  const childKeys = Object.keys(node.children || {});
+  return /* @__PURE__ */ jsxs(Box, { style: {
+    marginLeft: depth === 0 ? 0 : 12,
+    paddingLeft: depth === 0 ? 0 : 8,
+    borderLeft: depth === 0 ? "none" : `2px solid ${tokens.neutral200}`
+  }, children: [
+    /* @__PURE__ */ jsxs(Flex, { justifyContent: "space-between", alignItems: "center", style: { padding: "2px 0" }, children: [
+      /* @__PURE__ */ jsx("span", { style: { fontFamily: tokens.monoFont, fontSize: 12 }, children: name === "*" ? /* @__PURE__ */ jsx("em", { style: { color: tokens.warning }, children: "* (populate all)" }) : name }),
+      /* @__PURE__ */ jsx(
+        "button",
+        {
+          type: "button",
+          onClick: () => onRemove(node.full),
+          title: "Remove this path",
+          style: {
+            border: "none",
+            background: "transparent",
+            color: tokens.danger,
+            cursor: "pointer",
+            fontSize: 14,
+            padding: "0 4px"
+          },
+          children: "×"
+        }
+      )
+    ] }),
+    childKeys.map((ck) => /* @__PURE__ */ jsx(TreeNode, { name: ck, node: node.children[ck], depth: depth + 1, onRemove }, ck))
+  ] });
+}
+function PopulateBuilder({ value, onChange }) {
+  const [paths, setPaths] = React.useState(() => populateToPaths(value));
+  const [draft, setDraft] = React.useState("");
+  const [error, setError] = React.useState("");
+  const lastValueRef = React.useRef(value);
+  React.useEffect(() => {
+    if (lastValueRef.current !== value) {
+      lastValueRef.current = value;
+      setPaths(populateToPaths(value));
+    }
+  }, [value]);
+  const emit = (nextPaths) => {
+    setPaths(nextPaths);
+    const obj = pathsToPopulate(nextPaths);
+    lastValueRef.current = obj;
+    onChange?.(obj);
+  };
+  const addPath = () => {
+    const p = draft.trim();
+    if (!p) return;
+    if (p !== "*" && !PATH_RE.test(p)) {
+      setError('Path must be dot-separated identifiers, e.g. "comments.author"');
+      return;
+    }
+    if (paths.includes(p)) {
+      setDraft("");
+      return;
+    }
+    setError("");
+    setDraft("");
+    emit([...paths, p]);
+  };
+  const removePath = (target) => {
+    emit(paths.filter((p) => p !== target));
+  };
+  const tree = pathsToTree(paths);
+  const topKeys = Object.keys(tree);
+  return /* @__PURE__ */ jsxs(Box, { children: [
+    /* @__PURE__ */ jsxs(Flex, { gap: 1, alignItems: "center", children: [
+      /* @__PURE__ */ jsx(
+        "input",
+        {
+          type: "text",
+          value: draft,
+          placeholder: "path (e.g. comments.author, or *)",
+          onChange: (e) => {
+            setDraft(e.target.value);
+            if (error) setError("");
+          },
+          onKeyDown: (e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              addPath();
+            }
+          },
+          style: {
+            flex: 1,
+            padding: "4px 8px",
+            border: `1px solid ${tokens.neutral300}`,
+            borderRadius: tokens.radius,
+            fontFamily: tokens.monoFont,
+            fontSize: 12
+          }
+        }
+      ),
+      /* @__PURE__ */ jsx("button", { type: "button", onClick: addPath, style: {
+        padding: "4px 10px",
+        background: tokens.primary,
+        color: "#fff",
+        border: "none",
+        borderRadius: tokens.radius,
+        cursor: "pointer",
+        fontSize: 12,
+        fontWeight: 600
+      }, children: "+ add" })
+    ] }),
+    error && /* @__PURE__ */ jsx(Typography, { variant: "pi", textColor: "danger700", paddingTop: 1, children: error }),
+    /* @__PURE__ */ jsx(Box, { paddingTop: 2, style: {
+      minHeight: 80,
+      padding: 8,
+      background: tokens.neutral100,
+      borderRadius: tokens.radiusLarge,
+      border: `1px solid ${tokens.neutral200}`
+    }, children: topKeys.length === 0 ? /* @__PURE__ */ jsxs(Typography, { variant: "pi", textColor: "neutral500", children: [
+      "No populate paths. Add one above (e.g. ",
+      /* @__PURE__ */ jsx("code", { children: "author" }),
+      ", ",
+      /* @__PURE__ */ jsx("code", { children: "comments.author" }),
+      ", or ",
+      /* @__PURE__ */ jsx("code", { children: "*" }),
+      " for all)."
+    ] }) : topKeys.map((k) => /* @__PURE__ */ jsx(TreeNode, { name: k, node: tree[k], depth: 0, onRemove: removePath }, k)) })
+  ] });
+}
+function coerceValue(raw) {
+  if (typeof raw !== "string") return raw;
+  if (raw.startsWith("$")) return raw;
+  if (raw === "true") return true;
+  if (raw === "false") return false;
+  if (raw === "null") return null;
+  if (raw === "") return "";
+  if (/^-?\d+$/.test(raw)) return Number(raw);
+  if (/^-?\d*\.\d+$/.test(raw)) return Number(raw);
+  return raw;
+}
+function uncoerce(value) {
+  if (value == null) return "";
+  if (typeof value === "object") return JSON.stringify(value);
+  return String(value);
+}
+function pairsToObject(pairs) {
+  const out = {};
+  for (const [k, v] of pairs) {
+    const key = String(k || "").trim();
+    if (!key) continue;
+    out[key] = coerceValue(v);
+  }
+  return out;
+}
+function objectToPairs(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return [];
+  return Object.entries(value).map(([k, v]) => [k, uncoerce(v)]);
+}
+function KeyValueEditor({
+  value,
+  onChange,
+  keyPlaceholder = "key",
+  valuePlaceholder = "value or $user.id",
+  emptyHint = "No fields. Add one below."
+}) {
+  const [pairs, setPairs] = React.useState(() => objectToPairs(value));
+  const lastValueRef = React.useRef(value);
+  React.useEffect(() => {
+    if (lastValueRef.current !== value) {
+      lastValueRef.current = value;
+      setPairs(objectToPairs(value));
+    }
+  }, [value]);
+  const emit = (next) => {
+    setPairs(next);
+    const obj = pairsToObject(next);
+    lastValueRef.current = obj;
+    onChange?.(obj);
+  };
+  const setAt = (idx, kv) => {
+    const next = pairs.slice();
+    next[idx] = kv;
+    emit(next);
+  };
+  const removeAt = (idx) => {
+    const next = pairs.slice();
+    next.splice(idx, 1);
+    emit(next);
+  };
+  const addRow = () => emit([...pairs, ["", ""]]);
+  return /* @__PURE__ */ jsxs(Box, { children: [
+    /* @__PURE__ */ jsxs(Box, { style: {
+      padding: 8,
+      background: tokens.neutral100,
+      borderRadius: tokens.radiusLarge,
+      border: `1px solid ${tokens.neutral200}`
+    }, children: [
+      pairs.length === 0 && /* @__PURE__ */ jsx(Typography, { variant: "pi", textColor: "neutral500", children: emptyHint }),
+      pairs.map(([k, v], idx) => /* @__PURE__ */ jsxs(Flex, { gap: 1, alignItems: "center", style: { marginBottom: 4 }, children: [
+        /* @__PURE__ */ jsx(
+          "input",
+          {
+            type: "text",
+            value: k,
+            placeholder: keyPlaceholder,
+            onChange: (e) => setAt(idx, [e.target.value, v]),
+            style: {
+              flex: "1 1 140px",
+              padding: "4px 6px",
+              border: `1px solid ${tokens.neutral300}`,
+              borderRadius: tokens.radius,
+              fontFamily: tokens.monoFont,
+              fontSize: 12
+            }
+          }
+        ),
+        /* @__PURE__ */ jsx("span", { style: { color: tokens.neutral500 }, children: ":" }),
+        /* @__PURE__ */ jsx(
+          "input",
+          {
+            type: "text",
+            value: v,
+            placeholder: valuePlaceholder,
+            onChange: (e) => setAt(idx, [k, e.target.value]),
+            style: {
+              flex: "2 1 200px",
+              padding: "4px 6px",
+              border: `1px solid ${tokens.neutral300}`,
+              borderRadius: tokens.radius,
+              fontFamily: tokens.monoFont,
+              fontSize: 12
+            }
+          }
+        ),
+        /* @__PURE__ */ jsx("button", { type: "button", onClick: () => removeAt(idx), title: "Remove", style: {
+          border: "none",
+          background: "transparent",
+          color: tokens.danger,
+          cursor: "pointer",
+          fontSize: 14,
+          padding: "0 4px"
+        }, children: "×" })
+      ] }, idx))
+    ] }),
+    /* @__PURE__ */ jsx(Box, { paddingTop: 1, children: /* @__PURE__ */ jsx("button", { type: "button", onClick: addRow, style: {
+      padding: "4px 10px",
+      border: `1px solid ${tokens.primary}`,
+      color: tokens.primary,
+      background: "#fff",
+      borderRadius: tokens.radius,
+      cursor: "pointer",
+      fontSize: 12,
+      fontWeight: 600
+    }, children: "+ add field" }) })
+  ] });
+}
+const BUILDERS = {
+  filtersTemplate: FiltersBuilder,
+  populateTemplate: PopulateBuilder,
+  bodyTemplate: KeyValueEditor,
+  queryTemplate: KeyValueEditor
+};
 const api$1 = (p) => `/api-pro${p}`;
 const PAGE_SIZE$2 = 20;
 const SAMPLE_CONTEXT = {
@@ -617,7 +1271,13 @@ const InlineEditor = ({ interfaces, roles, selection, onSaved, onCancel }) => {
   });
   const [message, setMessage] = React.useState("");
   const [loading, setLoading] = React.useState(false);
-  const [showRaw, setShowRaw] = React.useState(true);
+  const [showRawByField, setShowRawByField] = React.useState({
+    filtersTemplate: false,
+    populateTemplate: false,
+    bodyTemplate: false,
+    queryTemplate: false
+  });
+  const toggleRaw = (field) => setShowRawByField((s) => ({ ...s, [field]: !s[field] }));
   React.useEffect(() => {
     if (!interfaceKey || !methodName || !roleKey) return;
     (async () => {
@@ -695,7 +1355,6 @@ const InlineEditor = ({ interfaces, roles, selection, onSaved, onCancel }) => {
         /* @__PURE__ */ jsx("code", { children: roleKey })
       ] }),
       /* @__PURE__ */ jsxs(Flex, { gap: 2, children: [
-        /* @__PURE__ */ jsx(Button, { variant: "tertiary", onClick: () => setShowRaw((v) => !v), children: showRaw ? "Hide JSON" : "Show JSON" }),
         /* @__PURE__ */ jsx(Button, { variant: "danger-light", onClick: remove, disabled: loading, children: "Delete" }),
         /* @__PURE__ */ jsx(Button, { variant: "secondary", onClick: onCancel, children: "Cancel" }),
         /* @__PURE__ */ jsx(Button, { onClick: save, loading, children: "Save" })
@@ -722,23 +1381,44 @@ const InlineEditor = ({ interfaces, roles, selection, onSaved, onCancel }) => {
       /* @__PURE__ */ jsx("code", { children: "$now" })
     ] }) }),
     message && /* @__PURE__ */ jsx(Box, { paddingTop: 2, children: /* @__PURE__ */ jsx(Typography, { textColor: "danger700", children: message }) }),
-    showRaw && ["filtersTemplate", "populateTemplate", "queryTemplate", "bodyTemplate"].map((field) => /* @__PURE__ */ jsxs(Box, { paddingTop: 3, children: [
-      /* @__PURE__ */ jsx(Typography, { variant: "sigma", children: field }),
-      /* @__PURE__ */ jsxs(Flex, { gap: 2, alignItems: "flex-start", wrap: "wrap", paddingTop: 1, children: [
-        /* @__PURE__ */ jsx(Box, { style: { flex: "1 1 360px", minWidth: 300 }, children: /* @__PURE__ */ jsx(
-          Textarea,
-          {
-            name: field,
-            value: templates[field],
-            onChange: (e) => setTemplates((t) => ({ ...t, [field]: e.target.value }))
-          }
-        ) }),
-        /* @__PURE__ */ jsxs(Box, { style: { flex: "1 1 360px", minWidth: 300 }, children: [
-          /* @__PURE__ */ jsx(Typography, { variant: "pi", textColor: "neutral500", children: "Resolved (sample context)" }),
-          /* @__PURE__ */ jsx("pre", { style: { background: "#f4f4f8", padding: 8, borderRadius: 4, fontSize: 11, margin: 0 }, children: JSON.stringify(previews[field], null, 2) })
+    ["filtersTemplate", "populateTemplate", "queryTemplate", "bodyTemplate"].map((field) => {
+      const Builder = BUILDERS[field];
+      const hasBuilder = Boolean(Builder);
+      const showRaw = !hasBuilder || showRawByField[field];
+      const parsedValue = (() => {
+        try {
+          return JSON.parse(templates[field] || "{}");
+        } catch {
+          return {};
+        }
+      })();
+      return /* @__PURE__ */ jsxs(Box, { paddingTop: 3, children: [
+        /* @__PURE__ */ jsxs(Flex, { justifyContent: "space-between", alignItems: "center", children: [
+          /* @__PURE__ */ jsx(Typography, { variant: "sigma", children: field }),
+          hasBuilder && /* @__PURE__ */ jsx(Button, { variant: "tertiary", onClick: () => toggleRaw(field), children: showRaw ? "Use visual builder" : "Show raw JSON" })
+        ] }),
+        /* @__PURE__ */ jsxs(Flex, { gap: 2, alignItems: "flex-start", wrap: "wrap", paddingTop: 1, children: [
+          /* @__PURE__ */ jsx(Box, { style: { flex: "1 1 360px", minWidth: 300 }, children: showRaw ? /* @__PURE__ */ jsx(
+            Textarea,
+            {
+              name: field,
+              value: templates[field],
+              onChange: (e) => setTemplates((t) => ({ ...t, [field]: e.target.value }))
+            }
+          ) : /* @__PURE__ */ jsx(
+            Builder,
+            {
+              value: parsedValue,
+              onChange: (nextObj) => setTemplates((t) => ({ ...t, [field]: JSON.stringify(nextObj || {}, null, 2) }))
+            }
+          ) }),
+          /* @__PURE__ */ jsxs(Box, { style: { flex: "1 1 360px", minWidth: 300 }, children: [
+            /* @__PURE__ */ jsx(Typography, { variant: "pi", textColor: "neutral500", children: "Resolved (sample context)" }),
+            /* @__PURE__ */ jsx("pre", { style: { background: "#f4f4f8", padding: 8, borderRadius: 4, fontSize: 11, margin: 0 }, children: JSON.stringify(previews[field], null, 2) })
+          ] })
         ] })
-      ] })
-    ] }, field))
+      ] }, field);
+    })
   ] });
 };
 const Browse = ({ interfaces, roles }) => {

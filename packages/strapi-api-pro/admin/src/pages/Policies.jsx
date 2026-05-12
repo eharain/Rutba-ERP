@@ -10,6 +10,16 @@ import {
   TextInput,
 } from '@strapi/design-system';
 import { useFetchClient } from '@strapi/strapi/admin';
+import FiltersBuilder from '../components/QueryBuilders/FiltersBuilder';
+import PopulateBuilder from '../components/QueryBuilders/PopulateBuilder';
+import KeyValueEditor from '../components/QueryBuilders/KeyValueEditor';
+
+const BUILDERS = {
+  filtersTemplate: FiltersBuilder,
+  populateTemplate: PopulateBuilder,
+  bodyTemplate: KeyValueEditor,
+  queryTemplate: KeyValueEditor,
+};
 
 const api = (p) => `/api-pro${p}`;
 const PAGE_SIZE = 20;
@@ -67,7 +77,15 @@ const InlineEditor = ({ interfaces, roles, selection, onSaved, onCancel }) => {
   });
   const [message, setMessage] = React.useState('');
   const [loading, setLoading] = React.useState(false);
-  const [showRaw, setShowRaw] = React.useState(true);
+  // showRawByField[fieldName] = boolean. Default false → use builder (when one
+  // exists for that field); true → raw JSON textarea.
+  const [showRawByField, setShowRawByField] = React.useState({
+    filtersTemplate: false,
+    populateTemplate: false,
+    bodyTemplate: false,
+    queryTemplate: false,
+  });
+  const toggleRaw = (field) => setShowRawByField((s) => ({ ...s, [field]: !s[field] }));
 
   React.useEffect(() => {
     if (!interfaceKey || !methodName || !roleKey) return;
@@ -140,9 +158,6 @@ const InlineEditor = ({ interfaces, roles, selection, onSaved, onCancel }) => {
           Editing: <code>{interfaceKey}</code> / <code>{methodName}</code> / <code>{roleKey}</code>
         </Typography>
         <Flex gap={2}>
-          <Button variant="tertiary" onClick={() => setShowRaw((v) => !v)}>
-            {showRaw ? 'Hide JSON' : 'Show JSON'}
-          </Button>
           <Button variant="danger-light" onClick={remove} disabled={loading}>Delete</Button>
           <Button variant="secondary" onClick={onCancel}>Cancel</Button>
           <Button onClick={save} loading={loading}>Save</Button>
@@ -161,23 +176,43 @@ const InlineEditor = ({ interfaces, roles, selection, onSaved, onCancel }) => {
         </Box>
       )}
 
-      {showRaw && ['filtersTemplate', 'populateTemplate', 'queryTemplate', 'bodyTemplate'].map((field) => (
-        <Box key={field} paddingTop={3}>
-          <Typography variant="sigma">{field}</Typography>
-          <Flex gap={2} alignItems="flex-start" wrap="wrap" paddingTop={1}>
-            <Box style={{ flex: '1 1 360px', minWidth: 300 }}>
-              <Textarea name={field} value={templates[field]}
-                onChange={(e) => setTemplates((t) => ({ ...t, [field]: e.target.value }))} />
-            </Box>
-            <Box style={{ flex: '1 1 360px', minWidth: 300 }}>
-              <Typography variant="pi" textColor="neutral500">Resolved (sample context)</Typography>
-              <pre style={{ background: '#f4f4f8', padding: 8, borderRadius: 4, fontSize: 11, margin: 0 }}>
-                {JSON.stringify(previews[field], null, 2)}
-              </pre>
-            </Box>
-          </Flex>
-        </Box>
-      ))}
+      {['filtersTemplate', 'populateTemplate', 'queryTemplate', 'bodyTemplate'].map((field) => {
+        const Builder = BUILDERS[field];
+        const hasBuilder = Boolean(Builder);
+        const showRaw = !hasBuilder || showRawByField[field];
+        const parsedValue = (() => { try { return JSON.parse(templates[field] || '{}'); } catch { return {}; } })();
+        return (
+          <Box key={field} paddingTop={3}>
+            <Flex justifyContent="space-between" alignItems="center">
+              <Typography variant="sigma">{field}</Typography>
+              {hasBuilder && (
+                <Button variant="tertiary" onClick={() => toggleRaw(field)}>
+                  {showRaw ? 'Use visual builder' : 'Show raw JSON'}
+                </Button>
+              )}
+            </Flex>
+            <Flex gap={2} alignItems="flex-start" wrap="wrap" paddingTop={1}>
+              <Box style={{ flex: '1 1 360px', minWidth: 300 }}>
+                {showRaw ? (
+                  <Textarea name={field} value={templates[field]}
+                    onChange={(e) => setTemplates((t) => ({ ...t, [field]: e.target.value }))} />
+                ) : (
+                  <Builder
+                    value={parsedValue}
+                    onChange={(nextObj) => setTemplates((t) => ({ ...t, [field]: JSON.stringify(nextObj || {}, null, 2) }))}
+                  />
+                )}
+              </Box>
+              <Box style={{ flex: '1 1 360px', minWidth: 300 }}>
+                <Typography variant="pi" textColor="neutral500">Resolved (sample context)</Typography>
+                <pre style={{ background: '#f4f4f8', padding: 8, borderRadius: 4, fontSize: 11, margin: 0 }}>
+                  {JSON.stringify(previews[field], null, 2)}
+                </pre>
+              </Box>
+            </Flex>
+          </Box>
+        );
+      })}
     </Box>
   );
 };
