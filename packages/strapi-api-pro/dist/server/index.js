@@ -1232,6 +1232,10 @@ const attributes$4 = {
   resolvedRoleKey: {
     type: "string"
   },
+  filters: {
+    type: "json",
+    "default": {}
+  },
   entries: {
     type: "relation",
     relation: "oneToMany",
@@ -1865,6 +1869,27 @@ var policies$5 = {
     } catch (error) {
       sendError(ctx, error?.status || 400, error?.message || "Failed to delete policy");
     }
+  },
+  // ── Method-level bulk endpoints (Comparative Editor) ─────────────────────
+  async findForMethod(ctx) {
+    const { interfaceKey, methodKey } = ctx.params;
+    try {
+      const data = await strapi.plugin("api-pro").service("policies").findForMethod(strapi, { interfaceKey, methodKey });
+      ctx.body = { data };
+    } catch (error) {
+      sendError(ctx, error?.status || 500, error?.message || "Failed to load method policies");
+    }
+  },
+  async bulkUpsertForMethod(ctx) {
+    const { interfaceKey, methodKey } = ctx.params;
+    const body = ctx.request.body?.data || ctx.request.body || {};
+    const policies2 = body.policies || {};
+    try {
+      const data = await strapi.plugin("api-pro").service("policies").bulkUpsertForMethod(strapi, { interfaceKey, methodKey, policies: policies2 });
+      ctx.body = { data };
+    } catch (error) {
+      sendError(ctx, error?.status || 400, error?.message || "Failed to save method policies");
+    }
   }
 };
 var adminTools$1 = {
@@ -2086,6 +2111,19 @@ var routes$1 = {
         handler: "policies.remove",
         config: { policies: [] }
       },
+      // ── Comparative editor: bulk fetch / save all policies for a method ─
+      {
+        method: "GET",
+        path: "/policies/method/:interfaceKey/:methodKey",
+        handler: "policies.findForMethod",
+        config: { policies: [] }
+      },
+      {
+        method: "PUT",
+        path: "/policies/method/:interfaceKey/:methodKey",
+        handler: "policies.bulkUpsertForMethod",
+        config: { policies: [] }
+      },
       // ── Admin tools ──────────────────────────────────────────────────
       {
         method: "POST",
@@ -2111,6 +2149,20 @@ async function getActiveSession(strapi2) {
     orderBy: { createdAt: "desc" }
   });
 }
+function normalizeFilters(raw) {
+  const out = { methods: [], pathPatterns: [], contentTypeUids: [] };
+  if (!raw || typeof raw !== "object") return out;
+  if (Array.isArray(raw.methods)) {
+    out.methods = raw.methods.map((m) => String(m || "").trim().toUpperCase()).filter(Boolean);
+  }
+  if (Array.isArray(raw.pathPatterns)) {
+    out.pathPatterns = raw.pathPatterns.map((p) => String(p || "").trim()).filter(Boolean);
+  }
+  if (Array.isArray(raw.contentTypeUids)) {
+    out.contentTypeUids = raw.contentTypeUids.map((u) => String(u || "").trim()).filter(Boolean);
+  }
+  return out;
+}
 async function startSession(strapi2, context2, payload = {}) {
   const active = await getActiveSession(strapi2);
   if (active) return active;
@@ -2124,7 +2176,8 @@ async function startSession(strapi2, context2, payload = {}) {
       startedAt: now,
       startedByUserId: context2?.user?.id || null,
       resolvedAppName: appName,
-      resolvedRoleKey: roleKey
+      resolvedRoleKey: roleKey,
+      filters: normalizeFilters(payload.filters)
     }
   });
 }
@@ -2155,7 +2208,8 @@ var recordings$1 = {
   stopSession,
   listSessions,
   listEntries,
-  getActiveSession
+  getActiveSession,
+  normalizeFilters
 };
 const path$1 = require$$1__default.default;
 const API_INTERFACE_UID = "plugin::api-pro.api-interface";
@@ -2628,11 +2682,97 @@ async function remove(strapi2, { interfaceKey, methodKey, roleKey }) {
   strapi2.apiPro?.clearAllCache?.();
   return { interfaceKey, methodKey, roleKey: normalizedRoleKey, deleted: true };
 }
+async function findForMethod(strapi2, { interfaceKey, methodKey }) {
+  const METHOD_UID2 = "plugin::api-pro.api-interface-method";
+  const ROLE_UID2 = "plugin::api-pro.app-role";
+  const method = await strapi2.db.query(METHOD_UID2).findOne({
+    where: { key: `${interfaceKey}:${methodKey}` },
+    populate: { apiInterface: true }
+  });
+  if (!method) {
+    const err = new Error(`method '${interfaceKey}:${methodKey}' not found`);
+    err.status = 404;
+    throw err;
+  }
+  const rows = await strapi2.db.query(POLICY_UID$1).findMany({
+    where: { interfaceMethod: { id: method.id } },
+    orderBy: { roleKey: "asc" }
+  });
+  const policies2 = {};
+  for (const r of rows) {
+    policies2[r.roleKey] = {
+      id: r.id,
+      key: r.key,
+      name: r.name,
+      resolverMode: r.resolverMode,
+      filtersTemplate: r.filtersTemplate || {},
+      populateTemplate: r.populateTemplate || {},
+      bodyTemplate: r.bodyTemplate || {},
+      queryTemplate: r.queryTemplate || {},
+      templateVersion: r.templateVersion
+    };
+  }
+  const allRoles = await strapi2.db.query(ROLE_UID2).findMany({
+    where: { isActive: true },
+    populate: { appDomains: { select: ["id", "key", "name"] } },
+    orderBy: { key: "asc" }
+  });
+  return {
+    interfaceKey,
+    methodKey,
+    method: {
+      id: method.id,
+      action: method.action,
+      method: method.method,
+      path: method.path,
+      apiInterfaceUid: method.apiInterface?.uid || null,
+      apiInterfaceKey: method.apiInterface?.key || null
+    },
+    policies: policies2,
+    allRoles: allRoles.map((r) => ({
+      id: r.id,
+      key: r.key,
+      name: r.name || r.key,
+      adminRoleCode: r.adminRoleCode || null,
+      appDomains: Array.isArray(r.appDomains) ? r.appDomains.map((d) => ({ id: d.id, key: d.key, name: d.name || d.key })) : []
+    }))
+  };
+}
+async function bulkUpsertForMethod(strapi2, { interfaceKey, methodKey, policies: policies2 }) {
+  if (!interfaceKey || !methodKey) {
+    const err = new Error("interfaceKey and methodKey are required");
+    err.status = 400;
+    throw err;
+  }
+  if (!policies2 || typeof policies2 !== "object") {
+    const err = new Error("policies must be an object keyed by roleKey");
+    err.status = 400;
+    throw err;
+  }
+  const results = { saved: [], deleted: [], errors: [] };
+  for (const [rawRoleKey, value] of Object.entries(policies2)) {
+    const roleKey = String(rawRoleKey).toLowerCase();
+    try {
+      if (value === null || value === false) {
+        await remove(strapi2, { interfaceKey, methodKey, roleKey });
+        results.deleted.push(roleKey);
+      } else {
+        await upsert(strapi2, { interfaceKey, methodKey, roleKey, data: value });
+        results.saved.push(roleKey);
+      }
+    } catch (error) {
+      results.errors.push({ roleKey, message: error?.message || "unknown error" });
+    }
+  }
+  return results;
+}
 var policies$3 = {
   list,
   findOne,
   upsert,
-  remove
+  remove,
+  findForMethod,
+  bulkUpsertForMethod
 };
 const fileStore$1 = fileStore$4;
 const INTERFACE_UID$1 = "plugin::api-pro.api-interface";

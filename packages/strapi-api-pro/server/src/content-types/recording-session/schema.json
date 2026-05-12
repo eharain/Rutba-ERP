@@ -46,6 +46,10 @@
     "resolvedRoleKey": {
       "type": "string"
     },
+    "filters": {
+      "type": "json",
+      "default": {}
+    },
     "entries": {
       "type": "relation",
       "relation": "oneToMany",

@@ -68,6 +68,8 @@ const EntryRow = ({ entry }) => {
   );
 };
 
+const HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
+
 const Recordings = () => {
   const { get, post } = useFetchClient();
   const [sessions, setSessions] = React.useState([]);
@@ -79,6 +81,12 @@ const Recordings = () => {
   const [search, setSearch] = React.useState('');
   const [statusFilter, setStatusFilter] = React.useState('');
   const [page, setPage] = React.useState(1);
+
+  // Recording filters (captured at start, attached to the session)
+  const [filterMethods, setFilterMethods] = React.useState([]);
+  const [filterPathPatterns, setFilterPathPatterns] = React.useState('');
+  const [filterCtUids, setFilterCtUids] = React.useState('');
+  const [showFilters, setShowFilters] = React.useState(false);
 
   const loadSessions = React.useCallback(async () => {
     setLoading(true);
@@ -100,16 +108,38 @@ const Recordings = () => {
     }
   }, [get]);
 
+  const toCsvList = (s) => String(s || '').split(',').map((x) => x.trim()).filter(Boolean);
+
   const start = async () => {
     setMessage('');
+    const filters = {
+      methods: filterMethods,
+      pathPatterns: toCsvList(filterPathPatterns),
+      contentTypeUids: toCsvList(filterCtUids),
+    };
     try {
-      await post(api('/recordings/start'), { name: newLabel || undefined });
+      await post(api('/recordings/start'), { name: newLabel || undefined, filters });
       setNewLabel('');
+      // keep filter state so the user can re-use it for the next recording
       await loadSessions();
     } catch (error) {
       setMessage(error?.response?.data?.error?.message || 'Failed to start recording.');
     }
   };
+
+  const toggleMethod = (m) => {
+    setFilterMethods((prev) => prev.includes(m) ? prev.filter((x) => x !== m) : [...prev, m]);
+  };
+
+  const filterSummary = (() => {
+    const parts = [];
+    if (filterMethods.length > 0) parts.push(`methods=${filterMethods.join(',')}`);
+    const paths = toCsvList(filterPathPatterns);
+    if (paths.length > 0) parts.push(`paths=${paths.length}`);
+    const uids = toCsvList(filterCtUids);
+    if (uids.length > 0) parts.push(`uids=${uids.length}`);
+    return parts.length === 0 ? 'no filters — captures all traffic' : parts.join(' · ');
+  })();
 
   const stop = async () => {
     setMessage('');
@@ -206,6 +236,68 @@ const Recordings = () => {
             : <Button onClick={start} loading={loading}>Start Recording</Button>}
           <Button variant="secondary" onClick={loadSessions}>Refresh</Button>
         </Flex>
+
+        {!activeSession && (
+          <Box paddingTop={3}>
+            <Flex justifyContent="space-between" alignItems="center"
+              style={{ cursor: 'pointer', padding: '4px 0' }}
+              onClick={() => setShowFilters((v) => !v)}>
+              <Typography variant="sigma">Capture filters</Typography>
+              <Typography variant="pi" textColor="neutral500">
+                {filterSummary} · {showFilters ? '▼' : '▶'}
+              </Typography>
+            </Flex>
+            {showFilters && (
+              <Box paddingTop={2} style={{ background: '#fafafa', padding: 10, borderRadius: 6 }}>
+                <Typography variant="pi" textColor="neutral600">
+                  Apply filters here to restrict what the session records.
+                  Leave all empty to capture every request the middleware sees.
+                </Typography>
+
+                <Box paddingTop={2}>
+                  <Typography variant="pi" fontWeight="semiBold">HTTP methods</Typography>
+                  <Flex gap={1} paddingTop={1} wrap="wrap">
+                    {HTTP_METHODS.map((m) => {
+                      const checked = filterMethods.includes(m);
+                      return (
+                        <label key={m} style={{ cursor: 'pointer', padding: '2px 8px',
+                          border: '1px solid #ccc', borderRadius: 12,
+                          background: checked ? '#e8eaf6' : 'transparent', fontSize: 11 }}>
+                          <input type="checkbox" checked={checked}
+                            onChange={() => toggleMethod(m)} style={{ marginRight: 4 }} />
+                          {m}
+                        </label>
+                      );
+                    })}
+                  </Flex>
+                </Box>
+
+                <Box paddingTop={2}>
+                  <TextInput label="Path patterns (comma-separated)"
+                    value={filterPathPatterns}
+                    onChange={(e) => setFilterPathPatterns(e.target.value)}
+                    placeholder="/api/sale-orders, /api/cash-registers" />
+                </Box>
+
+                <Box paddingTop={2}>
+                  <TextInput label="Content-type UIDs (comma-separated)"
+                    value={filterCtUids}
+                    onChange={(e) => setFilterCtUids(e.target.value)}
+                    placeholder="api::sale.sale-order, api::cash-register.cash-register" />
+                </Box>
+
+                <Box paddingTop={2}>
+                  <Typography variant="pi" textColor="neutral500">
+                    Filters are stored on the session and applied by the recorder
+                    middleware (when wired). Existing sessions keep the filters they
+                    were started with.
+                  </Typography>
+                </Box>
+              </Box>
+            )}
+          </Box>
+        )}
+
         {activeSession && (
           <Box paddingTop={2}>
             <Typography variant="pi" textColor="neutral600">
@@ -213,6 +305,15 @@ const Recordings = () => {
               app=<strong>{activeSession.resolvedAppName}</strong> ·
               role=<strong>{activeSession.resolvedRoleKey}</strong>
             </Typography>
+            {activeSession.filters && Object.values(activeSession.filters).some((v) => Array.isArray(v) && v.length > 0) && (
+              <Typography variant="pi" textColor="neutral500">
+                Filters: {[
+                  activeSession.filters.methods?.length ? `methods=${activeSession.filters.methods.join(',')}` : null,
+                  activeSession.filters.pathPatterns?.length ? `${activeSession.filters.pathPatterns.length} path(s)` : null,
+                  activeSession.filters.contentTypeUids?.length ? `${activeSession.filters.contentTypeUids.length} CT uid(s)` : null,
+                ].filter(Boolean).join(' · ')}
+              </Typography>
+            )}
           </Box>
         )}
         {message && (

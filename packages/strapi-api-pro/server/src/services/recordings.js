@@ -10,6 +10,32 @@ async function getActiveSession(strapi) {
   });
 }
 
+// Normalise the filters payload into a safe shape. The recorder middleware
+// (when it lands) will use these to decide whether to capture a request.
+//   methods         — HTTP verbs to capture (uppercase). Empty → all.
+//   pathPatterns    — substring patterns matched against ctx.path. Empty → all.
+//   contentTypeUids — Strapi content-type UIDs (api::*.*) to capture. Empty → all.
+function normalizeFilters(raw) {
+  const out = { methods: [], pathPatterns: [], contentTypeUids: [] };
+  if (!raw || typeof raw !== 'object') return out;
+  if (Array.isArray(raw.methods)) {
+    out.methods = raw.methods
+      .map((m) => String(m || '').trim().toUpperCase())
+      .filter(Boolean);
+  }
+  if (Array.isArray(raw.pathPatterns)) {
+    out.pathPatterns = raw.pathPatterns
+      .map((p) => String(p || '').trim())
+      .filter(Boolean);
+  }
+  if (Array.isArray(raw.contentTypeUids)) {
+    out.contentTypeUids = raw.contentTypeUids
+      .map((u) => String(u || '').trim())
+      .filter(Boolean);
+  }
+  return out;
+}
+
 async function startSession(strapi, context, payload = {}) {
   const active = await getActiveSession(strapi);
   if (active) return active;
@@ -26,6 +52,7 @@ async function startSession(strapi, context, payload = {}) {
       startedByUserId: context?.user?.id || null,
       resolvedAppName: appName,
       resolvedRoleKey: roleKey,
+      filters: normalizeFilters(payload.filters),
     },
   });
 }
@@ -62,4 +89,5 @@ module.exports = {
   listSessions,
   listEntries,
   getActiveSession,
+  normalizeFilters,
 };
