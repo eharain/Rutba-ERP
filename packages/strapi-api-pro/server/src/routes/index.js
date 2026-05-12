@@ -218,6 +218,13 @@ module.exports = {
         handler: 'admin-tools.seed',
         config: { policies: [] },
       },
+      // ── Play as role (dry-run + optional real fetch for read actions) ──
+      {
+        method: 'POST',
+        path: '/play',
+        handler: 'play.run',
+        config: { policies: [] },
+      },
 
       // ── Health ───────────────────────────────────────────────────────
       {

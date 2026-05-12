@@ -8,10 +8,23 @@ import Users from './Users';
 
 const App = () => {
   const [page, setPage] = React.useState('domains-roles');
+  // Pre-selection for the Policies page so other pages can deep-link
+  // straight into the Method Editor for a specific (interface, method).
+  const [policiesSelection, setPoliciesSelection] = React.useState(null);
+
+  const openPoliciesForMethod = (selection) => {
+    setPoliciesSelection(selection);
+    setPage('policies');
+  };
 
   const renderPage = () => {
-    if (page === 'interfaces') return <Interfaces />;
-    if (page === 'policies') return <Policies />;
+    if (page === 'interfaces') return <Interfaces onOpenMethod={openPoliciesForMethod} />;
+    if (page === 'policies') return (
+      <Policies
+        initialSelection={policiesSelection}
+        onConsumeInitialSelection={() => setPoliciesSelection(null)}
+      />
+    );
     if (page === 'domains-roles') return <DomainsRoles />;
     if (page === 'users') return <Users />;
     return <Recordings />;

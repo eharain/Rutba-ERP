@@ -42,20 +42,70 @@ function categoryOf(iface) {
 }
 
 // ── Components ───────────────────────────────────────────────────────────
-const InterfaceCard = ({ iface, onScaffold }) => {
-  const methodCount = Array.isArray(iface.methods) ? iface.methods.length : 0;
+const InterfaceCard = ({ iface, onScaffold, onOpenMethod }) => {
+  const { get } = useFetchClient();
+  const methods = Array.isArray(iface.methods) ? iface.methods : [];
+  const methodCount = methods.length;
+  const [expanded, setExpanded] = React.useState(false);
+  const [policies, setPolicies] = React.useState(null);
+  const [loadingPolicies, setLoadingPolicies] = React.useState(false);
+
+  const loadPolicies = React.useCallback(async () => {
+    setLoadingPolicies(true);
+    try {
+      const { data } = await get(api(`/policies?interfaceKey=${encodeURIComponent(iface.key)}`));
+      setPolicies(data?.data || []);
+    } catch {
+      setPolicies([]);
+    } finally {
+      setLoadingPolicies(false);
+    }
+  }, [get, iface.key]);
+
+  const toggle = () => {
+    const next = !expanded;
+    setExpanded(next);
+    if (next && policies === null) loadPolicies();
+  };
+
+  // Group policies by method composite key `${interfaceKey}:${methodName}`.
+  const policiesByMethod = React.useMemo(() => {
+    const map = new Map();
+    for (const p of (policies || [])) {
+      const k = p.interfaceMethod?.key || '';
+      const colon = k.indexOf(':');
+      const methodName = colon > 0 ? k.slice(colon + 1) : (p.interfaceMethod?.name || '');
+      if (!methodName) continue;
+      if (!map.has(methodName)) map.set(methodName, []);
+      map.get(methodName).push(p);
+    }
+    return map;
+  }, [policies]);
+
   return (
     <Box style={{
       border: '1px solid #e0e0e0', borderRadius: 8, padding: 10,
-      flex: '1 1 240px', minWidth: 220, maxWidth: 320, background: '#fff',
+      flex: expanded ? '1 1 100%' : '1 1 240px',
+      minWidth: 220,
+      maxWidth: expanded ? '100%' : 320,
+      background: '#fff',
     }}>
-      <Typography variant="sigma">{iface.name}</Typography>
-      <Typography variant="pi" textColor="neutral500">{iface.key}</Typography>
-      <Box paddingTop={1}>
-        <Typography variant="pi" textColor="neutral500">
-          <code style={{ fontSize: 10 }}>{iface.uid || '—'}</code>
-        </Typography>
-      </Box>
+      <Flex justifyContent="space-between" alignItems="flex-start" gap={1}>
+        <Box style={{ minWidth: 0, flex: 1 }}>
+          <Typography variant="sigma">{iface.name}</Typography>
+          <Typography variant="pi" textColor="neutral500">{iface.key}</Typography>
+          <Box paddingTop={1}>
+            <Typography variant="pi" textColor="neutral500">
+              <code style={{ fontSize: 10 }}>{iface.uid || '—'}</code>
+            </Typography>
+          </Box>
+        </Box>
+        <button type="button" onClick={toggle} title={expanded ? 'Collapse' : 'Show methods & policies'}
+          style={{
+            border: '1px solid #e0e0e8', background: '#fff', color: '#4945ff',
+            borderRadius: 4, cursor: 'pointer', padding: '2px 6px', fontSize: 11,
+          }}>{expanded ? '▾' : '▸'}</button>
+      </Flex>
       <Flex gap={1} paddingTop={1} alignItems="center" justifyContent="space-between">
         <Flex gap={1} alignItems="center">
           <span style={{ background: '#e8eaf6', color: '#4945ff', padding: '1px 6px',
@@ -69,6 +119,114 @@ const InterfaceCard = ({ iface, onScaffold }) => {
         </Flex>
         <Button variant="secondary" onClick={() => onScaffold(iface)}>Scaffold</Button>
       </Flex>
+
+      {expanded && (
+        <Box paddingTop={2} style={{ borderTop: '1px solid #f0f0f4', marginTop: 6 }}>
+          {loadingPolicies && (
+            <Typography variant="pi" textColor="neutral500" paddingTop={1}>Loading policies…</Typography>
+          )}
+          {methods.length === 0 && (
+            <Typography variant="pi" textColor="neutral500" paddingTop={1}>
+              No methods on this interface yet.
+            </Typography>
+          )}
+          {methods.map((m) => {
+            const ps = policiesByMethod.get(m.name) || [];
+            return (
+              <Box key={m.id} style={{
+                border: '1px solid #f0f0f4', borderRadius: 6,
+                padding: 8, marginTop: 6, background: '#fafafa',
+              }}>
+                <Flex justifyContent="space-between" alignItems="center" wrap="wrap" gap={1}>
+                  <Flex gap={2} alignItems="center" style={{ minWidth: 0, flex: 1 }}>
+                    <span style={{ padding: '1px 6px', border: '1px solid #ccc',
+                      borderRadius: 4, fontSize: 10, fontWeight: 700,
+                      fontFamily: 'ui-monospace, Menlo, monospace' }}>
+                      {(m.method || 'GET').toUpperCase()}
+                    </span>
+                    <Typography variant="sigma">{m.name}</Typography>
+                    <span style={{ background: '#e8eaf6', color: '#4945ff',
+                      padding: '0 6px', borderRadius: 8, fontSize: 10, fontWeight: 600 }}>
+                      {m.action || '?'}
+                    </span>
+                    <Typography variant="pi" textColor="neutral500"
+                      style={{ fontFamily: 'ui-monospace, Menlo, monospace',
+                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {m.path}
+                    </Typography>
+                  </Flex>
+                  <Flex gap={1} alignItems="center">
+                    <span style={{ background: ps.length > 0 ? '#e8f5e9' : '#f0f0f4',
+                      color: ps.length > 0 ? '#1f8a45' : '#888', padding: '1px 6px',
+                      borderRadius: 8, fontSize: 10, fontWeight: 600 }}>
+                      {ps.length} polic{ps.length === 1 ? 'y' : 'ies'}
+                    </span>
+                    {onOpenMethod && (
+                      <Button variant="tertiary"
+                        onClick={() => onOpenMethod({
+                          interfaceKey: iface.key,
+                          methodName: m.name,
+                          action: m.action,
+                          path: m.path,
+                          httpMethod: m.method,
+                          interfaceName: iface.name,
+                          interfaceUid: iface.uid,
+                        })}>
+                        Edit policies →
+                      </Button>
+                    )}
+                  </Flex>
+                </Flex>
+
+                {ps.length > 0 && (
+                  <Flex gap={1} paddingTop={1} wrap="wrap">
+                    {ps.map((p) => {
+                      const hasFilters = p.filtersTemplate && Object.keys(p.filtersTemplate).length > 0;
+                      const hasBody = p.bodyTemplate && Object.keys(p.bodyTemplate).length > 0;
+                      const hasPopulate = p.populateTemplate && Object.keys(p.populateTemplate).length > 0;
+                      const indicators = [];
+                      if (hasFilters) indicators.push('F');
+                      if (hasPopulate) indicators.push('P');
+                      if (hasBody) indicators.push('B');
+                      return (
+                        <button key={p.id} type="button"
+                          onClick={() => onOpenMethod?.({
+                            interfaceKey: iface.key,
+                            methodName: m.name,
+                            action: m.action,
+                            path: m.path,
+                            httpMethod: m.method,
+                            interfaceName: iface.name,
+                            interfaceUid: iface.uid,
+                          })}
+                          title="Edit / view this policy in the Method Editor"
+                          style={{
+                            background: '#fff', border: '1px solid #4945ff', color: '#4945ff',
+                            padding: '2px 8px', borderRadius: 12, fontSize: 11,
+                            fontWeight: 600, cursor: 'pointer',
+                            fontFamily: 'ui-monospace, Menlo, monospace',
+                          }}>
+                          {p.roleKey}
+                          {indicators.length > 0 && (
+                            <span style={{ marginLeft: 4, opacity: 0.6, fontSize: 9 }}>
+                              · {indicators.join('')}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </Flex>
+                )}
+                {ps.length === 0 && !loadingPolicies && (
+                  <Typography variant="pi" textColor="neutral500" paddingTop={1}>
+                    No role policies yet — click "Edit policies →" to author one.
+                  </Typography>
+                )}
+              </Box>
+            );
+          })}
+        </Box>
+      )}
     </Box>
   );
 };
@@ -181,7 +339,7 @@ const AlignmentPlayground = () => {
   );
 };
 
-const Interfaces = () => {
+const Interfaces = ({ onOpenMethod }) => {
   const { get } = useFetchClient();
   const [interfaces, setInterfaces] = React.useState([]);
   const [scaffolding, setScaffolding] = React.useState(null);
@@ -315,9 +473,11 @@ const Interfaces = () => {
               </Typography>
             </Flex>
             {!isCollapsed && (
-              <Flex gap={2} wrap="wrap" paddingTop={2}>
+              <Flex gap={2} wrap="wrap" paddingTop={2} alignItems="flex-start">
                 {group.items.map((i) =>
-                  <InterfaceCard key={i.id} iface={i} onScaffold={setScaffolding} />)}
+                  <InterfaceCard key={i.id} iface={i}
+                    onScaffold={setScaffolding}
+                    onOpenMethod={onOpenMethod} />)}
               </Flex>
             )}
           </Box>
