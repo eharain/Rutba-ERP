@@ -1,5 +1,5 @@
 import { useAuth } from "../context/AuthContext";
-import { isAppAdmin } from "../lib/roles";
+import { isAppAdmin, isActiveAdminRole } from "../lib/roles";
 import { getAppName } from "@rutba/api-provider/lib/api";
 import dynamic from 'next/dynamic';
 
@@ -11,23 +11,31 @@ import dynamic from 'next/dynamic';
  *               access-denied message if ANY are missing
  *   has       — comma-separated Strapi permission actions; hides
  *               children silently if ANY are missing
- *   showIf    — "admin" → render children only when the user is an
- *               admin of the current app (silent hide otherwise)
- *   adminOnly — truthy → render children only when the user is an
- *               admin of the current app (shows access-denied otherwise)
+ *   showIf    — "admin" → render children only when the user is CURRENTLY
+ *               acting as an admin role for the current app (silent hide).
+ *               Falls back to "user holds an admin role" when no activeRoleKey
+ *               is set yet (initial bootstrap).
+ *   adminOnly — truthy → render children only when the user is acting as
+ *               an admin role for the current app (shows access-denied
+ *               otherwise)
  *   appKey    — optional app key for the admin check; defaults to the
  *               value set by setAppName() in _app.js
  */
 export function PermissionCheck({ required, has, showIf, adminOnly, appKey, children }) {
 
-    const { permissions, appAccess, adminAppAccess, loading } = useAuth();
+    const { permissions, appAccess, adminAppAccess, activeRoleKey, loading } = useAuth();
 
     // ── wait for auth context to finish loading ─────────────
     if (loading) return null;
 
     // ── admin helpers ───────────────────────────────────────
+    // Prefer "is the active role admin-level". Fall back to "user holds any
+    // admin role for this app" only when activeRoleKey hasn't been set yet
+    // (bootstrap race) — this preserves AGP-era behaviour on first paint.
     const effectiveAppKey = appKey || getAppName();
-    const userIsAdmin = isAppAdmin(adminAppAccess, effectiveAppKey);
+    const userIsAdmin = activeRoleKey
+        ? isActiveAdminRole(activeRoleKey)
+        : isAppAdmin(adminAppAccess, effectiveAppKey);
 
     // ── showIf="admin" — silent hide ────────────────────────
     if (showIf === 'admin') {

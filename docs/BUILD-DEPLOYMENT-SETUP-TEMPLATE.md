@@ -78,7 +78,7 @@ Primary Strapi package: `pos-strapi/package.json`
   - Encryption key required
 
 - `pos-strapi/config/plugins.js`
-  - Enables `api-guard-pro` and `strapi-content-sync-pro`
+  - Enables the `api-pro` plugin and `strapi-content-sync-pro`
   - Configures users-permissions session token lifespans
   - Configures email provider (nodemailer)
   - Configures upload size limits

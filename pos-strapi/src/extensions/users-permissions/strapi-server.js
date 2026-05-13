@@ -1,4 +1,4 @@
-// @ts-nocheck
+﻿// @ts-nocheck
 const meRoute = require('./routes/me');
 const meController = require('./controllers/me');
 // @ts-ignore
@@ -92,7 +92,7 @@ module.exports = (plugin) => {
       userSchema.attributes
     );
   } else {
-    // Fallback: no prior schema — use ours directly.
+    // Fallback: no prior schema â€” use ours directly.
     plugin.contentTypes.user = { schema: userSchema };
   }
 

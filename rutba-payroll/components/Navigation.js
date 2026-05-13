@@ -2,7 +2,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { APP_URLS } from "@rutba/pos-shared/lib/roles";
-import AdminModeToggle from "@rutba/pos-shared/components/AdminModeToggle";
+import RoleSwitcher from "@rutba/pos-shared/components/RoleSwitcher";
 import NavAppSwitcher from "@rutba/pos-shared/components/NavAppSwitcher";
 
 export default function Navigation() {
@@ -30,7 +30,7 @@ export default function Navigation() {
 
                 <div className="d-flex align-items-center">
                     <NavAppSwitcher currentApp="payroll" />
-                    <AdminModeToggle />
+                    <RoleSwitcher />
                     {user ? (
                         <>
                             <span className="me-3">Hello, {user.username || user.email}</span>

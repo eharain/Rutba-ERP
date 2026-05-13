@@ -1,9 +1,11 @@
 'use strict';
 
+const { extendUserRelation } = require('./content-types/app-role');
+
 module.exports = ({ strapi }) => {
-  const appRole = strapi.plugin('api-pro').contentType('app-role');
-  if (appRole?.extendUserRelation) {
-    appRole.extendUserRelation(strapi);
+  try {
+    extendUserRelation(strapi);
+  } catch (err) {
+    strapi.log.error('[api-pro] Failed to extend user content-type:', err.message);
   }
-  strapi.log.info('[api-pro] register');
 };

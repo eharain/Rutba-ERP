@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 
 const METHOD_UID = 'plugin::api-pro.api-interface-method';
 

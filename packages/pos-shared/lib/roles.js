@@ -94,7 +94,21 @@ export function canAccessApp(appAccess, appKey) {
 }
 
 /**
- * Check if the user is an admin for a given app key.
+ * Check if the user has admin capability for a given app key.
+ *
+ * Background: in the AGP era this meant "the user holds an admin app-role
+ * for this app". With the RoleSwitcher model, a user may HOLD multiple roles
+ * but only ONE is active at a time — so "admin" means two things:
+ *
+ *   1. Capability: the user holds an admin role for this app (i.e. they could
+ *      switch to admin if they chose). This is what adminAppAccess tracks.
+ *   2. Active: the user is currently acting as an admin role for this app.
+ *
+ * UI elements that gate availability ("show the admin menu item") should
+ * generally use #1. UI that reflects the current operational mode ("don't
+ * show owner-scope hints when in admin mode") should use #2 via
+ * isActiveAdminRole(activeRoleKey).
+ *
  * @param {string[]} adminAppAccess - from AuthContext
  * @param {string} appKey - 'stock' | 'sale' | 'hr' | etc.
  * @returns {boolean}
@@ -102,6 +116,20 @@ export function canAccessApp(appAccess, appKey) {
 export function isAppAdmin(adminAppAccess, appKey) {
     if (!adminAppAccess || !appKey) return false;
     return Array.isArray(adminAppAccess) && adminAppAccess.includes(appKey);
+}
+
+/**
+ * Check whether the currently-active role for an app is an admin-level role.
+ *
+ * Role keys follow the convention `{domain}_admin` / `{domain}_manager` /
+ * `{domain}_staff`, so we just look for the `_admin` suffix.
+ *
+ * @param {string} activeRoleKey - from useAuth().activeRoleKey
+ * @returns {boolean}
+ */
+export function isActiveAdminRole(activeRoleKey) {
+    if (!activeRoleKey || typeof activeRoleKey !== 'string') return false;
+    return /(?:^|_)admin$/.test(activeRoleKey);
 }
 
 /**

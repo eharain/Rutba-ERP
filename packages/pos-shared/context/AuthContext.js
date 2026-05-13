@@ -1,7 +1,7 @@
 ﻿'use client'
 import { createContext, useContext, useState, useEffect, useMemo, useCallback } from "react";
 import { storage } from "@rutba/api-provider/lib/storage";
-import { api, getAppName, refreshAccessToken, onSessionExpired, API_URL } from "@rutba/api-provider/lib/api";
+import { api, getAppName, getActiveRole, setActiveRole as setActiveRoleHeader, refreshAccessToken, onSessionExpired, API_URL } from "@rutba/api-provider/lib/api";
 import axios from "axios";
 
 const AuthContext = createContext();
@@ -16,7 +16,7 @@ async function fetchPermissions(jwt) {
 
     const endpoints = [
         `${API_URL}/me/permissions`,
-        `${API_URL}/api-guard-pro/me/permissions`,
+        `${API_URL}/api-pro/me/permissions`,
     ];
 
     for (const url of endpoints) {
@@ -27,7 +27,6 @@ async function fetchPermissions(jwt) {
             });
             const data = res.data;
 
-            // AGP fallback may return `domains` instead of `appAccess`.
             const derivedAppAccess = Array.isArray(data?.domains)
                 ? data.domains
                     .map((d) => d?.key)
@@ -37,6 +36,28 @@ async function fetchPermissions(jwt) {
             const appAccess = Array.isArray(data?.appAccess) && data.appAccess.length
                 ? data.appAccess
                 : derivedAppAccess;
+
+            // rolesByApp drives the role-selector menu and (when there's only
+            // one role for an app) the auto-selected active role.
+            //   { [appDomainKey]: [{ key, name }, ...] }
+            const rolesByApp = (data?.rolesByApp && typeof data.rolesByApp === 'object')
+                ? data.rolesByApp
+                : {};
+
+            // Backward-compat: derive adminAppAccess from rolesByApp by
+            // checking whether any role for the app ends in '_admin'. Apps
+            // and shared components still read adminAppAccess for now; once
+            // they all migrate to currentAppRoles/activeRole this can be
+            // removed.
+            const derivedAdminAppAccess = [];
+            for (const [appKey, roles] of Object.entries(rolesByApp)) {
+                if (Array.isArray(roles) && roles.some((r) => /(?:^|_)admin$/.test(String(r?.key || '')))) {
+                    derivedAdminAppAccess.push(appKey);
+                }
+            }
+            const adminAppAccess = Array.isArray(data?.adminAppAccess) && data.adminAppAccess.length
+                ? data.adminAppAccess
+                : derivedAdminAppAccess;
 
             // Convert permissions object to array of permission strings
             const permissionsArray = [];
@@ -55,7 +76,9 @@ async function fetchPermissions(jwt) {
                 role: data?.role || null,
                 roleType: data?.roleType || null,
                 appAccess,
-                adminAppAccess: data?.adminAppAccess || [],
+                adminAppAccess,
+                rolesByApp,
+                appRoles: Array.isArray(data?.appRoles) ? data.appRoles : [],
                 permissions: permissionsArray.length > 0 ? permissionsArray : (Array.isArray(data?.strapiPermissions) ? data.strapiPermissions : []),
                 sessionTimeout: data?.sessionTimeout || 60,
             };
@@ -81,20 +104,22 @@ async function fetchMe(jwt) {
 }
 
 /** Persist all auth fields to localStorage. */
-function persistAuth({ jwt, refreshToken, user, role, appAccess, adminAppAccess, permissions, sessionTimeout }) {
+function persistAuth({ jwt, refreshToken, user, role, appAccess, adminAppAccess, rolesByApp, appRoles, permissions, sessionTimeout }) {
     storage.setItem("jwt", jwt);
     if (refreshToken) storage.setItem("refreshToken", refreshToken);
     storage.setJSON("user", user);
     storage.setItem("role", role);
     storage.setJSON("appAccess", appAccess);
     storage.setJSON("adminAppAccess", adminAppAccess);
+    storage.setJSON("rolesByApp", rolesByApp || {});
+    storage.setJSON("appRoles", appRoles || []);
     storage.setJSON("permissions", permissions);
     if (sessionTimeout) storage.setItem("sessionTimeout", String(sessionTimeout));
 }
 
 /** Clear all auth fields from localStorage/sessionStorage. */
 function clearAuth() {
-    const AUTH_KEYS = ['jwt', 'refreshToken', 'user', 'role', 'appAccess', 'adminAppAccess', 'permissions', 'sessionTimeout'];
+    const AUTH_KEYS = ['jwt', 'refreshToken', 'user', 'role', 'appAccess', 'adminAppAccess', 'rolesByApp', 'appRoles', 'permissions', 'sessionTimeout'];
     // Clean both stores so stale tokens from before the remember-me
     // migration are removed regardless of which store is active.
     try {
@@ -107,12 +132,28 @@ function clearAuth() {
     } catch (_) {}
 }
 
+// Default-active-role policy: prefer the previously-chosen role (per-app key
+// written by setActiveRoleHeader), else the first role in the list. The list
+// itself is provider-order (admin roles tend to sort after staff alphabetically
+// — that's fine; users explicitly switch when they want admin).
+function pickActiveRole(rolesByApp, appName, previousActiveKey) {
+    const list = Array.isArray(rolesByApp?.[appName]) ? rolesByApp[appName] : [];
+    if (list.length === 0) return null;
+    if (previousActiveKey && list.some((r) => r.key === previousActiveKey)) return previousActiveKey;
+    return list[0].key;
+}
+
 export function AuthProvider({ children }) {
     const [currentUser, setCurrentUser] = useState(null);
     const [currentJwt, setJwt] = useState(null);
     const [currentRole, setRole] = useState(null);
     const [currentAppAccess, setAppAccess] = useState([]);
     const [currentAdminAppAccess, setAdminAppAccess] = useState([]);
+    const [currentRolesByApp, setRolesByApp] = useState({});
+    const [currentAppRoles, setAppRoles] = useState([]);
+    // Active role key for THIS app — drives the X-Rutba-App-Role header and
+    // the RoleSwitcher selection state.
+    const [activeRoleKey, setActiveRoleKey] = useState(() => getActiveRole() || null);
     const [currentPermissions, setPermissions] = useState([]);
     const [loading, setLoading] = useState(true);
     const [sessionExpired, setSessionExpired] = useState(false);
@@ -124,15 +165,25 @@ export function AuthProvider({ children }) {
     }, []);
 
     /** Apply auth data to React state. */
-    const applyAuth = useCallback(({ jwt, user, role, appAccess, adminAppAccess, permissions, sessionTimeout }) => {
+    const applyAuth = useCallback(({ jwt, user, role, appAccess, adminAppAccess, rolesByApp, appRoles, permissions, sessionTimeout }) => {
         setCurrentUser(user);
         setJwt(jwt);
         setRole(role);
         setAppAccess(appAccess);
         setAdminAppAccess(adminAppAccess);
+        setRolesByApp(rolesByApp || {});
+        setAppRoles(appRoles || []);
         setPermissions(permissions);
         if (sessionTimeout) setSessionTimeout(sessionTimeout);
         setSessionExpired(false);
+
+        // Pick / restore the active role for the current app from the fresh
+        // rolesByApp, then push it into the api-provider header layer so the
+        // next request carries X-Rutba-App-Role.
+        const appName = getAppName();
+        const chosen = pickActiveRole(rolesByApp, appName, getActiveRole());
+        setActiveRoleKey(chosen);
+        setActiveRoleHeader(chosen || '');
     }, []);
 
     /** Reset all React auth state. */
@@ -142,8 +193,26 @@ export function AuthProvider({ children }) {
         setRole(null);
         setAppAccess([]);
         setAdminAppAccess([]);
+        setRolesByApp({});
+        setAppRoles([]);
+        setActiveRoleKey(null);
         setPermissions([]);
+        setActiveRoleHeader('');
     }, []);
+
+    /**
+     * Change the active role for the current app and reload, so all queries
+     * refetch with the new X-Rutba-App-Role header (and hence the new policy
+     * scope). Persisted per-app via setActiveRoleHeader.
+     */
+    const setActiveRoleForApp = useCallback((roleKey) => {
+        const appName = getAppName();
+        const list = Array.isArray(currentRolesByApp?.[appName]) ? currentRolesByApp[appName] : [];
+        if (!list.some((r) => r.key === roleKey)) return; // ignore invalid choice
+        setActiveRoleHeader(roleKey);
+        setActiveRoleKey(roleKey);
+        try { window.location.reload(); } catch (_) {}
+    }, [currentRolesByApp]);
 
     // Bootstrap: hydrate from localStorage, then revalidate the session
     useEffect(() => {
@@ -162,6 +231,8 @@ export function AuthProvider({ children }) {
             setRole(storage.getItem("role"));
             setAppAccess(storage.getJSON("appAccess") || []);
             setAdminAppAccess(storage.getJSON("adminAppAccess") || []);
+            setRolesByApp(storage.getJSON("rolesByApp") || {});
+            setAppRoles(storage.getJSON("appRoles") || []);
             setPermissions(storage.getJSON("permissions") || []);
             setSessionTimeout(parseInt(storage.getItem("sessionTimeout"), 10) || 60);
 
@@ -197,6 +268,8 @@ export function AuthProvider({ children }) {
                 role: me?.role || storage.getItem("role"),
                 appAccess: me?.appAccess || [],
                 adminAppAccess: me?.adminAppAccess || [],
+                rolesByApp: me?.rolesByApp || {},
+                appRoles: me?.appRoles || [],
                 permissions: me?.permissions || [],
                 sessionTimeout: me?.sessionTimeout || 60,
             };
@@ -229,6 +302,8 @@ export function AuthProvider({ children }) {
             roleType: me?.roleType || null,
             appAccess: me?.appAccess || [],
             adminAppAccess: me?.adminAppAccess || [],
+            rolesByApp: me?.rolesByApp || {},
+            appRoles: me?.appRoles || [],
             permissions: me?.permissions || [],
             sessionTimeout: me?.sessionTimeout || 60,
         };
@@ -282,6 +357,8 @@ export function AuthProvider({ children }) {
             roleType: me?.roleType || null,
             appAccess: me?.appAccess || [],
             adminAppAccess: me?.adminAppAccess || [],
+            rolesByApp: me?.rolesByApp || {},
+            appRoles: me?.appRoles || [],
             permissions: me?.permissions || [],
             sessionTimeout: me?.sessionTimeout || 60,
         };
@@ -319,14 +396,18 @@ export function AuthProvider({ children }) {
         role: currentRole,
         appAccess: currentAppAccess,
         adminAppAccess: currentAdminAppAccess,
+        rolesByApp: currentRolesByApp,
+        appRoles: currentAppRoles,
+        activeRoleKey,
+        setActiveRoleForApp,
         permissions: currentPermissions,
         loading,
         sessionExpired,
         sessionTimeout: currentSessionTimeout,
         login,
         loginWithToken,
-        logout
-    }), [currentUser, currentJwt, currentRole, currentAppAccess, currentAdminAppAccess, currentPermissions, loading, sessionExpired, currentSessionTimeout, login, loginWithToken, logout]);
+        logout,
+    }), [currentUser, currentJwt, currentRole, currentAppAccess, currentAdminAppAccess, currentRolesByApp, currentAppRoles, activeRoleKey, setActiveRoleForApp, currentPermissions, loading, sessionExpired, currentSessionTimeout, login, loginWithToken, logout]);
 
     return (
         <AuthContext.Provider value={contextValue}>

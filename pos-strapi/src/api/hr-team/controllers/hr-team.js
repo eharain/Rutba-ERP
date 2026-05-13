@@ -1,9 +1,9 @@
-// @ts-nocheck
+﻿// @ts-nocheck
 'use strict';
 
 const { createCoreController } = require('@strapi/strapi').factories;
 
-// ── Local slug derivation (no external dependency) ───────────────────────────
+// â”€â”€ Local slug derivation (no external dependency) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function deriveTeamSlugFromData(data) {
   const explicit = String(data?.team_slug || '').trim();
   if (explicit) return explicit.toLowerCase();
@@ -15,7 +15,7 @@ function deriveTeamSlugFromData(data) {
   return byName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 }
 
-// ── Validate submitted app_roles against actual guard role keys in DB ─────────
+// â”€â”€ Validate submitted app_roles against actual guard role keys in DB â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function sanitizeAppRolesForTeam(strapi, appRoles) {
   if (!Array.isArray(appRoles)) return [];
   const keys = [...new Set(appRoles.map((k) => String(k).trim()).filter(Boolean))];
@@ -27,7 +27,7 @@ async function sanitizeAppRolesForTeam(strapi, appRoles) {
   return valid.map((r) => r.key);
 }
 
-// ── Return all guard domains with their roles for team assignment UI ──────────
+// â”€â”€ Return all guard domains with their roles for team assignment UI â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function getAppRoleOptions(strapi) {
   const domains = await strapi.db.query('plugin::api-pro.app-domain').findMany({
     where: { isActive: true },

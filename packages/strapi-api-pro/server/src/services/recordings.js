@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 
 const SESSION_UID = 'plugin::api-pro.recording-session';
 const ENTRY_UID = 'plugin::api-pro.recording-entry';
@@ -12,9 +12,9 @@ async function getActiveSession(strapi) {
 
 // Normalise the filters payload into a safe shape. The recorder middleware
 // (when it lands) will use these to decide whether to capture a request.
-//   methods         — HTTP verbs to capture (uppercase). Empty → all.
-//   pathPatterns    — substring patterns matched against ctx.path. Empty → all.
-//   contentTypeUids — Strapi content-type UIDs (api::*.*) to capture. Empty → all.
+//   methods         â€” HTTP verbs to capture (uppercase). Empty â†’ all.
+//   pathPatterns    â€” substring patterns matched against ctx.path. Empty â†’ all.
+//   contentTypeUids â€” Strapi content-type UIDs (api::*.*) to capture. Empty â†’ all.
 function normalizeFilters(raw) {
   const out = { methods: [], pathPatterns: [], contentTypeUids: [] };
   if (!raw || typeof raw !== 'object') return out;

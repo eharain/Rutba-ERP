@@ -2,12 +2,21 @@
  * SaleReturnsEndpoints
  * Each `fetch*` method owns the full async call — callers use a single await.
  */
+
+// Per-role scope shared by every policy below. Staff sees their own returns
+// from the last 7 days; admin/manager unrestricted.
+const ROLE_SCOPES = {
+    admin: {},
+    manager: {},
+    staff: { scope: 'owner+recency', ownerField: 'createdBy', recencyField: 'createdAt' },
+};
+
 export const SaleReturnsEndpoints = {
 
     meta: {
         uid: 'api::sale-return.sale-return',
         domains: ['sale', 'return'],
-        roles: ['admin', 'manager', 'staff']
+        roles: ['admin', 'manager', 'staff'],
     },
 
     /**
@@ -22,6 +31,7 @@ export const SaleReturnsEndpoints = {
         method: 'get',
         apps: ['sale', 'return'],
         approle: ['admin', 'manager', 'staff'],
+        scope: ROLE_SCOPES,
         params: {
             sort: sort ?? ['createdAt:desc'],
             filters: filters ?? undefined,
@@ -37,6 +47,7 @@ export const SaleReturnsEndpoints = {
         method: 'post',
         apps: ['sale', 'return'],
         approle: ['admin', 'manager', 'staff'],
+        scope: ROLE_SCOPES,
         data,
     }),
 
@@ -50,6 +61,7 @@ export const SaleReturnsEndpoints = {
         method: 'get',
         apps: ['sale', 'return'],
         approle: ['admin', 'manager', 'staff'],
+        scope: ROLE_SCOPES,
         params: {
             populate: {
                 sale: { populate: { customer: true } },
@@ -68,6 +80,7 @@ export const SaleReturnsEndpoints = {
         method: 'put',
         apps: ['sale', 'return'],
         approle: ['admin', 'manager'],
+        scope: ROLE_SCOPES,
         data,
     }),
 
@@ -80,7 +93,8 @@ export const SaleReturnsEndpoints = {
         action: 'publish',
         method: 'post',
         apps: ['sale', 'return'],
-        approle: ['admin', 'manager']
+        approle: ['admin', 'manager'],
+        scope: ROLE_SCOPES,
     }),
 
     /**
@@ -92,7 +106,8 @@ export const SaleReturnsEndpoints = {
         action: 'unpublish',
         method: 'post',
         apps: ['sale', 'return'],
-        approle: ['admin', 'manager']
+        approle: ['admin', 'manager'],
+        scope: ROLE_SCOPES,
     }),
 /** Async: fetch a single sale return by documentId. */
 /** Async: update a sale return by documentId. */

@@ -6,13 +6,11 @@
 //
 // What bootstrap is responsible for:
 //   1. Install an in-memory permission cache (LRU with TTL).
-//   2. Expose a global `strapi.apiPro` service registry — analogous to AGP's
-//      `strapi.apiGuard`. Other plugins / extensions reach into this namespace
-//      to trigger cache invalidation when roles or policies change.
-//   3. Mount the global request interceptor as a Koa middleware (deferred:
-//      Phase 2 fills in the body; for now it's pass-through so the build is
-//      green and routes are reachable).
-//   4. Trigger file↔DB sync of interfaces/policies (deferred to Phase 3).
+//   2. Expose a global `strapi.apiPro` service registry. Other plugins /
+//      extensions reach into this namespace to trigger cache invalidation
+//      when roles or policies change.
+//   3. Mount the global request interceptor as a Koa middleware.
+//   4. Trigger file↔DB sync of interfaces/policies.
 //   5. Wire content-type lifecycle hooks so cache invalidates when an app-role,
 //      app-domain, or method-policy is created / updated / deleted.
 
@@ -75,6 +73,37 @@ function buildBypassMatcher(paths = []) {
     }
     return false;
   };
+}
+
+// ── Admin RBAC permission actions ───────────────────────────────────────────
+// Routes in server/src/routes/index.js are gated by `admin::hasPermissions`
+// against these two action UIDs. Registering them here makes them appear in
+// Settings → Administration → Roles → [role] → Plugins → API Pro, where an
+// admin can grant them per-role. Super Admin is auto-granted.
+async function registerAdminPermissions(strapi) {
+  try {
+    const actionProvider = strapi.service('admin::permission')?.actionProvider;
+    if (!actionProvider?.registerMany) {
+      strapi.log.warn('[api-pro] admin permission actionProvider unavailable — RBAC not registered');
+      return;
+    }
+    await actionProvider.registerMany([
+      {
+        section: 'plugins',
+        displayName: 'Read',
+        uid: 'read',
+        pluginName: 'api-pro',
+      },
+      {
+        section: 'plugins',
+        displayName: 'Write',
+        uid: 'write',
+        pluginName: 'api-pro',
+      },
+    ]);
+  } catch (error) {
+    strapi.log.warn(`[api-pro] failed to register admin permission actions: ${error?.message}`);
+  }
 }
 
 // ── Cache invalidation lifecycle wiring ─────────────────────────────────────
@@ -178,6 +207,7 @@ module.exports = async ({ strapi }) => {
 
   registerCacheInvalidationHooks(strapi);
   installInterceptor(strapi);
+  await registerAdminPermissions(strapi);
 
   // Bring the DB mirror in line with the canonical .api-pro/ files. Fail open
   // on errors — a bad file shouldn't crash the entire Strapi boot.

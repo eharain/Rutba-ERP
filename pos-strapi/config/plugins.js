@@ -78,12 +78,9 @@ const DOMAINS_FROM_CONFIG = Object.entries(_apiConfig.domains || {}).map(([key, 
 }));
 
 module.exports = ({ env }) => ({
-    "strapi-content-sync-pro": {
-        enabled: true,
-    },
 
     // ── api-pro plugin ──────────────────────────────────────────────
-    // Auto-discovered from node_modules (strapi-api-pro is declared as a
+    // Auto-discovered from node_modules (api-pro is declared as a
     // file: dependency in package.json — Strapi reads pkg.strapi.name='api-pro'
     // and registers it). We deliberately DO NOT set `resolve` here:
     //
@@ -103,42 +100,48 @@ module.exports = ({ env }) => ({
     // Auto-discovery avoids both bugs because it passes `package.json` as
     // the resolve value AND the admin loader's `plugin.path` branch is not
     // taken for `type: 'module'` plugins.
-    'api-pro': {
+    // 'api-pro': {
+    //     enabled: true,
+    //     config: {
+    //         interceptorEnabled: true,
+    //         denyByDefault: true,
+
+    //         // ── Header bridging ─────────────────────────────────────
+    //         // Client sends two authorization headers:
+    //         //   x-rutba-app       — which app/domain the user is acting in
+    //         //   x-rutba-app-role  — which of the user's roles for that app
+    //         //                        the user is currently playing (admin /
+    //         //                        cashier / accountant / etc.). Required
+    //         //                        when the user holds more than one role
+    //         //                        for the active app.
+    //         headerDomainKey: 'x-rutba-app',
+    //         headerRoleKey: 'x-rutba-app-role',
+
+    //         // ── Enforcement mode ────────────────────────────────────
+    //         // Switch to 'enforce' once all resources/policies/grants are verified.
+    //         enforcementMode: 'hybrid',
+
+    //         // ── Owner scoping ───────────────────────────────────────
+    //         enforceOwnership: true,
+
+    //         // ── Bypass paths ────────────────────────────────────────
+    //         // Fixed system paths + public routes from api-provider/config/configuration.json
+    //         bypassPaths: ALL_BYPASS_PATHS,
+
+    //         // ── Domains ─────────────────────────────────────────────
+    //         // Driven from api-provider/config/configuration.json — no manual list needed.
+    //         domains: DOMAINS_FROM_CONFIG,
+    //     },
+    // },
+
+    // ── strapi-content-sync-pro ──────────────────────────────────────
+    // Linked from D:\Rutba\strapi-plugins\strapi-content-sync-pro via the
+    // file: dependency in package.json. Auto-discovered by Strapi
+    // (pkg.strapi.kind === 'plugin'), so this block is just an explicit
+    // on/off toggle — flip enabled to false to load Strapi without it
+    // without touching the dep.
+    'strapi-content-sync-pro': {
         enabled: true,
-        config: {
-            interceptorEnabled: true,
-            denyByDefault: true,
-
-            // ── Header bridging ─────────────────────────────────────
-            // Client sends two authorization headers:
-            //   x-rutba-app       — which app/domain the user is acting in
-            //   x-rutba-app-role  — which of the user's roles for that app
-            //                        the user is currently playing (admin /
-            //                        cashier / accountant / etc.). Required
-            //                        when the user holds more than one role
-            //                        for the active app.
-            //
-            // headerElevatedKey is retained as a deprecated config key for
-            // backward compatibility; the plugin ignores it at runtime.
-            headerDomainKey: 'x-rutba-app',
-            headerRoleKey: 'x-rutba-app-role',
-            headerElevatedKey: 'x-rutba-app-admin',
-
-            // ── Enforcement mode ────────────────────────────────────
-            // Switch to 'enforce' once all resources/policies/grants are verified.
-            enforcementMode: 'hybrid',
-
-            // ── Owner scoping ───────────────────────────────────────
-            enforceOwnership: true,
-
-            // ── Bypass paths ────────────────────────────────────────
-            // Fixed system paths + public routes from api-provider/config/configuration.json
-            bypassPaths: ALL_BYPASS_PATHS,
-
-            // ── Domains ─────────────────────────────────────────────
-            // Driven from api-provider/config/configuration.json — no manual list needed.
-            domains: DOMAINS_FROM_CONFIG,
-        },
     },
 
     email: {

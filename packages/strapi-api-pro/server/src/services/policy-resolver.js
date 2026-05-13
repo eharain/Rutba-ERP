@@ -10,17 +10,37 @@
 // resolves to { "owner": 42, "branch": 7 } given a user with those fields.
 //
 // Supported roots: $user, $claim, $query, $params, $body, $strapi
-// Special scalars: $today (yyyy-mm-dd), $now (full ISO)
+// Special scalars:
+//   $today        — yyyy-mm-dd (date-only)
+//   $now          — full ISO timestamp (right now)
+//   $todayStart   — ISO timestamp of today at 00:00 local
+//   $last1day     — ISO timestamp of 24h ago (used by staff-recency filters)
+//   $last7days    — ISO timestamp of 7 days ago
+//   $last30days   — ISO timestamp of 30 days ago
 //
 // See memory: feedback_policy_token_syntax.
 
 const ALLOWED_ROOTS = new Set(['user', 'claim', 'query', 'params', 'body', 'strapi']);
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function isoDaysAgo(days) {
+  return new Date(Date.now() - days * DAY_MS).toISOString();
+}
 
 function resolveToken(value, context) {
   if (typeof value !== 'string' || !value.startsWith('$')) return value;
 
   if (value === '$today') return new Date().toISOString().split('T')[0];
   if (value === '$now') return new Date().toISOString();
+  if (value === '$todayStart') {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d.toISOString();
+  }
+  if (value === '$last1day') return isoDaysAgo(1);
+  if (value === '$last7days') return isoDaysAgo(7);
+  if (value === '$last30days') return isoDaysAgo(30);
 
   const parts = value.slice(1).split('.');
   if (parts.length === 0) return undefined;

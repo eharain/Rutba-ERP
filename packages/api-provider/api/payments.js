@@ -2,12 +2,21 @@
  * PaymentsEndpoints
  * Pure endpoint descriptors for the /payments resource.
  */
+
+// Per-role scope shared by every policy below. Staff sees their own payments
+// from the last 7 days; admin/manager unrestricted.
+const ROLE_SCOPES = {
+    admin: {},
+    manager: {},
+    staff: { scope: 'owner+recency', ownerField: 'createdBy', recencyField: 'createdAt' },
+};
+
 export const PaymentsEndpoints = {
 
     meta: {
         uid: 'api::payment.payment',
         domains: ['accounts', 'sale', 'accounts-ar', 'accounts-ap'],
-        roles: ['admin', 'manager', 'staff']
+        roles: ['admin', 'manager', 'staff'],
     },
 
     /**
@@ -21,6 +30,7 @@ export const PaymentsEndpoints = {
         method: 'get',
         apps: ['accounts', 'sale', 'accounts-ar', 'accounts-ap'],
         approle: ['admin', 'manager', 'staff'],
+        scope: ROLE_SCOPES,
         params: {
             filters: useDocumentId
                 ? { cash_register: { documentId: { $eq: registerId } } }
@@ -36,6 +46,7 @@ export const PaymentsEndpoints = {
         method: 'get',
         apps: ['accounts', 'sale', 'accounts-ar', 'accounts-ap'],
         approle: ['admin', 'manager', 'staff'],
+        scope: ROLE_SCOPES,
         params: {
             filters: (opts.useDocumentId ?? true)
                 ? { cash_register: { documentId: { $eq: registerId } } }
@@ -53,6 +64,7 @@ export const PaymentsEndpoints = {
         method: 'post',
         apps: ['accounts', 'sale', 'accounts-ar', 'accounts-ap'],
         approle: ['admin', 'manager', 'staff'],
+        scope: ROLE_SCOPES,
         data,
     }),
     postCreate: (data) => ({
@@ -61,6 +73,7 @@ export const PaymentsEndpoints = {
         method: 'post',
         apps: ['accounts', 'sale', 'accounts-ar', 'accounts-ap'],
         approle: ['admin', 'manager', 'staff'],
+        scope: ROLE_SCOPES,
         data,
     }),
 
@@ -75,6 +88,7 @@ export const PaymentsEndpoints = {
         method: 'get',
         apps: ['accounts', 'sale', 'accounts-ar', 'accounts-ap'],
         approle: ['admin', 'manager', 'staff'],
+        scope: ROLE_SCOPES,
         params: {
             populate: populate ?? { sales: true, customer: true, cash_register: true },
         },
@@ -85,6 +99,7 @@ export const PaymentsEndpoints = {
         method: 'get',
         apps: ['accounts', 'sale', 'accounts-ar', 'accounts-ap'],
         approle: ['admin', 'manager', 'staff'],
+        scope: ROLE_SCOPES,
         params: {
             populate: populate ?? { sales: true, customer: true, cash_register: true },
         },
@@ -97,6 +112,7 @@ export const PaymentsEndpoints = {
         method: 'put',
         apps: ['accounts', 'sale', 'accounts-ar', 'accounts-ap'],
         approle: ['admin', 'manager', 'staff'],
+        scope: ROLE_SCOPES,
         data,
     }),
     putUpdate: (documentId, data) => ({
@@ -105,6 +121,7 @@ export const PaymentsEndpoints = {
         method: 'put',
         apps: ['accounts', 'sale', 'accounts-ar', 'accounts-ap'],
         approle: ['admin', 'manager', 'staff'],
+        scope: ROLE_SCOPES,
         data,
     }),
 
@@ -118,6 +135,7 @@ export const PaymentsEndpoints = {
         method: 'post',
         apps: ['accounts', 'sale', 'accounts-ar', 'accounts-ap'],
         approle: ['admin', 'manager', 'staff'],
+        scope: ROLE_SCOPES,
     }),
     postRefund: (data) => ({
         path: '/payments',
@@ -125,6 +143,7 @@ export const PaymentsEndpoints = {
         method: 'post',
         apps: ['accounts', 'sale', 'accounts-ar', 'accounts-ap'],
         approle: ['admin', 'manager', 'staff'],
+        scope: ROLE_SCOPES,
         data,
     }),
 /** Async: fetch a single payment by documentId. */

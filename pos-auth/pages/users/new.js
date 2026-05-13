@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import Layout from "../../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import AppAccessGate from "../../components/AppAccessGate";
-import { AuthAdminEndpoints, AppAccessesEndpoints } from "@rutba/api-provider/endpoints";
+import { AuthAdminEndpoints, AppAccessesEndpoints } from "../../lib/endpoints";
 
 export default function NewUserPage() {
     const router = useRouter();

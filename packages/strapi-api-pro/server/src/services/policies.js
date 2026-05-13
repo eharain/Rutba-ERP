@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 
 // CRUD service for api-method-policy rows, with the file-store as canonical.
 // Every mutating call writes the .api-pro/policies/{interface}/{method}/{role}.json
@@ -66,7 +66,7 @@ async function findOne(strapi, { interfaceKey, methodKey, roleKey }) {
   return shape(row);
 }
 
-// Upsert via file → DB. The data argument matches the file shape (which
+// Upsert via file â†’ DB. The data argument matches the file shape (which
 // matches the DB column names 1:1).
 async function upsert(strapi, { interfaceKey, methodKey, roleKey, data }) {
   if (!interfaceKey || !methodKey || !roleKey) {
@@ -76,6 +76,11 @@ async function upsert(strapi, { interfaceKey, methodKey, roleKey, data }) {
   }
   const normalizedRoleKey = String(roleKey).toLowerCase();
 
+  // Bump templateVersion to >= 2 on every admin save so the boot seeder
+  // recognises this policy as user-tuned and skips overwriting its templates.
+  const incomingVersion = Number.isInteger(data?.templateVersion) ? data.templateVersion : 1;
+  const bumpedVersion = Math.max(incomingVersion + 1, 2);
+
   const fileData = {
     name: data?.name || `${interfaceKey}:${methodKey}:${normalizedRoleKey}`,
     resolverMode: data?.resolverMode === 'lenient' ? 'lenient' : 'strict',
@@ -83,7 +88,7 @@ async function upsert(strapi, { interfaceKey, methodKey, roleKey, data }) {
     populateTemplate: data?.populateTemplate || {},
     bodyTemplate: data?.bodyTemplate || {},
     queryTemplate: data?.queryTemplate || {},
-    templateVersion: Number.isInteger(data?.templateVersion) ? data.templateVersion : 1,
+    templateVersion: bumpedVersion,
   };
 
   await fileStore.writePolicy(strapi, interfaceKey, methodKey, normalizedRoleKey, fileData);

@@ -1,4 +1,4 @@
-// @ts-nocheck
+﻿// @ts-nocheck
 'use strict';
 
 const { ensureUser } = require('../../../utils/ensure-user');

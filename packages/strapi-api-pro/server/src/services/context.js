@@ -1,20 +1,20 @@
-'use strict';
+﻿'use strict';
 
 // Claim resolution for api-pro.
 //
 // pos-strapi sends TWO authorization-affecting headers:
-//   x-rutba-app       — which app/domain the user is acting in
-//   x-rutba-app-role  — which of the user's roles for that app is active
+//   x-rutba-app       â€” which app/domain the user is acting in
+//   x-rutba-app-role  â€” which of the user's roles for that app is active
 //                       (client renders a role-selector menu when the user
 //                        holds more than one role for the app)
 //
-// The active role is CLAIMED via header — the server validates that:
+// The active role is CLAIMED via header â€” the server validates that:
 //   1. The role exists in api_pro_app_roles
 //   2. The user actually holds that role (via user.app_roles)
 //   3. The role's appDomains includes the claimed app
 //
 // When the user holds exactly one role for the active app, the role header
-// is optional — the single match is auto-selected.
+// is optional â€” the single match is auto-selected.
 
 const APP_ROLE_UID = 'plugin::api-pro.app-role';
 
@@ -48,7 +48,7 @@ function readHeaderKeys(strapi) {
 
 // Load the user's app_roles with domains populated. Falls back to fetching
 // from DB if `ctx.state.user.app_roles` isn't already hydrated (which it
-// usually isn't — users-permissions returns a thin user object).
+// usually isn't â€” users-permissions returns a thin user object).
 async function loadUserAppRoles(strapi, userId) {
   if (!userId) return [];
   try {
@@ -90,13 +90,13 @@ function pickActiveRole(rolesForApp, claimedRoleKey) {
   }
 
   if (rolesForApp.length === 1) {
-    return rolesForApp[0]; // unambiguous — auto-select
+    return rolesForApp[0]; // unambiguous â€” auto-select
   }
 
   if (rolesForApp.length > 1) {
     const choices = rolesForApp.map((r) => normalizeKey(r)).filter(Boolean).join(', ');
     throw createValidationError(
-      `User holds multiple roles for this app — claim one via the role header (choices: ${choices})`,
+      `User holds multiple roles for this app â€” claim one via the role header (choices: ${choices})`,
       'ROLE_CLAIM_AMBIGUOUS',
       400
     );
@@ -154,7 +154,7 @@ async function resolveClaim(ctx, strapi, { requireApp = true, requireActiveRole 
       username: user.username || null,
     },
     appName: appName || null,
-    // The active claimed role — this is what request-interceptor uses to
+    // The active claimed role â€” this is what request-interceptor uses to
     // pick which policies apply.
     roleKey: activeRole ? normalizeKey(activeRole) : null,
     domainKey: appName ? appName.toLowerCase() : null,
@@ -171,7 +171,7 @@ async function resolveClaim(ctx, strapi, { requireApp = true, requireActiveRole 
             : [],
         }
       : null,
-    // All of the user's roles for the active app — surface so the
+    // All of the user's roles for the active app â€” surface so the
     // /me/permissions response and any client UI can render the role
     // selector menu.
     rolesForApp: rolesForApp.map((r) => ({

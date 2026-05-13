@@ -4,8 +4,8 @@ import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import PermissionCheck from "@rutba/pos-shared/components/PermissionCheck";
 import { fetchSales } from "@rutba/api-provider/pos";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { isAppAdmin } from "@rutba/pos-shared/lib/roles";
-import { AppContextEndpoints, BranchesEndpoints, SalesEndpoints } from "@rutba/api-provider/endpoints";
+import { isAppAdmin, isActiveAdminRole } from "@rutba/pos-shared/lib/roles";
+import { BranchesEndpoints, SalesEndpoints } from "@rutba/api-provider/endpoints";
 import SaleApi from "@rutba/pos-shared/lib/saleApi";
 import Link from "next/link";
 import { Table, TableHead, TableRow, TableCell, TableBody, CircularProgress, TablePagination } from "@rutba/pos-shared/components/Table";
@@ -62,9 +62,9 @@ function get24hAgo() {
 
 export default function Sales() {
     const [sales, setSales] = useState([]);
-    const { jwt, adminAppAccess } = useAuth();
+    const { jwt, adminAppAccess, activeRoleKey } = useAuth();
     const admin = isAppAdmin(adminAppAccess, "sale");
-    const elevated = admin && AppContextEndpoints.getAdminMode();
+    const elevated = admin && isActiveAdminRole(activeRoleKey);
     const [page, setPage] = useState(0);
     const [rowsPerPage, setRowsPerPage] = useState(10);
     const [total, setTotal] = useState(0);

@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 
 const USER_UID = 'plugin::users-permissions.user';
 const APP_ROLE_UID = 'plugin::api-pro.app-role';
@@ -36,7 +36,9 @@ async function assignUserAppRoles(strapi, userId, roleIds) {
     throw err;
   }
 
-  const validRoleIds = (Array.isArray(roleIds) ? roleIds : []).map(Number).filter((v) => Number.isFinite(v) && v > 0);
+  const validRoleIds = (Array.isArray(roleIds) ? roleIds : [])
+    .map(Number)
+    .filter((v) => Number.isFinite(v) && v > 0);
 
   const user = await strapi.db.query(USER_UID).findOne({ where: { id } });
   if (!user) {
@@ -45,10 +47,15 @@ async function assignUserAppRoles(strapi, userId, roleIds) {
     throw err;
   }
 
-  await strapi.entityService.update(USER_UID, id, {
-    data: {
-      app_roles: { set: validRoleIds },
-    },
+  // db.query.update writes the join table directly. entityService.update on
+  // plugin::users-permissions.user routes through the users-permissions user
+  // service in Strapi 5.45+, which silently strips fields it doesn't know
+  // about — including the app_roles relation we injected via the schema
+  // patch in content-types/app-role/index.js. That's why the PUT returned
+  // 200 but the rows never landed.
+  await strapi.db.query(USER_UID).update({
+    where: { id },
+    data: { app_roles: validRoleIds },
   });
 
   return await strapi.db.query(USER_UID).findOne({

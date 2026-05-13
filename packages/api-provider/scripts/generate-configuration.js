@@ -1,8 +1,10 @@
-'use strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { toJSONConfiguration } from '../config/configuration.source.js';
 
-const fs = require('fs');
-const path = require('path');
-const { toJSONConfiguration } = require('../config/configuration.source');
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const configRoot = path.join(__dirname, '..', 'config');
 const domainsPath = path.join(configRoot, 'domains.json');
@@ -18,7 +20,7 @@ function safeFileNameFromUid(uid) {
   return String(uid).replace(/[^a-zA-Z0-9._-]+/g, '_');
 }
 
-function writeConfiguration() {
+export function writeConfiguration() {
   const config = toJSONConfiguration();
   const payload = {
     domains: config.domains || {},
@@ -56,13 +58,9 @@ function writeConfiguration() {
   };
 }
 
-if (require.main === module) {
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   const result = writeConfiguration();
   process.stdout.write(
     `[api-provider] split configuration generated in root: ${result.configRoot} (domains=${result.domainCount}, roles=${result.roleCount}, publicResources=${result.publicResourceCount}, resources=${result.resourceCount})\n`
   );
 }
-
-module.exports = {
-  writeConfiguration,
-};

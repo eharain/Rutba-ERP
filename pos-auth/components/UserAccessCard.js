@@ -7,10 +7,17 @@ export default function UserAccessCard({
   savingMap,
   isChecked,
   updateAccess,
+  bulkUpdateUser,
+  bulkBusy,
 }) {
   const [expanded, setExpanded] = useState(false);
   const userAccessCount = (user.domain_accesses || []).length;
   const adminAccessCount = (user.admin_domain_accesses || []).length;
+  const userRowBusy = Object.keys(savingMap || {}).some(
+    (k) => k.startsWith(`${user.id}:`) && savingMap[k],
+  );
+  const userRemaining = Math.max(0, apps.length - userAccessCount);
+  const adminRemaining = Math.max(0, apps.length - adminAccessCount);
 
   return (
     <div className="card mb-3">
@@ -78,6 +85,52 @@ export default function UserAccessCard({
         {expanded && (apps.length === 0 ? (
           <p className="text-muted mb-0">No applications configured</p>
         ) : (
+          <>
+          {bulkUpdateUser && (
+            <div className="d-flex flex-wrap gap-2 mb-2">
+              <span className="small text-muted align-self-center me-1">Bulk:</span>
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-success"
+                disabled={bulkBusy || userRowBusy || userRemaining === 0}
+                onClick={() => bulkUpdateUser(user, "user", "fill")}
+                title="Grant user access on every remaining app"
+              >
+                <i className="fas fa-plus me-1"></i>
+                Add Remaining User ({userRemaining})
+              </button>
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-warning"
+                disabled={bulkBusy || userRowBusy || adminRemaining === 0}
+                onClick={() => bulkUpdateUser(user, "admin", "fill")}
+                title="Grant admin access on every remaining app"
+              >
+                <i className="fas fa-user-shield me-1"></i>
+                Add Remaining Admin ({adminRemaining})
+              </button>
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-secondary"
+                disabled={bulkBusy || userRowBusy || (userAccessCount === 0 && adminAccessCount === 0)}
+                onClick={() => bulkUpdateUser(user, "user", "clear")}
+                title="Revoke all user (and admin) access"
+              >
+                <i className="fas fa-eraser me-1"></i>
+                Remove All User
+              </button>
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-danger"
+                disabled={bulkBusy || userRowBusy || adminAccessCount === 0}
+                onClick={() => bulkUpdateUser(user, "admin", "clear")}
+                title="Revoke admin access (keep user access)"
+              >
+                <i className="fas fa-minus me-1"></i>
+                Remove All Admin
+              </button>
+            </div>
+          )}
           <div className="table-responsive">
             <table className="table table-sm table-hover align-middle mb-0">
               <thead className="table-light">
@@ -152,6 +205,7 @@ export default function UserAccessCard({
               </tbody>
             </table>
           </div>
+          </>
         ))}
       </div>
     </div>

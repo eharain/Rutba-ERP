@@ -1,7 +1,9 @@
-'use strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
-const fs = require('fs');
-const path = require('path');
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const configRoot = path.join(__dirname, '..', 'config');
 const domainsPath = path.join(configRoot, 'domains.json');
@@ -17,7 +19,7 @@ function writeJson(filePath, value) {
   fs.writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`, 'utf8');
 }
 
-function joinConfiguration() {
+export function joinConfiguration() {
   const domains = fs.existsSync(domainsPath) ? readJson(domainsPath) : {};
   const roles = fs.existsSync(rolesPath) ? readJson(rolesPath) : {};
   const publicResources = fs.existsSync(publicResourcesPath) ? readJson(publicResourcesPath) : {};
@@ -60,13 +62,9 @@ function joinConfiguration() {
   };
 }
 
-if (require.main === module) {
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   const result = joinConfiguration();
   process.stdout.write(
     `[api-provider] configuration normalized in root: ${result.configRoot} (domains=${result.domainCount}, roles=${result.roleCount}, publicResources=${result.publicResourceCount}, resources=${result.resourceCount})\n`
   );
 }
-
-module.exports = {
-  joinConfiguration,
-};

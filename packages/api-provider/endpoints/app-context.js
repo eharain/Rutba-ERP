@@ -1,10 +1,10 @@
-import { getAdminMode, getAppName, setAdminMode, setAppName } from '../lib/api.js';
+import { getActiveRole, getAppName, setActiveRole, setAppName } from '../lib/api.js';
 
 export const AppContextEndpoints = {
   setAppName: (name) => setAppName(name),
   getAppName: () => getAppName(),
-  setAdminMode: (enabled) => setAdminMode(enabled),
-  getAdminMode: () => getAdminMode(),
+  setActiveRole: (roleKey) => setActiveRole(roleKey),
+  getActiveRole: () => getActiveRole(),
 };
 
 

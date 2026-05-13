@@ -1,6 +1,6 @@
-/**
+﻿/**
  * CustomersEndpoints
- * Each `fetch*` method owns the full async call — callers use a single await.
+ * Each `fetch*` method owns the full async call â€” callers use a single await.
  */
 export const CustomersEndpoints = {
 
@@ -29,7 +29,7 @@ export const CustomersEndpoints = {
         },
     }),
 
-    /** Create a new customer — body provided by caller as { data }. */
+    /** Create a new customer â€” body provided by caller as { data }. */
     create: (data) => ({
         path: '/customers',
         action: 'create',
@@ -62,7 +62,7 @@ export const CustomersEndpoints = {
     }),
 
     /**
-     * Update a customer by documentId — body provided by caller as { data }.
+     * Update a customer by documentId â€” body provided by caller as { data }.
      * @param {string} documentId
      */
     update: (documentId, data) => ({
@@ -78,11 +78,11 @@ export const CustomersEndpoints = {
 
 /**
  * CustomersEndpointRules
- * Per-endpoint requestRules stored in the api-guard-pro resource record.
+ * Per-endpoint requestRules stored in the api-pro method-policy record.
  */
 export const CustomersEndpointRules = {
     /**
-     * GET /api/customers — findByContact
+     * GET /api/customers â€” findByContact
      * Client passes: ?email=<value> or ?phone=<value>
      * Server injects: exact-match filters
      */
@@ -96,7 +96,7 @@ export const CustomersEndpointRules = {
     },
 
     /**
-     * GET /api/customers — search
+     * GET /api/customers â€” search
      * Client passes: ?q=<term>
      * Server injects: $or containsi filter
      */
@@ -109,9 +109,9 @@ export const CustomersEndpointRules = {
         },
     },
 
-    /** POST /api/customers — create */
+    /** POST /api/customers â€” create */
     create: {},
 
-    /** PUT /api/customers/:id — update */
+    /** PUT /api/customers/:id â€” update */
     update: {},
 };

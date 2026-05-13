@@ -1,21 +1,21 @@
-'use strict';
+﻿'use strict';
 
 const schema = require('./schema.json');
 
-// ─── Lifecycle note ─────────────────────────────────────────────────────────
+// â”€â”€â”€ Lifecycle note â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Strapi initialization order:
-//   1. Plugin extensions (strapi-server.js in consuming apps) — run first
-//   2. Each plugin's register()                               — runs second
-//   3. DB schema sync / metadata build                        — runs third
-//   4. Each plugin's bootstrap()                              — runs last
+//   1. Plugin extensions (strapi-server.js in consuming apps) â€” run first
+//   2. Each plugin's register()                               â€” runs second
+//   3. DB schema sync / metadata build                        â€” runs third
+//   4. Each plugin's bootstrap()                              â€” runs last
 //
 // Because DB sync happens AFTER register(), patching the raw plugin schema
 // inside register() is the correct and only safe way for a plugin to extend
 // another plugin's content-type. The consuming app does NOT need to declare
-// api_guard_roles in its own extension — the plugin is self-contained.
-// ────────────────────────────────────────────────────────────────────────────
+// app_roles in its own extension â€” the plugin is self-contained.
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-const RELATION_DEF = {
+const app_roles_relation = {
     type: 'relation',
     relation: 'manyToMany',
     target: 'plugin::api-pro.app-role',
@@ -34,14 +34,14 @@ const RELATION_DEF = {
  * schema sync, so patching here is the correct lifecycle phase.
  *
  * Access path in register():
- *   strapi.plugin('users-permissions') → the plugin instance built from its
+ *   strapi.plugin('users-permissions') â†’ the plugin instance built from its
  *   raw definition. Its .contentTypes.user.schema.attributes IS the object
  *   Strapi reads when it builds DB metadata in phase 3.
  */
 const extendUserRelation = (strapi) => {
     const upPlugin = strapi.plugin('users-permissions');
     if (!upPlugin) {
-        strapi.log.warn('[api-pro] Could not extend user schema — plugin::users-permissions is not loaded.');
+        strapi.log.warn('[api-pro] Could not extend user schema â€” plugin::users-permissions is not loaded.');
         return;
     }
 
@@ -65,7 +65,7 @@ const extendUserRelation = (strapi) => {
     let patched = 0;
     for (const attrs of uniqueContainers) {
         if (!attrs.app_roles) {
-            attrs.app_roles = { ...RELATION_DEF };
+            attrs.app_roles = { ...app_roles_relation };
             patched += 1;
         }
     }

@@ -6,6 +6,10 @@ async function getDraft(...args) {
     return executeEndpoint(authApi, 'getDraft', SiteSettingEndpointsApi.getDraft(...args));
 }
 
+async function fetchDraft(...args) {
+    return executeEndpoint(authApi, 'fetchDraft', SiteSettingEndpointsApi.fetchDraft(...args));
+}
+
 async function getPublished(...args) {
     return executeEndpoint(authApi, 'getPublished', SiteSettingEndpointsApi.getPublished(...args));
 }
@@ -32,6 +36,7 @@ async function fetchGetPublished(...args) {
 
 const endpoints = {
     getDraft,
+    fetchDraft,
     getPublished,
     updateDraft,
     publish,

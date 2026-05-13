@@ -1,4 +1,4 @@
-/**
+﻿/**
  * SaleReturnItemsEndpoints
  * Pure endpoint descriptors for the /sale-return-items resource.
  */
@@ -8,7 +8,7 @@ export const SaleReturnItemsEndpoints = {
     create: (data) => ({ path: '/sale-return-items', action: 'create', method: 'post', data , data }),
 
     /**
-     * Update a sale return item by documentId — body provided by caller as { data }.
+     * Update a sale return item by documentId â€” body provided by caller as { data }.
      * @param {string} documentId
      */
     update: (documentId, data) => ({ path: `/sale-return-items/${documentId}` , data }),
@@ -18,12 +18,12 @@ export const SaleReturnItemsEndpoints = {
 
 /**
  * SaleReturnItemsEndpointRules
- * Per-endpoint requestRules stored in the api-guard-pro resource record.
+ * Per-endpoint requestRules stored in the api-pro method-policy record.
  */
 export const SaleReturnItemsEndpointRules = {
-    /** POST /api/sale-return-items — create */
+    /** POST /api/sale-return-items â€” create */
     create: {},
 
-    /** PUT /api/sale-return-items/:id — update */
+    /** PUT /api/sale-return-items/:id â€” update */
     update: {},
 };

@@ -2,12 +2,29 @@
  * CashRegistersEndpoints
  * Centralised path + params definitions for /cash-registers and related custom routes.
  */
+
+// Per-role server-side scope for every policy (method) below.
+// Admin/manager: unrestricted. Staff: own registers from the last 7 days
+// (single-row lookups stay ownership-only; create just stamps opened_by).
+// The seeder reads this and writes the matching filtersTemplate / bodyTemplate
+// per (method × role) into api_pro_method_policies; the Policy Editor shows
+// each role's effective filter side-by-side.
+const ROLE_SCOPES = {
+    admin: {},
+    manager: {},
+    staff: {
+        scope: 'owner+recency',
+        ownerField: 'opened_by',
+        recencyField: 'opened_at',
+    },
+};
+
 export const CashRegistersEndpoints = {
 
     meta: {
         uid: 'api::cash-register.cash-register',
         domains: ['accounts', 'sale', 'accounts-viewer', 'auth'],
-        roles: ['admin', 'manager', 'staff']
+        roles: ['admin', 'manager', 'staff'],
     },
 
     /**
@@ -20,6 +37,7 @@ export const CashRegistersEndpoints = {
         method: 'get',
         apps: ['accounts', 'sale', 'accounts-viewer', 'auth'],
         approle: ['admin', 'manager', 'staff'],
+        scope: ROLE_SCOPES,
         params: {
             ...(filters ? { filters } : {}),
             sort: sort ?? ['opened_at:desc'],
@@ -38,6 +56,7 @@ export const CashRegistersEndpoints = {
         method: 'get',
         apps: ['accounts', 'sale', 'accounts-viewer', 'auth'],
         approle: ['admin', 'manager', 'staff'],
+        scope: ROLE_SCOPES,
         params: populate ? { populate } : undefined,
     }),
 /**
@@ -55,6 +74,7 @@ export const CashRegistersEndpoints = {
             method: 'get',
             apps: ['accounts', 'sale', 'accounts-viewer', 'auth'],
             approle: ['admin', 'manager', 'staff'],
+            scope: ROLE_SCOPES,
         };
     },
     // Backward-compatible aliases expected by existing consumers
@@ -69,6 +89,7 @@ export const CashRegistersEndpoints = {
             method: 'get',
             apps: ['accounts', 'sale', 'accounts-viewer', 'auth'],
             approle: ['admin', 'manager', 'staff'],
+            scope: ROLE_SCOPES,
         };
     },
 /** Open a new cash register — body provided by caller as { data }. */
@@ -78,6 +99,7 @@ export const CashRegistersEndpoints = {
         method: 'post',
         apps: ['accounts', 'sale', 'accounts-viewer', 'auth'],
         approle: ['admin', 'manager', 'staff'],
+        scope: ROLE_SCOPES,
         data,
     }),
     postOpen: (data) => ({
@@ -86,6 +108,7 @@ export const CashRegistersEndpoints = {
         method: 'post',
         apps: ['accounts', 'sale', 'accounts-viewer', 'auth'],
         approle: ['admin', 'manager', 'staff'],
+        scope: ROLE_SCOPES,
         data,
     }),
 
@@ -99,6 +122,7 @@ export const CashRegistersEndpoints = {
         method: 'post',
         apps: ['accounts', 'sale', 'accounts-viewer', 'auth'],
         approle: ['admin', 'manager', 'staff'],
+        scope: ROLE_SCOPES,
     }),
     postClose: (registerId, data) => ({
         path: `/cash-registers/${registerId}/close`,
@@ -106,6 +130,7 @@ export const CashRegistersEndpoints = {
         method: 'post',
         apps: ['accounts', 'sale', 'accounts-viewer', 'auth'],
         approle: ['admin', 'manager', 'staff'],
+        scope: ROLE_SCOPES,
         data,
     }),
 /**

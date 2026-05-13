@@ -4,7 +4,7 @@ import Layout from "../../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import AppAccessGate from "../../components/AppAccessGate";
 import PermissionCheck from "@rutba/pos-shared/components/PermissionCheck";
-import { AuthAdminEndpoints, AppAccessesEndpoints } from "@rutba/api-provider/endpoints";
+import { AuthAdminEndpoints, AppAccessesEndpoints } from "../../lib/endpoints";
 import UserAccessFilters from "../../components/UserAccessFilters";
 import UserAccessCard from "../../components/UserAccessCard";
 
@@ -25,6 +25,8 @@ export default function AccessAssignmentPage() {
   const [savingMap, setSavingMap] = useState({});
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState(null);
 
   useEffect(() => {
     loadData();
@@ -89,6 +91,110 @@ export default function AccessAssignmentPage() {
 
   function setSaving(key, value) {
     setSavingMap((prev) => ({ ...prev, [key]: value }));
+  }
+
+  function computeBulkArrays(user, kind, mode) {
+    const allKeys = apps.map((a) => a.key);
+    const current = {
+      domain_accesses: Array.from(new Set(user.domain_accesses || [])),
+      admin_domain_accesses: Array.from(new Set(user.admin_domain_accesses || [])),
+    };
+
+    if (mode === "fill") {
+      if (kind === "user") {
+        current.domain_accesses = Array.from(new Set([...current.domain_accesses, ...allKeys]));
+      } else {
+        current.admin_domain_accesses = Array.from(new Set([...current.admin_domain_accesses, ...allKeys]));
+        current.domain_accesses = Array.from(new Set([...current.domain_accesses, ...allKeys]));
+      }
+    } else if (mode === "clear") {
+      if (kind === "user") {
+        current.domain_accesses = [];
+        current.admin_domain_accesses = [];
+      } else {
+        current.admin_domain_accesses = [];
+      }
+    }
+
+    return current;
+  }
+
+  async function bulkUpdateUser(user, kind, mode) {
+    const prevUsers = users;
+    const next = computeBulkArrays(user, kind, mode);
+    const nextUser = { ...user, ...next };
+
+    setUsers((prev) => prev.map((u) => (u.id === user.id ? nextUser : u)));
+    setBulkBusy(true);
+    setError("");
+
+    try {
+      await AuthAdminEndpoints.putUpdateUser(user.id, {
+        username: user.username,
+        email: user.email,
+        displayName: user.displayName,
+        confirmed: user.confirmed,
+        blocked: user.blocked,
+        role: user.role?.id || undefined,
+        domain_accesses: next.domain_accesses,
+        admin_domain_accesses: next.admin_domain_accesses,
+      });
+    } catch (err) {
+      setUsers(prevUsers);
+      setError(`Failed bulk updating access for ${user.displayName || user.username || user.email}.`);
+      console.error(err);
+    } finally {
+      setBulkBusy(false);
+    }
+  }
+
+  async function bulkApplyToFiltered(kind, mode) {
+    if (filteredUsers.length === 0) return;
+    const label = mode === "fill" ? "Grant" : "Remove";
+    const target = kind === "admin" ? "Admin access" : "User access";
+    const confirmMsg =
+      `${label} ${target} on ALL ${apps.length} apps for ${filteredUsers.length} filtered users?`
+      + `\n\nThis matches the current Search / Role / Status filters.`;
+    if (typeof window !== "undefined" && !window.confirm(confirmMsg)) return;
+
+    setBulkBusy(true);
+    setBulkProgress({ done: 0, total: filteredUsers.length, failed: 0 });
+    setError("");
+
+    const targets = filteredUsers.slice();
+    let done = 0;
+    let failed = 0;
+    const failures = [];
+
+    for (const u of targets) {
+      try {
+        const next = computeBulkArrays(u, kind, mode);
+        await AuthAdminEndpoints.putUpdateUser(u.id, {
+          username: u.username,
+          email: u.email,
+          displayName: u.displayName,
+          confirmed: u.confirmed,
+          blocked: u.blocked,
+          role: u.role?.id || undefined,
+          domain_accesses: next.domain_accesses,
+          admin_domain_accesses: next.admin_domain_accesses,
+        });
+        setUsers((prev) => prev.map((x) => (x.id === u.id ? { ...x, ...next } : x)));
+      } catch (err) {
+        failed += 1;
+        failures.push(u.displayName || u.username || u.email || u.id);
+        console.error(`Bulk update failed for user ${u.id}:`, err);
+      } finally {
+        done += 1;
+        setBulkProgress({ done, total: targets.length, failed });
+      }
+    }
+
+    setBulkBusy(false);
+    setBulkProgress(null);
+    if (failed > 0) {
+      setError(`Bulk update finished with ${failed} failure(s): ${failures.slice(0, 5).join(", ")}${failures.length > 5 ? "…" : ""}`);
+    }
   }
 
   async function updateAccess(user, appKey, kind, checked) {
@@ -193,6 +299,69 @@ export default function AccessAssignmentPage() {
             roleOptions={roleOptions}
           />
 
+          {!loading && filteredUsers.length > 0 && (
+            <div className="card border-info mb-3">
+              <div className="card-body py-2">
+                <div className="d-flex flex-wrap align-items-center gap-2">
+                  <span className="small fw-semibold me-1">
+                    <i className="fas fa-bolt text-info me-1"></i>
+                    Bulk apply to <span className="badge bg-info text-dark">{filteredUsers.length}</span> filtered user{filteredUsers.length === 1 ? "" : "s"}
+                  </span>
+                  <span className="small text-muted me-2">
+                    (uses current Search / Role / Status filters &middot; {apps.length} app{apps.length === 1 ? "" : "s"})
+                  </span>
+                  <div className="btn-group btn-group-sm" role="group" aria-label="Bulk add">
+                    <button
+                      type="button"
+                      className="btn btn-outline-success"
+                      disabled={bulkBusy || apps.length === 0}
+                      onClick={() => bulkApplyToFiltered("user", "fill")}
+                    >
+                      <i className="fas fa-user-plus me-1"></i>
+                      Add User Access to All
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-outline-warning"
+                      disabled={bulkBusy || apps.length === 0}
+                      onClick={() => bulkApplyToFiltered("admin", "fill")}
+                    >
+                      <i className="fas fa-user-shield me-1"></i>
+                      Add Admin Access to All
+                    </button>
+                  </div>
+                  <div className="btn-group btn-group-sm" role="group" aria-label="Bulk remove">
+                    <button
+                      type="button"
+                      className="btn btn-outline-secondary"
+                      disabled={bulkBusy}
+                      onClick={() => bulkApplyToFiltered("user", "clear")}
+                    >
+                      <i className="fas fa-eraser me-1"></i>
+                      Remove User Access from All
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-outline-danger"
+                      disabled={bulkBusy}
+                      onClick={() => bulkApplyToFiltered("admin", "clear")}
+                    >
+                      <i className="fas fa-user-slash me-1"></i>
+                      Remove Admin Access from All
+                    </button>
+                  </div>
+                  {bulkProgress && (
+                    <span className="small text-muted ms-2">
+                      <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                      {bulkProgress.done}/{bulkProgress.total}
+                      {bulkProgress.failed > 0 && <span className="text-danger ms-1">({bulkProgress.failed} failed)</span>}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="d-flex justify-content-between align-items-center mb-2">
             <small className="text-muted">
               Showing {filteredUsers.length === 0 ? 0 : startIndex + 1}–{endIndex} of {filteredUsers.length}
@@ -237,6 +406,8 @@ export default function AccessAssignmentPage() {
                   savingMap={savingMap}
                   isChecked={isChecked}
                   updateAccess={updateAccess}
+                  bulkUpdateUser={bulkUpdateUser}
+                  bulkBusy={bulkBusy}
                 />
               ))}
 

@@ -1,6 +1,6 @@
-'use strict';
+﻿'use strict';
 
-// File ↔ DB sync.
+// File â†” DB sync.
 //
 // Files in .api-pro/ are the canonical authoring layer; DB tables exist as a
 // runtime-read mirror. On every plugin boot we read all files and upsert them
@@ -8,7 +8,7 @@
 // for keeping the two in step: write file first, then call the matching
 // sync*Write helper here to push the change into the DB.
 //
-// Direction is one-way (file → DB). Deleting a file removes the DB row;
+// Direction is one-way (file â†’ DB). Deleting a file removes the DB row;
 // deleting a DB row directly is NOT supported via this layer (use the
 // controllers, which delete the file first).
 
@@ -26,7 +26,7 @@ function policyCompositeKey(interfaceKey, methodKey, roleKey) {
   return `${interfaceKey}:${methodKey}:${roleKey}`;
 }
 
-// ── Per-row upserts ─────────────────────────────────────────────────────────
+// â”€â”€ Per-row upserts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function upsertInterface(strapi, interfaceKey, data) {
   const existing = await strapi.db.query(INTERFACE_UID).findOne({
     where: { key: interfaceKey },
@@ -114,7 +114,7 @@ async function upsertPolicy(strapi, interfaceKey, methodKey, roleKey, data) {
   return strapi.db.query(POLICY_UID).create({ data: payload });
 }
 
-// ── Per-key sync (called from controllers after a file write) ───────────────
+// â”€â”€ Per-key sync (called from controllers after a file write) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function syncInterfaceWrite(strapi, interfaceKey) {
   const fileData = await fileStore.readInterface(strapi, interfaceKey);
   if (!fileData) return null;
@@ -136,7 +136,7 @@ async function syncPolicyWrite(strapi, interfaceKey, methodKey, roleKey) {
 async function syncInterfaceDelete(strapi, interfaceKey) {
   const row = await strapi.db.query(INTERFACE_UID).findOne({ where: { key: interfaceKey } });
   if (!row) return;
-  // Cascade: methods → policies are wired via relations; deleting the
+  // Cascade: methods â†’ policies are wired via relations; deleting the
   // interface should leave dangling rows only if FK cascade isn't set.
   // Be explicit so we don't depend on DB-level cascades.
   const methods = await strapi.db.query(METHOD_UID).findMany({
@@ -158,7 +158,7 @@ async function syncPolicyDelete(strapi, interfaceKey, methodKey, roleKey) {
   await strapi.db.query(POLICY_UID).deleteMany({ where: { key: compositeKey } });
 }
 
-// ── Full sync (boot) ────────────────────────────────────────────────────────
+// â”€â”€ Full sync (boot) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function syncAll(strapi) {
   await fileStore.ensureStorage(strapi);
 

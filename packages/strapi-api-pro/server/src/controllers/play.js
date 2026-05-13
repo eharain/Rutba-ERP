@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 
 // Admin controller for the "Play as role" feature. Routes through the
 // admin surface so Strapi's admin auth gates it.
