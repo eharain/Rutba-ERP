@@ -1,5 +1,5 @@
 import { authApi } from '../../../../lib/api.js';
-import { executeEndpoint } from '../___core__.js';
+import { executeEndpoint, strictEndpointGuard } from '../___core__.js';
 import { WebOrdersEndpoints as WebOrdersEndpointsApi } from '../../../../api/web/orders.js';
 
 async function myOrders(...args) {
@@ -38,27 +38,21 @@ async function sendMessage(...args) {
     return executeEndpoint(authApi, 'sendMessage', WebOrdersEndpointsApi.sendMessage(...args));
 }
 
-async function fetchById(...args) {
-    return byId(...args);
-}
-
-async function postCreate(...args) {
-    return create(...args);
-}
-
-const endpoints = {
-    myOrders,
-    byId,
-    create,
-    validateAddress,
-    shippingRate,
-    calculateDelivery,
-    tracking,
-    messages,
-    sendMessage,
-    fetchById,
-    postCreate,
-};
+const endpoints = strictEndpointGuard(
+    'WebOrdersEndpoints',
+    {
+        myOrders,
+        byId,
+        create,
+        validateAddress,
+        shippingRate,
+        calculateDelivery,
+        tracking,
+        messages,
+        sendMessage,
+    },
+    ["myOrders","byId","create","validateAddress","shippingRate","calculateDelivery","tracking","messages","sendMessage"],
+);
 
 export default endpoints;
 export const WebOrdersEndpoints = endpoints;

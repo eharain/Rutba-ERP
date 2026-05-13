@@ -30,9 +30,9 @@ export default function BrandDetail() {
     useEffect(() => {
         if (!jwt || !documentId || isNew) { setLoading(false); return; }
         Promise.all([
-            BrandsEndpoints.fetchByIdDraft(documentId, { populate: ["logo", "gallery"] }),
-            BrandsEndpoints.fetchByIdPublished(documentId, { fields: ["documentId"] }).catch(() => ({ data: null })),
-            ProductsEndpoints.fetchList({
+            BrandsEndpoints.byIdDraft(documentId, { populate: ["logo", "gallery"] }),
+            BrandsEndpoints.byIdPublished(documentId, { fields: ["documentId"] }).catch(() => ({ data: null })),
+            ProductsEndpoints.list({
                 status: "draft",
                 filters: { brands: { documentId: { $in: [documentId] } }, parent: { documentId: { $null: true } } },
                 sort: ["name:asc"],
@@ -66,11 +66,11 @@ export default function BrandDetail() {
         setSaving(true);
         try {
             if (isNew) {
-                const res = await BrandsEndpoints.postCreate({ name, slug: slug || name.toLowerCase().replace(/\s+/g, "-") });
+                const res = await BrandsEndpoints.create({ name, slug: slug || name.toLowerCase().replace(/\s+/g, "-") });
                 const created = res.data || res;
                 router.push(`/${created.documentId}/brand`);
             } else {
-                await BrandsEndpoints.putUpdateDraft(documentId, { name });
+                await BrandsEndpoints.updateDraft(documentId, { name });
 
                 const initialIds = new Set(initialProductIdsRef.current);
                 const currentIds = new Set(selectedProductIds);
@@ -79,10 +79,10 @@ export default function BrandDetail() {
 
                 const updates = [];
                 for (const id of added) {
-                    updates.push(ProductsEndpoints.putUpdateDraft(id, { brands: { connect: [documentId] } }));
+                    updates.push(ProductsEndpoints.updateDraft(id, { brands: { connect: [documentId] } }));
                 }
                 for (const id of removed) {
-                    updates.push(ProductsEndpoints.putUpdateDraft(id, { brands: { disconnect: [documentId] } }));
+                    updates.push(ProductsEndpoints.updateDraft(id, { brands: { disconnect: [documentId] } }));
                 }
                 await Promise.all(updates);
 
@@ -100,8 +100,8 @@ export default function BrandDetail() {
     const handlePublish = async () => {
         setSaving(true);
         try {
-            await BrandsEndpoints.putUpdateDraft(documentId, { name });
-            await BrandsEndpoints.postPublish(documentId);
+            await BrandsEndpoints.updateDraft(documentId, { name });
+            await BrandsEndpoints.publish(documentId);
             setIsPublished(true);
             toast("Brand saved & published!", "success");
         } catch (err) {
@@ -115,7 +115,7 @@ export default function BrandDetail() {
     const handleUnpublish = async () => {
         setSaving(true);
         try {
-            await BrandsEndpoints.postUnpublish(documentId);
+            await BrandsEndpoints.unpublish(documentId);
             setIsPublished(false);
             toast("Brand unpublished.", "success");
         } catch (err) {
@@ -130,8 +130,8 @@ export default function BrandDetail() {
         if (!confirm("Save current draft and load the published version into the editor?")) return;
         setSaving(true);
         try {
-            await BrandsEndpoints.putUpdateDraft(documentId, { name });
-            const res = await BrandsEndpoints.fetchByIdPublished(documentId, { populate: ["logo", "gallery"] });
+            await BrandsEndpoints.updateDraft(documentId, { name });
+            const res = await BrandsEndpoints.byIdPublished(documentId, { populate: ["logo", "gallery"] });
             const b = res.data || res;
             if (!b) { toast("No published version found.", "warning"); return; }
             setName(b.name || "");

@@ -48,8 +48,8 @@ export default function ProductGroupDetail() {
     useEffect(() => {
         if (!jwt || !documentId || isNew) { setLoading(false); return; }
         Promise.all([
-            ProductGroupsEndpoints.fetchByIdDraft(documentId, { populate: ["gallery", "cover_image", "products", "cms_pages"] }),
-            ProductGroupsEndpoints.fetchByIdPublished(documentId, { fields: ["documentId"] }).catch(() => ({ data: null })),
+            ProductGroupsEndpoints.byIdDraft(documentId, { populate: ["gallery", "cover_image", "products", "cms_pages"] }),
+            ProductGroupsEndpoints.byIdPublished(documentId, { fields: ["documentId"] }).catch(() => ({ data: null })),
         ])
             .then(([draftRes, pubRes]) => {
                 const g = draftRes.data || draftRes;
@@ -80,7 +80,7 @@ export default function ProductGroupDetail() {
     // Load CMS pages for picker
     useEffect(() => {
         if (!jwt) return;
-        CmsPagesEndpoints.fetchAllDraft({ sort: ["title:asc"] })
+        CmsPagesEndpoints.listDraft({ sort: ["title:asc"] })
             .then(res => setAllCmsPages(res?.data || res || []))
             .catch(err => console.error("Failed to load CMS pages", err));
     }, [jwt]);
@@ -126,11 +126,11 @@ export default function ProductGroupDetail() {
             };
             if (isNew) {
                 payload.data.slug = slug || name.toLowerCase().replace(/\s+/g, "-");
-                const res = await ProductGroupsEndpoints.postCreate(payload.data);
+                const res = await ProductGroupsEndpoints.create(payload.data);
                 const created = res.data || res;
                 router.push(`/${created.documentId}/product-group`);
             } else {
-                await ProductGroupsEndpoints.putUpdateDraft(documentId, payload.data);
+                await ProductGroupsEndpoints.updateDraft(documentId, payload.data);
                 toast("Draft saved!", "success");
             }
         } catch (err) {
@@ -162,8 +162,8 @@ export default function ProductGroupDetail() {
                     cms_pages: { set: selectedPageIds },
                 },
             };
-            await ProductGroupsEndpoints.putUpdateDraft(documentId, payload.data);
-            await ProductGroupsEndpoints.postPublish(documentId);
+            await ProductGroupsEndpoints.updateDraft(documentId, payload.data);
+            await ProductGroupsEndpoints.publish(documentId);
             setIsPublished(true);
             toast("Product group saved & published!", "success");
         } catch (err) {
@@ -177,7 +177,7 @@ export default function ProductGroupDetail() {
     const handleUnpublish = async () => {
         setSaving(true);
         try {
-            await ProductGroupsEndpoints.postUnpublish(documentId);
+            await ProductGroupsEndpoints.unpublish(documentId);
             setIsPublished(false);
             toast("Product group unpublished.", "success");
         } catch (err) {
@@ -192,8 +192,8 @@ export default function ProductGroupDetail() {
         if (!confirm("Save current draft and load the published version into the editor?")) return;
         setSaving(true);
         try {
-            await ProductGroupsEndpoints.putUpdateDraft(documentId, { name, title, excerpt, content, layout, priority, default_sort: defaultSort, enable_sort_dropdown: enableSortDropdown, enable_view_toggle: enableViewToggle, max_inline_products: maxInlineProducts, products: { set: selectedProductIds }, cms_pages: { set: selectedPageIds } });
-            const res = await ProductGroupsEndpoints.fetchByIdPublished(documentId, { populate: ["gallery", "cover_image", "products", "cms_pages"] });
+            await ProductGroupsEndpoints.updateDraft(documentId, { name, title, excerpt, content, layout, priority, default_sort: defaultSort, enable_sort_dropdown: enableSortDropdown, enable_view_toggle: enableViewToggle, max_inline_products: maxInlineProducts, products: { set: selectedProductIds }, cms_pages: { set: selectedPageIds } });
+            const res = await ProductGroupsEndpoints.byIdPublished(documentId, { populate: ["gallery", "cover_image", "products", "cms_pages"] });
             const g = res.data || res;
             if (!g) { toast("No published version found.", "warning"); return; }
             setName(g.name || "");
@@ -223,7 +223,7 @@ export default function ProductGroupDetail() {
     const handleDelete = async () => {
         if (!confirm("Are you sure you want to delete this product group?")) return;
         try {
-            await ProductGroupsEndpoints.delById(documentId);
+            await ProductGroupsEndpoints.del(documentId);
             router.push("/product-groups");
         } catch (err) {
             console.error("Failed to delete product group", err);

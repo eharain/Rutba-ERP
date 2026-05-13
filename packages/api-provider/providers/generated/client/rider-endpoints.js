@@ -1,5 +1,5 @@
 import { authApi } from '../../../lib/api.js';
-import { executeEndpoint } from './___core__.js';
+import { executeEndpoint, strictEndpointGuard } from './___core__.js';
 import { RiderEndpoints as RiderEndpointsApi } from '../../../api/rider-endpoints.js';
 
 async function myProfile(...args) {
@@ -30,15 +30,19 @@ async function updateDeliveryStatus(...args) {
     return executeEndpoint(authApi, 'updateDeliveryStatus', RiderEndpointsApi.updateDeliveryStatus(...args));
 }
 
-const endpoints = {
-    myProfile,
-    updateStatus,
-    deliveryOffers,
-    acceptDeliveryOffer,
-    rejectDeliveryOffer,
-    deliveries,
-    updateDeliveryStatus,
-};
+const endpoints = strictEndpointGuard(
+    'RiderEndpoints',
+    {
+        myProfile,
+        updateStatus,
+        deliveryOffers,
+        acceptDeliveryOffer,
+        rejectDeliveryOffer,
+        deliveries,
+        updateDeliveryStatus,
+    },
+    ["myProfile","updateStatus","deliveryOffers","acceptDeliveryOffer","rejectDeliveryOffer","deliveries","updateDeliveryStatus"],
+);
 
 export default endpoints;
 export const RiderEndpoints = endpoints;

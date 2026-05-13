@@ -3,10 +3,9 @@ import { useRouter } from "next/router";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { BrandsEndpoints, CategoriesEndpoints, MediaUtilsEndpoints, ProductsEndpoints, PurchasesEndpoints, SuppliersEndpoints, TermTypesEndpoints } from "@rutba/api-provider/endpoints";
+import { BrandsEndpoints, CategoriesEndpoints, MediaUtilsEndpoints, ProductsEndpoints, PurchasesEndpoints, SuppliersEndpoints, TermTypesEndpoints, fetchProducts } from "@rutba/api-provider/endpoints";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
 import { ProductFilter } from "@rutba/pos-shared/components/filter/product-filter";
-import { fetchProducts } from '@rutba/api-provider/endpoints/products.js';
 import Link from "next/link";
 import { useToast } from "../components/Toast";
 import BulkProductActions from "@rutba/pos-shared/components/BulkProductActions";
@@ -86,7 +85,7 @@ export default function Products() {
     const publishOne = async (docId) => {
         setPublishing(prev => ({ ...prev, [docId]: true }));
         try {
-            await ProductsEndpoints.postPublish(docId);
+            await ProductsEndpoints.publish(docId);
             const now = new Date().toISOString();
             setProducts(prev => prev.map(p => p.documentId === docId ? { ...p, _isPublished: true, _publishedAt: now } : p));
             setVariantsMap(prev => {
@@ -108,7 +107,7 @@ export default function Products() {
     const unpublishOne = async (docId) => {
         setPublishing(prev => ({ ...prev, [docId]: true }));
         try {
-            await ProductsEndpoints.postUnpublish(docId);
+            await ProductsEndpoints.unpublish(docId);
             setProducts(prev => prev.map(p => p.documentId === docId ? { ...p, _isPublished: false, _publishedAt: null } : p));
             setVariantsMap(prev => {
                 const copy = { ...prev };
@@ -194,11 +193,11 @@ export default function Products() {
     // fetch lookup data once
     useEffect(() => {
         Promise.all([
-            BrandsEndpoints.fetchAll(),
-            CategoriesEndpoints.fetchAll(),
-            SuppliersEndpoints.fetchAll(),
-            TermTypesEndpoints.fetchAllWithTerms(),
-            PurchasesEndpoints.fetchAll({ sort: ["createdAt:desc"] }),
+            BrandsEndpoints.listAll(),
+            CategoriesEndpoints.listAll(),
+            SuppliersEndpoints.listAll(),
+            TermTypesEndpoints.listWithTerms(),
+            PurchasesEndpoints.list({ sort: ["createdAt:desc"] }),
         ]).then(([b, c, s, t, p]) => {
             setBrands(b?.data || b || []);
             setCategories(c?.data || c || []);
@@ -231,7 +230,7 @@ export default function Products() {
                 if (draftProducts.length > 0) {
                     const docIds = draftProducts.map(p => p.documentId);
                     try {
-                        const pubRes = await ProductsEndpoints.fetchList(1, docIds.length, {
+                        const pubRes = await ProductsEndpoints.list(1, docIds.length, {
                             status: "published",
                             fields: ["documentId", "publishedAt"],
                             filters: { documentId: { $in: docIds } },
@@ -276,12 +275,12 @@ export default function Products() {
         if (!variantsMap[docId]) {
             setLoadingVariants(prev => ({ ...prev, [docId]: true }));
             try {
-                const res = await ProductsEndpoints.fetchList(1, 100, {
+                const res = await ProductsEndpoints.list(1, 100, {
                     status: "draft",
                     filters: { parent: { documentId: docId } },
                     populate: { logo: true, categories: true, brands: true, purchase_items: { populate: ["purchase"] } },
                 });
-                const pubRes = await ProductsEndpoints.fetchList(1, 100, {
+                const pubRes = await ProductsEndpoints.list(1, 100, {
                     status: "published",
                     filters: { parent: { documentId: docId } },
                     fields: ["documentId", "publishedAt"],

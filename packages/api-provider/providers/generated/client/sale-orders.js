@@ -1,5 +1,5 @@
 import { authApi } from '../../../lib/api.js';
-import { executeEndpoint } from './___core__.js';
+import { executeEndpoint, strictEndpointGuard } from './___core__.js';
 import { SaleOrdersEndpoints as SaleOrdersEndpointsApi } from '../../../api/sale-orders.js';
 
 async function list(...args) {
@@ -26,35 +26,29 @@ async function assignRider(...args) {
     return executeEndpoint(authApi, 'assignRider', SaleOrdersEndpointsApi.assignRider(...args));
 }
 
-async function fetchList(...args) {
-    return list(...args);
+async function messages(...args) {
+    return executeEndpoint(authApi, 'messages', SaleOrdersEndpointsApi.messages(...args));
 }
 
-async function fetchById(...args) {
-    return byId(...args);
+async function sendMessage(...args) {
+    return executeEndpoint(authApi, 'sendMessage', SaleOrdersEndpointsApi.sendMessage(...args));
 }
 
-async function postCreate(...args) {
-    return create(...args);
-}
-
-async function putUpdate(...args) {
-    return update(...args);
-}
-
-const endpoints = {
-    list,
-    byId,
-    create,
-    update,
-    updateStatus,
-    assignRider,
-    fetchList,
-    fetchById,
-    postCreate,
-    putUpdate,
-    meta: SaleOrdersEndpointsApi.meta,
-};
+const endpoints = strictEndpointGuard(
+    'SaleOrdersEndpoints',
+    {
+        list,
+        byId,
+        create,
+        update,
+        updateStatus,
+        assignRider,
+        messages,
+        sendMessage,
+        meta: SaleOrdersEndpointsApi.meta,
+    },
+    ["list","byId","create","update","updateStatus","assignRider","messages","sendMessage","meta"],
+);
 
 export default endpoints;
 export const SaleOrdersEndpoints = endpoints;

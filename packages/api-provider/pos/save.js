@@ -85,47 +85,6 @@ export async function savePurchaseItem(item) {
     return unwrap(res);
 }
 
-/**
- * Generate and persist stock items for a received purchase item.
- */
-export async function generateStockItems(purchase, purchaseItem, quantity, branchOverride) {
-    const qty = Math.max(0, Number(quantity || 0));
-    if (!qty) return [];
-
-    const branch = branchOverride || getBranch();
-    const product = purchaseItem?.product;
-    const productId = product?.documentId || product?.id || product;
-    const purchaseItemId = purchaseItem?.documentId || purchaseItem?.id;
-
-    const stockItems = [];
-    for (let i = 0; i < qty; i++) {
-        let sku = product?.sku;
-        let barcode = product?.barcode;
-
-        if (!sku) sku = (product?.id ?? '').toString(22).toUpperCase();
-
-        sku = `${sku}-${Date.now().toString(22)}-${i.toString(22)}`.toUpperCase();
-        barcode = barcode ? `${barcode}-${i.toString(22)}`.toUpperCase() : undefined;
-
-        const stockItem = {
-            sku,
-            barcode,
-            status: 'Received',
-            cost_price: purchaseItem?.unit_price,
-            selling_price: product?.selling_price,
-            offer_price: product?.offer_price,
-            product: productId,
-            purchase_item: purchaseItemId,
-            ...(branch?.documentId || branch?.id ? { branch: branch.documentId || branch.id } : {}),
-        };
-
-        const response = await StockItemsEndpoints.create(stockItem);
-        stockItems.push(unwrap(response));
-    }
-
-    return stockItems;
-}
-
 export async function searchStockItems(searchTerm, page = 1, rowsPerPage = 100, statusFilter = null, branch = null, productDocumentId = null, sort = null, showArchived = false) {
     const response = await StockItemsEndpoints.list(page, rowsPerPage, {
         statusFilter,

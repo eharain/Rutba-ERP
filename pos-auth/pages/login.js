@@ -80,7 +80,7 @@ export default function Login() {
         setErrorMessage("");
         setMessage("");
         try {
-            await AuthEndpoints.postForgotPassword(forgotEmail);
+            await AuthEndpoints.forgotPassword(forgotEmail);
             setMessage("If that email exists, a reset link has been sent. Check your inbox or enter the reset code below.");
             setView("reset");
         } catch (e) {
@@ -100,7 +100,7 @@ export default function Login() {
         setErrorMessage("");
         setMessage("");
         try {
-            await AuthEndpoints.postResetPassword({
+            await AuthEndpoints.resetPassword({
                 code: resetCode,
                 password: newPassword,
                 passwordConfirmation: confirmPassword,

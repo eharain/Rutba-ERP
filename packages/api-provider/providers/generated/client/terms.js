@@ -1,5 +1,5 @@
 import { authApi } from '../../../lib/api.js';
-import { executeEndpoint } from './___core__.js';
+import { executeEndpoint, strictEndpointGuard } from './___core__.js';
 import { TermsEndpoints as TermsEndpointsApi } from '../../../api/terms.js';
 
 async function list(...args) {
@@ -18,28 +18,17 @@ async function del(...args) {
     return executeEndpoint(authApi, 'del', TermsEndpointsApi.del(...args));
 }
 
-async function fetchList(...args) {
-    return list(...args);
-}
-
-async function postCreate(...args) {
-    return create(...args);
-}
-
-async function putUpdate(...args) {
-    return update(...args);
-}
-
-const endpoints = {
-    list,
-    create,
-    update,
-    del,
-    fetchList,
-    postCreate,
-    putUpdate,
-    meta: TermsEndpointsApi.meta,
-};
+const endpoints = strictEndpointGuard(
+    'TermsEndpoints',
+    {
+        list,
+        create,
+        update,
+        del,
+        meta: TermsEndpointsApi.meta,
+    },
+    ["list","create","update","del","meta"],
+);
 
 export default endpoints;
 export const TermsEndpoints = endpoints;

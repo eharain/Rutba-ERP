@@ -50,7 +50,7 @@ export default function ProductDetail() {
         setLoading(true);
         try {
             const [draftRes, pubRes] = await Promise.all([
-                ProductsEndpoints.fetchByIdDraft(documentId, {
+                ProductsEndpoints.byIdDraft(documentId, {
                     populate: {
                         logo: true,
                         gallery: true,
@@ -59,7 +59,7 @@ export default function ProductDetail() {
                         variants: { populate: { gallery: true, logo: true, terms: true } },
                     },
                 }),
-                ProductsEndpoints.fetchByIdPublished(documentId, { fields: ["documentId"] }).catch(() => ({ data: null })),
+                ProductsEndpoints.byIdPublished(documentId, { fields: ["documentId"] }).catch(() => ({ data: null })),
             ]);
             const p = draftRes.data || draftRes;
             setProduct(p);
@@ -83,7 +83,7 @@ export default function ProductDetail() {
         if (!jwt || !documentId || isNew) return;
         setGroupsLoading(true);
         try {
-            const res = await ProductGroupsEndpoints.fetchListDraft({
+            const res = await ProductGroupsEndpoints.listDraft({
                 sort: ["name:asc"],
                 pagination: { pageSize: 500 },
                 populate: ["products"],
@@ -115,12 +115,12 @@ export default function ProductDetail() {
                 is_active: isActive,
             };
             if (isNew) {
-                const res = await ProductsEndpoints.postCreate({ ...payload, status: "draft" });
+                const res = await ProductsEndpoints.create({ ...payload, status: "draft" });
                 const created = res.data || res;
                 toast("Product created!", "success");
                 router.push(`/${created.documentId}/product`);
             } else {
-                await ProductsEndpoints.putUpdateDraft(documentId, payload);
+                await ProductsEndpoints.updateDraft(documentId, payload);
                 toast("Draft saved!", "success");
             }
         } catch (err) {
@@ -143,14 +143,14 @@ export default function ProductDetail() {
                 is_active: isActive,
             };
             if (isNew) {
-                const res = await ProductsEndpoints.postCreate(data);
+                const res = await ProductsEndpoints.create(data);
                 const created = res.data || res;
-                await ProductsEndpoints.postPublish(created.documentId);
+                await ProductsEndpoints.publish(created.documentId);
                 toast("Product created & published!", "success");
                 router.push(`/${created.documentId}/product`);
             } else {
-                await ProductsEndpoints.putUpdateDraft(documentId, data);
-                await ProductsEndpoints.postPublish(documentId);
+                await ProductsEndpoints.updateDraft(documentId, data);
+                await ProductsEndpoints.publish(documentId);
                 setIsPublished(true);
                 toast("Product saved & published!", "success");
             }
@@ -165,7 +165,7 @@ export default function ProductDetail() {
     const handleUnpublish = async () => {
         setSaving(true);
         try {
-            await ProductsEndpoints.postUnpublish(documentId);
+            await ProductsEndpoints.unpublish(documentId);
             setIsPublished(false);
             toast("Product unpublished.", "success");
         } catch (err) {
@@ -180,7 +180,7 @@ export default function ProductDetail() {
         if (!confirm("Save current draft and load the published version into the editor?")) return;
         setSaving(true);
         try {
-            await ProductsEndpoints.putUpdateDraft(documentId, {
+            await ProductsEndpoints.updateDraft(documentId, {
                 name,
                 summary,
                 description,
@@ -188,7 +188,7 @@ export default function ProductDetail() {
                 offer_price: offerPrice ? parseFloat(offerPrice) : null,
                 is_active: isActive,
             });
-            const res = await ProductsEndpoints.fetchByIdPublished(documentId, {
+            const res = await ProductsEndpoints.byIdPublished(documentId, {
                 populate: {
                     logo: true,
                     gallery: true,
@@ -227,7 +227,7 @@ export default function ProductDetail() {
 
         setGroupBusyId(groupDocId);
         try {
-            await ProductGroupsEndpoints.putUpdateDraft(groupDocId, { products: { set: nextIds } });
+            await ProductGroupsEndpoints.updateDraft(groupDocId, { products: { set: nextIds } });
             setAllGroups(prev => prev.map(g =>
                 g.documentId === groupDocId
                     ? {
@@ -260,7 +260,7 @@ export default function ProductDetail() {
         setCreatingGroup(true);
         try {
             const generatedSlug = trimmedName.toLowerCase().trim().replace(/\s+/g, "-");
-            await ProductGroupsEndpoints.postCreate({
+            await ProductGroupsEndpoints.create({
                 name: trimmedName,
                 title: newGroupTitle.trim() || undefined,
                 slug: generatedSlug,

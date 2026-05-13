@@ -16,7 +16,7 @@ export default function Cart() {
             return;
         }
         // 1) create sale
-        const sale = await SalesEndpoints.postCreate({
+        const sale = await SalesEndpoints.create({
             sale_date: new Date().toISOString(),
             subtotal: total,
             discount: 0,
@@ -37,7 +37,7 @@ export default function Cart() {
             const price = item?.attributes?.selling_price ?? item?.selling_price ?? 0;
             const qty = item.__qty || 1;
 
-            await SaleItemsEndpoints.postCreate({
+            await SaleItemsEndpoints.create({
                 quantity: qty,
                 price,
                 discount: 0,

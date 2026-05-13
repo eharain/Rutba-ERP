@@ -1,5 +1,5 @@
 import { authApi } from '../../../lib/api.js';
-import { executeEndpoint } from './___core__.js';
+import { executeEndpoint, strictEndpointGuard } from './___core__.js';
 import { SalesEndpoints as SalesEndpointsApi } from '../../../api/sales.js';
 
 async function list(...args) {
@@ -46,50 +46,24 @@ async function saleByIdOrInvoice(...args) {
     return executeEndpoint(authApi, 'saleByIdOrInvoice', SalesEndpointsApi.saleByIdOrInvoice(...args));
 }
 
-async function fetchList(...args) {
-    return list(...args);
-}
-
-async function fetchById(...args) {
-    return byId(...args);
-}
-
-async function postCreate(...args) {
-    return create(...args);
-}
-
-async function putUpdate(...args) {
-    return update(...args);
-}
-
-async function fetchSearchByStockItem(...args) {
-    return searchByStockItem(...args);
-}
-
-async function fetchSearchByItemPrice(...args) {
-    return searchByItemPrice(...args);
-}
-
-const endpoints = {
-    list,
-    byId,
-    exchangeReturns,
-    create,
-    update,
-    cancel,
-    saveNotes,
-    searchByStockItem,
-    searchByItemPrice,
-    sales,
-    saleByIdOrInvoice,
-    fetchList,
-    fetchById,
-    postCreate,
-    putUpdate,
-    fetchSearchByStockItem,
-    fetchSearchByItemPrice,
-    meta: SalesEndpointsApi.meta,
-};
+const endpoints = strictEndpointGuard(
+    'SalesEndpoints',
+    {
+        list,
+        byId,
+        exchangeReturns,
+        create,
+        update,
+        cancel,
+        saveNotes,
+        searchByStockItem,
+        searchByItemPrice,
+        sales,
+        saleByIdOrInvoice,
+        meta: SalesEndpointsApi.meta,
+    },
+    ["list","byId","exchangeReturns","create","update","cancel","saveNotes","searchByStockItem","searchByItemPrice","sales","saleByIdOrInvoice","meta"],
+);
 
 export default endpoints;
 export const SalesEndpoints = endpoints;

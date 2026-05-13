@@ -21,7 +21,7 @@ export default function StockEntry() {
     const loadInitialData = async () => {
         try {
             setLoading(true);
-            const purchasesRes = await PurchasesEndpoints.fetchList(1, 50, {
+            const purchasesRes = await PurchasesEndpoints.list(1, 50, {
                 sort: ['createdAt:desc'],
                 populate: ['suppliers'],
             });

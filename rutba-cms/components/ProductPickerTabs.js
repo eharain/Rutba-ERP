@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { BrandsEndpoints, CategoriesEndpoints, MediaUtilsEndpoints, PurchasesEndpoints, SuppliersEndpoints, TermTypesEndpoints } from "@rutba/api-provider/endpoints";
+import { BrandsEndpoints, CategoriesEndpoints, MediaUtilsEndpoints, PurchasesEndpoints, SuppliersEndpoints, TermTypesEndpoints, fetchProducts } from "@rutba/api-provider/endpoints";
 import { ProductFilter } from "@rutba/pos-shared/components/filter/product-filter";
-import { fetchProducts } from '@rutba/api-provider/endpoints/products.js';
 import Link from "next/link";
 
 const DEFAULT_PAGE_SIZE = 25;
@@ -72,11 +71,11 @@ export default function ProductPickerTabs({ selectedProductIds, connectedProduct
         (async () => {
             try {
                 const [brandsRes, categoriesRes, suppliersRes, termTypesRes, purchasesRes] = await Promise.all([
-                    BrandsEndpoints.fetchAll(),
-                    CategoriesEndpoints.fetchAll(),
-                    SuppliersEndpoints.fetchAll(),
-                    TermTypesEndpoints.fetchAllWithTerms(),
-                    PurchasesEndpoints.fetchAll({ sort: ["createdAt:desc"] }),
+                    BrandsEndpoints.listAll(),
+                    CategoriesEndpoints.listAll(),
+                    SuppliersEndpoints.listAll(),
+                    TermTypesEndpoints.listWithTerms(),
+                    PurchasesEndpoints.list({ sort: ["createdAt:desc"] }),
                 ]);
                 setBrands(brandsRes?.data || brandsRes || []);
                 setCategories(categoriesRes?.data || categoriesRes || []);

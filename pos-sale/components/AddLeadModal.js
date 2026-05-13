@@ -35,7 +35,7 @@ export default function AddLeadModal({ isOpen, onClose, customer }) {
         setSaving(true);
         setError(null);
         try {
-            await CrmLeadsEndpoints.postCreate({
+            await CrmLeadsEndpoints.create({
                     name,
                     email: email || undefined,
                     phone: phone || undefined,

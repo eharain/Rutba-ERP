@@ -45,7 +45,7 @@ export default function StrapiMediaLibrary({
     const loadFolders = useCallback(async () => {
         if (!show) return;
         try {
-            const res = await MediaLibraryEndpoints.fetchFoldersTree();
+            const res = await MediaLibraryEndpoints.foldersTree();
             setFolderTree(res.data || []);
         } catch (err) {
             console.error('Failed to load folder tree', err);
@@ -72,7 +72,7 @@ export default function StrapiMediaLibrary({
             if (accept === 'image') {
                 params.mime = 'image';
             }
-            const res = await MediaLibraryEndpoints.fetchFiles(params);
+            const res = await MediaLibraryEndpoints.files(params);
             setFiles(res.data || []);
             setPageCount(res.meta?.pagination?.pageCount || 1);
         } catch (err) {
@@ -115,7 +115,7 @@ export default function StrapiMediaLibrary({
         if (!id || isNaN(id)) return;
         setPasteIdLoading(true);
         try {
-            var res = await MediaLibraryEndpoints.fetchFile(id);
+            var res = await MediaLibraryEndpoints.file(id);
             var file = res.data;
             if (file) {
                 onSelect([file]);
@@ -140,7 +140,7 @@ export default function StrapiMediaLibrary({
             });
             if (folderId && uploaded) {
                 const ids = (Array.isArray(uploaded) ? uploaded : [uploaded]).map(f => f.id);
-                await MediaLibraryEndpoints.postMoveFiles({
+                await MediaLibraryEndpoints.moveFiles({
                     fileIds: ids,
                     targetFolderId: Number(folderId),
                 });
@@ -177,7 +177,7 @@ export default function StrapiMediaLibrary({
             });
             if (folderId && uploaded) {
                 var ids = (Array.isArray(uploaded) ? uploaded : [uploaded]).map(function(f) { return f.id; });
-                await MediaLibraryEndpoints.postMoveFiles({
+                await MediaLibraryEndpoints.moveFiles({
                     fileIds: ids,
                     targetFolderId: Number(folderId),
                 });
@@ -200,7 +200,7 @@ export default function StrapiMediaLibrary({
         try {
             const parentId = (currentFolderId && currentFolderId !== 'all' && currentFolderId !== 'root')
                 ? Number(currentFolderId) : null;
-            await MediaLibraryEndpoints.postCreateFolder({
+            await MediaLibraryEndpoints.createFolder({
                 name: newFolderName.trim(),
                 parent: parentId,
             });
@@ -215,7 +215,7 @@ export default function StrapiMediaLibrary({
     const handleRenameFolder = async (folderId) => {
         if (!renameValue.trim()) return;
         try {
-            await MediaLibraryEndpoints.putRenameFolder(folderId, { name: renameValue.trim() });
+            await MediaLibraryEndpoints.renameFolder(folderId, { name: renameValue.trim() });
             setRenamingFolderId(null);
             setRenameValue('');
             await loadFolders();
@@ -228,7 +228,7 @@ export default function StrapiMediaLibrary({
         e.stopPropagation();
         if (!confirm('Delete this folder? Files will be moved to the root.')) return;
         try {
-            await MediaLibraryEndpoints.delFolder(folderId);
+            await MediaLibraryEndpoints.deleteFolder(folderId);
             if (String(currentFolderId) === String(folderId)) setCurrentFolderId('all');
             await loadFolders();
             await loadFiles();
@@ -263,7 +263,7 @@ export default function StrapiMediaLibrary({
         }
         if (ids.length === 0) return;
         try {
-            await MediaLibraryEndpoints.postMoveFiles({
+            await MediaLibraryEndpoints.moveFiles({
                 fileIds: ids.map(Number),
                 targetFolderId: targetFolderId === 'root' ? null : Number(targetFolderId),
             });
@@ -281,7 +281,7 @@ export default function StrapiMediaLibrary({
             : [];
         if (ids.length === 0) return;
         try {
-            await MediaLibraryEndpoints.postMoveFiles({
+            await MediaLibraryEndpoints.moveFiles({
                 fileIds: ids.map(Number),
                 targetFolderId: targetFolderId === 'root' ? null : Number(targetFolderId),
             });

@@ -55,7 +55,7 @@ export default function OrphanStockItemsPage() {
         setError("");
         setGroupExtras({});
         try {
-            const res = await StockItemsEndpoints.fetchOrphanGroups({ page, pageSize, search, statusFilter, skuFilter, sortField, sortDir });
+            const res = await StockItemsEndpoints.orphanGroups({ page, pageSize, search, statusFilter, skuFilter, sortField, sortDir });
             const groups = res.data || [];
             const sampleItems = groups
                 .map(g => ({
@@ -92,7 +92,7 @@ export default function OrphanStockItemsPage() {
     async function handleCreateProduct(item) {
         setBusyId(item.documentId);
         try {
-            const prodRes = await ProductsEndpoints.postCreate({
+            const prodRes = await ProductsEndpoints.create({
                 name: item.name,
                 selling_price: item.selling_price,
                 cost_price: item.cost_price,
@@ -101,7 +101,7 @@ export default function OrphanStockItemsPage() {
             });
             const newProductDocId = (prodRes?.data ?? prodRes)?.documentId;
             if (newProductDocId) {
-                await StockItemsEndpoints.putUpdate(item.documentId, { product: { connect: [newProductDocId] } });
+                await StockItemsEndpoints.update(item.documentId, { product: { connect: [newProductDocId] } });
             }
             await loadOrphans();
         } catch (e) {
@@ -116,7 +116,7 @@ export default function OrphanStockItemsPage() {
         if (!productDocId) return;
         setBusyId(item.documentId);
         try {
-            await StockItemsEndpoints.putUpdate(item.documentId, { product: { connect: [productDocId] } });
+            await StockItemsEndpoints.update(item.documentId, { product: { connect: [productDocId] } });
             await loadOrphans();
         } catch (e) {
             console.error("Failed to attach product:", e);
@@ -173,7 +173,7 @@ export default function OrphanStockItemsPage() {
         const groupKey = group.key;
         setGroupLoading(prev => ({ ...prev, [groupKey]: true }));
         try {
-            const res = await StockItemsEndpoints.fetchOrphanGroupItems({ page: 1, pageSize: 10000, name: group.name, selling_price: group.selling_price == null ? "__null__" : String(group.selling_price), statusFilter, skuFilter, sortField, sortDir });
+            const res = await StockItemsEndpoints.orphanGroupItems({ page: 1, pageSize: 10000, name: group.name, selling_price: group.selling_price == null ? "__null__" : String(group.selling_price), statusFilter, skuFilter, sortField, sortDir });
             const exactGroupItems = (res.data || []).filter(item =>
                 makeGroupKey(item.name, item.selling_price) === groupKey
             );
@@ -216,7 +216,7 @@ export default function OrphanStockItemsPage() {
         try {
             const first = selectedItems[0];
             setBulkProgress("Creating product...");
-            const prodRes = await ProductsEndpoints.postCreate({
+            const prodRes = await ProductsEndpoints.create({
                 name: first.name,
                 selling_price: first.selling_price,
                 cost_price: first.cost_price,
@@ -230,7 +230,7 @@ export default function OrphanStockItemsPage() {
             for (const item of selectedItems) {
                 done++;
                 setBulkProgress(`Linking item ${done} of ${selectedItems.length}...`);
-                await StockItemsEndpoints.putUpdate(item.documentId, { product: { connect: [newProductDocId] } });
+                await StockItemsEndpoints.update(item.documentId, { product: { connect: [newProductDocId] } });
             }
             setSelected(new Set());
             await loadOrphans();
@@ -254,7 +254,7 @@ export default function OrphanStockItemsPage() {
             for (const item of selectedItems) {
                 done++;
                 setBulkProgress(`Attaching item ${done} of ${selectedItems.length}...`);
-                await StockItemsEndpoints.putUpdate(item.documentId, { product: { connect: [productDocId] } });
+                await StockItemsEndpoints.update(item.documentId, { product: { connect: [productDocId] } });
             }
             setSelected(new Set());
             await loadOrphans();
@@ -277,7 +277,7 @@ export default function OrphanStockItemsPage() {
             const shouldRenameItems = applyNameToItems.has(groupKey);
 
             setBulkProgress("Creating product...");
-            const prodRes = await ProductsEndpoints.postCreate({
+            const prodRes = await ProductsEndpoints.create({
                     name: editedName,
                     selling_price: first.selling_price,
                     cost_price: first.cost_price,
@@ -293,7 +293,7 @@ export default function OrphanStockItemsPage() {
                 setBulkProgress(`Linking item ${done} of ${groupItems.length}...`);
                 const updateData = { product: { connect: [newProductDocId] } };
                 if (shouldRenameItems) updateData.name = editedName;
-                await StockItemsEndpoints.putUpdate(item.documentId, updateData);
+                await StockItemsEndpoints.update(item.documentId, updateData);
             }
             setGroupNames(prev => { const next = { ...prev }; delete next[groupKey]; return next; });
             setApplyNameToItems(prev => { const next = new Set(prev); next.delete(groupKey); return next; });
@@ -316,7 +316,7 @@ export default function OrphanStockItemsPage() {
             for (const item of groupItems) {
                 done++;
                 setBulkProgress(`Attaching item ${done} of ${groupItems.length}...`);
-                await StockItemsEndpoints.putUpdate(item.documentId, { product: { connect: [productDocId] } });
+                await StockItemsEndpoints.update(item.documentId, { product: { connect: [productDocId] } });
             }
             await loadOrphans();
         } catch (e) {

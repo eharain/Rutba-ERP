@@ -38,7 +38,7 @@ export default function CustomerForm({
         lastCheckRef.current = key;
 
         try {
-            const res = await CustomersEndpoints.fetchByContact({ email: email || undefined, phone: phone || undefined });
+            const res = await CustomersEndpoints.findByContact({ email: email || undefined, phone: phone || undefined });
             const found = res.data?.[0];
 
             if (found && found.documentId !== customer?.documentId) {

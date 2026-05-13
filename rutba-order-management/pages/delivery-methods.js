@@ -16,7 +16,7 @@ export default function DeliveryMethodsPage() {
     if (!jwt) return;
     setLoading(true);
     try {
-      const res = await DeliveryMethodsEndpoints.fetchList({
+      const res = await DeliveryMethodsEndpoints.list({
         sort: ["priority:asc", "createdAt:desc"],
         populate: ["delivery_zones", "product_groups"],
         pagination: { pageSize: 200 },

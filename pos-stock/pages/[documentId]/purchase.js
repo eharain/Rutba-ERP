@@ -91,7 +91,7 @@ export default function PurchasePage() {
     async function ensurePurchaseCreated() {
         if (purchase.documentId) return purchase;
         const user = getUser();
-        const created = await PurchasesEndpoints.postCreate({
+        const created = await PurchasesEndpoints.create({
             orderId: purchase.orderId,
             order_date: purchase.order_date,
             total: 0,
@@ -145,7 +145,7 @@ export default function PurchasePage() {
             if(['Submitted','Partially Received'].includes(newStatus)){
                 if (editItems.length > 0){
                     if(confirm(`You won't be able to edit this purchase after submitting. Do you want to proceed?`)) {
-                        const res = await PurchasesEndpoints.putUpdate(purchase.documentId, { status: newStatus });
+                        const res = await PurchasesEndpoints.update(purchase.documentId, { status: newStatus });
                         router.push(`/${purchase.documentId}/purchase-receive`);
                         return;
                     }
@@ -183,7 +183,7 @@ export default function PurchasePage() {
 
         try {
             if(editItems.find(item => item.documentId === documentId)?.id>0){
-                        await PurchaseItemsEndpoints.putDelete(documentId);
+                        await PurchaseItemsEndpoints.del(documentId);
             }
             setEditItems(editItems.filter(item => item.documentId !== documentId));
         } catch (err) {

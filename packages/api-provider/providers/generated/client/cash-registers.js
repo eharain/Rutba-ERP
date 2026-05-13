@@ -1,5 +1,5 @@
 import { authApi } from '../../../lib/api.js';
-import { executeEndpoint } from './___core__.js';
+import { executeEndpoint, strictEndpointGuard } from './___core__.js';
 import { CashRegistersEndpoints as CashRegistersEndpointsApi } from '../../../api/cash-registers.js';
 
 async function list(...args) {
@@ -34,27 +34,21 @@ async function postClose(...args) {
     return executeEndpoint(authApi, 'postClose', CashRegistersEndpointsApi.postClose(...args));
 }
 
-async function fetchList(...args) {
-    return list(...args);
-}
-
-async function fetchById(...args) {
-    return byId(...args);
-}
-
-const endpoints = {
-    list,
-    byId,
-    active,
-    fetchActive,
-    open,
-    postOpen,
-    close,
-    postClose,
-    fetchList,
-    fetchById,
-    meta: CashRegistersEndpointsApi.meta,
-};
+const endpoints = strictEndpointGuard(
+    'CashRegistersEndpoints',
+    {
+        list,
+        byId,
+        active,
+        fetchActive,
+        open,
+        postOpen,
+        close,
+        postClose,
+        meta: CashRegistersEndpointsApi.meta,
+    },
+    ["list","byId","active","fetchActive","open","postOpen","close","postClose","meta"],
+);
 
 export default endpoints;
 export const CashRegistersEndpoints = endpoints;

@@ -47,7 +47,7 @@ export default function BulkProductActions({
         let ok = 0, fail = 0;
         for (const docId of ids) {
             try {
-                await ProductsEndpoints.putUpdate(docId, {
+                await ProductsEndpoints.update(docId, {
                     [field]: documentIds,
                 });
                 ok++;
@@ -72,7 +72,7 @@ export default function BulkProductActions({
         if (includeVariants) {
             for (const docId of ids) {
                 try {
-                    const res = await ProductsEndpoints.fetchByParentDraft(docId, { pageSize: 200 });
+                    const res = await ProductsEndpoints.byParentDraft(docId, { pageSize: 200 });
                     (res.data || []).forEach(v => { if (!allIds.includes(v.documentId)) allIds.push(v.documentId); });
                 } catch (err) {
                     console.error("Failed to fetch variants for", docId, err);
@@ -83,7 +83,7 @@ export default function BulkProductActions({
         let ok = 0, fail = 0;
         for (const docId of allIds) {
             try {
-                await ProductsEndpoints.postPublish(docId);
+                await ProductsEndpoints.publish(docId);
                 ok++;
                 if (onPublished) onPublished(docId);
             } catch (err) {
@@ -105,7 +105,7 @@ export default function BulkProductActions({
         let ok = 0, fail = 0;
         for (const docId of ids) {
             try {
-                await ProductsEndpoints.postUnpublish(docId);
+                await ProductsEndpoints.unpublish(docId);
                 ok++;
                 if (onUnpublished) onUnpublished(docId);
             } catch (err) {

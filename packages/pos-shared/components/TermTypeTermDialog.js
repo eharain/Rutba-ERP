@@ -47,8 +47,8 @@ export default function TermTypeTermDialog({
         setLoading(true);
         try {
             const res = await (variantOnly
-                ? TermTypesEndpoints.fetchVariants()
-                : TermTypesEndpoints.fetchWithTerms());
+                ? TermTypesEndpoints.listVariants()
+                : TermTypesEndpoints.listWithTerms());
             const types = res?.data ?? res;
             setTermTypes(types || []);
         } catch (err) {
@@ -117,7 +117,7 @@ export default function TermTypeTermDialog({
                 is_variant: newTermTypeIsVariant,
                 is_public: true,
             };
-            const res = await TermTypesEndpoints.createTermType(payload);
+            const res = await TermTypesEndpoints.create(payload);
             const created = res?.data ?? res;
             const createdId = getEntryId(created);
             await loadTermTypes();
@@ -143,7 +143,7 @@ export default function TermTypeTermDialog({
                 slug,
                 term_types: { connect: [selectedTermTypeId] },
             };
-            const res = await TermsEndpoints.createTerm(payload);
+            const res = await TermsEndpoints.create(payload);
             const createdTerm = res?.data ?? res;
             const createdId = getEntryId(createdTerm);
             setNewTermName('');
@@ -174,7 +174,7 @@ export default function TermTypeTermDialog({
             const createdIds = [];
             for (const name of names) {
                 const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-                const res = await TermsEndpoints.createTerm({
+                const res = await TermsEndpoints.create({
                     name,
                     slug,
                     term_types: { connect: [selectedTermTypeId] },

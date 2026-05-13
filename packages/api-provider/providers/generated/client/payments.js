@@ -1,5 +1,5 @@
 import { authApi } from '../../../lib/api.js';
-import { executeEndpoint } from './___core__.js';
+import { executeEndpoint, strictEndpointGuard } from './___core__.js';
 import { PaymentsEndpoints as PaymentsEndpointsApi } from '../../../api/payments.js';
 
 async function byRegister(...args) {
@@ -42,19 +42,23 @@ async function postRefund(...args) {
     return executeEndpoint(authApi, 'postRefund', PaymentsEndpointsApi.postRefund(...args));
 }
 
-const endpoints = {
-    byRegister,
-    fetchByRegister,
-    create,
-    postCreate,
-    byId,
-    fetchById,
-    update,
-    putUpdate,
-    createRefund,
-    postRefund,
-    meta: PaymentsEndpointsApi.meta,
-};
+const endpoints = strictEndpointGuard(
+    'PaymentsEndpoints',
+    {
+        byRegister,
+        fetchByRegister,
+        create,
+        postCreate,
+        byId,
+        fetchById,
+        update,
+        putUpdate,
+        createRefund,
+        postRefund,
+        meta: PaymentsEndpointsApi.meta,
+    },
+    ["byRegister","fetchByRegister","create","postCreate","byId","fetchById","update","putUpdate","createRefund","postRefund","meta"],
+);
 
 export default endpoints;
 export const PaymentsEndpoints = endpoints;

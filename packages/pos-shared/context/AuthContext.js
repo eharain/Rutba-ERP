@@ -48,9 +48,11 @@ async function fetchPermissions(jwt) {
             // checking whether any role for the app ends in '_admin'. Apps
             // and shared components still read adminAppAccess for now; once
             // they all migrate to currentAppRoles/activeRole this can be
-            // removed.
+            // removed. We skip the '*' bucket (debug-only mirror of global
+            // roles â€” the server already fans those into every real app key).
             const derivedAdminAppAccess = [];
             for (const [appKey, roles] of Object.entries(rolesByApp)) {
+                if (appKey === '*') continue;
                 if (Array.isArray(roles) && roles.some((r) => /(?:^|_)admin$/.test(String(r?.key || '')))) {
                     derivedAdminAppAccess.push(appKey);
                 }
@@ -59,15 +61,43 @@ async function fetchPermissions(jwt) {
                 ? data.adminAppAccess
                 : derivedAdminAppAccess;
 
-            // Convert permissions object to array of permission strings
-            const permissionsArray = [];
+            // Flatten /me/permissions into the flat array of action strings
+            // that PermissionCheck consumes (`permissions.includes("api::x.y.find")`).
+            //
+            // Two sources, merged + deduped:
+            //   1. `permissions` â€” api-pro method policies, shape
+            //        { [contentTypeUid]: { [action]: { allowed, policies } } }
+            //      where contentTypeUid is e.g. "api::sale.sale" and action is
+            //      a bare verb ("find", "create", "delete", ...). We emit
+            //      `${ctUid}.${action}`.
+            //   2. `strapiPermissions` â€” pass-through of the user's Strapi
+            //      users-permissions role permissions, an ARRAY OF OBJECTS:
+            //        [{ action: "api::sale.sale.find", role, id }, ...]
+            //      Previously this was used only as a fallback and the raw
+            //      objects leaked into `permissions`, so PermissionCheck's
+            //      `.includes("api::sale.sale.find")` never matched. We now
+            //      extract `.action` and merge with the api-pro list.
+            const permSet = new Set();
+
             if (data?.permissions && typeof data.permissions === 'object') {
-                for (const [contentType, actions] of Object.entries(data.permissions)) {
+                for (const [ctUid, actions] of Object.entries(data.permissions)) {
+                    if (!actions || typeof actions !== 'object') continue;
                     for (const action of Object.keys(actions)) {
-                        // Action format is "resource.actionName" (e.g., "sale.find")
-                        // Extract just the action part after the dot
-                        const actionPart = action.includes('.') ? action.split('.')[1] : action;
-                        permissionsArray.push(`${contentType}.${actionPart}`);
+                        // Tolerate legacy `resource.action` keys too â€” keep only
+                        // the trailing action verb so we always emit
+                        // `${ctUid}.${verb}`.
+                        const verb = action.includes('.') ? action.split('.').pop() : action;
+                        if (verb) permSet.add(`${ctUid}.${verb}`);
+                    }
+                }
+            }
+
+            if (Array.isArray(data?.strapiPermissions)) {
+                for (const row of data.strapiPermissions) {
+                    if (typeof row === 'string') {
+                        if (row) permSet.add(row);
+                    } else if (row && typeof row.action === 'string' && row.action) {
+                        permSet.add(row.action);
                     }
                 }
             }
@@ -79,7 +109,7 @@ async function fetchPermissions(jwt) {
                 adminAppAccess,
                 rolesByApp,
                 appRoles: Array.isArray(data?.appRoles) ? data.appRoles : [],
-                permissions: permissionsArray.length > 0 ? permissionsArray : (Array.isArray(data?.strapiPermissions) ? data.strapiPermissions : []),
+                permissions: Array.from(permSet),
                 sessionTimeout: data?.sessionTimeout || 60,
             };
         } catch (_) {

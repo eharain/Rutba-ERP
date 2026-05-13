@@ -2,7 +2,14 @@
  * SuppliersEndpoints
  * Centralised path + params definitions for the /suppliers content-type.
  */
+import __publish_generic_helper from "./__publish_generic_helper.js";
+
 export const SuppliersEndpoints = {
+
+    // todo: spread adds updateDraft/publish/unpublish/create/del. Verify the
+    // supplier content type supports draft-publish in pos-strapi; if it's a
+    // plain CRUD type, the updateDraft/publish/unpublish methods will 404.
+    ...__publish_generic_helper('suppliers'),
 
     meta: {
         uid: 'api::supplier.supplier',

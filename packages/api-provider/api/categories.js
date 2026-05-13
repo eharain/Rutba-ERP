@@ -2,7 +2,14 @@
  * CategoriesEndpoints
  * Centralised path + params definitions for the /categories content-type.
  */
+import __publish_generic_helper from "./__publish_generic_helper.js";
+
 export const CategoriesEndpoints = {
+
+    // todo: spread adds updateDraft/publish/unpublish/create/del. Verify the
+    // category content type has draft-publish enabled in pos-strapi before
+    // relying on the publish/unpublish + updateDraft methods at runtime.
+    ...__publish_generic_helper('categories'),
 
     /** Resource metadata for policy generation */
     meta: {

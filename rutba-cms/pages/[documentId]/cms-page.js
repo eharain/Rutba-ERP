@@ -58,10 +58,10 @@ export default function CmsPageDetail() {
     useEffect(() => {
         if (!jwt || !documentId || isNew) { setLoading(false); return; }
         Promise.all([
-            CmsPagesEndpoints.fetchByIdDraft(documentId, {
+            CmsPagesEndpoints.byIdDraft(documentId, {
                 populate: ["featured_image", "gallery", "background_image", "hero_product_groups", "brand_groups", "category_groups", "product_groups", "related_pages", "footer"],
             }),
-            CmsPagesEndpoints.fetchByIdPublished(documentId, { fields: ["documentId"] }).catch(() => ({ data: null })),
+            CmsPagesEndpoints.byIdPublished(documentId, { fields: ["documentId"] }).catch(() => ({ data: null })),
         ])
             .then(([draftRes, pubRes]) => {
                 const p = draftRes.data || draftRes;
@@ -96,11 +96,11 @@ export default function CmsPageDetail() {
         if (!jwt) return;
         try {
             const [groupsRes, brandGroupsRes, categoryGroupsRes, pagesRes, footersRes] = await Promise.all([
-                ProductGroupsEndpoints.fetchListDraft({ pagination: { pageSize: 100 }, sort: ["name:asc"] }),
-                BrandGroupsEndpoints.fetchListDraft({ pagination: { pageSize: 100 }, sort: ["sort_order:asc", "name:asc"] }),
-                CategoryGroupsEndpoints.fetchListDraft({ pagination: { pageSize: 100 }, sort: ["sort_order:asc", "name:asc"] }),
-                CmsPagesEndpoints.fetchListDraft({ pageSize: 100, sort: ["title:asc"] }),
-                CmsFootersEndpoints.fetchListDraft({ pagination: { pageSize: 100 }, sort: ["name:asc"] }),
+                ProductGroupsEndpoints.listDraft({ pagination: { pageSize: 100 }, sort: ["name:asc"] }),
+                BrandGroupsEndpoints.listDraft({ pagination: { pageSize: 100 }, sort: ["sort_order:asc", "name:asc"] }),
+                CategoryGroupsEndpoints.listDraft({ pagination: { pageSize: 100 }, sort: ["sort_order:asc", "name:asc"] }),
+                CmsPagesEndpoints.listDraft({ pageSize: 100, sort: ["title:asc"] }),
+                CmsFootersEndpoints.listDraft({ pagination: { pageSize: 100 }, sort: ["name:asc"] }),
             ]);
             setAllGroups(groupsRes.data || []);
             setAllBrandGroups(brandGroupsRes.data || []);
@@ -167,11 +167,11 @@ export default function CmsPageDetail() {
             if (galleryIds.length > 0) payload.data.gallery = galleryIds;
             if (isNew) {
                 payload.data.slug = slug || title.toLowerCase().replace(/\s+/g, "-");
-                const res = await CmsPagesEndpoints.postCreate(payload.data);
+                const res = await CmsPagesEndpoints.create(payload.data);
                 const created = res.data || res;
                 router.push(`/${created.documentId}/cms-page`);
             } else {
-                await CmsPagesEndpoints.putUpdateDraft(documentId, payload.data);
+                await CmsPagesEndpoints.updateDraft(documentId, payload.data);
                 toast("Draft saved!", "success");
             }
         } catch (err) {
@@ -209,8 +209,8 @@ export default function CmsPageDetail() {
                     gallery: galleryIds.length > 0 ? galleryIds : null,
                 },
             };
-            await CmsPagesEndpoints.putUpdateDraft(documentId, payload.data);
-            await CmsPagesEndpoints.postPublish(documentId);
+            await CmsPagesEndpoints.updateDraft(documentId, payload.data);
+            await CmsPagesEndpoints.publish(documentId);
             setIsPublished(true);
             toast("Page saved & published!", "success");
         } catch (err) {
@@ -224,7 +224,7 @@ export default function CmsPageDetail() {
     const handleUnpublish = async () => {
         setSaving(true);
         try {
-            await CmsPagesEndpoints.postUnpublish(documentId);
+            await CmsPagesEndpoints.unpublish(documentId);
             setIsPublished(false);
             toast("Page unpublished.", "success");
         } catch (err) {
@@ -255,9 +255,9 @@ export default function CmsPageDetail() {
             if (featuredImageId) discardPayload.data.featured_image = featuredImageId;
             if (backgroundImageId) discardPayload.data.background_image = backgroundImageId;
             if (galleryIds.length > 0) discardPayload.data.gallery = galleryIds;
-            await CmsPagesEndpoints.putUpdateDraft(documentId, discardPayload.data);
+            await CmsPagesEndpoints.updateDraft(documentId, discardPayload.data);
             // Load the published version into the form
-            const res = await CmsPagesEndpoints.fetchByIdPublished(documentId, {
+            const res = await CmsPagesEndpoints.byIdPublished(documentId, {
                 populate: ["featured_image", "gallery", "background_image", "hero_product_groups", "brand_groups", "category_groups", "product_groups", "related_pages", "footer"],
             });
             const p = res.data || res;
@@ -294,7 +294,7 @@ export default function CmsPageDetail() {
     const handleDelete = async () => {
         if (!confirm("Are you sure you want to delete this page?")) return;
         try {
-            await CmsPagesEndpoints.delById(documentId);
+            await CmsPagesEndpoints.del(documentId);
             router.push("/pages");
         } catch (err) {
             console.error("Failed to delete page", err);

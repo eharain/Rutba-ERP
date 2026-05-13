@@ -28,8 +28,8 @@ export default function CategoryGroupDetail() {
     useEffect(() => {
         if (!jwt || !documentId || isNew) { setLoading(false); return; }
         Promise.all([
-            CategoryGroupsEndpoints.fetchByIdDraft(documentId, { populate: ["categories"] }),
-            CategoryGroupsEndpoints.fetchByIdPublished(documentId, { fields: ["documentId"] }).catch(() => ({ data: null })),
+            CategoryGroupsEndpoints.byIdDraft(documentId, { populate: ["categories"] }),
+            CategoryGroupsEndpoints.byIdPublished(documentId, { fields: ["documentId"] }).catch(() => ({ data: null })),
         ])
             .then(([draftRes, pubRes]) => {
                 const g = draftRes.data || draftRes;
@@ -47,7 +47,7 @@ export default function CategoryGroupDetail() {
     const loadCategories = useCallback(async () => {
         if (!jwt) return;
         try {
-            const res = await CategoriesEndpoints.fetchListDraft({ pagination: { pageSize: 200 }, sort: ["name:asc"], populate: [] });
+            const res = await CategoriesEndpoints.listDraft({ pagination: { pageSize: 200 }, sort: ["name:asc"], populate: [] });
             setAllCategories(res.data || []);
         } catch (err) {
             console.error("Failed to load categories", err);
@@ -74,11 +74,11 @@ export default function CategoryGroupDetail() {
             };
             if (isNew) {
                 payload.data.slug = slug || name.toLowerCase().replace(/\s+/g, "-");
-                const res = await CategoryGroupsEndpoints.postCreate(payload.data);
+                const res = await CategoryGroupsEndpoints.create(payload.data);
                 const created = res.data || res;
                 router.push(`/${created.documentId}/category-group`);
             } else {
-                await CategoryGroupsEndpoints.putUpdateDraft(documentId, payload.data);
+                await CategoryGroupsEndpoints.updateDraft(documentId, payload.data);
                 toast("Draft saved!", "success");
             }
         } catch (err) {
@@ -99,8 +99,8 @@ export default function CategoryGroupDetail() {
                     categories: { set: selectedCategoryIds },
                 },
             };
-            await CategoryGroupsEndpoints.putUpdateDraft(documentId, payload.data);
-            await CategoryGroupsEndpoints.postPublish(documentId);
+            await CategoryGroupsEndpoints.updateDraft(documentId, payload.data);
+            await CategoryGroupsEndpoints.publish(documentId);
             setIsPublished(true);
             toast("Category group saved & published!", "success");
         } catch (err) {
@@ -114,7 +114,7 @@ export default function CategoryGroupDetail() {
     const handleUnpublish = async () => {
         setSaving(true);
         try {
-            await CategoryGroupsEndpoints.postUnpublish(documentId);
+            await CategoryGroupsEndpoints.unpublish(documentId);
             setIsPublished(false);
             toast("Category group unpublished.", "success");
         } catch (err) {
@@ -129,8 +129,8 @@ export default function CategoryGroupDetail() {
         if (!confirm("Save current draft and load the published version into the editor?")) return;
         setSaving(true);
         try {
-            await CategoryGroupsEndpoints.putUpdateDraft(documentId, { name, sort_order: sortOrder, categories: { set: selectedCategoryIds } });
-            const res = await CategoryGroupsEndpoints.fetchByIdPublished(documentId, { populate: ["categories"] });
+            await CategoryGroupsEndpoints.updateDraft(documentId, { name, sort_order: sortOrder, categories: { set: selectedCategoryIds } });
+            const res = await CategoryGroupsEndpoints.byIdPublished(documentId, { populate: ["categories"] });
             const g = res.data || res;
             if (!g) { toast("No published version found.", "warning"); return; }
             setName(g.name || "");
@@ -149,7 +149,7 @@ export default function CategoryGroupDetail() {
     const handleDelete = async () => {
         if (!confirm("Are you sure you want to delete this category group?")) return;
         try {
-            await CategoryGroupsEndpoints.delById(documentId);
+            await CategoryGroupsEndpoints.del(documentId);
             router.push("/category-groups");
         } catch (err) {
             console.error("Failed to delete category group", err);

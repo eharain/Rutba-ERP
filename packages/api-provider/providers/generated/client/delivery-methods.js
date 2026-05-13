@@ -1,6 +1,26 @@
 import { authApi } from '../../../lib/api.js';
-import { executeEndpoint } from './___core__.js';
+import { executeEndpoint, strictEndpointGuard } from './___core__.js';
 import { DeliveryMethodsEndpoints as DeliveryMethodsEndpointsApi } from '../../../api/delivery-methods.js';
+
+async function updateDraft(...args) {
+    return executeEndpoint(authApi, 'updateDraft', DeliveryMethodsEndpointsApi.updateDraft(...args));
+}
+
+async function publish(...args) {
+    return executeEndpoint(authApi, 'publish', DeliveryMethodsEndpointsApi.publish(...args));
+}
+
+async function unpublish(...args) {
+    return executeEndpoint(authApi, 'unpublish', DeliveryMethodsEndpointsApi.unpublish(...args));
+}
+
+async function create(...args) {
+    return executeEndpoint(authApi, 'create', DeliveryMethodsEndpointsApi.create(...args));
+}
+
+async function del(...args) {
+    return executeEndpoint(authApi, 'del', DeliveryMethodsEndpointsApi.del(...args));
+}
 
 async function list(...args) {
     return executeEndpoint(authApi, 'list', DeliveryMethodsEndpointsApi.list(...args));
@@ -18,52 +38,26 @@ async function byIdPublished(...args) {
     return executeEndpoint(authApi, 'byIdPublished', DeliveryMethodsEndpointsApi.byIdPublished(...args));
 }
 
-async function create(...args) {
-    return executeEndpoint(authApi, 'create', DeliveryMethodsEndpointsApi.create(...args));
-}
-
 async function update(...args) {
     return executeEndpoint(authApi, 'update', DeliveryMethodsEndpointsApi.update(...args));
 }
 
-async function fetchList(...args) {
-    return list(...args);
-}
-
-async function fetchById(...args) {
-    return byId(...args);
-}
-
-async function fetchByIdDraft(...args) {
-    return byIdDraft(...args);
-}
-
-async function fetchByIdPublished(...args) {
-    return byIdPublished(...args);
-}
-
-async function postCreate(...args) {
-    return create(...args);
-}
-
-async function putUpdate(...args) {
-    return update(...args);
-}
-
-const endpoints = {
-    list,
-    byId,
-    byIdDraft,
-    byIdPublished,
-    create,
-    update,
-    fetchList,
-    fetchById,
-    fetchByIdDraft,
-    fetchByIdPublished,
-    postCreate,
-    putUpdate,
-};
+const endpoints = strictEndpointGuard(
+    'DeliveryMethodsEndpoints',
+    {
+        updateDraft,
+        publish,
+        unpublish,
+        create,
+        del,
+        list,
+        byId,
+        byIdDraft,
+        byIdPublished,
+        update,
+    },
+    ["updateDraft","publish","unpublish","create","del","list","byId","byIdDraft","byIdPublished","update"],
+);
 
 export default endpoints;
 export const DeliveryMethodsEndpoints = endpoints;

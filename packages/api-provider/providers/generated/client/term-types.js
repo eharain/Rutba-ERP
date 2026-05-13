@@ -1,5 +1,5 @@
 import { authApi } from '../../../lib/api.js';
-import { executeEndpoint } from './___core__.js';
+import { executeEndpoint, strictEndpointGuard } from './___core__.js';
 import { TermTypesEndpoints as TermTypesEndpointsApi } from '../../../api/term-types.js';
 
 async function listVariants(...args) {
@@ -26,40 +26,19 @@ async function del(...args) {
     return executeEndpoint(authApi, 'del', TermTypesEndpointsApi.del(...args));
 }
 
-async function fetchListVariants(...args) {
-    return listVariants(...args);
-}
-
-async function fetchListWithTerms(...args) {
-    return listWithTerms(...args);
-}
-
-async function fetchList(...args) {
-    return list(...args);
-}
-
-async function postCreate(...args) {
-    return create(...args);
-}
-
-async function putUpdate(...args) {
-    return update(...args);
-}
-
-const endpoints = {
-    listVariants,
-    listWithTerms,
-    list,
-    create,
-    update,
-    del,
-    fetchListVariants,
-    fetchListWithTerms,
-    fetchList,
-    postCreate,
-    putUpdate,
-    meta: TermTypesEndpointsApi.meta,
-};
+const endpoints = strictEndpointGuard(
+    'TermTypesEndpoints',
+    {
+        listVariants,
+        listWithTerms,
+        list,
+        create,
+        update,
+        del,
+        meta: TermTypesEndpointsApi.meta,
+    },
+    ["listVariants","listWithTerms","list","create","update","del","meta"],
+);
 
 export default endpoints;
 export const TermTypesEndpoints = endpoints;

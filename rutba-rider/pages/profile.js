@@ -15,7 +15,7 @@ export default function ProfilePage() {
 
   const load = () => {
     if (!jwt) return;
-    RiderEndpoints.fetchMyProfile()
+    RiderEndpoints.myProfile()
       .then((res) => {
         const data = res.data || res;
         setProfile(data);
@@ -33,7 +33,7 @@ export default function ProfilePage() {
     if (!jwt) return;
     try {
       setSaving(true);
-      await RiderEndpoints.putUpdateStatus({ status });
+      await RiderEndpoints.updateStatus({ status });
       load();
     } catch (err) {
       alert(err?.response?.data?.error?.message || 'Failed to update status');

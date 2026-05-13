@@ -1,6 +1,10 @@
 import { authApi } from '../../../lib/api.js';
-import { executeEndpoint } from './___core__.js';
+import { executeEndpoint, strictEndpointGuard } from './___core__.js';
 import { CmsPagesEndpoints as CmsPagesEndpointsApi } from '../../../api/cms-pages.js';
+
+async function list(...args) {
+    return executeEndpoint(authApi, 'list', CmsPagesEndpointsApi.list(...args));
+}
 
 async function listDraft(...args) {
     return executeEndpoint(authApi, 'listDraft', CmsPagesEndpointsApi.listDraft(...args));
@@ -30,46 +34,51 @@ async function byIdPublished(...args) {
     return executeEndpoint(authApi, 'byIdPublished', CmsPagesEndpointsApi.byIdPublished(...args));
 }
 
-async function fetchListDraft(...args) {
-    return listDraft(...args);
+async function update(...args) {
+    return executeEndpoint(authApi, 'update', CmsPagesEndpointsApi.update(...args));
 }
 
-async function fetchListPublished(...args) {
-    return listPublished(...args);
+async function updateDraft(...args) {
+    return executeEndpoint(authApi, 'updateDraft', CmsPagesEndpointsApi.updateDraft(...args));
 }
 
-async function fetchBySlug(...args) {
-    return bySlug(...args);
+async function publish(...args) {
+    return executeEndpoint(authApi, 'publish', CmsPagesEndpointsApi.publish(...args));
 }
 
-async function fetchBySlugCheck(...args) {
-    return bySlugCheck(...args);
+async function unpublish(...args) {
+    return executeEndpoint(authApi, 'unpublish', CmsPagesEndpointsApi.unpublish(...args));
 }
 
-async function fetchByIdDraft(...args) {
-    return byIdDraft(...args);
+async function create(...args) {
+    return executeEndpoint(authApi, 'create', CmsPagesEndpointsApi.create(...args));
 }
 
-async function fetchByIdPublished(...args) {
-    return byIdPublished(...args);
+async function del(...args) {
+    return executeEndpoint(authApi, 'del', CmsPagesEndpointsApi.del(...args));
 }
 
-const endpoints = {
-    listDraft,
-    listPublished,
-    bySlug,
-    bySlugCheck,
-    headerData,
-    byIdDraft,
-    byIdPublished,
-    fetchListDraft,
-    fetchListPublished,
-    fetchBySlug,
-    fetchBySlugCheck,
-    fetchByIdDraft,
-    fetchByIdPublished,
-    meta: CmsPagesEndpointsApi.meta,
-};
+const endpoints = strictEndpointGuard(
+    'CmsPagesEndpoints',
+    {
+        list,
+        listDraft,
+        listPublished,
+        bySlug,
+        bySlugCheck,
+        headerData,
+        byIdDraft,
+        byIdPublished,
+        update,
+        updateDraft,
+        publish,
+        unpublish,
+        create,
+        del,
+        meta: CmsPagesEndpointsApi.meta,
+    },
+    ["list","listDraft","listPublished","bySlug","bySlugCheck","headerData","byIdDraft","byIdPublished","update","updateDraft","publish","unpublish","create","del","meta"],
+);
 
 export default endpoints;
 export const CmsPagesEndpoints = endpoints;

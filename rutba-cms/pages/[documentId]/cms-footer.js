@@ -53,8 +53,8 @@ export default function CmsFooterDetail() {
     useEffect(() => {
         if (!jwt || !documentId || isNew) { setLoading(false); return; }
         Promise.all([
-            CmsFootersEndpoints.fetchByIdDraft(documentId, { populate: ["pinned_pages", "cms_pages"] }),
-            CmsFootersEndpoints.fetchByIdPublished(documentId, { fields: ["documentId"] }).catch(() => ({ data: null })),
+            CmsFootersEndpoints.byIdDraft(documentId, { populate: ["pinned_pages", "cms_pages"] }),
+            CmsFootersEndpoints.byIdPublished(documentId, { fields: ["documentId"] }).catch(() => ({ data: null })),
         ])
             .then(([draftRes, pubRes]) => {
                 const f = draftRes.data || draftRes;
@@ -78,7 +78,7 @@ export default function CmsFooterDetail() {
     const loadPages = useCallback(async () => {
         if (!jwt) return;
         try {
-            const res = await CmsPagesEndpoints.fetchListDraft({ pageSize: 100, sort: ["title:asc"] });
+            const res = await CmsPagesEndpoints.listDraft({ pageSize: 100, sort: ["title:asc"] });
             setAllPages(res.data || []);
         } catch (err) {
             console.error("Failed to load pages", err);
@@ -115,7 +115,7 @@ export default function CmsFooterDetail() {
         const isAssigned = assignedPageIds.includes(pageDocId);
         setSavingAssignment(true);
         try {
-            await CmsPagesEndpoints.putUpdateDraft(pageDocId, { footer: isAssigned ? null : { set: [documentId] } });
+            await CmsPagesEndpoints.updateDraft(pageDocId, { footer: isAssigned ? null : { set: [documentId] } });
             setAssignedPageIds(prev =>
                 isAssigned ? prev.filter(id => id !== pageDocId) : [...prev, pageDocId]
             );
@@ -133,7 +133,7 @@ export default function CmsFooterDetail() {
         setSavingAssignment(true);
         try {
             await Promise.all(assignedPageIds.map(pid =>
-                CmsPagesEndpoints.putUpdateDraft(pid, { footer: null })
+                CmsPagesEndpoints.updateDraft(pid, { footer: null })
             ));
             setAssignedPageIds([]);
             toast("All pages unassigned.", "success");
@@ -162,11 +162,11 @@ export default function CmsFooterDetail() {
             };
             if (isNew) {
                 payload.data.slug = slug || name.toLowerCase().replace(/\s+/g, "-");
-                const res = await CmsFootersEndpoints.postCreate(payload.data);
+                const res = await CmsFootersEndpoints.create(payload.data);
                 const created = res.data || res;
                 router.push(`/${created.documentId}/cms-footer`);
             } else {
-                await CmsFootersEndpoints.putUpdateDraft(documentId, payload.data);
+                await CmsFootersEndpoints.updateDraft(documentId, payload.data);
                 toast("Draft saved!", "success");
             }
         } catch (err) {
@@ -192,8 +192,8 @@ export default function CmsFooterDetail() {
                     pinned_pages: { set: selectedPageIds },
                 },
             };
-            await CmsFootersEndpoints.putUpdateDraft(documentId, payload.data);
-            await CmsFootersEndpoints.postPublish(documentId);
+            await CmsFootersEndpoints.updateDraft(documentId, payload.data);
+            await CmsFootersEndpoints.publish(documentId);
             setIsPublished(true);
             toast("Footer saved & published!", "success");
         } catch (err) {
@@ -207,7 +207,7 @@ export default function CmsFooterDetail() {
     const handleUnpublish = async () => {
         setSaving(true);
         try {
-            await CmsFootersEndpoints.postUnpublish(documentId);
+            await CmsFootersEndpoints.unpublish(documentId);
             setIsPublished(false);
             toast("Footer unpublished.", "success");
         } catch (err) {
@@ -222,14 +222,14 @@ export default function CmsFooterDetail() {
         if (!confirm("Save current draft and load the published version into the editor?")) return;
         setSaving(true);
         try {
-            await CmsFootersEndpoints.putUpdateDraft(documentId, {
+            await CmsFootersEndpoints.updateDraft(documentId, {
                 name, phone, email, address,
                 copyright_text: copyrightText,
                 opening_hours: openingHours,
                 social_links: socialLinks.filter(s => s.platform && s.url),
                 pinned_pages: { set: selectedPageIds },
             });
-            const res = await CmsFootersEndpoints.fetchByIdPublished(documentId, { populate: ["pinned_pages", "cms_pages"] });
+            const res = await CmsFootersEndpoints.byIdPublished(documentId, { populate: ["pinned_pages", "cms_pages"] });
             const f = res.data || res;
             if (!f) { toast("No published version found.", "warning"); return; }
             setName(f.name || "");
@@ -254,7 +254,7 @@ export default function CmsFooterDetail() {
     const handleDelete = async () => {
         if (!confirm("Are you sure you want to delete this footer?")) return;
         try {
-            await CmsFootersEndpoints.delById(documentId);
+            await CmsFootersEndpoints.del(documentId);
             router.push("/footers");
         } catch (err) {
             console.error("Failed to delete footer", err);

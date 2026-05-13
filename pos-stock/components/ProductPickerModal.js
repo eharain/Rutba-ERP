@@ -69,7 +69,7 @@ export default function ProductPickerModal({ show, onClose, onSelect, title }) {
         if (!variantsMap[docId]) {
             setLoadingVariants(prev => ({ ...prev, [docId]: true }));
             try {
-                const res = await ProductsEndpoints.fetchByParent(docId, {
+                const res = await ProductsEndpoints.byParent(docId, {
                     page: 1,
                     pageSize: 100,
                     populate: { categories: true, brands: true, suppliers: true },
@@ -101,11 +101,11 @@ export default function ProductPickerModal({ show, onClose, onSelect, title }) {
     useEffect(() => {
         if (!show || filterDataLoaded) return;
         Promise.all([
-            BrandsEndpoints.fetchAll(),
-            CategoriesEndpoints.fetchAll(),
-            SuppliersEndpoints.fetchAll(),
-            TermTypesEndpoints.fetchAllWithTerms(),
-            PurchasesEndpoints.fetchAll({ sort: ["createdAt:desc"] }),
+            BrandsEndpoints.listAll(),
+            CategoriesEndpoints.listAll(),
+            SuppliersEndpoints.listAll(),
+            TermTypesEndpoints.listWithTerms(),
+            PurchasesEndpoints.list({ sort: ["createdAt:desc"] }),
         ]).then(([b, c, s, t, p]) => {
             setBrands(b?.data || b || []);
             setCategories(c?.data || c || []);

@@ -9,16 +9,22 @@
 //     roleType:    string,                                       // Strapi users-permissions role type
 //     domains:     [{ key, name, roleKey }, ...],                // one entry per (domain Ã— user role)
 //     appRoles:    [{ id, key, name }, ...],                     // every app_role the user holds
+//     rolesByApp:  { [domainKey]: [{ key, name }, ...] },        // grouped for the client RoleSwitcher.
+//                                                                // Global roles (no appDomains) are fanned
+//                                                                // out across every active app-domain AND
+//                                                                // also kept under '*' for traceability.
 //     permissions: { [contentTypeUid]: { [action]: {            // every method-policy the user can hit
 //                     allowed: true,
 //                     policies: [<policy row, minus internal cols>]
 //                   } } },
-//     strapiPermissions: [...],                                  // pass-through of role.permissions
+//     strapiPermissions: [...],                                  // pass-through of role.permissions (array of
+//                                                                // { action: "api::x.y.find", ... } rows)
 //     sessionTimeout:    number,                                 // config.sessionTimeout (seconds)
 //   }
 
 const POLICY_UID = 'plugin::api-pro.api-method-policy';
 const USER_UID = 'plugin::users-permissions.user';
+const APP_DOMAIN_UID = 'plugin::api-pro.app-domain';
 
 function normalizeKey(value) {
   if (typeof value === 'string') return value.toLowerCase();
@@ -118,12 +124,38 @@ async function build(strapi, userId) {
   const extraRoleKeys = await gatherExtraRoleKeys(strapi, user);
   const allRoleKeys = Array.from(new Set([...directRoleKeys, ...extraRoleKeys]));
 
-  // Build domains: one entry per (domain Ã— role) pair.
+  // Load every active app-domain once so we can expand wildcard (no-appDomains)
+  // roles into every app. The server treats such roles as global (see
+  // context.filterRolesByApp), but the client's rolesByApp / RoleSwitcher
+  // reads per-app keys â€” without expansion they'd vanish from every menu.
+  const allDomains = await strapi.db.query(APP_DOMAIN_UID).findMany({
+    where: { isActive: true },
+    select: ['key', 'name'],
+  });
+  const allDomainKeys = allDomains
+    .map((d) => normalizeKey(d))
+    .filter(Boolean);
+  const domainNameByKey = new Map(
+    allDomains.map((d) => [normalizeKey(d), d.name || normalizeKey(d)])
+  );
+
+  // Build domains: one entry per (domain Ã— role) pair. Roles without explicit
+  // appDomains are global â€” fan them out across every active app-domain.
   const domainEntries = [];
   for (const role of appRoles) {
     const roleKey = normalizeKey(role);
-    const domains = Array.isArray(role.appDomains) ? role.appDomains : [];
-    for (const d of domains) {
+    const roleDomains = Array.isArray(role.appDomains) ? role.appDomains : [];
+    if (roleDomains.length === 0) {
+      for (const domainKey of allDomainKeys) {
+        domainEntries.push({
+          key: domainKey,
+          name: domainNameByKey.get(domainKey) || domainKey,
+          roleKey,
+        });
+      }
+      continue;
+    }
+    for (const d of roleDomains) {
       const domainKey = normalizeKey(d);
       if (!domainKey) continue;
       domainEntries.push({
@@ -155,24 +187,28 @@ async function build(strapi, userId) {
   // Group the user's app_roles by app/domain so the client can render a
   // role-selector menu per app. Each entry: app domain key â†’ array of roles
   // the user can choose from when acting in that app.
+  //
+  // A role with no appDomains is GLOBAL â€” the server's claim middleware
+  // (context.filterRolesByApp) accepts it for any app, so the client must
+  // see it under every app's key, otherwise the RoleSwitcher menu is empty
+  // for users who hold only an unscoped "super-admin" style role. We also
+  // keep a '*' entry for traceability/debugging.
   const rolesByApp = {};
-  for (const role of appRoles) {
+  const pushRole = (domainKey, role) => {
     const roleKey = normalizeKey(role);
-    if (!roleKey) continue;
-    const domains = Array.isArray(role.appDomains) ? role.appDomains : [];
-    if (domains.length === 0) {
-      // Role with no domain restriction â€” present under a wildcard key so
-      // clients can recognise it.
-      rolesByApp['*'] = rolesByApp['*'] || [];
-      rolesByApp['*'].push({ key: roleKey, name: role.name || roleKey });
+    if (!roleKey || !domainKey) return;
+    rolesByApp[domainKey] = rolesByApp[domainKey] || [];
+    if (rolesByApp[domainKey].some((r) => r.key === roleKey)) return; // dedup
+    rolesByApp[domainKey].push({ key: roleKey, name: role.name || roleKey });
+  };
+  for (const role of appRoles) {
+    const roleDomains = Array.isArray(role.appDomains) ? role.appDomains : [];
+    if (roleDomains.length === 0) {
+      pushRole('*', role);
+      for (const domainKey of allDomainKeys) pushRole(domainKey, role);
       continue;
     }
-    for (const d of domains) {
-      const domainKey = normalizeKey(d);
-      if (!domainKey) continue;
-      rolesByApp[domainKey] = rolesByApp[domainKey] || [];
-      rolesByApp[domainKey].push({ key: roleKey, name: role.name || roleKey });
-    }
+    for (const d of roleDomains) pushRole(normalizeKey(d), role);
   }
 
   return {

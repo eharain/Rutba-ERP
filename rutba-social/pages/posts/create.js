@@ -36,7 +36,7 @@ export default function CreatePostPage() {
     const loadAccounts = useCallback(async () => {
         if (!jwt) return;
         try {
-            const res = await SocialAccountsEndpoints.fetchList({
+            const res = await SocialAccountsEndpoints.list({
                 sort: ['platform:asc'],
             });
             setAccounts(res.data || []);
@@ -63,7 +63,7 @@ export default function CreatePostPage() {
         if (!jwt || !productSearch.trim()) { setProductResults([]); return; }
         setProductLoading(true);
         try {
-            const res = await ProductsEndpoints.fetchSearch(productSearch.trim(), { pageSize: 20, populate: ['logo'] });
+            const res = await ProductsEndpoints.search(productSearch.trim(), { pageSize: 20, populate: ['logo'] });
             setProductResults(res.data || []);
         } catch (err) {
             console.error("Failed to search products", err);
@@ -106,7 +106,7 @@ export default function CreatePostPage() {
             };
             if (coverId) payload.data.cover = coverId;
             if (videoIds.length > 0) payload.data.video = videoIds;
-            const res = await SocialPostsEndpoints.postCreate(payload);
+            const res = await SocialPostsEndpoints.create(payload);
             toast("Post created!", "success");
             router.push(`/posts/${res.data?.documentId}`);
         } catch (err) {

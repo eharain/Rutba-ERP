@@ -11,10 +11,22 @@
     "@rutba/api-provider": "1.0.0"
   },
   "exports": {
-    "./lib/*": "./lib/*",
-    "./context/*": "./context/*",
-    "./components/*": "./components/*",
-    "./domain/*": "./context/domain/*",
+    "./lib/*": [
+      "./lib/*",
+      "./lib/*.js"
+    ],
+    "./context/*": [
+      "./context/*",
+      "./context/*.js"
+    ],
+    "./components/*": [
+      "./components/*",
+      "./components/*.js"
+    ],
+    "./domain/*": [
+      "./context/domain/*",
+      "./context/domain/*.js"
+    ],
     "./styles/*": "./styles/*"
   }
 }

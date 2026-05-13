@@ -1,5 +1,5 @@
 import { authApi } from '../../../lib/api.js';
-import { executeEndpoint } from './___core__.js';
+import { executeEndpoint, strictEndpointGuard } from './___core__.js';
 import { CashRegisterTransactionEndpoints as CashRegisterTransactionEndpointsApi } from '../../../api/cash-register-transactions.js';
 
 async function create(...args) {
@@ -18,13 +18,17 @@ async function fetchByRegister(...args) {
     return executeEndpoint(authApi, 'fetchByRegister', CashRegisterTransactionEndpointsApi.fetchByRegister(...args));
 }
 
-const endpoints = {
-    create,
-    postCreate,
-    byRegister,
-    fetchByRegister,
-    meta: CashRegisterTransactionEndpointsApi.meta,
-};
+const endpoints = strictEndpointGuard(
+    'CashRegisterTransactionEndpoints',
+    {
+        create,
+        postCreate,
+        byRegister,
+        fetchByRegister,
+        meta: CashRegisterTransactionEndpointsApi.meta,
+    },
+    ["create","postCreate","byRegister","fetchByRegister","meta"],
+);
 
 export default endpoints;
 export const CashRegisterTransactionEndpoints = endpoints;

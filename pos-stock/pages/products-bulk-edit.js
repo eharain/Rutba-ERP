@@ -94,7 +94,7 @@ export default function ProductsBulkEdit() {
         await Promise.all(
             productsList.map(async (p) => {
                 try {
-                    const res = await StockItemsEndpoints.fetchListByProduct(p.documentId, { pageSize: 1 });
+                    const res = await StockItemsEndpoints.listByProduct(p.documentId, { pageSize: 1 });
                     counts[p.documentId] = res.meta?.pagination?.total || 0;
                 } catch (err) {
                     counts[p.documentId] = 0;
@@ -118,11 +118,11 @@ export default function ProductsBulkEdit() {
 
     useEffect(() => {
         Promise.all([
-            BrandsEndpoints.fetchAll(),
-            CategoriesEndpoints.fetchAll(),
-            SuppliersEndpoints.fetchAll(),
-            TermTypesEndpoints.fetchAllWithTerms(),
-            PurchasesEndpoints.fetchAll({ sort: ['createdAt:desc'] }),
+            BrandsEndpoints.listAll(),
+            CategoriesEndpoints.listAll(),
+            SuppliersEndpoints.listAll(),
+            TermTypesEndpoints.listWithTerms(),
+            PurchasesEndpoints.list({ sort: ['createdAt:desc'] }),
         ]).then(([b, c, s, t, p]) => {
             setBrands(b?.data || b || []);
             setCategories(c?.data || c || []);
@@ -291,7 +291,7 @@ export default function ProductsBulkEdit() {
         const branch = getBranch();
 
         // Fetch existing stock items in Received + InStock statuses
-        const res = await StockItemsEndpoints.fetchListByProduct(docId, { pageSize: 1000 });
+        const res = await StockItemsEndpoints.listByProduct(docId, { pageSize: 1000 });
         const existingItems = res.data || [];
         const currentCount = existingItems.length;
 
@@ -325,7 +325,7 @@ export default function ProductsBulkEdit() {
                     ? `${baseBarcode}-${barcodeNum.toString().padStart(4, '0')}`
                     : undefined;
 
-                await StockItemsEndpoints.postCreate({
+                await StockItemsEndpoints.create({
                         sku,
                         barcode,
                         name: product.name,
@@ -347,7 +347,7 @@ export default function ProductsBulkEdit() {
             const itemsToReduce = existingItems.slice(0, toReduce);
 
             for (const item of itemsToReduce) {
-                await StockItemsEndpoints.putUpdate(item.documentId || item.id, { status: 'Reduced' });
+                await StockItemsEndpoints.update(item.documentId || item.id, { status: 'Reduced' });
             }
             return `Reduced ${toReduce} stock item(s) to "Reduced" status`;
         }

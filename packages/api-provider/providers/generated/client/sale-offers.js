@@ -1,5 +1,5 @@
 import { authApi } from '../../../lib/api.js';
-import { executeEndpoint } from './___core__.js';
+import { executeEndpoint, strictEndpointGuard } from './___core__.js';
 import { SaleOffersEndpoints as SaleOffersEndpointsApi } from '../../../api/sale-offers.js';
 
 async function listDraft(...args) {
@@ -38,42 +38,21 @@ async function del(...args) {
     return executeEndpoint(authApi, 'del', SaleOffersEndpointsApi.del(...args));
 }
 
-async function fetchListDraft(...args) {
-    return listDraft(...args);
-}
-
-async function fetchListPublished(...args) {
-    return listPublished(...args);
-}
-
-async function fetchByIdDraft(...args) {
-    return byIdDraft(...args);
-}
-
-async function fetchByIdPublished(...args) {
-    return byIdPublished(...args);
-}
-
-async function postCreate(...args) {
-    return create(...args);
-}
-
-const endpoints = {
-    listDraft,
-    listPublished,
-    byIdDraft,
-    byIdPublished,
-    create,
-    updateDraft,
-    publish,
-    unpublish,
-    del,
-    fetchListDraft,
-    fetchListPublished,
-    fetchByIdDraft,
-    fetchByIdPublished,
-    postCreate,
-};
+const endpoints = strictEndpointGuard(
+    'SaleOffersEndpoints',
+    {
+        listDraft,
+        listPublished,
+        byIdDraft,
+        byIdPublished,
+        create,
+        updateDraft,
+        publish,
+        unpublish,
+        del,
+    },
+    ["listDraft","listPublished","byIdDraft","byIdPublished","create","updateDraft","publish","unpublish","del"],
+);
 
 export default endpoints;
 export const SaleOffersEndpoints = endpoints;

@@ -32,9 +32,9 @@ export default function CategoryDetail() {
     useEffect(() => {
         if (!jwt || !documentId || isNew) { setLoading(false); return; }
         Promise.all([
-            CategoriesEndpoints.fetchByIdDraft(documentId, { populate: ["logo", "gallery", "parent"] }),
-            CategoriesEndpoints.fetchByIdPublished(documentId, { fields: ["documentId"] }).catch(() => ({ data: null })),
-            ProductsEndpoints.fetchList({
+            CategoriesEndpoints.byIdDraft(documentId, { populate: ["logo", "gallery", "parent"] }),
+            CategoriesEndpoints.byIdPublished(documentId, { fields: ["documentId"] }).catch(() => ({ data: null })),
+            ProductsEndpoints.list({
                 status: "draft",
                 filters: { categories: { documentId: { $in: [documentId] } }, parent: { documentId: { $null: true } } },
                 sort: ["name:asc"],
@@ -70,11 +70,11 @@ export default function CategoryDetail() {
         setSaving(true);
         try {
             if (isNew) {
-                const res = await CategoriesEndpoints.postCreate({ name, slug: slug || name.toLowerCase().replace(/\s+/g, "-"), summary, description });
+                const res = await CategoriesEndpoints.create({ name, slug: slug || name.toLowerCase().replace(/\s+/g, "-"), summary, description });
                 const created = res.data || res;
                 router.push(`/${created.documentId}/category`);
             } else {
-                await CategoriesEndpoints.putUpdateDraft(documentId, { name, summary, description });
+                await CategoriesEndpoints.updateDraft(documentId, { name, summary, description });
 
                 const initialIds = new Set(initialProductIdsRef.current);
                 const currentIds = new Set(selectedProductIds);
@@ -83,10 +83,10 @@ export default function CategoryDetail() {
 
                 const updates = [];
                 for (const id of added) {
-                    updates.push(ProductsEndpoints.putUpdateDraft(id, { categories: { connect: [documentId] } }));
+                    updates.push(ProductsEndpoints.updateDraft(id, { categories: { connect: [documentId] } }));
                 }
                 for (const id of removed) {
-                    updates.push(ProductsEndpoints.putUpdateDraft(id, { categories: { disconnect: [documentId] } }));
+                    updates.push(ProductsEndpoints.updateDraft(id, { categories: { disconnect: [documentId] } }));
                 }
                 await Promise.all(updates);
 
@@ -104,8 +104,8 @@ export default function CategoryDetail() {
     const handlePublish = async () => {
         setSaving(true);
         try {
-            await CategoriesEndpoints.putUpdateDraft(documentId, { name, summary, description });
-            await CategoriesEndpoints.postPublish(documentId);
+            await CategoriesEndpoints.updateDraft(documentId, { name, summary, description });
+            await CategoriesEndpoints.publish(documentId);
             setIsPublished(true);
             toast("Category saved & published!", "success");
         } catch (err) {
@@ -119,7 +119,7 @@ export default function CategoryDetail() {
     const handleUnpublish = async () => {
         setSaving(true);
         try {
-            await CategoriesEndpoints.postUnpublish(documentId);
+            await CategoriesEndpoints.unpublish(documentId);
             setIsPublished(false);
             toast("Category unpublished.", "success");
         } catch (err) {
@@ -134,8 +134,8 @@ export default function CategoryDetail() {
         if (!confirm("Save current draft and load the published version into the editor?")) return;
         setSaving(true);
         try {
-            await CategoriesEndpoints.putUpdateDraft(documentId, { name, summary, description });
-            const res = await CategoriesEndpoints.fetchByIdPublished(documentId, { populate: ["logo", "gallery", "parent"] });
+            await CategoriesEndpoints.updateDraft(documentId, { name, summary, description });
+            const res = await CategoriesEndpoints.byIdPublished(documentId, { populate: ["logo", "gallery", "parent"] });
             const c = res.data || res;
             if (!c) { toast("No published version found.", "warning"); return; }
             setName(c.name || "");

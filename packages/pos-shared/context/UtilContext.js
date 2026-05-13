@@ -71,7 +71,7 @@ export function UtilProvider({ children }) {
         if (!hydrated || !branch?.documentId) return;
         (async () => {
             try {
-                const response = await BranchesEndpoints.fetchById(branch.documentId);
+                const response = await BranchesEndpoints.byId(branch.documentId);
                 const fresh = response?.data ?? response;
                 if (fresh && fresh.documentId) {
                     setBranchState(fresh);
@@ -183,7 +183,7 @@ export function UtilProvider({ children }) {
         }
         const merged = { ...BRANCH_PRINT_DEFAULTS, ...newSettings };
         try {
-            const response = await BranchesEndpoints.putUpdate(branch.documentId, { printSettings: merged });
+            const response = await BranchesEndpoints.update(branch.documentId, { printSettings: merged });
             // Use the API response to get the full fresh branch entity,
             // so any fields updated in the admin panel are picked up.
             const fresh = response?.data ?? response;

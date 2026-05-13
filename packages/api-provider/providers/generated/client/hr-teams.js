@@ -1,5 +1,5 @@
 import { authApi } from '../../../lib/api.js';
-import { executeEndpoint } from './___core__.js';
+import { executeEndpoint, strictEndpointGuard } from './___core__.js';
 import { HrTeamsEndpoints as HrTeamsEndpointsApi } from '../../../api/hr-teams.js';
 
 async function list(...args) {
@@ -18,27 +18,16 @@ async function update(...args) {
     return executeEndpoint(authApi, 'update', HrTeamsEndpointsApi.update(...args));
 }
 
-async function fetchList(...args) {
-    return list(...args);
-}
-
-async function postCreate(...args) {
-    return create(...args);
-}
-
-async function putUpdate(...args) {
-    return update(...args);
-}
-
-const endpoints = {
-    list,
-    appRoleOptions,
-    create,
-    update,
-    fetchList,
-    postCreate,
-    putUpdate,
-};
+const endpoints = strictEndpointGuard(
+    'HrTeamsEndpoints',
+    {
+        list,
+        appRoleOptions,
+        create,
+        update,
+    },
+    ["list","appRoleOptions","create","update"],
+);
 
 export default endpoints;
 export const HrTeamsEndpoints = endpoints;

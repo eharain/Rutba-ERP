@@ -1,5 +1,5 @@
 import { authApi } from '../../../lib/api.js';
-import { executeEndpoint } from './___core__.js';
+import { executeEndpoint, strictEndpointGuard } from './___core__.js';
 import { MediaLibraryEndpoints as MediaLibraryEndpointsApi } from '../../../api/media-library.js';
 
 async function foldersTree(...args) {
@@ -46,19 +46,33 @@ async function updateFileInfo(...args) {
     return executeEndpoint(authApi, 'updateFileInfo', MediaLibraryEndpointsApi.updateFileInfo(...args));
 }
 
-const endpoints = {
-    foldersTree,
-    folders,
-    folder,
-    files,
-    file,
-    moveFiles,
-    uploadToFolder,
-    createFolder,
-    renameFolder,
-    deleteFolder,
-    updateFileInfo,
-};
+async function uploadFile(...args) {
+    return executeEndpoint(authApi, 'uploadFile', MediaLibraryEndpointsApi.uploadFile(...args));
+}
+
+async function delFile(...args) {
+    return executeEndpoint(authApi, 'delFile', MediaLibraryEndpointsApi.delFile(...args));
+}
+
+const endpoints = strictEndpointGuard(
+    'MediaLibraryEndpoints',
+    {
+        foldersTree,
+        folders,
+        folder,
+        files,
+        file,
+        moveFiles,
+        uploadToFolder,
+        createFolder,
+        renameFolder,
+        deleteFolder,
+        updateFileInfo,
+        uploadFile,
+        delFile,
+    },
+    ["foldersTree","folders","folder","files","file","moveFiles","uploadToFolder","createFolder","renameFolder","deleteFolder","updateFileInfo","uploadFile","delFile"],
+);
 
 export default endpoints;
 export const MediaLibraryEndpoints = endpoints;

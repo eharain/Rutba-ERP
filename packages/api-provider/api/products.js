@@ -264,6 +264,25 @@ export const ProductsEndpoints = {
     }),
 
     /**
+     * Same as byParent but constrained to draft status — used by the bulk-edit flow
+     * to enumerate variant drafts for parent records.
+     *
+     * todo: speculative stub — added so pos-shared/components/BulkProductActions.js
+     * resolves. Confirm the `status: 'draft'` query is honored by Strapi for the
+     * /products route under bundled draft-publish, and that the filter shape matches
+     * what byParent currently produces in production traffic.
+     */
+    byParentDraft: (parentDocId, { page = 1, pageSize = 500, populate } = {}) => ({
+        path: '/products',
+        params: {
+            status: 'draft',
+            filters: { parent: { documentId: parentDocId } },
+            pagination: { page, pageSize },
+            ...(populate ? { populate } : {}),
+        },
+    }),
+
+    /**
      * Fetch product by ID in draft status.
      * @param {string} documentId
      * @param {object} params - Additional query params

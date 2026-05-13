@@ -11,7 +11,7 @@ export default function SettingsPage() {
         const fetchData = async () => {
             try {
                
-                const response =await BranchesEndpoints.fetchListWithDesks();
+                const response =await BranchesEndpoints.listWithDesks();
                 setBranches(response.data || []);
                 setSelectedBranch(branch);
                 setSelectedDesk(desk)

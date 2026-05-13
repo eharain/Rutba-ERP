@@ -1,4 +1,10 @@
+import __publish_generic_helper from "./__publish_generic_helper.js";
+
 export const DeliveryMethodsEndpoints = {
+    // todo: spread adds updateDraft/publish/unpublish/create/del. Verify the
+    // delivery-method content type has draft-publish enabled; the inline
+    // create/update below will override the helper's versions either way.
+    ...__publish_generic_helper('delivery-methods'),
     list: ({ sort, populate, pagination } = {}) => ({
         path: '/delivery-methods',
         params: {

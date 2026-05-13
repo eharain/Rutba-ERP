@@ -41,7 +41,20 @@ export default function RoleSwitcher() {
     if (loading) return null;
 
     const appName = getAppName();
-    const list = Array.isArray(rolesByApp?.[appName]) ? rolesByApp[appName] : [];
+    // Merge per-app roles with the wildcard '*' bucket (global / no-domain
+    // roles). The server expands wildcards across every active app-domain
+    // already, but we also fold '*' here so older /me/permissions payloads
+    // â€” and any role added at runtime under '*' â€” still surface in the
+    // switcher.
+    const perApp = Array.isArray(rolesByApp?.[appName]) ? rolesByApp[appName] : [];
+    const wildcard = Array.isArray(rolesByApp?.['*']) ? rolesByApp['*'] : [];
+    const seen = new Set();
+    const list = [];
+    for (const r of [...perApp, ...wildcard]) {
+        if (!r || !r.key || seen.has(r.key)) continue;
+        seen.add(r.key);
+        list.push(r);
+    }
     if (list.length === 0) return null;
 
     const active = list.find((r) => r.key === activeRoleKey) || list[0];

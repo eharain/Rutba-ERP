@@ -1,5 +1,5 @@
 import { authApi } from '../../../lib/api.js';
-import { executeEndpoint } from './___core__.js';
+import { executeEndpoint, strictEndpointGuard } from './___core__.js';
 import { SocialAccountsEndpoints as SocialAccountsEndpointsApi } from '../../../api/social-accounts.js';
 
 async function list(...args) {
@@ -18,27 +18,16 @@ async function del(...args) {
     return executeEndpoint(authApi, 'del', SocialAccountsEndpointsApi.del(...args));
 }
 
-async function fetchList(...args) {
-    return list(...args);
-}
-
-async function postCreate(...args) {
-    return create(...args);
-}
-
-async function putUpdate(...args) {
-    return update(...args);
-}
-
-const endpoints = {
-    list,
-    create,
-    update,
-    del,
-    fetchList,
-    postCreate,
-    putUpdate,
-};
+const endpoints = strictEndpointGuard(
+    'SocialAccountsEndpoints',
+    {
+        list,
+        create,
+        update,
+        del,
+    },
+    ["list","create","update","del"],
+);
 
 export default endpoints;
 export const SocialAccountsEndpoints = endpoints;

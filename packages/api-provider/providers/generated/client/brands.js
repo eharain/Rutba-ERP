@@ -1,5 +1,5 @@
 import { authApi } from '../../../lib/api.js';
-import { executeEndpoint } from './___core__.js';
+import { executeEndpoint, strictEndpointGuard } from './___core__.js';
 import { BrandsEndpoints as BrandsEndpointsApi } from '../../../api/brands.js';
 
 async function listPaged(...args) {
@@ -54,67 +54,26 @@ async function unpublish(...args) {
     return executeEndpoint(authApi, 'unpublish', BrandsEndpointsApi.unpublish(...args));
 }
 
-async function fetchListPaged(...args) {
-    return listPaged(...args);
-}
-
-async function fetchListAll(...args) {
-    return listAll(...args);
-}
-
-async function fetchList(...args) {
-    return list(...args);
-}
-
-async function fetchListDraft(...args) {
-    return listDraft(...args);
-}
-
-async function fetchListPublished(...args) {
-    return listPublished(...args);
-}
-
-async function postCreate(...args) {
-    return create(...args);
-}
-
-async function putUpdate(...args) {
-    return update(...args);
-}
-
-async function fetchByIdDraft(...args) {
-    return byIdDraft(...args);
-}
-
-async function fetchByIdPublished(...args) {
-    return byIdPublished(...args);
-}
-
-const endpoints = {
-    listPaged,
-    listAll,
-    list,
-    listDraft,
-    listPublished,
-    create,
-    update,
-    byIdDraft,
-    byIdPublished,
-    updateDraft,
-    del,
-    publish,
-    unpublish,
-    fetchListPaged,
-    fetchListAll,
-    fetchList,
-    fetchListDraft,
-    fetchListPublished,
-    postCreate,
-    putUpdate,
-    fetchByIdDraft,
-    fetchByIdPublished,
-    meta: BrandsEndpointsApi.meta,
-};
+const endpoints = strictEndpointGuard(
+    'BrandsEndpoints',
+    {
+        listPaged,
+        listAll,
+        list,
+        listDraft,
+        listPublished,
+        create,
+        update,
+        byIdDraft,
+        byIdPublished,
+        updateDraft,
+        del,
+        publish,
+        unpublish,
+        meta: BrandsEndpointsApi.meta,
+    },
+    ["listPaged","listAll","list","listDraft","listPublished","create","update","byIdDraft","byIdPublished","updateDraft","del","publish","unpublish","meta"],
+);
 
 export default endpoints;
 export const BrandsEndpoints = endpoints;

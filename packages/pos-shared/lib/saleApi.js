@@ -11,7 +11,7 @@ import {
     StockItemsEndpoints,
     BranchesEndpoints,
     CashRegisterTransactionEndpoints,
-} from './endpoints/index.js';
+} from '@rutba/api-provider/endpoints';
 
 export default class SaleApi {
 
@@ -68,12 +68,12 @@ export default class SaleApi {
     ===================================================== */
 
     static async cancelSale(documentId) {
-        const res = await SalesEndpoints.putCancel(documentId);
+        const res = await SalesEndpoints.cancel(documentId);
         return res?.data ?? res;
     }
 
     static async saveNotes(documentId, notes) {
-        const res = await SalesEndpoints.putSaveNotes(documentId, notes);
+        const res = await SalesEndpoints.saveNotes(documentId, notes);
         return res?.data ?? res;
     }
 
@@ -102,7 +102,7 @@ export default class SaleApi {
                 ...payloadNoItems,
                 ...(activeRegisterId ? { cash_register: { connect: [activeRegisterId] } } : {}),
             };
-            const res = await SalesEndpoints.postCreate(createPayload);
+            const res = await SalesEndpoints.create(createPayload);
             const created = res?.data ?? res;
 
             saleModel.id = created.id;
@@ -112,7 +112,7 @@ export default class SaleApi {
         }
         // UPDATE
         else {
-            const res = await SalesEndpoints.putUpdate(documentId, payloadNoItems);
+            const res = await SalesEndpoints.update(documentId, payloadNoItems);
             saleResponse = res?.data ?? res;
             documentId = saleResponse.documentId
         }
@@ -175,7 +175,7 @@ export default class SaleApi {
         const data = this.removeNullAttributes({ name, email, phone });
 
         if (!documentId) {
-            const res = await CustomersEndpoints.postCreate({
+            const res = await CustomersEndpoints.create({
                 ...data,
                 ...saleId ? { sales: { connect: [saleId] } } : {}
             });
@@ -184,7 +184,7 @@ export default class SaleApi {
             customer.id = created.id;
         }
         else {
-            await CustomersEndpoints.putUpdate(documentId, {
+            await CustomersEndpoints.update(documentId, {
                 ...data,
                 ...saleId ? { sales: { connect: [saleId] } } : {}
             });
@@ -267,11 +267,11 @@ export default class SaleApi {
             let saleItemId;
 
             if (item.documentId) {
-                const res = await SaleItemsEndpoints.putUpdate(item.documentId, saleItemPayload);
+                const res = await SaleItemsEndpoints.update(item.documentId, saleItemPayload);
                 saleItemId = item.documentId;
                 results.push(res?.data ?? res);
             } else {
-                const res = await SaleItemsEndpoints.postCreate(saleItemPayload);
+                const res = await SaleItemsEndpoints.create(saleItemPayload);
                 const created = res?.data ?? res;
                 item.documentId = created.documentId;
                 saleItemId = created.documentId;
@@ -298,7 +298,7 @@ export default class SaleApi {
                 }
 
                 if (stockItem.documentId) {
-                    await StockItemsEndpoints.putUpdate(stockItem.documentId, stockPayload);
+                    await StockItemsEndpoints.update(stockItem.documentId, stockPayload);
                 } else {
                     // Only send scalar stock-item fields — avoid leaking populated relations
                     const stockScalars = {
@@ -313,7 +313,7 @@ export default class SaleApi {
                         offer_price: stockItem.offer_price,
                         discount: stockItem.discount,
                     };
-                    const res = await StockItemsEndpoints.postCreate({
+                    const res = await StockItemsEndpoints.create({
                         ...stockScalars,
                         ...stockPayload
                     });
@@ -331,7 +331,7 @@ export default class SaleApi {
             if (Array.isArray(removed.items)) {
                 for (const stockItem of removed.items) {
                     if (!stockItem?.documentId) continue;
-                    await StockItemsEndpoints.putUpdate(stockItem.documentId, {
+                    await StockItemsEndpoints.update(stockItem.documentId, {
                         status: 'InStock',
                         sale_items: { disconnect: [removed.documentId] },
                         product: stockItem.product?.documentId
@@ -342,7 +342,7 @@ export default class SaleApi {
             }
 
             // Disconnect the sale item from the sale
-            await SaleItemsEndpoints.putDisconnect(removed.documentId);
+            await SaleItemsEndpoints.disconnect(removed.documentId);
         }
 
         return results;
@@ -385,7 +385,7 @@ export default class SaleApi {
         //    NOTE: `branches` on sale-return is mappedBy (inverse side) —
         //    Strapi v5 rejects connect on the inverse side, so we link
         //    from the owning side (branch) in step 1b.
-        const retRes = await SaleReturnsEndpoints.postCreate({
+        const retRes = await SaleReturnsEndpoints.create({
             return_no: returnNo,
             return_date: new Date().toISOString(),
             total_refund: returnTotal,
@@ -406,10 +406,10 @@ export default class SaleApi {
             const updates = {};
             if (newSaleDocId) updates.exchange_sale = { connect: [newSaleDocId] };
             if (Object.keys(updates).length > 0) {
-                    await SaleReturnsEndpoints.putUpdate(saleReturnDocId, updates);
+                    await SaleReturnsEndpoints.update(saleReturnDocId, updates);
                 }
             if (branchDocId) {
-                await BranchesEndpoints.putUpdate(branchDocId, {
+                await BranchesEndpoints.update(branchDocId, {
                     sale_returns: { connect: [saleReturnDocId] }
                 });
             }
@@ -429,7 +429,7 @@ export default class SaleApi {
             const total = items.reduce((s, i) => s + (i.refundPrice ?? i.price), 0);
             const productDocId = items[0].productDocId;
 
-            const returnItemRes = await SaleReturnItemsEndpoints.postCreate({
+            const returnItemRes = await SaleReturnItemsEndpoints.create({
                 quantity,
                 price,
                 total,
@@ -440,7 +440,7 @@ export default class SaleApi {
             const returnItemDocId = returnItem.documentId || returnItem.id;
 
             for (const ri of items) {
-                await StockItemsEndpoints.putUpdate(ri.stockItemDocId, {
+                await StockItemsEndpoints.update(ri.stockItemDocId, {
                     status: ri.status,
                     ...(returnItemDocId ? { sale_return_items: { connect: [returnItemDocId] } } : {})
                 });

@@ -156,6 +156,19 @@ export const CmsPagesEndpoints = {
         approle: ['admin', 'manager', 'staff', 'public', 'user'],
         params: { status: 'published', ...params },
     }),
+    // todo: speculative stub — full (non-draft) update PUT. Used by the bulk CSV
+    // import in rutba-cms/pages/pages.js where the row should overwrite both draft
+    // and published. __publish_generic_helper only provides `updateDraft`; clarify
+    // whether bulk import should hit `update` (PUT) or `updateDraft` + immediate
+    // `publish`, and align the descriptor accordingly.
+    update: (documentId, data) => ({
+        path: `/cms-pages/${documentId}`,
+        action: 'update',
+        method: 'put',
+        apps: ['cms', 'auth', 'stock'],
+        approle: ['admin', 'manager', 'staff'],
+        data,
+    }),
     ...__publish_generic_helper('cms-pages'),
 };
 

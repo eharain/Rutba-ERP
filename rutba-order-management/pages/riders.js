@@ -26,7 +26,7 @@ export default function RidersPage() {
     if (!jwt) return;
     setLoading(true);
     try {
-      const res = await RidersEndpoints.fetchList({
+      const res = await RidersEndpoints.list({
         sort: ["createdAt:desc"],
         populate: ["assigned_zones", "user"],
         pagination: { pageSize: 200 },
@@ -49,7 +49,7 @@ export default function RidersPage() {
     if (!status) return;
     setSaving((p) => ({ ...p, [rider.documentId]: true }));
     try {
-      await RidersEndpoints.putUpdate(rider.documentId, { data: { status } });
+      await RidersEndpoints.update(rider.documentId, { data: { status } });
       toast("Rider status updated.", "success");
       await load();
     } catch (err) {
@@ -69,7 +69,7 @@ export default function RidersPage() {
 
     setCreating(true);
     try {
-      await RidersEndpoints.postCreate({
+      await RidersEndpoints.create({
         data: {
           full_name: newRider.full_name.trim(),
           phone: newRider.phone.trim() || null,

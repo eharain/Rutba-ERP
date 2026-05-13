@@ -57,7 +57,7 @@ export default function SuppliersPage() {
         const timer = setTimeout(async () => {
             setProductSearchLoading(true);
             try {
-                const res = await ProductsEndpoints.fetchSearch(searchValue, {
+                const res = await ProductsEndpoints.search(searchValue, {
                     pageSize: 20,
                     populate: { suppliers: true },
                 });
@@ -88,7 +88,7 @@ export default function SuppliersPage() {
             let page = 1;
             let totalPages = 1;
             do {
-                const res = await SuppliersEndpoints.fetchList({ page, pageSize: 100 });
+                const res = await SuppliersEndpoints.list({ page, pageSize: 100 });
                 const data = res?.data ?? res;
                 allSuppliers = [...allSuppliers, ...(data || [])];
                 totalPages = res?.meta?.pagination?.pageCount || 1;
@@ -118,7 +118,7 @@ export default function SuppliersPage() {
             let page = 1;
             let totalPages = 1;
             do {
-                const res = await ProductsEndpoints.fetchList(page, 100, {
+                const res = await ProductsEndpoints.list(page, 100, {
                     sort: 'name:asc',
                     suppliers: [selectedSupplierId],
                     populate: { suppliers: true },
@@ -169,9 +169,9 @@ export default function SuppliersPage() {
                 address: supplierForm.address.trim() || undefined
             };
             if (isEditing && selectedSupplierId) {
-                await SuppliersEndpoints.putUpdate(selectedSupplierId, payload);
+                await SuppliersEndpoints.update(selectedSupplierId, payload);
             } else {
-                const res = await SuppliersEndpoints.postCreate(payload);
+                const res = await SuppliersEndpoints.create(payload);
                 const created = res?.data ?? res;
                 setSelectedSupplierId(getEntryId(created));
             }
@@ -194,7 +194,7 @@ export default function SuppliersPage() {
         if (!confirm("Are you sure you want to delete this supplier?")) return;
         setLoading(true);
         try {
-            await SuppliersEndpoints.putDelete(selectedSupplierId);
+            await SuppliersEndpoints.del(selectedSupplierId);
             setSelectedSupplierId("");
             await loadSuppliers();
         } catch (error) {
@@ -229,7 +229,7 @@ export default function SuppliersPage() {
                 let page = 1;
                 let totalPages = 1;
                 do {
-                    const res = await ProductsEndpoints.fetchList(page, 100, {
+                    const res = await ProductsEndpoints.list(page, 100, {
                         suppliers: [sourceSupplierId],
                         populate: { suppliers: true },
                     });
@@ -238,7 +238,7 @@ export default function SuppliersPage() {
 
                     for (const product of sourceProducts) {
                         const productDocId = getEntryId(product);
-                        await ProductsEndpoints.putUpdate(productDocId, {
+                        await ProductsEndpoints.update(productDocId, {
                                 suppliers: {
                                     connect: [selectedSupplierId],
                                     disconnect: [sourceSupplierId]
@@ -248,7 +248,7 @@ export default function SuppliersPage() {
                     page++;
                 } while (page <= totalPages);
 
-                await SuppliersEndpoints.putDelete(sourceSupplierId);
+                await SuppliersEndpoints.del(sourceSupplierId);
             }
 
             setMergeSelection(new Set());
@@ -292,7 +292,7 @@ export default function SuppliersPage() {
         setLoading(true);
         try {
             for (const productDocId of selectedProductIds) {
-                await ProductsEndpoints.putUpdate(productDocId, {
+                await ProductsEndpoints.update(productDocId, {
                         suppliers: {
                             connect: [moveTargetSupplierId],
                             disconnect: [selectedSupplierId]
@@ -317,7 +317,7 @@ export default function SuppliersPage() {
         setLoading(true);
         try {
             for (const productDocId of selectedProductIds) {
-                await ProductsEndpoints.putUpdate(productDocId, {
+                await ProductsEndpoints.update(productDocId, {
                         suppliers: {
                             connect: [moveTargetSupplierId]
                         }
@@ -338,7 +338,7 @@ export default function SuppliersPage() {
         if (!confirm("Remove this product from the supplier?")) return;
         setLoading(true);
         try {
-            await ProductsEndpoints.putUpdate(productDocId, {
+            await ProductsEndpoints.update(productDocId, {
                     suppliers: { disconnect: [selectedSupplierId] }
                 });
             await loadProducts();
@@ -354,7 +354,7 @@ export default function SuppliersPage() {
         if (!selectedSupplierId) return alert("Select a supplier first");
         setLoading(true);
         try {
-            await ProductsEndpoints.putUpdate(productDocId, {
+            await ProductsEndpoints.update(productDocId, {
                     suppliers: { connect: [selectedSupplierId] }
                 });
             await loadProducts();

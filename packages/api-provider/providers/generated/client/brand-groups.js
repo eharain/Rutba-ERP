@@ -1,5 +1,5 @@
 import { authApi } from '../../../lib/api.js';
-import { executeEndpoint } from './___core__.js';
+import { executeEndpoint, strictEndpointGuard } from './___core__.js';
 import { BrandGroupsEndpoints as BrandGroupsEndpointsApi } from '../../../api/brand-groups.js';
 
 async function listDraft(...args) {
@@ -50,61 +50,25 @@ async function del(...args) {
     return executeEndpoint(authApi, 'del', BrandGroupsEndpointsApi.del(...args));
 }
 
-async function fetchListDraft(...args) {
-    return listDraft(...args);
-}
-
-async function fetchListPublished(...args) {
-    return listPublished(...args);
-}
-
-async function fetchList(...args) {
-    return list(...args);
-}
-
-async function fetchByIdDraft(...args) {
-    return byIdDraft(...args);
-}
-
-async function fetchByIdPublished(...args) {
-    return byIdPublished(...args);
-}
-
-async function fetchById(...args) {
-    return byId(...args);
-}
-
-async function postCreate(...args) {
-    return create(...args);
-}
-
-async function putUpdate(...args) {
-    return update(...args);
-}
-
-const endpoints = {
-    listDraft,
-    listPublished,
-    list,
-    byIdDraft,
-    byIdPublished,
-    byId,
-    create,
-    update,
-    updateDraft,
-    publish,
-    unpublish,
-    del,
-    fetchListDraft,
-    fetchListPublished,
-    fetchList,
-    fetchByIdDraft,
-    fetchByIdPublished,
-    fetchById,
-    postCreate,
-    putUpdate,
-    meta: BrandGroupsEndpointsApi.meta,
-};
+const endpoints = strictEndpointGuard(
+    'BrandGroupsEndpoints',
+    {
+        listDraft,
+        listPublished,
+        list,
+        byIdDraft,
+        byIdPublished,
+        byId,
+        create,
+        update,
+        updateDraft,
+        publish,
+        unpublish,
+        del,
+        meta: BrandGroupsEndpointsApi.meta,
+    },
+    ["listDraft","listPublished","list","byIdDraft","byIdPublished","byId","create","update","updateDraft","publish","unpublish","del","meta"],
+);
 
 export default endpoints;
 export const BrandGroupsEndpoints = endpoints;
