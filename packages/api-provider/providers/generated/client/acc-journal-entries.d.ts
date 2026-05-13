@@ -1,6 +1,6 @@
 // AUTO-GENERATED — do not edit. Source: scaffold-endpoint-providers.mjs
 export interface AccJournalEntriesEndpointsType {
-    list({ sort }?: any): Promise<any>;
+    list({ page, pageSize, sort, populate, filters, fields }?: any): Promise<any>;
 }
 
 export const AccJournalEntriesEndpoints: AccJournalEntriesEndpointsType;

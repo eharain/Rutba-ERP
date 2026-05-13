@@ -2,6 +2,7 @@
  * PaymentsEndpoints
  * Pure endpoint descriptors for the /payments resource.
  */
+import { listParams, byIdParams } from './__param_builders.js';
 
 // Per-role scope shared by every policy below. Staff sees their own payments
 // from the last 7 days; admin/manager unrestricted.
@@ -22,23 +23,24 @@ export const PaymentsEndpoints = {
     /**
      * List payments for a specific cash register.
      * @param {string|number} registerId  documentId or numeric id
-     * @param {{ page?, pageSize?, sort?, populate? }} opts
      */
-    byRegister: (registerId, { page = 1, pageSize = 500, sort, populate, useDocumentId = true } = {}) => ({
+    byRegister: (registerId, { page, pageSize, sort, populate, filters, fields, useDocumentId = true } = {}) => ({
         path: '/payments',
         action: 'find',
         method: 'get',
         apps: ['accounts', 'sale', 'accounts-ar', 'accounts-ap'],
         approle: ['admin', 'manager', 'staff'],
         scope: ROLE_SCOPES,
-        params: {
-            filters: useDocumentId
-                ? { cash_register: { documentId: { $eq: registerId } } }
-                : { cash_register: { id: { $eq: registerId } } },
-            sort: sort ?? ['payment_date:asc'],
-            pagination: { page, pageSize },
-            ...(populate ? { populate } : {}),
-        },
+        params: listParams(
+            { page, pageSize, sort, populate, filters, fields },
+            {
+                sort: ['payment_date:asc'],
+                pageSize: 500,
+                filters: useDocumentId
+                    ? { cash_register: { documentId: { $eq: registerId } } }
+                    : { cash_register: { id: { $eq: registerId } } },
+            },
+        ),
     }),
     fetchByRegister: (registerId, opts = {}) => ({
         path: '/payments',
@@ -80,18 +82,18 @@ export const PaymentsEndpoints = {
     /**
      * Fetch a payment by documentId.
      * @param {string} documentId
-     * @param {{ populate? }} opts
      */
-    byId: (documentId, { populate } = {}) => ({
+    byId: (documentId, { populate, fields } = {}) => ({
         path: `/payments/${documentId}`,
         action: 'findOne',
         method: 'get',
         apps: ['accounts', 'sale', 'accounts-ar', 'accounts-ap'],
         approle: ['admin', 'manager', 'staff'],
         scope: ROLE_SCOPES,
-        params: {
-            populate: populate ?? { sales: true, customer: true, cash_register: true },
-        },
+        params: byIdParams(
+            { populate, fields },
+            { populate: { sales: true, customer: true, cash_register: true } },
+        ),
     }),
     fetchById: (documentId, { populate } = {}) => ({
         path: `/payments/${documentId}`,

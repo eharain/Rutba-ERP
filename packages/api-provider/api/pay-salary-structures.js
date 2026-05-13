@@ -1,9 +1,12 @@
+import { listParams } from './__param_builders.js';
+
 export const PaySalaryStructuresEndpoints = {
-    list: ({ sort } = {}) => ({
+    list: ({ page, pageSize, sort, populate, filters, fields } = {}) => ({
         path: '/pay-salary-structures',
-        params: {
-            sort: sort ?? ['name:asc'],
-        },
+        params: listParams(
+            { page, pageSize, sort, populate, filters, fields },
+            { sort: ['name:asc'] },
+        ),
     }),
 
 };

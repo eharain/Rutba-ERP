@@ -1,29 +1,35 @@
 import { authApi } from '../../../../lib/api.js';
-import { executeEndpoint, strictEndpointGuard } from '../___core__.js';
+import { strictEndpointGuard } from '../___core__.js';
 import { WebProductsEndpoints as WebProductsEndpointsApi } from '../../../../api/web/products.js';
 
-async function list(...args) {
-    return executeEndpoint(authApi, 'list', WebProductsEndpointsApi.list(...args));
+async function list(filter = {}, page = '1') {
+    const ep = WebProductsEndpointsApi.list(filter, page);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function detail(...args) {
-    return executeEndpoint(authApi, 'detail', WebProductsEndpointsApi.detail(...args));
+async function detail(slug) {
+    const ep = WebProductsEndpointsApi.detail(slug);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function featured(...args) {
-    return executeEndpoint(authApi, 'featured', WebProductsEndpointsApi.featured(...args));
+async function featured() {
+    const ep = WebProductsEndpointsApi.featured();
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function search(...args) {
-    return executeEndpoint(authApi, 'search', WebProductsEndpointsApi.search(...args));
+async function search(search, pageSize = 5) {
+    const ep = WebProductsEndpointsApi.search(search, pageSize);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function byIds(...args) {
-    return executeEndpoint(authApi, 'byIds', WebProductsEndpointsApi.byIds(...args));
+async function byIds(idProducts = []) {
+    const ep = WebProductsEndpointsApi.byIds(idProducts);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function highestPrice(...args) {
-    return executeEndpoint(authApi, 'highestPrice', WebProductsEndpointsApi.highestPrice(...args));
+async function highestPrice() {
+    const ep = WebProductsEndpointsApi.highestPrice();
+    return authApi.fetch(ep.path, ep.params);
 }
 
 const endpoints = strictEndpointGuard(

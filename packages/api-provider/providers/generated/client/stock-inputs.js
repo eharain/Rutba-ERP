@@ -1,29 +1,35 @@
 import { authApi } from '../../../lib/api.js';
-import { executeEndpoint, strictEndpointGuard } from './___core__.js';
+import { withQuery, wrapData, strictEndpointGuard } from './___core__.js';
 import { StockInputsEndpoints as StockInputsEndpointsApi } from '../../../api/stock-inputs.js';
 
-async function list(...args) {
-    return executeEndpoint(authApi, 'list', StockInputsEndpointsApi.list(...args));
+async function list(arg1 = {}) {
+    const ep = StockInputsEndpointsApi.list(arg1);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function byId(...args) {
-    return executeEndpoint(authApi, 'byId', StockInputsEndpointsApi.byId(...args));
+async function byId(documentId, arg2 = {}) {
+    const ep = StockInputsEndpointsApi.byId(documentId, arg2);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function create(...args) {
-    return executeEndpoint(authApi, 'create', StockInputsEndpointsApi.create(...args));
+async function create(data) {
+    const ep = StockInputsEndpointsApi.create(data);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
-async function update(...args) {
-    return executeEndpoint(authApi, 'update', StockInputsEndpointsApi.update(...args));
+async function update(documentId, data) {
+    const ep = StockInputsEndpointsApi.update(documentId, data);
+    return authApi.put(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
-async function del(...args) {
-    return executeEndpoint(authApi, 'del', StockInputsEndpointsApi.del(...args));
+async function del(documentId) {
+    const ep = StockInputsEndpointsApi.del(documentId);
+    return authApi.del(withQuery(ep.path, ep.params));
 }
 
-async function process(...args) {
-    return executeEndpoint(authApi, 'process', StockInputsEndpointsApi.process(...args));
+async function process(data) {
+    const ep = StockInputsEndpointsApi.process(data);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
 const endpoints = strictEndpointGuard(

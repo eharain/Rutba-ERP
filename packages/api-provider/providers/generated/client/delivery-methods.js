@@ -1,45 +1,55 @@
 import { authApi } from '../../../lib/api.js';
-import { executeEndpoint, strictEndpointGuard } from './___core__.js';
+import { withQuery, wrapData, strictEndpointGuard } from './___core__.js';
 import { DeliveryMethodsEndpoints as DeliveryMethodsEndpointsApi } from '../../../api/delivery-methods.js';
 
-async function updateDraft(...args) {
-    return executeEndpoint(authApi, 'updateDraft', DeliveryMethodsEndpointsApi.updateDraft(...args));
+async function updateDraft(documentId, data) {
+    const ep = DeliveryMethodsEndpointsApi.updateDraft(documentId, data);
+    return authApi.put(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
-async function publish(...args) {
-    return executeEndpoint(authApi, 'publish', DeliveryMethodsEndpointsApi.publish(...args));
+async function publish(documentId) {
+    const ep = DeliveryMethodsEndpointsApi.publish(documentId);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
-async function unpublish(...args) {
-    return executeEndpoint(authApi, 'unpublish', DeliveryMethodsEndpointsApi.unpublish(...args));
+async function unpublish(documentId) {
+    const ep = DeliveryMethodsEndpointsApi.unpublish(documentId);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
-async function create(...args) {
-    return executeEndpoint(authApi, 'create', DeliveryMethodsEndpointsApi.create(...args));
+async function create(data) {
+    const ep = DeliveryMethodsEndpointsApi.create(data);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
-async function del(...args) {
-    return executeEndpoint(authApi, 'del', DeliveryMethodsEndpointsApi.del(...args));
+async function del(documentId) {
+    const ep = DeliveryMethodsEndpointsApi.del(documentId);
+    return authApi.del(withQuery(ep.path, ep.params));
 }
 
-async function list(...args) {
-    return executeEndpoint(authApi, 'list', DeliveryMethodsEndpointsApi.list(...args));
+async function list(arg1 = {}) {
+    const ep = DeliveryMethodsEndpointsApi.list(arg1);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function byId(...args) {
-    return executeEndpoint(authApi, 'byId', DeliveryMethodsEndpointsApi.byId(...args));
+async function byId(documentId, arg2 = {}) {
+    const ep = DeliveryMethodsEndpointsApi.byId(documentId, arg2);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function byIdDraft(...args) {
-    return executeEndpoint(authApi, 'byIdDraft', DeliveryMethodsEndpointsApi.byIdDraft(...args));
+async function byIdDraft(documentId, arg2 = {}) {
+    const ep = DeliveryMethodsEndpointsApi.byIdDraft(documentId, arg2);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function byIdPublished(...args) {
-    return executeEndpoint(authApi, 'byIdPublished', DeliveryMethodsEndpointsApi.byIdPublished(...args));
+async function byIdPublished(documentId, arg2 = {}) {
+    const ep = DeliveryMethodsEndpointsApi.byIdPublished(documentId, arg2);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function update(...args) {
-    return executeEndpoint(authApi, 'update', DeliveryMethodsEndpointsApi.update(...args));
+async function update(documentId, data) {
+    const ep = DeliveryMethodsEndpointsApi.update(documentId, data);
+    return authApi.fetch(ep.path, ep.params);
 }
 
 const endpoints = strictEndpointGuard(

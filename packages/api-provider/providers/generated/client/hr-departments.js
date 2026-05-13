@@ -1,9 +1,10 @@
 import { authApi } from '../../../lib/api.js';
-import { executeEndpoint, strictEndpointGuard } from './___core__.js';
+import { strictEndpointGuard } from './___core__.js';
 import { HrDepartmentsEndpoints as HrDepartmentsEndpointsApi } from '../../../api/hr-departments.js';
 
-async function list(...args) {
-    return executeEndpoint(authApi, 'list', HrDepartmentsEndpointsApi.list(...args));
+async function list(arg1 = {}) {
+    const ep = HrDepartmentsEndpointsApi.list(arg1);
+    return authApi.fetch(ep.path, ep.params);
 }
 
 const endpoints = strictEndpointGuard(

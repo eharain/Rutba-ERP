@@ -1,41 +1,50 @@
 import { authApi } from '../../../lib/api.js';
-import { executeEndpoint, strictEndpointGuard } from './___core__.js';
+import { withQuery, strictEndpointGuard } from './___core__.js';
 import { SaleOffersEndpoints as SaleOffersEndpointsApi } from '../../../api/sale-offers.js';
 
-async function listDraft(...args) {
-    return executeEndpoint(authApi, 'listDraft', SaleOffersEndpointsApi.listDraft(...args));
+async function listDraft(arg1 = {}) {
+    const ep = SaleOffersEndpointsApi.listDraft(arg1);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function listPublished(...args) {
-    return executeEndpoint(authApi, 'listPublished', SaleOffersEndpointsApi.listPublished(...args));
+async function listPublished(arg1 = {}) {
+    const ep = SaleOffersEndpointsApi.listPublished(arg1);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function byIdDraft(...args) {
-    return executeEndpoint(authApi, 'byIdDraft', SaleOffersEndpointsApi.byIdDraft(...args));
+async function byIdDraft(documentId, arg2 = {}) {
+    const ep = SaleOffersEndpointsApi.byIdDraft(documentId, arg2);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function byIdPublished(...args) {
-    return executeEndpoint(authApi, 'byIdPublished', SaleOffersEndpointsApi.byIdPublished(...args));
+async function byIdPublished(documentId, arg2 = {}) {
+    const ep = SaleOffersEndpointsApi.byIdPublished(documentId, arg2);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function create(...args) {
-    return executeEndpoint(authApi, 'create', SaleOffersEndpointsApi.create(...args));
+async function create(data) {
+    const ep = SaleOffersEndpointsApi.create(data);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function updateDraft(...args) {
-    return executeEndpoint(authApi, 'updateDraft', SaleOffersEndpointsApi.updateDraft(...args));
+async function updateDraft(documentId, data) {
+    const ep = SaleOffersEndpointsApi.updateDraft(documentId, data);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function publish(...args) {
-    return executeEndpoint(authApi, 'publish', SaleOffersEndpointsApi.publish(...args));
+async function publish(documentId) {
+    const ep = SaleOffersEndpointsApi.publish(documentId);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function unpublish(...args) {
-    return executeEndpoint(authApi, 'unpublish', SaleOffersEndpointsApi.unpublish(...args));
+async function unpublish(documentId) {
+    const ep = SaleOffersEndpointsApi.unpublish(documentId);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function del(...args) {
-    return executeEndpoint(authApi, 'del', SaleOffersEndpointsApi.del(...args));
+async function del(documentId) {
+    const ep = SaleOffersEndpointsApi.del(documentId);
+    return authApi.del(withQuery(ep.path, ep.params));
 }
 
 const endpoints = strictEndpointGuard(

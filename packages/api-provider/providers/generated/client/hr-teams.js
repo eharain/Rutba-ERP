@@ -1,21 +1,25 @@
 import { authApi } from '../../../lib/api.js';
-import { executeEndpoint, strictEndpointGuard } from './___core__.js';
+import { strictEndpointGuard } from './___core__.js';
 import { HrTeamsEndpoints as HrTeamsEndpointsApi } from '../../../api/hr-teams.js';
 
-async function list(...args) {
-    return executeEndpoint(authApi, 'list', HrTeamsEndpointsApi.list(...args));
+async function list(arg1 = {}) {
+    const ep = HrTeamsEndpointsApi.list(arg1);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function appRoleOptions(...args) {
-    return executeEndpoint(authApi, 'appRoleOptions', HrTeamsEndpointsApi.appRoleOptions(...args));
+async function appRoleOptions() {
+    const ep = HrTeamsEndpointsApi.appRoleOptions();
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function create(...args) {
-    return executeEndpoint(authApi, 'create', HrTeamsEndpointsApi.create(...args));
+async function create(data) {
+    const ep = HrTeamsEndpointsApi.create(data);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function update(...args) {
-    return executeEndpoint(authApi, 'update', HrTeamsEndpointsApi.update(...args));
+async function update(documentId, data) {
+    const ep = HrTeamsEndpointsApi.update(documentId, data);
+    return authApi.fetch(ep.path, ep.params);
 }
 
 const endpoints = strictEndpointGuard(

@@ -1,9 +1,9 @@
 /**
  * BrandGroupsEndpoints
  * Pure endpoint descriptors for the /brand-groups resource.
- * All methods return { path, params?, data? } objects.
- * Transport execution happens via createClientProxy in /endpoints/brand-groups.js.
  */
+import { listParams, byIdParams } from './__param_builders.js';
+
 export const BrandGroupsEndpoints = {
 
     meta: {
@@ -12,99 +12,57 @@ export const BrandGroupsEndpoints = {
         roles: ['admin', 'manager', 'staff']
     },
 
-    /**
-     * List brand groups in draft status.
-     * @param {{ sort?, populate?, pagination? }} opts
-     */
-    listDraft: ({ sort, populate, pagination } = {}) => ({
+    listDraft: ({ page, pageSize, sort, populate, filters, fields } = {}) => ({
         path: '/brand-groups',
         action: 'find',
         method: 'get',
-        params: {
-            status: 'draft',
-            sort: sort ?? ['sort_order:asc', 'createdAt:desc'],
-            populate: populate ?? ['brands'],
-            pagination: pagination ?? { pageSize: 50 },
-        },
+        params: listParams(
+            { page, pageSize, sort, populate, filters, fields },
+            { sort: ['sort_order:asc', 'createdAt:desc'], populate: ['brands'], pageSize: 50 },
+            { status: 'draft' },
+        ),
     }),
 
-    /**
-     * List brand groups in published status.
-     * @param {{ pageSize?, sort?, populate? }} opts
-     */
-    listPublished: ({ pageSize = 200, sort, populate } = {}) => ({
+    listPublished: ({ page, pageSize, sort, populate, filters, fields } = {}) => ({
         path: '/brand-groups',
         action: 'find',
         method: 'get',
-        params: {
-            status: 'published',
-            fields: ['documentId'],
-            pagination: { pageSize },
-            ...(sort ? { sort } : {}),
-            ...(populate ? { populate } : {}),
-        },
+        params: listParams(
+            { page, pageSize, sort, populate, filters, fields },
+            { pageSize: 200, fields: ['documentId'] },
+            { status: 'published' },
+        ),
     }),
 
-    /**
-     * List all brand groups (any status).
-     * @param {{ sort?, populate?, pagination?, filters? }} opts
-     */
-    list: ({ sort, populate, pagination, filters } = {}) => ({
+    list: ({ page, pageSize, sort, populate, filters, fields } = {}) => ({
         path: '/brand-groups',
         action: 'find',
         method: 'get',
-        params: {
-            sort: sort ?? ['sort_order:asc', 'createdAt:desc'],
-            populate: populate ?? ['brands'],
-            pagination: pagination ?? { page: 1, pageSize: 100 },
-            ...(filters ? { filters } : {}),
-        },
+        params: listParams(
+            { page, pageSize, sort, populate, filters, fields },
+            { sort: ['sort_order:asc', 'createdAt:desc'], populate: ['brands'], pageSize: 100 },
+        ),
     }),
 
-    /**
-     * Get brand group by documentId in draft status.
-     * @param {string} documentId
-     * @param {{ populate? }} opts
-     */
-    byIdDraft: (documentId, { populate } = {}) => ({
+    byIdDraft: (documentId, { populate, fields } = {}) => ({
         path: `/brand-groups/${documentId}`,
         action: 'findOne',
         method: 'get',
-        params: {
-            status: 'draft',
-            ...(populate ? { populate } : {}),
-        },
+        params: byIdParams({ populate, fields }, {}, { status: 'draft' }),
     }),
 
-    /**
-     * Get brand group by documentId in published status.
-     * @param {string} documentId
-     * @param {{ fields?, populate? }} opts
-     */
-    byIdPublished: (documentId, { fields, populate } = {}) => ({
+    byIdPublished: (documentId, { populate, fields } = {}) => ({
         path: `/brand-groups/${documentId}`,
         action: 'findOne',
         method: 'get',
-        params: {
-            status: 'published',
-            ...(fields ? { fields } : {}),
-            ...(populate ? { populate } : {}),
-        },
+        params: byIdParams({ populate, fields }, {}, { status: 'published' }),
     }),
 
-    /**
-     * Get brand group by documentId (any status).
-     * @param {string} documentId
-     * @param {{ populate?, status? }} opts
-     */
-    byId: (documentId, { populate, status } = {}) => ({
+    byId: (documentId, { populate, fields, status } = {}) => ({
         path: `/brand-groups/${documentId}`,
         action: 'findOne',
         method: 'get',
-        params: {
-            ...(status ? { status } : {}),
-            ...(populate ? { populate } : {}),
-        },
+        params: byIdParams({ populate, fields }, {}, status ? { status } : {}),
     }),
 
     /**

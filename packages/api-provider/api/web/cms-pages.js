@@ -84,7 +84,7 @@ const populate = {
 
 export const WebCmsPagesEndpoints = {
   list: (pageSize = 50) => ({
-    path: 'cms-pages',
+    path: '/cms-pages',
     method: 'get',
     params: {
       sort: ['sort_order:asc', 'createdAt:desc'],
@@ -95,7 +95,7 @@ export const WebCmsPagesEndpoints = {
   }),
 
   listByType: (pageType, pageSize = 50) => ({
-    path: 'cms-pages',
+    path: '/cms-pages',
     method: 'get',
     params: {
       filters: { page_type: { $eq: pageType } },
@@ -107,7 +107,7 @@ export const WebCmsPagesEndpoints = {
   }),
 
   bySlug: (slug) => ({
-    path: 'cms-pages',
+    path: '/cms-pages',
     method: 'get',
     params: {
       filters: { slug: { $eq: slug } },
@@ -117,7 +117,7 @@ export const WebCmsPagesEndpoints = {
   }),
 
   header: () => ({
-    path: 'cms-pages',
+    path: '/cms-pages',
     method: 'get',
     params: {
       filters: { slug: { $eq: 'index' } },

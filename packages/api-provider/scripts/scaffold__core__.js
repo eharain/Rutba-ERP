@@ -1,25 +1,18 @@
 import qs from 'qs';
 
-function ensureLeadingSlash(path) {
-    if (!path) return '/';
-    return path.startsWith('/') ? path : `/${path}`;
-}
+// Pure data-shape helpers used by generated providers. The HTTP verb dispatch
+// (which authApi.<verb> to call) is resolved at scaffold time and inlined into
+// each generated action body — these helpers only reshape path/params/data so
+// the inline call site stays small.
 
-function toHttpMethod(key, explicitMethod) {
-    if (explicitMethod) return explicitMethod.toUpperCase();
-    if (key.startsWith('post')) return 'POST';
-    if (key.startsWith('put')) return 'PUT';
-    if (key.startsWith('patch')) return 'PATCH';
-    if (key.startsWith('del') || key.startsWith('delete')) return 'DELETE';
-    return 'GET';
-}
-
-async function pathWithParams(path, params) {
-    if (!params || Object.keys(params).length === 0) return path;
+export function withQuery(path, params) {
+    if (!params) return path;
+    const keys = Object.keys(params);
+    if (keys.length === 0) return path;
     return `${path}?${qs.stringify(params, { encodeValuesOnly: true })}`;
 }
 
-function wrapData(data) {
+export function wrapData(data) {
     if (data && typeof data === 'object' && 'data' in data) {
         return data;
     }
@@ -83,39 +76,19 @@ export function strictEndpointGuard(name, target, allowedKeys) {
     });
 }
 
-export async function executeEndpoint(client, key, ep) {
-    if (!ep?.path) {
-        return ep;
-    }
-
-    const normalizedPath = ensureLeadingSlash(ep.path);
-
-    const explicitMethod = ep.method?.toUpperCase();
-    const method = toHttpMethod(key, explicitMethod);
-
-    if (method === 'POST') {
-        const path = ep.params ? await pathWithParams(normalizedPath, ep.params) : normalizedPath;
-        return await client.post(path, wrapData(ep.data));
-    }
-
-    if (method === 'PUT') {
-        const path = ep.params ? await pathWithParams(normalizedPath, ep.params) : normalizedPath;
-        return await client.put(path, wrapData(ep.data));
-    }
-
-    if (method === 'PATCH') {
-        const path = ep.params ? await pathWithParams(normalizedPath, ep.params) : normalizedPath;
-        return await client.patch(path, wrapData(ep.data));
-    }
-
-    if (method === 'DELETE') {
-        const path = ep.params ? await pathWithParams(normalizedPath, ep.params) : normalizedPath;
-        return await client.del(path);
-    }
-
-    if (ep.provider?.getAll) {
-        return await client.getAll(normalizedPath, ep.params);
-    }
-
-    return await client.fetch(normalizedPath, ep.params);
+// Method dispatch lives in the scaffolded provider files now — there is no
+// runtime executeEndpoint() any more. The verb each action calls (fetch /
+// post / put / patch / del) is decided at scaffold time from the descriptor's
+// `method:` literal (or the key prefix as a fallback) and baked into the
+// generated source.
+//
+// Tests/validators that need to predict the verb for a given descriptor can
+// use this same rule:
+export function resolveHttpVerb(key, explicitMethod) {
+    if (explicitMethod) return String(explicitMethod).toUpperCase();
+    if (key.startsWith('post')) return 'POST';
+    if (key.startsWith('put')) return 'PUT';
+    if (key.startsWith('patch')) return 'PATCH';
+    if (key.startsWith('del') || key.startsWith('delete')) return 'DELETE';
+    return 'GET';
 }

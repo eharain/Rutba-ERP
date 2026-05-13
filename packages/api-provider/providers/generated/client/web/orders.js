@@ -1,41 +1,50 @@
 import { authApi } from '../../../../lib/api.js';
-import { executeEndpoint, strictEndpointGuard } from '../___core__.js';
+import { withQuery, wrapData, strictEndpointGuard } from '../___core__.js';
 import { WebOrdersEndpoints as WebOrdersEndpointsApi } from '../../../../api/web/orders.js';
 
-async function myOrders(...args) {
-    return executeEndpoint(authApi, 'myOrders', WebOrdersEndpointsApi.myOrders(...args));
+async function myOrders() {
+    const ep = WebOrdersEndpointsApi.myOrders();
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function byId(...args) {
-    return executeEndpoint(authApi, 'byId', WebOrdersEndpointsApi.byId(...args));
+async function byId(documentId) {
+    const ep = WebOrdersEndpointsApi.byId(documentId);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function create(...args) {
-    return executeEndpoint(authApi, 'create', WebOrdersEndpointsApi.create(...args));
+async function create(data) {
+    const ep = WebOrdersEndpointsApi.create(data);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
-async function validateAddress(...args) {
-    return executeEndpoint(authApi, 'validateAddress', WebOrdersEndpointsApi.validateAddress(...args));
+async function validateAddress(data) {
+    const ep = WebOrdersEndpointsApi.validateAddress(data);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
-async function shippingRate(...args) {
-    return executeEndpoint(authApi, 'shippingRate', WebOrdersEndpointsApi.shippingRate(...args));
+async function shippingRate(data) {
+    const ep = WebOrdersEndpointsApi.shippingRate(data);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
-async function calculateDelivery(...args) {
-    return executeEndpoint(authApi, 'calculateDelivery', WebOrdersEndpointsApi.calculateDelivery(...args));
+async function calculateDelivery(data) {
+    const ep = WebOrdersEndpointsApi.calculateDelivery(data);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
-async function tracking(...args) {
-    return executeEndpoint(authApi, 'tracking', WebOrdersEndpointsApi.tracking(...args));
+async function tracking(documentId, secret) {
+    const ep = WebOrdersEndpointsApi.tracking(documentId, secret);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function messages(...args) {
-    return executeEndpoint(authApi, 'messages', WebOrdersEndpointsApi.messages(...args));
+async function messages(documentId) {
+    const ep = WebOrdersEndpointsApi.messages(documentId);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function sendMessage(...args) {
-    return executeEndpoint(authApi, 'sendMessage', WebOrdersEndpointsApi.sendMessage(...args));
+async function sendMessage(documentId, data) {
+    const ep = WebOrdersEndpointsApi.sendMessage(documentId, data);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
 const endpoints = strictEndpointGuard(

@@ -1,9 +1,10 @@
 import { authApi } from '../../../lib/api.js';
-import { executeEndpoint, strictEndpointGuard } from './___core__.js';
+import { strictEndpointGuard } from './___core__.js';
 import { AccJournalEntriesEndpoints as AccJournalEntriesEndpointsApi } from '../../../api/acc-journal-entries.js';
 
-async function list(...args) {
-    return executeEndpoint(authApi, 'list', AccJournalEntriesEndpointsApi.list(...args));
+async function list(arg1 = {}) {
+    const ep = AccJournalEntriesEndpointsApi.list(arg1);
+    return authApi.fetch(ep.path, ep.params);
 }
 
 const endpoints = strictEndpointGuard(

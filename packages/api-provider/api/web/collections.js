@@ -1,6 +1,6 @@
 export const WebCollectionsEndpoints = {
   list: () => ({
-    path: 'collections',
+    path: '/collections',
     method: 'get',
     params: {
       pagination: { limit: -1 },

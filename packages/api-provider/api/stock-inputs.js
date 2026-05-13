@@ -1,3 +1,5 @@
+import { listParams, byIdParams } from './__param_builders.js';
+
 export const StockInputsEndpoints = {
     meta: {
         uid: 'api::stock-input.stock-input',
@@ -5,21 +7,21 @@ export const StockInputsEndpoints = {
         roles: ['admin', 'manager', 'staff']
     },
 
-    list: (opts = {}) => ({
+    list: ({ page, pageSize, sort, populate, filters, fields } = {}) => ({
         path: '/stock-inputs',
         action: 'find',
         method: 'get',
         apps: ['stock'],
         approle: ['admin', 'manager', 'staff'],
-        params: opts,
+        params: listParams({ page, pageSize, sort, populate, filters, fields }),
     }),
-    byId: (documentId, params = {}) => ({
+    byId: (documentId, { populate, fields } = {}) => ({
         path: `/stock-inputs/${documentId}`,
         action: 'findOne',
         method: 'get',
         apps: ['stock'],
         approle: ['admin', 'manager', 'staff'],
-        params,
+        params: byIdParams({ populate, fields }),
     }),
     create: (data) => ({
         path: '/stock-inputs',

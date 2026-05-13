@@ -1,7 +1,7 @@
 // AUTO-GENERATED — do not edit. Source: scaffold-endpoint-providers.mjs
 export interface StockInputsEndpointsType {
-    list(opts?: any): Promise<any>;
-    byId(documentId: any, params?: any): Promise<any>;
+    list({ page, pageSize, sort, populate, filters, fields }?: any): Promise<any>;
+    byId(documentId: any, { populate, fields }?: any): Promise<any>;
     create(data: any): Promise<any>;
     update(documentId: any, data: any): Promise<any>;
     del(documentId: any): Promise<any>;

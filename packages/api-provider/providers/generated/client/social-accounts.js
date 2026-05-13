@@ -1,21 +1,25 @@
 import { authApi } from '../../../lib/api.js';
-import { executeEndpoint, strictEndpointGuard } from './___core__.js';
+import { withQuery, wrapData, strictEndpointGuard } from './___core__.js';
 import { SocialAccountsEndpoints as SocialAccountsEndpointsApi } from '../../../api/social-accounts.js';
 
-async function list(...args) {
-    return executeEndpoint(authApi, 'list', SocialAccountsEndpointsApi.list(...args));
+async function list(arg1 = {}) {
+    const ep = SocialAccountsEndpointsApi.list(arg1);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function create(...args) {
-    return executeEndpoint(authApi, 'create', SocialAccountsEndpointsApi.create(...args));
+async function create(data) {
+    const ep = SocialAccountsEndpointsApi.create(data);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
-async function update(...args) {
-    return executeEndpoint(authApi, 'update', SocialAccountsEndpointsApi.update(...args));
+async function update(documentId, data) {
+    const ep = SocialAccountsEndpointsApi.update(documentId, data);
+    return authApi.put(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
-async function del(...args) {
-    return executeEndpoint(authApi, 'del', SocialAccountsEndpointsApi.del(...args));
+async function del(documentId) {
+    const ep = SocialAccountsEndpointsApi.del(documentId);
+    return authApi.del(withQuery(ep.path, ep.params));
 }
 
 const endpoints = strictEndpointGuard(

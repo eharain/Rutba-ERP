@@ -514,6 +514,14 @@ function extractParamsFromValue(valuePart) {
     return '';
 }
 
+function extractExplicitMethod(propBody) {
+    // Look for a literal `method: 'xxx'` (or "xxx" / `xxx`) anywhere inside the
+    // descriptor body. The body is small and already comment-stripped at the
+    // top, but in-body comments are rare enough that a plain regex is fine.
+    const m = propBody.match(/\bmethod\s*:\s*['"`]([A-Za-z]+)['"`]/);
+    return m ? m[1].toLowerCase() : null;
+}
+
 function parseTopLevelProperty(part) {
     const prop = stripLeadingComments(part).trim();
     if (!prop) return null;
@@ -522,7 +530,7 @@ function parseTopLevelProperty(part) {
     if (methodMatch) {
         const openIndex = prop.indexOf('(');
         const params = openIndex >= 0 ? (extractParenContent(prop, openIndex) ?? '') : '';
-        return { key: methodMatch[1], isFunction: true, params };
+        return { key: methodMatch[1], isFunction: true, params, method: extractExplicitMethod(prop) };
     }
 
     const quotedKeyMatch = prop.match(/^(?:'([^']+)'|"([^"]+)"|`([^`]+)`|([A-Za-z_$][\w$]*))\s*:/);
@@ -536,8 +544,9 @@ function parseTopLevelProperty(part) {
         || /^async\s+function\b/.test(valuePart);
 
     const params = isFunction ? extractParamsFromValue(valuePart) : '';
+    const method = isFunction ? extractExplicitMethod(valuePart) : null;
 
-    return { key, isFunction, params };
+    return { key, isFunction, params, method };
 }
 
 function splitParamList(paramsRaw) {
@@ -605,20 +614,20 @@ function buildDtsParamList(paramsRaw) {
  */
 const SPREAD_HELPER_SHAPES = {
     __publish_generic_helper: [
-        { key: 'updateDraft', isFunction: true, params: 'documentId, data' },
-        { key: 'publish', isFunction: true, params: 'documentId' },
-        { key: 'unpublish', isFunction: true, params: 'documentId' },
-        { key: 'create', isFunction: true, params: 'data' },
-        { key: 'del', isFunction: true, params: 'documentId' },
+        { key: 'updateDraft', isFunction: true, params: 'documentId, data', method: 'put' },
+        { key: 'publish', isFunction: true, params: 'documentId', method: 'post' },
+        { key: 'unpublish', isFunction: true, params: 'documentId', method: 'post' },
+        { key: 'create', isFunction: true, params: 'data', method: 'post' },
+        { key: 'del', isFunction: true, params: 'documentId', method: 'delete' },
     ],
     publishMethods: [
-        { key: 'updateDraft', isFunction: true, params: 'documentId, data' },
-        { key: 'publish', isFunction: true, params: 'documentId' },
-        { key: 'unpublish', isFunction: true, params: 'documentId' },
+        { key: 'updateDraft', isFunction: true, params: 'documentId, data', method: 'put' },
+        { key: 'publish', isFunction: true, params: 'documentId', method: 'post' },
+        { key: 'unpublish', isFunction: true, params: 'documentId', method: 'post' },
     ],
     standard: [
-        { key: 'create', isFunction: true, params: 'data' },
-        { key: 'del', isFunction: true, params: 'documentId' },
+        { key: 'create', isFunction: true, params: 'data', method: 'post' },
+        { key: 'del', isFunction: true, params: 'documentId', method: 'delete' },
     ],
 };
 
@@ -676,6 +685,79 @@ function loadApiShape(apiRelativePath, exportName) {
     return properties;
 }
 
+function resolveHttpVerb(key, explicitMethod) {
+    if (explicitMethod) return String(explicitMethod).toUpperCase();
+    if (key.startsWith('post')) return 'POST';
+    if (key.startsWith('put')) return 'PUT';
+    if (key.startsWith('patch')) return 'PATCH';
+    if (key.startsWith('del') || key.startsWith('delete')) return 'DELETE';
+    return 'GET';
+}
+
+function buildSignatureAndForwarding(paramsRaw) {
+    // Mirror the descriptor's own parameter list in the generated wrapper, so
+    // call sites see the same named parameters (with defaults) instead of an
+    // opaque `(...args)`. Destructured patterns can't be forwarded by name,
+    // so they get a positional alias (`arg1`, `arg2`, …) that carries the
+    // descriptor's default through unchanged.
+    const parts = splitParamList(paramsRaw ?? '');
+    if (parts.length === 0) {
+        return { signature: '', forwarding: '' };
+    }
+
+    const sigParts = [];
+    const fwdParts = [];
+
+    parts.forEach((rawPart, idx) => {
+        const { name: binding, hasDefault } = splitParamAtTopLevelEquals(rawPart);
+        const defaultExpr = hasDefault
+            ? rawPart.slice(binding.length).replace(/^\s*=\s*/, '').trimEnd()
+            : null;
+
+        if (binding.startsWith('...')) {
+            sigParts.push(binding);
+            fwdParts.push(binding);
+            return;
+        }
+
+        if (/^[A-Za-z_$][\w$]*$/.test(binding)) {
+            sigParts.push(rawPart);
+            fwdParts.push(binding);
+            return;
+        }
+
+        const alias = `arg${idx + 1}`;
+        sigParts.push(hasDefault ? `${alias} = ${defaultExpr}` : alias);
+        fwdParts.push(alias);
+    });
+
+    return { signature: sigParts.join(', '), forwarding: fwdParts.join(', ') };
+}
+
+function buildActionBody(functionName, clientName, apiRef, verb, signature, forwarding) {
+    // Each generated action calls authApi.<verb> directly — the verb is
+    // resolved at scaffold time from the descriptor's `method:` literal (or
+    // its key prefix as a fallback). withQuery/wrapData are pure shape
+    // helpers; the HTTP dispatch happens right here at the call site.
+    const lines = [`async function ${functionName}(${signature}) {`];
+    lines.push(`    const ep = ${apiRef}(${forwarding});`);
+
+    if (verb === 'GET') {
+        lines.push(`    return ${clientName}.fetch(ep.path, ep.params);`);
+    } else if (verb === 'DELETE') {
+        lines.push(`    return ${clientName}.del(withQuery(ep.path, ep.params));`);
+    } else {
+        // POST / PUT / PATCH — params (if any) ride in the query string, the
+        // request body is the descriptor's `data`, envelope-wrapped to match
+        // Strapi's { data: ... } convention.
+        const verbLower = verb.toLowerCase();
+        lines.push(`    return ${clientName}.${verbLower}(withQuery(ep.path, ep.params), wrapData(ep.data));`);
+    }
+
+    lines.push('}');
+    return lines;
+}
+
 function buildProviderArtifacts(parsed, apiShape, imports) {
     const clientName = parsed.clientName ?? 'authApi';
 
@@ -686,16 +768,24 @@ function buildProviderArtifacts(parsed, apiShape, imports) {
     const endpointPropertyLines = [];
     const methodNameByKey = new Map();
     const dtsMembers = [];
+    const usedCoreHelpers = new Set(['strictEndpointGuard']);
 
-    functionEntries.forEach(({ key, params }) => {
+    functionEntries.forEach(({ key, params, method }) => {
         const functionName = isValidIdentifier(key) ? key : `_endpoint_${key.replace(/[^A-Za-z0-9_$]/g, '_')}`;
         methodNameByKey.set(key, functionName);
 
         const apiRef = toApiMemberReference(parsed.apiAliasName, key);
+        const verb = resolveHttpVerb(key, method);
 
-        methodLines.push(`async function ${functionName}(...args) {`);
-        methodLines.push(`    return executeEndpoint(${clientName}, '${key}', ${apiRef}(...args));`);
-        methodLines.push('}');
+        if (verb === 'DELETE' || verb === 'POST' || verb === 'PUT' || verb === 'PATCH') {
+            usedCoreHelpers.add('withQuery');
+        }
+        if (verb === 'POST' || verb === 'PUT' || verb === 'PATCH') {
+            usedCoreHelpers.add('wrapData');
+        }
+
+        const { signature, forwarding } = buildSignatureAndForwarding(params);
+        methodLines.push(...buildActionBody(functionName, clientName, apiRef, verb, signature, forwarding));
         methodLines.push('');
 
         endpointPropertyLines.push(isValidIdentifier(key)
@@ -726,9 +816,13 @@ function buildProviderArtifacts(parsed, apiShape, imports) {
             .filter(Boolean),
     );
 
+    const coreImportList = ['withQuery', 'wrapData', 'strictEndpointGuard']
+        .filter((name) => usedCoreHelpers.has(name))
+        .join(', ');
+
     const js = [
         `import { ${clientName} } from '${imports.libApiImportPath}';`,
-        `import { executeEndpoint, strictEndpointGuard } from '${imports.coreImportPath}';`,
+        `import { ${coreImportList} } from '${imports.coreImportPath}';`,
         `import { ${parsed.apiExportName} as ${parsed.apiAliasName} } from '${imports.apiImportPath}';`,
         '',
         ...methodLines,

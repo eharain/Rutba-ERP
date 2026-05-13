@@ -1,38 +1,32 @@
+import { listParams, byIdParams } from './__param_builders.js';
+
 export const SaleOffersEndpoints = {
-    listDraft: ({ sort, populate, pagination } = {}) => ({
+    listDraft: ({ page, pageSize, sort, populate, filters, fields } = {}) => ({
         path: '/sale-offers',
-        params: {
-            status: 'draft',
-            sort: sort ?? ['createdAt:desc'],
-            populate: populate ?? ['product_groups', 'cms_pages', 'categories'],
-            pagination: pagination ?? { pageSize: 50 },
-        },
+        params: listParams(
+            { page, pageSize, sort, populate, filters, fields },
+            { sort: ['createdAt:desc'], populate: ['product_groups', 'cms_pages', 'categories'], pageSize: 50 },
+            { status: 'draft' },
+        ),
     }),
 
-    listPublished: ({ pageSize = 200 } = {}) => ({
+    listPublished: ({ page, pageSize, sort, populate, filters, fields } = {}) => ({
         path: '/sale-offers',
-        params: {
-            status: 'published',
-            fields: ['documentId'],
-            pagination: { pageSize },
-        },
+        params: listParams(
+            { page, pageSize, sort, populate, filters, fields },
+            { pageSize: 200, fields: ['documentId'] },
+            { status: 'published' },
+        ),
     }),
 
-    byIdDraft: (documentId, { populate } = {}) => ({
+    byIdDraft: (documentId, { populate, fields } = {}) => ({
         path: `/sale-offers/${documentId}`,
-        params: {
-            status: 'draft',
-            ...(populate ? { populate } : {}),
-        },
+        params: byIdParams({ populate, fields }, {}, { status: 'draft' }),
     }),
 
-    byIdPublished: (documentId, { fields, populate } = {}) => ({
+    byIdPublished: (documentId, { populate, fields } = {}) => ({
         path: `/sale-offers/${documentId}`,
-        params: {
-            status: 'published',
-            ...(fields ? { fields } : {}),
-            ...(populate ? { populate } : {}),
-        },
+        params: byIdParams({ populate, fields }, {}, { status: 'published' }),
     }),
 
     create: (data) => ({ path: '/sale-offers' , data }),

@@ -1,21 +1,25 @@
 import { authApi } from '../../../lib/api.js';
-import { executeEndpoint, strictEndpointGuard } from './___core__.js';
+import { strictEndpointGuard } from './___core__.js';
 import { HrLeaveRequestsEndpoints as HrLeaveRequestsEndpointsApi } from '../../../api/hr-leave-requests.js';
 
-async function myRequests(...args) {
-    return executeEndpoint(authApi, 'myRequests', HrLeaveRequestsEndpointsApi.myRequests(...args));
+async function myRequests() {
+    const ep = HrLeaveRequestsEndpointsApi.myRequests();
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function teamQueue(...args) {
-    return executeEndpoint(authApi, 'teamQueue', HrLeaveRequestsEndpointsApi.teamQueue(...args));
+async function teamQueue() {
+    const ep = HrLeaveRequestsEndpointsApi.teamQueue();
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function create(...args) {
-    return executeEndpoint(authApi, 'create', HrLeaveRequestsEndpointsApi.create(...args));
+async function create(data) {
+    const ep = HrLeaveRequestsEndpointsApi.create(data);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function action(...args) {
-    return executeEndpoint(authApi, 'action', HrLeaveRequestsEndpointsApi.action(...args));
+async function action(documentId, action) {
+    const ep = HrLeaveRequestsEndpointsApi.action(documentId, action);
+    return authApi.fetch(ep.path, ep.params);
 }
 
 const endpoints = strictEndpointGuard(

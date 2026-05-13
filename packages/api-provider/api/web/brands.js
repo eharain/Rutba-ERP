@@ -1,6 +1,6 @@
 export const WebBrandsEndpoints = {
   list: () => ({
-    path: 'brands',
+    path: '/brands',
     method: 'get',
     params: { populate: 'logo' },
   }),

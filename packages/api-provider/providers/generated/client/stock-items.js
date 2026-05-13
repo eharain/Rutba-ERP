@@ -1,57 +1,70 @@
 import { authApi } from '../../../lib/api.js';
-import { executeEndpoint, strictEndpointGuard } from './___core__.js';
+import { withQuery, wrapData, strictEndpointGuard } from './___core__.js';
 import { StockItemsEndpoints as StockItemsEndpointsApi } from '../../../api/stock-items.js';
 
-async function list(...args) {
-    return executeEndpoint(authApi, 'list', StockItemsEndpointsApi.list(...args));
+async function list(page = 1, pageSize = 20, arg3 = {}) {
+    const ep = StockItemsEndpointsApi.list(page, pageSize, arg3);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function listByProduct(...args) {
-    return executeEndpoint(authApi, 'listByProduct', StockItemsEndpointsApi.listByProduct(...args));
+async function listByProduct(productDocId, arg2 = {}) {
+    const ep = StockItemsEndpointsApi.listByProduct(productDocId, arg2);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function listByBarcode(...args) {
-    return executeEndpoint(authApi, 'listByBarcode', StockItemsEndpointsApi.listByBarcode(...args));
+async function listByBarcode(barcode, arg2 = {}) {
+    const ep = StockItemsEndpointsApi.listByBarcode(barcode, arg2);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function checkBarcode(...args) {
-    return executeEndpoint(authApi, 'checkBarcode', StockItemsEndpointsApi.checkBarcode(...args));
+async function checkBarcode(barcode) {
+    const ep = StockItemsEndpointsApi.checkBarcode(barcode);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function orphanGroups(...args) {
-    return executeEndpoint(authApi, 'orphanGroups', StockItemsEndpointsApi.orphanGroups(...args));
+async function orphanGroups(arg1 = {}) {
+    const ep = StockItemsEndpointsApi.orphanGroups(arg1);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function orphanGroupItems(...args) {
-    return executeEndpoint(authApi, 'orphanGroupItems', StockItemsEndpointsApi.orphanGroupItems(...args));
+async function orphanGroupItems(arg1 = {}) {
+    const ep = StockItemsEndpointsApi.orphanGroupItems(arg1);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function create(...args) {
-    return executeEndpoint(authApi, 'create', StockItemsEndpointsApi.create(...args));
+async function create(data) {
+    const ep = StockItemsEndpointsApi.create(data);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
-async function searchByBarcode(...args) {
-    return executeEndpoint(authApi, 'searchByBarcode', StockItemsEndpointsApi.searchByBarcode(...args));
+async function searchByBarcode(barcode) {
+    const ep = StockItemsEndpointsApi.searchByBarcode(barcode);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function searchByName(...args) {
-    return executeEndpoint(authApi, 'searchByName', StockItemsEndpointsApi.searchByName(...args));
+async function searchByName(name) {
+    const ep = StockItemsEndpointsApi.searchByName(name);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function byId(...args) {
-    return executeEndpoint(authApi, 'byId', StockItemsEndpointsApi.byId(...args));
+async function byId(id, arg2 = {}) {
+    const ep = StockItemsEndpointsApi.byId(id, arg2);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function update(...args) {
-    return executeEndpoint(authApi, 'update', StockItemsEndpointsApi.update(...args));
+async function update(documentId, data) {
+    const ep = StockItemsEndpointsApi.update(documentId, data);
+    return authApi.put(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
-async function byProduct(...args) {
-    return executeEndpoint(authApi, 'byProduct', StockItemsEndpointsApi.byProduct(...args));
+async function byProduct(productDocId, arg2 = {}) {
+    const ep = StockItemsEndpointsApi.byProduct(productDocId, arg2);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function transfer(...args) {
-    return executeEndpoint(authApi, 'transfer', StockItemsEndpointsApi.transfer(...args));
+async function transfer() {
+    const ep = StockItemsEndpointsApi.transfer();
+    return authApi.fetch(ep.path, ep.params);
 }
 
 const endpoints = strictEndpointGuard(

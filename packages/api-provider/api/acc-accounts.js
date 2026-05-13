@@ -1,9 +1,9 @@
 /**
  * AccAccountsEndpoints
  * Pure endpoint descriptors for the /acc-accounts resource.
- * All methods return { path, params?, data? } objects.
- * Transport execution happens via createClientProxy in /endpoints/acc-accounts.js.
  */
+import { listParams, byIdParams } from './__param_builders.js';
+
 export const AccAccountsEndpoints = {
 
     meta: {
@@ -12,33 +12,21 @@ export const AccAccountsEndpoints = {
         roles: ['admin', 'manager', 'accountant']
     },
 
-    /**
-     * List all accounting accounts.
-     * @param {{ sort?, populate?, pagination? }} opts
-     */
-    list: ({ sort, populate, pagination } = {}) => ({
+    list: ({ page, pageSize, sort, populate, filters, fields } = {}) => ({
         path: '/acc-accounts',
         action: 'find',
         method: 'get',
-        params: {
-            sort: sort ?? ['code:asc'],
-            ...(populate ? { populate } : {}),
-            ...(pagination ? { pagination } : {}),
-        },
+        params: listParams(
+            { page, pageSize, sort, populate, filters, fields },
+            { sort: ['code:asc'] },
+        ),
     }),
 
-    /**
-     * Get account by documentId.
-     * @param {string} documentId
-     * @param {{ populate? }} opts
-     */
-    byId: (documentId, { populate } = {}) => ({
+    byId: (documentId, { populate, fields } = {}) => ({
         path: `/acc-accounts/${documentId}`,
         action: 'findOne',
         method: 'get',
-        params: {
-            ...(populate ? { populate } : {}),
-        },
+        params: byIdParams({ populate, fields }),
     }),
 
     /**

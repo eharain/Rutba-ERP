@@ -1,26 +1,19 @@
+import { byIdParams } from './__param_builders.js';
+
 export const SiteSettingEndpoints = {
-    getDraft: ({ populate } = {}) => ({
+    getDraft: ({ populate, fields } = {}) => ({
         path: '/site-setting',
-        params: {
-            status: 'draft',
-            populate: populate ?? ['site_logo'],
-        },
+        params: byIdParams({ populate, fields }, { populate: ['site_logo'] }, { status: 'draft' }),
     }),
 
-    fetchDraft: ({ populate } = {}) => ({
+    fetchDraft: ({ populate, fields } = {}) => ({
         path: '/site-setting',
-        params: {
-            status: 'draft',
-            populate: populate ?? ['site_logo'],
-        },
+        params: byIdParams({ populate, fields }, { populate: ['site_logo'] }, { status: 'draft' }),
     }),
 
-    getPublished: ({ fields } = {}) => ({
+    getPublished: ({ populate, fields } = {}) => ({
         path: '/site-setting',
-        params: {
-            status: 'published',
-            ...(fields ? { fields } : {}),
-        },
+        params: byIdParams({ populate, fields }, {}, { status: 'published' }),
     }),
 
     updateDraft: (data) => ({ path: '/site-setting', action: 'updateDraft', method: 'put', data }),

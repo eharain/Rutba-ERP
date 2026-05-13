@@ -1,13 +1,13 @@
 // AUTO-GENERATED — do not edit. Source: scaffold-endpoint-providers.mjs
 export interface CmsPagesEndpointsType {
-    list({ pageType, sort, pageSize = 50 }?: any): Promise<any>;
-    listDraft({ search, typeFilter, sort, pageSize = 50 }?: any): Promise<any>;
-    listPublished({ pageSize = 200 }?: any): Promise<any>;
+    list({ page, pageSize, sort, populate, filters, fields, pageType }?: any): Promise<any>;
+    listDraft({ page, pageSize, sort, populate, filters, fields, search, typeFilter }?: any): Promise<any>;
+    listPublished({ page, pageSize, sort, populate, filters, fields }?: any): Promise<any>;
     bySlug(slug: any): Promise<any>;
     bySlugCheck(slug: any): Promise<any>;
     headerData(): Promise<any>;
-    byIdDraft(documentId: any, params?: any): Promise<any>;
-    byIdPublished(documentId: any, params?: any): Promise<any>;
+    byIdDraft(documentId: any, { populate, fields }?: any): Promise<any>;
+    byIdPublished(documentId: any, { populate, fields }?: any): Promise<any>;
     update(documentId: any, data: any): Promise<any>;
     updateDraft(documentId: any, data: any): Promise<any>;
     publish(documentId: any): Promise<any>;

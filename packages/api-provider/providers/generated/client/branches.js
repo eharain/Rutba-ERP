@@ -1,37 +1,45 @@
 import { authApi } from '../../../lib/api.js';
-import { executeEndpoint, strictEndpointGuard } from './___core__.js';
+import { withQuery, wrapData, strictEndpointGuard } from './___core__.js';
 import { BranchesEndpoints as BranchesEndpointsApi } from '../../../api/branches.js';
 
-async function searchBranches(...args) {
-    return executeEndpoint(authApi, 'searchBranches', BranchesEndpointsApi.searchBranches(...args));
+async function searchBranches(searchTerm, page = 1, rowsPerPage = 5) {
+    const ep = BranchesEndpointsApi.searchBranches(searchTerm, page, rowsPerPage);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function listWithDesks(...args) {
-    return executeEndpoint(authApi, 'listWithDesks', BranchesEndpointsApi.listWithDesks(...args));
+async function listWithDesks(arg1 = {}) {
+    const ep = BranchesEndpointsApi.listWithDesks(arg1);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function list(...args) {
-    return executeEndpoint(authApi, 'list', BranchesEndpointsApi.list(...args));
+async function list(arg1 = {}) {
+    const ep = BranchesEndpointsApi.list(arg1);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function byId(...args) {
-    return executeEndpoint(authApi, 'byId', BranchesEndpointsApi.byId(...args));
+async function byId(documentId, arg2 = {}) {
+    const ep = BranchesEndpointsApi.byId(documentId, arg2);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function update(...args) {
-    return executeEndpoint(authApi, 'update', BranchesEndpointsApi.update(...args));
+async function update(documentId, data) {
+    const ep = BranchesEndpointsApi.update(documentId, data);
+    return authApi.put(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
-async function archiveStats(...args) {
-    return executeEndpoint(authApi, 'archiveStats', BranchesEndpointsApi.archiveStats(...args));
+async function archiveStats(branchDocumentId) {
+    const ep = BranchesEndpointsApi.archiveStats(branchDocumentId);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function archiveStock(...args) {
-    return executeEndpoint(authApi, 'archiveStock', BranchesEndpointsApi.archiveStock(...args));
+async function archiveStock(branchDocumentId) {
+    const ep = BranchesEndpointsApi.archiveStock(branchDocumentId);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function unarchiveStock(...args) {
-    return executeEndpoint(authApi, 'unarchiveStock', BranchesEndpointsApi.unarchiveStock(...args));
+async function unarchiveStock(branchDocumentId) {
+    const ep = BranchesEndpointsApi.unarchiveStock(branchDocumentId);
+    return authApi.fetch(ep.path, ep.params);
 }
 
 const endpoints = strictEndpointGuard(

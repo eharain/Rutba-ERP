@@ -1,29 +1,35 @@
 import { authApi } from '../../../lib/api.js';
-import { executeEndpoint, strictEndpointGuard } from './___core__.js';
+import { withQuery, wrapData, strictEndpointGuard } from './___core__.js';
 import { TermTypesEndpoints as TermTypesEndpointsApi } from '../../../api/term-types.js';
 
-async function listVariants(...args) {
-    return executeEndpoint(authApi, 'listVariants', TermTypesEndpointsApi.listVariants(...args));
+async function listVariants(arg1 = {}) {
+    const ep = TermTypesEndpointsApi.listVariants(arg1);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function listWithTerms(...args) {
-    return executeEndpoint(authApi, 'listWithTerms', TermTypesEndpointsApi.listWithTerms(...args));
+async function listWithTerms(arg1 = {}) {
+    const ep = TermTypesEndpointsApi.listWithTerms(arg1);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function list(...args) {
-    return executeEndpoint(authApi, 'list', TermTypesEndpointsApi.list(...args));
+async function list(arg1 = {}) {
+    const ep = TermTypesEndpointsApi.list(arg1);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function create(...args) {
-    return executeEndpoint(authApi, 'create', TermTypesEndpointsApi.create(...args));
+async function create(data) {
+    const ep = TermTypesEndpointsApi.create(data);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
-async function update(...args) {
-    return executeEndpoint(authApi, 'update', TermTypesEndpointsApi.update(...args));
+async function update(id, data) {
+    const ep = TermTypesEndpointsApi.update(id, data);
+    return authApi.put(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
-async function del(...args) {
-    return executeEndpoint(authApi, 'del', TermTypesEndpointsApi.del(...args));
+async function del(id) {
+    const ep = TermTypesEndpointsApi.del(id);
+    return authApi.del(withQuery(ep.path, ep.params));
 }
 
 const endpoints = strictEndpointGuard(

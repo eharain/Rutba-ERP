@@ -1,21 +1,25 @@
 import { authApi } from '../../../lib/api.js';
-import { executeEndpoint, strictEndpointGuard } from './___core__.js';
+import { withQuery, wrapData, strictEndpointGuard } from './___core__.js';
 import { CashRegisterTransactionEndpoints as CashRegisterTransactionEndpointsApi } from '../../../api/cash-register-transactions.js';
 
-async function create(...args) {
-    return executeEndpoint(authApi, 'create', CashRegisterTransactionEndpointsApi.create(...args));
+async function create(data) {
+    const ep = CashRegisterTransactionEndpointsApi.create(data);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
-async function postCreate(...args) {
-    return executeEndpoint(authApi, 'postCreate', CashRegisterTransactionEndpointsApi.postCreate(...args));
+async function postCreate(data) {
+    const ep = CashRegisterTransactionEndpointsApi.postCreate(data);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
-async function byRegister(...args) {
-    return executeEndpoint(authApi, 'byRegister', CashRegisterTransactionEndpointsApi.byRegister(...args));
+async function byRegister(registerDocumentId, arg2 = {}) {
+    const ep = CashRegisterTransactionEndpointsApi.byRegister(registerDocumentId, arg2);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function fetchByRegister(...args) {
-    return executeEndpoint(authApi, 'fetchByRegister', CashRegisterTransactionEndpointsApi.fetchByRegister(...args));
+async function fetchByRegister(registerDocumentId, arg2 = {}) {
+    const ep = CashRegisterTransactionEndpointsApi.fetchByRegister(registerDocumentId, arg2);
+    return authApi.fetch(ep.path, ep.params);
 }
 
 const endpoints = strictEndpointGuard(

@@ -1,9 +1,10 @@
 import { authApi } from '../../../lib/api.js';
-import { executeEndpoint, strictEndpointGuard } from './___core__.js';
+import { strictEndpointGuard } from './___core__.js';
 import { PayPayslipsEndpoints as PayPayslipsEndpointsApi } from '../../../api/pay-payslips.js';
 
-async function list(...args) {
-    return executeEndpoint(authApi, 'list', PayPayslipsEndpointsApi.list(...args));
+async function list(arg1 = {}) {
+    const ep = PayPayslipsEndpointsApi.list(arg1);
+    return authApi.fetch(ep.path, ep.params);
 }
 
 const endpoints = strictEndpointGuard(

@@ -1,4 +1,4 @@
-import { executeEndpoint } from '../providers/generated/client/___core__.js';
+import { resolveHttpVerb } from '../providers/generated/client/___core__.js';
 import { WebAuthEndpoints as WebAuthApiEndpoints } from '../api/web/auth.js';
 import { WebProductsEndpoints as WebProductsApiEndpoints } from '../api/web/products.js';
 import { WebOrdersEndpoints as WebOrdersApiEndpoints } from '../api/web/orders.js';
@@ -14,63 +14,29 @@ function assert(condition, message) {
   }
 }
 
-function createClientMock() {
-  const calls = [];
-  return {
-    calls,
-    fetch: async (path, params) => {
-      calls.push({ method: 'get', path, params });
-      return { ok: true, method: 'get', path, params };
-    },
-    post: async (path, data) => {
-      calls.push({ method: 'post', path, data });
-      return { ok: true, method: 'post', path, data };
-    },
-    put: async (path, data) => {
-      calls.push({ method: 'put', path, data });
-      return { ok: true, method: 'put', path, data };
-    },
-    patch: async (path, data) => {
-      calls.push({ method: 'patch', path, data });
-      return { ok: true, method: 'patch', path, data };
-    },
-    del: async (path) => {
-      calls.push({ method: 'delete', path });
-      return {
-        ok: true,
-        method: 'delete',
-        path,
-      };
-    },
-  };
-}
-
-async function testDispatchCore() {
-  const clientMock = createClientMock();
-
-  await executeEndpoint(clientMock, 'localSignIn', WebAuthApiEndpoints.localSignIn());
-  await executeEndpoint(clientMock, 'providerCallback', WebAuthApiEndpoints.providerCallback('google', 'token-1'));
-  await executeEndpoint(clientMock, 'search', WebProductsApiEndpoints.search('nike'));
-  await executeEndpoint(clientMock, 'create', WebOrdersApiEndpoints.create({ order_id: 'ORD-1' }));
-
-  assert(clientMock.calls.length === 4, 'Expected 4 dispatched calls from endpoint descriptors.');
-
-  const [signIn, provider, search, createOrder] = clientMock.calls;
-  assert(signIn.method === 'post', 'localSignIn should dispatch POST.');
+// Method dispatch lives inline in each scaffolded action now — no runtime
+// executeEndpoint() to spy on. We validate the same contract a different way:
+// (1) the descriptor itself produces the expected path/method/params/data,
+// (2) the scaffold-time verb resolver agrees with the descriptor.
+function testDescriptorVerbs() {
+  const signIn = WebAuthApiEndpoints.localSignIn();
   assert(signIn.path === '/auth/local', 'localSignIn path mismatch.');
+  assert(resolveHttpVerb('localSignIn', signIn.method) === 'POST', 'localSignIn should resolve to POST.');
 
-  assert(provider.method === 'get', 'providerCallback should dispatch GET.');
+  const provider = WebAuthApiEndpoints.providerCallback('google', 'token-1');
   assert(provider.path === '/auth/google/callback', 'providerCallback path mismatch.');
   assert(provider.params?.access_token === 'token-1', 'providerCallback params mismatch.');
+  assert(resolveHttpVerb('providerCallback', provider.method) === 'GET', 'providerCallback should resolve to GET.');
 
-  const ep = WebProductsApiEndpoints.search('nike');
+  const search = WebProductsApiEndpoints.search('nike');
   assert(search.path === '/products', 'Products search path mismatch.');
-  assert(search.method === 'get', 'Products search method mismatch.');
-  assert(search.params?.filters?.name?.$contains === ep.params.filters.name.$contains, 'Products search params mismatch.');
+  assert(resolveHttpVerb('search', search.method) === 'GET', 'Products search should resolve to GET.');
+  assert(search.params?.filters?.name?.$contains === 'nike', 'Products search params mismatch.');
 
+  const createOrder = WebOrdersApiEndpoints.create({ order_id: 'ORD-1' });
   assert(createOrder.path === '/orders', 'Orders create path mismatch.');
-  assert(createOrder.method === 'post', 'Orders create method mismatch.');
-  assert(createOrder.data?.data?.order_id === 'ORD-1', 'Orders create payload mismatch.');
+  assert(resolveHttpVerb('create', createOrder.method) === 'POST', 'Orders create should resolve to POST.');
+  assert(createOrder.data?.order_id === 'ORD-1', 'Orders create payload mismatch.');
 }
 
 function testGeneratedClientSurface() {
@@ -86,9 +52,9 @@ function testGeneratedClientSurface() {
 }
 
 async function main() {
-  await testDispatchCore();
+  testDescriptorVerbs();
   testGeneratedClientSurface();
-  console.log('Web proxy validation passed (dispatch core + generated client surface).');
+  console.log('Web proxy validation passed (descriptor verbs + generated client surface).');
 }
 
 main().catch((error) => {

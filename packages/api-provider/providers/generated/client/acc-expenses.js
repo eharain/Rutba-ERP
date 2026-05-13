@@ -1,9 +1,10 @@
 import { authApi } from '../../../lib/api.js';
-import { executeEndpoint, strictEndpointGuard } from './___core__.js';
+import { strictEndpointGuard } from './___core__.js';
 import { AccExpensesEndpoints as AccExpensesEndpointsApi } from '../../../api/acc-expenses.js';
 
-async function list(...args) {
-    return executeEndpoint(authApi, 'list', AccExpensesEndpointsApi.list(...args));
+async function list(arg1 = {}) {
+    const ep = AccExpensesEndpointsApi.list(arg1);
+    return authApi.fetch(ep.path, ep.params);
 }
 
 const endpoints = strictEndpointGuard(

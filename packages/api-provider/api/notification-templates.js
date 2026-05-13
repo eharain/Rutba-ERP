@@ -2,6 +2,7 @@
  * NotificationTemplatesEndpoints
  * Path + params definitions for notification-template content API resources.
  */
+import { listParams, byIdParams } from './__param_builders.js';
 
 export const NotificationTemplatesEndpoints = {
     meta: {
@@ -10,28 +11,22 @@ export const NotificationTemplatesEndpoints = {
         roles: ['admin', 'manager', 'staff']
     },
 
-    list: ({ sort, populate, pagination } = {}) => ({
+    list: ({ page, pageSize, sort, populate, filters, fields } = {}) => ({
         path: '/notification-templates',
         action: 'find',
         method: 'get',
         apps: ['auth', 'cms', 'sale', 'social'],
         approle: ['admin', 'manager', 'staff'],
-        params: {
-            ...(sort ? { sort } : {}),
-            ...(populate ? { populate } : {}),
-            ...(pagination ? { pagination } : {}),
-        },
+        params: listParams({ page, pageSize, sort, populate, filters, fields }),
     }),
 
-    byId: (documentId, { populate } = {}) => ({
+    byId: (documentId, { populate, fields } = {}) => ({
         path: `/notification-templates/${documentId}`,
         action: 'findOne',
         method: 'get',
         apps: ['auth', 'cms', 'sale', 'social'],
         approle: ['admin', 'manager', 'staff'],
-        params: {
-            ...(populate ? { populate } : {}),
-        },
+        params: byIdParams({ populate, fields }),
     }),
 
     create: (data) => ({

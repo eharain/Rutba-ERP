@@ -1,3 +1,5 @@
+import { listParams } from './__param_builders.js';
+
 export const RidersEndpoints = {
     meta: {
         uid: 'api::rider.rider',
@@ -5,18 +7,16 @@ export const RidersEndpoints = {
         roles: ['admin', 'manager', 'staff']
     },
 
-    list: ({ sort, populate, pagination, fields } = {}) => ({
+    list: ({ page, pageSize, sort, populate, filters, fields } = {}) => ({
         path: '/riders',
         action: 'find',
         method: 'get',
         apps: ['rider', 'delivery'],
         approle: ['admin', 'manager', 'staff'],
-        params: {
-            sort: sort ?? ['createdAt:desc'],
-            populate: populate ?? ['assigned_zones', 'user'],
-            pagination: pagination ?? { pageSize: 200 },
-            ...(fields ? { fields } : {}),
-        },
+        params: listParams(
+            { page, pageSize, sort, populate, filters, fields },
+            { sort: ['createdAt:desc'], populate: ['assigned_zones', 'user'], pageSize: 200 },
+        ),
     }),
     create: (data) => ({
         path: '/riders',

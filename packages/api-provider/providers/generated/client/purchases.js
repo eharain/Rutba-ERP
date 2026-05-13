@@ -1,25 +1,30 @@
 import { authApi } from '../../../lib/api.js';
-import { executeEndpoint, strictEndpointGuard } from './___core__.js';
+import { withQuery, wrapData, strictEndpointGuard } from './___core__.js';
 import { PurchasesEndpoints as PurchasesEndpointsApi } from '../../../api/purchases.js';
 
-async function list(...args) {
-    return executeEndpoint(authApi, 'list', PurchasesEndpointsApi.list(...args));
+async function list(page = 1, pageSize = 100, arg3 = {}) {
+    const ep = PurchasesEndpointsApi.list(page, pageSize, arg3);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function byId(...args) {
-    return executeEndpoint(authApi, 'byId', PurchasesEndpointsApi.byId(...args));
+async function byId(idOrOrderId) {
+    const ep = PurchasesEndpointsApi.byId(idOrOrderId);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function create(...args) {
-    return executeEndpoint(authApi, 'create', PurchasesEndpointsApi.create(...args));
+async function create(data) {
+    const ep = PurchasesEndpointsApi.create(data);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
-async function update(...args) {
-    return executeEndpoint(authApi, 'update', PurchasesEndpointsApi.update(...args));
+async function update(documentId, data) {
+    const ep = PurchasesEndpointsApi.update(documentId, data);
+    return authApi.put(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
-async function del(...args) {
-    return executeEndpoint(authApi, 'del', PurchasesEndpointsApi.del(...args));
+async function del(documentId) {
+    const ep = PurchasesEndpointsApi.del(documentId);
+    return authApi.del(withQuery(ep.path, ep.params));
 }
 
 const endpoints = strictEndpointGuard(

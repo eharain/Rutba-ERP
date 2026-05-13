@@ -2,6 +2,7 @@
  * CashRegistersEndpoints
  * Centralised path + params definitions for /cash-registers and related custom routes.
  */
+import { listParams, byIdParams } from './__param_builders.js';
 
 // Per-role server-side scope for every policy (method) below.
 // Admin/manager: unrestricted. Staff: own registers from the last 7 days
@@ -27,37 +28,27 @@ export const CashRegistersEndpoints = {
         roles: ['admin', 'manager', 'staff'],
     },
 
-    /**
-     * Paginated list of cash registers with optional filters.
-     * @param {{ filters?, sort?, page?, pageSize?, populate? }} opts
-     */
-    list: ({ filters, sort, page = 1, pageSize = 20, populate } = {}) => ({
+    list: ({ page, pageSize, sort, populate, filters, fields } = {}) => ({
         path: '/cash-registers',
         action: 'find',
         method: 'get',
         apps: ['accounts', 'sale', 'accounts-viewer', 'auth'],
         approle: ['admin', 'manager', 'staff'],
         scope: ROLE_SCOPES,
-        params: {
-            ...(filters ? { filters } : {}),
-            sort: sort ?? ['opened_at:desc'],
-            pagination: { page, pageSize },
-            ...(populate ? { populate } : {}),
-        },
+        params: listParams(
+            { page, pageSize, sort, populate, filters, fields },
+            { sort: ['opened_at:desc'], pageSize: 20 },
+        ),
     }),
-/**
-     * Fetch a single cash register by documentId.
-     * @param {string} documentId
-     * @param {{ populate? }} opts
-     */
-    byId: (documentId, { populate } = {}) => ({
+
+    byId: (documentId, { populate, fields } = {}) => ({
         path: `/cash-registers/${documentId}`,
         action: 'findOne',
         method: 'get',
         apps: ['accounts', 'sale', 'accounts-viewer', 'auth'],
         approle: ['admin', 'manager', 'staff'],
         scope: ROLE_SCOPES,
-        params: populate ? { populate } : undefined,
+        params: byIdParams({ populate, fields }),
     }),
 /**
      * Fetch the active cash register for a desk + user.

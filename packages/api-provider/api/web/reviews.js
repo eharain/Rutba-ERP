@@ -1,6 +1,6 @@
 export const WebReviewsEndpoints = {
   bySlug: (slug) => ({
-    path: 'product-reviews/',
+    path: '/product-reviews/',
     method: 'get',
     params: {
       pagination: { limit: -1 },
@@ -12,7 +12,7 @@ export const WebReviewsEndpoints = {
   }),
 
   countBySlug: (slug) => ({
-    path: `product-reviews/${slug}/count`,
+    path: `/product-reviews/${slug}/count`,
     method: 'get',
   }),
 };

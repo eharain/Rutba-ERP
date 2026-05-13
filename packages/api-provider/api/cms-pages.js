@@ -4,6 +4,7 @@
  * Covers both the admin (pos-shared / rutba-cms) draft flows and the web storefront read flows.
  */
 import __publish_generic_helper from "./__publish_generic_helper.js";
+import { listParams, byIdParams } from './__param_builders.js';
 
 export const CmsPagesEndpoints = {
 
@@ -15,33 +16,34 @@ export const CmsPagesEndpoints = {
 
     /**
      * List published CMS pages (storefront / public-facing reads).
-     * Sort, fields, and populate mirror the existing web service calls.
-     * @param {{ pageType?, sort?, pageSize? }} opts
+     * @param {{ pageType? }} extra  — convenience filter shorthand for page_type.
      */
-    list: ({ pageType, sort, pageSize = 50 } = {}) => ({
+    list: ({ page, pageSize, sort, populate, filters, fields, pageType } = {}) => ({
         path: '/cms-pages',
         action: 'find',
         method: 'get',
         apps: ['cms', 'auth', 'stock', 'sale', 'web-public', 'web-authenticated', 'web-user'],
         approle: ['admin', 'manager', 'staff', 'public', 'user'],
-        params: {
-            sort: sort ?? ['sort_order:asc', 'createdAt:desc'],
-            fields: ['title', 'slug', 'excerpt', 'page_type', 'sort_order', 'enable_contact_form', 'createdAt', 'updatedAt', 'publishedAt'],
-            populate: ['featured_image', 'background_image'],
-            pagination: { pageSize },
-            ...(pageType ? { filters: { page_type: { $eq: pageType } } } : {}),
-        },
+        params: listParams(
+            { page, pageSize, sort, populate, filters, fields },
+            {
+                sort: ['sort_order:asc', 'createdAt:desc'],
+                fields: ['title', 'slug', 'excerpt', 'page_type', 'sort_order', 'enable_contact_form', 'createdAt', 'updatedAt', 'publishedAt'],
+                populate: ['featured_image', 'background_image'],
+                pageSize: 50,
+                ...(pageType ? { filters: { page_type: { $eq: pageType } } } : {}),
+            },
+        ),
     }),
 
     /**
      * Draft list — used by the rutba-cms admin screen.
-     * Supports optional text search and page type filter.
-     * @param {{ search?, typeFilter?, sort?, pageSize? }} opts
+     * @param {{ search?, typeFilter? }} extra  — convenience filter shortcuts.
      */
-    listDraft: ({ search, typeFilter, sort, pageSize = 50 } = {}) => {
-        const filters = {};
-        if (search) filters.title = { $containsi: search };
-        if (typeFilter) filters.page_type = { $eq: typeFilter };
+    listDraft: ({ page, pageSize, sort, populate, filters, fields, search, typeFilter } = {}) => {
+        const shortcutFilters = {};
+        if (search) shortcutFilters.title = { $containsi: search };
+        if (typeFilter) shortcutFilters.page_type = { $eq: typeFilter };
 
         return {
             path: '/cms-pages',
@@ -49,31 +51,33 @@ export const CmsPagesEndpoints = {
             method: 'get',
             apps: ['cms', 'auth', 'stock'],
             approle: ['admin', 'manager', 'staff'],
-            params: {
-                status: 'draft',
-                sort: sort ?? ['sort_order:asc', 'createdAt:desc'],
-                populate: ['featured_image'],
-                pagination: { pageSize },
-                ...(Object.keys(filters).length > 0 ? { filters } : {}),
-            },
+            params: listParams(
+                { page, pageSize, sort, populate, filters, fields },
+                {
+                    sort: ['sort_order:asc', 'createdAt:desc'],
+                    populate: ['featured_image'],
+                    pageSize: 50,
+                    ...(Object.keys(shortcutFilters).length > 0 ? { filters: shortcutFilters } : {}),
+                },
+                { status: 'draft' },
+            ),
         };
     },
 
     /**
      * Published list — used to determine publication state in the CMS screen.
-     * @param {{ pageSize? }} opts
      */
-    listPublished: ({ pageSize = 200 } = {}) => ({
+    listPublished: ({ page, pageSize, sort, populate, filters, fields } = {}) => ({
         path: '/cms-pages',
         action: 'find',
         method: 'get',
         apps: ['cms', 'auth', 'stock', 'sale', 'web-public', 'web-authenticated', 'web-user'],
         approle: ['admin', 'manager', 'staff', 'public', 'user'],
-        params: {
-            status: 'published',
-            fields: ['documentId'],
-            pagination: { pageSize },
-        },
+        params: listParams(
+            { page, pageSize, sort, populate, filters, fields },
+            { pageSize: 200, fields: ['documentId'] },
+            { status: 'published' },
+        ),
     }),
 
     /**
@@ -139,22 +143,22 @@ export const CmsPagesEndpoints = {
         }
     }),
 
-    byIdDraft: (documentId, params = {}) => ({
+    byIdDraft: (documentId, { populate, fields } = {}) => ({
         path: `/cms-pages/${documentId}`,
         action: 'findOne',
         method: 'get',
         apps: ['cms', 'auth', 'stock'],
         approle: ['admin', 'manager', 'staff'],
-        params: { status: 'draft', ...params },
+        params: byIdParams({ populate, fields }, {}, { status: 'draft' }),
     }),
 
-    byIdPublished: (documentId, params = {}) => ({
+    byIdPublished: (documentId, { populate, fields } = {}) => ({
         path: `/cms-pages/${documentId}`,
         action: 'findOne',
         method: 'get',
         apps: ['cms', 'auth', 'stock', 'sale', 'web-public', 'web-authenticated', 'web-user'],
         approle: ['admin', 'manager', 'staff', 'public', 'user'],
-        params: { status: 'published', ...params },
+        params: byIdParams({ populate, fields }, {}, { status: 'published' }),
     }),
     // todo: speculative stub — full (non-draft) update PUT. Used by the bulk CSV
     // import in rutba-cms/pages/pages.js where the row should overwrite both draft
