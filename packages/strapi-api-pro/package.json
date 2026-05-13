@@ -1,8 +1,26 @@
 {
   "name": "strapi-api-pro",
-  "version": "0.0.1-alpha",
+  "version": "0.0.1",
   "description": "API interface builder and policy orchestration plugin for Strapi 5",
   "license": "MIT",
+  "author": {
+    "name": "Ejaz Hussain Arain",
+    "email": "eharain@yahoo.com",
+    "url": "https://www.linkedin.com/in/ejazarain"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/eharain/Rutba-POS.git",
+    "directory": "packages/strapi-api-pro"
+  },
+  "bugs": {
+    "url": "https://github.com/eharain/Rutba-POS/issues"
+  },
+  "homepage": "https://github.com/eharain/Rutba-POS/tree/main/packages/strapi-api-pro#readme",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "main": "./dist/server/index.js",
   "exports": {
     ".": {
@@ -35,10 +53,17 @@
     "@strapi/strapi": "^5.0.0",
     "@strapi/design-system": "^2.0.0",
     "@strapi/icons": "^2.0.0",
-    "react": "^17.0.0 || ^18.0.0",
-    "react-dom": "^17.0.0 || ^18.0.0",
-    "react-router-dom": "^6.0.0",
-    "styled-components": "^6.0.0"
+    "react": "^17.0.0 || ^18.0.0 || ^19.0.0",
+    "react-dom": "^17.0.0 || ^18.0.0 || ^19.0.0",
+    "react-router-dom": "^6.0.0 || ^7.0.0",
+    "styled-components": "^npm 6.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@strapi/strapi": { "optional": true },
+    "@strapi/design-system": { "optional": true },
+    "@strapi/icons": { "optional": true },
+    "react-router-dom": { "optional": true },
+    "styled-components": { "optional": true }
   },
   "devDependencies": {
     "@strapi/sdk-plugin": "^5.0.0",
