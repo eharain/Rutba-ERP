@@ -1,16 +1,16 @@
-'use strict';
+﻿'use strict';
 
 // Seeder: reads @rutba/api-provider's static config (domains.json + roles.json)
 // AND its endpoint descriptors under api/*.js, and upserts everything into
 // the plugin's DB tables: api_pro_app_domains, app_roles, api_interfaces,
 // api_interface_methods, api_method_policies.
 //
-// Idempotent — re-running updates existing rows by their natural keys:
-//   domains  → unique `key`
-//   roles    → unique `key`
-//   interfaces → unique `key` (= contentTypeUid)
-//   methods  → key `${interfaceKey}:${methodName}`
-//   policies → key `${interfaceKey}:${methodName}:${roleKey}`
+// Idempotent â€” re-running updates existing rows by their natural keys:
+//   domains  â†’ unique `key`
+//   roles    â†’ unique `key`
+//   interfaces â†’ unique `key` (= contentTypeUid)
+//   methods  â†’ key `${interfaceKey}:${methodName}`
+//   policies â†’ key `${interfaceKey}:${methodName}:${roleKey}`
 //
 // Mirrors the logic in @rutba/api-provider/server/access-guard/build-resources.cjs
 // (action inference, grant expansion) but captures HTTP method and path per
@@ -20,13 +20,21 @@ const fs = require('fs');
 const path = require('path');
 const { pathToFileURL } = require('url');
 
+const fileStore = require('./file-store');
+
 const APP_DOMAIN_UID = 'plugin::api-pro.app-domain';
 const APP_ROLE_UID = 'plugin::api-pro.app-role';
 const INTERFACE_UID = 'plugin::api-pro.api-interface';
 const METHOD_UID = 'plugin::api-pro.api-interface-method';
 const POLICY_UID = 'plugin::api-pro.api-method-policy';
 
-// ─── api-provider resolution ────────────────────────────────────────────────
+// Bump when the seeder's logic changes in a way that affects what gets
+// written to the DB (column added, action inference changed, scope shorthand
+// expanded, etc). The checkpoint records this version; a mismatch forces a
+// reseed even when source mtimes are unchanged.
+const SEEDER_VERSION = 1;
+
+// â”€â”€â”€ api-provider resolution â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // api-provider's package.json doesn't export './package.json', so we can't
 // use that path. Instead, resolve a config file we know IS exported
 // (./config/domains) and walk up two levels to find the package root.
@@ -46,7 +54,7 @@ function loadJson(absPath) {
   return JSON.parse(fs.readFileSync(absPath, 'utf8'));
 }
 
-// ─── descriptor introspection (ported from build-resources.cjs) ─────────────
+// â”€â”€â”€ descriptor introspection (ported from build-resources.cjs) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function uniqueStrings(values) {
   return [...new Set((Array.isArray(values) ? values : []).filter((v) => typeof v === 'string' && v.trim()))];
 }
@@ -82,7 +90,7 @@ function createInvocationArgs(fn) {
   return arity > 0 ? new Array(arity).fill(undefined) : [];
 }
 
-// Build (singular|plural|model) → UID lookup so endpoints without explicit
+// Build (singular|plural|model) â†’ UID lookup so endpoints without explicit
 // meta.uid can still be routed to a content-type.
 function buildContentTypeLookup(strapi) {
   const lookup = new Map();
@@ -110,7 +118,7 @@ function inferUidFromPath(endpointPath, lookup) {
   return null;
 }
 
-// Expand (domains × role levels) → flat list of role keys, using the
+// Expand (domains Ã— role levels) â†’ flat list of role keys, using the
 // api-provider's domain/role configs.
 function expandGrants(domains, roleLevels, domainMap, roleMap) {
   const levels = uniqueStrings(roleLevels);
@@ -155,6 +163,12 @@ async function walkApiDescriptors(root, domainsConfig, rolesConfig, strapi) {
       const metaUid = typeof exported?.meta?.uid === 'string' ? exported.meta.uid : null;
       const defaultDomains = uniqueStrings(exported?.meta?.domains);
       const defaultRoleLevels = uniqueStrings(exported?.meta?.roles);
+      // Interface-level per-role scope, applied to every policy (method) in
+      // this file unless overridden per-policy via `descriptor.scope`. Optional
+      // â€” descriptors without this block default to unrestricted at every level.
+      const interfaceScope = (exported?.meta?.scope && typeof exported.meta.scope === 'object')
+        ? exported.meta.scope
+        : null;
 
       for (const [methodName, value] of Object.entries(exported)) {
         if (methodName === 'meta' || typeof value !== 'function') continue;
@@ -186,6 +200,12 @@ async function walkApiDescriptors(root, domainsConfig, rolesConfig, strapi) {
         const routeTokens = (String(endpointPath).match(/(?::([a-zA-Z_][\w]*))|(?:\$\{\s*([a-zA-Z_][\w]*)\s*\})/g) || [])
           .map((m) => m.replace(/[:${}\s]/g, ''));
 
+        // Per-policy scope override (method-level) merged on top of the
+        // interface-level scope by templatesForRole.
+        const policyScope = (descriptor?.scope && typeof descriptor.scope === 'object')
+          ? descriptor.scope
+          : null;
+
         out.push({
           uid,
           methodName,
@@ -195,6 +215,8 @@ async function walkApiDescriptors(root, domainsConfig, rolesConfig, strapi) {
           routeTokens,
           grants,
           fileName,
+          interfaceScope,
+          policyScope,
         });
       }
     }
@@ -202,7 +224,7 @@ async function walkApiDescriptors(root, domainsConfig, rolesConfig, strapi) {
   return out;
 }
 
-// ─── upsert helpers ─────────────────────────────────────────────────────────
+// â”€â”€â”€ upsert helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function upsertByKey(strapi, uid, key, data, populate) {
   const existing = await strapi.db.query(uid).findOne({ where: { key } });
   if (existing) {
@@ -233,7 +255,7 @@ async function seedDomains(strapi, domainsConfig) {
 }
 
 async function seedRoles(strapi, rolesConfig, domainsConfig) {
-  // Build domainKey → domainId map after domains exist
+  // Build domainKey â†’ domainId map after domains exist
   const domainRows = await strapi.db.query(APP_DOMAIN_UID).findMany({ select: ['id', 'key'] });
   const domainIdByKey = new Map(domainRows.map((d) => [d.key, d.id]));
 
@@ -265,7 +287,7 @@ async function seedInterfacesAndMethods(strapi, descriptors) {
 
   let interfaceCount = 0;
   let methodCount = 0;
-  // interfaceKey:methodName → method row
+  // interfaceKey:methodName â†’ method row
   const methodByCompositeKey = new Map();
 
   for (const [uid, group] of byUid.entries()) {
@@ -303,20 +325,137 @@ async function seedInterfacesAndMethods(strapi, descriptors) {
   return { interfaceCount, methodCount, methodByCompositeKey };
 }
 
-// Role-level → default template hint. Admin-level roles get unrestricted
-// templates by default; manager/staff get an empty starter shape that flags
-// them as needing manual scoping via the Policy Editor (Phase 8 QueryBuilders).
-function defaultTemplatesForLevel(level, action) {
-  const lvl = String(level || '').toLowerCase();
-  const empty = { filtersTemplate: {}, populateTemplate: {}, bodyTemplate: {}, queryTemplate: {} };
+// â”€â”€ per-level template builder â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//
+// Vocabulary (matches `packages/api-provider/api/<resource>.js` conventions):
+//
+//   INTERFACE â€” the top-level descriptor file (e.g. cash-registers.js).
+//   POLICY    â€” each method exported on that interface (e.g. list, byId,
+//               create, open, close). Methods ARE policies.
+//   CONTEXT   â€” the per-role data flowing into a policy. Split into:
+//                 scope â€” server-side enforcement: filter scope
+//                                 templates injected by the plugin's
+//                                 request interceptor. Per role-level.
+//                 clientContext â€” client-side hints: defaults the api-provider
+//                                 may apply to outgoing requests. Reserved for
+//                                 future use; the existing `params` block on
+//                                 each method covers this today.
+//
+// Authoring shape:
+//
+//   meta: {
+//     uid: '...',
+//     domains: [...],
+//     roles: ['admin', 'manager', 'staff'],
+//     // Interface-level context applied to every policy in this file.
+//     // Per-policy overrides via `scope`/`clientContext` inside the
+//     // policy itself (see methods below).
+//     scope: {
+//       admin:   {},                                  // unrestricted
+//       manager: {},                                  // unrestricted
+//       staff: {
+//         scope: 'owner+recency',                     // shorthand
+//         ownerField: 'opened_by',                    // optional (default 'createdBy')
+//         recencyField: 'opened_at',                  // optional (default 'createdAt')
+//         recencyToken: '$last7days',                 // optional (default)
+//         // Or for finer control, replace `scope` with literal templates:
+//         filters: { ... }, body: { ... }, populate: { ... }, query: { ... },
+//       },
+//     },
+//     clientContext: { /* hints â€” reserved */ },
+//   },
+//
+//   list: ({...} = {}) => ({
+//     path: '...',
+//     action: 'find',
+//     ...
+//     // Per-policy override of the interface-level context. Same shape.
+//     scope: { staff: { scope: 'recency' } },
+//   }),
+//
+// `scope` shorthand values:
+//   'none'          â€” no filter (default if level missing)
+//   'owner'         â€” { ownerField: { id: { $eq: '$user.id' } } } on find/findOne/update/delete;
+//                     body stamps `{ ownerField: '$user.id' }` on create.
+//   'owner+recency' â€” `owner` filter PLUS recency filter on `find` only.
+//                     (findOne/update/delete stay ownership-only â€” a single-row
+//                     lookup already targets a specific id.)
+//   'recency'       â€” recency filter only, on `find` action.
+//
+// Admin/manager default to unrestricted. Staff defaults to unrestricted unless
+// a scope.staff block opts the interface into scoping.
 
-  if (lvl === 'admin') return empty; // unrestricted
+const DEFAULT_RECENCY_TOKEN = '$last7days';
 
-  // Non-admin actions that create rows benefit from auto-stamping creator.
-  // We leave these EMPTY too — the admin can opt-in via the editor — but a
-  // common pattern would be filtersTemplate: { createdBy: { id: { $eq: '$user.id' } } }
-  // for find/findOne/update/delete and bodyTemplate: { user: '$user.id' } for create.
-  return empty;
+function emptyTemplates() {
+  return { filtersTemplate: {}, populateTemplate: {}, bodyTemplate: {}, queryTemplate: {} };
+}
+
+function expandScopeShorthand(scope, action, ownerField, recencyField, recencyToken) {
+  const a = String(action || '').toLowerCase();
+  const ownerFilter = { [ownerField]: { id: { $eq: '$user.id' } } };
+  const recencyFilter = { [recencyField]: { $gte: recencyToken } };
+
+  if (scope === 'owner') {
+    if (a === 'create') return { bodyTemplate: { [ownerField]: '$user.id' } };
+    return { filtersTemplate: ownerFilter };
+  }
+
+  if (scope === 'owner+recency') {
+    if (a === 'create') return { bodyTemplate: { [ownerField]: '$user.id' } };
+    if (a === 'find') return { filtersTemplate: { $and: [ownerFilter, recencyFilter] } };
+    // findOne / update / delete: ownership only.
+    return { filtersTemplate: ownerFilter };
+  }
+
+  if (scope === 'recency') {
+    if (a === 'find') return { filtersTemplate: recencyFilter };
+    return {};
+  }
+
+  return {};
+}
+
+// Build the four {filters,populate,body,query}Template fields for one
+// per-level block (the block under scope.admin / .manager / .staff).
+function buildTemplatesFromLevelBlock(levelBlock, action) {
+  if (!levelBlock || typeof levelBlock !== 'object') return emptyTemplates();
+
+  const ownerField = levelBlock.ownerField || 'createdBy';
+  const recencyField = levelBlock.recencyField || 'createdAt';
+  const recencyToken = levelBlock.recencyToken || DEFAULT_RECENCY_TOKEN;
+
+  // 1) start from shorthand scope (if any)
+  const combined = expandScopeShorthand(levelBlock.scope, action, ownerField, recencyField, recencyToken);
+
+  // 2) layer literal templates on top â€” these win over the shorthand
+  if (levelBlock.filters)  combined.filtersTemplate  = { ...(combined.filtersTemplate  || {}), ...levelBlock.filters };
+  if (levelBlock.populate) combined.populateTemplate = { ...(combined.populateTemplate || {}), ...levelBlock.populate };
+  if (levelBlock.body)     combined.bodyTemplate     = { ...(combined.bodyTemplate     || {}), ...levelBlock.body };
+  if (levelBlock.query)    combined.queryTemplate    = { ...(combined.queryTemplate    || {}), ...levelBlock.query };
+
+  return {
+    filtersTemplate:  combined.filtersTemplate  || {},
+    populateTemplate: combined.populateTemplate || {},
+    bodyTemplate:     combined.bodyTemplate     || {},
+    queryTemplate:    combined.queryTemplate    || {},
+  };
+}
+
+// Resolve the effective scope block for a (policy, role-level) pair.
+// Policy-level scope wins over interface-level when both define the
+// same role.
+function effectiveLevelBlock(interfaceServerCtx, policyServerCtx, level) {
+  const key = String(level || '').toLowerCase();
+  const policyBlock = policyServerCtx && typeof policyServerCtx === 'object' ? policyServerCtx[key] : undefined;
+  if (policyBlock !== undefined) return policyBlock;
+  if (interfaceServerCtx && typeof interfaceServerCtx === 'object') return interfaceServerCtx[key];
+  return undefined;
+}
+
+function templatesForRole(interfaceServerCtx, policyServerCtx, level, action) {
+  const block = effectiveLevelBlock(interfaceServerCtx, policyServerCtx, level);
+  return buildTemplatesFromLevelBlock(block, action);
 }
 
 async function seedPolicies(strapi, descriptors, methodByCompositeKey, rolesConfig) {
@@ -330,29 +469,109 @@ async function seedPolicies(strapi, descriptors, methodByCompositeKey, rolesConf
     for (const roleKey of d.grants) {
       const policyKey = `${interfaceKey}:${d.methodName}:${roleKey}`;
       const level = rolesConfig?.[roleKey]?.level || 'unknown';
-      const templates = defaultTemplatesForLevel(level, d.action);
-      const isUnrestricted = level === 'admin';
+      const templates = templatesForRole(d.interfaceScope, d.policyScope, level, d.action);
 
-      await upsertByKey(strapi, POLICY_UID, policyKey, {
+      const existing = await strapi.db.query(POLICY_UID).findOne({ where: { key: policyKey } });
+
+      // Preserve admin-tuned policies. The Policy Editor bumps templateVersion
+      // when an admin saves a custom filter; on subsequent boots we only
+      // refresh the relational + bookkeeping fields and leave the template
+      // bodies alone.
+      const userTuned = existing && Number(existing.templateVersion) > 1;
+
+      const data = {
         key: policyKey,
-        name: `${humanize(roleKey)} → ${d.methodName}`,
+        name: existing?.name || `${humanize(roleKey)} â†’ ${d.methodName}`,
         roleKey,
-        resolverMode: 'strict',
-        ...templates,
-        templateVersion: 1,
+        resolverMode: existing?.resolverMode || 'strict',
         interfaceMethod: methodRow.id,
-      });
+        ...(userTuned ? {} : { ...templates, templateVersion: 1 }),
+      };
+
+      if (existing) {
+        await strapi.db.query(POLICY_UID).update({ where: { id: existing.id }, data });
+      } else {
+        await strapi.db.query(POLICY_UID).create({ data });
+      }
       count += 1;
     }
   }
   return count;
 }
 
-// ─── public API ─────────────────────────────────────────────────────────────
-async function runFullSeed(strapi) {
+// â”€â”€â”€ Fingerprint (source mtimes) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// The full seed walks 25+ descriptor files via `import()`, parses two JSON
+// configs, and issues ~1000 sequential upserts â€” ~50s on a cold start.
+// Fingerprint sidesteps all of that when nothing has changed on disk:
+//   â€¢ record each source file's path + mtimeMs
+//   â€¢ on next boot, recompute and compare entry-for-entry
+//   â€¢ equal â†’ skip the seed entirely
+// Files watched: config/domains.json, config/roles.json, every api/*.js
+// (using the same filter walkApiDescriptors uses, so adding/removing an
+// endpoint file changes the fingerprint and forces a reseed).
+function listFingerprintTargets(root) {
+  const targets = [
+    path.join(root, 'config', 'domains.json'),
+    path.join(root, 'config', 'roles.json'),
+  ];
+
+  const apiDir = path.join(root, 'api');
+  if (fs.existsSync(apiDir)) {
+    const files = fs
+      .readdirSync(apiDir)
+      .filter((n) => n.endsWith('.js') && n !== 'index.js' && !n.startsWith('_'))
+      .sort();
+    for (const f of files) targets.push(path.join(apiDir, f));
+  }
+
+  return targets;
+}
+
+function computeSourceFingerprint(root) {
+  const entries = [];
+  for (const abs of listFingerprintTargets(root)) {
+    let mtimeMs = null;
+    try {
+      mtimeMs = fs.statSync(abs).mtimeMs;
+    } catch {
+      // missing file â€” record as null; checkpoint comparison will catch
+      // an addition/removal because the entry list itself differs.
+    }
+    entries.push({ path: path.relative(root, abs).replace(/\\/g, '/'), mtimeMs });
+  }
+  return { seederVersion: SEEDER_VERSION, entries };
+}
+
+function fingerprintsEqual(a, b) {
+  if (!a || !b) return false;
+  if (a.seederVersion !== b.seederVersion) return false;
+  if (!Array.isArray(a.entries) || !Array.isArray(b.entries)) return false;
+  if (a.entries.length !== b.entries.length) return false;
+  for (let i = 0; i < a.entries.length; i += 1) {
+    if (a.entries[i].path !== b.entries[i].path) return false;
+    if (a.entries[i].mtimeMs !== b.entries[i].mtimeMs) return false;
+  }
+  return true;
+}
+
+// â”€â”€â”€ public API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+async function runFullSeed(strapi, options = {}) {
+  const { force = false } = options;
   const root = resolveApiProviderRoot(strapi);
   if (!root) {
     return { ok: false, error: '@rutba/api-provider not resolvable' };
+  }
+
+  const fingerprint = computeSourceFingerprint(root);
+
+  if (!force) {
+    const checkpoint = await fileStore.readSeedCheckpoint(strapi).catch(() => null);
+    if (fingerprintsEqual(checkpoint?.fingerprint, fingerprint)) {
+      strapi.log.info(
+        `[api-pro seeder] skip: source unchanged since ${checkpoint.seededAt} (${fingerprint.entries.length} files tracked)`
+      );
+      return { ok: true, skipped: true, ...checkpoint.summary };
+    }
   }
 
   const domainsConfig = loadJson(path.join(root, 'config', 'domains.json'));
@@ -367,8 +586,7 @@ async function runFullSeed(strapi) {
 
   strapi.apiPro?.clearAllCache?.();
 
-  return {
-    ok: true,
+  const summary = {
     domains: domainCount,
     roles: roleCount,
     interfaces: interfaceCount,
@@ -376,10 +594,25 @@ async function runFullSeed(strapi) {
     policies: policyCount,
     descriptorsScanned: descriptors.length,
   };
+
+  // Persist checkpoint AFTER the seed succeeds. A failed/aborted seed leaves
+  // the old checkpoint in place so the next boot retries.
+  try {
+    await fileStore.writeSeedCheckpoint(strapi, {
+      seededAt: new Date().toISOString(),
+      fingerprint,
+      summary,
+    });
+  } catch (e) {
+    strapi.log.warn(`[api-pro seeder] could not write checkpoint: ${e?.message}`);
+  }
+
+  return { ok: true, skipped: false, ...summary };
 }
 
 module.exports = {
   runFullSeed,
   resolveApiProviderRoot,
   walkApiDescriptors,
+  computeSourceFingerprint,
 };

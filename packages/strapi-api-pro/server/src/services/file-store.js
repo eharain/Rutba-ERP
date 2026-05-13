@@ -63,6 +63,10 @@ function policyFile(strapi, interfaceKey, methodKey, roleKey) {
   return path.join(policyDir(strapi, interfaceKey, methodKey), `${roleKey}.json`);
 }
 
+function seedCheckpointFile(strapi) {
+  return path.join(storageRoot(strapi), 'seed-checkpoint.json');
+}
+
 async function ensureDir(dir) {
   await fs.mkdir(dir, { recursive: true });
 }
@@ -200,12 +204,26 @@ async function ensureStorage(strapi) {
   await ensureDir(policiesRoot(strapi));
 }
 
+// ── Seed checkpoint ─────────────────────────────────────────────────────────
+// Tiny JSON file recording the source-file mtimes at the time of the last
+// successful runFullSeed. The seeder reads it on boot; if every recorded
+// mtime still matches the live file, it short-circuits and skips the seed
+// (saves ~50s of boot time on unchanged repos).
+async function readSeedCheckpoint(strapi) {
+  return readJsonSafe(seedCheckpointFile(strapi));
+}
+
+async function writeSeedCheckpoint(strapi, payload) {
+  await writeJsonAtomic(seedCheckpointFile(strapi), payload);
+}
+
 module.exports = {
   storageRoot,
   interfacesDir,
   policiesRoot,
   interfaceFile,
   policyFile,
+  seedCheckpointFile,
   ensureStorage,
 
   listInterfaces,
@@ -218,4 +236,7 @@ module.exports = {
   readPolicy,
   writePolicy,
   deletePolicy,
+
+  readSeedCheckpoint,
+  writeSeedCheckpoint,
 };

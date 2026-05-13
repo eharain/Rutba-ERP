@@ -1,15 +1,15 @@
-import React from 'react';
+﻿import React from 'react';
 
 // Inline SVG instead of `import { Shield } from '@strapi/icons'`.
 //
 // Why inline: this plugin is consumed via a `file:` symlink from the monorepo's
 // packages/ directory. Vite (used by Strapi's admin) resolves imports from the
 // SYMLINK TARGET, so `@strapi/icons` (listed only as a peerDependency on the
-// plugin) is looked up in packages/strapi-api-pro/node_modules — which doesn't
-// have it — even though the consuming app's node_modules does. Inlining sidesteps
+// plugin) is looked up in packages/api-pro/node_modules â€” which doesn't
+// have it â€” even though the consuming app's node_modules does. Inlining sidesteps
 // the cross-tree resolution entirely.
 //
-// The path is a stylised "API shield" — visually similar to @strapi/icons Shield
+// The path is a stylised "API shield" â€” visually similar to @strapi/icons Shield
 // but drawn directly so we don't depend on the external module.
 
 const PluginIcon = ({ width = 16, height = 16, ...rest }) => (

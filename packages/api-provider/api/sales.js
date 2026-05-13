@@ -2,13 +2,27 @@
  * SalesEndpoints
  * Pure endpoint descriptors for the /sales resource.
  */
+
+// Per-role scope shared by every policy below. Admin/manager: unrestricted.
+// Staff: own sales from the last 7 days (single-row lookups stay
+// ownership-only; create stamps createdBy).
+const ROLE_SCOPES = {
+    admin: {},
+    manager: {},
+    staff: {
+        scope: 'owner+recency',
+        ownerField: 'createdBy',
+        recencyField: 'createdAt',
+    },
+};
+
 export const SalesEndpoints = {
 
     /** Resource metadata for policy generation */
     meta: {
         uid: 'api::sale.sale',
         domains: ['sale'],
-        roles: ['admin', 'manager', 'staff']
+        roles: ['admin', 'manager', 'staff'],
     },
 
     /**
@@ -23,6 +37,7 @@ export const SalesEndpoints = {
         method: 'get',
         apps: ['sale'],
         approle: ['admin', 'manager', 'staff'],
+        scope: ROLE_SCOPES,
         params: {
             sort: sort ?? ['createdAt:desc'],
             filters: filters ?? undefined,
@@ -41,6 +56,7 @@ export const SalesEndpoints = {
         method: 'get',
         apps: ['sale'],
         approle: ['admin', 'manager', 'staff'],
+        scope: ROLE_SCOPES,
         params: {
             filters: {
                 $or: [
@@ -82,6 +98,7 @@ export const SalesEndpoints = {
         method: 'get',
         apps: ['sale'],
         approle: ['admin', 'manager', 'staff'],
+        scope: ROLE_SCOPES,
         params: {
             filters: {
                 type: { $eq: 'Exchange' },
@@ -98,6 +115,7 @@ export const SalesEndpoints = {
         method: 'post',
         apps: ['sale'],
         approle: ['admin', 'manager', 'staff'],
+        scope: ROLE_SCOPES,
         data,
     }),
 
@@ -108,6 +126,7 @@ export const SalesEndpoints = {
         method: 'put',
         apps: ['sale'],
         approle: ['admin', 'manager'],
+        scope: ROLE_SCOPES,
         data,
     }),
 
@@ -118,6 +137,7 @@ export const SalesEndpoints = {
         method: 'put',
         apps: ['sale'],
         approle: ['admin', 'manager'],
+        scope: ROLE_SCOPES,
         data,
     }),
 
@@ -128,6 +148,7 @@ export const SalesEndpoints = {
         method: 'put',
         apps: ['sale'],
         approle: ['admin', 'manager', 'staff'],
+        scope: ROLE_SCOPES,
         data,
     }),
 

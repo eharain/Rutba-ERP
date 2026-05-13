@@ -10,6 +10,12 @@ import {
 } from '@strapi/design-system';
 import { useFetchClient } from '@strapi/strapi/admin';
 
+// The left panel previously had a SingleSelect listing every user, which gets
+// unusable past a few dozen entries. We drop the dropdown and rely on the
+// right-panel list (which already has search + filter + pagination + click to
+// select); the left panel becomes a focused editor for the currently-selected
+// user with an empty state when none is picked.
+
 const PAGE_SIZE = 15;
 
 const UsersPage = () => {
@@ -20,6 +26,7 @@ const UsersPage = () => {
   const [selectedRoleIds, setSelectedRoleIds] = useState([]);
   const [userSearch, setUserSearch] = useState('');
   const [filterAppRole, setFilterAppRole] = useState('');
+  const [assignedRoleFilter, setAssignedRoleFilter] = useState('');
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
@@ -76,6 +83,50 @@ const UsersPage = () => {
   }, [roleOptions]);
 
   const selectedSet = useMemo(() => new Set(selectedRoleIds.map(String)), [selectedRoleIds]);
+
+  const selectedUser = useMemo(
+    () => users.find((u) => String(u.id) === String(selectedUserId)) || null,
+    [users, selectedUserId]
+  );
+
+  const visibleRolesByDomain = useMemo(() => {
+    const q = assignedRoleFilter.trim().toLowerCase();
+    if (!q) return rolesByDomain;
+    return rolesByDomain
+      .map(([k, group]) => [
+        k,
+        {
+          ...group,
+          roles: group.roles.filter((role) => {
+            const key = (role.key || '').toLowerCase();
+            const name = (role.name || '').toLowerCase();
+            return key.includes(q) || name.includes(q);
+          }),
+        },
+      ])
+      .filter(([, group]) => group.roles.length > 0);
+  }, [rolesByDomain, assignedRoleFilter]);
+
+  const visibleRoleIds = useMemo(
+    () => visibleRolesByDomain.flatMap(([, g]) => g.roles.map((r) => String(r.id))),
+    [visibleRolesByDomain]
+  );
+
+  const visibleSelectedCount = useMemo(
+    () => visibleRoleIds.filter((id) => selectedSet.has(id)).length,
+    [visibleRoleIds, selectedSet]
+  );
+
+  const addFilteredRoles = () => {
+    if (visibleRoleIds.length === 0) return;
+    setSelectedRoleIds((prev) => Array.from(new Set([...prev.map(String), ...visibleRoleIds])));
+  };
+
+  const removeFilteredRoles = () => {
+    if (visibleRoleIds.length === 0) return;
+    const drop = new Set(visibleRoleIds);
+    setSelectedRoleIds((prev) => prev.map(String).filter((id) => !drop.has(id)));
+  };
 
   const filteredUsers = useMemo(() => {
     return users.filter((u) => {
@@ -137,19 +188,73 @@ const UsersPage = () => {
 
       <Flex gap={6} alignItems="flex-start" wrap="wrap" paddingTop={4}>
         <Box style={{ flex: '0 0 360px' }}>
-          <SingleSelect label="Select User" placeholder="Choose user" value={selectedUserId} onChange={selectUser}>
-            {users.map((u) => (
-              <SingleSelectOption key={u.id} value={String(u.id)}>
-                {u.displayName || u.username || u.email}
-              </SingleSelectOption>
-            ))}
-          </SingleSelect>
+          {!selectedUser && (
+            <Box padding={4} style={{ border: '1px dashed #e0e0e0', borderRadius: 8 }}>
+              <Typography variant="pi" textColor="neutral500">
+                Pick a user from the list to edit their app role assignments.
+              </Typography>
+            </Box>
+          )}
 
-          {selectedUserId && (
-            <Box paddingTop={4}>
-              <Typography variant="sigma">Assigned App Roles</Typography>
+          {selectedUser && (
+            <Box>
+              <Typography variant="sigma">
+                {selectedUser.displayName || selectedUser.username || selectedUser.email}
+              </Typography>
+              {selectedUser.email && (
+                <Box paddingTop={1}>
+                  <Typography variant="pi" textColor="neutral500">{selectedUser.email}</Typography>
+                </Box>
+              )}
+
+              <Box paddingTop={4}>
+                <Flex justifyContent="space-between" alignItems="center">
+                  <Typography variant="sigma">Assigned App Roles</Typography>
+                  <Typography variant="pi" textColor="neutral500">
+                    {selectedRoleIds.length} selected
+                  </Typography>
+                </Flex>
+
               <Box paddingTop={2}>
-                {rolesByDomain.map(([domainKey, group]) => (
+                <TextInput
+                  label="Filter roles"
+                  placeholder="Filter roles by name or key"
+                  value={assignedRoleFilter}
+                  onChange={(e) => setAssignedRoleFilter(e.target.value)}
+                />
+              </Box>
+
+              <Flex gap={2} paddingTop={2} alignItems="center" wrap="wrap">
+                <Button
+                  variant="tertiary"
+                  disabled={visibleRoleIds.length === 0 || visibleSelectedCount === visibleRoleIds.length}
+                  onClick={addFilteredRoles}
+                >
+                  Add {assignedRoleFilter ? 'filtered' : 'all'} ({visibleRoleIds.length - visibleSelectedCount})
+                </Button>
+                <Button
+                  variant="tertiary"
+                  disabled={visibleSelectedCount === 0}
+                  onClick={removeFilteredRoles}
+                >
+                  Remove {assignedRoleFilter ? 'filtered' : 'all'} ({visibleSelectedCount})
+                </Button>
+                {assignedRoleFilter && (
+                  <Button variant="tertiary" onClick={() => setAssignedRoleFilter('')}>
+                    Clear filter
+                  </Button>
+                )}
+              </Flex>
+
+              <Box paddingTop={2}>
+                {visibleRolesByDomain.length === 0 ? (
+                  <Box paddingTop={2}>
+                    <Typography variant="pi" textColor="neutral500">
+                      No roles match "{assignedRoleFilter}".
+                    </Typography>
+                  </Box>
+                ) : null}
+                {visibleRolesByDomain.map(([domainKey, group]) => (
                   <Box key={domainKey} style={{ marginBottom: 12, border: '1px solid #e8e8f0', borderRadius: 8, overflow: 'hidden' }}>
                     <Flex justifyContent="space-between" alignItems="center" style={{ padding: '6px 10px', background: '#f4f4f8' }}>
                       <Typography variant="pi" fontWeight="semiBold" textColor="neutral600">{group.label}</Typography>
@@ -177,6 +282,7 @@ const UsersPage = () => {
                 ))}
               </Box>
               <Button onClick={save} loading={loading} style={{ marginTop: 16 }}>Save Assignment</Button>
+              </Box>
             </Box>
           )}
         </Box>

@@ -630,8 +630,11 @@ async function main() {
     }
 
     const apiFiles = getApiFilesRecursive(apiDir)
-        .filter((rel) => rel.includes('/'))
-        .filter((rel) => !rel.endsWith('/index.js'));
+        .filter((rel) => !rel.endsWith('/index.js'))
+        // Root-level api files (e.g. api/site-setting.js) are processed only
+        // when no paired endpoints/<name>.js exists — otherwise the endpoints
+        // loop above already wrote the provider.
+        .filter((rel) => rel.includes('/') || !fs.existsSync(path.join(endpointsDir, rel)));
 
     for (const apiRelative of apiFiles) {
         const apiFileAbs = path.join(apiDir, apiRelative);

@@ -3,7 +3,7 @@
  * Centralised path + params for auth-admin users, roles, and api-guard domains.
  */
 
-import { AuthApiEndpoints } from "@rutba/api-provider/endpoints";
+import { AuthApiEndpoints } from "@rutba/api-provider/lib/http-client.js";
 
 export const AppAccessesEndpoints = {
     /** List all active plugin-backed app domains. */

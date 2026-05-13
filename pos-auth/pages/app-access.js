@@ -3,7 +3,7 @@ import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import AppAccessGate from "../components/AppAccessGate";
 import PermissionCheck from "@rutba/pos-shared/components/PermissionCheck";
-import { AppAccessesEndpoints } from "@rutba/api-provider/endpoints";
+import { AppAccessesEndpoints } from "../lib/endpoints";
 
 export default function AppAccessPage() {
     const [entries, setEntries] = useState([]);

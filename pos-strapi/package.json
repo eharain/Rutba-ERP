@@ -17,25 +17,26 @@
     "upgrade:dry": "npx @strapi/upgrade latest --dry",
     "link:sync-pro": "npm link ../../strapi-plugins/strapi-content-sync-pro",
     "unlink:sync-pro": "npm unlink strapi-content-sync-pro && npm install",
-    "link:strapi-api-pro": "npm link ../packages/strapi-api-pro",
-    "unlink:strapi-api-pro": "npm unlink strapi-api-pro && npm install"
+    "link:api-pro": "npm link ../packages/strapi-api-pro",
+    "unlink:api-pro": "npm unlink api-pro && npm install"
   },
   "dependencies": {
     "@easypost/api": "^8.8.0",
     "@rutba/api-provider": "file://../packages/api-provider",
-    "@strapi/plugin-cloud": "5.43.0",
+  
     "@strapi/design-system": "^2.2.0",
     "@strapi/icons": "^2.2.0",
-    "@strapi/plugin-users-permissions": "5.43.0",
-    "@strapi/provider-email-nodemailer": "^5.43.0",
-    "@strapi/strapi": "5.43.0",
+    "@strapi/plugin-users-permissions": "5.45.1",
+    "@strapi/provider-email-nodemailer": "^5.45.1",
+    "@strapi/strapi": "5.45.1",
     "mysql2": "3.20.0",
     "nodemailer": "^8.0.6",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.30.3",
-    "strapi-api-pro": "file://../packages/strapi-api-pro",
-    "strapi-content-sync-pro": "1.0.6",
+    "api-pro": "file://../packages/strapi-api-pro",
+    "strapi-content-sync-pro": "^1.0.6",
+
     "stripe": "^21.0.1",
     "styled-components": "^6.3.12",
     "xlsx": "^0.18.5"

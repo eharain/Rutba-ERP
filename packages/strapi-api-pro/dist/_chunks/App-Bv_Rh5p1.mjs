@@ -1,17 +1,13 @@
-"use strict";
-Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
-const jsxRuntime = require("react/jsx-runtime");
-const React = require("react");
-const designSystem = require("@strapi/design-system");
-const admin = require("@strapi/strapi/admin");
-const _interopDefault = (e) => e && e.__esModule ? e : { default: e };
-const React__default = /* @__PURE__ */ _interopDefault(React);
+import { jsxs, jsx, Fragment } from "react/jsx-runtime";
+import React, { useState, useMemo } from "react";
+import { Box, Typography, Flex, TextInput, Button, SingleSelect, SingleSelectOption, Textarea } from "@strapi/design-system";
+import { useFetchClient } from "@strapi/strapi/admin";
 const api$3 = (p) => `/api-pro${p}`;
 const PAGE_SIZE$2 = 15;
 const StatusBadge = ({ status }) => {
   const color = status === "recording" ? "#1f8a45" : status === "stopped" ? "#666" : "#999";
   const bg = status === "recording" ? "#e6f7ec" : status === "stopped" ? "#f0f0f0" : "#f8f8f8";
-  return /* @__PURE__ */ jsxRuntime.jsx("span", { style: {
+  return /* @__PURE__ */ jsx("span", { style: {
     background: bg,
     color,
     padding: "2px 8px",
@@ -22,10 +18,10 @@ const StatusBadge = ({ status }) => {
   }, children: status || "unknown" });
 };
 const EntryRow = ({ entry }) => {
-  const [expanded, setExpanded] = React__default.default.useState(false);
-  return /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { style: { borderTop: "1px solid #f0f0f4" }, children: [
-    /* @__PURE__ */ jsxRuntime.jsxs(
-      designSystem.Flex,
+  const [expanded, setExpanded] = React.useState(false);
+  return /* @__PURE__ */ jsxs(Box, { style: { borderTop: "1px solid #f0f0f4" }, children: [
+    /* @__PURE__ */ jsxs(
+      Flex,
       {
         justifyContent: "space-between",
         alignItems: "center",
@@ -33,61 +29,61 @@ const EntryRow = ({ entry }) => {
         style: { cursor: "pointer" },
         onClick: () => setExpanded((v) => !v),
         children: [
-          /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Flex, { gap: 2, alignItems: "center", children: [
-            /* @__PURE__ */ jsxRuntime.jsx("span", { style: {
+          /* @__PURE__ */ jsxs(Flex, { gap: 2, alignItems: "center", children: [
+            /* @__PURE__ */ jsx("span", { style: {
               padding: "1px 6px",
               border: "1px solid #ccc",
               borderRadius: 4,
               fontSize: 10,
               fontWeight: 600
             }, children: (entry.method || "GET").toUpperCase() }),
-            /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "pi", children: entry.path })
+            /* @__PURE__ */ jsx(Typography, { variant: "pi", children: entry.path })
           ] }),
-          /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Flex, { gap: 2, alignItems: "center", children: [
-            /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Typography, { variant: "pi", textColor: "neutral500", children: [
+          /* @__PURE__ */ jsxs(Flex, { gap: 2, alignItems: "center", children: [
+            /* @__PURE__ */ jsxs(Typography, { variant: "pi", textColor: "neutral500", children: [
               entry.statusCode || "–",
               " · ",
               entry.count || 1,
               "×"
             ] }),
-            /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "pi", children: expanded ? "▼" : "▶" })
+            /* @__PURE__ */ jsx(Typography, { variant: "pi", children: expanded ? "▼" : "▶" })
           ] })
         ]
       }
     ),
-    expanded && /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { padding: 3, style: { background: "#fafafa" }, children: [
-      entry.query && Object.keys(entry.query).length > 0 && /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { paddingBottom: 2, children: [
-        /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "pi", fontWeight: "semiBold", children: "Query" }),
-        /* @__PURE__ */ jsxRuntime.jsx("pre", { style: { fontSize: 11, margin: 0 }, children: JSON.stringify(entry.query, null, 2) })
+    expanded && /* @__PURE__ */ jsxs(Box, { padding: 3, style: { background: "#fafafa" }, children: [
+      entry.query && Object.keys(entry.query).length > 0 && /* @__PURE__ */ jsxs(Box, { paddingBottom: 2, children: [
+        /* @__PURE__ */ jsx(Typography, { variant: "pi", fontWeight: "semiBold", children: "Query" }),
+        /* @__PURE__ */ jsx("pre", { style: { fontSize: 11, margin: 0 }, children: JSON.stringify(entry.query, null, 2) })
       ] }),
-      entry.body && Object.keys(entry.body || {}).length > 0 && /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { paddingBottom: 2, children: [
-        /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "pi", fontWeight: "semiBold", children: "Body" }),
-        /* @__PURE__ */ jsxRuntime.jsx("pre", { style: { fontSize: 11, margin: 0 }, children: JSON.stringify(entry.body, null, 2) })
+      entry.body && Object.keys(entry.body || {}).length > 0 && /* @__PURE__ */ jsxs(Box, { paddingBottom: 2, children: [
+        /* @__PURE__ */ jsx(Typography, { variant: "pi", fontWeight: "semiBold", children: "Body" }),
+        /* @__PURE__ */ jsx("pre", { style: { fontSize: 11, margin: 0 }, children: JSON.stringify(entry.body, null, 2) })
       ] }),
-      entry.claimedContext && /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { children: [
-        /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "pi", fontWeight: "semiBold", children: "Claim" }),
-        /* @__PURE__ */ jsxRuntime.jsx("pre", { style: { fontSize: 11, margin: 0 }, children: JSON.stringify(entry.claimedContext, null, 2) })
+      entry.claimedContext && /* @__PURE__ */ jsxs(Box, { children: [
+        /* @__PURE__ */ jsx(Typography, { variant: "pi", fontWeight: "semiBold", children: "Claim" }),
+        /* @__PURE__ */ jsx("pre", { style: { fontSize: 11, margin: 0 }, children: JSON.stringify(entry.claimedContext, null, 2) })
       ] })
     ] })
   ] });
 };
 const HTTP_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"];
 const Recordings = () => {
-  const { get, post } = admin.useFetchClient();
-  const [sessions, setSessions] = React__default.default.useState([]);
-  const [entries, setEntries] = React__default.default.useState({});
-  const [selectedSession, setSelectedSession] = React__default.default.useState(null);
-  const [newLabel, setNewLabel] = React__default.default.useState("");
-  const [loading, setLoading] = React__default.default.useState(false);
-  const [message, setMessage] = React__default.default.useState("");
-  const [search, setSearch] = React__default.default.useState("");
-  const [statusFilter, setStatusFilter] = React__default.default.useState("");
-  const [page, setPage] = React__default.default.useState(1);
-  const [filterMethods, setFilterMethods] = React__default.default.useState([]);
-  const [filterPathPatterns, setFilterPathPatterns] = React__default.default.useState("");
-  const [filterCtUids, setFilterCtUids] = React__default.default.useState("");
-  const [showFilters, setShowFilters] = React__default.default.useState(false);
-  const loadSessions = React__default.default.useCallback(async () => {
+  const { get, post } = useFetchClient();
+  const [sessions, setSessions] = React.useState([]);
+  const [entries, setEntries] = React.useState({});
+  const [selectedSession, setSelectedSession] = React.useState(null);
+  const [newLabel, setNewLabel] = React.useState("");
+  const [loading, setLoading] = React.useState(false);
+  const [message, setMessage] = React.useState("");
+  const [search, setSearch] = React.useState("");
+  const [statusFilter, setStatusFilter] = React.useState("");
+  const [page, setPage] = React.useState(1);
+  const [filterMethods, setFilterMethods] = React.useState([]);
+  const [filterPathPatterns, setFilterPathPatterns] = React.useState("");
+  const [filterCtUids, setFilterCtUids] = React.useState("");
+  const [showFilters, setShowFilters] = React.useState(false);
+  const loadSessions = React.useCallback(async () => {
     setLoading(true);
     try {
       const { data } = await get(api$3("/recordings"));
@@ -98,10 +94,10 @@ const Recordings = () => {
       setLoading(false);
     }
   }, [get]);
-  React__default.default.useEffect(() => {
+  React.useEffect(() => {
     loadSessions();
   }, [loadSessions]);
-  const loadEntries = React__default.default.useCallback(async (sessionId) => {
+  const loadEntries = React.useCallback(async (sessionId) => {
     try {
       const { data } = await get(api$3(`/recordings/${sessionId}/entries`));
       setEntries((e) => ({ ...e, [sessionId]: data?.data || [] }));
@@ -147,7 +143,7 @@ const Recordings = () => {
     }
   };
   const activeSession = sessions.find((s) => s.status === "recording");
-  const filtered = React__default.default.useMemo(() => {
+  const filtered = React.useMemo(() => {
     const q = search.trim().toLowerCase();
     return sessions.filter((s) => {
       if (statusFilter && s.status !== statusFilter) return false;
@@ -158,7 +154,7 @@ const Recordings = () => {
       return true;
     });
   }, [sessions, search, statusFilter]);
-  React__default.default.useEffect(() => {
+  React.useEffect(() => {
     setPage(1);
   }, [search, statusFilter]);
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE$2));
@@ -167,14 +163,14 @@ const Recordings = () => {
   const renderRow = (s) => {
     const isOpen = selectedSession === s.id;
     const sessionEntries = entries[s.id] || [];
-    return /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { style: {
+    return /* @__PURE__ */ jsxs(Box, { style: {
       border: "1px solid #e0e0e0",
       borderRadius: 8,
       marginTop: 8,
       overflow: "hidden"
     }, children: [
-      /* @__PURE__ */ jsxRuntime.jsxs(
-        designSystem.Flex,
+      /* @__PURE__ */ jsxs(
+        Flex,
         {
           justifyContent: "space-between",
           alignItems: "center",
@@ -186,12 +182,12 @@ const Recordings = () => {
             if (next && !entries[s.id]) loadEntries(s.id);
           },
           children: [
-            /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { children: [
-              /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Flex, { gap: 2, alignItems: "center", children: [
-                /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "sigma", children: s.name }),
-                /* @__PURE__ */ jsxRuntime.jsx(StatusBadge, { status: s.status })
+            /* @__PURE__ */ jsxs(Box, { children: [
+              /* @__PURE__ */ jsxs(Flex, { gap: 2, alignItems: "center", children: [
+                /* @__PURE__ */ jsx(Typography, { variant: "sigma", children: s.name }),
+                /* @__PURE__ */ jsx(StatusBadge, { status: s.status })
               ] }),
-              /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Typography, { variant: "pi", textColor: "neutral500", children: [
+              /* @__PURE__ */ jsxs(Typography, { variant: "pi", textColor: "neutral500", children: [
                 "started ",
                 s.startedAt || "?",
                 " · stopped ",
@@ -202,20 +198,20 @@ const Recordings = () => {
                 s.resolvedRoleKey || "–"
               ] })
             ] }),
-            /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "pi", children: isOpen ? "▼" : "▶" })
+            /* @__PURE__ */ jsx(Typography, { variant: "pi", children: isOpen ? "▼" : "▶" })
           ]
         }
       ),
-      isOpen && /* @__PURE__ */ jsxRuntime.jsx(designSystem.Box, { children: sessionEntries.length === 0 ? /* @__PURE__ */ jsxRuntime.jsx(designSystem.Box, { padding: 3, children: /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "pi", textColor: "neutral500", children: "No entries captured (entry-recording middleware is not yet wired)." }) }) : sessionEntries.map((e) => /* @__PURE__ */ jsxRuntime.jsx(EntryRow, { entry: e }, e.id)) })
+      isOpen && /* @__PURE__ */ jsx(Box, { children: sessionEntries.length === 0 ? /* @__PURE__ */ jsx(Box, { padding: 3, children: /* @__PURE__ */ jsx(Typography, { variant: "pi", textColor: "neutral500", children: "No entries captured (entry-recording middleware is not yet wired)." }) }) : sessionEntries.map((e) => /* @__PURE__ */ jsx(EntryRow, { entry: e }, e.id)) })
     ] }, s.id);
   };
-  return /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { children: [
-    /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "beta", children: "API Recordings" }),
-    /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "omega", textColor: "neutral600", children: "Capture live API traffic into sessions and convert recordings into interface definitions." }),
-    /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { paddingTop: 4, style: { border: "1px solid #e0e0e0", borderRadius: 8, padding: 12 }, children: [
-      /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Flex, { gap: 3, alignItems: "flex-end", wrap: "wrap", children: [
-        /* @__PURE__ */ jsxRuntime.jsx(designSystem.Box, { style: { flex: "1 1 240px" }, children: /* @__PURE__ */ jsxRuntime.jsx(
-          designSystem.TextInput,
+  return /* @__PURE__ */ jsxs(Box, { children: [
+    /* @__PURE__ */ jsx(Typography, { variant: "beta", children: "API Recordings" }),
+    /* @__PURE__ */ jsx(Typography, { variant: "omega", textColor: "neutral600", children: "Capture live API traffic into sessions and convert recordings into interface definitions." }),
+    /* @__PURE__ */ jsxs(Box, { paddingTop: 4, style: { border: "1px solid #e0e0e0", borderRadius: 8, padding: 12 }, children: [
+      /* @__PURE__ */ jsxs(Flex, { gap: 3, alignItems: "flex-end", wrap: "wrap", children: [
+        /* @__PURE__ */ jsx(Box, { style: { flex: "1 1 240px" }, children: /* @__PURE__ */ jsx(
+          TextInput,
           {
             label: "Session label (optional)",
             value: newLabel,
@@ -224,20 +220,20 @@ const Recordings = () => {
             disabled: Boolean(activeSession)
           }
         ) }),
-        activeSession ? /* @__PURE__ */ jsxRuntime.jsx(designSystem.Button, { variant: "danger", onClick: stop, loading, children: "Stop active session" }) : /* @__PURE__ */ jsxRuntime.jsx(designSystem.Button, { onClick: start, loading, children: "Start Recording" }),
-        /* @__PURE__ */ jsxRuntime.jsx(designSystem.Button, { variant: "secondary", onClick: loadSessions, children: "Refresh" })
+        activeSession ? /* @__PURE__ */ jsx(Button, { variant: "danger", onClick: stop, loading, children: "Stop active session" }) : /* @__PURE__ */ jsx(Button, { onClick: start, loading, children: "Start Recording" }),
+        /* @__PURE__ */ jsx(Button, { variant: "secondary", onClick: loadSessions, children: "Refresh" })
       ] }),
-      !activeSession && /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { paddingTop: 3, children: [
-        /* @__PURE__ */ jsxRuntime.jsxs(
-          designSystem.Flex,
+      !activeSession && /* @__PURE__ */ jsxs(Box, { paddingTop: 3, children: [
+        /* @__PURE__ */ jsxs(
+          Flex,
           {
             justifyContent: "space-between",
             alignItems: "center",
             style: { cursor: "pointer", padding: "4px 0" },
             onClick: () => setShowFilters((v) => !v),
             children: [
-              /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "sigma", children: "Capture filters" }),
-              /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Typography, { variant: "pi", textColor: "neutral500", children: [
+              /* @__PURE__ */ jsx(Typography, { variant: "sigma", children: "Capture filters" }),
+              /* @__PURE__ */ jsxs(Typography, { variant: "pi", textColor: "neutral500", children: [
                 filterSummary,
                 " · ",
                 showFilters ? "▼" : "▶"
@@ -245,13 +241,13 @@ const Recordings = () => {
             ]
           }
         ),
-        showFilters && /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { paddingTop: 2, style: { background: "#fafafa", padding: 10, borderRadius: 6 }, children: [
-          /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "pi", textColor: "neutral600", children: "Apply filters here to restrict what the session records. Leave all empty to capture every request the middleware sees." }),
-          /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { paddingTop: 2, children: [
-            /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "pi", fontWeight: "semiBold", children: "HTTP methods" }),
-            /* @__PURE__ */ jsxRuntime.jsx(designSystem.Flex, { gap: 1, paddingTop: 1, wrap: "wrap", children: HTTP_METHODS.map((m) => {
+        showFilters && /* @__PURE__ */ jsxs(Box, { paddingTop: 2, style: { background: "#fafafa", padding: 10, borderRadius: 6 }, children: [
+          /* @__PURE__ */ jsx(Typography, { variant: "pi", textColor: "neutral600", children: "Apply filters here to restrict what the session records. Leave all empty to capture every request the middleware sees." }),
+          /* @__PURE__ */ jsxs(Box, { paddingTop: 2, children: [
+            /* @__PURE__ */ jsx(Typography, { variant: "pi", fontWeight: "semiBold", children: "HTTP methods" }),
+            /* @__PURE__ */ jsx(Flex, { gap: 1, paddingTop: 1, wrap: "wrap", children: HTTP_METHODS.map((m) => {
               const checked = filterMethods.includes(m);
-              return /* @__PURE__ */ jsxRuntime.jsxs("label", { style: {
+              return /* @__PURE__ */ jsxs("label", { style: {
                 cursor: "pointer",
                 padding: "2px 8px",
                 border: "1px solid #ccc",
@@ -259,7 +255,7 @@ const Recordings = () => {
                 background: checked ? "#e8eaf6" : "transparent",
                 fontSize: 11
               }, children: [
-                /* @__PURE__ */ jsxRuntime.jsx(
+                /* @__PURE__ */ jsx(
                   "input",
                   {
                     type: "checkbox",
@@ -272,8 +268,8 @@ const Recordings = () => {
               ] }, m);
             }) })
           ] }),
-          /* @__PURE__ */ jsxRuntime.jsx(designSystem.Box, { paddingTop: 2, children: /* @__PURE__ */ jsxRuntime.jsx(
-            designSystem.TextInput,
+          /* @__PURE__ */ jsx(Box, { paddingTop: 2, children: /* @__PURE__ */ jsx(
+            TextInput,
             {
               label: "Path patterns (comma-separated)",
               value: filterPathPatterns,
@@ -281,8 +277,8 @@ const Recordings = () => {
               placeholder: "/api/sale-orders, /api/cash-registers"
             }
           ) }),
-          /* @__PURE__ */ jsxRuntime.jsx(designSystem.Box, { paddingTop: 2, children: /* @__PURE__ */ jsxRuntime.jsx(
-            designSystem.TextInput,
+          /* @__PURE__ */ jsx(Box, { paddingTop: 2, children: /* @__PURE__ */ jsx(
+            TextInput,
             {
               label: "Content-type UIDs (comma-separated)",
               value: filterCtUids,
@@ -290,19 +286,19 @@ const Recordings = () => {
               placeholder: "api::sale.sale-order, api::cash-register.cash-register"
             }
           ) }),
-          /* @__PURE__ */ jsxRuntime.jsx(designSystem.Box, { paddingTop: 2, children: /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "pi", textColor: "neutral500", children: "Filters are stored on the session and applied by the recorder middleware (when wired). Existing sessions keep the filters they were started with." }) })
+          /* @__PURE__ */ jsx(Box, { paddingTop: 2, children: /* @__PURE__ */ jsx(Typography, { variant: "pi", textColor: "neutral500", children: "Filters are stored on the session and applied by the recorder middleware (when wired). Existing sessions keep the filters they were started with." }) })
         ] })
       ] }),
-      activeSession && /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { paddingTop: 2, children: [
-        /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Typography, { variant: "pi", textColor: "neutral600", children: [
+      activeSession && /* @__PURE__ */ jsxs(Box, { paddingTop: 2, children: [
+        /* @__PURE__ */ jsxs(Typography, { variant: "pi", textColor: "neutral600", children: [
           "Recording in progress: ",
-          /* @__PURE__ */ jsxRuntime.jsx("strong", { children: activeSession.name }),
+          /* @__PURE__ */ jsx("strong", { children: activeSession.name }),
           " · app=",
-          /* @__PURE__ */ jsxRuntime.jsx("strong", { children: activeSession.resolvedAppName }),
+          /* @__PURE__ */ jsx("strong", { children: activeSession.resolvedAppName }),
           " · role=",
-          /* @__PURE__ */ jsxRuntime.jsx("strong", { children: activeSession.resolvedRoleKey })
+          /* @__PURE__ */ jsx("strong", { children: activeSession.resolvedRoleKey })
         ] }),
-        activeSession.filters && Object.values(activeSession.filters).some((v) => Array.isArray(v) && v.length > 0) && /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Typography, { variant: "pi", textColor: "neutral500", children: [
+        activeSession.filters && Object.values(activeSession.filters).some((v) => Array.isArray(v) && v.length > 0) && /* @__PURE__ */ jsxs(Typography, { variant: "pi", textColor: "neutral500", children: [
           "Filters: ",
           [
             activeSession.filters.methods?.length ? `methods=${activeSession.filters.methods.join(",")}` : null,
@@ -311,18 +307,18 @@ const Recordings = () => {
           ].filter(Boolean).join(" · ")
         ] })
       ] }),
-      message && /* @__PURE__ */ jsxRuntime.jsx(designSystem.Box, { paddingTop: 2, children: /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { textColor: "danger700", children: message }) })
+      message && /* @__PURE__ */ jsx(Box, { paddingTop: 2, children: /* @__PURE__ */ jsx(Typography, { textColor: "danger700", children: message }) })
     ] }),
-    /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { paddingTop: 4, children: [
-      /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Flex, { justifyContent: "space-between", alignItems: "flex-end", wrap: "wrap", gap: 2, children: [
-        /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Typography, { variant: "delta", children: [
+    /* @__PURE__ */ jsxs(Box, { paddingTop: 4, children: [
+      /* @__PURE__ */ jsxs(Flex, { justifyContent: "space-between", alignItems: "flex-end", wrap: "wrap", gap: 2, children: [
+        /* @__PURE__ */ jsxs(Typography, { variant: "delta", children: [
           "Sessions (",
           sessions.length,
           ")"
         ] }),
-        /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Flex, { gap: 2, wrap: "wrap", alignItems: "flex-end", children: [
-          /* @__PURE__ */ jsxRuntime.jsx(designSystem.Box, { style: { flex: "0 0 220px" }, children: /* @__PURE__ */ jsxRuntime.jsx(
-            designSystem.TextInput,
+        /* @__PURE__ */ jsxs(Flex, { gap: 2, wrap: "wrap", alignItems: "flex-end", children: [
+          /* @__PURE__ */ jsx(Box, { style: { flex: "0 0 220px" }, children: /* @__PURE__ */ jsx(
+            TextInput,
             {
               label: "Search",
               placeholder: "name, app or role",
@@ -330,9 +326,9 @@ const Recordings = () => {
               onChange: (e) => setSearch(e.target.value)
             }
           ) }),
-          /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { style: { flex: "0 0 160px" }, children: [
-            /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "pi", textColor: "neutral600", children: "Status" }),
-            /* @__PURE__ */ jsxRuntime.jsxs(
+          /* @__PURE__ */ jsxs(Box, { style: { flex: "0 0 160px" }, children: [
+            /* @__PURE__ */ jsx(Typography, { variant: "pi", textColor: "neutral600", children: "Status" }),
+            /* @__PURE__ */ jsxs(
               "select",
               {
                 value: statusFilter,
@@ -345,26 +341,26 @@ const Recordings = () => {
                   marginTop: 4
                 },
                 children: [
-                  /* @__PURE__ */ jsxRuntime.jsx("option", { value: "", children: "All status" }),
-                  /* @__PURE__ */ jsxRuntime.jsx("option", { value: "recording", children: "Recording" }),
-                  /* @__PURE__ */ jsxRuntime.jsx("option", { value: "stopped", children: "Stopped" }),
-                  /* @__PURE__ */ jsxRuntime.jsx("option", { value: "idle", children: "Idle" })
+                  /* @__PURE__ */ jsx("option", { value: "", children: "All status" }),
+                  /* @__PURE__ */ jsx("option", { value: "recording", children: "Recording" }),
+                  /* @__PURE__ */ jsx("option", { value: "stopped", children: "Stopped" }),
+                  /* @__PURE__ */ jsx("option", { value: "idle", children: "Idle" })
                 ]
               }
             )
           ] })
         ] })
       ] }),
-      filtered.length !== sessions.length && /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Typography, { variant: "pi", textColor: "neutral500", paddingTop: 1, children: [
+      filtered.length !== sessions.length && /* @__PURE__ */ jsxs(Typography, { variant: "pi", textColor: "neutral500", paddingTop: 1, children: [
         filtered.length,
         " of ",
         sessions.length
       ] }),
-      sessions.length === 0 && /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "pi", textColor: "neutral500", paddingTop: 2, children: "No recording sessions yet. Start one above." }),
+      sessions.length === 0 && /* @__PURE__ */ jsx(Typography, { variant: "pi", textColor: "neutral500", paddingTop: 2, children: "No recording sessions yet. Start one above." }),
       paged.map(renderRow),
-      totalPages > 1 && /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Flex, { justifyContent: "space-between", alignItems: "center", paddingTop: 2, children: [
-        /* @__PURE__ */ jsxRuntime.jsx(
-          designSystem.Button,
+      totalPages > 1 && /* @__PURE__ */ jsxs(Flex, { justifyContent: "space-between", alignItems: "center", paddingTop: 2, children: [
+        /* @__PURE__ */ jsx(
+          Button,
           {
             variant: "secondary",
             disabled: safePage <= 1,
@@ -372,14 +368,14 @@ const Recordings = () => {
             children: "Prev"
           }
         ),
-        /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Typography, { variant: "pi", children: [
+        /* @__PURE__ */ jsxs(Typography, { variant: "pi", children: [
           "Page ",
           safePage,
           " / ",
           totalPages
         ] }),
-        /* @__PURE__ */ jsxRuntime.jsx(
-          designSystem.Button,
+        /* @__PURE__ */ jsx(
+          Button,
           {
             variant: "secondary",
             disabled: safePage >= totalPages,
@@ -417,13 +413,13 @@ function categoryOf(iface) {
   return OTHER;
 }
 const InterfaceCard = ({ iface, onScaffold, onOpenMethod }) => {
-  const { get } = admin.useFetchClient();
+  const { get } = useFetchClient();
   const methods = Array.isArray(iface.methods) ? iface.methods : [];
   const methodCount = methods.length;
-  const [expanded, setExpanded] = React__default.default.useState(false);
-  const [policies, setPolicies] = React__default.default.useState(null);
-  const [loadingPolicies, setLoadingPolicies] = React__default.default.useState(false);
-  const loadPolicies = React__default.default.useCallback(async () => {
+  const [expanded, setExpanded] = React.useState(false);
+  const [policies, setPolicies] = React.useState(null);
+  const [loadingPolicies, setLoadingPolicies] = React.useState(false);
+  const loadPolicies = React.useCallback(async () => {
     setLoadingPolicies(true);
     try {
       const { data } = await get(api$2(`/policies?interfaceKey=${encodeURIComponent(iface.key)}`));
@@ -439,7 +435,7 @@ const InterfaceCard = ({ iface, onScaffold, onOpenMethod }) => {
     setExpanded(next);
     if (next && policies === null) loadPolicies();
   };
-  const policiesByMethod = React__default.default.useMemo(() => {
+  const policiesByMethod = React.useMemo(() => {
     const map = /* @__PURE__ */ new Map();
     for (const p of policies || []) {
       const k = p.interfaceMethod?.key || "";
@@ -451,7 +447,7 @@ const InterfaceCard = ({ iface, onScaffold, onOpenMethod }) => {
     }
     return map;
   }, [policies]);
-  return /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { style: {
+  return /* @__PURE__ */ jsxs(Box, { style: {
     border: "1px solid #e0e0e0",
     borderRadius: 8,
     padding: 10,
@@ -460,13 +456,13 @@ const InterfaceCard = ({ iface, onScaffold, onOpenMethod }) => {
     maxWidth: expanded ? "100%" : 320,
     background: "#fff"
   }, children: [
-    /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Flex, { justifyContent: "space-between", alignItems: "flex-start", gap: 1, children: [
-      /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { style: { minWidth: 0, flex: 1 }, children: [
-        /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "sigma", children: iface.name }),
-        /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "pi", textColor: "neutral500", children: iface.key }),
-        /* @__PURE__ */ jsxRuntime.jsx(designSystem.Box, { paddingTop: 1, children: /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "pi", textColor: "neutral500", children: /* @__PURE__ */ jsxRuntime.jsx("code", { style: { fontSize: 10 }, children: iface.uid || "—" }) }) })
+    /* @__PURE__ */ jsxs(Flex, { justifyContent: "space-between", alignItems: "flex-start", gap: 1, children: [
+      /* @__PURE__ */ jsxs(Box, { style: { minWidth: 0, flex: 1 }, children: [
+        /* @__PURE__ */ jsx(Typography, { variant: "sigma", children: iface.name }),
+        /* @__PURE__ */ jsx(Typography, { variant: "pi", textColor: "neutral500", children: iface.key }),
+        /* @__PURE__ */ jsx(Box, { paddingTop: 1, children: /* @__PURE__ */ jsx(Typography, { variant: "pi", textColor: "neutral500", children: /* @__PURE__ */ jsx("code", { style: { fontSize: 10 }, children: iface.uid || "—" }) }) })
       ] }),
-      /* @__PURE__ */ jsxRuntime.jsx(
+      /* @__PURE__ */ jsx(
         "button",
         {
           type: "button",
@@ -485,9 +481,9 @@ const InterfaceCard = ({ iface, onScaffold, onOpenMethod }) => {
         }
       )
     ] }),
-    /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Flex, { gap: 1, paddingTop: 1, alignItems: "center", justifyContent: "space-between", children: [
-      /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Flex, { gap: 1, alignItems: "center", children: [
-        /* @__PURE__ */ jsxRuntime.jsxs("span", { style: {
+    /* @__PURE__ */ jsxs(Flex, { gap: 1, paddingTop: 1, alignItems: "center", justifyContent: "space-between", children: [
+      /* @__PURE__ */ jsxs(Flex, { gap: 1, alignItems: "center", children: [
+        /* @__PURE__ */ jsxs("span", { style: {
           background: "#e8eaf6",
           color: "#4945ff",
           padding: "1px 6px",
@@ -499,30 +495,30 @@ const InterfaceCard = ({ iface, onScaffold, onOpenMethod }) => {
           " method",
           methodCount === 1 ? "" : "s"
         ] }),
-        /* @__PURE__ */ jsxRuntime.jsx("span", { style: {
+        /* @__PURE__ */ jsx("span", { style: {
           background: iface.status === "generated" ? "#e8f5e9" : "#fff3e0",
           padding: "1px 6px",
           borderRadius: 8,
           fontSize: 10
         }, children: iface.status || "manual" })
       ] }),
-      /* @__PURE__ */ jsxRuntime.jsx(designSystem.Button, { variant: "secondary", onClick: () => onScaffold(iface), children: "Scaffold" })
+      /* @__PURE__ */ jsx(Button, { variant: "secondary", onClick: () => onScaffold(iface), children: "Scaffold" })
     ] }),
-    expanded && /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { paddingTop: 2, style: { borderTop: "1px solid #f0f0f4", marginTop: 6 }, children: [
-      loadingPolicies && /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "pi", textColor: "neutral500", paddingTop: 1, children: "Loading policies…" }),
-      methods.length === 0 && /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "pi", textColor: "neutral500", paddingTop: 1, children: "No methods on this interface yet." }),
+    expanded && /* @__PURE__ */ jsxs(Box, { paddingTop: 2, style: { borderTop: "1px solid #f0f0f4", marginTop: 6 }, children: [
+      loadingPolicies && /* @__PURE__ */ jsx(Typography, { variant: "pi", textColor: "neutral500", paddingTop: 1, children: "Loading policies…" }),
+      methods.length === 0 && /* @__PURE__ */ jsx(Typography, { variant: "pi", textColor: "neutral500", paddingTop: 1, children: "No methods on this interface yet." }),
       methods.map((m) => {
         const ps = policiesByMethod.get(m.name) || [];
-        return /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { style: {
+        return /* @__PURE__ */ jsxs(Box, { style: {
           border: "1px solid #f0f0f4",
           borderRadius: 6,
           padding: 8,
           marginTop: 6,
           background: "#fafafa"
         }, children: [
-          /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Flex, { justifyContent: "space-between", alignItems: "center", wrap: "wrap", gap: 1, children: [
-            /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Flex, { gap: 2, alignItems: "center", style: { minWidth: 0, flex: 1 }, children: [
-              /* @__PURE__ */ jsxRuntime.jsx("span", { style: {
+          /* @__PURE__ */ jsxs(Flex, { justifyContent: "space-between", alignItems: "center", wrap: "wrap", gap: 1, children: [
+            /* @__PURE__ */ jsxs(Flex, { gap: 2, alignItems: "center", style: { minWidth: 0, flex: 1 }, children: [
+              /* @__PURE__ */ jsx("span", { style: {
                 padding: "1px 6px",
                 border: "1px solid #ccc",
                 borderRadius: 4,
@@ -530,8 +526,8 @@ const InterfaceCard = ({ iface, onScaffold, onOpenMethod }) => {
                 fontWeight: 700,
                 fontFamily: "ui-monospace, Menlo, monospace"
               }, children: (m.method || "GET").toUpperCase() }),
-              /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "sigma", children: m.name }),
-              /* @__PURE__ */ jsxRuntime.jsx("span", { style: {
+              /* @__PURE__ */ jsx(Typography, { variant: "sigma", children: m.name }),
+              /* @__PURE__ */ jsx("span", { style: {
                 background: "#e8eaf6",
                 color: "#4945ff",
                 padding: "0 6px",
@@ -539,8 +535,8 @@ const InterfaceCard = ({ iface, onScaffold, onOpenMethod }) => {
                 fontSize: 10,
                 fontWeight: 600
               }, children: m.action || "?" }),
-              /* @__PURE__ */ jsxRuntime.jsx(
-                designSystem.Typography,
+              /* @__PURE__ */ jsx(
+                Typography,
                 {
                   variant: "pi",
                   textColor: "neutral500",
@@ -554,8 +550,8 @@ const InterfaceCard = ({ iface, onScaffold, onOpenMethod }) => {
                 }
               )
             ] }),
-            /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Flex, { gap: 1, alignItems: "center", children: [
-              /* @__PURE__ */ jsxRuntime.jsxs("span", { style: {
+            /* @__PURE__ */ jsxs(Flex, { gap: 1, alignItems: "center", children: [
+              /* @__PURE__ */ jsxs("span", { style: {
                 background: ps.length > 0 ? "#e8f5e9" : "#f0f0f4",
                 color: ps.length > 0 ? "#1f8a45" : "#888",
                 padding: "1px 6px",
@@ -567,8 +563,8 @@ const InterfaceCard = ({ iface, onScaffold, onOpenMethod }) => {
                 " polic",
                 ps.length === 1 ? "y" : "ies"
               ] }),
-              onOpenMethod && /* @__PURE__ */ jsxRuntime.jsx(
-                designSystem.Button,
+              onOpenMethod && /* @__PURE__ */ jsx(
+                Button,
                 {
                   variant: "tertiary",
                   onClick: () => onOpenMethod({
@@ -585,7 +581,7 @@ const InterfaceCard = ({ iface, onScaffold, onOpenMethod }) => {
               )
             ] })
           ] }),
-          ps.length > 0 && /* @__PURE__ */ jsxRuntime.jsx(designSystem.Flex, { gap: 1, paddingTop: 1, wrap: "wrap", children: ps.map((p) => {
+          ps.length > 0 && /* @__PURE__ */ jsx(Flex, { gap: 1, paddingTop: 1, wrap: "wrap", children: ps.map((p) => {
             const hasFilters = p.filtersTemplate && Object.keys(p.filtersTemplate).length > 0;
             const hasBody = p.bodyTemplate && Object.keys(p.bodyTemplate).length > 0;
             const hasPopulate = p.populateTemplate && Object.keys(p.populateTemplate).length > 0;
@@ -593,7 +589,7 @@ const InterfaceCard = ({ iface, onScaffold, onOpenMethod }) => {
             if (hasFilters) indicators.push("F");
             if (hasPopulate) indicators.push("P");
             if (hasBody) indicators.push("B");
-            return /* @__PURE__ */ jsxRuntime.jsxs(
+            return /* @__PURE__ */ jsxs(
               "button",
               {
                 type: "button",
@@ -620,7 +616,7 @@ const InterfaceCard = ({ iface, onScaffold, onOpenMethod }) => {
                 },
                 children: [
                   p.roleKey,
-                  indicators.length > 0 && /* @__PURE__ */ jsxRuntime.jsxs("span", { style: { marginLeft: 4, opacity: 0.6, fontSize: 9 }, children: [
+                  indicators.length > 0 && /* @__PURE__ */ jsxs("span", { style: { marginLeft: 4, opacity: 0.6, fontSize: 9 }, children: [
                     "· ",
                     indicators.join("")
                   ] })
@@ -629,17 +625,17 @@ const InterfaceCard = ({ iface, onScaffold, onOpenMethod }) => {
               p.id
             );
           }) }),
-          ps.length === 0 && !loadingPolicies && /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "pi", textColor: "neutral500", paddingTop: 1, children: 'No role policies yet — click "Edit policies →" to author one.' })
+          ps.length === 0 && !loadingPolicies && /* @__PURE__ */ jsx(Typography, { variant: "pi", textColor: "neutral500", paddingTop: 1, children: 'No role policies yet — click "Edit policies →" to author one.' })
         ] }, m.id);
       })
     ] })
   ] });
 };
 const ScaffoldModal = ({ iface, onClose }) => {
-  const { get } = admin.useFetchClient();
-  const [code, setCode] = React__default.default.useState("// loading...");
-  const [error, setError] = React__default.default.useState("");
-  React__default.default.useEffect(() => {
+  const { get } = useFetchClient();
+  const [code, setCode] = React.useState("// loading...");
+  const [error, setError] = React.useState("");
+  React.useEffect(() => {
     if (!iface) return;
     (async () => {
       try {
@@ -657,8 +653,8 @@ const ScaffoldModal = ({ iface, onClose }) => {
     }
   };
   if (!iface) return null;
-  return /* @__PURE__ */ jsxRuntime.jsx(
-    designSystem.Box,
+  return /* @__PURE__ */ jsx(
+    Box,
     {
       style: {
         position: "fixed",
@@ -673,8 +669,8 @@ const ScaffoldModal = ({ iface, onClose }) => {
         justifyContent: "center"
       },
       onClick: onClose,
-      children: /* @__PURE__ */ jsxRuntime.jsxs(
-        designSystem.Box,
+      children: /* @__PURE__ */ jsxs(
+        Box,
         {
           style: {
             background: "#fff",
@@ -687,17 +683,17 @@ const ScaffoldModal = ({ iface, onClose }) => {
           },
           onClick: (e) => e.stopPropagation(),
           children: [
-            /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Flex, { justifyContent: "space-between", alignItems: "center", paddingBottom: 3, children: [
-              /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Typography, { variant: "beta", children: [
+            /* @__PURE__ */ jsxs(Flex, { justifyContent: "space-between", alignItems: "center", paddingBottom: 3, children: [
+              /* @__PURE__ */ jsxs(Typography, { variant: "beta", children: [
                 "Scaffold: ",
                 iface.key
               ] }),
-              /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Flex, { gap: 2, children: [
-                /* @__PURE__ */ jsxRuntime.jsx(designSystem.Button, { variant: "secondary", onClick: copy, children: "Copy" }),
-                /* @__PURE__ */ jsxRuntime.jsx(designSystem.Button, { onClick: onClose, children: "Close" })
+              /* @__PURE__ */ jsxs(Flex, { gap: 2, children: [
+                /* @__PURE__ */ jsx(Button, { variant: "secondary", onClick: copy, children: "Copy" }),
+                /* @__PURE__ */ jsx(Button, { onClick: onClose, children: "Close" })
               ] })
             ] }),
-            error ? /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { textColor: "danger700", children: error }) : /* @__PURE__ */ jsxRuntime.jsx("pre", { style: { background: "#f4f4f8", padding: 12, borderRadius: 4, fontSize: 12, margin: 0 }, children: code })
+            error ? /* @__PURE__ */ jsx(Typography, { textColor: "danger700", children: error }) : /* @__PURE__ */ jsx("pre", { style: { background: "#f4f4f8", padding: 12, borderRadius: 4, fontSize: 12, margin: 0 }, children: code })
           ]
         }
       )
@@ -705,11 +701,11 @@ const ScaffoldModal = ({ iface, onClose }) => {
   );
 };
 const AlignmentPlayground = () => {
-  const { post } = admin.useFetchClient();
-  const [routePath, setRoutePath] = React__default.default.useState("/cms-footers/:documentId");
-  const [signature, setSignature] = React__default.default.useState("documentId");
-  const [result, setResult] = React__default.default.useState(null);
-  const [message, setMessage] = React__default.default.useState("");
+  const { post } = useFetchClient();
+  const [routePath, setRoutePath] = React.useState("/cms-footers/:documentId");
+  const [signature, setSignature] = React.useState("documentId");
+  const [result, setResult] = React.useState(null);
+  const [message, setMessage] = React.useState("");
   const parseSignature = () => signature.split(",").map((v) => v.trim()).filter(Boolean);
   const validate = async () => {
     setMessage("");
@@ -735,45 +731,45 @@ const AlignmentPlayground = () => {
       setMessage("Guided fix preview failed.");
     }
   };
-  return /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { paddingTop: 6, style: { borderTop: "1px solid #e0e0e0" }, children: [
-    /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { paddingTop: 4, children: [
-      /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "delta", children: "Alignment Playground" }),
-      /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "pi", textColor: "neutral600", children: "Validate that route :tokens line up with method signature args." })
+  return /* @__PURE__ */ jsxs(Box, { paddingTop: 6, style: { borderTop: "1px solid #e0e0e0" }, children: [
+    /* @__PURE__ */ jsxs(Box, { paddingTop: 4, children: [
+      /* @__PURE__ */ jsx(Typography, { variant: "delta", children: "Alignment Playground" }),
+      /* @__PURE__ */ jsx(Typography, { variant: "pi", textColor: "neutral600", children: "Validate that route :tokens line up with method signature args." })
     ] }),
-    /* @__PURE__ */ jsxRuntime.jsx(designSystem.Box, { paddingTop: 3, children: /* @__PURE__ */ jsxRuntime.jsx(
-      designSystem.TextInput,
+    /* @__PURE__ */ jsx(Box, { paddingTop: 3, children: /* @__PURE__ */ jsx(
+      TextInput,
       {
         label: "Route path",
         value: routePath,
         onChange: (e) => setRoutePath(e.target.value)
       }
     ) }),
-    /* @__PURE__ */ jsxRuntime.jsx(designSystem.Box, { paddingTop: 2, children: /* @__PURE__ */ jsxRuntime.jsx(
-      designSystem.TextInput,
+    /* @__PURE__ */ jsx(Box, { paddingTop: 2, children: /* @__PURE__ */ jsx(
+      TextInput,
       {
         label: "Input signature (comma-separated)",
         value: signature,
         onChange: (e) => setSignature(e.target.value)
       }
     ) }),
-    /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Flex, { gap: 2, paddingTop: 3, children: [
-      /* @__PURE__ */ jsxRuntime.jsx(designSystem.Button, { onClick: validate, children: "Validate" }),
-      /* @__PURE__ */ jsxRuntime.jsx(designSystem.Button, { variant: "secondary", onClick: previewFix, children: "Preview Guided Fix" })
+    /* @__PURE__ */ jsxs(Flex, { gap: 2, paddingTop: 3, children: [
+      /* @__PURE__ */ jsx(Button, { onClick: validate, children: "Validate" }),
+      /* @__PURE__ */ jsx(Button, { variant: "secondary", onClick: previewFix, children: "Preview Guided Fix" })
     ] }),
-    message && /* @__PURE__ */ jsxRuntime.jsx(designSystem.Box, { paddingTop: 2, children: /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { textColor: "danger700", children: message }) }),
-    result && /* @__PURE__ */ jsxRuntime.jsx(designSystem.Box, { paddingTop: 3, children: /* @__PURE__ */ jsxRuntime.jsx("pre", { style: { background: "#f4f4f8", padding: 8, borderRadius: 4, fontSize: 12, margin: 0 }, children: JSON.stringify(result, null, 2) }) })
+    message && /* @__PURE__ */ jsx(Box, { paddingTop: 2, children: /* @__PURE__ */ jsx(Typography, { textColor: "danger700", children: message }) }),
+    result && /* @__PURE__ */ jsx(Box, { paddingTop: 3, children: /* @__PURE__ */ jsx("pre", { style: { background: "#f4f4f8", padding: 8, borderRadius: 4, fontSize: 12, margin: 0 }, children: JSON.stringify(result, null, 2) }) })
   ] });
 };
 const Interfaces = ({ onOpenMethod }) => {
-  const { get } = admin.useFetchClient();
-  const [interfaces, setInterfaces] = React__default.default.useState([]);
-  const [scaffolding, setScaffolding] = React__default.default.useState(null);
-  const [message, setMessage] = React__default.default.useState("");
-  const [search, setSearch] = React__default.default.useState("");
-  const [statusFilter, setStatusFilter] = React__default.default.useState("");
-  const [categoryFilter, setCategoryFilter] = React__default.default.useState("");
-  const [collapsedGroups, setCollapsedGroups] = React__default.default.useState({});
-  const load = React__default.default.useCallback(async () => {
+  const { get } = useFetchClient();
+  const [interfaces, setInterfaces] = React.useState([]);
+  const [scaffolding, setScaffolding] = React.useState(null);
+  const [message, setMessage] = React.useState("");
+  const [search, setSearch] = React.useState("");
+  const [statusFilter, setStatusFilter] = React.useState("");
+  const [categoryFilter, setCategoryFilter] = React.useState("");
+  const [collapsedGroups, setCollapsedGroups] = React.useState({});
+  const load = React.useCallback(async () => {
     try {
       const { data } = await get(api$2("/interfaces"));
       setInterfaces(data?.data || []);
@@ -781,10 +777,10 @@ const Interfaces = ({ onOpenMethod }) => {
       setMessage("Failed to load interfaces.");
     }
   }, [get]);
-  React__default.default.useEffect(() => {
+  React.useEffect(() => {
     load();
   }, [load]);
-  const filtered = React__default.default.useMemo(() => {
+  const filtered = React.useMemo(() => {
     const q = search.trim().toLowerCase();
     return interfaces.filter((i) => {
       if (q) {
@@ -796,7 +792,7 @@ const Interfaces = ({ onOpenMethod }) => {
       return true;
     });
   }, [interfaces, search, statusFilter, categoryFilter]);
-  const grouped = React__default.default.useMemo(() => {
+  const grouped = React.useMemo(() => {
     const buckets = /* @__PURE__ */ new Map();
     for (const rule of CATEGORY_RULES) buckets.set(rule.id, { rule, items: [] });
     buckets.set(OTHER.id, { rule: OTHER, items: [] });
@@ -814,11 +810,11 @@ const Interfaces = ({ onOpenMethod }) => {
     for (const g of grouped) all[g.rule.id] = true;
     setCollapsedGroups(all);
   };
-  return /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { children: [
-    /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Flex, { justifyContent: "space-between", alignItems: "center", wrap: "wrap", gap: 2, children: [
-      /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { children: [
-        /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "beta", children: "API Interfaces" }),
-        /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Typography, { variant: "omega", textColor: "neutral600", children: [
+  return /* @__PURE__ */ jsxs(Box, { children: [
+    /* @__PURE__ */ jsxs(Flex, { justifyContent: "space-between", alignItems: "center", wrap: "wrap", gap: 2, children: [
+      /* @__PURE__ */ jsxs(Box, { children: [
+        /* @__PURE__ */ jsx(Typography, { variant: "beta", children: "API Interfaces" }),
+        /* @__PURE__ */ jsxs(Typography, { variant: "omega", textColor: "neutral600", children: [
           interfaces.length,
           " interface(s) across ",
           grouped.length,
@@ -826,16 +822,16 @@ const Interfaces = ({ onOpenMethod }) => {
           grouped.length === 1 ? "y" : "ies"
         ] })
       ] }),
-      /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Flex, { gap: 2, children: [
-        /* @__PURE__ */ jsxRuntime.jsx(designSystem.Button, { variant: "tertiary", onClick: expandAll, children: "Expand all" }),
-        /* @__PURE__ */ jsxRuntime.jsx(designSystem.Button, { variant: "tertiary", onClick: collapseAll, children: "Collapse all" }),
-        /* @__PURE__ */ jsxRuntime.jsx(designSystem.Button, { variant: "secondary", onClick: load, children: "Refresh" })
+      /* @__PURE__ */ jsxs(Flex, { gap: 2, children: [
+        /* @__PURE__ */ jsx(Button, { variant: "tertiary", onClick: expandAll, children: "Expand all" }),
+        /* @__PURE__ */ jsx(Button, { variant: "tertiary", onClick: collapseAll, children: "Collapse all" }),
+        /* @__PURE__ */ jsx(Button, { variant: "secondary", onClick: load, children: "Refresh" })
       ] })
     ] }),
-    message && /* @__PURE__ */ jsxRuntime.jsx(designSystem.Box, { paddingTop: 2, children: /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { textColor: "danger700", children: message }) }),
-    /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Flex, { gap: 3, paddingTop: 4, wrap: "wrap", alignItems: "flex-end", children: [
-      /* @__PURE__ */ jsxRuntime.jsx(designSystem.Box, { style: { flex: "1 1 220px" }, children: /* @__PURE__ */ jsxRuntime.jsx(
-        designSystem.TextInput,
+    message && /* @__PURE__ */ jsx(Box, { paddingTop: 2, children: /* @__PURE__ */ jsx(Typography, { textColor: "danger700", children: message }) }),
+    /* @__PURE__ */ jsxs(Flex, { gap: 3, paddingTop: 4, wrap: "wrap", alignItems: "flex-end", children: [
+      /* @__PURE__ */ jsx(Box, { style: { flex: "1 1 220px" }, children: /* @__PURE__ */ jsx(
+        TextInput,
         {
           label: "Search",
           placeholder: "key, name, or uid",
@@ -843,19 +839,19 @@ const Interfaces = ({ onOpenMethod }) => {
           onChange: (e) => setSearch(e.target.value)
         }
       ) }),
-      /* @__PURE__ */ jsxRuntime.jsx(designSystem.Box, { style: { flex: "0 0 200px" }, children: /* @__PURE__ */ jsxRuntime.jsx(
-        designSystem.SingleSelect,
+      /* @__PURE__ */ jsx(Box, { style: { flex: "0 0 200px" }, children: /* @__PURE__ */ jsx(
+        SingleSelect,
         {
           label: "Category",
           placeholder: "All",
           value: categoryFilter,
           onChange: (v) => setCategoryFilter(v || ""),
           onClear: () => setCategoryFilter(""),
-          children: categoryOptions.map((c) => /* @__PURE__ */ jsxRuntime.jsx(designSystem.SingleSelectOption, { value: c.id, children: c.label }, c.id))
+          children: categoryOptions.map((c) => /* @__PURE__ */ jsx(SingleSelectOption, { value: c.id, children: c.label }, c.id))
         }
       ) }),
-      /* @__PURE__ */ jsxRuntime.jsx(designSystem.Box, { style: { flex: "0 0 180px" }, children: /* @__PURE__ */ jsxRuntime.jsxs(
-        designSystem.SingleSelect,
+      /* @__PURE__ */ jsx(Box, { style: { flex: "0 0 180px" }, children: /* @__PURE__ */ jsxs(
+        SingleSelect,
         {
           label: "Status",
           placeholder: "All",
@@ -863,24 +859,24 @@ const Interfaces = ({ onOpenMethod }) => {
           onChange: (v) => setStatusFilter(v || ""),
           onClear: () => setStatusFilter(""),
           children: [
-            /* @__PURE__ */ jsxRuntime.jsx(designSystem.SingleSelectOption, { value: "generated", children: "Generated" }),
-            /* @__PURE__ */ jsxRuntime.jsx(designSystem.SingleSelectOption, { value: "modified", children: "Modified" }),
-            /* @__PURE__ */ jsxRuntime.jsx(designSystem.SingleSelectOption, { value: "manual", children: "Manual" })
+            /* @__PURE__ */ jsx(SingleSelectOption, { value: "generated", children: "Generated" }),
+            /* @__PURE__ */ jsx(SingleSelectOption, { value: "modified", children: "Modified" }),
+            /* @__PURE__ */ jsx(SingleSelectOption, { value: "manual", children: "Manual" })
           ]
         }
       ) }),
-      /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Typography, { variant: "pi", textColor: "neutral500", children: [
+      /* @__PURE__ */ jsxs(Typography, { variant: "pi", textColor: "neutral500", children: [
         filtered.length,
         " of ",
         interfaces.length
       ] })
     ] }),
-    grouped.length === 0 && /* @__PURE__ */ jsxRuntime.jsx(designSystem.Box, { paddingTop: 4, children: /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "pi", textColor: "neutral500", children: interfaces.length === 0 ? 'No interfaces yet — run "Re-seed from api-provider" on Domains & Roles to import from @rutba/api-provider.' : "No interfaces match the current filters." }) }),
+    grouped.length === 0 && /* @__PURE__ */ jsx(Box, { paddingTop: 4, children: /* @__PURE__ */ jsx(Typography, { variant: "pi", textColor: "neutral500", children: interfaces.length === 0 ? 'No interfaces yet — run "Re-seed from api-provider" on Domains & Roles to import from @rutba/api-provider.' : "No interfaces match the current filters." }) }),
     grouped.map((group) => {
       const isCollapsed = collapsedGroups[group.rule.id];
-      return /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { paddingTop: 4, children: [
-        /* @__PURE__ */ jsxRuntime.jsxs(
-          designSystem.Flex,
+      return /* @__PURE__ */ jsxs(Box, { paddingTop: 4, children: [
+        /* @__PURE__ */ jsxs(
+          Flex,
           {
             justifyContent: "space-between",
             alignItems: "center",
@@ -892,9 +888,9 @@ const Interfaces = ({ onOpenMethod }) => {
             },
             onClick: () => toggleGroup(group.rule.id),
             children: [
-              /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Flex, { gap: 2, alignItems: "center", children: [
-                /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "delta", children: group.rule.label }),
-                /* @__PURE__ */ jsxRuntime.jsx("span", { style: {
+              /* @__PURE__ */ jsxs(Flex, { gap: 2, alignItems: "center", children: [
+                /* @__PURE__ */ jsx(Typography, { variant: "delta", children: group.rule.label }),
+                /* @__PURE__ */ jsx("span", { style: {
                   background: "#4945ff",
                   color: "#fff",
                   padding: "1px 8px",
@@ -903,11 +899,11 @@ const Interfaces = ({ onOpenMethod }) => {
                   fontWeight: 700
                 }, children: group.items.length })
               ] }),
-              /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "pi", textColor: "neutral500", children: isCollapsed ? "▶" : "▼" })
+              /* @__PURE__ */ jsx(Typography, { variant: "pi", textColor: "neutral500", children: isCollapsed ? "▶" : "▼" })
             ]
           }
         ),
-        !isCollapsed && /* @__PURE__ */ jsxRuntime.jsx(designSystem.Flex, { gap: 2, wrap: "wrap", paddingTop: 2, alignItems: "flex-start", children: group.items.map((i) => /* @__PURE__ */ jsxRuntime.jsx(
+        !isCollapsed && /* @__PURE__ */ jsx(Flex, { gap: 2, wrap: "wrap", paddingTop: 2, alignItems: "flex-start", children: group.items.map((i) => /* @__PURE__ */ jsx(
           InterfaceCard,
           {
             iface: i,
@@ -918,8 +914,8 @@ const Interfaces = ({ onOpenMethod }) => {
         )) })
       ] }, group.rule.id);
     }),
-    /* @__PURE__ */ jsxRuntime.jsx(AlignmentPlayground, {}),
-    /* @__PURE__ */ jsxRuntime.jsx(ScaffoldModal, { iface: scaffolding, onClose: () => setScaffolding(null) })
+    /* @__PURE__ */ jsx(AlignmentPlayground, {}),
+    /* @__PURE__ */ jsx(ScaffoldModal, { iface: scaffolding, onClose: () => setScaffolding(null) })
   ] });
 };
 const tokens = {
@@ -1050,7 +1046,7 @@ function parseFilterObject(obj) {
   }
   return parseTree(obj, 0);
 }
-const Pill = ({ active, color, children, onClick, title }) => /* @__PURE__ */ jsxRuntime.jsx("button", { type: "button", onClick, title, style: {
+const Pill = ({ active, color, children, onClick, title }) => /* @__PURE__ */ jsx("button", { type: "button", onClick, title, style: {
   border: `1px solid ${active ? color : tokens.neutral300}`,
   background: active ? `${color}1a` : "#fff",
   color: active ? color : tokens.neutral700,
@@ -1063,14 +1059,14 @@ const Pill = ({ active, color, children, onClick, title }) => /* @__PURE__ */ js
 }, children });
 const ConditionRow = ({ node, depth, onChange, onRemove }) => {
   const noValue = NO_VALUE_OPS.has(node.operator);
-  return /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Flex, { gap: 1, alignItems: "center", wrap: "wrap", style: {
+  return /* @__PURE__ */ jsxs(Flex, { gap: 1, alignItems: "center", wrap: "wrap", style: {
     padding: 6,
     marginBottom: 4,
     background: tokens.neutral100,
     borderRadius: tokens.radius,
     border: `1px solid ${tokens.neutral200}`
   }, children: [
-    /* @__PURE__ */ jsxRuntime.jsx(
+    /* @__PURE__ */ jsx(
       "input",
       {
         type: "text",
@@ -1088,7 +1084,7 @@ const ConditionRow = ({ node, depth, onChange, onRemove }) => {
         }
       }
     ),
-    /* @__PURE__ */ jsxRuntime.jsx(
+    /* @__PURE__ */ jsx(
       "select",
       {
         value: node.operator || "$eq",
@@ -1100,10 +1096,10 @@ const ConditionRow = ({ node, depth, onChange, onRemove }) => {
           fontSize: 12,
           fontFamily: tokens.monoFont
         },
-        children: OPERATORS.map((o) => /* @__PURE__ */ jsxRuntime.jsx("option", { value: o.value, children: o.label }, o.value))
+        children: OPERATORS.map((o) => /* @__PURE__ */ jsx("option", { value: o.value, children: o.label }, o.value))
       }
     ),
-    /* @__PURE__ */ jsxRuntime.jsx(
+    /* @__PURE__ */ jsx(
       "input",
       {
         type: "text",
@@ -1123,7 +1119,7 @@ const ConditionRow = ({ node, depth, onChange, onRemove }) => {
         }
       }
     ),
-    /* @__PURE__ */ jsxRuntime.jsx("button", { type: "button", onClick: onRemove, title: "Remove condition", style: {
+    /* @__PURE__ */ jsx("button", { type: "button", onClick: onRemove, title: "Remove condition", style: {
       border: "none",
       background: "transparent",
       color: tokens.danger,
@@ -1152,7 +1148,7 @@ const GroupNode = ({ node, depth, onChange, onRemove, canRemove }) => {
       children: [...node.children, { id: nextId(), type: "group", logic: "$and", children: [] }]
     });
   };
-  return /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { style: {
+  return /* @__PURE__ */ jsxs(Box, { style: {
     padding: 8,
     marginBottom: 6,
     border: `1px solid ${isAnd ? tokens.primary : tokens.warning}`,
@@ -1160,9 +1156,9 @@ const GroupNode = ({ node, depth, onChange, onRemove, canRemove }) => {
     borderRadius: tokens.radiusLarge,
     background: depth === 0 ? "#fff" : `${tokens.neutral100}`
   }, children: [
-    /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Flex, { justifyContent: "space-between", alignItems: "center", paddingBottom: 2, children: [
-      /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Flex, { gap: 1, children: [
-        /* @__PURE__ */ jsxRuntime.jsx(
+    /* @__PURE__ */ jsxs(Flex, { justifyContent: "space-between", alignItems: "center", paddingBottom: 2, children: [
+      /* @__PURE__ */ jsxs(Flex, { gap: 1, children: [
+        /* @__PURE__ */ jsx(
           Pill,
           {
             active: isAnd,
@@ -1171,7 +1167,7 @@ const GroupNode = ({ node, depth, onChange, onRemove, canRemove }) => {
             children: "AND"
           }
         ),
-        /* @__PURE__ */ jsxRuntime.jsx(
+        /* @__PURE__ */ jsx(
           Pill,
           {
             active: !isAnd,
@@ -1180,13 +1176,13 @@ const GroupNode = ({ node, depth, onChange, onRemove, canRemove }) => {
             children: "OR"
           }
         ),
-        /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Typography, { variant: "pi", textColor: "neutral500", children: [
+        /* @__PURE__ */ jsxs(Typography, { variant: "pi", textColor: "neutral500", children: [
           node.children.length,
           " ",
           node.children.length === 1 ? "item" : "items"
         ] })
       ] }),
-      canRemove && /* @__PURE__ */ jsxRuntime.jsx("button", { type: "button", onClick: onRemove, title: "Remove group", style: {
+      canRemove && /* @__PURE__ */ jsx("button", { type: "button", onClick: onRemove, title: "Remove group", style: {
         border: "none",
         background: "transparent",
         color: tokens.danger,
@@ -1195,7 +1191,7 @@ const GroupNode = ({ node, depth, onChange, onRemove, canRemove }) => {
         padding: "0 6px"
       }, children: "× group" })
     ] }),
-    node.children.map((child, idx) => child.type === "group" ? /* @__PURE__ */ jsxRuntime.jsx(
+    node.children.map((child, idx) => child.type === "group" ? /* @__PURE__ */ jsx(
       GroupNode,
       {
         node: child,
@@ -1205,7 +1201,7 @@ const GroupNode = ({ node, depth, onChange, onRemove, canRemove }) => {
         canRemove: true
       },
       child.id
-    ) : /* @__PURE__ */ jsxRuntime.jsx(
+    ) : /* @__PURE__ */ jsx(
       ConditionRow,
       {
         node: child,
@@ -1215,16 +1211,16 @@ const GroupNode = ({ node, depth, onChange, onRemove, canRemove }) => {
       },
       child.id
     )),
-    /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Flex, { gap: 1, paddingTop: 1, children: [
-      /* @__PURE__ */ jsxRuntime.jsx(Pill, { color: tokens.primary, onClick: addCondition, children: "+ condition" }),
-      depth < MAX_DEPTH && /* @__PURE__ */ jsxRuntime.jsx(Pill, { color: tokens.warning, onClick: addGroup, children: "+ group" })
+    /* @__PURE__ */ jsxs(Flex, { gap: 1, paddingTop: 1, children: [
+      /* @__PURE__ */ jsx(Pill, { color: tokens.primary, onClick: addCondition, children: "+ condition" }),
+      depth < MAX_DEPTH && /* @__PURE__ */ jsx(Pill, { color: tokens.warning, onClick: addGroup, children: "+ group" })
     ] })
   ] });
 };
 function FiltersBuilder({ value, onChange }) {
-  const [tree, setTree] = React__default.default.useState(() => parseFilterObject(value));
-  const lastValueRef = React__default.default.useRef(value);
-  React__default.default.useEffect(() => {
+  const [tree, setTree] = React.useState(() => parseFilterObject(value));
+  const lastValueRef = React.useRef(value);
+  React.useEffect(() => {
     if (lastValueRef.current !== value) {
       lastValueRef.current = value;
       setTree(parseFilterObject(value));
@@ -1236,20 +1232,20 @@ function FiltersBuilder({ value, onChange }) {
     lastValueRef.current = obj;
     onChange?.(obj);
   };
-  return /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { children: [
-    /* @__PURE__ */ jsxRuntime.jsx(GroupNode, { node: tree, depth: 0, onChange: updateTree, onRemove: () => {
+  return /* @__PURE__ */ jsxs(Box, { children: [
+    /* @__PURE__ */ jsx(GroupNode, { node: tree, depth: 0, onChange: updateTree, onRemove: () => {
     }, canRemove: false }),
-    /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Typography, { variant: "pi", textColor: "neutral500", children: [
+    /* @__PURE__ */ jsxs(Typography, { variant: "pi", textColor: "neutral500", children: [
       "Path uses dot notation (e.g. ",
-      /* @__PURE__ */ jsxRuntime.jsx("code", { children: "branch.id" }),
+      /* @__PURE__ */ jsx("code", { children: "branch.id" }),
       ", ",
-      /* @__PURE__ */ jsxRuntime.jsx("code", { children: "author.email" }),
+      /* @__PURE__ */ jsx("code", { children: "author.email" }),
       "). Value can be a literal or a ",
-      /* @__PURE__ */ jsxRuntime.jsx("code", { children: "$user.id" }),
+      /* @__PURE__ */ jsx("code", { children: "$user.id" }),
       " / ",
-      /* @__PURE__ */ jsxRuntime.jsx("code", { children: "$today" }),
+      /* @__PURE__ */ jsx("code", { children: "$today" }),
       " / ",
-      /* @__PURE__ */ jsxRuntime.jsx("code", { children: "$query.q" }),
+      /* @__PURE__ */ jsx("code", { children: "$query.q" }),
       " token."
     ] })
   ] });
@@ -1321,14 +1317,14 @@ function pathsToTree(paths) {
 }
 function TreeNode({ name, node, depth, onRemove }) {
   const childKeys = Object.keys(node.children || {});
-  return /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { style: {
+  return /* @__PURE__ */ jsxs(Box, { style: {
     marginLeft: depth === 0 ? 0 : 12,
     paddingLeft: depth === 0 ? 0 : 8,
     borderLeft: depth === 0 ? "none" : `2px solid ${tokens.neutral200}`
   }, children: [
-    /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Flex, { justifyContent: "space-between", alignItems: "center", style: { padding: "2px 0" }, children: [
-      /* @__PURE__ */ jsxRuntime.jsx("span", { style: { fontFamily: tokens.monoFont, fontSize: 12 }, children: name === "*" ? /* @__PURE__ */ jsxRuntime.jsx("em", { style: { color: tokens.warning }, children: "* (populate all)" }) : name }),
-      /* @__PURE__ */ jsxRuntime.jsx(
+    /* @__PURE__ */ jsxs(Flex, { justifyContent: "space-between", alignItems: "center", style: { padding: "2px 0" }, children: [
+      /* @__PURE__ */ jsx("span", { style: { fontFamily: tokens.monoFont, fontSize: 12 }, children: name === "*" ? /* @__PURE__ */ jsx("em", { style: { color: tokens.warning }, children: "* (populate all)" }) : name }),
+      /* @__PURE__ */ jsx(
         "button",
         {
           type: "button",
@@ -1346,15 +1342,15 @@ function TreeNode({ name, node, depth, onRemove }) {
         }
       )
     ] }),
-    childKeys.map((ck) => /* @__PURE__ */ jsxRuntime.jsx(TreeNode, { name: ck, node: node.children[ck], depth: depth + 1, onRemove }, ck))
+    childKeys.map((ck) => /* @__PURE__ */ jsx(TreeNode, { name: ck, node: node.children[ck], depth: depth + 1, onRemove }, ck))
   ] });
 }
 function PopulateBuilder({ value, onChange }) {
-  const [paths, setPaths] = React__default.default.useState(() => populateToPaths(value));
-  const [draft, setDraft] = React__default.default.useState("");
-  const [error, setError] = React__default.default.useState("");
-  const lastValueRef = React__default.default.useRef(value);
-  React__default.default.useEffect(() => {
+  const [paths, setPaths] = React.useState(() => populateToPaths(value));
+  const [draft, setDraft] = React.useState("");
+  const [error, setError] = React.useState("");
+  const lastValueRef = React.useRef(value);
+  React.useEffect(() => {
     if (lastValueRef.current !== value) {
       lastValueRef.current = value;
       setPaths(populateToPaths(value));
@@ -1386,9 +1382,9 @@ function PopulateBuilder({ value, onChange }) {
   };
   const tree = pathsToTree(paths);
   const topKeys = Object.keys(tree);
-  return /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { children: [
-    /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Flex, { gap: 1, alignItems: "center", children: [
-      /* @__PURE__ */ jsxRuntime.jsx(
+  return /* @__PURE__ */ jsxs(Box, { children: [
+    /* @__PURE__ */ jsxs(Flex, { gap: 1, alignItems: "center", children: [
+      /* @__PURE__ */ jsx(
         "input",
         {
           type: "text",
@@ -1414,7 +1410,7 @@ function PopulateBuilder({ value, onChange }) {
           }
         }
       ),
-      /* @__PURE__ */ jsxRuntime.jsx("button", { type: "button", onClick: addPath, style: {
+      /* @__PURE__ */ jsx("button", { type: "button", onClick: addPath, style: {
         padding: "4px 10px",
         background: tokens.primary,
         color: "#fff",
@@ -1425,22 +1421,22 @@ function PopulateBuilder({ value, onChange }) {
         fontWeight: 600
       }, children: "+ add" })
     ] }),
-    error && /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "pi", textColor: "danger700", paddingTop: 1, children: error }),
-    /* @__PURE__ */ jsxRuntime.jsx(designSystem.Box, { paddingTop: 2, style: {
+    error && /* @__PURE__ */ jsx(Typography, { variant: "pi", textColor: "danger700", paddingTop: 1, children: error }),
+    /* @__PURE__ */ jsx(Box, { paddingTop: 2, style: {
       minHeight: 80,
       padding: 8,
       background: tokens.neutral100,
       borderRadius: tokens.radiusLarge,
       border: `1px solid ${tokens.neutral200}`
-    }, children: topKeys.length === 0 ? /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Typography, { variant: "pi", textColor: "neutral500", children: [
+    }, children: topKeys.length === 0 ? /* @__PURE__ */ jsxs(Typography, { variant: "pi", textColor: "neutral500", children: [
       "No populate paths. Add one above (e.g. ",
-      /* @__PURE__ */ jsxRuntime.jsx("code", { children: "author" }),
+      /* @__PURE__ */ jsx("code", { children: "author" }),
       ", ",
-      /* @__PURE__ */ jsxRuntime.jsx("code", { children: "comments.author" }),
+      /* @__PURE__ */ jsx("code", { children: "comments.author" }),
       ", or ",
-      /* @__PURE__ */ jsxRuntime.jsx("code", { children: "*" }),
+      /* @__PURE__ */ jsx("code", { children: "*" }),
       " for all)."
-    ] }) : topKeys.map((k) => /* @__PURE__ */ jsxRuntime.jsx(TreeNode, { name: k, node: tree[k], depth: 0, onRemove: removePath }, k)) })
+    ] }) : topKeys.map((k) => /* @__PURE__ */ jsx(TreeNode, { name: k, node: tree[k], depth: 0, onRemove: removePath }, k)) })
   ] });
 }
 function coerceValue(raw) {
@@ -1479,9 +1475,9 @@ function KeyValueEditor({
   valuePlaceholder = "value or $user.id",
   emptyHint = "No fields. Add one below."
 }) {
-  const [pairs, setPairs] = React__default.default.useState(() => objectToPairs(value));
-  const lastValueRef = React__default.default.useRef(value);
-  React__default.default.useEffect(() => {
+  const [pairs, setPairs] = React.useState(() => objectToPairs(value));
+  const lastValueRef = React.useRef(value);
+  React.useEffect(() => {
     if (lastValueRef.current !== value) {
       lastValueRef.current = value;
       setPairs(objectToPairs(value));
@@ -1504,16 +1500,16 @@ function KeyValueEditor({
     emit(next);
   };
   const addRow = () => emit([...pairs, ["", ""]]);
-  return /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { children: [
-    /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { style: {
+  return /* @__PURE__ */ jsxs(Box, { children: [
+    /* @__PURE__ */ jsxs(Box, { style: {
       padding: 8,
       background: tokens.neutral100,
       borderRadius: tokens.radiusLarge,
       border: `1px solid ${tokens.neutral200}`
     }, children: [
-      pairs.length === 0 && /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "pi", textColor: "neutral500", children: emptyHint }),
-      pairs.map(([k, v], idx) => /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Flex, { gap: 1, alignItems: "center", style: { marginBottom: 4 }, children: [
-        /* @__PURE__ */ jsxRuntime.jsx(
+      pairs.length === 0 && /* @__PURE__ */ jsx(Typography, { variant: "pi", textColor: "neutral500", children: emptyHint }),
+      pairs.map(([k, v], idx) => /* @__PURE__ */ jsxs(Flex, { gap: 1, alignItems: "center", style: { marginBottom: 4 }, children: [
+        /* @__PURE__ */ jsx(
           "input",
           {
             type: "text",
@@ -1530,8 +1526,8 @@ function KeyValueEditor({
             }
           }
         ),
-        /* @__PURE__ */ jsxRuntime.jsx("span", { style: { color: tokens.neutral500 }, children: ":" }),
-        /* @__PURE__ */ jsxRuntime.jsx(
+        /* @__PURE__ */ jsx("span", { style: { color: tokens.neutral500 }, children: ":" }),
+        /* @__PURE__ */ jsx(
           "input",
           {
             type: "text",
@@ -1548,7 +1544,7 @@ function KeyValueEditor({
             }
           }
         ),
-        /* @__PURE__ */ jsxRuntime.jsx("button", { type: "button", onClick: () => removeAt(idx), title: "Remove", style: {
+        /* @__PURE__ */ jsx("button", { type: "button", onClick: () => removeAt(idx), title: "Remove", style: {
           border: "none",
           background: "transparent",
           color: tokens.danger,
@@ -1558,7 +1554,7 @@ function KeyValueEditor({
         }, children: "×" })
       ] }, idx))
     ] }),
-    /* @__PURE__ */ jsxRuntime.jsx(designSystem.Box, { paddingTop: 1, children: /* @__PURE__ */ jsxRuntime.jsx("button", { type: "button", onClick: addRow, style: {
+    /* @__PURE__ */ jsx(Box, { paddingTop: 1, children: /* @__PURE__ */ jsx("button", { type: "button", onClick: addRow, style: {
       padding: "4px 10px",
       border: `1px solid ${tokens.primary}`,
       color: tokens.primary,
@@ -1627,9 +1623,9 @@ function emptyPolicy() {
   };
 }
 const BrowseTree = ({ interfaces, roleCount, onOpenMethod }) => {
-  const [search, setSearch] = React__default.default.useState("");
-  const [collapsed, setCollapsed] = React__default.default.useState({});
-  const filtered = React__default.default.useMemo(() => {
+  const [search, setSearch] = React.useState("");
+  const [collapsed, setCollapsed] = React.useState({});
+  const filtered = React.useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return interfaces;
     return interfaces.filter(
@@ -1643,10 +1639,10 @@ const BrowseTree = ({ interfaces, roleCount, onOpenMethod }) => {
     for (const i of filtered) all[i.key] = true;
     setCollapsed(all);
   };
-  return /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { children: [
-    /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Flex, { justifyContent: "space-between", alignItems: "flex-end", wrap: "wrap", gap: 2, paddingTop: 3, children: [
-      /* @__PURE__ */ jsxRuntime.jsx(designSystem.Box, { style: { flex: "1 1 300px" }, children: /* @__PURE__ */ jsxRuntime.jsx(
-        designSystem.TextInput,
+  return /* @__PURE__ */ jsxs(Box, { children: [
+    /* @__PURE__ */ jsxs(Flex, { justifyContent: "space-between", alignItems: "flex-end", wrap: "wrap", gap: 2, paddingTop: 3, children: [
+      /* @__PURE__ */ jsx(Box, { style: { flex: "1 1 300px" }, children: /* @__PURE__ */ jsx(
+        TextInput,
         {
           label: "Search interfaces / methods",
           placeholder: "key, uid, or method name (e.g. cash, findOne)",
@@ -1654,35 +1650,35 @@ const BrowseTree = ({ interfaces, roleCount, onOpenMethod }) => {
           onChange: (e) => setSearch(e.target.value)
         }
       ) }),
-      /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Flex, { gap: 2, children: [
-        /* @__PURE__ */ jsxRuntime.jsx(designSystem.Button, { variant: "tertiary", onClick: expandAll, children: "Expand all" }),
-        /* @__PURE__ */ jsxRuntime.jsx(designSystem.Button, { variant: "tertiary", onClick: collapseAll, children: "Collapse all" })
+      /* @__PURE__ */ jsxs(Flex, { gap: 2, children: [
+        /* @__PURE__ */ jsx(Button, { variant: "tertiary", onClick: expandAll, children: "Expand all" }),
+        /* @__PURE__ */ jsx(Button, { variant: "tertiary", onClick: collapseAll, children: "Collapse all" })
       ] })
     ] }),
-    filtered.length === 0 && /* @__PURE__ */ jsxRuntime.jsx(designSystem.Box, { paddingTop: 3, children: /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "pi", textColor: "neutral500", children: interfaces.length === 0 ? 'No interfaces yet — run "Re-seed from api-provider" on Domains & Roles to import defaults.' : "No interfaces match the search." }) }),
-    /* @__PURE__ */ jsxRuntime.jsx(designSystem.Box, { paddingTop: 3, children: filtered.map((iface) => {
+    filtered.length === 0 && /* @__PURE__ */ jsx(Box, { paddingTop: 3, children: /* @__PURE__ */ jsx(Typography, { variant: "pi", textColor: "neutral500", children: interfaces.length === 0 ? 'No interfaces yet — run "Re-seed from api-provider" on Domains & Roles to import defaults.' : "No interfaces match the search." }) }),
+    /* @__PURE__ */ jsx(Box, { paddingTop: 3, children: filtered.map((iface) => {
       const methods = Array.isArray(iface.methods) ? iface.methods : [];
       const isCollapsed = collapsed[iface.key];
-      return /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { style: {
+      return /* @__PURE__ */ jsxs(Box, { style: {
         border: "1px solid #e0e0e0",
         borderRadius: 8,
         marginBottom: 8,
         overflow: "hidden"
       }, children: [
-        /* @__PURE__ */ jsxRuntime.jsxs(
-          designSystem.Flex,
+        /* @__PURE__ */ jsxs(
+          Flex,
           {
             justifyContent: "space-between",
             alignItems: "center",
             style: { cursor: "pointer", padding: "8px 12px", background: "#f4f4f8" },
             onClick: () => toggle(iface.key),
             children: [
-              /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { style: { minWidth: 0, flex: 1 }, children: [
-                /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Flex, { gap: 2, alignItems: "center", children: [
-                  /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "sigma", children: iface.name }),
-                  /* @__PURE__ */ jsxRuntime.jsx("code", { style: { fontSize: 10, color: "#666" }, children: iface.uid })
+              /* @__PURE__ */ jsxs(Box, { style: { minWidth: 0, flex: 1 }, children: [
+                /* @__PURE__ */ jsxs(Flex, { gap: 2, alignItems: "center", children: [
+                  /* @__PURE__ */ jsx(Typography, { variant: "sigma", children: iface.name }),
+                  /* @__PURE__ */ jsx("code", { style: { fontSize: 10, color: "#666" }, children: iface.uid })
                 ] }),
-                /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Typography, { variant: "pi", textColor: "neutral500", children: [
+                /* @__PURE__ */ jsxs(Typography, { variant: "pi", textColor: "neutral500", children: [
                   iface.key,
                   " · ",
                   methods.length,
@@ -1690,19 +1686,19 @@ const BrowseTree = ({ interfaces, roleCount, onOpenMethod }) => {
                   methods.length === 1 ? "" : "s"
                 ] })
               ] }),
-              /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "pi", children: isCollapsed ? "▶" : "▼" })
+              /* @__PURE__ */ jsx(Typography, { variant: "pi", children: isCollapsed ? "▶" : "▼" })
             ]
           }
         ),
-        !isCollapsed && methods.map((m) => /* @__PURE__ */ jsxRuntime.jsxs(
-          designSystem.Flex,
+        !isCollapsed && methods.map((m) => /* @__PURE__ */ jsxs(
+          Flex,
           {
             justifyContent: "space-between",
             alignItems: "center",
             style: { padding: "6px 12px", borderTop: "1px solid #f0f0f4" },
             children: [
-              /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Flex, { gap: 2, alignItems: "center", style: { minWidth: 0, flex: 1 }, children: [
-                /* @__PURE__ */ jsxRuntime.jsx("span", { style: {
+              /* @__PURE__ */ jsxs(Flex, { gap: 2, alignItems: "center", style: { minWidth: 0, flex: 1 }, children: [
+                /* @__PURE__ */ jsx("span", { style: {
                   padding: "1px 6px",
                   border: "1px solid #ccc",
                   borderRadius: 4,
@@ -1710,8 +1706,8 @@ const BrowseTree = ({ interfaces, roleCount, onOpenMethod }) => {
                   fontWeight: 700,
                   fontFamily: "ui-monospace, Menlo, monospace"
                 }, children: (m.method || "GET").toUpperCase() }),
-                /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "sigma", children: m.name }),
-                /* @__PURE__ */ jsxRuntime.jsx("span", { style: {
+                /* @__PURE__ */ jsx(Typography, { variant: "sigma", children: m.name }),
+                /* @__PURE__ */ jsx("span", { style: {
                   background: "#e8eaf6",
                   color: "#4945ff",
                   padding: "0 6px",
@@ -1719,8 +1715,8 @@ const BrowseTree = ({ interfaces, roleCount, onOpenMethod }) => {
                   fontSize: 10,
                   fontWeight: 600
                 }, children: m.action || "?" }),
-                /* @__PURE__ */ jsxRuntime.jsx(
-                  designSystem.Typography,
+                /* @__PURE__ */ jsx(
+                  Typography,
                   {
                     variant: "pi",
                     textColor: "neutral500",
@@ -1734,8 +1730,8 @@ const BrowseTree = ({ interfaces, roleCount, onOpenMethod }) => {
                   }
                 )
               ] }),
-              /* @__PURE__ */ jsxRuntime.jsx(
-                designSystem.Button,
+              /* @__PURE__ */ jsx(
+                Button,
                 {
                   variant: "tertiary",
                   onClick: () => onOpenMethod({ interfaceKey: iface.key, methodName: m.name, action: m.action, path: m.path, httpMethod: m.method, interfaceName: iface.name, interfaceUid: iface.uid }),
@@ -1746,10 +1742,10 @@ const BrowseTree = ({ interfaces, roleCount, onOpenMethod }) => {
           },
           m.id
         )),
-        !isCollapsed && methods.length === 0 && /* @__PURE__ */ jsxRuntime.jsx(designSystem.Box, { padding: 3, children: /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "pi", textColor: "neutral500", children: "This interface has no methods yet." }) })
+        !isCollapsed && methods.length === 0 && /* @__PURE__ */ jsx(Box, { padding: 3, children: /* @__PURE__ */ jsx(Typography, { variant: "pi", textColor: "neutral500", children: "This interface has no methods yet." }) })
       ] }, iface.key);
     }) }),
-    /* @__PURE__ */ jsxRuntime.jsx(designSystem.Box, { paddingTop: 2, children: /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Typography, { variant: "pi", textColor: "neutral500", children: [
+    /* @__PURE__ */ jsx(Box, { paddingTop: 2, children: /* @__PURE__ */ jsxs(Typography, { variant: "pi", textColor: "neutral500", children: [
       filtered.length,
       " interface",
       filtered.length === 1 ? "" : "s",
@@ -1763,15 +1759,15 @@ const BrowseTree = ({ interfaces, roleCount, onOpenMethod }) => {
   ] });
 };
 const PlayModal = ({ open, selection, roleKey, method, onClose }) => {
-  const { post } = admin.useFetchClient();
-  const [documentId, setDocumentId] = React__default.default.useState("");
-  const [queryRaw, setQueryRaw] = React__default.default.useState("{}");
-  const [bodyRaw, setBodyRaw] = React__default.default.useState("{}");
-  const [actAsUserId, setActAsUserId] = React__default.default.useState("");
-  const [running, setRunning] = React__default.default.useState(false);
-  const [result, setResult] = React__default.default.useState(null);
-  const [error, setError] = React__default.default.useState("");
-  React__default.default.useEffect(() => {
+  const { post } = useFetchClient();
+  const [documentId, setDocumentId] = React.useState("");
+  const [queryRaw, setQueryRaw] = React.useState("{}");
+  const [bodyRaw, setBodyRaw] = React.useState("{}");
+  const [actAsUserId, setActAsUserId] = React.useState("");
+  const [running, setRunning] = React.useState(false);
+  const [result, setResult] = React.useState(null);
+  const [error, setError] = React.useState("");
+  React.useEffect(() => {
     if (!open) {
       setResult(null);
       setError("");
@@ -1812,7 +1808,7 @@ const PlayModal = ({ open, selection, roleKey, method, onClose }) => {
       setRunning(false);
     }
   };
-  return /* @__PURE__ */ jsxRuntime.jsx(designSystem.Box, { style: {
+  return /* @__PURE__ */ jsx(Box, { style: {
     position: "fixed",
     top: 0,
     left: 0,
@@ -1823,8 +1819,8 @@ const PlayModal = ({ open, selection, roleKey, method, onClose }) => {
     display: "flex",
     alignItems: "center",
     justifyContent: "center"
-  }, onClick: onClose, children: /* @__PURE__ */ jsxRuntime.jsxs(
-    designSystem.Box,
+  }, onClick: onClose, children: /* @__PURE__ */ jsxs(
+    Box,
     {
       style: {
         background: "#fff",
@@ -1837,11 +1833,11 @@ const PlayModal = ({ open, selection, roleKey, method, onClose }) => {
       },
       onClick: (e) => e.stopPropagation(),
       children: [
-        /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Flex, { justifyContent: "space-between", alignItems: "flex-start", gap: 2, children: [
-          /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { children: [
-            /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "beta", children: "Play as role" }),
-            /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Flex, { gap: 2, alignItems: "center", paddingTop: 1, wrap: "wrap", children: [
-              /* @__PURE__ */ jsxRuntime.jsx("span", { style: {
+        /* @__PURE__ */ jsxs(Flex, { justifyContent: "space-between", alignItems: "flex-start", gap: 2, children: [
+          /* @__PURE__ */ jsxs(Box, { children: [
+            /* @__PURE__ */ jsx(Typography, { variant: "beta", children: "Play as role" }),
+            /* @__PURE__ */ jsxs(Flex, { gap: 2, alignItems: "center", paddingTop: 1, wrap: "wrap", children: [
+              /* @__PURE__ */ jsx("span", { style: {
                 padding: "1px 6px",
                 border: "1px solid #ccc",
                 borderRadius: 4,
@@ -1849,9 +1845,9 @@ const PlayModal = ({ open, selection, roleKey, method, onClose }) => {
                 fontWeight: 700,
                 fontFamily: "ui-monospace, Menlo, monospace"
               }, children: (method?.method || "GET").toUpperCase() }),
-              /* @__PURE__ */ jsxRuntime.jsx("code", { style: { fontSize: 12 }, children: method?.path || "?" }),
-              /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "pi", textColor: "neutral500", children: "as" }),
-              /* @__PURE__ */ jsxRuntime.jsx("code", { style: {
+              /* @__PURE__ */ jsx("code", { style: { fontSize: 12 }, children: method?.path || "?" }),
+              /* @__PURE__ */ jsx(Typography, { variant: "pi", textColor: "neutral500", children: "as" }),
+              /* @__PURE__ */ jsx("code", { style: {
                 fontSize: 12,
                 background: "#e8eaf6",
                 color: "#4945ff",
@@ -1860,11 +1856,11 @@ const PlayModal = ({ open, selection, roleKey, method, onClose }) => {
               }, children: roleKey })
             ] })
           ] }),
-          /* @__PURE__ */ jsxRuntime.jsx(designSystem.Button, { variant: "secondary", onClick: onClose, children: "Close" })
+          /* @__PURE__ */ jsx(Button, { variant: "secondary", onClick: onClose, children: "Close" })
         ] }),
-        /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Flex, { gap: 3, paddingTop: 3, wrap: "wrap", alignItems: "flex-end", children: [
-          isFindOne && /* @__PURE__ */ jsxRuntime.jsx(designSystem.Box, { style: { flex: "1 1 220px" }, children: /* @__PURE__ */ jsxRuntime.jsx(
-            designSystem.TextInput,
+        /* @__PURE__ */ jsxs(Flex, { gap: 3, paddingTop: 3, wrap: "wrap", alignItems: "flex-end", children: [
+          isFindOne && /* @__PURE__ */ jsx(Box, { style: { flex: "1 1 220px" }, children: /* @__PURE__ */ jsx(
+            TextInput,
             {
               label: "documentId",
               value: documentId,
@@ -1872,8 +1868,8 @@ const PlayModal = ({ open, selection, roleKey, method, onClose }) => {
               placeholder: "required for findOne"
             }
           ) }),
-          /* @__PURE__ */ jsxRuntime.jsx(designSystem.Box, { style: { flex: "1 1 160px" }, children: /* @__PURE__ */ jsxRuntime.jsx(
-            designSystem.TextInput,
+          /* @__PURE__ */ jsx(Box, { style: { flex: "1 1 160px" }, children: /* @__PURE__ */ jsx(
+            TextInput,
             {
               label: "Act as user (id)",
               value: actAsUserId,
@@ -1881,43 +1877,43 @@ const PlayModal = ({ open, selection, roleKey, method, onClose }) => {
               placeholder: "(empty = current admin)"
             }
           ) }),
-          /* @__PURE__ */ jsxRuntime.jsx(designSystem.Button, { onClick: run, loading: running, children: "Run" })
+          /* @__PURE__ */ jsx(Button, { onClick: run, loading: running, children: "Run" })
         ] }),
-        /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Flex, { gap: 3, paddingTop: 3, wrap: "wrap", alignItems: "flex-start", children: [
-          /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { style: { flex: "1 1 300px" }, children: [
-            /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "pi", fontWeight: "semiBold", children: "Query (JSON)" }),
-            /* @__PURE__ */ jsxRuntime.jsx(
-              designSystem.Textarea,
+        /* @__PURE__ */ jsxs(Flex, { gap: 3, paddingTop: 3, wrap: "wrap", alignItems: "flex-start", children: [
+          /* @__PURE__ */ jsxs(Box, { style: { flex: "1 1 300px" }, children: [
+            /* @__PURE__ */ jsx(Typography, { variant: "pi", fontWeight: "semiBold", children: "Query (JSON)" }),
+            /* @__PURE__ */ jsx(
+              Textarea,
               {
                 name: "query",
                 value: queryRaw,
                 onChange: (e) => setQueryRaw(e.target.value)
               }
             ),
-            /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Typography, { variant: "pi", textColor: "neutral500", children: [
+            /* @__PURE__ */ jsxs(Typography, { variant: "pi", textColor: "neutral500", children: [
               "e.g. ",
               `{ "pagination": { "pageSize": 5 } }`
             ] })
           ] }),
-          isMutation && /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { style: { flex: "1 1 300px" }, children: [
-            /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "pi", fontWeight: "semiBold", children: "Body (JSON)" }),
-            /* @__PURE__ */ jsxRuntime.jsx(
-              designSystem.Textarea,
+          isMutation && /* @__PURE__ */ jsxs(Box, { style: { flex: "1 1 300px" }, children: [
+            /* @__PURE__ */ jsx(Typography, { variant: "pi", fontWeight: "semiBold", children: "Body (JSON)" }),
+            /* @__PURE__ */ jsx(
+              Textarea,
               {
                 name: "body",
                 value: bodyRaw,
                 onChange: (e) => setBodyRaw(e.target.value)
               }
             ),
-            /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "pi", textColor: "neutral500", children: "Mutations are NOT executed — only the resolved body is shown." })
+            /* @__PURE__ */ jsx(Typography, { variant: "pi", textColor: "neutral500", children: "Mutations are NOT executed — only the resolved body is shown." })
           ] })
         ] }),
-        error && /* @__PURE__ */ jsxRuntime.jsx(designSystem.Box, { paddingTop: 3, children: /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { textColor: "danger700", children: error }) }),
-        result && /* @__PURE__ */ jsxRuntime.jsx(designSystem.Box, { paddingTop: 3, style: { borderTop: "1px solid #e0e0e0", marginTop: 12 }, children: /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Flex, { gap: 3, alignItems: "flex-start", paddingTop: 3, style: { overflowX: "auto" }, children: [
-          /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { style: { flex: "0 0 280px" }, children: [
-            /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "sigma", children: "Token context" }),
-            /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "pi", textColor: "neutral500", children: result.actAsUser ? `as user #${result.actAsUser.id} (${result.actAsUser.email || result.actAsUser.username})` : "as current admin" }),
-            /* @__PURE__ */ jsxRuntime.jsx("pre", { style: {
+        error && /* @__PURE__ */ jsx(Box, { paddingTop: 3, children: /* @__PURE__ */ jsx(Typography, { textColor: "danger700", children: error }) }),
+        result && /* @__PURE__ */ jsx(Box, { paddingTop: 3, style: { borderTop: "1px solid #e0e0e0", marginTop: 12 }, children: /* @__PURE__ */ jsxs(Flex, { gap: 3, alignItems: "flex-start", paddingTop: 3, style: { overflowX: "auto" }, children: [
+          /* @__PURE__ */ jsxs(Box, { style: { flex: "0 0 280px" }, children: [
+            /* @__PURE__ */ jsx(Typography, { variant: "sigma", children: "Token context" }),
+            /* @__PURE__ */ jsx(Typography, { variant: "pi", textColor: "neutral500", children: result.actAsUser ? `as user #${result.actAsUser.id} (${result.actAsUser.email || result.actAsUser.username})` : "as current admin" }),
+            /* @__PURE__ */ jsx("pre", { style: {
               background: "#f4f4f8",
               padding: 8,
               borderRadius: 4,
@@ -1928,12 +1924,12 @@ const PlayModal = ({ open, selection, roleKey, method, onClose }) => {
               overflowY: "auto"
             }, children: JSON.stringify(result.tokenContext, null, 2) })
           ] }),
-          /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { style: { flex: "0 0 280px" }, children: [
-            /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "sigma", children: "Resolved templates" }),
-            /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "pi", textColor: result.policyFound ? "success700" : "warning700", children: result.policyFound ? "policy found" : "no policy for this role" }),
-            ["filters", "populate", "body", "query"].map((k) => /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { paddingTop: 1, children: [
-              /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "pi", fontWeight: "semiBold", children: k }),
-              /* @__PURE__ */ jsxRuntime.jsx("pre", { style: {
+          /* @__PURE__ */ jsxs(Box, { style: { flex: "0 0 280px" }, children: [
+            /* @__PURE__ */ jsx(Typography, { variant: "sigma", children: "Resolved templates" }),
+            /* @__PURE__ */ jsx(Typography, { variant: "pi", textColor: result.policyFound ? "success700" : "warning700", children: result.policyFound ? "policy found" : "no policy for this role" }),
+            ["filters", "populate", "body", "query"].map((k) => /* @__PURE__ */ jsxs(Box, { paddingTop: 1, children: [
+              /* @__PURE__ */ jsx(Typography, { variant: "pi", fontWeight: "semiBold", children: k }),
+              /* @__PURE__ */ jsx("pre", { style: {
                 background: "#fafafa",
                 padding: 6,
                 borderRadius: 4,
@@ -1944,11 +1940,11 @@ const PlayModal = ({ open, selection, roleKey, method, onClose }) => {
               }, children: JSON.stringify(result.resolved?.[k] || {}, null, 2) })
             ] }, k))
           ] }),
-          /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { style: { flex: "1 1 320px", minWidth: 280 }, children: [
-            /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "sigma", children: "Strapi response" }),
-            result.executed ? /* @__PURE__ */ jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [
-              /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "pi", textColor: "success700", children: "executed" }),
-              /* @__PURE__ */ jsxRuntime.jsx("pre", { style: {
+          /* @__PURE__ */ jsxs(Box, { style: { flex: "1 1 320px", minWidth: 280 }, children: [
+            /* @__PURE__ */ jsx(Typography, { variant: "sigma", children: "Strapi response" }),
+            result.executed ? /* @__PURE__ */ jsxs(Fragment, { children: [
+              /* @__PURE__ */ jsx(Typography, { variant: "pi", textColor: "success700", children: "executed" }),
+              /* @__PURE__ */ jsx("pre", { style: {
                 background: "#f4f4f8",
                 padding: 8,
                 borderRadius: 4,
@@ -1958,10 +1954,10 @@ const PlayModal = ({ open, selection, roleKey, method, onClose }) => {
                 maxHeight: 320,
                 overflowY: "auto"
               }, children: JSON.stringify(result.response, null, 2) })
-            ] }) : /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "pi", textColor: "neutral500", children: result.executionError ? `Not executed: ${result.executionError}` : "Not executed (mutation action — preview only)." }),
-            /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { paddingTop: 2, children: [
-              /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "pi", fontWeight: "semiBold", children: "Final query sent to Strapi" }),
-              /* @__PURE__ */ jsxRuntime.jsx("pre", { style: {
+            ] }) : /* @__PURE__ */ jsx(Typography, { variant: "pi", textColor: "neutral500", children: result.executionError ? `Not executed: ${result.executionError}` : "Not executed (mutation action — preview only)." }),
+            /* @__PURE__ */ jsxs(Box, { paddingTop: 2, children: [
+              /* @__PURE__ */ jsx(Typography, { variant: "pi", fontWeight: "semiBold", children: "Final query sent to Strapi" }),
+              /* @__PURE__ */ jsx("pre", { style: {
                 background: "#fafafa",
                 padding: 6,
                 borderRadius: 4,
@@ -1978,15 +1974,15 @@ const PlayModal = ({ open, selection, roleKey, method, onClose }) => {
   ) });
 };
 const RoleColumn = ({ role, value, onChange, onRemove, sample, selection, method, onPlay }) => {
-  const [rawByField, setRawByField] = React__default.default.useState({});
-  const previews = React__default.default.useMemo(() => {
+  const [rawByField, setRawByField] = React.useState({});
+  const previews = React.useMemo(() => {
     const out = {};
     for (const f of TEMPLATE_FIELDS) {
       out[f] = resolveDeep(value?.[f] || {}, sample);
     }
     return out;
   }, [value, sample]);
-  return /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { style: {
+  return /* @__PURE__ */ jsxs(Box, { style: {
     flex: "0 0 460px",
     minWidth: 420,
     maxWidth: 480,
@@ -1997,8 +1993,8 @@ const RoleColumn = ({ role, value, onChange, onRemove, sample, selection, method
     maxHeight: "70vh",
     overflowY: "auto"
   }, children: [
-    /* @__PURE__ */ jsxRuntime.jsxs(
-      designSystem.Flex,
+    /* @__PURE__ */ jsxs(
+      Flex,
       {
         justifyContent: "space-between",
         alignItems: "flex-start",
@@ -2011,10 +2007,10 @@ const RoleColumn = ({ role, value, onChange, onRemove, sample, selection, method
           borderBottom: "1px solid #f0f0f4"
         },
         children: [
-          /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { style: { minWidth: 0, flex: 1 }, children: [
-            /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "sigma", children: role.name || role.key }),
-            /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "pi", textColor: "neutral500", children: /* @__PURE__ */ jsxRuntime.jsx("code", { children: role.key }) }),
-            role.appDomains?.length > 0 && /* @__PURE__ */ jsxRuntime.jsx(designSystem.Flex, { gap: 1, paddingTop: 1, wrap: "wrap", children: role.appDomains.map((d) => /* @__PURE__ */ jsxRuntime.jsx("span", { style: {
+          /* @__PURE__ */ jsxs(Box, { style: { minWidth: 0, flex: 1 }, children: [
+            /* @__PURE__ */ jsx(Typography, { variant: "sigma", children: role.name || role.key }),
+            /* @__PURE__ */ jsx(Typography, { variant: "pi", textColor: "neutral500", children: /* @__PURE__ */ jsx("code", { children: role.key }) }),
+            role.appDomains?.length > 0 && /* @__PURE__ */ jsx(Flex, { gap: 1, paddingTop: 1, wrap: "wrap", children: role.appDomains.map((d) => /* @__PURE__ */ jsx("span", { style: {
               background: "#f0f0f4",
               color: "#666",
               padding: "0 6px",
@@ -2022,9 +2018,9 @@ const RoleColumn = ({ role, value, onChange, onRemove, sample, selection, method
               fontSize: 10
             }, children: d.key }, d.id)) })
           ] }),
-          /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Flex, { gap: 1, children: [
-            onPlay && /* @__PURE__ */ jsxRuntime.jsx(designSystem.Button, { variant: "secondary", onClick: () => onPlay(role), title: "Play as this role", children: "▶ Play" }),
-            /* @__PURE__ */ jsxRuntime.jsx(designSystem.Button, { variant: "danger-light", onClick: onRemove, title: "Remove policy for this role", children: "×" })
+          /* @__PURE__ */ jsxs(Flex, { gap: 1, children: [
+            onPlay && /* @__PURE__ */ jsx(Button, { variant: "secondary", onClick: () => onPlay(role), title: "Play as this role", children: "▶ Play" }),
+            /* @__PURE__ */ jsx(Button, { variant: "danger-light", onClick: onRemove, title: "Remove policy for this role", children: "×" })
           ] })
         ]
       }
@@ -2033,10 +2029,10 @@ const RoleColumn = ({ role, value, onChange, onRemove, sample, selection, method
       const Builder = BUILDERS[field];
       const showRaw = !!rawByField[field];
       const fieldValue = value?.[field] || {};
-      return /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { paddingTop: 3, children: [
-        /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Flex, { justifyContent: "space-between", alignItems: "center", children: [
-          /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "pi", fontWeight: "semiBold", children: TEMPLATE_LABELS[field] }),
-          /* @__PURE__ */ jsxRuntime.jsx(
+      return /* @__PURE__ */ jsxs(Box, { paddingTop: 3, children: [
+        /* @__PURE__ */ jsxs(Flex, { justifyContent: "space-between", alignItems: "center", children: [
+          /* @__PURE__ */ jsx(Typography, { variant: "pi", fontWeight: "semiBold", children: TEMPLATE_LABELS[field] }),
+          /* @__PURE__ */ jsx(
             "button",
             {
               type: "button",
@@ -2053,8 +2049,8 @@ const RoleColumn = ({ role, value, onChange, onRemove, sample, selection, method
             }
           )
         ] }),
-        /* @__PURE__ */ jsxRuntime.jsx(designSystem.Box, { paddingTop: 1, children: showRaw ? /* @__PURE__ */ jsxRuntime.jsx(
-          designSystem.Textarea,
+        /* @__PURE__ */ jsx(Box, { paddingTop: 1, children: showRaw ? /* @__PURE__ */ jsx(
+          Textarea,
           {
             name: field,
             value: JSON.stringify(fieldValue, null, 2),
@@ -2065,16 +2061,16 @@ const RoleColumn = ({ role, value, onChange, onRemove, sample, selection, method
               }
             }
           }
-        ) : /* @__PURE__ */ jsxRuntime.jsx(
+        ) : /* @__PURE__ */ jsx(
           Builder,
           {
             value: fieldValue,
             onChange: (next) => onChange({ ...value, [field]: next || {} })
           }
         ) }),
-        /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { paddingTop: 1, children: [
-          /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "pi", textColor: "neutral500", children: "Resolved (sample $-context)" }),
-          /* @__PURE__ */ jsxRuntime.jsx("pre", { style: {
+        /* @__PURE__ */ jsxs(Box, { paddingTop: 1, children: [
+          /* @__PURE__ */ jsx(Typography, { variant: "pi", textColor: "neutral500", children: "Resolved (sample $-context)" }),
+          /* @__PURE__ */ jsx("pre", { style: {
             background: "#fafafa",
             padding: 6,
             borderRadius: 4,
@@ -2089,18 +2085,18 @@ const RoleColumn = ({ role, value, onChange, onRemove, sample, selection, method
   ] });
 };
 const MethodEditor = ({ selection, onBack }) => {
-  const { get, put } = admin.useFetchClient();
-  const [methodInfo, setMethodInfo] = React__default.default.useState(null);
-  const [allRoles, setAllRoles] = React__default.default.useState([]);
-  const [policies, setPolicies] = React__default.default.useState({});
-  const [initialPolicies, setInitialPolicies] = React__default.default.useState({});
-  const [loading, setLoading] = React__default.default.useState(true);
-  const [saving, setSaving] = React__default.default.useState(false);
-  const [message, setMessage] = React__default.default.useState("");
-  const [addRoleKey, setAddRoleKey] = React__default.default.useState("");
-  const [roleSearch, setRoleSearch] = React__default.default.useState("");
+  const { get, put } = useFetchClient();
+  const [methodInfo, setMethodInfo] = React.useState(null);
+  const [allRoles, setAllRoles] = React.useState([]);
+  const [policies, setPolicies] = React.useState({});
+  const [initialPolicies, setInitialPolicies] = React.useState({});
+  const [loading, setLoading] = React.useState(true);
+  const [saving, setSaving] = React.useState(false);
+  const [message, setMessage] = React.useState("");
+  const [addRoleKey, setAddRoleKey] = React.useState("");
+  const [roleSearch, setRoleSearch] = React.useState("");
   const { interfaceKey, methodName } = selection;
-  const load = React__default.default.useCallback(async () => {
+  const load = React.useCallback(async () => {
     setLoading(true);
     setMessage("");
     try {
@@ -2116,7 +2112,7 @@ const MethodEditor = ({ selection, onBack }) => {
       setLoading(false);
     }
   }, [get, interfaceKey, methodName]);
-  React__default.default.useEffect(() => {
+  React.useEffect(() => {
     load();
   }, [load]);
   const updateRole = (roleKey, next) => {
@@ -2151,34 +2147,34 @@ const MethodEditor = ({ selection, onBack }) => {
       setSaving(false);
     }
   };
-  const dirty = React__default.default.useMemo(() => {
+  const dirty = React.useMemo(() => {
     const ka = /* @__PURE__ */ new Set([...Object.keys(policies), ...Object.keys(initialPolicies)]);
     for (const k of ka) {
       if (JSON.stringify(policies[k] || null) !== JSON.stringify(initialPolicies[k] || null)) return true;
     }
     return false;
   }, [policies, initialPolicies]);
-  const presentRoles = React__default.default.useMemo(() => {
+  const presentRoles = React.useMemo(() => {
     const list = [];
     for (const role of allRoles) {
       if (policies[role.key] !== void 0) list.push(role);
     }
     return list;
   }, [allRoles, policies]);
-  const visibleRoles = React__default.default.useMemo(() => {
+  const visibleRoles = React.useMemo(() => {
     const q = roleSearch.trim().toLowerCase();
     if (!q) return presentRoles;
     return presentRoles.filter(
       (r) => (r.key || "").toLowerCase().includes(q) || (r.name || "").toLowerCase().includes(q)
     );
   }, [presentRoles, roleSearch]);
-  const addableRoles = React__default.default.useMemo(
+  const addableRoles = React.useMemo(
     () => allRoles.filter((r) => policies[r.key] == null && !initialPolicies[r.key]),
     [allRoles, policies, initialPolicies]
   );
-  const [playRoleKey, setPlayRoleKey] = React__default.default.useState(null);
-  return /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { children: [
-    /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { style: {
+  const [playRoleKey, setPlayRoleKey] = React.useState(null);
+  return /* @__PURE__ */ jsxs(Box, { children: [
+    /* @__PURE__ */ jsxs(Box, { style: {
       position: "sticky",
       top: 0,
       background: "#fff",
@@ -2187,16 +2183,16 @@ const MethodEditor = ({ selection, onBack }) => {
       paddingBottom: 8,
       marginBottom: 8
     }, children: [
-      /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Flex, { justifyContent: "space-between", alignItems: "center", wrap: "wrap", gap: 2, children: [
-        /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { children: [
-          /* @__PURE__ */ jsxRuntime.jsx(designSystem.Button, { variant: "tertiary", onClick: onBack, children: "← back to browse" }),
-          /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { paddingTop: 1, children: [
-            /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Flex, { gap: 2, alignItems: "center", wrap: "wrap", children: [
-              /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "beta", children: selection.interfaceName || interfaceKey }),
-              /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "pi", textColor: "neutral500", children: "/" }),
-              /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "sigma", children: methodName }),
-              methodInfo && /* @__PURE__ */ jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [
-                /* @__PURE__ */ jsxRuntime.jsx("span", { style: {
+      /* @__PURE__ */ jsxs(Flex, { justifyContent: "space-between", alignItems: "center", wrap: "wrap", gap: 2, children: [
+        /* @__PURE__ */ jsxs(Box, { children: [
+          /* @__PURE__ */ jsx(Button, { variant: "tertiary", onClick: onBack, children: "← back to browse" }),
+          /* @__PURE__ */ jsxs(Box, { paddingTop: 1, children: [
+            /* @__PURE__ */ jsxs(Flex, { gap: 2, alignItems: "center", wrap: "wrap", children: [
+              /* @__PURE__ */ jsx(Typography, { variant: "beta", children: selection.interfaceName || interfaceKey }),
+              /* @__PURE__ */ jsx(Typography, { variant: "pi", textColor: "neutral500", children: "/" }),
+              /* @__PURE__ */ jsx(Typography, { variant: "sigma", children: methodName }),
+              methodInfo && /* @__PURE__ */ jsxs(Fragment, { children: [
+                /* @__PURE__ */ jsx("span", { style: {
                   padding: "1px 6px",
                   border: "1px solid #ccc",
                   borderRadius: 4,
@@ -2204,26 +2200,26 @@ const MethodEditor = ({ selection, onBack }) => {
                   fontWeight: 700,
                   fontFamily: "ui-monospace, Menlo, monospace"
                 }, children: (methodInfo.method || "GET").toUpperCase() }),
-                /* @__PURE__ */ jsxRuntime.jsx("code", { style: { fontSize: 11, color: "#666" }, children: methodInfo.path })
+                /* @__PURE__ */ jsx("code", { style: { fontSize: 11, color: "#666" }, children: methodInfo.path })
               ] })
             ] }),
-            selection.interfaceUid && /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "pi", textColor: "neutral500", children: /* @__PURE__ */ jsxRuntime.jsxs("code", { style: { fontSize: 11 }, children: [
+            selection.interfaceUid && /* @__PURE__ */ jsx(Typography, { variant: "pi", textColor: "neutral500", children: /* @__PURE__ */ jsxs("code", { style: { fontSize: 11 }, children: [
               selection.interfaceUid,
               ".",
               methodInfo?.action || methodName
             ] }) })
           ] })
         ] }),
-        /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Flex, { gap: 2, alignItems: "center", children: [
-          dirty && /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "pi", textColor: "warning700", children: "unsaved changes" }),
-          /* @__PURE__ */ jsxRuntime.jsx(designSystem.Button, { variant: "secondary", onClick: load, disabled: saving, children: "Reload" }),
-          /* @__PURE__ */ jsxRuntime.jsx(designSystem.Button, { onClick: saveAll, loading: saving, disabled: !dirty, children: "Save All" })
+        /* @__PURE__ */ jsxs(Flex, { gap: 2, alignItems: "center", children: [
+          dirty && /* @__PURE__ */ jsx(Typography, { variant: "pi", textColor: "warning700", children: "unsaved changes" }),
+          /* @__PURE__ */ jsx(Button, { variant: "secondary", onClick: load, disabled: saving, children: "Reload" }),
+          /* @__PURE__ */ jsx(Button, { onClick: saveAll, loading: saving, disabled: !dirty, children: "Save All" })
         ] })
       ] }),
-      message && /* @__PURE__ */ jsxRuntime.jsx(designSystem.Box, { paddingTop: 2, children: /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { textColor: message.startsWith("Saved") ? "success700" : "danger700", children: message }) }),
-      /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Flex, { gap: 3, paddingTop: 3, wrap: "wrap", alignItems: "flex-end", children: [
-        /* @__PURE__ */ jsxRuntime.jsx(designSystem.Box, { style: { flex: "0 0 260px" }, children: /* @__PURE__ */ jsxRuntime.jsx(
-          designSystem.SingleSelect,
+      message && /* @__PURE__ */ jsx(Box, { paddingTop: 2, children: /* @__PURE__ */ jsx(Typography, { textColor: message.startsWith("Saved") ? "success700" : "danger700", children: message }) }),
+      /* @__PURE__ */ jsxs(Flex, { gap: 3, paddingTop: 3, wrap: "wrap", alignItems: "flex-end", children: [
+        /* @__PURE__ */ jsx(Box, { style: { flex: "0 0 260px" }, children: /* @__PURE__ */ jsx(
+          SingleSelect,
           {
             label: "Add policy for role",
             placeholder: addableRoles.length === 0 ? "all roles already configured" : "pick a role…",
@@ -2231,12 +2227,12 @@ const MethodEditor = ({ selection, onBack }) => {
             onChange: (v) => setAddRoleKey(v || ""),
             onClear: () => setAddRoleKey(""),
             disabled: addableRoles.length === 0,
-            children: addableRoles.map((r) => /* @__PURE__ */ jsxRuntime.jsx(designSystem.SingleSelectOption, { value: r.key, children: r.key }, r.id))
+            children: addableRoles.map((r) => /* @__PURE__ */ jsx(SingleSelectOption, { value: r.key, children: r.key }, r.id))
           }
         ) }),
-        /* @__PURE__ */ jsxRuntime.jsx(designSystem.Button, { onClick: addRole, disabled: !addRoleKey, children: "+ Add column" }),
-        /* @__PURE__ */ jsxRuntime.jsx(designSystem.Box, { style: { flex: "0 0 260px" }, children: /* @__PURE__ */ jsxRuntime.jsx(
-          designSystem.TextInput,
+        /* @__PURE__ */ jsx(Button, { onClick: addRole, disabled: !addRoleKey, children: "+ Add column" }),
+        /* @__PURE__ */ jsx(Box, { style: { flex: "0 0 260px" }, children: /* @__PURE__ */ jsx(
+          TextInput,
           {
             label: "Filter visible columns",
             placeholder: "role key or name",
@@ -2244,7 +2240,7 @@ const MethodEditor = ({ selection, onBack }) => {
             onChange: (e) => setRoleSearch(e.target.value)
           }
         ) }),
-        /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Typography, { variant: "pi", textColor: "neutral500", children: [
+        /* @__PURE__ */ jsxs(Typography, { variant: "pi", textColor: "neutral500", children: [
           presentRoles.length,
           " role policy column",
           presentRoles.length === 1 ? "" : "s",
@@ -2255,22 +2251,22 @@ const MethodEditor = ({ selection, onBack }) => {
         ] })
       ] })
     ] }),
-    loading ? /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { textColor: "neutral500", children: "Loading…" }) : presentRoles.length === 0 ? /* @__PURE__ */ jsxRuntime.jsx(designSystem.Box, { paddingTop: 4, children: /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "pi", textColor: "neutral500", children: 'No role policies for this method yet. Add one via the "Add policy for role" picker above.' }) }) : /* @__PURE__ */ jsxRuntime.jsx(designSystem.Flex, { gap: 3, alignItems: "flex-start", style: { overflowX: "auto", paddingBottom: 12 }, children: visibleRoles.map((role) => {
+    loading ? /* @__PURE__ */ jsx(Typography, { textColor: "neutral500", children: "Loading…" }) : presentRoles.length === 0 ? /* @__PURE__ */ jsx(Box, { paddingTop: 4, children: /* @__PURE__ */ jsx(Typography, { variant: "pi", textColor: "neutral500", children: 'No role policies for this method yet. Add one via the "Add policy for role" picker above.' }) }) : /* @__PURE__ */ jsx(Flex, { gap: 3, alignItems: "flex-start", style: { overflowX: "auto", paddingBottom: 12 }, children: visibleRoles.map((role) => {
       const value = policies[role.key];
       if (value === null) {
-        return /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { style: {
+        return /* @__PURE__ */ jsxs(Box, { style: {
           flex: "0 0 280px",
           border: "1px dashed #d02b20",
           borderRadius: 8,
           padding: 12,
           background: "#fcecea"
         }, children: [
-          /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "sigma", children: role.name || role.key }),
-          /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "pi", textColor: "danger700", paddingTop: 1, children: "Marked for deletion. Save All to apply." }),
-          /* @__PURE__ */ jsxRuntime.jsx(designSystem.Box, { paddingTop: 2, children: /* @__PURE__ */ jsxRuntime.jsx(designSystem.Button, { variant: "tertiary", onClick: () => undoRemove(role.key), children: "Undo" }) })
+          /* @__PURE__ */ jsx(Typography, { variant: "sigma", children: role.name || role.key }),
+          /* @__PURE__ */ jsx(Typography, { variant: "pi", textColor: "danger700", paddingTop: 1, children: "Marked for deletion. Save All to apply." }),
+          /* @__PURE__ */ jsx(Box, { paddingTop: 2, children: /* @__PURE__ */ jsx(Button, { variant: "tertiary", onClick: () => undoRemove(role.key), children: "Undo" }) })
         ] }, role.key);
       }
-      return /* @__PURE__ */ jsxRuntime.jsx(
+      return /* @__PURE__ */ jsx(
         RoleColumn,
         {
           role,
@@ -2285,7 +2281,7 @@ const MethodEditor = ({ selection, onBack }) => {
         role.key
       );
     }) }),
-    /* @__PURE__ */ jsxRuntime.jsx(
+    /* @__PURE__ */ jsx(
       PlayModal,
       {
         open: Boolean(playRoleKey),
@@ -2298,19 +2294,19 @@ const MethodEditor = ({ selection, onBack }) => {
   ] });
 };
 const Policies = ({ initialSelection, onConsumeInitialSelection }) => {
-  const { get } = admin.useFetchClient();
-  const [interfaces, setInterfaces] = React__default.default.useState([]);
-  const [roleCount, setRoleCount] = React__default.default.useState(0);
-  const [view, setView] = React__default.default.useState("browse");
-  const [selection, setSelection] = React__default.default.useState(null);
-  React__default.default.useEffect(() => {
+  const { get } = useFetchClient();
+  const [interfaces, setInterfaces] = React.useState([]);
+  const [roleCount, setRoleCount] = React.useState(0);
+  const [view, setView] = React.useState("browse");
+  const [selection, setSelection] = React.useState(null);
+  React.useEffect(() => {
     if (initialSelection) {
       setSelection(initialSelection);
       setView("method");
       onConsumeInitialSelection?.();
     }
   }, [initialSelection]);
-  React__default.default.useEffect(() => {
+  React.useEffect(() => {
     (async () => {
       try {
         const [i, r] = await Promise.all([get(api$1("/interfaces")), get(api$1("/roles"))]);
@@ -2328,32 +2324,32 @@ const Policies = ({ initialSelection, onConsumeInitialSelection }) => {
     setView("browse");
     setSelection(null);
   };
-  return /* @__PURE__ */ jsxRuntime.jsx(designSystem.Box, { children: view === "browse" ? /* @__PURE__ */ jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [
-    /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "beta", children: "Method Policies" }),
-    /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "omega", textColor: "neutral600", children: "Pick a method to edit its policies for all roles side-by-side." }),
-    /* @__PURE__ */ jsxRuntime.jsx(BrowseTree, { interfaces, roleCount, onOpenMethod: openMethod })
-  ] }) : /* @__PURE__ */ jsxRuntime.jsx(MethodEditor, { selection, onBack: backToBrowse }) });
+  return /* @__PURE__ */ jsx(Box, { children: view === "browse" ? /* @__PURE__ */ jsxs(Fragment, { children: [
+    /* @__PURE__ */ jsx(Typography, { variant: "beta", children: "Method Policies" }),
+    /* @__PURE__ */ jsx(Typography, { variant: "omega", textColor: "neutral600", children: "Pick a method to edit its policies for all roles side-by-side." }),
+    /* @__PURE__ */ jsx(BrowseTree, { interfaces, roleCount, onOpenMethod: openMethod })
+  ] }) : /* @__PURE__ */ jsx(MethodEditor, { selection, onBack: backToBrowse }) });
 };
 const api = (p) => `/api-pro${p}`;
 const PAGE_SIZE$1 = 25;
 const blankDomain = { key: "", name: "", description: "" };
 const blankRole = { key: "", name: "", description: "", adminRoleCode: "", appDomains: [] };
 const DomainsRoles = () => {
-  const { get, post, put, del } = admin.useFetchClient();
-  const [domains, setDomains] = React__default.default.useState([]);
-  const [roles, setRoles] = React__default.default.useState([]);
-  const [draftDomain, setDraftDomain] = React__default.default.useState(blankDomain);
-  const [draftRole, setDraftRole] = React__default.default.useState(blankRole);
-  const [editingDomainId, setEditingDomainId] = React__default.default.useState(null);
-  const [editingRoleId, setEditingRoleId] = React__default.default.useState(null);
-  const [message, setMessage] = React__default.default.useState("");
-  const [loading, setLoading] = React__default.default.useState(false);
-  const [roleSearch, setRoleSearch] = React__default.default.useState("");
-  const [roleDomainFilter, setRoleDomainFilter] = React__default.default.useState("");
-  const [rolePage, setRolePage] = React__default.default.useState(1);
-  const [seeding, setSeeding] = React__default.default.useState(false);
-  const [seedResult, setSeedResult] = React__default.default.useState(null);
-  const load = React__default.default.useCallback(async () => {
+  const { get, post, put, del } = useFetchClient();
+  const [domains, setDomains] = React.useState([]);
+  const [roles, setRoles] = React.useState([]);
+  const [draftDomain, setDraftDomain] = React.useState(blankDomain);
+  const [draftRole, setDraftRole] = React.useState(blankRole);
+  const [editingDomainId, setEditingDomainId] = React.useState(null);
+  const [editingRoleId, setEditingRoleId] = React.useState(null);
+  const [message, setMessage] = React.useState("");
+  const [loading, setLoading] = React.useState(false);
+  const [roleSearch, setRoleSearch] = React.useState("");
+  const [roleDomainFilter, setRoleDomainFilter] = React.useState("");
+  const [rolePage, setRolePage] = React.useState(1);
+  const [seeding, setSeeding] = React.useState(false);
+  const [seedResult, setSeedResult] = React.useState(null);
+  const load = React.useCallback(async () => {
     setLoading(true);
     try {
       const [d, r] = await Promise.all([get(api("/domains")), get(api("/roles"))]);
@@ -2365,7 +2361,7 @@ const DomainsRoles = () => {
       setLoading(false);
     }
   }, [get]);
-  React__default.default.useEffect(() => {
+  React.useEffect(() => {
     load();
   }, [load]);
   const runSeed = async () => {
@@ -2465,7 +2461,7 @@ const DomainsRoles = () => {
       appDomains: prev.appDomains.includes(id) ? prev.appDomains.filter((d) => d !== id) : [...prev.appDomains, id]
     }));
   };
-  const filteredRoles = React__default.default.useMemo(() => {
+  const filteredRoles = React.useMemo(() => {
     const q = roleSearch.trim().toLowerCase();
     return roles.filter((r) => {
       if (q) {
@@ -2479,29 +2475,29 @@ const DomainsRoles = () => {
       return true;
     });
   }, [roles, roleSearch, roleDomainFilter]);
-  React__default.default.useEffect(() => {
+  React.useEffect(() => {
     setRolePage(1);
   }, [roleSearch, roleDomainFilter]);
   const totalRolePages = Math.max(1, Math.ceil(filteredRoles.length / PAGE_SIZE$1));
   const safeRolePage = Math.min(rolePage, totalRolePages);
   const pagedRoles = filteredRoles.slice((safeRolePage - 1) * PAGE_SIZE$1, safeRolePage * PAGE_SIZE$1);
-  return /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { children: [
-    /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Flex, { justifyContent: "space-between", alignItems: "center", wrap: "wrap", gap: 2, children: [
-      /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { children: [
-        /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "beta", children: "App Domains & Roles" }),
-        /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Typography, { variant: "omega", textColor: "neutral600", children: [
+  return /* @__PURE__ */ jsxs(Box, { children: [
+    /* @__PURE__ */ jsxs(Flex, { justifyContent: "space-between", alignItems: "center", wrap: "wrap", gap: 2, children: [
+      /* @__PURE__ */ jsxs(Box, { children: [
+        /* @__PURE__ */ jsx(Typography, { variant: "beta", children: "App Domains & Roles" }),
+        /* @__PURE__ */ jsxs(Typography, { variant: "omega", textColor: "neutral600", children: [
           domains.length,
           " domain(s) · ",
           roles.length,
           " role(s) total"
         ] })
       ] }),
-      /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Flex, { gap: 2, children: [
-        /* @__PURE__ */ jsxRuntime.jsx(designSystem.Button, { variant: "secondary", onClick: load, disabled: loading, children: "Refresh" }),
-        /* @__PURE__ */ jsxRuntime.jsx(designSystem.Button, { onClick: runSeed, loading: seeding, children: "Re-seed from api-provider" })
+      /* @__PURE__ */ jsxs(Flex, { gap: 2, children: [
+        /* @__PURE__ */ jsx(Button, { variant: "secondary", onClick: load, disabled: loading, children: "Refresh" }),
+        /* @__PURE__ */ jsx(Button, { onClick: runSeed, loading: seeding, children: "Re-seed from api-provider" })
       ] })
     ] }),
-    seedResult && /* @__PURE__ */ jsxRuntime.jsx(designSystem.Box, { paddingTop: 2, children: /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Typography, { variant: "pi", textColor: "success700", children: [
+    seedResult && /* @__PURE__ */ jsx(Box, { paddingTop: 2, children: /* @__PURE__ */ jsxs(Typography, { variant: "pi", textColor: "success700", children: [
       "Seed OK — domains=",
       seedResult.domains,
       ", roles=",
@@ -2516,18 +2512,18 @@ const DomainsRoles = () => {
       seedResult.descriptorsScanned,
       " descriptors)"
     ] }) }),
-    message && /* @__PURE__ */ jsxRuntime.jsx(designSystem.Box, { paddingTop: 2, children: /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { textColor: "danger700", children: message }) }),
-    /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Flex, { gap: 6, alignItems: "flex-start", wrap: "wrap", paddingTop: 4, children: [
-      /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { style: { flex: "1 1 320px", minWidth: 280 }, children: [
-        /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Typography, { variant: "delta", children: [
+    message && /* @__PURE__ */ jsx(Box, { paddingTop: 2, children: /* @__PURE__ */ jsx(Typography, { textColor: "danger700", children: message }) }),
+    /* @__PURE__ */ jsxs(Flex, { gap: 6, alignItems: "flex-start", wrap: "wrap", paddingTop: 4, children: [
+      /* @__PURE__ */ jsxs(Box, { style: { flex: "1 1 320px", minWidth: 280 }, children: [
+        /* @__PURE__ */ jsxs(Typography, { variant: "delta", children: [
           "Domains (",
           domains.length,
           ")"
         ] }),
-        /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { paddingTop: 3, style: { border: "1px solid #e0e0e0", borderRadius: 8, padding: 12 }, children: [
-          /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "sigma", children: editingDomainId ? `Edit domain #${editingDomainId}` : "New domain" }),
-          /* @__PURE__ */ jsxRuntime.jsx(designSystem.Box, { paddingTop: 2, children: /* @__PURE__ */ jsxRuntime.jsx(
-            designSystem.TextInput,
+        /* @__PURE__ */ jsxs(Box, { paddingTop: 3, style: { border: "1px solid #e0e0e0", borderRadius: 8, padding: 12 }, children: [
+          /* @__PURE__ */ jsx(Typography, { variant: "sigma", children: editingDomainId ? `Edit domain #${editingDomainId}` : "New domain" }),
+          /* @__PURE__ */ jsx(Box, { paddingTop: 2, children: /* @__PURE__ */ jsx(
+            TextInput,
             {
               label: "Key",
               placeholder: "e.g. web-authenticated",
@@ -2535,67 +2531,67 @@ const DomainsRoles = () => {
               onChange: (e) => setDraftDomain({ ...draftDomain, key: e.target.value })
             }
           ) }),
-          /* @__PURE__ */ jsxRuntime.jsx(designSystem.Box, { paddingTop: 2, children: /* @__PURE__ */ jsxRuntime.jsx(
-            designSystem.TextInput,
+          /* @__PURE__ */ jsx(Box, { paddingTop: 2, children: /* @__PURE__ */ jsx(
+            TextInput,
             {
               label: "Name",
               value: draftDomain.name,
               onChange: (e) => setDraftDomain({ ...draftDomain, name: e.target.value })
             }
           ) }),
-          /* @__PURE__ */ jsxRuntime.jsx(designSystem.Box, { paddingTop: 2, children: /* @__PURE__ */ jsxRuntime.jsx(
-            designSystem.Textarea,
+          /* @__PURE__ */ jsx(Box, { paddingTop: 2, children: /* @__PURE__ */ jsx(
+            Textarea,
             {
               label: "Description",
               value: draftDomain.description,
               onChange: (e) => setDraftDomain({ ...draftDomain, description: e.target.value })
             }
           ) }),
-          /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Flex, { gap: 2, paddingTop: 3, children: [
-            /* @__PURE__ */ jsxRuntime.jsx(designSystem.Button, { onClick: saveDomain, loading, children: editingDomainId ? "Update" : "Create" }),
-            editingDomainId && /* @__PURE__ */ jsxRuntime.jsx(designSystem.Button, { variant: "tertiary", onClick: () => {
+          /* @__PURE__ */ jsxs(Flex, { gap: 2, paddingTop: 3, children: [
+            /* @__PURE__ */ jsx(Button, { onClick: saveDomain, loading, children: editingDomainId ? "Update" : "Create" }),
+            editingDomainId && /* @__PURE__ */ jsx(Button, { variant: "tertiary", onClick: () => {
               setEditingDomainId(null);
               setDraftDomain(blankDomain);
             }, children: "Cancel" })
           ] })
         ] }),
-        /* @__PURE__ */ jsxRuntime.jsx(designSystem.Box, { paddingTop: 4, style: { maxHeight: 480, overflowY: "auto" }, children: domains.map((d) => /* @__PURE__ */ jsxRuntime.jsxs(
-          designSystem.Flex,
+        /* @__PURE__ */ jsx(Box, { paddingTop: 4, style: { maxHeight: 480, overflowY: "auto" }, children: domains.map((d) => /* @__PURE__ */ jsxs(
+          Flex,
           {
             justifyContent: "space-between",
             alignItems: "center",
             padding: 2,
             style: { border: "1px solid #e0e0e0", borderRadius: 8, marginBottom: 6 },
             children: [
-              /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { children: [
-                /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "sigma", children: d.name }),
-                /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Typography, { variant: "pi", textColor: "neutral500", children: [
+              /* @__PURE__ */ jsxs(Box, { children: [
+                /* @__PURE__ */ jsx(Typography, { variant: "sigma", children: d.name }),
+                /* @__PURE__ */ jsxs(Typography, { variant: "pi", textColor: "neutral500", children: [
                   d.key,
                   " · ",
                   (d.appRoles || []).length,
                   " role(s)"
                 ] })
               ] }),
-              /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Flex, { gap: 1, children: [
-                /* @__PURE__ */ jsxRuntime.jsx(designSystem.Button, { variant: "tertiary", onClick: () => editDomain(d), children: "Edit" }),
-                /* @__PURE__ */ jsxRuntime.jsx(designSystem.Button, { variant: "danger-light", onClick: () => deleteDomain(d), children: "Delete" })
+              /* @__PURE__ */ jsxs(Flex, { gap: 1, children: [
+                /* @__PURE__ */ jsx(Button, { variant: "tertiary", onClick: () => editDomain(d), children: "Edit" }),
+                /* @__PURE__ */ jsx(Button, { variant: "danger-light", onClick: () => deleteDomain(d), children: "Delete" })
               ] })
             ]
           },
           d.id
         )) })
       ] }),
-      /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { style: { flex: "2 1 480px", minWidth: 360 }, children: [
-        /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Typography, { variant: "delta", children: [
+      /* @__PURE__ */ jsxs(Box, { style: { flex: "2 1 480px", minWidth: 360 }, children: [
+        /* @__PURE__ */ jsxs(Typography, { variant: "delta", children: [
           "Roles (",
           roles.length,
           ")"
         ] }),
-        /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { paddingTop: 3, style: { border: "1px solid #e0e0e0", borderRadius: 8, padding: 12 }, children: [
-          /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "sigma", children: editingRoleId ? `Edit role #${editingRoleId}` : "New role" }),
-          /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Flex, { gap: 2, paddingTop: 2, wrap: "wrap", children: [
-            /* @__PURE__ */ jsxRuntime.jsx(designSystem.Box, { style: { flex: "1 1 180px" }, children: /* @__PURE__ */ jsxRuntime.jsx(
-              designSystem.TextInput,
+        /* @__PURE__ */ jsxs(Box, { paddingTop: 3, style: { border: "1px solid #e0e0e0", borderRadius: 8, padding: 12 }, children: [
+          /* @__PURE__ */ jsx(Typography, { variant: "sigma", children: editingRoleId ? `Edit role #${editingRoleId}` : "New role" }),
+          /* @__PURE__ */ jsxs(Flex, { gap: 2, paddingTop: 2, wrap: "wrap", children: [
+            /* @__PURE__ */ jsx(Box, { style: { flex: "1 1 180px" }, children: /* @__PURE__ */ jsx(
+              TextInput,
               {
                 label: "Key",
                 placeholder: "e.g. accountant",
@@ -2603,16 +2599,16 @@ const DomainsRoles = () => {
                 onChange: (e) => setDraftRole({ ...draftRole, key: e.target.value })
               }
             ) }),
-            /* @__PURE__ */ jsxRuntime.jsx(designSystem.Box, { style: { flex: "1 1 180px" }, children: /* @__PURE__ */ jsxRuntime.jsx(
-              designSystem.TextInput,
+            /* @__PURE__ */ jsx(Box, { style: { flex: "1 1 180px" }, children: /* @__PURE__ */ jsx(
+              TextInput,
               {
                 label: "Name",
                 value: draftRole.name,
                 onChange: (e) => setDraftRole({ ...draftRole, name: e.target.value })
               }
             ) }),
-            /* @__PURE__ */ jsxRuntime.jsx(designSystem.Box, { style: { flex: "1 1 180px" }, children: /* @__PURE__ */ jsxRuntime.jsx(
-              designSystem.TextInput,
+            /* @__PURE__ */ jsx(Box, { style: { flex: "1 1 180px" }, children: /* @__PURE__ */ jsx(
+              TextInput,
               {
                 label: "Admin Role Code",
                 value: draftRole.adminRoleCode,
@@ -2621,20 +2617,20 @@ const DomainsRoles = () => {
               }
             ) })
           ] }),
-          /* @__PURE__ */ jsxRuntime.jsx(designSystem.Box, { paddingTop: 2, children: /* @__PURE__ */ jsxRuntime.jsx(
-            designSystem.Textarea,
+          /* @__PURE__ */ jsx(Box, { paddingTop: 2, children: /* @__PURE__ */ jsx(
+            Textarea,
             {
               label: "Description",
               value: draftRole.description,
               onChange: (e) => setDraftRole({ ...draftRole, description: e.target.value })
             }
           ) }),
-          /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { paddingTop: 2, children: [
-            /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "pi", textColor: "neutral600", children: "Assign to domains" }),
-            /* @__PURE__ */ jsxRuntime.jsx(designSystem.Flex, { gap: 2, wrap: "wrap", paddingTop: 1, style: { maxHeight: 100, overflowY: "auto" }, children: domains.map((d) => {
+          /* @__PURE__ */ jsxs(Box, { paddingTop: 2, children: [
+            /* @__PURE__ */ jsx(Typography, { variant: "pi", textColor: "neutral600", children: "Assign to domains" }),
+            /* @__PURE__ */ jsx(Flex, { gap: 2, wrap: "wrap", paddingTop: 1, style: { maxHeight: 100, overflowY: "auto" }, children: domains.map((d) => {
               const id = `role-domain-${d.id}`;
               const checked = draftRole.appDomains.includes(String(d.id));
-              return /* @__PURE__ */ jsxRuntime.jsxs(
+              return /* @__PURE__ */ jsxs(
                 "label",
                 {
                   htmlFor: id,
@@ -2647,7 +2643,7 @@ const DomainsRoles = () => {
                     fontSize: 11
                   },
                   children: [
-                    /* @__PURE__ */ jsxRuntime.jsx(
+                    /* @__PURE__ */ jsx(
                       "input",
                       {
                         id,
@@ -2664,17 +2660,17 @@ const DomainsRoles = () => {
               );
             }) })
           ] }),
-          /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Flex, { gap: 2, paddingTop: 3, children: [
-            /* @__PURE__ */ jsxRuntime.jsx(designSystem.Button, { onClick: saveRole, loading, children: editingRoleId ? "Update" : "Create" }),
-            editingRoleId && /* @__PURE__ */ jsxRuntime.jsx(designSystem.Button, { variant: "tertiary", onClick: () => {
+          /* @__PURE__ */ jsxs(Flex, { gap: 2, paddingTop: 3, children: [
+            /* @__PURE__ */ jsx(Button, { onClick: saveRole, loading, children: editingRoleId ? "Update" : "Create" }),
+            editingRoleId && /* @__PURE__ */ jsx(Button, { variant: "tertiary", onClick: () => {
               setEditingRoleId(null);
               setDraftRole(blankRole);
             }, children: "Cancel" })
           ] })
         ] }),
-        /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Flex, { gap: 3, paddingTop: 4, wrap: "wrap", alignItems: "flex-end", children: [
-          /* @__PURE__ */ jsxRuntime.jsx(designSystem.Box, { style: { flex: "1 1 220px" }, children: /* @__PURE__ */ jsxRuntime.jsx(
-            designSystem.TextInput,
+        /* @__PURE__ */ jsxs(Flex, { gap: 3, paddingTop: 4, wrap: "wrap", alignItems: "flex-end", children: [
+          /* @__PURE__ */ jsx(Box, { style: { flex: "1 1 220px" }, children: /* @__PURE__ */ jsx(
+            TextInput,
             {
               label: "Search roles",
               placeholder: "key or name",
@@ -2682,40 +2678,40 @@ const DomainsRoles = () => {
               onChange: (e) => setRoleSearch(e.target.value)
             }
           ) }),
-          /* @__PURE__ */ jsxRuntime.jsx(designSystem.Box, { style: { flex: "1 1 200px" }, children: /* @__PURE__ */ jsxRuntime.jsx(
-            designSystem.SingleSelect,
+          /* @__PURE__ */ jsx(Box, { style: { flex: "1 1 200px" }, children: /* @__PURE__ */ jsx(
+            SingleSelect,
             {
               label: "Filter by domain",
               placeholder: "All domains",
               value: roleDomainFilter,
               onChange: (v) => setRoleDomainFilter(v || ""),
               onClear: () => setRoleDomainFilter(""),
-              children: domains.map((d) => /* @__PURE__ */ jsxRuntime.jsx(designSystem.SingleSelectOption, { value: String(d.id), children: d.key }, d.id))
+              children: domains.map((d) => /* @__PURE__ */ jsx(SingleSelectOption, { value: String(d.id), children: d.key }, d.id))
             }
           ) }),
-          /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Typography, { variant: "pi", textColor: "neutral500", children: [
+          /* @__PURE__ */ jsxs(Typography, { variant: "pi", textColor: "neutral500", children: [
             filteredRoles.length,
             " of ",
             roles.length
           ] })
         ] }),
-        /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { paddingTop: 2, style: { maxHeight: 480, overflowY: "auto" }, children: [
-          pagedRoles.length === 0 && /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "pi", textColor: "neutral500", paddingTop: 2, children: "No roles match the current filters." }),
-          pagedRoles.map((r) => /* @__PURE__ */ jsxRuntime.jsxs(
-            designSystem.Flex,
+        /* @__PURE__ */ jsxs(Box, { paddingTop: 2, style: { maxHeight: 480, overflowY: "auto" }, children: [
+          pagedRoles.length === 0 && /* @__PURE__ */ jsx(Typography, { variant: "pi", textColor: "neutral500", paddingTop: 2, children: "No roles match the current filters." }),
+          pagedRoles.map((r) => /* @__PURE__ */ jsxs(
+            Flex,
             {
               justifyContent: "space-between",
               alignItems: "center",
               padding: 2,
               style: { border: "1px solid #e0e0e0", borderRadius: 8, marginBottom: 6 },
               children: [
-                /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { style: { minWidth: 0, flex: 1 }, children: [
-                  /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "sigma", children: r.name }),
-                  /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Typography, { variant: "pi", textColor: "neutral500", children: [
+                /* @__PURE__ */ jsxs(Box, { style: { minWidth: 0, flex: 1 }, children: [
+                  /* @__PURE__ */ jsx(Typography, { variant: "sigma", children: r.name }),
+                  /* @__PURE__ */ jsxs(Typography, { variant: "pi", textColor: "neutral500", children: [
                     r.key,
                     r.adminRoleCode && r.adminRoleCode !== r.key ? ` · admin=${r.adminRoleCode}` : ""
                   ] }),
-                  /* @__PURE__ */ jsxRuntime.jsx(designSystem.Flex, { gap: 1, paddingTop: 1, wrap: "wrap", children: (r.appDomains || []).map((d) => /* @__PURE__ */ jsxRuntime.jsx(
+                  /* @__PURE__ */ jsx(Flex, { gap: 1, paddingTop: 1, wrap: "wrap", children: (r.appDomains || []).map((d) => /* @__PURE__ */ jsx(
                     "span",
                     {
                       style: {
@@ -2730,18 +2726,18 @@ const DomainsRoles = () => {
                     d.id
                   )) })
                 ] }),
-                /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Flex, { gap: 1, children: [
-                  /* @__PURE__ */ jsxRuntime.jsx(designSystem.Button, { variant: "tertiary", onClick: () => editRole(r), children: "Edit" }),
-                  /* @__PURE__ */ jsxRuntime.jsx(designSystem.Button, { variant: "danger-light", onClick: () => deleteRole(r), children: "Delete" })
+                /* @__PURE__ */ jsxs(Flex, { gap: 1, children: [
+                  /* @__PURE__ */ jsx(Button, { variant: "tertiary", onClick: () => editRole(r), children: "Edit" }),
+                  /* @__PURE__ */ jsx(Button, { variant: "danger-light", onClick: () => deleteRole(r), children: "Delete" })
                 ] })
               ]
             },
             r.id
           ))
         ] }),
-        /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Flex, { justifyContent: "space-between", alignItems: "center", paddingTop: 2, children: [
-          /* @__PURE__ */ jsxRuntime.jsx(
-            designSystem.Button,
+        /* @__PURE__ */ jsxs(Flex, { justifyContent: "space-between", alignItems: "center", paddingTop: 2, children: [
+          /* @__PURE__ */ jsx(
+            Button,
             {
               variant: "secondary",
               disabled: safeRolePage <= 1,
@@ -2749,14 +2745,14 @@ const DomainsRoles = () => {
               children: "Prev"
             }
           ),
-          /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Typography, { variant: "pi", children: [
+          /* @__PURE__ */ jsxs(Typography, { variant: "pi", children: [
             "Page ",
             safeRolePage,
             " / ",
             totalRolePages
           ] }),
-          /* @__PURE__ */ jsxRuntime.jsx(
-            designSystem.Button,
+          /* @__PURE__ */ jsx(
+            Button,
             {
               variant: "secondary",
               disabled: safeRolePage >= totalRolePages,
@@ -2771,18 +2767,19 @@ const DomainsRoles = () => {
 };
 const PAGE_SIZE = 15;
 const UsersPage = () => {
-  const { get, put } = admin.useFetchClient();
-  const [users, setUsers] = React.useState([]);
-  const [roleOptions, setRoleOptions] = React.useState([]);
-  const [selectedUserId, setSelectedUserId] = React.useState("");
-  const [selectedRoleIds, setSelectedRoleIds] = React.useState([]);
-  const [userSearch, setUserSearch] = React.useState("");
-  const [filterAppRole, setFilterAppRole] = React.useState("");
-  const [page, setPage] = React.useState(1);
-  const [loading, setLoading] = React.useState(false);
-  const [message, setMessage] = React.useState("");
+  const { get, put } = useFetchClient();
+  const [users, setUsers] = useState([]);
+  const [roleOptions, setRoleOptions] = useState([]);
+  const [selectedUserId, setSelectedUserId] = useState("");
+  const [selectedRoleIds, setSelectedRoleIds] = useState([]);
+  const [userSearch, setUserSearch] = useState("");
+  const [filterAppRole, setFilterAppRole] = useState("");
+  const [assignedRoleFilter, setAssignedRoleFilter] = useState("");
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
   const api2 = (path) => `/api-pro${path}`;
-  const load = React__default.default.useCallback(async () => {
+  const load = React.useCallback(async () => {
     setLoading(true);
     try {
       const [u, r] = await Promise.all([
@@ -2802,10 +2799,10 @@ const UsersPage = () => {
       setLoading(false);
     }
   }, [get, selectedUserId]);
-  React__default.default.useEffect(() => {
+  React.useEffect(() => {
     load();
   }, [load]);
-  const rolesByDomain = React.useMemo(() => {
+  const rolesByDomain = useMemo(() => {
     const map = /* @__PURE__ */ new Map();
     roleOptions.forEach((role) => {
       const domains = Array.isArray(role.appDomains) && role.appDomains.length ? role.appDomains : null;
@@ -2827,8 +2824,44 @@ const UsersPage = () => {
       return String(a).localeCompare(String(b));
     });
   }, [roleOptions]);
-  const selectedSet = React.useMemo(() => new Set(selectedRoleIds.map(String)), [selectedRoleIds]);
-  const filteredUsers = React.useMemo(() => {
+  const selectedSet = useMemo(() => new Set(selectedRoleIds.map(String)), [selectedRoleIds]);
+  const selectedUser = useMemo(
+    () => users.find((u) => String(u.id) === String(selectedUserId)) || null,
+    [users, selectedUserId]
+  );
+  const visibleRolesByDomain = useMemo(() => {
+    const q = assignedRoleFilter.trim().toLowerCase();
+    if (!q) return rolesByDomain;
+    return rolesByDomain.map(([k, group]) => [
+      k,
+      {
+        ...group,
+        roles: group.roles.filter((role) => {
+          const key = (role.key || "").toLowerCase();
+          const name = (role.name || "").toLowerCase();
+          return key.includes(q) || name.includes(q);
+        })
+      }
+    ]).filter(([, group]) => group.roles.length > 0);
+  }, [rolesByDomain, assignedRoleFilter]);
+  const visibleRoleIds = useMemo(
+    () => visibleRolesByDomain.flatMap(([, g]) => g.roles.map((r) => String(r.id))),
+    [visibleRolesByDomain]
+  );
+  const visibleSelectedCount = useMemo(
+    () => visibleRoleIds.filter((id) => selectedSet.has(id)).length,
+    [visibleRoleIds, selectedSet]
+  );
+  const addFilteredRoles = () => {
+    if (visibleRoleIds.length === 0) return;
+    setSelectedRoleIds((prev) => Array.from(/* @__PURE__ */ new Set([...prev.map(String), ...visibleRoleIds])));
+  };
+  const removeFilteredRoles = () => {
+    if (visibleRoleIds.length === 0) return;
+    const drop = new Set(visibleRoleIds);
+    setSelectedRoleIds((prev) => prev.map(String).filter((id) => !drop.has(id)));
+  };
+  const filteredUsers = useMemo(() => {
     return users.filter((u) => {
       if (userSearch) {
         const q = userSearch.toLowerCase();
@@ -2869,50 +2902,109 @@ const UsersPage = () => {
       setLoading(false);
     }
   };
-  return /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { children: [
-    /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "beta", children: "User App Role Assignments" }),
-    message && /* @__PURE__ */ jsxRuntime.jsx(designSystem.Box, { paddingTop: 2, children: /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { textColor: "neutral600", children: message }) }),
-    /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Flex, { gap: 6, alignItems: "flex-start", wrap: "wrap", paddingTop: 4, children: [
-      /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { style: { flex: "0 0 360px" }, children: [
-        /* @__PURE__ */ jsxRuntime.jsx(designSystem.SingleSelect, { label: "Select User", placeholder: "Choose user", value: selectedUserId, onChange: selectUser, children: users.map((u) => /* @__PURE__ */ jsxRuntime.jsx(designSystem.SingleSelectOption, { value: String(u.id), children: u.displayName || u.username || u.email }, u.id)) }),
-        selectedUserId && /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { paddingTop: 4, children: [
-          /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "sigma", children: "Assigned App Roles" }),
-          /* @__PURE__ */ jsxRuntime.jsx(designSystem.Box, { paddingTop: 2, children: rolesByDomain.map(([domainKey, group]) => /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { style: { marginBottom: 12, border: "1px solid #e8e8f0", borderRadius: 8, overflow: "hidden" }, children: [
-            /* @__PURE__ */ jsxRuntime.jsx(designSystem.Flex, { justifyContent: "space-between", alignItems: "center", style: { padding: "6px 10px", background: "#f4f4f8" }, children: /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "pi", fontWeight: "semiBold", textColor: "neutral600", children: group.label }) }),
-            /* @__PURE__ */ jsxRuntime.jsx(designSystem.Box, { style: { padding: "6px 10px" }, children: group.roles.map((role) => {
-              const id = `assign-role-${role.id}`;
-              const checked = selectedSet.has(String(role.id));
-              return /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Flex, { gap: 2, alignItems: "center", paddingBottom: 1, children: [
-                /* @__PURE__ */ jsxRuntime.jsx("input", { id, type: "checkbox", checked, onChange: () => toggleRole(String(role.id)) }),
-                /* @__PURE__ */ jsxRuntime.jsxs("label", { htmlFor: id, style: { cursor: "pointer", flex: 1 }, children: [
-                  /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "pi", children: role.key }),
-                  role.name && role.name !== role.key && /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "pi", textColor: "neutral400", style: { fontSize: 10, marginLeft: 4 }, children: role.name })
-                ] })
-              ] }, role.id);
-            }) })
-          ] }, domainKey)) }),
-          /* @__PURE__ */ jsxRuntime.jsx(designSystem.Button, { onClick: save, loading, style: { marginTop: 16 }, children: "Save Assignment" })
+  return /* @__PURE__ */ jsxs(Box, { children: [
+    /* @__PURE__ */ jsx(Typography, { variant: "beta", children: "User App Role Assignments" }),
+    message && /* @__PURE__ */ jsx(Box, { paddingTop: 2, children: /* @__PURE__ */ jsx(Typography, { textColor: "neutral600", children: message }) }),
+    /* @__PURE__ */ jsxs(Flex, { gap: 6, alignItems: "flex-start", wrap: "wrap", paddingTop: 4, children: [
+      /* @__PURE__ */ jsxs(Box, { style: { flex: "0 0 360px" }, children: [
+        !selectedUser && /* @__PURE__ */ jsx(Box, { padding: 4, style: { border: "1px dashed #e0e0e0", borderRadius: 8 }, children: /* @__PURE__ */ jsx(Typography, { variant: "pi", textColor: "neutral500", children: "Pick a user from the list to edit their app role assignments." }) }),
+        selectedUser && /* @__PURE__ */ jsxs(Box, { children: [
+          /* @__PURE__ */ jsx(Typography, { variant: "sigma", children: selectedUser.displayName || selectedUser.username || selectedUser.email }),
+          selectedUser.email && /* @__PURE__ */ jsx(Box, { paddingTop: 1, children: /* @__PURE__ */ jsx(Typography, { variant: "pi", textColor: "neutral500", children: selectedUser.email }) }),
+          /* @__PURE__ */ jsxs(Box, { paddingTop: 4, children: [
+            /* @__PURE__ */ jsxs(Flex, { justifyContent: "space-between", alignItems: "center", children: [
+              /* @__PURE__ */ jsx(Typography, { variant: "sigma", children: "Assigned App Roles" }),
+              /* @__PURE__ */ jsxs(Typography, { variant: "pi", textColor: "neutral500", children: [
+                selectedRoleIds.length,
+                " selected"
+              ] })
+            ] }),
+            /* @__PURE__ */ jsx(Box, { paddingTop: 2, children: /* @__PURE__ */ jsx(
+              TextInput,
+              {
+                label: "Filter roles",
+                placeholder: "Filter roles by name or key",
+                value: assignedRoleFilter,
+                onChange: (e) => setAssignedRoleFilter(e.target.value)
+              }
+            ) }),
+            /* @__PURE__ */ jsxs(Flex, { gap: 2, paddingTop: 2, alignItems: "center", wrap: "wrap", children: [
+              /* @__PURE__ */ jsxs(
+                Button,
+                {
+                  variant: "tertiary",
+                  disabled: visibleRoleIds.length === 0 || visibleSelectedCount === visibleRoleIds.length,
+                  onClick: addFilteredRoles,
+                  children: [
+                    "Add ",
+                    assignedRoleFilter ? "filtered" : "all",
+                    " (",
+                    visibleRoleIds.length - visibleSelectedCount,
+                    ")"
+                  ]
+                }
+              ),
+              /* @__PURE__ */ jsxs(
+                Button,
+                {
+                  variant: "tertiary",
+                  disabled: visibleSelectedCount === 0,
+                  onClick: removeFilteredRoles,
+                  children: [
+                    "Remove ",
+                    assignedRoleFilter ? "filtered" : "all",
+                    " (",
+                    visibleSelectedCount,
+                    ")"
+                  ]
+                }
+              ),
+              assignedRoleFilter && /* @__PURE__ */ jsx(Button, { variant: "tertiary", onClick: () => setAssignedRoleFilter(""), children: "Clear filter" })
+            ] }),
+            /* @__PURE__ */ jsxs(Box, { paddingTop: 2, children: [
+              visibleRolesByDomain.length === 0 ? /* @__PURE__ */ jsx(Box, { paddingTop: 2, children: /* @__PURE__ */ jsxs(Typography, { variant: "pi", textColor: "neutral500", children: [
+                'No roles match "',
+                assignedRoleFilter,
+                '".'
+              ] }) }) : null,
+              visibleRolesByDomain.map(([domainKey, group]) => /* @__PURE__ */ jsxs(Box, { style: { marginBottom: 12, border: "1px solid #e8e8f0", borderRadius: 8, overflow: "hidden" }, children: [
+                /* @__PURE__ */ jsx(Flex, { justifyContent: "space-between", alignItems: "center", style: { padding: "6px 10px", background: "#f4f4f8" }, children: /* @__PURE__ */ jsx(Typography, { variant: "pi", fontWeight: "semiBold", textColor: "neutral600", children: group.label }) }),
+                /* @__PURE__ */ jsx(Box, { style: { padding: "6px 10px" }, children: group.roles.map((role) => {
+                  const id = `assign-role-${role.id}`;
+                  const checked = selectedSet.has(String(role.id));
+                  return /* @__PURE__ */ jsxs(Flex, { gap: 2, alignItems: "center", paddingBottom: 1, children: [
+                    /* @__PURE__ */ jsx("input", { id, type: "checkbox", checked, onChange: () => toggleRole(String(role.id)) }),
+                    /* @__PURE__ */ jsxs("label", { htmlFor: id, style: { cursor: "pointer", flex: 1 }, children: [
+                      /* @__PURE__ */ jsx(Typography, { variant: "pi", children: role.key }),
+                      role.name && role.name !== role.key && /* @__PURE__ */ jsx(Typography, { variant: "pi", textColor: "neutral400", style: { fontSize: 10, marginLeft: 4 }, children: role.name })
+                    ] })
+                  ] }, role.id);
+                }) })
+              ] }, domainKey))
+            ] }),
+            /* @__PURE__ */ jsx(Button, { onClick: save, loading, style: { marginTop: 16 }, children: "Save Assignment" })
+          ] })
         ] })
       ] }),
-      /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { style: { flex: 1, minWidth: 0 }, children: [
-        /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Flex, { gap: 3, wrap: "wrap", alignItems: "flex-end", paddingBottom: 3, children: [
-          /* @__PURE__ */ jsxRuntime.jsx(designSystem.Box, { style: { flex: "1 1 200px" }, children: /* @__PURE__ */ jsxRuntime.jsx(designSystem.TextInput, { label: "Search Users", placeholder: "Name or email", value: userSearch, onChange: (e) => {
+      /* @__PURE__ */ jsxs(Box, { style: { flex: 1, minWidth: 0 }, children: [
+        /* @__PURE__ */ jsxs(Flex, { gap: 3, wrap: "wrap", alignItems: "flex-end", paddingBottom: 3, children: [
+          /* @__PURE__ */ jsx(Box, { style: { flex: "1 1 200px" }, children: /* @__PURE__ */ jsx(TextInput, { label: "Search Users", placeholder: "Name or email", value: userSearch, onChange: (e) => {
             setUserSearch(e.target.value);
             setPage(1);
           } }) }),
-          /* @__PURE__ */ jsxRuntime.jsx(designSystem.Box, { style: { flex: "1 1 180px" }, children: /* @__PURE__ */ jsxRuntime.jsx(designSystem.SingleSelect, { label: "Filter by App Role", placeholder: "All app roles", value: filterAppRole, onChange: (v) => {
+          /* @__PURE__ */ jsx(Box, { style: { flex: "1 1 180px" }, children: /* @__PURE__ */ jsx(SingleSelect, { label: "Filter by App Role", placeholder: "All app roles", value: filterAppRole, onChange: (v) => {
             setFilterAppRole(v || "");
             setPage(1);
-          }, children: roleOptions.map((r) => /* @__PURE__ */ jsxRuntime.jsx(designSystem.SingleSelectOption, { value: String(r.id), children: r.key }, r.id)) }) })
+          }, children: roleOptions.map((r) => /* @__PURE__ */ jsx(SingleSelectOption, { value: String(r.id), children: r.key }, r.id)) }) })
         ] }),
-        /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Typography, { variant: "pi", textColor: "neutral500", paddingBottom: 2, children: [
+        /* @__PURE__ */ jsxs(Typography, { variant: "pi", textColor: "neutral500", paddingBottom: 2, children: [
           filteredUsers.length,
           " of ",
           users.length,
           " users"
         ] }),
-        paged.map((u) => /* @__PURE__ */ jsxRuntime.jsxs(
-          designSystem.Flex,
+        paged.map((u) => /* @__PURE__ */ jsxs(
+          Flex,
           {
             justifyContent: "space-between",
             alignItems: "center",
@@ -2926,11 +3018,11 @@ const UsersPage = () => {
             },
             onClick: () => selectUser(String(u.id)),
             children: [
-              /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { children: [
-                /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "sigma", children: u.displayName || u.username }),
-                /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "pi", textColor: "neutral500", children: u.email })
+              /* @__PURE__ */ jsxs(Box, { children: [
+                /* @__PURE__ */ jsx(Typography, { variant: "sigma", children: u.displayName || u.username }),
+                /* @__PURE__ */ jsx(Typography, { variant: "pi", textColor: "neutral500", children: u.email })
               ] }),
-              /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { style: { background: (u.app_roles || []).length > 0 ? "#e8f5e9" : "#f5f5f5", padding: "2px 8px", borderRadius: 12, fontSize: 11, fontWeight: 600 }, children: [
+              /* @__PURE__ */ jsxs(Box, { style: { background: (u.app_roles || []).length > 0 ? "#e8f5e9" : "#f5f5f5", padding: "2px 8px", borderRadius: 12, fontSize: 11, fontWeight: 600 }, children: [
                 (u.app_roles || []).length,
                 " app role",
                 (u.app_roles || []).length !== 1 ? "s" : ""
@@ -2939,51 +3031,53 @@ const UsersPage = () => {
           },
           u.id
         )),
-        /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Flex, { justifyContent: "space-between", paddingTop: 2, children: [
-          /* @__PURE__ */ jsxRuntime.jsx(designSystem.Button, { variant: "secondary", disabled: safePage <= 1, onClick: () => setPage((p) => Math.max(1, p - 1)), children: "Prev" }),
-          /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Typography, { variant: "pi", children: [
+        /* @__PURE__ */ jsxs(Flex, { justifyContent: "space-between", paddingTop: 2, children: [
+          /* @__PURE__ */ jsx(Button, { variant: "secondary", disabled: safePage <= 1, onClick: () => setPage((p) => Math.max(1, p - 1)), children: "Prev" }),
+          /* @__PURE__ */ jsxs(Typography, { variant: "pi", children: [
             "Page ",
             safePage,
             " / ",
             totalPages
           ] }),
-          /* @__PURE__ */ jsxRuntime.jsx(designSystem.Button, { variant: "secondary", disabled: safePage >= totalPages, onClick: () => setPage((p) => Math.min(totalPages, p + 1)), children: "Next" })
+          /* @__PURE__ */ jsx(Button, { variant: "secondary", disabled: safePage >= totalPages, onClick: () => setPage((p) => Math.min(totalPages, p + 1)), children: "Next" })
         ] })
       ] })
     ] })
   ] });
 };
 const App = () => {
-  const [page, setPage] = React__default.default.useState("domains-roles");
-  const [policiesSelection, setPoliciesSelection] = React__default.default.useState(null);
+  const [page, setPage] = React.useState("domains-roles");
+  const [policiesSelection, setPoliciesSelection] = React.useState(null);
   const openPoliciesForMethod = (selection) => {
     setPoliciesSelection(selection);
     setPage("policies");
   };
   const renderPage = () => {
-    if (page === "interfaces") return /* @__PURE__ */ jsxRuntime.jsx(Interfaces, { onOpenMethod: openPoliciesForMethod });
-    if (page === "policies") return /* @__PURE__ */ jsxRuntime.jsx(
+    if (page === "interfaces") return /* @__PURE__ */ jsx(Interfaces, { onOpenMethod: openPoliciesForMethod });
+    if (page === "policies") return /* @__PURE__ */ jsx(
       Policies,
       {
         initialSelection: policiesSelection,
         onConsumeInitialSelection: () => setPoliciesSelection(null)
       }
     );
-    if (page === "domains-roles") return /* @__PURE__ */ jsxRuntime.jsx(DomainsRoles, {});
-    if (page === "users") return /* @__PURE__ */ jsxRuntime.jsx(UsersPage, {});
-    return /* @__PURE__ */ jsxRuntime.jsx(Recordings, {});
+    if (page === "domains-roles") return /* @__PURE__ */ jsx(DomainsRoles, {});
+    if (page === "users") return /* @__PURE__ */ jsx(UsersPage, {});
+    return /* @__PURE__ */ jsx(Recordings, {});
   };
-  return /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Box, { padding: 8, children: [
-    /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "alpha", children: "Strapi API Pro" }),
-    /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "omega", children: "Recordings, interfaces, method policies, and domain-role management." }),
-    /* @__PURE__ */ jsxRuntime.jsx(designSystem.Box, { paddingTop: 4, paddingBottom: 4, children: /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Flex, { gap: 2, wrap: "wrap", children: [
-      /* @__PURE__ */ jsxRuntime.jsx(designSystem.Button, { variant: page === "recordings" ? "default" : "secondary", onClick: () => setPage("recordings"), children: "Recordings" }),
-      /* @__PURE__ */ jsxRuntime.jsx(designSystem.Button, { variant: page === "interfaces" ? "default" : "secondary", onClick: () => setPage("interfaces"), children: "Interfaces" }),
-      /* @__PURE__ */ jsxRuntime.jsx(designSystem.Button, { variant: page === "policies" ? "default" : "secondary", onClick: () => setPage("policies"), children: "Policies" }),
-      /* @__PURE__ */ jsxRuntime.jsx(designSystem.Button, { variant: page === "domains-roles" ? "default" : "secondary", onClick: () => setPage("domains-roles"), children: "Domains & Roles" }),
-      /* @__PURE__ */ jsxRuntime.jsx(designSystem.Button, { variant: page === "users" ? "default" : "secondary", onClick: () => setPage("users"), children: "Users" })
+  return /* @__PURE__ */ jsxs(Box, { padding: 8, children: [
+    /* @__PURE__ */ jsx(Typography, { variant: "alpha", children: "Strapi API Pro" }),
+    /* @__PURE__ */ jsx(Typography, { variant: "omega", children: "Recordings, interfaces, method policies, and domain-role management." }),
+    /* @__PURE__ */ jsx(Box, { paddingTop: 4, paddingBottom: 4, children: /* @__PURE__ */ jsxs(Flex, { gap: 2, wrap: "wrap", children: [
+      /* @__PURE__ */ jsx(Button, { variant: page === "recordings" ? "default" : "secondary", onClick: () => setPage("recordings"), children: "Recordings" }),
+      /* @__PURE__ */ jsx(Button, { variant: page === "interfaces" ? "default" : "secondary", onClick: () => setPage("interfaces"), children: "Interfaces" }),
+      /* @__PURE__ */ jsx(Button, { variant: page === "policies" ? "default" : "secondary", onClick: () => setPage("policies"), children: "Policies" }),
+      /* @__PURE__ */ jsx(Button, { variant: page === "domains-roles" ? "default" : "secondary", onClick: () => setPage("domains-roles"), children: "Domains & Roles" }),
+      /* @__PURE__ */ jsx(Button, { variant: page === "users" ? "default" : "secondary", onClick: () => setPage("users"), children: "Users" })
     ] }) }),
     renderPage()
   ] });
 };
-exports.default = App;
+export {
+  App as default
+};

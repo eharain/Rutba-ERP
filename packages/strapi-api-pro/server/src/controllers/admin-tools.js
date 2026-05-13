@@ -1,6 +1,6 @@
-'use strict';
+﻿'use strict';
 
-// Admin-only tools controller — operations that affect the whole plugin's
+// Admin-only tools controller â€” operations that affect the whole plugin's
 // state (seed, reset, etc.). Mount under /api-pro/admin/* in routes.
 
 module.exports = {

@@ -1,12 +1,12 @@
-# @rutba/api-provider — Knowledge Base
+﻿# @rutba/api-provider â€” Knowledge Base
 
 The **single source of truth** for every Strapi-backed endpoint, domain, and role across the Rutba ERP monorepo. It's a plain JS package (not a Strapi plugin); other packages and apps import from it.
 
 Three responsibilities:
 
-1. **Domain + role registry** — `config/domains.json` and `config/roles.json` enumerate all RBAC tiers across the system.
-2. **Endpoint descriptors** — `api/*.js` files declare every Strapi endpoint the ERP exposes, with the (method, path, action, params, body, role grants) shape needed by both the front-ends and the `strapi-api-pro` plugin's seeder.
-3. **Generated client proxies** — `scripts/scaffold-endpoint-providers.mjs` reads the `api/*.js` descriptors and emits typed JS proxies under `providers/generated/client/` that wrap each method with `executeEndpoint(authApi, methodName, descriptor)` for callers.
+1. **Domain + role registry** â€” `config/domains.json` and `config/roles.json` enumerate all RBAC tiers across the system.
+2. **Endpoint descriptors** â€” `api/*.js` files declare every Strapi endpoint the ERP exposes, with the (method, path, action, params, body, role grants) shape needed by both the front-ends and the `api-pro` plugin's seeder.
+3. **Generated client proxies** â€” `scripts/scaffold-endpoint-providers.mjs` reads the `api/*.js` descriptors and emits typed JS proxies under `providers/generated/client/` that wrap each method with `executeEndpoint(authApi, methodName, descriptor)` for callers.
 
 ## Identity
 
@@ -18,47 +18,47 @@ Three responsibilities:
 
 ```
 packages/api-provider/
-├── package.json
-├── index.js                          # public entry: re-exports config + helpers
-├── analyze-cleanup.js                # one-off codemod helper (rarely touched)
-├── utils.js                          # internal helpers
-├── config/
-│   ├── domains.json                  # { [domainKey]: { roles: [roleKey, ...] } }
-│   ├── roles.json                    # { [roleKey]: { level, domain } }
-│   ├── configuration.json            # serialized aggregate (generated)
-│   └── configuration.source.js       # config loader; exported as `@rutba/api-provider/config`
-├── api/                              # ENDPOINT DESCRIPTORS — see api/CLAUDE.md
-│   ├── index.js
-│   ├── __publish_generic_helper.js
-│   ├── cash-register-transactions.js # one file per Strapi content-type / resource
-│   ├── hr-employees.js
-│   ├── (50+ more)
-│   └── web/                          # public web endpoints (no auth required)
-├── client/                           # public web-facing client wrappers
-├── endpoints/                        # legacy entry — being replaced by providers/
-├── providers/
-│   └── generated/
-│       └── client/                   # GENERATED — do not hand-edit
-├── lib/                              # api + auth helpers used by generated proxies
-│   └── api.js                        # authApi + executeEndpoint
-├── pos/                              # POS-specific orchestrations
-├── server/
-│   └── access-guard/
-│       ├── index.js                  # ESM facade — exports buildAccessGuardProPayload(strapi)
-│       └── build-resources.cjs       # CJS resource walker (uses dynamic import for ESM api files)
-└── scripts/
-    ├── scaffold-endpoint-providers.mjs   # main generator
-    ├── scaffold__core__.js               # generator template
-    ├── scaffold__client_core__.js
-    ├── scaffold__property_mapper__.js
-    ├── combine-endpoints.js
-    ├── generate-configuration.js
-    ├── split-configuration.js
-    ├── join-configuration.js
-    ├── clean-api-transport.mjs
-    ├── remove-api-async-helpers.mjs
-    ├── validate-exports.mjs
-    └── validate-web-proxies.mjs
+â”œâ”€â”€ package.json
+â”œâ”€â”€ index.js                          # public entry: re-exports config + helpers
+â”œâ”€â”€ analyze-cleanup.js                # one-off codemod helper (rarely touched)
+â”œâ”€â”€ utils.js                          # internal helpers
+â”œâ”€â”€ config/
+â”‚   â”œâ”€â”€ domains.json                  # { [domainKey]: { roles: [roleKey, ...] } }
+â”‚   â”œâ”€â”€ roles.json                    # { [roleKey]: { level, domain } }
+â”‚   â”œâ”€â”€ configuration.json            # serialized aggregate (generated)
+â”‚   â””â”€â”€ configuration.source.js       # config loader; exported as `@rutba/api-provider/config`
+â”œâ”€â”€ api/                              # ENDPOINT DESCRIPTORS â€” see api/CLAUDE.md
+â”‚   â”œâ”€â”€ index.js
+â”‚   â”œâ”€â”€ __publish_generic_helper.js
+â”‚   â”œâ”€â”€ cash-register-transactions.js # one file per Strapi content-type / resource
+â”‚   â”œâ”€â”€ hr-employees.js
+â”‚   â”œâ”€â”€ (50+ more)
+â”‚   â””â”€â”€ web/                          # public web endpoints (no auth required)
+â”œâ”€â”€ client/                           # public web-facing client wrappers
+â”œâ”€â”€ endpoints/                        # legacy entry â€” being replaced by providers/
+â”œâ”€â”€ providers/
+â”‚   â””â”€â”€ generated/
+â”‚       â””â”€â”€ client/                   # GENERATED â€” do not hand-edit
+â”œâ”€â”€ lib/                              # api + auth helpers used by generated proxies
+â”‚   â””â”€â”€ api.js                        # authApi + executeEndpoint
+â”œâ”€â”€ pos/                              # POS-specific orchestrations
+â”œâ”€â”€ server/
+â”‚   â””â”€â”€ access-guard/
+â”‚       â”œâ”€â”€ index.js                  # ESM facade â€” exports buildAccessGuardProPayload(strapi)
+â”‚       â””â”€â”€ build-resources.cjs       # CJS resource walker (uses dynamic import for ESM api files)
+â””â”€â”€ scripts/
+    â”œâ”€â”€ scaffold-endpoint-providers.mjs   # main generator
+    â”œâ”€â”€ scaffold__core__.js               # generator template
+    â”œâ”€â”€ scaffold__client_core__.js
+    â”œâ”€â”€ scaffold__property_mapper__.js
+    â”œâ”€â”€ combine-endpoints.js
+    â”œâ”€â”€ generate-configuration.js
+    â”œâ”€â”€ split-configuration.js
+    â”œâ”€â”€ join-configuration.js
+    â”œâ”€â”€ clean-api-transport.mjs
+    â”œâ”€â”€ remove-api-async-helpers.mjs
+    â”œâ”€â”€ validate-exports.mjs
+    â””â”€â”€ validate-web-proxies.mjs
 ```
 
 ## Build & validate
@@ -75,24 +75,24 @@ The scaffold script is incremental and idempotent. Run it whenever an `api/*.js`
 ## Package.json exports (what consumers can import)
 
 ```
-"."                  → index.js (default), storage.js, api.js
-"./config"           → config/configuration.source.js
-"./config/domains"   → config/domains.json
-"./config/roles"     → config/roles.json
-"./endpoints"        → endpoints/index.js (legacy)
-"./endpoints/*"      → providers/generated/client/*  (generated typed wrappers)
-"./api/*"            → api/* (raw descriptor files)
-"./client"           → client/index.js
-"./pos"              → pos/index.js
-"./lib/*"            → lib/*
-"./server/access-guard" → server/access-guard/index.js
+"."                  â†’ index.js (default), storage.js, api.js
+"./config"           â†’ config/configuration.source.js
+"./config/domains"   â†’ config/domains.json
+"./config/roles"     â†’ config/roles.json
+"./endpoints"        â†’ endpoints/index.js (legacy)
+"./endpoints/*"      â†’ providers/generated/client/*  (generated typed wrappers)
+"./api/*"            â†’ api/* (raw descriptor files)
+"./client"           â†’ client/index.js
+"./pos"              â†’ pos/index.js
+"./lib/*"            â†’ lib/*
+"./server/access-guard" â†’ server/access-guard/index.js
 ```
 
-The package.json **does NOT export `./package.json`**. Don't rely on `require.resolve('@rutba/api-provider/package.json')` — it will throw `ERR_PACKAGE_PATH_NOT_EXPORTED`. Resolve via a known sub-path instead (e.g. `require.resolve('@rutba/api-provider/config/domains')` then `path.dirname(path.dirname(...))` to recover the package root). The strapi-api-pro seeder does exactly this.
+The package.json **does NOT export `./package.json`**. Don't rely on `require.resolve('@rutba/api-provider/package.json')` â€” it will throw `ERR_PACKAGE_PATH_NOT_EXPORTED`. Resolve via a known sub-path instead (e.g. `require.resolve('@rutba/api-provider/config/domains')` then `path.dirname(path.dirname(...))` to recover the package root). The api-pro seeder does exactly this.
 
 ## Domains and roles
 
-`config/domains.json` — 18 entries:
+`config/domains.json` â€” 18 entries:
 
 ```json
 {
@@ -110,7 +110,7 @@ The package.json **does NOT export `./package.json`**. Don't rely on `require.re
 }
 ```
 
-`config/roles.json` — ~60 entries:
+`config/roles.json` â€” ~60 entries:
 
 ```json
 {
@@ -123,19 +123,19 @@ The package.json **does NOT export `./package.json`**. Don't rely on `require.re
 
 `level` values: `admin` | `manager` | `staff` | `user` | `public`. Used by `build-resources.cjs::expandGrants` to filter the domain's roles down to those matching the endpoint's declared `meta.roles`.
 
-## Integration with strapi-api-pro
+## Integration with api-pro
 
-The `strapi-api-pro` plugin's seeder (`services/seeder.js`) **reads this package directly** at every Strapi boot:
+The `api-pro` plugin's seeder (`services/seeder.js`) **reads this package directly** at every Strapi boot:
 
-1. `require.resolve('@rutba/api-provider/config/domains', { paths: [strapi.dirs.app.root] })` → derives the package root via `path.dirname(path.dirname(...))`.
+1. `require.resolve('@rutba/api-provider/config/domains', { paths: [strapi.dirs.app.root] })` â†’ derives the package root via `path.dirname(path.dirname(...))`.
 2. Loads `config/domains.json` and `config/roles.json` directly via `fs.readFileSync` (CJS).
 3. Walks `api/*.js` using `import(pathToFileURL(...))` (the api files are ESM, the seeder is CJS).
 4. For each exported endpoint set, processes each method via `inferAction` / `expandGrants` (porting the logic from `server/access-guard/build-resources.cjs`).
 5. Upserts everything into `api_pro_app_domains`, `api_pro_app_roles`, `api_pro_interfaces`, `api_pro_interface_methods`, `api_pro_method_policies`.
 
-On a fresh DB the seed produces **18 domains · 50 roles · 25 interfaces · 162 methods · 1013 policies**.
+On a fresh DB the seed produces **18 domains Â· 50 roles Â· 25 interfaces Â· 162 methods Â· 1013 policies**.
 
-The seeder is idempotent — re-running upserts by stable keys (`domain.key`, `role.key`, `interface.key`, `${interfaceKey}:${methodName}`, `${interfaceKey}:${methodName}:${roleKey}`).
+The seeder is idempotent â€” re-running upserts by stable keys (`domain.key`, `role.key`, `interface.key`, `${interfaceKey}:${methodName}`, `${interfaceKey}:${methodName}:${roleKey}`).
 
 ## buildAccessGuardProPayload
 
@@ -145,12 +145,12 @@ The seeder is idempotent — re-running upserts by stable keys (`domain.key`, `r
 const { buildAccessGuardProPayload } = require('@rutba/api-provider/server/access-guard');
 
 const payload = await buildAccessGuardProPayload(strapi);
-// payload.domains    — domains config map
-// payload.roles      — roles config map
-// payload.resources  — { [contentTypeUid]: { [`${modelName}.${action}`]: { policies: [{ key, grants: [roleKey] }] } } }
+// payload.domains    â€” domains config map
+// payload.roles      â€” roles config map
+// payload.resources  â€” { [contentTypeUid]: { [`${modelName}.${action}`]: { policies: [{ key, grants: [roleKey] }] } } }
 ```
 
-Originally consumed by the legacy AGP data-transfer service. **The current strapi-api-pro seeder doesn't use this function** — it does its own walk so it can capture HTTP method + path per descriptor (not just role grants). The function is retained for backward compatibility.
+Originally consumed by the legacy AGP data-transfer service. **The current api-pro seeder doesn't use this function** â€” it does its own walk so it can capture HTTP method + path per descriptor (not just role grants). The function is retained for backward compatibility.
 
 ## Generated client wrappers
 
@@ -171,8 +171,8 @@ async function byRegister(...args) {
 
 ## Validation scripts
 
-- `validate:exports` — checks every `api/*.js` exports `meta.uid` and that all method functions return well-formed descriptors.
-- `validate:web-proxies` — checks `client/` web endpoints align with the underlying descriptors.
+- `validate:exports` â€” checks every `api/*.js` exports `meta.uid` and that all method functions return well-formed descriptors.
+- `validate:web-proxies` â€” checks `client/` web endpoints align with the underlying descriptors.
 
 Run `npm run validate` after touching anything under `api/`.
 
@@ -181,13 +181,13 @@ Run `npm run validate` after touching anything under `api/`.
 | Want to... | Edit |
 |---|---|
 | Add a new content-type endpoint set | `api/<resource>.js` then `npm run scaffold:endpoint-providers` |
-| Add a new domain or role | `config/domains.json` and/or `config/roles.json`; re-seed strapi-api-pro |
+| Add a new domain or role | `config/domains.json` and/or `config/roles.json`; re-seed api-pro |
 | Change which roles can access an endpoint method | The method's `apps` and `approle` arrays in `api/<resource>.js` |
 | Re-generate client wrappers | `npm run scaffold:endpoint-providers` |
-| Bootstrap strapi-api-pro DB tables | Strapi boot triggers `pos-strapi/src/seed/api-provider-seed.js` which calls the plugin's seeder; or `POST /api-pro/admin/seed` from the admin UI |
+| Bootstrap api-pro DB tables | Strapi boot triggers `pos-strapi/src/seed/api-provider-seed.js` which calls the plugin's seeder; or `POST /api-pro/admin/seed` from the admin UI |
 
 ## Quirks
 
-- `api/*.js` files are **ESM** (`export const Endpoints = {...}`). The seeder + build-resources use `import(pathToFileURL(...))` to load them from CJS contexts. Node logs a warning `MODULE_TYPELESS_PACKAGE_JSON` on each import — harmless, but adding `"type": "module"` to this package.json would silence it.
+- `api/*.js` files are **ESM** (`export const Endpoints = {...}`). The seeder + build-resources use `import(pathToFileURL(...))` to load them from CJS contexts. Node logs a warning `MODULE_TYPELESS_PACKAGE_JSON` on each import â€” harmless, but adding `"type": "module"` to this package.json would silence it.
 - Async functions exported from `api/` files are **skipped** by `inferAction` / the seeder walker (heuristic: `value.constructor?.name === 'AsyncFunction'`). Use sync arrow functions that return descriptor objects.
 - `endpoints/` is the LEGACY entry path. New code should import from `providers/generated/client/*` (typed proxies) or `api/*` (raw descriptors).

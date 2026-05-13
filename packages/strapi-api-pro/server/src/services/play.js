@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 
 // Play / dry-run service for the admin's "Play as role" button.
 //
@@ -7,12 +7,12 @@
 //   1. Loads the api-method-policy for that triple.
 //   2. Builds a $-token context using either the current admin user or a
 //      caller-specified "actAsUserId" (so admins can preview what a specific
-//      user would see — e.g. a branch manager whose branch.id=2).
+//      user would see â€” e.g. a branch manager whose branch.id=2).
 //   3. Resolves the four template fields against the context.
 //   4. For find/findOne actions on UIDs that map to a real content-type,
 //      actually runs the resolved query via strapi.documents() and returns
 //      the rows. Mutation actions (create/update/delete) are NOT executed
-//      from here — they only return the resolved templates so an admin
+//      from here â€” they only return the resolved templates so an admin
 //      can preview the body/filter Strapi would receive without side effects.
 //
 // All of this is intended for plugin-admin usage only; routes are admin-type

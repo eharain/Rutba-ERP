@@ -34,3 +34,5 @@ package-lock.json
 /packages/strapi-api-pro/.vs
 /packages/strapi-api-pro/.github
 /packages/strapi-api-pro/.claude
+/.claude
+/pos-strapi/.api-pro

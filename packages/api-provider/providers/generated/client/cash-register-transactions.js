@@ -23,6 +23,7 @@ const endpoints = {
     postCreate,
     byRegister,
     fetchByRegister,
+    meta: CashRegisterTransactionEndpointsApi.meta,
 };
 
 export default endpoints;

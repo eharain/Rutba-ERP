@@ -1,28 +1,26 @@
 {
   "name": "@rutba/api-provider",
   "version": "1.0.0",
-  
   "private": true,
-  "main": "index.js",
+  "type": "module",
   "scripts": {
     "combine:endpoints": "node ./scripts/combine-endpoints.js",
     "scaffold:endpoint-providers": "node ./scripts/scaffold-endpoint-providers.mjs",
     "validate:exports": "node ./scripts/validate-exports.mjs",
     "validate:web-proxies": "node ./scripts/validate-web-proxies.mjs",
     "validate": "npm run validate:exports && npm run validate:web-proxies",
-    "build": "npm run  scaffold:endpoint-providers && npm run validate"
+    "build": "npm run scaffold:endpoint-providers && npm run validate",
+    "watch": "node ./scripts/watch-api.mjs",
+    "dev": "node ./scripts/watch-api.mjs"
   },
   "exports": {
-    ".": [ "./index.js", "./storage.js", "./api.js" ],
-    "./config": "./config/configuration.source.js",
-    "./config/source": "./config/configuration.source.js",
     "./config/domains": "./config/domains.json",
     "./config/roles": "./config/roles.json",
+    "./config/*": "./config/*",
     "./endpoints": "./endpoints/index.js",
     "./endpoints/index.js": "./endpoints/index.js",
-    "./lib/*": "./lib/*",
-    "./config/*": "./config/*",
     "./endpoints/*": "./providers/generated/client/*",
+    "./lib/*": "./lib/*",
     "./scripts/*": "./scripts/*",
     "./pos": "./pos/index.js",
     "./pos/*": "./pos/*",
@@ -32,8 +30,6 @@
     "./client/web/*": "./client/web/*",
     "./api/web": "./api/web/index.js",
     "./api/web/*": "./api/web/*",
-    "./server": "./server/index.js",
-    "./server/access-guard": "./server/access-guard/index.js",
-    "./server/access-guard/*": "./server/access-guard/*"
+    "./server": "./server/index.js"
   }
 }

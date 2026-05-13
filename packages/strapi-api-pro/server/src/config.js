@@ -27,14 +27,8 @@ module.exports = {
     //
     // Role is REQUIRED when the user holds multiple roles for the active app;
     // optional when they hold exactly one (in which case it's auto-selected).
-    //
-    // The elevation header was an interim AGP-era idea (admin bypass via
-    // x-rutba-app-admin: true). Superseded by explicit role-selection —
-    // the user just picks their admin role from the menu. The config key
-    // is retained as a no-op for backward compatibility.
     headerDomainKey: 'x-rutba-app',
     headerRoleKey: 'x-rutba-app-role',
-    headerElevatedKey: 'x-rutba-app-admin', // deprecated — ignored at runtime
 
     // ── Bypass paths ────────────────────────────────────────────────────
     // Prefix-matched paths that skip interceptor + context validation.
@@ -50,7 +44,6 @@ module.exports = {
       '/api/me/permissions',
       '/api/users-permissions/me/permissions',
       '/api/api-pro/me/permissions',
-      '/api/api-guard-pro/me/permissions',
       '/uploads',
       '/_health',
       '/documentation',

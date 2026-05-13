@@ -1,15 +1,16 @@
-# strapi-api-pro — Plugin Knowledge Base
+# api-pro — Plugin Knowledge Base
 
 A Strapi 5 admin plugin that replaces `api-guard-pro` across the Rutba ERP monorepo. Provides per-(content-type × action × role) policy authoring backed by a `.api-pro/` file-store + DB mirror, a runtime Koa interceptor that resolves `$user.id`-style tokens and injects role-scoped filters into every authenticated request, and an admin UI with five tabs (Recordings, Interfaces, Policies, Domains & Roles, Users).
 
-The historical spec at `acees-guard-pro-replacment-strapi-api-pro.md` is a v1 sketch only. Where it conflicts with this document, **this document is authoritative.**
+The v1 design spec lives at `SPEC.md`. Where it conflicts with this document, **this document is authoritative.**
 
 ## Identity & loading
 
-- Package name: `strapi-api-pro`
+- Package name: `api-pro`
 - `strapi.name` (used as the config key and `plugin::api-pro.*` content-type namespace): **`api-pro`**
-- Installed in `pos-strapi` via `"strapi-api-pro": "file://../packages/strapi-api-pro"` (symlinked into node_modules)
+- Installed in `pos-strapi` via `"api-pro": "file://../packages/strapi-api-pro"` (symlinked into node_modules)
 - **Do NOT set `resolve:` in `pos-strapi/config/plugins.js`.** Setting it to a directory breaks Strapi 5's server loader (path-doubling: `<plugin>/dist/server/dist/server/index.js`). Setting it to `package.json` breaks the admin loader (which expects a directory). Auto-discovery via the file: dep sidesteps both. The `config: {…}` block applies via `applyUserConfig` regardless.
+- **Strapi loads from `dist/`, not source.** `package.json` `main` and the exports map's `default` condition point to `./dist/server/index.js`. Any edit under `server/src/` or `admin/src/` is invisible until `npm run build` (or `npm run watch`). Symptom of forgetting: "I changed register.js but my fix didn't take effect." Confirm with `grep -n <symbol> dist/server/index.js`.
 
 ## Layout
 
@@ -35,11 +36,11 @@ packages/strapi-api-pro/
 │       ├── Interfaces.jsx      # grouped by content-type family + expandable cards → methods → role policy chips → deep-link
 │       ├── Policies.jsx        # BrowseTree (interface→method tree) → MethodEditor (comparative role columns) → PlayModal
 │       ├── DomainsRoles.jsx    # CRUD for domains + roles, Re-seed button
-│       └── Users.jsx           # Strapi users with app_roles assignment (faithful AGP port)
+│       └── Users.jsx           # Strapi users with app_roles assignment. No user dropdown — right-panel list (search + filter + paginate) is the only navigation; left panel becomes a focused editor for the selected user.
 └── server/src/
     ├── index.js                # lifecycle exports
-    ├── register.js             # calls extendUserRelation
-    ├── bootstrap.js            # LRU cache, strapi.apiPro registry, global interceptor mount, syncAll(), lifecycle invalidation hooks
+    ├── register.js             # `require('./content-types/app-role')` directly then calls extendUserRelation; do NOT look it up via `strapi.plugin(...).contentType(uid)` (that returns the parsed shape, not module exports)
+    ├── bootstrap.js            # LRU cache, strapi.apiPro registry, global interceptor mount, admin permission action registration (`plugin::api-pro.read` / `.write`), syncAll(), lifecycle invalidation hooks
     ├── config.js               # defaults; pos-strapi overrides headerDomainKey/headerRoleKey/bypassPaths/domains
     ├── destroy.js
     ├── content-types/
@@ -70,7 +71,7 @@ packages/strapi-api-pro/
     │   ├── seeder.js           # runFullSeed: walks @rutba/api-provider → upserts domains/roles/interfaces/methods/policies
     │   ├── play.js             # dry-run + real-fetch for Play-as-role
     │   └── (users, recordings, interfaces)
-    ├── routes/index.js         # content-api (/me/permissions) + admin (full CRUD + bulk + /play + /admin/seed)
+    ├── routes/index.js         # content-api (/me/permissions) + admin (full CRUD + bulk + /play + /admin/seed). Admin routes use `adminRead`/`adminWrite` helpers that attach `admin::hasPermissions` policies. Literal-prefixed paths MUST be registered BEFORE generic param patterns (koa-router is first-match).
     ├── middlewares/
     │   └── app-context.js      # per-route claim middleware — NOT applied to admin routes; only for content-api gating
     └── policies/index.js       # empty export (Strapi requires it)
@@ -110,6 +111,14 @@ npm run dev:strapi       # starts pos-strapi with the plugin loaded
 5. **One claimed role = one policy.** No multi-policy merge. If a user needs broader access, they switch roles via the UI menu (rolesByApp on `/me/permissions`).
 
 6. **Permission cache.** 30s LRU on `strapi.apiPro.cache`, keyed `u:{userId}:r:{roleKey}:p:{contentTypeUid}:{actionName}`. Lifecycle hooks on app-role / app-domain / method-policy mutations call `clearAll()`. Manual clearing: `strapi.apiPro.clearCache(userId)` or `clearAllCache()`.
+
+7. **Admin routes are gated by Strapi RBAC, not `auth: false`.** Two action UIDs are registered in `bootstrap.js` under the `plugins` section of Settings → Administration → Roles:
+   - `plugin::api-pro.read` — all admin GETs + `POST /play` (Play-as-role is preview-only, never mutates plugin state)
+   - `plugin::api-pro.write` — every mutation (`PUT /users/:id/roles`, policy/role/domain/interface/recording CRUD, `POST /admin/seed`)
+
+   Routes in `routes/index.js` go through `adminRead(method, path, handler)` / `adminWrite(method, path, handler)` helpers that attach `{ name: 'admin::hasPermissions', config: { actions: ['plugin::api-pro.<verb>'] } }`. Strapi auto-grants Super Admin both; other admin roles must be granted from Settings → Administration → Roles → [role] → Plugins → API Pro. A 403 from any plugin admin route now means missing RBAC — not a bug.
+
+   The earlier AGP shortcut (`config: { auth: false }`) is intentionally NOT used: it left every admin route wide-open. Admin session-JWT auth (the route-type 'admin' default) handles the bearer-token check; the RBAC policy layers on top.
 
 ## Seeding
 
@@ -188,8 +197,12 @@ Reachable from the **▶ Play** button on every role column in the Method Editor
 |---|---|
 | Why won't my plugin load? | `pos-strapi/config/plugins.js` must NOT have `resolve:` for api-pro. |
 | Why is the sidebar icon missing? | Vite can't cross the symlink for `@strapi/icons`. `admin/src/components/PluginIcon.jsx` must use inline SVG. |
-| Why are admin routes returning 400? | The `plugin::api-pro.appContext` middleware was attached. Admin routes are Strapi-auth-gated; don't add the claim middleware to them. |
-| How do I add a new admin endpoint? | Add a controller under `server/src/controllers/`, register it in `controllers/index.js`, add a route in `routes/index.js` under the `admin` surface. Call it from React with `useFetchClient()` and `get('/api-pro/<path>')`. |
+| Why did my source edit not take effect after restart? | Strapi loads from `dist/`. Run `npm run build` (or `npm run watch`) inside `packages/strapi-api-pro/`. Verify with `grep -n <symbol> dist/server/index.js`. |
+| Why is a plugin admin route returning 401 / 403? | 401 = admin session token problem (rare — Strapi admin auto-refreshes; relogin if needed). 403 = the logged-in admin lacks `plugin::api-pro.read` or `plugin::api-pro.write` for the action. Grant it from Settings → Administration → Roles → [role] → Plugins → API Pro. |
+| Why does the Comparative Method Editor show 0 columns AND "all roles already configured"? | Route ordering trap in `routes/index.js`. Koa-router is first-match — `/policies/method/:i/:m` must be registered BEFORE the generic `/policies/:i/:m/:r`. Otherwise `GET /policies/method/term/list` matches `findOne` with `:interfaceKey='method'` and 404s with "policy not found", leaving the editor with `allRoles=[]`. |
+| Why doesn't the Content Manager User form show `app_roles`? | The runtime relation patch in `content-types/app-role/index.js#extendUserRelation` must actually run. `register.js` MUST `require('./content-types/app-role')` directly — `strapi.plugin(...).contentType(uid)` returns the parsed shape (kind/attributes), not the original module exports, so the helper would be `undefined` and the patch silently no-ops. |
+| Why does Save Assignment return 200 but the role list comes back empty? | `entityService.update('plugin::users-permissions.user', ...)` strips fields it doesn't recognize on Strapi 5.45 (the users-permissions service filters allowed fields). Use `strapi.db.query(USER_UID).update({ where: { id }, data: { app_roles: ids } })` — matches the proven pattern in `pos-strapi/src/extensions/users-permissions/strapi-server.js#ensureWebUserAppRole`. |
+| How do I add a new admin endpoint? | Add a controller under `server/src/controllers/`, register it in `controllers/index.js`, add a route in `routes/index.js` via `adminRead(method, path, handler)` or `adminWrite(method, path, handler)` (NOT raw route objects — those bypass RBAC). Call it from React with `useFetchClient()` and `get('/api-pro/<path>')`. Rebuild (`npm run build`) for the change to load. |
 | How is runtime enforcement actually wired? | `bootstrap.js` mounts a global Koa middleware. For each non-bypassed path: `request-interceptor.process(ctx, strapi)` resolves the claim, fetches the role's policy, resolves templates, injects into ctx. Denies on `denyByDefault && noPolicy`. |
 | Where do role providers (HR team roles) plug in? | `strapi.apiPro.registerRoleProvider(fn)` — fn receives `(user, { strapi })` and returns extra role-key strings. Called from `me-permissions.js` when building `/me/permissions`. |
 

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * SaleItemsEndpoints
  * Pure endpoint descriptors for the /sale-items resource.
  */
@@ -75,16 +75,16 @@ export const SaleItemsEndpoints = {
 
 /**
  * SaleItemsEndpointRules
- * Per-endpoint requestRules stored in the api-guard-pro resource record.
+ * Per-endpoint requestRules stored in the api-pro method-policy record.
  */
 export const SaleItemsEndpointRules = {
-    /** POST /api/sale-items — create */
+    /** POST /api/sale-items â€” create */
     create: {},
 
-    /** PUT /api/sale-items/:id — update */
+    /** PUT /api/sale-items/:id â€” update */
     update: {},
 
-    /** PUT /api/sale-items/:id — disconnect (clears relations) */
+    /** PUT /api/sale-items/:id â€” disconnect (clears relations) */
     disconnect: {
         allowedBodyFields: ['sale', 'product'],
     },

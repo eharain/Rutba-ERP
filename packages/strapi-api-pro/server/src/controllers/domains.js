@@ -1,7 +1,7 @@
-'use strict';
+﻿'use strict';
 
 // Admin CRUD over plugin::api-pro.app-domain. Domains are operational records
-// (no file-backed authoring layer for them) — straight DB operations.
+// (no file-backed authoring layer for them) â€” straight DB operations.
 //
 // Also exposes related-roles CRUD for app-roles within the context of a domain
 // since the Admin UI's "Roles & Domains" page edits them together.
@@ -37,7 +37,7 @@ function sendError(ctx, status, message, code) {
 }
 
 module.exports = {
-  // ── Domains ───────────────────────────────────────────────────────────
+  // â”€â”€ Domains â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   async listDomains(ctx) {
     const data = await strapi.db.query(DOMAIN_UID).findMany({
       populate: { appRoles: true },
@@ -82,7 +82,7 @@ module.exports = {
     ctx.body = { data };
   },
 
-  // ── Roles ─────────────────────────────────────────────────────────────
+  // â”€â”€ Roles â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   async listRoles(ctx) {
     const data = await strapi.db.query(ROLE_UID).findMany({
       populate: { appDomains: true },

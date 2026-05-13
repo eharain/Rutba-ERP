@@ -51,14 +51,14 @@ const name = pluginPkg.strapi.name;
 const index = {
   register(app) {
     app.addMenuLink({
-      to: `plugins/${name}`,
+      to: `/plugins/${name}`,
       icon: PluginIcon,
       intlLabel: {
         id: getTrad("plugin.name"),
         defaultMessage: "Strapi API Pro"
       },
       Component: async () => {
-        const { default: App } = await Promise.resolve().then(() => require("../_chunks/App-BJ1fiSMc.js"));
+        const { default: App } = await Promise.resolve().then(() => require("../_chunks/App-ftmI6spZ.js"));
         return App;
       }
     });

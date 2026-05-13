@@ -132,14 +132,45 @@ if (platformPort && envForApp.PORT === platformPort) {
 
 // ── 7. Spawn the command ───────────────────────────────────
 
+// In dev mode, spawn the api-provider watcher so changes to
+// packages/api-provider/api/*.js regenerate providers/generated/* automatically.
+// Skipped when the target IS api-provider itself, or when running start/build.
+const isDevRun =
+  commandArgs[0] === 'run' &&
+  commandArgs[1] === 'dev' &&
+  targetDir !== 'packages/api-provider' &&
+  !targetDir.endsWith('/api-provider');
+
+let apiWatcher = null;
+if (isDevRun) {
+  console.log('[env] starting @rutba/api-provider watcher (regenerates on api/ change)');
+  apiWatcher = spawn('npm', ['run', 'watch', '--workspace=@rutba/api-provider'], {
+    cwd: process.cwd(),
+    stdio: 'inherit',
+    shell: true,
+    env: process.env,
+  });
+  apiWatcher.on('error', (err) => {
+    console.error(`[env] api-provider watcher failed to start: ${err.message}`);
+  });
+}
+
 const child = spawn(command, commandArgs, {
   stdio: 'inherit',
   shell: true,
   env: { ...process.env, ...envForApp },
 });
 
-child.on('exit', (code) => process.exit(code ?? 1));
+function shutdown(code) {
+  if (apiWatcher && !apiWatcher.killed) apiWatcher.kill();
+  process.exit(code ?? 1);
+}
+
+child.on('exit', (code) => shutdown(code));
 child.on('error', (err) => {
   console.error(`Failed to start: ${err.message}`);
-  process.exit(1);
+  shutdown(1);
 });
+
+process.on('SIGINT', () => shutdown(0));
+process.on('SIGTERM', () => shutdown(0));

@@ -1,27 +1,21 @@
 // @ts-nocheck
-'use strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const fs = require('fs');
-const path = require('path');
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-const CONFIG_ROOT = __dirname;
-const DOMAINS_PATH = path.join(CONFIG_ROOT, 'domains.json');
-const ROLES_PATH = path.join(CONFIG_ROOT, 'roles.json');
+export const CONFIG_ROOT = __dirname;
+export const DOMAINS_PATH = path.join(CONFIG_ROOT, 'domains.json');
+export const ROLES_PATH = path.join(CONFIG_ROOT, 'roles.json');
 
-const DEFAULT_API_URL = process.env.RUTBA_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:1337/api';
+export const DEFAULT_API_URL = process.env.RUTBA_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:1337/api';
 
-/**
- * @param {any} value
- * @returns {any}
- */
 function clone(value) {
   return JSON.parse(JSON.stringify(value ?? {}));
 }
 
-/**
- * @param {string} filePath
- * @returns {any}
- */
 function readJson(filePath) {
   return JSON.parse(fs.readFileSync(filePath, 'utf8'));
 }
@@ -35,15 +29,10 @@ function loadSplitConfiguration() {
   };
 }
 
-/**
- * @param {{ api?: Record<string, any> } & Record<string, any>} [overrides]
- */
-function createConfiguration(overrides = {}) {
+export function createConfiguration(overrides = {}) {
   const rawConfig = loadSplitConfiguration();
   const base = {
-    api: {
-      url: DEFAULT_API_URL,
-    },
+    api: { url: DEFAULT_API_URL },
     domains: rawConfig.domains || {},
     roles: rawConfig.roles || {},
     publicResources: rawConfig.publicResources || {},
@@ -53,29 +42,16 @@ function createConfiguration(overrides = {}) {
   const merged = {
     ...base,
     ...overrides,
-    api: {
-      ...base.api,
-      ...(overrides.api || {}),
-    },
+    api: { ...base.api, ...(overrides.api || {}) },
   };
 
   return clone(merged);
 }
 
-function toJSONConfiguration(overrides = {}) {
+export function toJSONConfiguration(overrides = {}) {
   return createConfiguration(overrides);
 }
 
-function getApiConfiguration(overrides = {}) {
+export function getApiConfiguration(overrides = {}) {
   return createConfiguration(overrides).api;
 }
-
-module.exports = {
-  CONFIG_ROOT,
-  DOMAINS_PATH,
-  ROLES_PATH,
-  DEFAULT_API_URL,
-  createConfiguration,
-  toJSONConfiguration,
-  getApiConfiguration,
-};

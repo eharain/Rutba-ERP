@@ -9,12 +9,124 @@ const require$$2__default = /* @__PURE__ */ _interopDefault(require$$2);
 function getDefaultExportFromCjs(x) {
   return x && x.__esModule && Object.prototype.hasOwnProperty.call(x, "default") ? x["default"] : x;
 }
-var register$1 = ({ strapi: strapi2 }) => {
-  const appRole2 = strapi2.plugin("api-pro").contentType("app-role");
-  if (appRole2?.extendUserRelation) {
-    appRole2.extendUserRelation(strapi2);
+const kind$6 = "collectionType";
+const collectionName$6 = "api_pro_app_roles";
+const info$6 = {
+  singularName: "app-role",
+  pluralName: "app-roles",
+  displayName: "App Role",
+  description: "Role mapped to Strapi admin role for app context validation"
+};
+const options$6 = {
+  draftAndPublish: false
+};
+const pluginOptions$6 = {
+  "content-manager": {
+    visible: false
+  },
+  "content-type-builder": {
+    visible: false
   }
-  strapi2.log.info("[api-pro] register");
+};
+const attributes$6 = {
+  key: {
+    type: "string",
+    required: true,
+    unique: true,
+    regex: "^[a-z][a-z0-9_-]*$"
+  },
+  name: {
+    type: "string",
+    required: true
+  },
+  description: {
+    type: "text"
+  },
+  isActive: {
+    type: "boolean",
+    "default": true
+  },
+  adminRoleCode: {
+    type: "string",
+    required: true
+  },
+  appDomains: {
+    type: "relation",
+    relation: "manyToMany",
+    target: "plugin::api-pro.app-domain",
+    inversedBy: "appRoles"
+  },
+  users: {
+    type: "relation",
+    relation: "manyToMany",
+    target: "plugin::users-permissions.user",
+    mappedBy: "app_roles",
+    configurable: false,
+    writable: false,
+    visible: true
+  }
+};
+const require$$0$6 = {
+  kind: kind$6,
+  collectionName: collectionName$6,
+  info: info$6,
+  options: options$6,
+  pluginOptions: pluginOptions$6,
+  attributes: attributes$6
+};
+const schema$6 = require$$0$6;
+const app_roles_relation = {
+  type: "relation",
+  relation: "manyToMany",
+  target: "plugin::api-pro.app-role",
+  inversedBy: "users",
+  configurable: false,
+  writable: true,
+  visible: true
+  // true = appears in admin content manager on the User form
+  // useJoinTable: true,
+};
+const extendUserRelation$1 = (strapi2) => {
+  const upPlugin = strapi2.plugin("users-permissions");
+  if (!upPlugin) {
+    strapi2.log.warn("[api-pro] Could not extend user schema â€” plugin::users-permissions is not loaded.");
+    return;
+  }
+  const containers = [
+    upPlugin.contentTypes?.user?.schema?.attributes,
+    upPlugin.contentTypes?.user?.attributes,
+    upPlugin.contentTypes?.["plugin::users-permissions.user"]?.schema?.attributes,
+    upPlugin.contentTypes?.["plugin::users-permissions.user"]?.attributes,
+    strapi2.contentTypes?.["plugin::users-permissions.user"]?.schema?.attributes,
+    strapi2.contentTypes?.["plugin::users-permissions.user"]?.attributes
+  ].filter(Boolean);
+  const uniqueContainers = Array.from(new Set(containers));
+  if (uniqueContainers.length === 0) {
+    strapi2.log.warn("[api-pro] users-permissions.user schema attributes not accessible.");
+    return;
+  }
+  let patched = 0;
+  for (const attrs of uniqueContainers) {
+    if (!attrs.app_roles) {
+      attrs.app_roles = { ...app_roles_relation };
+      patched += 1;
+    }
+  }
+  if (patched > 0) {
+    strapi2.log.info(`[api-pro] Injected app_roles onto plugin::users-permissions.user (${patched} container${patched === 1 ? "" : "s"})`);
+  }
+};
+var appRole$1 = {
+  schema: schema$6,
+  extendUserRelation: extendUserRelation$1
+};
+const { extendUserRelation } = appRole$1;
+var register$1 = ({ strapi: strapi2 }) => {
+  try {
+    extendUserRelation(strapi2);
+  } catch (err) {
+    strapi2.log.error("[api-pro] Failed to extend user content-type:", err.message);
+  }
 };
 const POLICY_UID$5 = "plugin::api-pro.api-method-policy";
 function normalizeRoleKey(value) {
@@ -135,10 +247,22 @@ var permissionEngine$1 = {
   clearCache
 };
 const ALLOWED_ROOTS = /* @__PURE__ */ new Set(["user", "claim", "query", "params", "body", "strapi"]);
+const DAY_MS = 24 * 60 * 60 * 1e3;
+function isoDaysAgo(days) {
+  return new Date(Date.now() - days * DAY_MS).toISOString();
+}
 function resolveToken(value, context2) {
   if (typeof value !== "string" || !value.startsWith("$")) return value;
   if (value === "$today") return (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
   if (value === "$now") return (/* @__PURE__ */ new Date()).toISOString();
+  if (value === "$todayStart") {
+    const d = /* @__PURE__ */ new Date();
+    d.setHours(0, 0, 0, 0);
+    return d.toISOString();
+  }
+  if (value === "$last1day") return isoDaysAgo(1);
+  if (value === "$last7days") return isoDaysAgo(7);
+  if (value === "$last30days") return isoDaysAgo(30);
   const parts = value.slice(1).split(".");
   if (parts.length === 0) return void 0;
   const [root] = parts;
@@ -259,7 +383,7 @@ function pickActiveRole(rolesForApp, claimedRoleKey) {
   if (rolesForApp.length > 1) {
     const choices = rolesForApp.map((r) => normalizeKey$1(r)).filter(Boolean).join(", ");
     throw createValidationError(
-      `User holds multiple roles for this app — claim one via the role header (choices: ${choices})`,
+      `User holds multiple roles for this app â€” claim one via the role header (choices: ${choices})`,
       "ROLE_CLAIM_AMBIGUOUS",
       400
     );
@@ -304,7 +428,7 @@ async function resolveClaim(ctx, strapi2, { requireApp = true, requireActiveRole
       username: user.username || null
     },
     appName: appName || null,
-    // The active claimed role — this is what request-interceptor uses to
+    // The active claimed role â€” this is what request-interceptor uses to
     // pick which policies apply.
     roleKey: activeRole ? normalizeKey$1(activeRole) : null,
     domainKey: appName ? appName.toLowerCase() : null,
@@ -317,7 +441,7 @@ async function resolveClaim(ctx, strapi2, { requireApp = true, requireActiveRole
       adminRoleCode: activeRole.adminRoleCode || null,
       appDomains: Array.isArray(activeRole.appDomains) ? activeRole.appDomains.map((d) => ({ id: d.id, key: d.key, name: d.name || d.key })) : []
     } : null,
-    // All of the user's roles for the active app — surface so the
+    // All of the user's roles for the active app â€” surface so the
     // /me/permissions response and any client UI can render the role
     // selector menu.
     rolesForApp: rolesForApp.map((r) => ({
@@ -491,6 +615,9 @@ function policyFile(strapi2, interfaceKey, methodKey, roleKey) {
   assertSafeKey("roleKey", roleKey);
   return path$2.join(policyDir(strapi2, interfaceKey, methodKey), `${roleKey}.json`);
 }
+function seedCheckpointFile(strapi2) {
+  return path$2.join(storageRoot(strapi2), "seed-checkpoint.json");
+}
 async function ensureDir(dir) {
   await fs$1.mkdir(dir, { recursive: true });
 }
@@ -609,12 +736,19 @@ async function ensureStorage(strapi2) {
   await ensureDir(interfacesDir(strapi2));
   await ensureDir(policiesRoot(strapi2));
 }
-var fileStore$4 = {
+async function readSeedCheckpoint(strapi2) {
+  return readJsonSafe(seedCheckpointFile(strapi2));
+}
+async function writeSeedCheckpoint(strapi2, payload) {
+  await writeJsonAtomic(seedCheckpointFile(strapi2), payload);
+}
+var fileStore$5 = {
   storageRoot,
   interfacesDir,
   policiesRoot,
   interfaceFile,
   policyFile,
+  seedCheckpointFile,
   ensureStorage,
   listInterfaces: listInterfaces$1,
   readInterface,
@@ -624,9 +758,11 @@ var fileStore$4 = {
   listAllPolicies,
   readPolicy,
   writePolicy,
-  deletePolicy
+  deletePolicy,
+  readSeedCheckpoint,
+  writeSeedCheckpoint
 };
-const fileStore$3 = fileStore$4;
+const fileStore$4 = fileStore$5;
 const INTERFACE_UID$2 = "plugin::api-pro.api-interface";
 const METHOD_UID$3 = "plugin::api-pro.api-interface-method";
 const POLICY_UID$4 = "plugin::api-pro.api-method-policy";
@@ -714,7 +850,7 @@ async function upsertPolicy(strapi2, interfaceKey, methodKey, roleKey, data) {
   return strapi2.db.query(POLICY_UID$4).create({ data: payload });
 }
 async function syncInterfaceWrite(strapi2, interfaceKey) {
-  const fileData = await fileStore$3.readInterface(strapi2, interfaceKey);
+  const fileData = await fileStore$4.readInterface(strapi2, interfaceKey);
   if (!fileData) return null;
   const row = await upsertInterface(strapi2, interfaceKey, fileData);
   const methods = Array.isArray(fileData.methods) ? fileData.methods : [];
@@ -724,7 +860,7 @@ async function syncInterfaceWrite(strapi2, interfaceKey) {
   return row;
 }
 async function syncPolicyWrite(strapi2, interfaceKey, methodKey, roleKey) {
-  const data = await fileStore$3.readPolicy(strapi2, interfaceKey, methodKey, roleKey);
+  const data = await fileStore$4.readPolicy(strapi2, interfaceKey, methodKey, roleKey);
   if (!data) return null;
   return upsertPolicy(strapi2, interfaceKey, methodKey, roleKey, data);
 }
@@ -749,8 +885,8 @@ async function syncPolicyDelete(strapi2, interfaceKey, methodKey, roleKey) {
   await strapi2.db.query(POLICY_UID$4).deleteMany({ where: { key: compositeKey } });
 }
 async function syncAll(strapi2) {
-  await fileStore$3.ensureStorage(strapi2);
-  const interfaces2 = await fileStore$3.listInterfaces(strapi2);
+  await fileStore$4.ensureStorage(strapi2);
+  const interfaces2 = await fileStore$4.listInterfaces(strapi2);
   let iCount = 0;
   let mCount = 0;
   for (const { key, data } of interfaces2) {
@@ -762,7 +898,7 @@ async function syncAll(strapi2) {
     }
     iCount += 1;
   }
-  const policies2 = await fileStore$3.listAllPolicies(strapi2);
+  const policies2 = await fileStore$4.listAllPolicies(strapi2);
   let pCount = 0;
   for (const p of policies2) {
     const result = await upsertPolicy(strapi2, p.interfaceKey, p.methodKey, p.roleKey, p.data);
@@ -827,6 +963,31 @@ function buildBypassMatcher(paths = []) {
     }
     return false;
   };
+}
+async function registerAdminPermissions(strapi2) {
+  try {
+    const actionProvider = strapi2.service("admin::permission")?.actionProvider;
+    if (!actionProvider?.registerMany) {
+      strapi2.log.warn("[api-pro] admin permission actionProvider unavailable — RBAC not registered");
+      return;
+    }
+    await actionProvider.registerMany([
+      {
+        section: "plugins",
+        displayName: "Read",
+        uid: "read",
+        pluginName: "api-pro"
+      },
+      {
+        section: "plugins",
+        displayName: "Write",
+        uid: "write",
+        pluginName: "api-pro"
+      }
+    ]);
+  } catch (error) {
+    strapi2.log.warn(`[api-pro] failed to register admin permission actions: ${error?.message}`);
+  }
 }
 function registerCacheInvalidationHooks(strapi2) {
   const invalidate = () => strapi2.apiPro?.cache?.clearAll?.();
@@ -905,6 +1066,7 @@ var bootstrap$1 = async ({ strapi: strapi2 }) => {
   });
   registerCacheInvalidationHooks(strapi2);
   installInterceptor(strapi2);
+  await registerAdminPermissions(strapi2);
   try {
     const sync2 = sync$2;
     const result = await sync2.syncAll(strapi2);
@@ -938,15 +1100,8 @@ var config$1 = {
     //
     // Role is REQUIRED when the user holds multiple roles for the active app;
     // optional when they hold exactly one (in which case it's auto-selected).
-    //
-    // The elevation header was an interim AGP-era idea (admin bypass via
-    // x-rutba-app-admin: true). Superseded by explicit role-selection —
-    // the user just picks their admin role from the menu. The config key
-    // is retained as a no-op for backward compatibility.
     headerDomainKey: "x-rutba-app",
     headerRoleKey: "x-rutba-app-role",
-    headerElevatedKey: "x-rutba-app-admin",
-    // deprecated — ignored at runtime
     // ── Bypass paths ────────────────────────────────────────────────────
     // Prefix-matched paths that skip interceptor + context validation.
     // pos-strapi extends this with public routes derived from @rutba/api-provider.
@@ -961,7 +1116,6 @@ var config$1 = {
       "/api/me/permissions",
       "/api/users-permissions/me/permissions",
       "/api/api-pro/me/permissions",
-      "/api/api-guard-pro/me/permissions",
       "/uploads",
       "/_health",
       "/documentation"
@@ -1016,67 +1170,13 @@ var config$1 = {
     }
   }
 };
-const kind$6 = "collectionType";
-const collectionName$6 = "api_pro_app_domains";
-const info$6 = {
+const kind$5 = "collectionType";
+const collectionName$5 = "api_pro_app_domains";
+const info$5 = {
   singularName: "app-domain",
   pluralName: "app-domains",
   displayName: "App Domain",
   description: "Shallow app domain grouping"
-};
-const options$6 = {
-  draftAndPublish: false
-};
-const pluginOptions$6 = {
-  "content-manager": {
-    visible: false
-  },
-  "content-type-builder": {
-    visible: false
-  }
-};
-const attributes$6 = {
-  key: {
-    type: "string",
-    required: true,
-    unique: true,
-    regex: "^[a-z][a-z0-9_-]*$"
-  },
-  name: {
-    type: "string",
-    required: true
-  },
-  description: {
-    type: "text"
-  },
-  isActive: {
-    type: "boolean",
-    "default": true
-  },
-  appRoles: {
-    type: "relation",
-    relation: "manyToMany",
-    target: "plugin::api-pro.app-role",
-    mappedBy: "appDomains"
-  }
-};
-const require$$0$6 = {
-  kind: kind$6,
-  collectionName: collectionName$6,
-  info: info$6,
-  options: options$6,
-  pluginOptions: pluginOptions$6,
-  attributes: attributes$6
-};
-const schema$6 = require$$0$6;
-var appDomain$1 = { schema: schema$6 };
-const kind$5 = "collectionType";
-const collectionName$5 = "api_pro_app_roles";
-const info$5 = {
-  singularName: "app-role",
-  pluralName: "app-roles",
-  displayName: "App Role",
-  description: "Role mapped to Strapi admin role for app context validation"
 };
 const options$5 = {
   draftAndPublish: false
@@ -1107,24 +1207,11 @@ const attributes$5 = {
     type: "boolean",
     "default": true
   },
-  adminRoleCode: {
-    type: "string",
-    required: true
-  },
-  appDomains: {
+  appRoles: {
     type: "relation",
     relation: "manyToMany",
-    target: "plugin::api-pro.app-domain",
-    inversedBy: "appRoles"
-  },
-  users: {
-    type: "relation",
-    relation: "manyToMany",
-    target: "plugin::users-permissions.user",
-    mappedBy: "app_roles",
-    configurable: false,
-    writable: false,
-    visible: true
+    target: "plugin::api-pro.app-role",
+    mappedBy: "appDomains"
   }
 };
 const require$$0$5 = {
@@ -1136,51 +1223,7 @@ const require$$0$5 = {
   attributes: attributes$5
 };
 const schema$5 = require$$0$5;
-const RELATION_DEF = {
-  type: "relation",
-  relation: "manyToMany",
-  target: "plugin::api-pro.app-role",
-  inversedBy: "users",
-  configurable: false,
-  writable: true,
-  visible: true
-  // true = appears in admin content manager on the User form
-  // useJoinTable: true,
-};
-const extendUserRelation = (strapi2) => {
-  const upPlugin = strapi2.plugin("users-permissions");
-  if (!upPlugin) {
-    strapi2.log.warn("[api-pro] Could not extend user schema — plugin::users-permissions is not loaded.");
-    return;
-  }
-  const containers = [
-    upPlugin.contentTypes?.user?.schema?.attributes,
-    upPlugin.contentTypes?.user?.attributes,
-    upPlugin.contentTypes?.["plugin::users-permissions.user"]?.schema?.attributes,
-    upPlugin.contentTypes?.["plugin::users-permissions.user"]?.attributes,
-    strapi2.contentTypes?.["plugin::users-permissions.user"]?.schema?.attributes,
-    strapi2.contentTypes?.["plugin::users-permissions.user"]?.attributes
-  ].filter(Boolean);
-  const uniqueContainers = Array.from(new Set(containers));
-  if (uniqueContainers.length === 0) {
-    strapi2.log.warn("[api-pro] users-permissions.user schema attributes not accessible.");
-    return;
-  }
-  let patched = 0;
-  for (const attrs of uniqueContainers) {
-    if (!attrs.app_roles) {
-      attrs.app_roles = { ...RELATION_DEF };
-      patched += 1;
-    }
-  }
-  if (patched > 0) {
-    strapi2.log.info(`[api-pro] Injected app_roles onto plugin::users-permissions.user (${patched} container${patched === 1 ? "" : "s"})`);
-  }
-};
-var appRole$1 = {
-  schema: schema$5,
-  extendUserRelation
-};
+var appDomain$1 = { schema: schema$5 };
 const kind$4 = "collectionType";
 const collectionName$4 = "api_pro_recording_sessions";
 const info$4 = {
@@ -1747,7 +1790,7 @@ function sendError$1(ctx, status, message, code) {
   ctx.body = { error: { code: code || "API_PRO_ERROR", message } };
 }
 var domains$1 = {
-  // ── Domains ───────────────────────────────────────────────────────────
+  // â”€â”€ Domains â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   async listDomains(ctx) {
     const data = await strapi.db.query(DOMAIN_UID).findMany({
       populate: { appRoles: true },
@@ -1788,7 +1831,7 @@ var domains$1 = {
     strapi.apiPro?.clearAllCache?.();
     ctx.body = { data };
   },
-  // ── Roles ─────────────────────────────────────────────────────────────
+  // â”€â”€ Roles â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   async listRoles(ctx) {
     const data = await strapi.db.query(ROLE_UID).findMany({
       populate: { appDomains: true },
@@ -1941,6 +1984,24 @@ var controllers$1 = {
   "admin-tools": adminTools,
   play: play$2
 };
+const READ_ACTION = "plugin::api-pro.read";
+const WRITE_ACTION = "plugin::api-pro.write";
+const adminPolicy = (action) => ({
+  name: "admin::hasPermissions",
+  config: { actions: [action] }
+});
+const adminRead = (method, path2, handler) => ({
+  method,
+  path: path2,
+  handler,
+  config: { policies: [adminPolicy(READ_ACTION)] }
+});
+const adminWrite = (method, path2, handler) => ({
+  method,
+  path: path2,
+  handler,
+  config: { policies: [adminPolicy(WRITE_ACTION)] }
+});
 var routes$1 = {
   "content-api": {
     type: "content-api",
@@ -1959,206 +2020,52 @@ var routes$1 = {
     type: "admin",
     routes: [
       // ── Users ────────────────────────────────────────────────────────
-      {
-        method: "GET",
-        path: "/users",
-        handler: "users.list",
-        config: { policies: [] }
-      },
-      {
-        method: "GET",
-        path: "/users/role-options",
-        handler: "users.roleOptions",
-        config: { policies: [] }
-      },
-      {
-        method: "PUT",
-        path: "/users/:id/roles",
-        handler: "users.assignRoles",
-        config: { policies: [] }
-      },
+      adminRead("GET", "/users", "users.list"),
+      adminRead("GET", "/users/role-options", "users.roleOptions"),
+      adminWrite("PUT", "/users/:id/roles", "users.assignRoles"),
       // ── Recordings ───────────────────────────────────────────────────
-      {
-        method: "POST",
-        path: "/recordings/start",
-        handler: "recordings.start",
-        config: { policies: [] }
-      },
-      {
-        method: "POST",
-        path: "/recordings/stop",
-        handler: "recordings.stop",
-        config: { policies: [] }
-      },
-      {
-        method: "GET",
-        path: "/recordings",
-        handler: "recordings.list",
-        config: { policies: [] }
-      },
-      {
-        method: "GET",
-        path: "/recordings/:sessionId/entries",
-        handler: "recordings.entries",
-        config: { policies: [] }
-      },
+      adminWrite("POST", "/recordings/start", "recordings.start"),
+      adminWrite("POST", "/recordings/stop", "recordings.stop"),
+      adminRead("GET", "/recordings", "recordings.list"),
+      adminRead("GET", "/recordings/:sessionId/entries", "recordings.entries"),
       // ── Interfaces ───────────────────────────────────────────────────
-      {
-        method: "GET",
-        path: "/interfaces",
-        handler: "interfaces.list",
-        config: { policies: [] }
-      },
-      {
-        method: "POST",
-        path: "/interfaces/from-recordings",
-        handler: "interfaces.createFromRecordings",
-        config: { policies: [] }
-      },
-      {
-        method: "POST",
-        path: "/interfaces/from-content-type",
-        handler: "interfaces.createFromContentType",
-        config: { policies: [] }
-      },
-      {
-        method: "PATCH",
-        path: "/interfaces/:interfaceId/methods",
-        handler: "interfaces.upsertMethod",
-        config: { policies: [] }
-      },
-      {
-        method: "GET",
-        path: "/interfaces/lint-scaffold",
-        handler: "interfaces.lintScaffold",
-        config: { policies: [] }
-      },
-      {
-        method: "POST",
-        path: "/interfaces/validate-alignment",
-        handler: "interfaces.validateAlignment",
-        config: { policies: [] }
-      },
-      {
-        method: "POST",
-        path: "/interfaces/preview-guided-fix",
-        handler: "interfaces.previewGuidedFix",
-        config: { policies: [] }
-      },
-      {
-        method: "GET",
-        path: "/interfaces/:interfaceKey/scaffold",
-        handler: "interfaces.scaffold",
-        config: { policies: [] }
-      },
+      adminRead("GET", "/interfaces", "interfaces.list"),
+      adminWrite("POST", "/interfaces/from-recordings", "interfaces.createFromRecordings"),
+      adminWrite("POST", "/interfaces/from-content-type", "interfaces.createFromContentType"),
+      adminWrite("PATCH", "/interfaces/:interfaceId/methods", "interfaces.upsertMethod"),
+      adminRead("GET", "/interfaces/lint-scaffold", "interfaces.lintScaffold"),
+      adminWrite("POST", "/interfaces/validate-alignment", "interfaces.validateAlignment"),
+      adminWrite("POST", "/interfaces/preview-guided-fix", "interfaces.previewGuidedFix"),
+      adminRead("GET", "/interfaces/:interfaceKey/scaffold", "interfaces.scaffold"),
       // ── Domains & Roles ──────────────────────────────────────────────
-      {
-        method: "GET",
-        path: "/domains",
-        handler: "domains.listDomains",
-        config: { policies: [] }
-      },
-      {
-        method: "POST",
-        path: "/domains",
-        handler: "domains.createDomain",
-        config: { policies: [] }
-      },
-      {
-        method: "PUT",
-        path: "/domains/:id",
-        handler: "domains.updateDomain",
-        config: { policies: [] }
-      },
-      {
-        method: "DELETE",
-        path: "/domains/:id",
-        handler: "domains.deleteDomain",
-        config: { policies: [] }
-      },
-      {
-        method: "GET",
-        path: "/roles",
-        handler: "domains.listRoles",
-        config: { policies: [] }
-      },
-      {
-        method: "POST",
-        path: "/roles",
-        handler: "domains.createRole",
-        config: { policies: [] }
-      },
-      {
-        method: "PUT",
-        path: "/roles/:id",
-        handler: "domains.updateRole",
-        config: { policies: [] }
-      },
-      {
-        method: "DELETE",
-        path: "/roles/:id",
-        handler: "domains.deleteRole",
-        config: { policies: [] }
-      },
+      adminRead("GET", "/domains", "domains.listDomains"),
+      adminWrite("POST", "/domains", "domains.createDomain"),
+      adminWrite("PUT", "/domains/:id", "domains.updateDomain"),
+      adminWrite("DELETE", "/domains/:id", "domains.deleteDomain"),
+      adminRead("GET", "/roles", "domains.listRoles"),
+      adminWrite("POST", "/roles", "domains.createRole"),
+      adminWrite("PUT", "/roles/:id", "domains.updateRole"),
+      adminWrite("DELETE", "/roles/:id", "domains.deleteRole"),
       // ── Method Policies ──────────────────────────────────────────────
-      {
-        method: "GET",
-        path: "/policies",
-        handler: "policies.list",
-        config: { policies: [] }
-      },
-      {
-        method: "GET",
-        path: "/policies/:interfaceKey/:methodKey/:roleKey",
-        handler: "policies.findOne",
-        config: { policies: [] }
-      },
-      {
-        method: "PUT",
-        path: "/policies/:interfaceKey/:methodKey/:roleKey",
-        handler: "policies.upsert",
-        config: { policies: [] }
-      },
-      {
-        method: "DELETE",
-        path: "/policies/:interfaceKey/:methodKey/:roleKey",
-        handler: "policies.remove",
-        config: { policies: [] }
-      },
-      // ── Comparative editor: bulk fetch / save all policies for a method ─
-      {
-        method: "GET",
-        path: "/policies/method/:interfaceKey/:methodKey",
-        handler: "policies.findForMethod",
-        config: { policies: [] }
-      },
-      {
-        method: "PUT",
-        path: "/policies/method/:interfaceKey/:methodKey",
-        handler: "policies.bulkUpsertForMethod",
-        config: { policies: [] }
-      },
+      // ORDER MATTERS: koa-router does first-match. Literal-prefixed paths
+      // (`/policies/method/...`) MUST be registered before the generic
+      // 3-param `/policies/:i/:m/:r` patterns, otherwise GET /policies/method/term/list
+      // matches findOne with interfaceKey='method', returning 404 "policy not found"
+      // and leaving the Comparative Editor with allRoles=[] and policies={}.
+      adminRead("GET", "/policies", "policies.list"),
+      // Comparative editor: bulk fetch / save all policies for a method
+      adminRead("GET", "/policies/method/:interfaceKey/:methodKey", "policies.findForMethod"),
+      adminWrite("PUT", "/policies/method/:interfaceKey/:methodKey", "policies.bulkUpsertForMethod"),
+      adminRead("GET", "/policies/:interfaceKey/:methodKey/:roleKey", "policies.findOne"),
+      adminWrite("PUT", "/policies/:interfaceKey/:methodKey/:roleKey", "policies.upsert"),
+      adminWrite("DELETE", "/policies/:interfaceKey/:methodKey/:roleKey", "policies.remove"),
       // ── Admin tools ──────────────────────────────────────────────────
-      {
-        method: "POST",
-        path: "/admin/seed",
-        handler: "admin-tools.seed",
-        config: { policies: [] }
-      },
-      // ── Play as role (dry-run + optional real fetch for read actions) ──
-      {
-        method: "POST",
-        path: "/play",
-        handler: "play.run",
-        config: { policies: [] }
-      },
+      adminWrite("POST", "/admin/seed", "admin-tools.seed"),
+      // Play as role: never mutates plugin state, only proxies/simulates,
+      // so gated as read.
+      adminRead("POST", "/play", "play.run"),
       // ── Health ───────────────────────────────────────────────────────
-      {
-        method: "GET",
-        path: "/health",
-        handler: "health.check",
-        config: { policies: [] }
-      }
+      adminRead("GET", "/health", "health.check")
     ]
   }
 };
@@ -2563,10 +2470,9 @@ async function assignUserAppRoles(strapi2, userId, roleIds) {
     err.status = 404;
     throw err;
   }
-  await strapi2.entityService.update(USER_UID$1, id, {
-    data: {
-      app_roles: { set: validRoleIds }
-    }
+  await strapi2.db.query(USER_UID$1).update({
+    where: { id },
+    data: { app_roles: validRoleIds }
   });
   return await strapi2.db.query(USER_UID$1).findOne({
     where: { id },
@@ -2622,7 +2528,7 @@ async function lintMethodAlignment(strapi2) {
 var scaffoldRunner$1 = {
   lintMethodAlignment
 };
-const fileStore$2 = fileStore$4;
+const fileStore$3 = fileStore$5;
 const sync$1 = sync$2;
 const POLICY_UID$2 = "plugin::api-pro.api-method-policy";
 function shape(row) {
@@ -2677,6 +2583,8 @@ async function upsert(strapi2, { interfaceKey, methodKey, roleKey, data }) {
     throw err;
   }
   const normalizedRoleKey = String(roleKey).toLowerCase();
+  const incomingVersion = Number.isInteger(data?.templateVersion) ? data.templateVersion : 1;
+  const bumpedVersion = Math.max(incomingVersion + 1, 2);
   const fileData = {
     name: data?.name || `${interfaceKey}:${methodKey}:${normalizedRoleKey}`,
     resolverMode: data?.resolverMode === "lenient" ? "lenient" : "strict",
@@ -2684,9 +2592,9 @@ async function upsert(strapi2, { interfaceKey, methodKey, roleKey, data }) {
     populateTemplate: data?.populateTemplate || {},
     bodyTemplate: data?.bodyTemplate || {},
     queryTemplate: data?.queryTemplate || {},
-    templateVersion: Number.isInteger(data?.templateVersion) ? data.templateVersion : 1
+    templateVersion: bumpedVersion
   };
-  await fileStore$2.writePolicy(strapi2, interfaceKey, methodKey, normalizedRoleKey, fileData);
+  await fileStore$3.writePolicy(strapi2, interfaceKey, methodKey, normalizedRoleKey, fileData);
   await sync$1.syncPolicyWrite(strapi2, interfaceKey, methodKey, normalizedRoleKey);
   strapi2.apiPro?.clearAllCache?.();
   return findOne(strapi2, { interfaceKey, methodKey, roleKey: normalizedRoleKey });
@@ -2698,7 +2606,7 @@ async function remove(strapi2, { interfaceKey, methodKey, roleKey }) {
     throw err;
   }
   const normalizedRoleKey = String(roleKey).toLowerCase();
-  await fileStore$2.deletePolicy(strapi2, interfaceKey, methodKey, normalizedRoleKey);
+  await fileStore$3.deletePolicy(strapi2, interfaceKey, methodKey, normalizedRoleKey);
   await sync$1.syncPolicyDelete(strapi2, interfaceKey, methodKey, normalizedRoleKey);
   strapi2.apiPro?.clearAllCache?.();
   return { interfaceKey, methodKey, roleKey: normalizedRoleKey, deleted: true };
@@ -2795,7 +2703,7 @@ var policies$3 = {
   findForMethod,
   bulkUpsertForMethod
 };
-const fileStore$1 = fileStore$4;
+const fileStore$2 = fileStore$5;
 const INTERFACE_UID$1 = "plugin::api-pro.api-interface";
 const CRUD_OPTIONS = {
   find: ["filters", "populate", "fields", "pagination", "sort", "publicationState", "locale"],
@@ -2847,7 +2755,7 @@ function emitInterface({ key, name, methods }) {
   const fnName = `${camelCase(key)}Api`;
   const methodsCode = methods.map(emitMethod).join("\n\n");
   return [
-    `// Auto-generated by strapi-api-pro — do not edit manually.`,
+    `// Auto-generated by api-pro â€” do not edit manually.`,
     `// Interface: ${name || key}`,
     `import type { StrapiClient } from '../client';`,
     ``,
@@ -2860,7 +2768,7 @@ function emitInterface({ key, name, methods }) {
   ].join("\n");
 }
 async function generate(strapi2, interfaceKey) {
-  const fileData = await fileStore$1.readInterface(strapi2, interfaceKey);
+  const fileData = await fileStore$2.readInterface(strapi2, interfaceKey);
   if (fileData) {
     return {
       code: emitInterface({
@@ -2899,11 +2807,13 @@ var scaffold$1 = {
 const fs = require$$0__default.default;
 const path = require$$1__default.default;
 const { pathToFileURL } = require$$2__default.default;
+const fileStore$1 = fileStore$5;
 const APP_DOMAIN_UID = "plugin::api-pro.app-domain";
 const APP_ROLE_UID = "plugin::api-pro.app-role";
 const INTERFACE_UID = "plugin::api-pro.api-interface";
 const METHOD_UID$1 = "plugin::api-pro.api-interface-method";
 const POLICY_UID$1 = "plugin::api-pro.api-method-policy";
+const SEEDER_VERSION = 1;
 function resolveApiProviderRoot(strapi2) {
   const cwd = strapi2?.dirs?.app?.root || process.cwd();
   try {
@@ -3003,6 +2913,7 @@ async function walkApiDescriptors(root, domainsConfig, rolesConfig, strapi2) {
       const metaUid = typeof exported?.meta?.uid === "string" ? exported.meta.uid : null;
       const defaultDomains = uniqueStrings(exported?.meta?.domains);
       const defaultRoleLevels = uniqueStrings(exported?.meta?.roles);
+      const interfaceScope = exported?.meta?.scope && typeof exported.meta.scope === "object" ? exported.meta.scope : null;
       for (const [methodName, value] of Object.entries(exported)) {
         if (methodName === "meta" || typeof value !== "function") continue;
         if (!isDescriptorMethodName(methodName)) continue;
@@ -3025,6 +2936,7 @@ async function walkApiDescriptors(root, domainsConfig, rolesConfig, strapi2) {
         const grants = expandGrants(domains2, roleLevels, domainsConfig, rolesConfig);
         if (grants.length === 0) continue;
         const routeTokens = (String(endpointPath).match(/(?::([a-zA-Z_][\w]*))|(?:\$\{\s*([a-zA-Z_][\w]*)\s*\})/g) || []).map((m) => m.replace(/[:${}\s]/g, ""));
+        const policyScope = descriptor?.scope && typeof descriptor.scope === "object" ? descriptor.scope : null;
         out.push({
           uid,
           methodName,
@@ -3033,7 +2945,9 @@ async function walkApiDescriptors(root, domainsConfig, rolesConfig, strapi2) {
           path: endpointPath,
           routeTokens,
           grants,
-          fileName
+          fileName,
+          interfaceScope,
+          policyScope
         });
       }
     }
@@ -3122,11 +3036,56 @@ async function seedInterfacesAndMethods(strapi2, descriptors) {
   }
   return { interfaceCount, methodCount, methodByCompositeKey };
 }
-function defaultTemplatesForLevel(level, action) {
-  const lvl = String(level).toLowerCase();
-  const empty = { filtersTemplate: {}, populateTemplate: {}, bodyTemplate: {}, queryTemplate: {} };
-  if (lvl === "admin") return empty;
-  return empty;
+const DEFAULT_RECENCY_TOKEN = "$last7days";
+function emptyTemplates() {
+  return { filtersTemplate: {}, populateTemplate: {}, bodyTemplate: {}, queryTemplate: {} };
+}
+function expandScopeShorthand(scope, action, ownerField, recencyField, recencyToken) {
+  const a = String(action || "").toLowerCase();
+  const ownerFilter = { [ownerField]: { id: { $eq: "$user.id" } } };
+  const recencyFilter = { [recencyField]: { $gte: recencyToken } };
+  if (scope === "owner") {
+    if (a === "create") return { bodyTemplate: { [ownerField]: "$user.id" } };
+    return { filtersTemplate: ownerFilter };
+  }
+  if (scope === "owner+recency") {
+    if (a === "create") return { bodyTemplate: { [ownerField]: "$user.id" } };
+    if (a === "find") return { filtersTemplate: { $and: [ownerFilter, recencyFilter] } };
+    return { filtersTemplate: ownerFilter };
+  }
+  if (scope === "recency") {
+    if (a === "find") return { filtersTemplate: recencyFilter };
+    return {};
+  }
+  return {};
+}
+function buildTemplatesFromLevelBlock(levelBlock, action) {
+  if (!levelBlock || typeof levelBlock !== "object") return emptyTemplates();
+  const ownerField = levelBlock.ownerField || "createdBy";
+  const recencyField = levelBlock.recencyField || "createdAt";
+  const recencyToken = levelBlock.recencyToken || DEFAULT_RECENCY_TOKEN;
+  const combined = expandScopeShorthand(levelBlock.scope, action, ownerField, recencyField, recencyToken);
+  if (levelBlock.filters) combined.filtersTemplate = { ...combined.filtersTemplate || {}, ...levelBlock.filters };
+  if (levelBlock.populate) combined.populateTemplate = { ...combined.populateTemplate || {}, ...levelBlock.populate };
+  if (levelBlock.body) combined.bodyTemplate = { ...combined.bodyTemplate || {}, ...levelBlock.body };
+  if (levelBlock.query) combined.queryTemplate = { ...combined.queryTemplate || {}, ...levelBlock.query };
+  return {
+    filtersTemplate: combined.filtersTemplate || {},
+    populateTemplate: combined.populateTemplate || {},
+    bodyTemplate: combined.bodyTemplate || {},
+    queryTemplate: combined.queryTemplate || {}
+  };
+}
+function effectiveLevelBlock(interfaceServerCtx, policyServerCtx, level) {
+  const key = String(level).toLowerCase();
+  const policyBlock = policyServerCtx && typeof policyServerCtx === "object" ? policyServerCtx[key] : void 0;
+  if (policyBlock !== void 0) return policyBlock;
+  if (interfaceServerCtx && typeof interfaceServerCtx === "object") return interfaceServerCtx[key];
+  return void 0;
+}
+function templatesForRole(interfaceServerCtx, policyServerCtx, level, action) {
+  const block = effectiveLevelBlock(interfaceServerCtx, policyServerCtx, level);
+  return buildTemplatesFromLevelBlock(block, action);
 }
 async function seedPolicies(strapi2, descriptors, methodByCompositeKey, rolesConfig) {
   let count = 0;
@@ -3138,25 +3097,77 @@ async function seedPolicies(strapi2, descriptors, methodByCompositeKey, rolesCon
     for (const roleKey of d.grants) {
       const policyKey = `${interfaceKey}:${d.methodName}:${roleKey}`;
       const level = rolesConfig?.[roleKey]?.level || "unknown";
-      const templates = defaultTemplatesForLevel(level, d.action);
-      await upsertByKey(strapi2, POLICY_UID$1, policyKey, {
+      const templates = templatesForRole(d.interfaceScope, d.policyScope, level, d.action);
+      const existing = await strapi2.db.query(POLICY_UID$1).findOne({ where: { key: policyKey } });
+      const userTuned = existing && Number(existing.templateVersion) > 1;
+      const data = {
         key: policyKey,
-        name: `${humanize(roleKey)} → ${d.methodName}`,
+        name: existing?.name || `${humanize(roleKey)} â†’ ${d.methodName}`,
         roleKey,
-        resolverMode: "strict",
-        ...templates,
-        templateVersion: 1,
-        interfaceMethod: methodRow.id
-      });
+        resolverMode: existing?.resolverMode || "strict",
+        interfaceMethod: methodRow.id,
+        ...userTuned ? {} : { ...templates, templateVersion: 1 }
+      };
+      if (existing) {
+        await strapi2.db.query(POLICY_UID$1).update({ where: { id: existing.id }, data });
+      } else {
+        await strapi2.db.query(POLICY_UID$1).create({ data });
+      }
       count += 1;
     }
   }
   return count;
 }
-async function runFullSeed(strapi2) {
+function listFingerprintTargets(root) {
+  const targets = [
+    path.join(root, "config", "domains.json"),
+    path.join(root, "config", "roles.json")
+  ];
+  const apiDir = path.join(root, "api");
+  if (fs.existsSync(apiDir)) {
+    const files = fs.readdirSync(apiDir).filter((n) => n.endsWith(".js") && n !== "index.js" && !n.startsWith("_")).sort();
+    for (const f of files) targets.push(path.join(apiDir, f));
+  }
+  return targets;
+}
+function computeSourceFingerprint(root) {
+  const entries = [];
+  for (const abs of listFingerprintTargets(root)) {
+    let mtimeMs = null;
+    try {
+      mtimeMs = fs.statSync(abs).mtimeMs;
+    } catch {
+    }
+    entries.push({ path: path.relative(root, abs).replace(/\\/g, "/"), mtimeMs });
+  }
+  return { seederVersion: SEEDER_VERSION, entries };
+}
+function fingerprintsEqual(a, b) {
+  if (!a || !b) return false;
+  if (a.seederVersion !== b.seederVersion) return false;
+  if (!Array.isArray(a.entries) || !Array.isArray(b.entries)) return false;
+  if (a.entries.length !== b.entries.length) return false;
+  for (let i = 0; i < a.entries.length; i += 1) {
+    if (a.entries[i].path !== b.entries[i].path) return false;
+    if (a.entries[i].mtimeMs !== b.entries[i].mtimeMs) return false;
+  }
+  return true;
+}
+async function runFullSeed(strapi2, options2 = {}) {
+  const { force = false } = options2;
   const root = resolveApiProviderRoot(strapi2);
   if (!root) {
     return { ok: false, error: "@rutba/api-provider not resolvable" };
+  }
+  const fingerprint = computeSourceFingerprint(root);
+  if (!force) {
+    const checkpoint = await fileStore$1.readSeedCheckpoint(strapi2).catch(() => null);
+    if (fingerprintsEqual(checkpoint?.fingerprint, fingerprint)) {
+      strapi2.log.info(
+        `[api-pro seeder] skip: source unchanged since ${checkpoint.seededAt} (${fingerprint.entries.length} files tracked)`
+      );
+      return { ok: true, skipped: true, ...checkpoint.summary };
+    }
   }
   const domainsConfig = loadJson(path.join(root, "config", "domains.json"));
   const rolesConfig = loadJson(path.join(root, "config", "roles.json"));
@@ -3166,8 +3177,7 @@ async function runFullSeed(strapi2) {
   const { interfaceCount, methodCount, methodByCompositeKey } = await seedInterfacesAndMethods(strapi2, descriptors);
   const policyCount = await seedPolicies(strapi2, descriptors, methodByCompositeKey, rolesConfig);
   strapi2.apiPro?.clearAllCache?.();
-  return {
-    ok: true,
+  const summary = {
     domains: domainCount,
     roles: roleCount,
     interfaces: interfaceCount,
@@ -3175,11 +3185,22 @@ async function runFullSeed(strapi2) {
     policies: policyCount,
     descriptorsScanned: descriptors.length
   };
+  try {
+    await fileStore$1.writeSeedCheckpoint(strapi2, {
+      seededAt: (/* @__PURE__ */ new Date()).toISOString(),
+      fingerprint,
+      summary
+    });
+  } catch (e) {
+    strapi2.log.warn(`[api-pro seeder] could not write checkpoint: ${e?.message}`);
+  }
+  return { ok: true, skipped: false, ...summary };
 }
 var seeder$1 = {
   runFullSeed,
   resolveApiProviderRoot,
-  walkApiDescriptors
+  walkApiDescriptors,
+  computeSourceFingerprint
 };
 const resolver = policyResolver$1;
 const METHOD_UID = "plugin::api-pro.api-interface-method";
@@ -3348,7 +3369,7 @@ const requestInterceptor = requestInterceptor$1;
 const mePermissions = mePermissions$1;
 const users = users$1;
 const scaffoldRunner = scaffoldRunner$1;
-const fileStore = fileStore$4;
+const fileStore = fileStore$5;
 const sync = sync$2;
 const policies$2 = policies$3;
 const scaffold = scaffold$1;

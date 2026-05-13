@@ -1,12 +1,12 @@
-'use strict';
+﻿'use strict';
 
 // Permission engine: resolves which api_pro_method_policies apply to a
-// (user × content-type × action) tuple, cache-backed via strapi.apiPro.cache.
+// (user Ã— content-type Ã— action) tuple, cache-backed via strapi.apiPro.cache.
 //
 // Lookup path:
-//   ctx.state.route.handler  → 'api::product.product.find'
-//                            → { contentTypeUid: 'api::product.product', actionName: 'find' }
-//   user.app_roles[].key     → role keys (with Strapi-role fallback)
+//   ctx.state.route.handler  â†’ 'api::product.product.find'
+//                            â†’ { contentTypeUid: 'api::product.product', actionName: 'find' }
+//   user.app_roles[].key     â†’ role keys (with Strapi-role fallback)
 //
 // Stored policies join:
 //   api_pro_method_policies.roleKey            IN userRoleKeys
@@ -48,8 +48,8 @@ function resolveUserRoleKeys(user) {
 }
 
 // Parse Strapi's `ctx.state.route.handler` string into its content-type + action parts.
-// 'api::product.product.find'        → { contentTypeUid: 'api::product.product', actionName: 'find' }
-// 'plugin::users-permissions.user.me' → { contentTypeUid: 'plugin::users-permissions.user', actionName: 'me' }
+// 'api::product.product.find'        â†’ { contentTypeUid: 'api::product.product', actionName: 'find' }
+// 'plugin::users-permissions.user.me' â†’ { contentTypeUid: 'plugin::users-permissions.user', actionName: 'me' }
 function parseRouteHandler(handler) {
   if (typeof handler !== 'string' || !handler.includes('::')) return null;
   const lastDot = handler.lastIndexOf('.');
@@ -64,7 +64,7 @@ function makeCacheKey(userId, contentTypeUid, actionName) {
   return `u:${userId}:p:${contentTypeUid}:${actionName}`;
 }
 
-// Look up all policies that apply to (user × contentTypeUid × actionName).
+// Look up all policies that apply to (user Ã— contentTypeUid Ã— actionName).
 // Returns an array of policy rows including their template fields verbatim.
 async function getPoliciesForAction(strapi, { user, contentTypeUid, actionName }) {
   const userId = user?.id;
@@ -119,8 +119,8 @@ function clearCache(strapi, userId) {
   else strapi.apiPro?.cache?.clearAll?.();
 }
 
-// Look up the single policy that applies to the (claimed role × content-type
-// × action) tuple. Returns at most one row because the (interface × method ×
+// Look up the single policy that applies to the (claimed role Ã— content-type
+// Ã— action) tuple. Returns at most one row because the (interface Ã— method Ã—
 // role) composite key is unique.
 async function getPolicyForActionAndRole(strapi, { user, roleKey, contentTypeUid, actionName }) {
   const userId = user?.id;

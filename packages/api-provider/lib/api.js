@@ -16,12 +16,35 @@ import { API_URL, IMAGE_URL } from './api-url-resolver.js';
 export { API_URL, IMAGE_URL };
 
 
-// ------------------ App Name Header ------------------
-let _appName = '';
-let _adminMode = false;
+// ------------------ App + Role Headers ------------------
+//
+// Every authenticated API request sends:
+//   X-Rutba-App       — the app/domain the user is currently acting in
+//   X-Rutba-App-Role  — which of the user's roles for that app is active
+//
+// The role header is REQUIRED when the user holds multiple roles for the
+// active app; auto-selected on the server when they hold exactly one. The
+// RoleSwitcher component in @rutba/pos-shared writes this value.
+//
+// The deprecated X-Rutba-App-Admin header (AGP-era admin elevation) is no
+// longer sent — admin is just one of the roles the user can switch to from
+// the RoleSwitcher menu.
 
-// Hydrate admin mode from localStorage on module load (client-side only)
-try { _adminMode = localStorage.getItem('adminMode') === '1'; } catch (_) {}
+let _appName = '';
+let _activeRole = '';
+
+// Hydrate active role from localStorage on module load (client-side only).
+// The key is per-app so each app remembers its own last-used role.
+function activeRoleStorageKey(appName) {
+    return `activeRole:${appName || 'default'}`;
+}
+
+try {
+    // We may not know the appName yet at module load — pick up the global key
+    // and the per-app key gets picked up when setAppName runs.
+    const generic = localStorage.getItem(activeRoleStorageKey(''));
+    if (generic) _activeRole = generic;
+} catch (_) {}
 
 /**
  * Set the app name sent as X-Rutba-App header on every API request.
@@ -29,6 +52,11 @@ try { _adminMode = localStorage.getItem('adminMode') === '1'; } catch (_) {}
  */
 export function setAppName(name) {
     _appName = (name || '').trim().toLowerCase();
+    // Rehydrate active role for the now-known app key.
+    try {
+        const stored = localStorage.getItem(activeRoleStorageKey(_appName));
+        if (stored) _activeRole = stored;
+    } catch (_) {}
 }
 
 /** Return the current app name. */
@@ -37,21 +65,21 @@ export function getAppName() {
 }
 
 /**
- * Toggle admin elevation mode.
- * When enabled, the X-Rutba-App-Admin header is sent with every request,
- * asking the server to bypass owner scoping for users who have
- * admin_app_accesses for this app.
- *
- * The value is persisted in localStorage so it survives page refreshes.
+ * Set the active role key sent as X-Rutba-App-Role header on every API
+ * request. Persisted per-app so each app keeps its own last-used role.
  */
-export function setAdminMode(enabled) {
-    _adminMode = !!enabled;
-    try { localStorage.setItem('adminMode', _adminMode ? '1' : '0'); } catch (_) {}
+export function setActiveRole(roleKey) {
+    _activeRole = (roleKey || '').trim().toLowerCase();
+    try {
+        const k = activeRoleStorageKey(_appName);
+        if (_activeRole) localStorage.setItem(k, _activeRole);
+        else localStorage.removeItem(k);
+    } catch (_) {}
 }
 
-/** Return whether admin elevation is currently active. */
-export function getAdminMode() {
-    return _adminMode;
+/** Return the currently active role key for the current app. */
+export function getActiveRole() {
+    return _activeRole;
 }
 
 // ------------------ Base Helper ------------------
@@ -59,7 +87,7 @@ function authHeaders(jwt) {
     const headers = {};
     if (jwt) headers.Authorization = `Bearer ${jwt}`;
     if (_appName) headers['X-Rutba-App'] = _appName;
-    if (_adminMode && _appName) headers['X-Rutba-App-Admin'] = _appName;
+    if (_activeRole) headers['X-Rutba-App-Role'] = _activeRole;
     return headers;
 }
 
@@ -291,11 +319,6 @@ async function authCall(fn, ...args) {
     try {
         return await fn(...args, jwt);
     } catch (err) {
-        if (err?.response?.status === 403 && _adminMode && _appName) {
-            _adminMode = false;
-            try { localStorage.setItem('adminMode', '0'); } catch (_) {}
-            return await fn(...args, jwt);
-        }
         if (err?.response?.status !== 401) throw err;
         const newJwt = await refreshAccessToken();
         if (!newJwt) {

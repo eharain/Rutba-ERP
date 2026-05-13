@@ -73,28 +73,51 @@ module.exports = {
             strapi.log.error('[bootstrap] HR role provider registration failed: ' + err.message);
         }
 
-        // ─── Phase 1: Seed api-guard-pro from api-provider config ───
-        try {
-            await seedApiProvider(strapi);
-        } catch (err) {
-            strapi.log.error('[bootstrap] api-provider seed failed: ' + err.message);
-            strapi.log.error(err.stack);
-        }
-
-        // ─── Phase 2: Seed accounting Chart of Accounts & mappings ───
-        try {
-            await seedAccounting(strapi);
-        } catch (err) {
-            strapi.log.error('[bootstrap] Accounting seed failed: ' + err.message);
-            strapi.log.error(err.stack);
-        }
-
-        // ─── Phase 3: Run generic JSON seeds from src/seed/data ───
-        try {
-            await runJsonSeeds(strapi);
-        } catch (err) {
-            strapi.log.error('[bootstrap] JSON seed failed: ' + err.message);
-            strapi.log.error(err.stack);
-        }
+        // ─── Background seed pipeline ────────────────────────────────
+        // Defer all seeders until AFTER bootstrap returns. Strapi can then
+        // finish initialization and start listening on the HTTP port —
+        // admin/API users get connection-ready in seconds instead of waiting
+        // for the seed to walk descriptors and upsert ~1000 rows.
+        //
+        // The api-pro seeder has its own fingerprint short-circuit, so on
+        // unchanged repos the background run finishes in milliseconds. On a
+        // first boot or after a descriptor edit it does the full work in
+        // parallel with live traffic — the targeted tables (api_pro_*) are
+        // idempotently upserted, so concurrent reads see either old or new
+        // state but never a half-written row.
+        setImmediate(() => {
+            runBackgroundSeeds(strapi).catch((err) => {
+                strapi.log.error('[bootstrap] background seed pipeline crashed: ' + err.message);
+                strapi.log.error(err.stack);
+            });
+        });
     },
 };
+
+async function runBackgroundSeeds(strapi) {
+    const started = Date.now();
+    strapi.log.info('[bootstrap] background seed pipeline started (non-blocking)');
+
+    try {
+        await seedApiProvider(strapi);
+    } catch (err) {
+        strapi.log.error('[bootstrap] api-provider seed failed: ' + err.message);
+        strapi.log.error(err.stack);
+    }
+
+    try {
+        await seedAccounting(strapi);
+    } catch (err) {
+        strapi.log.error('[bootstrap] Accounting seed failed: ' + err.message);
+        strapi.log.error(err.stack);
+    }
+
+    try {
+        await runJsonSeeds(strapi);
+    } catch (err) {
+        strapi.log.error('[bootstrap] JSON seed failed: ' + err.message);
+        strapi.log.error(err.stack);
+    }
+
+    strapi.log.info(`[bootstrap] background seed pipeline finished in ${Date.now() - started}ms`);
+}

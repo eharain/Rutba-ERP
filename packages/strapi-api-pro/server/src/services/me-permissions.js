@@ -1,13 +1,13 @@
-'use strict';
+﻿'use strict';
 
 // Builds the /me/permissions response payload consumed by
 // packages/pos-shared/context/AuthContext.js across every ERP frontend app.
 //
-// Response shape (load-bearing — see memory: project_pos_strapi_contracts):
+// Response shape (load-bearing â€” see memory: project_pos_strapi_contracts):
 //   {
 //     role:        string,                                       // Strapi users-permissions role name
 //     roleType:    string,                                       // Strapi users-permissions role type
-//     domains:     [{ key, name, roleKey }, ...],                // one entry per (domain × user role)
+//     domains:     [{ key, name, roleKey }, ...],                // one entry per (domain Ã— user role)
 //     appRoles:    [{ id, key, name }, ...],                     // every app_role the user holds
 //     permissions: { [contentTypeUid]: { [action]: {            // every method-policy the user can hit
 //                     allowed: true,
@@ -74,7 +74,7 @@ async function loadPoliciesForRoles(strapi, roleKeys) {
 }
 
 // Allow consumers (e.g. pos-strapi) to inject additional role keys derived
-// from external context — HR team membership, dynamic group assignments, etc.
+// from external context â€” HR team membership, dynamic group assignments, etc.
 // pos-strapi registers a provider in its bootstrap to add hr_* team roles.
 async function gatherExtraRoleKeys(strapi, user) {
   const providers = strapi.apiPro?.roleProviders || [];
@@ -118,7 +118,7 @@ async function build(strapi, userId) {
   const extraRoleKeys = await gatherExtraRoleKeys(strapi, user);
   const allRoleKeys = Array.from(new Set([...directRoleKeys, ...extraRoleKeys]));
 
-  // Build domains: one entry per (domain × role) pair.
+  // Build domains: one entry per (domain Ã— role) pair.
   const domainEntries = [];
   for (const role of appRoles) {
     const roleKey = normalizeKey(role);
@@ -135,7 +135,7 @@ async function build(strapi, userId) {
   }
   const domains = uniqueBy(domainEntries, (e) => `${e.key}|${e.roleKey}`);
 
-  // Build permissions: nested by contentTypeUid → action.
+  // Build permissions: nested by contentTypeUid â†’ action.
   const policies = await loadPoliciesForRoles(strapi, allRoleKeys);
   const permissions = {};
   for (const policy of policies) {
@@ -153,7 +153,7 @@ async function build(strapi, userId) {
   const strapiPermissions = Array.isArray(strapiRole?.permissions) ? strapiRole.permissions : [];
 
   // Group the user's app_roles by app/domain so the client can render a
-  // role-selector menu per app. Each entry: app domain key → array of roles
+  // role-selector menu per app. Each entry: app domain key â†’ array of roles
   // the user can choose from when acting in that app.
   const rolesByApp = {};
   for (const role of appRoles) {
@@ -161,7 +161,7 @@ async function build(strapi, userId) {
     if (!roleKey) continue;
     const domains = Array.isArray(role.appDomains) ? role.appDomains : [];
     if (domains.length === 0) {
-      // Role with no domain restriction — present under a wildcard key so
+      // Role with no domain restriction â€” present under a wildcard key so
       // clients can recognise it.
       rolesByApp['*'] = rolesByApp['*'] || [];
       rolesByApp['*'].push({ key: roleKey, name: role.name || roleKey });
