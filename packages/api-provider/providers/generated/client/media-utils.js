@@ -1,25 +1,30 @@
 import { authApi } from '../../../lib/api.js';
-import { executeEndpoint, strictEndpointGuard } from './___core__.js';
+import { strictEndpointGuard } from './___core__.js';
 import { MediaUtilsEndpoints as MediaUtilsEndpointsApi } from '../../../api/media-utils.js';
 
-async function imageBaseUrl(...args) {
-    return executeEndpoint(authApi, 'imageBaseUrl', MediaUtilsEndpointsApi.imageBaseUrl(...args));
+async function imageBaseUrl() {
+    const ep = MediaUtilsEndpointsApi.imageBaseUrl();
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function strapiImageUrl(...args) {
-    return executeEndpoint(authApi, 'strapiImageUrl', MediaUtilsEndpointsApi.strapiImageUrl(...args));
+async function strapiImageUrl(file) {
+    const ep = MediaUtilsEndpointsApi.strapiImageUrl(file);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function isImage(...args) {
-    return executeEndpoint(authApi, 'isImage', MediaUtilsEndpointsApi.isImage(...args));
+async function isImage(file) {
+    const ep = MediaUtilsEndpointsApi.isImage(file);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function isPDF(...args) {
-    return executeEndpoint(authApi, 'isPDF', MediaUtilsEndpointsApi.isPDF(...args));
+async function isPDF(file) {
+    const ep = MediaUtilsEndpointsApi.isPDF(file);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function isVideo(...args) {
-    return executeEndpoint(authApi, 'isVideo', MediaUtilsEndpointsApi.isVideo(...args));
+async function isVideo(file) {
+    const ep = MediaUtilsEndpointsApi.isVideo(file);
+    return authApi.fetch(ep.path, ep.params);
 }
 
 const endpoints = strictEndpointGuard(

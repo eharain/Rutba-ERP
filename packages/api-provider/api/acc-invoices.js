@@ -1,9 +1,11 @@
-export const AccInvoicesEndpoints = {
-    list: ({ sort } = {}) => ({
-        path: '/acc-invoices',
-        params: {
-            sort: sort ?? ['date:desc'],
-        },
-    }),
+import { listParams } from './__param_builders.js';
 
+export const AccInvoicesEndpoints = {
+    list: ({ page, pageSize, sort, populate, filters, fields } = {}) => ({
+        path: '/acc-invoices',
+        params: listParams(
+            { page, pageSize, sort, populate, filters, fields },
+            { sort: ['date:desc'] },
+        ),
+    }),
 };

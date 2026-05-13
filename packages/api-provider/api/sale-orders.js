@@ -1,3 +1,5 @@
+import { listParams, byIdParams } from './__param_builders.js';
+
 // Per-role scope shared by every policy below. Staff sees only orders they
 // created in the last 7 days; admin/manager unrestricted.
 const ROLE_SCOPES = {
@@ -13,27 +15,30 @@ export const SaleOrdersEndpoints = {
         roles: ['admin', 'manager', 'staff'],
     },
 
-    list: ({ sort, pagination, populate } = {}) => ({
+    list: ({ page, pageSize, sort, populate, filters, fields } = {}) => ({
         path: '/sale-orders',
         action: 'find',
         method: 'get',
         apps: ['order-management', 'sale', 'delivery'],
         approle: ['admin', 'manager', 'staff'],
         scope: ROLE_SCOPES,
-        params: {
-            sort: sort ?? ['createdAt:desc'],
-            pagination: pagination ?? { page: 1, pageSize: 25 },
-            populate: populate ?? ['customer_contact', 'delivery_method', 'assigned_rider', 'delivery_zone'],
-        },
+        params: listParams(
+            { page, pageSize, sort, populate, filters, fields },
+            {
+                sort: ['createdAt:desc'],
+                pageSize: 25,
+                populate: ['customer_contact', 'delivery_method', 'assigned_rider', 'delivery_zone'],
+            },
+        ),
     }),
-    byId: (documentId, params = {}) => ({
+    byId: (documentId, { populate, fields } = {}) => ({
         path: `/sale-orders/${documentId}`,
         action: 'findOne',
         method: 'get',
         apps: ['order-management', 'sale', 'delivery'],
         approle: ['admin', 'manager', 'staff'],
         scope: ROLE_SCOPES,
-        params,
+        params: byIdParams({ populate, fields }),
     }),
     create: (data) => ({
         path: '/sale-orders',

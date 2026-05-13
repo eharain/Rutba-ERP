@@ -1,49 +1,60 @@
 import { authApi } from '../../../lib/api.js';
-import { executeEndpoint, strictEndpointGuard } from './___core__.js';
+import { withQuery, wrapData, strictEndpointGuard } from './___core__.js';
 import { SalesEndpoints as SalesEndpointsApi } from '../../../api/sales.js';
 
-async function list(...args) {
-    return executeEndpoint(authApi, 'list', SalesEndpointsApi.list(...args));
+async function list(page = 1, pageSize = 200, arg3 = {}) {
+    const ep = SalesEndpointsApi.list(page, pageSize, arg3);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function byId(...args) {
-    return executeEndpoint(authApi, 'byId', SalesEndpointsApi.byId(...args));
+async function byId(idOrInvoice) {
+    const ep = SalesEndpointsApi.byId(idOrInvoice);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function exchangeReturns(...args) {
-    return executeEndpoint(authApi, 'exchangeReturns', SalesEndpointsApi.exchangeReturns(...args));
+async function exchangeReturns(saleDocId) {
+    const ep = SalesEndpointsApi.exchangeReturns(saleDocId);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function create(...args) {
-    return executeEndpoint(authApi, 'create', SalesEndpointsApi.create(...args));
+async function create(data) {
+    const ep = SalesEndpointsApi.create(data);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
-async function update(...args) {
-    return executeEndpoint(authApi, 'update', SalesEndpointsApi.update(...args));
+async function update(documentId, data) {
+    const ep = SalesEndpointsApi.update(documentId, data);
+    return authApi.put(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
-async function cancel(...args) {
-    return executeEndpoint(authApi, 'cancel', SalesEndpointsApi.cancel(...args));
+async function cancel(documentId, data) {
+    const ep = SalesEndpointsApi.cancel(documentId, data);
+    return authApi.put(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
-async function saveNotes(...args) {
-    return executeEndpoint(authApi, 'saveNotes', SalesEndpointsApi.saveNotes(...args));
+async function saveNotes(documentId, data) {
+    const ep = SalesEndpointsApi.saveNotes(documentId, data);
+    return authApi.put(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
-async function searchByStockItem(...args) {
-    return executeEndpoint(authApi, 'searchByStockItem', SalesEndpointsApi.searchByStockItem(...args));
+async function searchByStockItem(term) {
+    const ep = SalesEndpointsApi.searchByStockItem(term);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function searchByItemPrice(...args) {
-    return executeEndpoint(authApi, 'searchByItemPrice', SalesEndpointsApi.searchByItemPrice(...args));
+async function searchByItemPrice(arg1 = {}) {
+    const ep = SalesEndpointsApi.searchByItemPrice(arg1);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function sales(...args) {
-    return executeEndpoint(authApi, 'sales', SalesEndpointsApi.sales(...args));
+async function sales(page, rowsPerPage = 200, arg3 = {}) {
+    const ep = SalesEndpointsApi.sales(page, rowsPerPage, arg3);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function saleByIdOrInvoice(...args) {
-    return executeEndpoint(authApi, 'saleByIdOrInvoice', SalesEndpointsApi.saleByIdOrInvoice(...args));
+async function saleByIdOrInvoice(id) {
+    const ep = SalesEndpointsApi.saleByIdOrInvoice(id);
+    return authApi.fetch(ep.path, ep.params);
 }
 
 const endpoints = strictEndpointGuard(

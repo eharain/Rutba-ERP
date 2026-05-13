@@ -1,13 +1,15 @@
 import { authApi } from '../../../lib/api.js';
-import { executeEndpoint, strictEndpointGuard } from './___core__.js';
+import { strictEndpointGuard } from './___core__.js';
 import { AuthEndpoints as AuthEndpointsApi } from '../../../api/auth.js';
 
-async function forgotPassword(...args) {
-    return executeEndpoint(authApi, 'forgotPassword', AuthEndpointsApi.forgotPassword(...args));
+async function forgotPassword(email) {
+    const ep = AuthEndpointsApi.forgotPassword(email);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function resetPassword(...args) {
-    return executeEndpoint(authApi, 'resetPassword', AuthEndpointsApi.resetPassword(...args));
+async function resetPassword(arg1) {
+    const ep = AuthEndpointsApi.resetPassword(arg1);
+    return authApi.fetch(ep.path, ep.params);
 }
 
 const endpoints = strictEndpointGuard(

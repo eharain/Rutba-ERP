@@ -1,21 +1,25 @@
 import { authApi } from '../../../lib/api.js';
-import { executeEndpoint, strictEndpointGuard } from './___core__.js';
+import { withQuery, wrapData, strictEndpointGuard } from './___core__.js';
 import { CustomersEndpoints as CustomersEndpointsApi } from '../../../api/customers.js';
 
-async function findByContact(...args) {
-    return executeEndpoint(authApi, 'findByContact', CustomersEndpointsApi.findByContact(...args));
+async function findByContact(arg1 = {}) {
+    const ep = CustomersEndpointsApi.findByContact(arg1);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function create(...args) {
-    return executeEndpoint(authApi, 'create', CustomersEndpointsApi.create(...args));
+async function create(data) {
+    const ep = CustomersEndpointsApi.create(data);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
-async function search(...args) {
-    return executeEndpoint(authApi, 'search', CustomersEndpointsApi.search(...args));
+async function search(q, pageSize = 10) {
+    const ep = CustomersEndpointsApi.search(q, pageSize);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function update(...args) {
-    return executeEndpoint(authApi, 'update', CustomersEndpointsApi.update(...args));
+async function update(documentId, data) {
+    const ep = CustomersEndpointsApi.update(documentId, data);
+    return authApi.put(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
 const endpoints = strictEndpointGuard(

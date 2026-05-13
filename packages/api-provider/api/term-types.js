@@ -2,6 +2,8 @@
  * TermTypesEndpoints
  * Pure endpoint descriptors for the /term-types resource.
  */
+import { listParams } from './__param_builders.js';
+
 export const TermTypesEndpoints = {
     meta: {
         uid: 'api::term-type.term-type',
@@ -9,51 +11,45 @@ export const TermTypesEndpoints = {
         roles: ['admin', 'manager', 'staff']
     },
 
-    /**
-     * List variant term-types (is_variant = true) with their terms.
-     * @param {{ page?, pageSize? }} opts
-     */
-    listVariants: ({ page = 1, pageSize = 500 } = {}) => ({
+    listVariants: ({ page, pageSize, sort, populate, filters, fields } = {}) => ({
         path: '/term-types',
         action: 'find',
         method: 'get',
         apps: ['stock', 'sale'],
         approle: ['admin', 'manager', 'staff'],
-        params: {
-            filters: { is_variant: true },
-            populate: { terms: true },
-            pagination: { page, pageSize },
-            sort: ['name:asc'],
-        },
+        params: listParams(
+            { page, pageSize, sort, populate, filters, fields },
+            {
+                sort: ['name:asc'],
+                pageSize: 500,
+                populate: { terms: true },
+                filters: { is_variant: true },
+            },
+        ),
     }),
 
-    /**
-     * List term-types with their terms populated.
-     * @param {{ sort?, populate? }} opts
-     */
-    listWithTerms: ({ sort, populate } = {}) => ({
+    listWithTerms: ({ page, pageSize, sort, populate, filters, fields } = {}) => ({
         path: '/term-types',
         action: 'find',
         method: 'get',
         apps: ['stock', 'sale'],
         approle: ['admin', 'manager', 'staff'],
-        params: {
-            sort: sort ?? ['name:asc'],
-            populate: populate ?? { terms: true },
-        },
+        params: listParams(
+            { page, pageSize, sort, populate, filters, fields },
+            { sort: ['name:asc'], populate: { terms: true } },
+        ),
     }),
 
-    /**
-     * List term-types (no populate).
-     * @param {{ sort? }} opts
-     */
-    list: ({ sort } = {}) => ({
+    list: ({ page, pageSize, sort, populate, filters, fields } = {}) => ({
         path: '/term-types',
         action: 'find',
         method: 'get',
         apps: ['stock', 'sale'],
         approle: ['admin', 'manager', 'staff'],
-        params: { sort: sort ?? ['name:asc'] },
+        params: listParams(
+            { page, pageSize, sort, populate, filters, fields },
+            { sort: ['name:asc'] },
+        ),
     }),
 
     /** Create a term-type. */

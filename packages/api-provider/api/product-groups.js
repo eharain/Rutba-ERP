@@ -1,3 +1,5 @@
+import { listParams, byIdParams } from './__param_builders.js';
+
 export const ProductGroupsEndpoints = {
     meta: {
         uid: 'api::product-group.product-group',
@@ -5,56 +7,48 @@ export const ProductGroupsEndpoints = {
         roles: ['admin', 'manager', 'staff', 'public', 'user']
     },
 
-    listDraft: ({ sort, populate, pagination } = {}) => ({
+    listDraft: ({ page, pageSize, sort, populate, filters, fields } = {}) => ({
         path: '/product-groups',
         action: 'find',
         method: 'get',
         apps: ['stock', 'cms'],
         approle: ['admin', 'manager', 'staff'],
-        params: {
-            status: 'draft',
-            sort: sort ?? ['createdAt:desc'],
-            populate: populate ?? ['gallery', 'cover_image', 'products'],
-            pagination: pagination ?? { pageSize: 50 },
-        },
+        params: listParams(
+            { page, pageSize, sort, populate, filters, fields },
+            { sort: ['createdAt:desc'], populate: ['gallery', 'cover_image', 'products'], pageSize: 50 },
+            { status: 'draft' },
+        ),
     }),
 
-    listPublished: ({ pageSize = 200 } = {}) => ({
+    listPublished: ({ page, pageSize, sort, populate, filters, fields } = {}) => ({
         path: '/product-groups',
         action: 'find',
         method: 'get',
         apps: ['stock', 'cms', 'web-public', 'web-authenticated', 'web-user'],
         approle: ['admin', 'manager', 'staff', 'public', 'user'],
-        params: {
-            status: 'published',
-            fields: ['documentId'],
-            pagination: { pageSize },
-        },
+        params: listParams(
+            { page, pageSize, sort, populate, filters, fields },
+            { pageSize: 200, fields: ['documentId'] },
+            { status: 'published' },
+        ),
     }),
 
-    byIdDraft: (documentId, { populate } = {}) => ({
+    byIdDraft: (documentId, { populate, fields } = {}) => ({
         path: `/product-groups/${documentId}`,
         action: 'findOne',
         method: 'get',
         apps: ['stock', 'cms'],
         approle: ['admin', 'manager', 'staff'],
-        params: {
-            status: 'draft',
-            ...(populate ? { populate } : {}),
-        },
+        params: byIdParams({ populate, fields }, {}, { status: 'draft' }),
     }),
 
-    byIdPublished: (documentId, { fields, populate } = {}) => ({
+    byIdPublished: (documentId, { populate, fields } = {}) => ({
         path: `/product-groups/${documentId}`,
         action: 'findOne',
         method: 'get',
         apps: ['stock', 'cms', 'web-public', 'web-authenticated', 'web-user'],
         approle: ['admin', 'manager', 'staff', 'public', 'user'],
-        params: {
-            status: 'published',
-            ...(fields ? { fields } : {}),
-            ...(populate ? { populate } : {}),
-        },
+        params: byIdParams({ populate, fields }, {}, { status: 'published' }),
     }),
 
     create: (data) => ({

@@ -1,21 +1,25 @@
 import { authApi } from '../../../../lib/api.js';
-import { executeEndpoint, strictEndpointGuard } from '../___core__.js';
+import { strictEndpointGuard } from '../___core__.js';
 import { WebCmsPagesEndpoints as WebCmsPagesEndpointsApi } from '../../../../api/web/cms-pages.js';
 
-async function list(...args) {
-    return executeEndpoint(authApi, 'list', WebCmsPagesEndpointsApi.list(...args));
+async function list(pageSize = 50) {
+    const ep = WebCmsPagesEndpointsApi.list(pageSize);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function listByType(...args) {
-    return executeEndpoint(authApi, 'listByType', WebCmsPagesEndpointsApi.listByType(...args));
+async function listByType(pageType, pageSize = 50) {
+    const ep = WebCmsPagesEndpointsApi.listByType(pageType, pageSize);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function bySlug(...args) {
-    return executeEndpoint(authApi, 'bySlug', WebCmsPagesEndpointsApi.bySlug(...args));
+async function bySlug(slug) {
+    const ep = WebCmsPagesEndpointsApi.bySlug(slug);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function header(...args) {
-    return executeEndpoint(authApi, 'header', WebCmsPagesEndpointsApi.header(...args));
+async function header() {
+    const ep = WebCmsPagesEndpointsApi.header();
+    return authApi.fetch(ep.path, ep.params);
 }
 
 const endpoints = strictEndpointGuard(

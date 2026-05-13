@@ -1,40 +1,33 @@
 import __publish_generic_helper from './__publish_generic_helper.js'
+import { listParams, byIdParams } from './__param_builders.js';
 
 export const CategoryGroupsEndpoints = {
-    listDraft: ({ sort, populate, pagination } = {}) => ({
+    listDraft: ({ page, pageSize, sort, populate, filters, fields } = {}) => ({
         path: '/category-groups',
-        params: {
-            status: 'draft',
-            sort: sort ?? ['sort_order:asc', 'createdAt:desc'],
-            populate: populate ?? ['categories'],
-            pagination: pagination ?? { pageSize: 50 },
-        },
+        params: listParams(
+            { page, pageSize, sort, populate, filters, fields },
+            { sort: ['sort_order:asc', 'createdAt:desc'], populate: ['categories'], pageSize: 50 },
+            { status: 'draft' },
+        ),
     }),
 
-    listPublished: ({ pageSize = 200 } = {}) => ({
+    listPublished: ({ page, pageSize, sort, populate, filters, fields } = {}) => ({
         path: '/category-groups',
-        params: {
-            status: 'published',
-            fields: ['documentId'],
-            pagination: { pageSize },
-        },
+        params: listParams(
+            { page, pageSize, sort, populate, filters, fields },
+            { pageSize: 200, fields: ['documentId'] },
+            { status: 'published' },
+        ),
     }),
 
-    byIdDraft: (documentId, { populate } = {}) => ({
+    byIdDraft: (documentId, { populate, fields } = {}) => ({
         path: `/category-groups/${documentId}`,
-        params: {
-            status: 'draft',
-            ...(populate ? { populate } : {}),
-        },
+        params: byIdParams({ populate, fields }, {}, { status: 'draft' }),
     }),
 
-    byIdPublished: (documentId, { fields, populate } = {}) => ({
+    byIdPublished: (documentId, { populate, fields } = {}) => ({
         path: `/category-groups/${documentId}`,
-        params: {
-            status: 'published',
-            ...(fields ? { fields } : {}),
-            ...(populate ? { populate } : {}),
-        },
+        params: byIdParams({ populate, fields }, {}, { status: 'published' }),
     }),
 
     ...__publish_generic_helper('category-groups'),

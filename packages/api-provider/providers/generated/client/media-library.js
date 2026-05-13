@@ -1,57 +1,70 @@
 import { authApi } from '../../../lib/api.js';
-import { executeEndpoint, strictEndpointGuard } from './___core__.js';
+import { withQuery, wrapData, strictEndpointGuard } from './___core__.js';
 import { MediaLibraryEndpoints as MediaLibraryEndpointsApi } from '../../../api/media-library.js';
 
-async function foldersTree(...args) {
-    return executeEndpoint(authApi, 'foldersTree', MediaLibraryEndpointsApi.foldersTree(...args));
+async function foldersTree() {
+    const ep = MediaLibraryEndpointsApi.foldersTree();
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function folders(...args) {
-    return executeEndpoint(authApi, 'folders', MediaLibraryEndpointsApi.folders(...args));
+async function folders(parentId = null) {
+    const ep = MediaLibraryEndpointsApi.folders(parentId);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function folder(...args) {
-    return executeEndpoint(authApi, 'folder', MediaLibraryEndpointsApi.folder(...args));
+async function folder(id) {
+    const ep = MediaLibraryEndpointsApi.folder(id);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function files(...args) {
-    return executeEndpoint(authApi, 'files', MediaLibraryEndpointsApi.files(...args));
+async function files(params = {}) {
+    const ep = MediaLibraryEndpointsApi.files(params);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function file(...args) {
-    return executeEndpoint(authApi, 'file', MediaLibraryEndpointsApi.file(...args));
+async function file(id) {
+    const ep = MediaLibraryEndpointsApi.file(id);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function moveFiles(...args) {
-    return executeEndpoint(authApi, 'moveFiles', MediaLibraryEndpointsApi.moveFiles(...args));
+async function moveFiles(data) {
+    const ep = MediaLibraryEndpointsApi.moveFiles(data);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
-async function uploadToFolder(...args) {
-    return executeEndpoint(authApi, 'uploadToFolder', MediaLibraryEndpointsApi.uploadToFolder(...args));
+async function uploadToFolder(data) {
+    const ep = MediaLibraryEndpointsApi.uploadToFolder(data);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
-async function createFolder(...args) {
-    return executeEndpoint(authApi, 'createFolder', MediaLibraryEndpointsApi.createFolder(...args));
+async function createFolder(data) {
+    const ep = MediaLibraryEndpointsApi.createFolder(data);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
-async function renameFolder(...args) {
-    return executeEndpoint(authApi, 'renameFolder', MediaLibraryEndpointsApi.renameFolder(...args));
+async function renameFolder(id, data) {
+    const ep = MediaLibraryEndpointsApi.renameFolder(id, data);
+    return authApi.put(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
-async function deleteFolder(...args) {
-    return executeEndpoint(authApi, 'deleteFolder', MediaLibraryEndpointsApi.deleteFolder(...args));
+async function deleteFolder(id) {
+    const ep = MediaLibraryEndpointsApi.deleteFolder(id);
+    return authApi.del(withQuery(ep.path, ep.params));
 }
 
-async function updateFileInfo(...args) {
-    return executeEndpoint(authApi, 'updateFileInfo', MediaLibraryEndpointsApi.updateFileInfo(...args));
+async function updateFileInfo(id, data) {
+    const ep = MediaLibraryEndpointsApi.updateFileInfo(id, data);
+    return authApi.put(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
-async function uploadFile(...args) {
-    return executeEndpoint(authApi, 'uploadFile', MediaLibraryEndpointsApi.uploadFile(...args));
+async function uploadFile(data) {
+    const ep = MediaLibraryEndpointsApi.uploadFile(data);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
-async function delFile(...args) {
-    return executeEndpoint(authApi, 'delFile', MediaLibraryEndpointsApi.delFile(...args));
+async function delFile(id) {
+    const ep = MediaLibraryEndpointsApi.delFile(id);
+    return authApi.del(withQuery(ep.path, ep.params));
 }
 
 const endpoints = strictEndpointGuard(

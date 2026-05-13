@@ -1,8 +1,9 @@
 /**
  * CrmLeadsEndpoints
  * Centralised path + params definitions for /crm-leads.
- * Each `fetch*`/`post*`/`put*` method owns the full async call.
  */
+import { listParams, byIdParams } from './__param_builders.js';
+
 export const CrmLeadsEndpoints = {
 
     meta: {
@@ -11,25 +12,25 @@ export const CrmLeadsEndpoints = {
         roles: ['admin', 'manager', 'staff']
     },
 
-    list: ({ sort, populate } = {}) => ({
+    list: ({ page, pageSize, sort, populate, filters, fields } = {}) => ({
         path: '/crm-leads',
         action: 'find',
         method: 'get',
         apps: ['crm'],
         approle: ['admin', 'manager', 'staff'],
-        params: {
-            sort: sort ?? ['createdAt:desc'],
-            ...(populate ? { populate } : {}),
-        },
+        params: listParams(
+            { page, pageSize, sort, populate, filters, fields },
+            { sort: ['createdAt:desc'] },
+        ),
     }),
 
-    byId: (documentId, params = {}) => ({
+    byId: (documentId, { populate, fields } = {}) => ({
         path: `/crm-leads/${documentId}`,
         action: 'findOne',
         method: 'get',
         apps: ['crm'],
         approle: ['admin', 'manager', 'staff'],
-        params,
+        params: byIdParams({ populate, fields }),
     }),
 
     /** Descriptor: create a CRM lead. */

@@ -1,13 +1,15 @@
 import { authApi } from '../../../lib/api.js';
-import { executeEndpoint, strictEndpointGuard } from './___core__.js';
+import { strictEndpointGuard } from './___core__.js';
 import { DeliveryZonesEndpoints as DeliveryZonesEndpointsApi } from '../../../api/delivery-zones.js';
 
-async function list(...args) {
-    return executeEndpoint(authApi, 'list', DeliveryZonesEndpointsApi.list(...args));
+async function list(arg1 = {}) {
+    const ep = DeliveryZonesEndpointsApi.list(arg1);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function create(...args) {
-    return executeEndpoint(authApi, 'create', DeliveryZonesEndpointsApi.create(...args));
+async function create(data) {
+    const ep = DeliveryZonesEndpointsApi.create(data);
+    return authApi.fetch(ep.path, ep.params);
 }
 
 const endpoints = strictEndpointGuard(

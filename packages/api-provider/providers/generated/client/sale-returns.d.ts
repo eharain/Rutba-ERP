@@ -2,7 +2,7 @@
 export interface SaleReturnsEndpointsType {
     list(page?: any, pageSize?: any, { sort, filters, populate }?: any): Promise<any>;
     create(data: any): Promise<any>;
-    byId(documentId: any): Promise<any>;
+    byId(documentId: any, { populate, fields }?: any): Promise<any>;
     update(documentId: any, data: any): Promise<any>;
     publish(documentId: any): Promise<any>;
     unpublish(documentId: any): Promise<any>;

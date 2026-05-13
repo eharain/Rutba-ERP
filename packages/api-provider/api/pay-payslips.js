@@ -1,10 +1,12 @@
+import { listParams } from './__param_builders.js';
+
 export const PayPayslipsEndpoints = {
-    list: ({ sort, populate } = {}) => ({
+    list: ({ page, pageSize, sort, populate, filters, fields } = {}) => ({
         path: '/pay-payslips',
-        params: {
-            sort: sort ?? ['createdAt:desc'],
-            populate: populate ?? ['employee'],
-        },
+        params: listParams(
+            { page, pageSize, sort, populate, filters, fields },
+            { sort: ['createdAt:desc'], populate: ['employee'] },
+        ),
     }),
 
 };

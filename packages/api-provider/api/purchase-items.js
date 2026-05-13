@@ -2,6 +2,8 @@
  * PurchaseItemsEndpoints
  * Pure endpoint descriptors for the /purchase-items resource.
  */
+import { listParams } from './__param_builders.js';
+
 export const PurchaseItemsEndpoints = {
 
     meta: {
@@ -13,18 +15,20 @@ export const PurchaseItemsEndpoints = {
     /**
      * List purchase items for a given purchase documentId.
      * @param {string} purchaseDocId
-     * @param {{ populate? }} opts
      */
-    list: (purchaseDocId, { populate } = {}) => ({
+    list: (purchaseDocId, { page, pageSize, sort, populate, filters, fields } = {}) => ({
         path: '/purchase-items',
         action: 'find',
         method: 'get',
         apps: ['purchase', 'stock'],
         approle: ['admin', 'manager', 'staff'],
-        params: {
-            filters: { purchase: { documentId: { $eq: purchaseDocId } } },
-            populate: populate ?? { product: true },
-        },
+        params: listParams(
+            { page, pageSize, sort, populate, filters, fields },
+            {
+                populate: { product: true },
+                filters: { purchase: { documentId: { $eq: purchaseDocId } } },
+            },
+        ),
     }),
 
     /** Create a new purchase item. */
@@ -40,14 +44,13 @@ export const PurchaseItemsEndpoints = {
     /**
      * List purchase items by product documentId (for counting or transfer).
      * @param {string} productDocId
-     * @param {{ page?, pageSize? }} opts
      */
-    byProduct: (productDocId, { page = 1, pageSize = 100 } = {}) => ({
+    byProduct: (productDocId, { page, pageSize, sort, populate, filters, fields } = {}) => ({
         path: '/purchase-items',
-        params: {
-            filters: { product: { documentId: productDocId } },
-            pagination: { page, pageSize },
-        },
+        params: listParams(
+            { page, pageSize, sort, populate, filters, fields },
+            { pageSize: 100, filters: { product: { documentId: productDocId } } },
+        ),
     }),
 
     /**

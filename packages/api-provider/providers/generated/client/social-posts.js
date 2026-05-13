@@ -1,45 +1,55 @@
 import { authApi } from '../../../lib/api.js';
-import { executeEndpoint, strictEndpointGuard } from './___core__.js';
+import { withQuery, wrapData, strictEndpointGuard } from './___core__.js';
 import { SocialPostsEndpoints as SocialPostsEndpointsApi } from '../../../api/social-posts.js';
 
-async function updateDraft(...args) {
-    return executeEndpoint(authApi, 'updateDraft', SocialPostsEndpointsApi.updateDraft(...args));
+async function updateDraft(documentId, data) {
+    const ep = SocialPostsEndpointsApi.updateDraft(documentId, data);
+    return authApi.put(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
-async function publish(...args) {
-    return executeEndpoint(authApi, 'publish', SocialPostsEndpointsApi.publish(...args));
+async function publish(documentId) {
+    const ep = SocialPostsEndpointsApi.publish(documentId);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
-async function unpublish(...args) {
-    return executeEndpoint(authApi, 'unpublish', SocialPostsEndpointsApi.unpublish(...args));
+async function unpublish(documentId) {
+    const ep = SocialPostsEndpointsApi.unpublish(documentId);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
-async function create(...args) {
-    return executeEndpoint(authApi, 'create', SocialPostsEndpointsApi.create(...args));
+async function create(data) {
+    const ep = SocialPostsEndpointsApi.create(data);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
-async function del(...args) {
-    return executeEndpoint(authApi, 'del', SocialPostsEndpointsApi.del(...args));
+async function del(documentId) {
+    const ep = SocialPostsEndpointsApi.del(documentId);
+    return authApi.del(withQuery(ep.path, ep.params));
 }
 
-async function list(...args) {
-    return executeEndpoint(authApi, 'list', SocialPostsEndpointsApi.list(...args));
+async function list(params = {}) {
+    const ep = SocialPostsEndpointsApi.list(params);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function byId(...args) {
-    return executeEndpoint(authApi, 'byId', SocialPostsEndpointsApi.byId(...args));
+async function byId(documentId, params = {}) {
+    const ep = SocialPostsEndpointsApi.byId(documentId, params);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function update(...args) {
-    return executeEndpoint(authApi, 'update', SocialPostsEndpointsApi.update(...args));
+async function update(documentId, data) {
+    const ep = SocialPostsEndpointsApi.update(documentId, data);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function replies(...args) {
-    return executeEndpoint(authApi, 'replies', SocialPostsEndpointsApi.replies(...args));
+async function replies(documentId) {
+    const ep = SocialPostsEndpointsApi.replies(documentId);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function publishedMarker(...args) {
-    return executeEndpoint(authApi, 'publishedMarker', SocialPostsEndpointsApi.publishedMarker(...args));
+async function publishedMarker() {
+    const ep = SocialPostsEndpointsApi.publishedMarker();
+    return authApi.fetch(ep.path, ep.params);
 }
 
 const endpoints = strictEndpointGuard(

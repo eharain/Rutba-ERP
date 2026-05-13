@@ -9,7 +9,7 @@ export interface StockItemsEndpointsType {
     create(data: any): Promise<any>;
     searchByBarcode(barcode: any): Promise<any>;
     searchByName(name: any): Promise<any>;
-    byId(id: any, { populate }?: any): Promise<any>;
+    byId(id: any, { populate, fields }?: any): Promise<any>;
     update(documentId: any, data: any): Promise<any>;
     byProduct(productDocId: any, { page = 1, pageSize = 100, populate, sort }?: any): Promise<any>;
     transfer(): Promise<any>;

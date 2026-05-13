@@ -1,45 +1,55 @@
 import { authApi } from '../../../lib/api.js';
-import { executeEndpoint, strictEndpointGuard } from './___core__.js';
+import { withQuery, wrapData, strictEndpointGuard } from './___core__.js';
 import { PaymentsEndpoints as PaymentsEndpointsApi } from '../../../api/payments.js';
 
-async function byRegister(...args) {
-    return executeEndpoint(authApi, 'byRegister', PaymentsEndpointsApi.byRegister(...args));
+async function byRegister(registerId, arg2 = {}) {
+    const ep = PaymentsEndpointsApi.byRegister(registerId, arg2);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function fetchByRegister(...args) {
-    return executeEndpoint(authApi, 'fetchByRegister', PaymentsEndpointsApi.fetchByRegister(...args));
+async function fetchByRegister(registerId, opts = {}) {
+    const ep = PaymentsEndpointsApi.fetchByRegister(registerId, opts);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function create(...args) {
-    return executeEndpoint(authApi, 'create', PaymentsEndpointsApi.create(...args));
+async function create(data) {
+    const ep = PaymentsEndpointsApi.create(data);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
-async function postCreate(...args) {
-    return executeEndpoint(authApi, 'postCreate', PaymentsEndpointsApi.postCreate(...args));
+async function postCreate(data) {
+    const ep = PaymentsEndpointsApi.postCreate(data);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
-async function byId(...args) {
-    return executeEndpoint(authApi, 'byId', PaymentsEndpointsApi.byId(...args));
+async function byId(documentId, arg2 = {}) {
+    const ep = PaymentsEndpointsApi.byId(documentId, arg2);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function fetchById(...args) {
-    return executeEndpoint(authApi, 'fetchById', PaymentsEndpointsApi.fetchById(...args));
+async function fetchById(documentId, arg2 = {}) {
+    const ep = PaymentsEndpointsApi.fetchById(documentId, arg2);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function update(...args) {
-    return executeEndpoint(authApi, 'update', PaymentsEndpointsApi.update(...args));
+async function update(documentId, data) {
+    const ep = PaymentsEndpointsApi.update(documentId, data);
+    return authApi.put(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
-async function putUpdate(...args) {
-    return executeEndpoint(authApi, 'putUpdate', PaymentsEndpointsApi.putUpdate(...args));
+async function putUpdate(documentId, data) {
+    const ep = PaymentsEndpointsApi.putUpdate(documentId, data);
+    return authApi.put(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
-async function createRefund(...args) {
-    return executeEndpoint(authApi, 'createRefund', PaymentsEndpointsApi.createRefund(...args));
+async function createRefund() {
+    const ep = PaymentsEndpointsApi.createRefund();
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
-async function postRefund(...args) {
-    return executeEndpoint(authApi, 'postRefund', PaymentsEndpointsApi.postRefund(...args));
+async function postRefund(data) {
+    const ep = PaymentsEndpointsApi.postRefund(data);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
 const endpoints = strictEndpointGuard(

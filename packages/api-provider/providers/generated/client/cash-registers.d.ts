@@ -1,7 +1,7 @@
 // AUTO-GENERATED — do not edit. Source: scaffold-endpoint-providers.mjs
 export interface CashRegistersEndpointsType {
-    list({ filters, sort, page = 1, pageSize = 20, populate }?: any): Promise<any>;
-    byId(documentId: any, { populate }?: any): Promise<any>;
+    list({ page, pageSize, sort, populate, filters, fields }?: any): Promise<any>;
+    byId(documentId: any, { populate, fields }?: any): Promise<any>;
     active({ deskId, userId }?: any): Promise<any>;
     fetchActive({ deskId, userId }?: any): Promise<any>;
     open(data: any): Promise<any>;

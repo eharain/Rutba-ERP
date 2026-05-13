@@ -1,6 +1,6 @@
 export const WebBannersEndpoints = {
   homeBanner: () => ({
-    path: 'product-groups',
+    path: '/product-groups',
     method: 'get',
     params: {
       populate: ['cover_image', 'products.gallery', 'products.logo'],

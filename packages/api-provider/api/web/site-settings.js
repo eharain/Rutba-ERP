@@ -1,6 +1,6 @@
 export const WebSiteSettingsEndpoints = {
   get: () => ({
-    path: 'site-setting',
+    path: '/site-setting',
     method: 'get',
     params: { populate: ['site_logo', 'favicon'] },
   }),

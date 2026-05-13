@@ -1,9 +1,9 @@
 // AUTO-GENERATED — do not edit. Source: scaffold-endpoint-providers.mjs
 export interface BranchesEndpointsType {
     searchBranches(searchTerm: any, page?: any, rowsPerPage?: any): Promise<any>;
-    listWithDesks({ sort, populate }?: any): Promise<any>;
-    list({ sort, populate }?: any): Promise<any>;
-    byId(documentId: any, { populate }?: any): Promise<any>;
+    listWithDesks({ page, pageSize, sort, populate, filters, fields }?: any): Promise<any>;
+    list({ page, pageSize, sort, populate, filters, fields }?: any): Promise<any>;
+    byId(documentId: any, { populate, fields }?: any): Promise<any>;
     update(documentId: any, data: any): Promise<any>;
     archiveStats(branchDocumentId: any): Promise<any>;
     archiveStock(branchDocumentId: any): Promise<any>;

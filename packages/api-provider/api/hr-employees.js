@@ -1,15 +1,17 @@
+import { listParams, byIdParams } from './__param_builders.js';
+
 export const HrEmployeesEndpoints = {
-    list: ({ sort, populate } = {}) => ({
+    list: ({ page, pageSize, sort, populate, filters, fields } = {}) => ({
         path: '/hr-employees',
-        params: {
-            sort: sort ?? ['name:asc'],
-            ...(populate ? { populate } : {}),
-        },
+        params: listParams(
+            { page, pageSize, sort, populate, filters, fields },
+            { sort: ['name:asc'] },
+        ),
     }),
 
-    byId: (documentId, params = {}) => ({
+    byId: (documentId, { populate, fields } = {}) => ({
         path: `/hr-employees/${documentId}`,
-        params,
+        params: byIdParams({ populate, fields }),
     }),
 
     create: (data) => ({ path: '/hr-employees' , data }),

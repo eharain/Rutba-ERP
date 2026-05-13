@@ -2,6 +2,8 @@
  * StockItemsEndpoints
  * Pure endpoint descriptors for the /stock-items resource.
  */
+import { byIdParams } from './__param_builders.js';
+
 export const StockItemsEndpoints = {
 
     meta: {
@@ -159,11 +161,10 @@ export const StockItemsEndpoints = {
     /**
      * Fetch a single stock item by id with optional populate.
      * @param {string|number} id
-     * @param {{ populate? }} opts
      */
-    byId: (id, { populate } = {}) => ({
+    byId: (id, { populate, fields } = {}) => ({
         path: `/stock-items/${id}`,
-        params: populate ? { populate } : undefined,
+        params: byIdParams({ populate, fields }),
     }),
 
     /** Update a stock item by documentId. */

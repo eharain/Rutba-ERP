@@ -1,41 +1,50 @@
 import { authApi } from '../../../lib/api.js';
-import { executeEndpoint, strictEndpointGuard } from './___core__.js';
+import { withQuery, wrapData, strictEndpointGuard } from './___core__.js';
 import { CmsFootersEndpoints as CmsFootersEndpointsApi } from '../../../api/cms-footers.js';
 
-async function listDraft(...args) {
-    return executeEndpoint(authApi, 'listDraft', CmsFootersEndpointsApi.listDraft(...args));
+async function listDraft(arg1 = {}) {
+    const ep = CmsFootersEndpointsApi.listDraft(arg1);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function listPublished(...args) {
-    return executeEndpoint(authApi, 'listPublished', CmsFootersEndpointsApi.listPublished(...args));
+async function listPublished(arg1 = {}) {
+    const ep = CmsFootersEndpointsApi.listPublished(arg1);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function byIdDraft(...args) {
-    return executeEndpoint(authApi, 'byIdDraft', CmsFootersEndpointsApi.byIdDraft(...args));
+async function byIdDraft(documentId, arg2 = {}) {
+    const ep = CmsFootersEndpointsApi.byIdDraft(documentId, arg2);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function byIdPublished(...args) {
-    return executeEndpoint(authApi, 'byIdPublished', CmsFootersEndpointsApi.byIdPublished(...args));
+async function byIdPublished(documentId, arg2 = {}) {
+    const ep = CmsFootersEndpointsApi.byIdPublished(documentId, arg2);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function updateDraft(...args) {
-    return executeEndpoint(authApi, 'updateDraft', CmsFootersEndpointsApi.updateDraft(...args));
+async function updateDraft(documentId, data) {
+    const ep = CmsFootersEndpointsApi.updateDraft(documentId, data);
+    return authApi.put(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
-async function publish(...args) {
-    return executeEndpoint(authApi, 'publish', CmsFootersEndpointsApi.publish(...args));
+async function publish(documentId) {
+    const ep = CmsFootersEndpointsApi.publish(documentId);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
-async function unpublish(...args) {
-    return executeEndpoint(authApi, 'unpublish', CmsFootersEndpointsApi.unpublish(...args));
+async function unpublish(documentId) {
+    const ep = CmsFootersEndpointsApi.unpublish(documentId);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
-async function create(...args) {
-    return executeEndpoint(authApi, 'create', CmsFootersEndpointsApi.create(...args));
+async function create(data) {
+    const ep = CmsFootersEndpointsApi.create(data);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
-async function del(...args) {
-    return executeEndpoint(authApi, 'del', CmsFootersEndpointsApi.del(...args));
+async function del(documentId) {
+    const ep = CmsFootersEndpointsApi.del(documentId);
+    return authApi.del(withQuery(ep.path, ep.params));
 }
 
 const endpoints = strictEndpointGuard(

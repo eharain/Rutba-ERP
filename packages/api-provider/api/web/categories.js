@@ -1,6 +1,6 @@
 export const WebCategoriesEndpoints = {
   list: () => ({
-    path: 'categories',
+    path: '/categories',
     method: 'get',
   }),
 };

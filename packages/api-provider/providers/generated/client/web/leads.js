@@ -1,9 +1,10 @@
 import { authApi } from '../../../../lib/api.js';
-import { executeEndpoint, strictEndpointGuard } from '../___core__.js';
+import { withQuery, wrapData, strictEndpointGuard } from '../___core__.js';
 import { WebLeadsEndpoints as WebLeadsEndpointsApi } from '../../../../api/web/leads.js';
 
-async function create(...args) {
-    return executeEndpoint(authApi, 'create', WebLeadsEndpointsApi.create(...args));
+async function create(data) {
+    const ep = WebLeadsEndpointsApi.create(data);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
 const endpoints = strictEndpointGuard(

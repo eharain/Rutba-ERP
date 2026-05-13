@@ -19,7 +19,7 @@ export const WebProductsEndpoints = {
     })();
 
     return {
-      path: 'products',
+      path: '/products',
       method: 'get',
       params: {
         pagination: { pageSize: 24, page },
@@ -38,7 +38,7 @@ export const WebProductsEndpoints = {
   },
 
   detail: (slug) => ({
-    path: `products/${slug}`,
+    path: `/products/${slug}`,
     method: 'get',
     params: {
       fields: [
@@ -64,7 +64,7 @@ export const WebProductsEndpoints = {
   }),
 
   featured: () => ({
-    path: 'product-groups',
+    path: '/product-groups',
     method: 'get',
     params: {
       populate: {
@@ -74,7 +74,7 @@ export const WebProductsEndpoints = {
   }),
 
   search: (search, pageSize = 5) => ({
-    path: 'products',
+    path: '/products',
     method: 'get',
     params: {
       populate: PRODUCT_POPULATE,
@@ -84,7 +84,7 @@ export const WebProductsEndpoints = {
   }),
 
   byIds: (idProducts = []) => ({
-    path: 'products',
+    path: '/products',
     method: 'get',
     params: {
       populate: {
@@ -105,7 +105,7 @@ export const WebProductsEndpoints = {
   }),
 
   highestPrice: () => ({
-    path: 'products',
+    path: '/products',
     method: 'get',
     params: {
       pagination: { limit: 1 },

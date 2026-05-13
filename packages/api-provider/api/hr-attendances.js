@@ -1,10 +1,12 @@
+import { listParams } from './__param_builders.js';
+
 export const HrAttendancesEndpoints = {
-    list: ({ sort, populate } = {}) => ({
+    list: ({ page, pageSize, sort, populate, filters, fields } = {}) => ({
         path: '/hr-attendances',
-        params: {
-            sort: sort ?? ['date:desc'],
-            populate: populate ?? 'employee',
-        },
+        params: listParams(
+            { page, pageSize, sort, populate, filters, fields },
+            { sort: ['date:desc'], populate: 'employee' },
+        ),
     }),
 
 };

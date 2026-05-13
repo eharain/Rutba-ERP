@@ -1,9 +1,10 @@
 import { authApi } from '../../../../lib/api.js';
-import { executeEndpoint, strictEndpointGuard } from '../___core__.js';
+import { strictEndpointGuard } from '../___core__.js';
 import { WebBrandsEndpoints as WebBrandsEndpointsApi } from '../../../../api/web/brands.js';
 
-async function list(...args) {
-    return executeEndpoint(authApi, 'list', WebBrandsEndpointsApi.list(...args));
+async function list() {
+    const ep = WebBrandsEndpointsApi.list();
+    return authApi.fetch(ep.path, ep.params);
 }
 
 const endpoints = strictEndpointGuard(

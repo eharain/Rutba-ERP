@@ -1,13 +1,15 @@
 import { authApi } from '../../../lib/api.js';
-import { executeEndpoint, strictEndpointGuard } from './___core__.js';
+import { withQuery, strictEndpointGuard } from './___core__.js';
 import { SocialRepliesEndpoints as SocialRepliesEndpointsApi } from '../../../api/social-replies.js';
 
-async function list(...args) {
-    return executeEndpoint(authApi, 'list', SocialRepliesEndpointsApi.list(...args));
+async function list(arg1 = {}) {
+    const ep = SocialRepliesEndpointsApi.list(arg1);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function del(...args) {
-    return executeEndpoint(authApi, 'del', SocialRepliesEndpointsApi.del(...args));
+async function del(documentId) {
+    const ep = SocialRepliesEndpointsApi.del(documentId);
+    return authApi.del(withQuery(ep.path, ep.params));
 }
 
 const endpoints = strictEndpointGuard(

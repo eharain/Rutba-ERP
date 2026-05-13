@@ -1,9 +1,10 @@
 import { authApi } from '../../../lib/api.js';
-import { executeEndpoint, strictEndpointGuard } from './___core__.js';
+import { strictEndpointGuard } from './___core__.js';
 import { AuthAdminEndpoints as AuthAdminEndpointsApi } from '../../../api/auth-admin.js';
 
-async function users(...args) {
-    return executeEndpoint(authApi, 'users', AuthAdminEndpointsApi.users(...args));
+async function users() {
+    const ep = AuthAdminEndpointsApi.users();
+    return authApi.fetch(ep.path, ep.params);
 }
 
 const endpoints = strictEndpointGuard(

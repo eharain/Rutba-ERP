@@ -1,10 +1,12 @@
+import { listParams } from './__param_builders.js';
+
 export const HrTeamsEndpoints = {
-    list: ({ sort, populate } = {}) => ({
+    list: ({ page, pageSize, sort, populate, filters, fields } = {}) => ({
         path: '/hr-teams',
-        params: {
-            sort: sort ?? ['name:asc'],
-            ...(populate ? { populate } : {}),
-        },
+        params: listParams(
+            { page, pageSize, sort, populate, filters, fields },
+            { sort: ['name:asc'] },
+        ),
     }),
 
     appRoleOptions: () => ({ path: '/hr-teams/app-role-options' }),

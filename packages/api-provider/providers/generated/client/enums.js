@@ -1,9 +1,10 @@
 import { authApi } from '../../../lib/api.js';
-import { executeEndpoint, strictEndpointGuard } from './___core__.js';
+import { strictEndpointGuard } from './___core__.js';
 import { EnumsEndpoints as EnumsEndpointsApi } from '../../../api/enums.js';
 
-async function values(...args) {
-    return executeEndpoint(authApi, 'values', EnumsEndpointsApi.values(...args));
+async function values(name, field) {
+    const ep = EnumsEndpointsApi.values(name, field);
+    return authApi.fetch(ep.path, ep.params);
 }
 
 const endpoints = strictEndpointGuard(

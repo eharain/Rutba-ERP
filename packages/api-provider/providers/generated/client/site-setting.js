@@ -1,29 +1,35 @@
 import { authApi } from '../../../lib/api.js';
-import { executeEndpoint, strictEndpointGuard } from './___core__.js';
+import { withQuery, wrapData, strictEndpointGuard } from './___core__.js';
 import { SiteSettingEndpoints as SiteSettingEndpointsApi } from '../../../api/site-setting.js';
 
-async function getDraft(...args) {
-    return executeEndpoint(authApi, 'getDraft', SiteSettingEndpointsApi.getDraft(...args));
+async function getDraft(arg1 = {}) {
+    const ep = SiteSettingEndpointsApi.getDraft(arg1);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function fetchDraft(...args) {
-    return executeEndpoint(authApi, 'fetchDraft', SiteSettingEndpointsApi.fetchDraft(...args));
+async function fetchDraft(arg1 = {}) {
+    const ep = SiteSettingEndpointsApi.fetchDraft(arg1);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function getPublished(...args) {
-    return executeEndpoint(authApi, 'getPublished', SiteSettingEndpointsApi.getPublished(...args));
+async function getPublished(arg1 = {}) {
+    const ep = SiteSettingEndpointsApi.getPublished(arg1);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function updateDraft(...args) {
-    return executeEndpoint(authApi, 'updateDraft', SiteSettingEndpointsApi.updateDraft(...args));
+async function updateDraft(data) {
+    const ep = SiteSettingEndpointsApi.updateDraft(data);
+    return authApi.put(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
-async function publish(...args) {
-    return executeEndpoint(authApi, 'publish', SiteSettingEndpointsApi.publish(...args));
+async function publish(data) {
+    const ep = SiteSettingEndpointsApi.publish(data);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
-async function discard(...args) {
-    return executeEndpoint(authApi, 'discard', SiteSettingEndpointsApi.discard(...args));
+async function discard(data) {
+    const ep = SiteSettingEndpointsApi.discard(data);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
 const endpoints = strictEndpointGuard(

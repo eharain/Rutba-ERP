@@ -1,6 +1,6 @@
 // AUTO-GENERATED — do not edit. Source: scaffold-endpoint-providers.mjs
 export interface DeliveryZonesEndpointsType {
-    list({ sort, pagination }?: any): Promise<any>;
+    list({ page, pageSize, sort, populate, filters, fields }?: any): Promise<any>;
     create(data: any): Promise<any>;
 }
 

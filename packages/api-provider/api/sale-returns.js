@@ -1,7 +1,7 @@
 /**
  * SaleReturnsEndpoints
- * Each `fetch*` method owns the full async call — callers use a single await.
  */
+import { byIdParams } from './__param_builders.js';
 
 // Per-role scope shared by every policy below. Staff sees their own returns
 // from the last 7 days; admin/manager unrestricted.
@@ -55,22 +55,25 @@ export const SaleReturnsEndpoints = {
      * Fetch a single sale return by documentId with full populate.
      * @param {string} documentId
      */
-    byId: (documentId) => ({
+    byId: (documentId, { populate, fields } = {}) => ({
         path: `/sale-returns/${documentId}`,
         action: 'findOne',
         method: 'get',
         apps: ['sale', 'return'],
         approle: ['admin', 'manager', 'staff'],
         scope: ROLE_SCOPES,
-        params: {
-            populate: {
-                sale: { populate: { customer: true } },
-                items: { populate: { product: true, items: true } },
-                payments: true,
-                cash_register: true,
-                returned_by_user: true,
+        params: byIdParams(
+            { populate, fields },
+            {
+                populate: {
+                    sale: { populate: { customer: true } },
+                    items: { populate: { product: true, items: true } },
+                    payments: true,
+                    cash_register: true,
+                    returned_by_user: true,
+                },
             },
-        },
+        ),
     }),
 
     /** Update a sale return by documentId. */

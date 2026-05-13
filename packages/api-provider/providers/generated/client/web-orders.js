@@ -1,9 +1,10 @@
 import { authApi } from '../../../lib/api.js';
-import { executeEndpoint, strictEndpointGuard } from './___core__.js';
+import { strictEndpointGuard } from './___core__.js';
 import { WebOrdersEndpoints as WebOrdersEndpointsApi } from '../../../api/web-orders.js';
 
-async function byId(...args) {
-    return executeEndpoint(authApi, 'byId', WebOrdersEndpointsApi.byId(...args));
+async function byId(orderId, arg2 = {}) {
+    const ep = WebOrdersEndpointsApi.byId(orderId, arg2);
+    return authApi.fetch(ep.path, ep.params);
 }
 
 const endpoints = strictEndpointGuard(

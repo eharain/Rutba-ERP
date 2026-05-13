@@ -1,3 +1,5 @@
+import { listParams } from './__param_builders.js';
+
 export const TermsEndpoints = {
     meta: {
         uid: 'api::term.term',
@@ -5,20 +7,16 @@ export const TermsEndpoints = {
         roles: ['admin', 'manager', 'staff']
     },
 
-    /**
-     * List terms.
-     * @param {{ sort?, filters? }} opts
-     */
-    list: ({ sort, filters } = {}) => ({
+    list: ({ page, pageSize, sort, populate, filters, fields } = {}) => ({
         path: '/terms',
         action: 'find',
         method: 'get',
         apps: ['stock', 'sale'],
         approle: ['admin', 'manager', 'staff'],
-        params: {
-            sort: sort ?? ['name:asc'],
-            ...(filters ? { filters } : {}),
-        },
+        params: listParams(
+            { page, pageSize, sort, populate, filters, fields },
+            { sort: ['name:asc'] },
+        ),
     }),
 
     /** Create a term. */

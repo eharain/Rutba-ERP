@@ -1,9 +1,10 @@
 import { authApi } from '../../../../lib/api.js';
-import { executeEndpoint, strictEndpointGuard } from '../___core__.js';
+import { strictEndpointGuard } from '../___core__.js';
 import { WebBannersEndpoints as WebBannersEndpointsApi } from '../../../../api/web/banners.js';
 
-async function homeBanner(...args) {
-    return executeEndpoint(authApi, 'homeBanner', WebBannersEndpointsApi.homeBanner(...args));
+async function homeBanner() {
+    const ep = WebBannersEndpointsApi.homeBanner();
+    return authApi.fetch(ep.path, ep.params);
 }
 
 const endpoints = strictEndpointGuard(

@@ -1,9 +1,9 @@
 /**
  * BranchesEndpoints
  * Pure endpoint descriptors for the /branches resource.
- * All methods return { path, params?, data? } objects.
- * Transport execution happens via createClientProxy in /endpoints/branches.js.
  */
+import { listParams, byIdParams } from './__param_builders.js';
+
 export const BranchesEndpoints = {
 
     meta: {
@@ -42,51 +42,40 @@ export const BranchesEndpoints = {
         };
     },
 
-    /**
-     * List all branches with their desks and currency populated.
-     * @param {{ sort?, populate? }} opts
-     */
-    listWithDesks: ({ sort, populate } = {}) => ({
+    listWithDesks: ({ page, pageSize, sort, populate, filters, fields } = {}) => ({
         path: '/branches',
         action: 'find',
         method: 'get',
         apps: ['accounts', 'accounts-ap', 'accounts-ar', 'accounts-viewer', 'hr', 'sale', 'social', 'stock'],
         approle: ['admin', 'manager', 'staff'],
-        params: {
-            sort: sort ?? ['name:asc'],
-            populate: populate ?? { desks: true, currency: true },
-        },
+        params: listParams(
+            { page, pageSize, sort, populate, filters, fields },
+            { sort: ['name:asc'], populate: { desks: true, currency: true } },
+        ),
     }),
 
-    /**
-     * Simple list of branches (no nested populate).
-     * Used by selectors and dropdowns.
-     * @param {{ sort?, populate? }} opts
-     */
-    list: ({ sort, populate } = {}) => ({
+    list: ({ page, pageSize, sort, populate, filters, fields } = {}) => ({
         path: '/branches',
         action: 'find',
         method: 'get',
         apps: ['accounts', 'accounts-ap', 'accounts-ar', 'accounts-viewer', 'hr', 'sale', 'social', 'stock'],
         approle: ['admin', 'manager', 'staff'],
-        params: {
-            sort: sort ?? ['name:asc'],
-            populate: populate ?? true,
-        },
+        params: listParams(
+            { page, pageSize, sort, populate, filters, fields },
+            { sort: ['name:asc'], populate: true },
+        ),
     }),
 
-    /**
-     * Fetch a single branch by documentId with desks and currency populated.
-     * @param {string} documentId
-     * @param {{ populate? }} opts
-     */
-    byId: (documentId, { populate } = {}) => ({
+    byId: (documentId, { populate, fields } = {}) => ({
         path: `/branches/${documentId}`,
         action: 'findOne',
         method: 'get',
         apps: ['accounts', 'accounts-ap', 'accounts-ar', 'accounts-viewer', 'hr', 'sale', 'social', 'stock'],
         approle: ['admin', 'manager', 'staff'],
-        params: { populate: populate ?? { desks: true, currency: true } },
+        params: byIdParams(
+            { populate, fields },
+            { populate: { desks: true, currency: true } },
+        ),
     }),
 
     /**

@@ -1,41 +1,50 @@
 import { authApi } from '../../../lib/api.js';
-import { executeEndpoint, strictEndpointGuard } from './___core__.js';
+import { withQuery, wrapData, strictEndpointGuard } from './___core__.js';
 import { ProductGroupsEndpoints as ProductGroupsEndpointsApi } from '../../../api/product-groups.js';
 
-async function listDraft(...args) {
-    return executeEndpoint(authApi, 'listDraft', ProductGroupsEndpointsApi.listDraft(...args));
+async function listDraft(arg1 = {}) {
+    const ep = ProductGroupsEndpointsApi.listDraft(arg1);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function listPublished(...args) {
-    return executeEndpoint(authApi, 'listPublished', ProductGroupsEndpointsApi.listPublished(...args));
+async function listPublished(arg1 = {}) {
+    const ep = ProductGroupsEndpointsApi.listPublished(arg1);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function byIdDraft(...args) {
-    return executeEndpoint(authApi, 'byIdDraft', ProductGroupsEndpointsApi.byIdDraft(...args));
+async function byIdDraft(documentId, arg2 = {}) {
+    const ep = ProductGroupsEndpointsApi.byIdDraft(documentId, arg2);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function byIdPublished(...args) {
-    return executeEndpoint(authApi, 'byIdPublished', ProductGroupsEndpointsApi.byIdPublished(...args));
+async function byIdPublished(documentId, arg2 = {}) {
+    const ep = ProductGroupsEndpointsApi.byIdPublished(documentId, arg2);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function create(...args) {
-    return executeEndpoint(authApi, 'create', ProductGroupsEndpointsApi.create(...args));
+async function create(data) {
+    const ep = ProductGroupsEndpointsApi.create(data);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
-async function updateDraft(...args) {
-    return executeEndpoint(authApi, 'updateDraft', ProductGroupsEndpointsApi.updateDraft(...args));
+async function updateDraft(documentId, data) {
+    const ep = ProductGroupsEndpointsApi.updateDraft(documentId, data);
+    return authApi.put(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
-async function publish(...args) {
-    return executeEndpoint(authApi, 'publish', ProductGroupsEndpointsApi.publish(...args));
+async function publish(documentId) {
+    const ep = ProductGroupsEndpointsApi.publish(documentId);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
-async function unpublish(...args) {
-    return executeEndpoint(authApi, 'unpublish', ProductGroupsEndpointsApi.unpublish(...args));
+async function unpublish(documentId) {
+    const ep = ProductGroupsEndpointsApi.unpublish(documentId);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
-async function del(...args) {
-    return executeEndpoint(authApi, 'del', ProductGroupsEndpointsApi.del(...args));
+async function del(documentId) {
+    const ep = ProductGroupsEndpointsApi.del(documentId);
+    return authApi.del(withQuery(ep.path, ep.params));
 }
 
 const endpoints = strictEndpointGuard(

@@ -6,7 +6,7 @@ Three responsibilities:
 
 1. **Domain + role registry** â€” `config/domains.json` and `config/roles.json` enumerate all RBAC tiers across the system.
 2. **Endpoint descriptors** â€” `api/*.js` files declare every Strapi endpoint the ERP exposes, with the (method, path, action, params, body, role grants) shape needed by both the front-ends and the `api-pro` plugin's seeder.
-3. **Generated client proxies** â€” `scripts/scaffold-endpoint-providers.mjs` reads the `api/*.js` descriptors and emits typed JS proxies under `providers/generated/client/` that wrap each method with `executeEndpoint(authApi, methodName, descriptor)` for callers.
+3. **Generated client proxies** â€” `scripts/scaffold-endpoint-providers.mjs` reads the `api/*.js` descriptors and emits typed JS proxies under `providers/generated/client/`. Each method's HTTP verb is resolved at scaffold time (from the descriptor's `method:` literal or the key prefix) and the matching `authApi.<verb>(...)` call is inlined directly into the generated action body â€” no runtime dispatch layer.
 
 ## Identity
 
@@ -40,7 +40,7 @@ packages/api-provider/
 â”‚   â””â”€â”€ generated/
 â”‚       â””â”€â”€ client/                   # GENERATED â€” do not hand-edit
 â”œâ”€â”€ lib/                              # api + auth helpers used by generated proxies
-â”‚   â””â”€â”€ api.js                        # authApi + executeEndpoint
+â”‚   â””â”€â”€ api.js                        # authApi (HTTP client with auth + app/role headers)
 â”œâ”€â”€ pos/                              # POS-specific orchestrations
 â”œâ”€â”€ server/
 â”‚   â””â”€â”€ access-guard/
@@ -154,20 +154,26 @@ Originally consumed by the legacy AGP data-transfer service. **The current api-p
 
 ## Generated client wrappers
 
-`scripts/scaffold-endpoint-providers.mjs` reads each `api/<resource>.js` file and emits `providers/generated/client/<resource>.js`. Each exported method gets wrapped:
+`scripts/scaffold-endpoint-providers.mjs` reads each `api/<resource>.js` file and emits `providers/generated/client/<resource>.js`. The scaffolder resolves each method's HTTP verb statically (from the descriptor's `method:` literal, or by falling back to the key prefix: `post*` â†’ POST, `put*` â†’ PUT, `patch*` â†’ PATCH, `del*`/`delete*` â†’ DELETE, otherwise GET) and inlines the matching `authApi.<verb>(...)` call directly into the action body:
 
 ```js
 // providers/generated/client/cash-register-transactions.js (excerpt)
 import { authApi } from '../../../lib/api.js';
-import { executeEndpoint } from './___core__.js';
+import { withQuery, wrapData, strictEndpointGuard } from './___core__.js';
 import { CashRegisterTransactionEndpoints as Source } from '../../../api/cash-register-transactions.js';
 
 async function byRegister(...args) {
-  return executeEndpoint(authApi, 'byRegister', Source.byRegister(...args));
+  const ep = Source.byRegister(...args);
+  return authApi.fetch(ep.path, ep.params);          // GET â€” baked in by the scaffolder
+}
+
+async function logIn(...args) {
+  const ep = Source.logIn(...args);
+  return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));   // POST â€” baked in
 }
 ```
 
-`executeEndpoint` (in `lib/api.js`) issues the HTTP call with the auth context, the `x-rutba-app` and `x-rutba-app-role` headers (populated by the consuming app), and returns the response.
+`authApi` (in `lib/api.js`) carries the auth context and the `X-Rutba-App` / `X-Rutba-App-Role` headers (populated by the consuming app via `setAppName` / `setActiveRole`). `withQuery` and `wrapData` are pure shape helpers from `___core__.js` â€” they reshape path/params/data but never decide the verb; the verb decision was made at scaffold time.
 
 ## Validation scripts
 

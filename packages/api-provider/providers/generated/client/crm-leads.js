@@ -1,21 +1,25 @@
 import { authApi } from '../../../lib/api.js';
-import { executeEndpoint, strictEndpointGuard } from './___core__.js';
+import { withQuery, wrapData, strictEndpointGuard } from './___core__.js';
 import { CrmLeadsEndpoints as CrmLeadsEndpointsApi } from '../../../api/crm-leads.js';
 
-async function list(...args) {
-    return executeEndpoint(authApi, 'list', CrmLeadsEndpointsApi.list(...args));
+async function list(arg1 = {}) {
+    const ep = CrmLeadsEndpointsApi.list(arg1);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function byId(...args) {
-    return executeEndpoint(authApi, 'byId', CrmLeadsEndpointsApi.byId(...args));
+async function byId(documentId, arg2 = {}) {
+    const ep = CrmLeadsEndpointsApi.byId(documentId, arg2);
+    return authApi.fetch(ep.path, ep.params);
 }
 
-async function create(...args) {
-    return executeEndpoint(authApi, 'create', CrmLeadsEndpointsApi.create(...args));
+async function create(data) {
+    const ep = CrmLeadsEndpointsApi.create(data);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
-async function update(...args) {
-    return executeEndpoint(authApi, 'update', CrmLeadsEndpointsApi.update(...args));
+async function update(documentId, data) {
+    const ep = CrmLeadsEndpointsApi.update(documentId, data);
+    return authApi.put(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
 const endpoints = strictEndpointGuard(
