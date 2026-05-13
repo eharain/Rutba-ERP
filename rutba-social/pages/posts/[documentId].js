@@ -63,11 +63,11 @@ export default function PostDetailPage() {
         setLoading(true);
         try {
             const [draftRes, pubRes] = await Promise.all([
-                SocialPostsEndpoints.fetchById(documentId, {
+                SocialPostsEndpoints.byId(documentId, {
                     status: 'draft',
                     populate: ['cover', 'video', 'social_accounts', 'social_replies', 'products'],
                 }),
-                SocialPostsEndpoints.fetchById(documentId, { status: 'published', fields: ['documentId'] }).catch(() => ({ data: null })),
+                SocialPostsEndpoints.byId(documentId, { status: 'published', fields: ['documentId'] }).catch(() => ({ data: null })),
             ]);
             const p = draftRes.data || draftRes;
             setPost(p);
@@ -95,7 +95,7 @@ export default function PostDetailPage() {
     const loadAccounts = useCallback(async () => {
         if (!jwt) return;
         try {
-            const res = await SocialAccountsEndpoints.fetchList({
+            const res = await SocialAccountsEndpoints.list({
                 filters: { is_active: { $eq: true } },
                 sort: ['platform:asc'],
             });
@@ -119,7 +119,7 @@ export default function PostDetailPage() {
         if (!jwt || !productSearch.trim()) { setProductResults([]); return; }
         setProductLoading(true);
         try {
-            const res = await ProductsEndpoints.fetchList(1, 20, {
+            const res = await ProductsEndpoints.list(1, 20, {
                 status: 'draft',
                 sort: ['name:asc'],
                 populate: ['logo'],
@@ -168,7 +168,7 @@ export default function PostDetailPage() {
     const handleSave = async () => {
         setSaving(true);
         try {
-            await SocialPostsEndpoints.putUpdateDraft(documentId, buildPayload());
+            await SocialPostsEndpoints.updateDraft(documentId, buildPayload());
             toast("Draft saved!", "success");
             await loadPost();
         } catch (err) {
@@ -182,8 +182,8 @@ export default function PostDetailPage() {
     const handlePublish = async () => {
         setSaving(true);
         try {
-            await SocialPostsEndpoints.putUpdateDraft(documentId, buildPayload());
-            await SocialPostsEndpoints.postPublish(documentId);
+            await SocialPostsEndpoints.updateDraft(documentId, buildPayload());
+            await SocialPostsEndpoints.publish(documentId);
             setIsPublished(true);
             toast("Post saved & published!", "success");
             await loadPost();
@@ -198,7 +198,7 @@ export default function PostDetailPage() {
     const handleUnpublish = async () => {
         setSaving(true);
         try {
-            await SocialPostsEndpoints.postUnpublish(documentId);
+            await SocialPostsEndpoints.unpublish(documentId);
             setIsPublished(false);
             toast("Post unpublished.", "success");
         } catch (err) {
@@ -213,8 +213,8 @@ export default function PostDetailPage() {
         if (!confirm("Load the published version into the editor?")) return;
         setSaving(true);
         try {
-            await SocialPostsEndpoints.putUpdateDraft(documentId, buildPayload());
-            const res = await SocialPostsEndpoints.fetchById(documentId, {
+            await SocialPostsEndpoints.updateDraft(documentId, buildPayload());
+            const res = await SocialPostsEndpoints.byId(documentId, {
                 status: 'published',
                 populate: ['cover', 'video', 'social_accounts', 'social_replies', 'products'],
             });

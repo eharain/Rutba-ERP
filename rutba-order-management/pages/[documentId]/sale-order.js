@@ -59,12 +59,12 @@ export default function SaleOrderDetailPage() {
       setLoading(true);
       try {
         const [riderRes, productRes] = await Promise.all([
-          RidersEndpoints.fetchList({
+          RidersEndpoints.list({
             sort: ["full_name:asc"],
             fields: ["documentId", "full_name", "status"],
             pagination: { pageSize: 200 },
           }),
-          ProductsEndpoints.fetchList(1, 500, {
+          ProductsEndpoints.list(1, 500, {
             sort: ["name:asc"],
             fields: ["documentId", "name"],
           }),
@@ -78,7 +78,7 @@ export default function SaleOrderDetailPage() {
           return;
         }
 
-        const res = await SaleOrdersEndpoints.fetchById(documentId, {
+        const res = await SaleOrdersEndpoints.byId(documentId, {
           populate: ["customer_contact", "products", "assigned_rider"],
         });
         const o = res.data || res;
@@ -187,12 +187,12 @@ export default function SaleOrderDetailPage() {
 
       if (isNew) {
         payload.data.order_id = `ADM-${Date.now()}`;
-        const res = await SaleOrdersEndpoints.postCreate(payload);
+        const res = await SaleOrdersEndpoints.create(payload);
         const created = res.data || res;
         toast("Order created.", "success");
         router.push(`/${created.documentId}/sale-order`);
       } else {
-        await SaleOrdersEndpoints.putUpdate(documentId, payload);
+        await SaleOrdersEndpoints.update(documentId, payload);
         toast("Order updated.", "success");
       }
     } catch (err) {
@@ -235,7 +235,7 @@ export default function SaleOrderDetailPage() {
     if (!orderStatus) return;
     setProcessing(true);
     try {
-      await SaleOrdersEndpoints.postUpdateStatus(documentId, {
+      await SaleOrdersEndpoints.updateStatus(documentId, {
         status: orderStatus,
         rider_notes: riderNotes || undefined,
       });
@@ -252,7 +252,7 @@ export default function SaleOrderDetailPage() {
     if (!riderDocumentId) return;
     setProcessing(true);
     try {
-      await SaleOrdersEndpoints.postAssignRider(documentId, { rider_document_id: riderDocumentId });
+      await SaleOrdersEndpoints.assignRider(documentId, { rider_document_id: riderDocumentId });
       toast("Rider assigned.", "success");
     } catch (err) {
       console.error("Failed to assign rider", err);

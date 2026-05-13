@@ -26,6 +26,63 @@ function wrapData(data) {
     return data !== undefined ? { data } : {};
 }
 
+const STRICT_GUARD_PASSTHROUGH = new Set([
+    'then',
+    'catch',
+    'finally',
+    'toJSON',
+    'toString',
+    'valueOf',
+    'constructor',
+    'prototype',
+    '__esModule',
+    'nodeType',
+    'nodeName',
+    '$$typeof',
+    '@@iterator',
+    'asymmetricMatch',
+    Symbol.iterator,
+    Symbol.asyncIterator,
+    Symbol.toPrimitive,
+    Symbol.toStringTag,
+]);
+
+export function strictEndpointGuard(name, target, allowedKeys) {
+    const allowed = new Set(allowedKeys);
+    return new Proxy(target, {
+        get(t, prop, receiver) {
+            if (typeof prop === 'symbol') return Reflect.get(t, prop, receiver);
+            if (STRICT_GUARD_PASSTHROUGH.has(prop)) return Reflect.get(t, prop, receiver);
+            if (allowed.has(prop)) return Reflect.get(t, prop, receiver);
+
+            const sorted = [...allowed].sort();
+            const err = new Error(
+                `[api-provider] ${name} has no member "${String(prop)}". ` +
+                `Available: [${sorted.join(', ')}]`,
+            );
+            err.name = 'UnknownEndpointMemberError';
+            err.endpointName = name;
+            err.attemptedMember = String(prop);
+            err.availableMembers = sorted;
+            throw err;
+        },
+        has(t, prop) {
+            if (typeof prop === 'symbol') return Reflect.has(t, prop);
+            if (STRICT_GUARD_PASSTHROUGH.has(prop)) return Reflect.has(t, prop);
+            return allowed.has(prop);
+        },
+        ownKeys() {
+            return [...allowed];
+        },
+        getOwnPropertyDescriptor(t, prop) {
+            if (typeof prop === 'symbol' || STRICT_GUARD_PASSTHROUGH.has(prop) || allowed.has(prop)) {
+                return Reflect.getOwnPropertyDescriptor(t, prop);
+            }
+            return undefined;
+        },
+    });
+}
+
 export async function executeEndpoint(client, key, ep) {
     if (!ep?.path) {
         return ep;

@@ -14,7 +14,7 @@ export default function NotificationTemplatesPage() {
     if (!jwt) return;
     setLoading(true);
     try {
-      const res = await NotificationTemplatesEndpoints.fetchList({
+      const res = await NotificationTemplatesEndpoints.list({
         sort: ["createdAt:desc"],
         populate: ["branch"],
         pagination: { pageSize: 200 },

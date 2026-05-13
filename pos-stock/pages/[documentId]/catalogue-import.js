@@ -82,7 +82,7 @@ export default function CatalogueImportPage() {
     async function loadProduct(id) {
         setLoading(true);
         try {
-            const res = await ProductsEndpoints.fetchById(id, {
+            const res = await ProductsEndpoints.byId(id, {
                 populate: { variants: { populate: ['terms'] }, terms: true }
             });
             const prod = res.data || res;
@@ -99,7 +99,7 @@ export default function CatalogueImportPage() {
 
     async function loadTermTypes() {
         try {
-            const res = await TermTypesEndpoints.fetchVariants();
+            const res = await TermTypesEndpoints.listVariants();
             setTermTypes(res?.data ?? res ?? []);
         } catch (err) {
             console.error('Failed to load term types', err);

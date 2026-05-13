@@ -1,5 +1,5 @@
 import { authApi } from '../../../lib/api.js';
-import { executeEndpoint } from './___core__.js';
+import { executeEndpoint, strictEndpointGuard } from './___core__.js';
 import { AuthEndpoints as AuthEndpointsApi } from '../../../api/auth.js';
 
 async function forgotPassword(...args) {
@@ -10,10 +10,14 @@ async function resetPassword(...args) {
     return executeEndpoint(authApi, 'resetPassword', AuthEndpointsApi.resetPassword(...args));
 }
 
-const endpoints = {
-    forgotPassword,
-    resetPassword,
-};
+const endpoints = strictEndpointGuard(
+    'AuthEndpoints',
+    {
+        forgotPassword,
+        resetPassword,
+    },
+    ["forgotPassword","resetPassword"],
+);
 
 export default endpoints;
 export const AuthEndpoints = endpoints;

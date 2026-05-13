@@ -36,7 +36,7 @@ export default function Categories() {
     const publishOne = async (docId) => {
         setPublishing(prev => ({ ...prev, [docId]: true }));
         try {
-            await CategoriesEndpoints.postPublish(docId);
+            await CategoriesEndpoints.publish(docId);
             setCategories(prev => prev.map(c => c.documentId === docId ? { ...c, _isPublished: true } : c));
             toast("Published!", "success");
         } catch (err) {
@@ -50,7 +50,7 @@ export default function Categories() {
     const unpublishOne = async (docId) => {
         setPublishing(prev => ({ ...prev, [docId]: true }));
         try {
-            await CategoriesEndpoints.postUnpublish(docId);
+            await CategoriesEndpoints.unpublish(docId);
             setCategories(prev => prev.map(c => c.documentId === docId ? { ...c, _isPublished: false } : c));
             toast("Unpublished.", "success");
         } catch (err) {
@@ -68,7 +68,7 @@ export default function Categories() {
         let ok = 0, fail = 0;
         for (const docId of ids) {
             setPublishing(prev => ({ ...prev, [docId]: true }));
-            try { await CategoriesEndpoints.postPublish(docId); ok++; setCategories(prev => prev.map(c => c.documentId === docId ? { ...c, _isPublished: true } : c)); }
+            try { await CategoriesEndpoints.publish(docId); ok++; setCategories(prev => prev.map(c => c.documentId === docId ? { ...c, _isPublished: true } : c)); }
             catch { fail++; }
             finally { setPublishing(prev => ({ ...prev, [docId]: false })); }
         }
@@ -83,7 +83,7 @@ export default function Categories() {
         let ok = 0, fail = 0;
         for (const docId of ids) {
             setPublishing(prev => ({ ...prev, [docId]: true }));
-            try { await CategoriesEndpoints.postUnpublish(docId); ok++; setCategories(prev => prev.map(c => c.documentId === docId ? { ...c, _isPublished: false } : c)); }
+            try { await CategoriesEndpoints.unpublish(docId); ok++; setCategories(prev => prev.map(c => c.documentId === docId ? { ...c, _isPublished: false } : c)); }
             catch { fail++; }
             finally { setPublishing(prev => ({ ...prev, [docId]: false })); }
         }
@@ -105,14 +105,14 @@ export default function Categories() {
                 params.filters = { name: { $containsi: search.trim() } };
             }
             const [draftRes, pubRes] = await Promise.all([
-                CategoriesEndpoints.fetchList({
+                CategoriesEndpoints.list({
                     sort: ["name:asc"],
                     populate: ["logo", "parent"],
                     page: 1,
                     pageSize: 100,
                     ...(search.trim() ? { search: search.trim() } : {}),
                 }),
-                CategoriesEndpoints.fetchListPublished({ pageSize: 500 }),
+                CategoriesEndpoints.listPublished({ pageSize: 500 }),
             ]);
             const pubIds = new Set((pubRes.data || []).map(c => c.documentId));
             setCategories((draftRes.data || []).map(c => ({ ...c, _isPublished: pubIds.has(c.documentId) })));

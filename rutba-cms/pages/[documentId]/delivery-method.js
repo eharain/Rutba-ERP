@@ -105,9 +105,9 @@ export default function DeliveryMethodDetail() {
     useEffect(() => {
         if (!jwt) return;
         Promise.all([
-            ProductGroupsEndpoints.fetchListDraft({ pagination: { pageSize: 200 }, sort: ["name:asc"] }),
-            CmsPagesEndpoints.fetchListDraft({ pageSize: 200, sort: ["title:asc"] }),
-            CategoriesEndpoints.fetchListDraft({ pagination: { pageSize: 200 }, sort: ["name:asc"], populate: [] }),
+            ProductGroupsEndpoints.listDraft({ pagination: { pageSize: 200 }, sort: ["name:asc"] }),
+            CmsPagesEndpoints.listDraft({ pageSize: 200, sort: ["title:asc"] }),
+            CategoriesEndpoints.listDraft({ pagination: { pageSize: 200 }, sort: ["name:asc"], populate: [] }),
         ])
             .then(([gRes, pRes, cRes]) => {
                 setAllGroups(gRes.data || []);
@@ -123,7 +123,7 @@ export default function DeliveryMethodDetail() {
             return;
         }
 
-        DeliveryMethodsEndpoints.fetchByIdDraft(documentId, {
+        DeliveryMethodsEndpoints.byIdDraft(documentId, {
             populate: ["product_groups", "cms_pages", "categories"],
         })
             .then((res) => {
@@ -187,12 +187,12 @@ export default function DeliveryMethodDetail() {
         setSaving(true);
         try {
             if (isNew) {
-                const res = await DeliveryMethodsEndpoints.postCreate(buildPayload());
+                const res = await DeliveryMethodsEndpoints.create(buildPayload());
                 const created = res.data || res;
                 toast("Delivery method created.", "success");
                 router.push(`/${created.documentId}/delivery-method`);
             } else {
-                await DeliveryMethodsEndpoints.putUpdate(documentId, buildPayload());
+                await DeliveryMethodsEndpoints.update(documentId, buildPayload());
                 toast("Delivery method updated.", "success");
             }
         } catch (err) {
@@ -208,7 +208,7 @@ export default function DeliveryMethodDetail() {
         if (!confirm("Are you sure you want to delete this delivery method?")) return;
 
         try {
-            await DeliveryMethodsEndpoints.delById(documentId);
+            await DeliveryMethodsEndpoints.del(documentId);
             toast("Delivery method deleted.", "success");
             router.push("/delivery-methods");
         } catch (err) {

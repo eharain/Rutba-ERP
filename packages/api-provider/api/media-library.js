@@ -19,5 +19,11 @@ export const MediaLibraryEndpoints = {
     renameFolder: (id, data) => ({ path: `/media-library/folders/${id}`, action: 'renameFolder', method: 'put', data }),
     deleteFolder: (id) => ({ path: `/media-library/folders/${id}`, action: 'deleteFolder', method: 'delete' }),
     updateFileInfo: (id, data) => ({ path: `/media-library/files/${id}`, action: 'updateFileInfo', method: 'put', data }),
+    // todo: speculative stub — rutba-cms/pages/media.js and rutba-social/pages/media.js
+    // call these. Verify the upload route shape (multipart vs JSON) and the
+    // delete file route exists in pos-strapi media-library plugin/controller.
+    uploadFile: (data) => ({ path: '/media-library/upload', action: 'uploadFile', method: 'post', data }),
+    // todo: speculative stub — see uploadFile above. Confirm DELETE route is wired.
+    delFile: (id) => ({ path: `/media-library/files/${id}`, action: 'delFile', method: 'delete' }),
 
 };

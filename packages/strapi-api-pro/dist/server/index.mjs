@@ -2279,6 +2279,7 @@ var interfaces$1 = {
 };
 const POLICY_UID$3 = "plugin::api-pro.api-method-policy";
 const USER_UID$2 = "plugin::users-permissions.user";
+const APP_DOMAIN_UID$1 = "plugin::api-pro.app-domain";
 function normalizeKey(value) {
   if (typeof value === "string") return value.toLowerCase();
   if (value && typeof value === "object" && typeof value.key === "string") {
@@ -2363,11 +2364,29 @@ async function build(strapi2, userId) {
   const directRoleKeys = appRoles.map((r) => normalizeKey(r)).filter(Boolean);
   const extraRoleKeys = await gatherExtraRoleKeys(strapi2, user);
   const allRoleKeys = Array.from(/* @__PURE__ */ new Set([...directRoleKeys, ...extraRoleKeys]));
+  const allDomains = await strapi2.db.query(APP_DOMAIN_UID$1).findMany({
+    where: { isActive: true },
+    select: ["key", "name"]
+  });
+  const allDomainKeys = allDomains.map((d) => normalizeKey(d)).filter(Boolean);
+  const domainNameByKey = new Map(
+    allDomains.map((d) => [normalizeKey(d), d.name || normalizeKey(d)])
+  );
   const domainEntries = [];
   for (const role of appRoles) {
     const roleKey = normalizeKey(role);
-    const domains3 = Array.isArray(role.appDomains) ? role.appDomains : [];
-    for (const d of domains3) {
+    const roleDomains = Array.isArray(role.appDomains) ? role.appDomains : [];
+    if (roleDomains.length === 0) {
+      for (const domainKey of allDomainKeys) {
+        domainEntries.push({
+          key: domainKey,
+          name: domainNameByKey.get(domainKey) || domainKey,
+          roleKey
+        });
+      }
+      continue;
+    }
+    for (const d of roleDomains) {
       const domainKey = normalizeKey(d);
       if (!domainKey) continue;
       domainEntries.push({
@@ -2391,21 +2410,21 @@ async function build(strapi2, userId) {
   const strapiRole = user.role || null;
   const strapiPermissions = Array.isArray(strapiRole?.permissions) ? strapiRole.permissions : [];
   const rolesByApp = {};
-  for (const role of appRoles) {
+  const pushRole = (domainKey, role) => {
     const roleKey = normalizeKey(role);
-    if (!roleKey) continue;
-    const domains3 = Array.isArray(role.appDomains) ? role.appDomains : [];
-    if (domains3.length === 0) {
-      rolesByApp["*"] = rolesByApp["*"] || [];
-      rolesByApp["*"].push({ key: roleKey, name: role.name || roleKey });
+    if (!roleKey || !domainKey) return;
+    rolesByApp[domainKey] = rolesByApp[domainKey] || [];
+    if (rolesByApp[domainKey].some((r) => r.key === roleKey)) return;
+    rolesByApp[domainKey].push({ key: roleKey, name: role.name || roleKey });
+  };
+  for (const role of appRoles) {
+    const roleDomains = Array.isArray(role.appDomains) ? role.appDomains : [];
+    if (roleDomains.length === 0) {
+      pushRole("*", role);
+      for (const domainKey of allDomainKeys) pushRole(domainKey, role);
       continue;
     }
-    for (const d of domains3) {
-      const domainKey = normalizeKey(d);
-      if (!domainKey) continue;
-      rolesByApp[domainKey] = rolesByApp[domainKey] || [];
-      rolesByApp[domainKey].push({ key: roleKey, name: role.name || roleKey });
-    }
+    for (const d of roleDomains) pushRole(normalizeKey(d), role);
   }
   return {
     role: strapiRole?.name || null,

@@ -39,8 +39,7 @@ export default function DeliveryMethodDetailPage() {
       return;
     }
 
-    DeliveryMethodsEndpoints
-      .fetchById(documentId)
+    DeliveryMethodsEndpoints.byId(documentId)
       .then((res) => {
         const m = res.data || res;
         setName(m.name || "");
@@ -89,12 +88,12 @@ export default function DeliveryMethodDetailPage() {
     setSaving(true);
     try {
       if (isNew) {
-        const res = await DeliveryMethodsEndpoints.postCreate(buildPayload());
+        const res = await DeliveryMethodsEndpoints.create(buildPayload());
         const created = res.data || res;
         toast("Delivery method created.", "success");
         router.push(`/${created.documentId}/delivery-method`);
       } else {
-        await DeliveryMethodsEndpoints.putUpdate(documentId, buildPayload());
+        await DeliveryMethodsEndpoints.update(documentId, buildPayload());
         toast("Delivery method updated.", "success");
       }
     } catch (err) {

@@ -57,7 +57,7 @@ export default function CategoriesPage() {
         const timer = setTimeout(async () => {
             setProductSearchLoading(true);
             try {
-                const res = await ProductsEndpoints.fetchSearch(searchValue, {
+                const res = await ProductsEndpoints.search(searchValue, {
                     pageSize: 20,
                     populate: { categories: true },
                 });
@@ -88,7 +88,7 @@ export default function CategoriesPage() {
             let page = 1;
             let totalPages = 1;
             do {
-                const res = await CategoriesEndpoints.fetchList({ page, pageSize: 100 });
+                const res = await CategoriesEndpoints.list({ page, pageSize: 100 });
                 const data = res?.data ?? res;
                 allCategories = [...allCategories, ...(data || [])];
                 totalPages = res?.meta?.pagination?.pageCount || 1;
@@ -118,7 +118,7 @@ export default function CategoriesPage() {
             let page = 1;
             let totalPages = 1;
             do {
-                const res = await ProductsEndpoints.fetchList(page, 100, {
+                const res = await ProductsEndpoints.list(page, 100, {
                     sort: 'name:asc',
                     categories: [selectedCategoryId],
                     populate: { categories: true },
@@ -167,9 +167,9 @@ export default function CategoriesPage() {
                 parent: categoryForm.parent ? { connect: [categoryForm.parent] } : { disconnect: true }
             };
             if (isEditing && selectedCategoryId) {
-                await CategoriesEndpoints.putUpdate(selectedCategoryId, payload);
+                await CategoriesEndpoints.update(selectedCategoryId, payload);
             } else {
-                const res = await CategoriesEndpoints.postCreate(payload);
+                const res = await CategoriesEndpoints.create(payload);
                 const created = res?.data ?? res;
                 setSelectedCategoryId(getEntryId(created));
             }
@@ -192,7 +192,7 @@ export default function CategoriesPage() {
         if (!confirm("Are you sure you want to delete this category?")) return;
         setLoading(true);
         try {
-            await CategoriesEndpoints.putDelete(selectedCategoryId);
+            await CategoriesEndpoints.del(selectedCategoryId);
             setSelectedCategoryId("");
             await loadCategories();
         } catch (error) {
@@ -228,7 +228,7 @@ export default function CategoriesPage() {
                 let page = 1;
                 let totalPages = 1;
                 do {
-                    const res = await ProductsEndpoints.fetchList(page, 100, {
+                    const res = await ProductsEndpoints.list(page, 100, {
                         categories: [sourceCatId],
                         populate: { categories: true },
                     });
@@ -237,7 +237,7 @@ export default function CategoriesPage() {
 
                     for (const product of sourceProducts) {
                         const productDocId = getEntryId(product);
-                        await ProductsEndpoints.putUpdate(productDocId, {
+                        await ProductsEndpoints.update(productDocId, {
                                 categories: {
                                     connect: [selectedCategoryId],
                                     disconnect: [sourceCatId]
@@ -252,10 +252,10 @@ export default function CategoriesPage() {
                 const sourceChildren = sourceCat?.childern || [];
                 for (const child of sourceChildren) {
                     const childId = getEntryId(child);
-                    await CategoriesEndpoints.putUpdate(childId, { parent: { connect: [selectedCategoryId] } });
+                    await CategoriesEndpoints.update(childId, { parent: { connect: [selectedCategoryId] } });
                 }
 
-                await CategoriesEndpoints.putDelete(sourceCatId);
+                await CategoriesEndpoints.del(sourceCatId);
             }
 
             setMergeSelection(new Set());
@@ -299,7 +299,7 @@ export default function CategoriesPage() {
         setLoading(true);
         try {
             for (const productDocId of selectedProductIds) {
-                await ProductsEndpoints.putUpdate(productDocId, {
+                await ProductsEndpoints.update(productDocId, {
                         categories: {
                             connect: [moveTargetCategoryId],
                             disconnect: [selectedCategoryId]
@@ -325,7 +325,7 @@ export default function CategoriesPage() {
         setLoading(true);
         try {
             for (const productDocId of selectedProductIds) {
-                await ProductsEndpoints.putUpdate(productDocId, {
+                await ProductsEndpoints.update(productDocId, {
                         categories: {
                             connect: [moveTargetCategoryId]
                         }
@@ -346,7 +346,7 @@ export default function CategoriesPage() {
         if (!confirm("Remove this product from the category?")) return;
         setLoading(true);
         try {
-            await ProductsEndpoints.putUpdate(productDocId, {
+            await ProductsEndpoints.update(productDocId, {
                     categories: { disconnect: [selectedCategoryId] }
                 });
             await loadProducts();
@@ -362,7 +362,7 @@ export default function CategoriesPage() {
         if (!selectedCategoryId) return alert("Select a category first");
         setLoading(true);
         try {
-            await ProductsEndpoints.putUpdate(productDocId, {
+            await ProductsEndpoints.update(productDocId, {
                     categories: { connect: [selectedCategoryId] }
                 });
             await loadProducts();

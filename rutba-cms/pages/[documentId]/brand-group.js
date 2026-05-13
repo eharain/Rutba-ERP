@@ -28,8 +28,8 @@ export default function BrandGroupDetail() {
     useEffect(() => {
         if (!jwt || !documentId || isNew) { setLoading(false); return; }
         Promise.all([
-            BrandGroupsEndpoints.fetchByIdDraft(documentId, { populate: ["brands.logo"] }),
-            BrandGroupsEndpoints.fetchByIdPublished(documentId, { fields: ["documentId"] }).catch(() => ({ data: null })),
+            BrandGroupsEndpoints.byIdDraft(documentId, { populate: ["brands.logo"] }),
+            BrandGroupsEndpoints.byIdPublished(documentId, { fields: ["documentId"] }).catch(() => ({ data: null })),
         ])
             .then(([draftRes, pubRes]) => {
                 const g = draftRes.data || draftRes;
@@ -47,7 +47,7 @@ export default function BrandGroupDetail() {
     const loadBrands = useCallback(async () => {
         if (!jwt) return;
         try {
-            const res = await BrandsEndpoints.fetchList({ sort: ["name:asc"], populate: ["logo"], pageSize: 100, status: 'draft' });
+            const res = await BrandsEndpoints.list({ sort: ["name:asc"], populate: ["logo"], pageSize: 100, status: 'draft' });
             setAllBrands(res.data || []);
         } catch (err) {
             console.error("Failed to load brands", err);
@@ -74,11 +74,11 @@ export default function BrandGroupDetail() {
             };
             if (isNew) {
                 payload.data.slug = slug || name.toLowerCase().replace(/\s+/g, "-");
-                const res = await BrandGroupsEndpoints.postCreate(payload.data);
+                const res = await BrandGroupsEndpoints.create(payload.data);
                 const created = res.data || res;
                 router.push(`/${created.documentId}/brand-group`);
             } else {
-                await BrandGroupsEndpoints.putUpdateDraft(documentId, payload.data);
+                await BrandGroupsEndpoints.updateDraft(documentId, payload.data);
                 toast("Draft saved!", "success");
             }
         } catch (err) {
@@ -99,8 +99,8 @@ export default function BrandGroupDetail() {
                     brands: { set: selectedBrandIds },
                 },
             };
-            await BrandGroupsEndpoints.putUpdateDraft(documentId, payload.data);
-            await BrandGroupsEndpoints.postPublish(documentId);
+            await BrandGroupsEndpoints.updateDraft(documentId, payload.data);
+            await BrandGroupsEndpoints.publish(documentId);
             setIsPublished(true);
             toast("Brand group saved & published!", "success");
         } catch (err) {
@@ -114,7 +114,7 @@ export default function BrandGroupDetail() {
     const handleUnpublish = async () => {
         setSaving(true);
         try {
-            await BrandGroupsEndpoints.postUnpublish(documentId);
+            await BrandGroupsEndpoints.unpublish(documentId);
             setIsPublished(false);
             toast("Brand group unpublished.", "success");
         } catch (err) {
@@ -129,8 +129,8 @@ export default function BrandGroupDetail() {
         if (!confirm("Save current draft and load the published version into the editor?")) return;
         setSaving(true);
         try {
-            await BrandGroupsEndpoints.putUpdateDraft(documentId, { name, sort_order: sortOrder, brands: { set: selectedBrandIds } });
-            const res = await BrandGroupsEndpoints.fetchByIdPublished(documentId, { populate: ["brands.logo"] });
+            await BrandGroupsEndpoints.updateDraft(documentId, { name, sort_order: sortOrder, brands: { set: selectedBrandIds } });
+            const res = await BrandGroupsEndpoints.byIdPublished(documentId, { populate: ["brands.logo"] });
             const g = res.data || res;
             if (!g) { toast("No published version found.", "warning"); return; }
             setName(g.name || "");
@@ -149,7 +149,7 @@ export default function BrandGroupDetail() {
     const handleDelete = async () => {
         if (!confirm("Are you sure you want to delete this brand group?")) return;
         try {
-            await BrandGroupsEndpoints.delById(documentId);
+            await BrandGroupsEndpoints.del(documentId);
             router.push("/brand-groups");
         } catch (err) {
             console.error("Failed to delete brand group", err);

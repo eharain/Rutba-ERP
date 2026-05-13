@@ -51,7 +51,7 @@ function SaleReturnDetail({ documentId }) {
         setLoading(true);
         setError("");
         try {
-            const res = await SaleReturnsEndpoints.fetchById(documentId);
+            const res = await SaleReturnsEndpoints.byId(documentId);
             const data = res?.data ?? res;
             if (!data) {
                 setError("Sale return not found.");
@@ -70,7 +70,7 @@ function SaleReturnDetail({ documentId }) {
     async function handleSaveNotes() {
         setNotesSaving(true);
         try {
-            await SaleReturnsEndpoints.putUpdate(documentId, { notes: notes || '' });
+            await SaleReturnsEndpoints.update(documentId, { notes: notes || '' });
         } catch (err) {
             console.error("Failed to save notes", err);
             alert("Failed to save notes.");
@@ -452,7 +452,7 @@ function NewSaleReturn() {
             const userId = user?.documentId ?? user?.id;
 
             // 1) Create sale-return header
-            const retRes = await SaleReturnsEndpoints.postCreate({
+            const retRes = await SaleReturnsEndpoints.create({
                 return_no: returnNo,
                 return_date: new Date().toISOString(),
                 total_refund: totalRefundAmt,
@@ -477,7 +477,7 @@ function NewSaleReturn() {
             if (branch) {
                 const branchDocId = getEntryId(branch);
                 if (branchDocId) {
-                    await BranchesEndpoints.putUpdate(branchDocId, { sale_returns: { connect: [saleReturnDocId] } });
+                    await BranchesEndpoints.update(branchDocId, { sale_returns: { connect: [saleReturnDocId] } });
                 }
             }
 
@@ -497,7 +497,7 @@ function NewSaleReturn() {
                 const total = items.reduce((s, i) => s + (i.refundPrice ?? i.price), 0);
                 const productDocId = items[0].productDocId;
 
-                const returnItemRes = await SaleReturnItemsEndpoints.postCreate({
+                const returnItemRes = await SaleReturnItemsEndpoints.create({
                     quantity,
                     price,
                     total,
@@ -509,7 +509,7 @@ function NewSaleReturn() {
 
                 // 4) Update each stock item: change status and link to sale_return_items
                 for (const ri of items) {
-                    await StockItemsEndpoints.putUpdate(ri.stockItemDocId, {
+                    await StockItemsEndpoints.update(ri.stockItemDocId, {
                         status: ri.status,
                         sale_return_items: returnItemDocId
                             ? { connect: [returnItemDocId] }
@@ -542,7 +542,7 @@ function NewSaleReturn() {
             }
 
             // 7) Mark the sale as returned
-            await SalesEndpoints.putUpdate(saleDocId, { return_status: "Returned" });
+            await SalesEndpoints.update(saleDocId, { return_status: "Returned" });
 
             setReturnResult({
                 success: true,

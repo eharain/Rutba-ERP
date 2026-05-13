@@ -49,11 +49,11 @@ export default function ProductRelationsPage() {
             setProduct(prod);
 
             // Load stock items count
-            const itemsRes = await StockItemsEndpoints.fetchByProduct(documentId, { pageSize: 1 });
+            const itemsRes = await StockItemsEndpoints.byProduct(documentId, { pageSize: 1 });
             prod._stockItemsCount = itemsRes?.meta?.pagination?.total ?? 0;
 
             // Load purchase items count
-            const purchaseItemsRes = await PurchaseItemsEndpoints.fetchByProduct(documentId, { pageSize: 1 });
+            const purchaseItemsRes = await PurchaseItemsEndpoints.byProduct(documentId, { pageSize: 1 });
             prod._purchaseItemsCount = purchaseItemsRes?.meta?.pagination?.total ?? 0;
 
             setProduct({ ...prod });
@@ -77,7 +77,7 @@ export default function ProductRelationsPage() {
         const timer = setTimeout(async () => {
             setMergeSearchLoading(true);
             try {
-                const res = await ProductsEndpoints.fetchSearch(searchValue, { excludeDocId: documentId });
+                const res = await ProductsEndpoints.search(searchValue, { excludeDocId: documentId });
                 const data = res?.data ?? res;
                 if (isActive) setMergeResults(data || []);
             } catch (err) {
@@ -125,11 +125,11 @@ export default function ProductRelationsPage() {
                     let totalPages = 1;
                     let itemCount = 0;
                     do {
-                        const res = await StockItemsEndpoints.fetchByProduct(sourceDocId, { page, pageSize: 100 });
+                        const res = await StockItemsEndpoints.byProduct(sourceDocId, { page, pageSize: 100 });
                         const items = res?.data ?? res ?? [];
                         totalPages = res?.meta?.pagination?.pageCount || 1;
                         for (const item of items) {
-                            await StockItemsEndpoints.putUpdate(getEntryId(item), {
+                            await StockItemsEndpoints.update(getEntryId(item), {
                                 product: { connect: [documentId], disconnect: [sourceDocId] },
                             });
                             itemCount++;
@@ -145,11 +145,11 @@ export default function ProductRelationsPage() {
                     let totalPages = 1;
                     let itemCount = 0;
                     do {
-                        const res = await PurchaseItemsEndpoints.fetchByProduct(sourceDocId, { page, pageSize: 100 });
+                        const res = await PurchaseItemsEndpoints.byProduct(sourceDocId, { page, pageSize: 100 });
                         const items = res?.data ?? res ?? [];
                         totalPages = res?.meta?.pagination?.pageCount || 1;
                         for (const item of items) {
-                            await PurchaseItemsEndpoints.putUpdate(getEntryId(item), {
+                            await PurchaseItemsEndpoints.update(getEntryId(item), {
                                 product: { connect: [documentId], disconnect: [sourceDocId] },
                             });
                             itemCount++;
@@ -173,17 +173,17 @@ export default function ProductRelationsPage() {
                     if (sourceTerms.length) relPayload.terms = { connect: sourceTerms };
 
                     if (Object.keys(relPayload).length > 0) {
-                        await ProductsEndpoints.putUpdate(documentId, relPayload);
+                        await ProductsEndpoints.update(documentId, relPayload);
                         log.push(`  Transferred relations: ${Object.keys(relPayload).join(', ')}`);
                     }
                 }
 
                 // 4) Transfer variants (child products)
-                const variantsRes = await ProductsEndpoints.fetchByParent(sourceDocId);
+                const variantsRes = await ProductsEndpoints.byParent(sourceDocId);
                 const variants = variantsRes?.data ?? variantsRes ?? [];
                 if (variants.length > 0) {
                     for (const variant of variants) {
-                        await ProductsEndpoints.putUpdate(getEntryId(variant), {
+                        await ProductsEndpoints.update(getEntryId(variant), {
                             parent: { connect: [documentId], disconnect: [sourceDocId] },
                         });
                     }
@@ -192,7 +192,7 @@ export default function ProductRelationsPage() {
 
                 // 5) Optionally delete source product
                 if (deleteSource) {
-                    await ProductsEndpoints.putDelete(sourceDocId);
+                    await ProductsEndpoints.del(sourceDocId);
                     log.push(`  Deleted source product "${sourceName}"`);
                 } else {
                     log.push(`  Source product "${sourceName}" kept (not deleted)`);

@@ -18,8 +18,8 @@ export default function DeliveryDetailPage() {
   const load = () => {
     if (!jwt) return;
     Promise.all([
-      RiderEndpoints.fetchDeliveries({ status: 'active' }),
-      id ? SaleOrdersEndpoints.fetchMessages(id) : Promise.resolve({ data: [] }),
+      RiderEndpoints.deliveries({ status: 'active' }),
+      id ? SaleOrdersEndpoints.messages(id) : Promise.resolve({ data: [] }),
     ])
       .then(([dRes, mRes]) => {
         setDeliveries(dRes.data || []);
@@ -41,7 +41,7 @@ export default function DeliveryDetailPage() {
     if (!jwt || !id) return;
     try {
       setActionLoading(true);
-      await RiderEndpoints.postUpdateDeliveryStatus(id, { status });
+      await RiderEndpoints.updateDeliveryStatus(id, { status });
       load();
     } catch (err) {
       alert(err?.response?.data?.error?.message || 'Failed to update status');
@@ -55,7 +55,7 @@ export default function DeliveryDetailPage() {
     if (!msg || !jwt || !id) return;
     try {
       setActionLoading(true);
-      await SaleOrdersEndpoints.postSendMessage(id, { message: msg });
+      await SaleOrdersEndpoints.sendMessage(id, { message: msg });
       setMessageInput('');
       load();
     } catch (err) {

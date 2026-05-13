@@ -13,7 +13,7 @@ export default function DeliveryOffersPage() {
   useEffect(() => {
     if (!jwt) return;
     const load = () => {
-      RiderEndpoints.fetchDeliveryOffers()
+      RiderEndpoints.deliveryOffers()
         .then((res) => setOffers(res.data || []))
         .catch((err) => console.error('Failed to load rider delivery offers', err))
         .finally(() => setLoading(false));

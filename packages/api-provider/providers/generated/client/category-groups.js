@@ -1,5 +1,5 @@
 import { authApi } from '../../../lib/api.js';
-import { executeEndpoint } from './___core__.js';
+import { executeEndpoint, strictEndpointGuard } from './___core__.js';
 import { CategoryGroupsEndpoints as CategoryGroupsEndpointsApi } from '../../../api/category-groups.js';
 
 async function listDraft(...args) {
@@ -18,32 +18,41 @@ async function byIdPublished(...args) {
     return executeEndpoint(authApi, 'byIdPublished', CategoryGroupsEndpointsApi.byIdPublished(...args));
 }
 
-async function fetchListDraft(...args) {
-    return listDraft(...args);
+async function updateDraft(...args) {
+    return executeEndpoint(authApi, 'updateDraft', CategoryGroupsEndpointsApi.updateDraft(...args));
 }
 
-async function fetchListPublished(...args) {
-    return listPublished(...args);
+async function publish(...args) {
+    return executeEndpoint(authApi, 'publish', CategoryGroupsEndpointsApi.publish(...args));
 }
 
-async function fetchByIdDraft(...args) {
-    return byIdDraft(...args);
+async function unpublish(...args) {
+    return executeEndpoint(authApi, 'unpublish', CategoryGroupsEndpointsApi.unpublish(...args));
 }
 
-async function fetchByIdPublished(...args) {
-    return byIdPublished(...args);
+async function create(...args) {
+    return executeEndpoint(authApi, 'create', CategoryGroupsEndpointsApi.create(...args));
 }
 
-const endpoints = {
-    listDraft,
-    listPublished,
-    byIdDraft,
-    byIdPublished,
-    fetchListDraft,
-    fetchListPublished,
-    fetchByIdDraft,
-    fetchByIdPublished,
-};
+async function del(...args) {
+    return executeEndpoint(authApi, 'del', CategoryGroupsEndpointsApi.del(...args));
+}
+
+const endpoints = strictEndpointGuard(
+    'CategoryGroupsEndpoints',
+    {
+        listDraft,
+        listPublished,
+        byIdDraft,
+        byIdPublished,
+        updateDraft,
+        publish,
+        unpublish,
+        create,
+        del,
+    },
+    ["listDraft","listPublished","byIdDraft","byIdPublished","updateDraft","publish","unpublish","create","del"],
+);
 
 export default endpoints;
 export const CategoryGroupsEndpoints = endpoints;

@@ -47,8 +47,7 @@ export default function NotificationTemplateDetailPage() {
       return;
     }
 
-    NotificationTemplatesEndpoints
-      .fetchById(documentId, { populate: ["branch"] })
+    NotificationTemplatesEndpoints.byId(documentId, { populate: ["branch"] })
       .then((res) => {
         const t = res.data || res;
         setTemplate(t);
@@ -90,12 +89,12 @@ export default function NotificationTemplateDetailPage() {
     setSaving(true);
     try {
       if (isNew) {
-        const res = await NotificationTemplatesEndpoints.postCreate(buildPayload().data);
+        const res = await NotificationTemplatesEndpoints.create(buildPayload().data);
         const created = res.data || res;
         toast("Template created.", "success");
         router.push(`/${created.documentId}/notification-template`);
       } else {
-        await NotificationTemplatesEndpoints.putUpdate(documentId, buildPayload().data);
+        await NotificationTemplatesEndpoints.update(documentId, buildPayload().data);
         toast("Template updated.", "success");
       }
     } catch (err) {
@@ -111,7 +110,7 @@ export default function NotificationTemplateDetailPage() {
     if (!confirm("Are you sure you want to delete this template?")) return;
 
     try {
-      await NotificationTemplatesEndpoints.deleteById(documentId);
+      await NotificationTemplatesEndpoints.remove(documentId);
       toast("Template deleted.", "success");
       router.push("/notification-templates");
     } catch (err) {

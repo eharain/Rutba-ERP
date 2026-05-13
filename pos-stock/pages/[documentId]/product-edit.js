@@ -47,11 +47,11 @@ export default function ProductEditPage() {
             try {
                 setLoading(true);
                 const [categoriesRes, brandsRes, suppliersRes, termsRes, productsRes] = await Promise.all([
-                    CategoriesEndpoints.fetchAll({ pageSize: 100 }),
-                    BrandsEndpoints.fetchAll({ pageSize: 100 }),
-                    SuppliersEndpoints.fetchAll({ pageSize: 100 }),
-                    ProductsEndpoints.fetchList(1, 100, { sort: 'name:asc' }),
-                    ProductsEndpoints.fetchList(1, 100, { sort: 'name:asc' }),
+                    CategoriesEndpoints.listAll({ pageSize: 100 }),
+                    BrandsEndpoints.listAll({ pageSize: 100 }),
+                    SuppliersEndpoints.listAll({ pageSize: 100 }),
+                    ProductsEndpoints.list(1, 100, { sort: 'name:asc' }),
+                    ProductsEndpoints.list(1, 100, { sort: 'name:asc' }),
                 ]);
                 setCategories(categoriesRes || []);
                 setBrands(brandsRes || []);
@@ -65,7 +65,7 @@ export default function ProductEditPage() {
 
                     // Load stock_quantity as the count of Received + InStock stock items
                     try {
-                        const siRes = await StockItemsEndpoints.fetchListByProduct(documentId, { pageSize: 1 });
+                        const siRes = await StockItemsEndpoints.listByProduct(documentId, { pageSize: 1 });
                         productData.stock_quantity = siRes.meta?.pagination?.total || 0;
                     } catch (_) {
                         // keep whatever value came from the product

@@ -35,7 +35,7 @@ const PurchaseForm = ({ purchase, onSubmit, onCancel }) => {
 
     const loadSuppliers = async () => {
         try {
-            const response = await SuppliersEndpoints.fetchAll();
+            const response = await SuppliersEndpoints.listAll();
             setSuppliers(response.data || response || []);
         } catch (error) {
             console.error('Error loading suppliers:', error);
@@ -68,9 +68,9 @@ const PurchaseForm = ({ purchase, onSubmit, onCancel }) => {
             };
 
             if (purchase?.documentId) {
-                await PurchasesEndpoints.putUpdate(purchase.documentId, purchaseData);
+                await PurchasesEndpoints.update(purchase.documentId, purchaseData);
             } else {
-                await PurchasesEndpoints.postCreate(purchaseData);
+                await PurchasesEndpoints.create(purchaseData);
             }
 
             onSubmit && onSubmit();

@@ -1,5 +1,5 @@
 import { authApi } from '../../../lib/api.js';
-import { executeEndpoint } from './___core__.js';
+import { executeEndpoint, strictEndpointGuard } from './___core__.js';
 import { StockInputsEndpoints as StockInputsEndpointsApi } from '../../../api/stock-inputs.js';
 
 async function list(...args) {
@@ -26,35 +26,19 @@ async function process(...args) {
     return executeEndpoint(authApi, 'process', StockInputsEndpointsApi.process(...args));
 }
 
-async function fetchList(...args) {
-    return list(...args);
-}
-
-async function fetchById(...args) {
-    return byId(...args);
-}
-
-async function postCreate(...args) {
-    return create(...args);
-}
-
-async function putUpdate(...args) {
-    return update(...args);
-}
-
-const endpoints = {
-    list,
-    byId,
-    create,
-    update,
-    del,
-    process,
-    fetchList,
-    fetchById,
-    postCreate,
-    putUpdate,
-    meta: StockInputsEndpointsApi.meta,
-};
+const endpoints = strictEndpointGuard(
+    'StockInputsEndpoints',
+    {
+        list,
+        byId,
+        create,
+        update,
+        del,
+        process,
+        meta: StockInputsEndpointsApi.meta,
+    },
+    ["list","byId","create","update","del","process","meta"],
+);
 
 export default endpoints;
 export const StockInputsEndpoints = endpoints;

@@ -15,8 +15,8 @@ export default function Offers() {
         setLoading(true);
         try {
             const [draftRes, pubRes] = await Promise.all([
-                SaleOffersEndpoints.fetchListDraft({ sort: ["createdAt:desc"], populate: ["product_groups", "cms_pages", "categories"], pagination: { pageSize: 50 } }),
-                SaleOffersEndpoints.fetchListPublished({ pageSize: 200 }),
+                SaleOffersEndpoints.listDraft({ sort: ["createdAt:desc"], populate: ["product_groups", "cms_pages", "categories"], pagination: { pageSize: 50 } }),
+                SaleOffersEndpoints.listPublished({ pageSize: 200 }),
             ]);
             const pubIds = new Set((pubRes.data || []).map(o => o.documentId));
             const mapped = (draftRes.data || []).map(o => ({ ...o, _isPublished: pubIds.has(o.documentId) }));

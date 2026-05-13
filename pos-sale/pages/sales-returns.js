@@ -25,7 +25,7 @@ export default function SalesReturnsPage() {
     async function loadReturns() {
         setLoading(true);
         try {
-            const res = await SaleReturnsEndpoints.fetchList(page + 1, rowsPerPage, {
+            const res = await SaleReturnsEndpoints.list(page + 1, rowsPerPage, {
                 populate: { sale: true, items: { populate: { product: true } } },
             });
             setReturns(res?.data ?? []);

@@ -11,7 +11,7 @@ export default function HistoryPage() {
 
   useEffect(() => {
     if (!jwt) return;
-    RiderEndpoints.fetchDeliveries({ status: 'history' })
+    RiderEndpoints.deliveries({ status: 'history' })
       .then((res) => setHistory(res.data || []))
       .catch((err) => console.error('Failed to load history', err))
       .finally(() => setLoading(false));

@@ -44,7 +44,7 @@ export default function ArchiveStockPage() {
 
     useEffect(() => {
         (async () => {
-            const res = await BranchesEndpoints.fetchList();
+            const res = await BranchesEndpoints.list();
             setBranches(res.data || []);
         })();
         // Default cutoff: 6 months ago
@@ -57,7 +57,7 @@ export default function ArchiveStockPage() {
         if (!selectedBranch) return;
         setLoading(true);
         try {
-            const res = await BranchesEndpoints.fetchArchiveStats(selectedBranch);
+            const res = await BranchesEndpoints.archiveStats(selectedBranch);
             setStats(res.data || res);
         } catch (err) {
             console.error('Error loading stats:', err);
@@ -87,7 +87,7 @@ export default function ArchiveStockPage() {
         if (!selectedBranch) return;
         setLoadingArchived(true);
         try {
-            const res = await StockItemsEndpoints.fetchList(archivedPage + 1, archivedRowsPerPage, {
+            const res = await StockItemsEndpoints.list(archivedPage + 1, archivedRowsPerPage, {
                 branchDocId: selectedBranch,
                 showArchived: true,
                 sort: ['archived_at:desc'],
@@ -107,7 +107,7 @@ export default function ArchiveStockPage() {
         setLoading(true);
         setResult(null);
         try {
-            const res = await BranchesEndpoints.postArchiveStock(selectedBranch, {
+            const res = await BranchesEndpoints.archiveStock(selectedBranch, {
                 cutoffDate,
                 statuses: Array.from(selectedStatuses),
                 dryRun: true,
@@ -133,7 +133,7 @@ export default function ArchiveStockPage() {
         setArchiving(true);
         setResult(null);
         try {
-            const res = await BranchesEndpoints.postArchiveStock(selectedBranch, {
+            const res = await BranchesEndpoints.archiveStock(selectedBranch, {
                 cutoffDate,
                 statuses: Array.from(selectedStatuses),
                 dryRun: false,
@@ -188,7 +188,7 @@ export default function ArchiveStockPage() {
 
         setRestoringItems(true);
         try {
-            const res = await BranchesEndpoints.postUnarchiveStock(selectedBranch, {
+            const res = await BranchesEndpoints.unarchiveStock(selectedBranch, {
                 stockItemIds: Array.from(selectedArchivedItems),
             });
             const data = res.data || res;

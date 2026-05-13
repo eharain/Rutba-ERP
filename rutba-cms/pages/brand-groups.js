@@ -35,7 +35,7 @@ export default function BrandGroups() {
     const publishOne = async (docId) => {
         setPublishing(prev => ({ ...prev, [docId]: true }));
         try {
-            await BrandGroupsEndpoints.postPublish(docId);
+            await BrandGroupsEndpoints.publish(docId);
             setGroups(prev => prev.map(g => g.documentId === docId ? { ...g, _isPublished: true } : g));
             toast("Published!", "success");
         } catch (err) {
@@ -49,7 +49,7 @@ export default function BrandGroups() {
     const unpublishOne = async (docId) => {
         setPublishing(prev => ({ ...prev, [docId]: true }));
         try {
-            await BrandGroupsEndpoints.postUnpublish(docId);
+            await BrandGroupsEndpoints.unpublish(docId);
             setGroups(prev => prev.map(g => g.documentId === docId ? { ...g, _isPublished: false } : g));
             toast("Unpublished.", "success");
         } catch (err) {
@@ -67,7 +67,7 @@ export default function BrandGroups() {
         let ok = 0, fail = 0;
         for (const docId of ids) {
             setPublishing(prev => ({ ...prev, [docId]: true }));
-            try { await BrandGroupsEndpoints.postPublish(docId); ok++; setGroups(prev => prev.map(g => g.documentId === docId ? { ...g, _isPublished: true } : g)); }
+            try { await BrandGroupsEndpoints.publish(docId); ok++; setGroups(prev => prev.map(g => g.documentId === docId ? { ...g, _isPublished: true } : g)); }
             catch { fail++; }
             finally { setPublishing(prev => ({ ...prev, [docId]: false })); }
         }
@@ -82,7 +82,7 @@ export default function BrandGroups() {
         let ok = 0, fail = 0;
         for (const docId of ids) {
             setPublishing(prev => ({ ...prev, [docId]: true }));
-            try { await BrandGroupsEndpoints.postUnpublish(docId); ok++; setGroups(prev => prev.map(g => g.documentId === docId ? { ...g, _isPublished: false } : g)); }
+            try { await BrandGroupsEndpoints.unpublish(docId); ok++; setGroups(prev => prev.map(g => g.documentId === docId ? { ...g, _isPublished: false } : g)); }
             catch { fail++; }
             finally { setPublishing(prev => ({ ...prev, [docId]: false })); }
         }
@@ -95,8 +95,8 @@ export default function BrandGroups() {
         setLoading(true);
         try {
             const [draftRes, pubRes] = await Promise.all([
-                BrandGroupsEndpoints.fetchListDraft({ sort: ["sort_order:asc", "createdAt:desc"], populate: ["brands"], pagination: { pageSize: 50 } }),
-                BrandGroupsEndpoints.fetchListPublished({ pageSize: 200 }),
+                BrandGroupsEndpoints.listDraft({ sort: ["sort_order:asc", "createdAt:desc"], populate: ["brands"], pagination: { pageSize: 50 } }),
+                BrandGroupsEndpoints.listPublished({ pageSize: 200 }),
             ]);
             const pubIds = new Set((pubRes.data || []).map(g => g.documentId));
             setGroups((draftRes.data || []).map(g => ({ ...g, _isPublished: pubIds.has(g.documentId) })));

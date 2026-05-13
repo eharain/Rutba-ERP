@@ -128,9 +128,9 @@ export default function BulkStockInputs() {
     // Load reference data and pending stock-inputs
     useEffect(() => {
         Promise.all([
-            BrandsEndpoints.fetchAll(),
-            CategoriesEndpoints.fetchAll(),
-            SuppliersEndpoints.fetchAll(),
+            BrandsEndpoints.listAll(),
+            CategoriesEndpoints.listAll(),
+            SuppliersEndpoints.listAll(),
         ]).then(([b, c, s]) => {
             setBrands(b?.data || b || []);
             setCategories(c?.data || c || []);
@@ -142,7 +142,7 @@ export default function BulkStockInputs() {
     const loadPending = async () => {
         setLoadingPending(true);
         try {
-            const res = await StockInputsEndpoints.fetchList({
+            const res = await StockInputsEndpoints.list({
                 filters: { processed: false },
                 sort: ['createdAt:desc'],
                 pagination: { pageSize: 200 },
@@ -221,7 +221,7 @@ export default function BulkStockInputs() {
         const errors = [];
         for (const r of validRows) {
             try {
-                await StockInputsEndpoints.postCreate({
+                await StockInputsEndpoints.create({
                         productName: String(r.productName).trim(),
                         quantity: toNum(r.quantity) || 1,
                         sellableUnits: toNum(r.sellableUnits) || 1,
@@ -261,7 +261,7 @@ export default function BulkStockInputs() {
         setProcessing(true);
         setAlert(null);
         try {
-            const res = await StockInputsEndpoints.postProcess(documentIds);
+            const res = await StockInputsEndpoints.process(documentIds);
             setAlert({
                 type: res.failed > 0 ? 'warning' : 'success',
                 message: `Processed ${res.processed} input(s): ${res.ok} succeeded, ${res.failed} failed.`,
@@ -277,7 +277,7 @@ export default function BulkStockInputs() {
 
     const handleToggleProcess = async (documentId, currentValue) => {
         try {
-            await StockInputsEndpoints.putUpdate(documentId, { process: !currentValue });
+            await StockInputsEndpoints.update(documentId, { process: !currentValue });
             setPending((prev) => prev.map((si) =>
                 si.documentId === documentId ? { ...si, process: !currentValue } : si
             ));
@@ -290,7 +290,7 @@ export default function BulkStockInputs() {
         if (selected.size === 0) return;
         for (const docId of selected) {
             try {
-                await StockInputsEndpoints.putUpdate(docId, { process: markAs });
+                await StockInputsEndpoints.update(docId, { process: markAs });
             } catch (err) {
                 console.error('Mark error for', docId, err);
             }
@@ -302,7 +302,7 @@ export default function BulkStockInputs() {
 
     const handleDeletePending = async (documentId) => {
         try {
-            await StockInputsEndpoints.putDelete(documentId);
+            await StockInputsEndpoints.del(documentId);
             setSelected((prev) => { const next = new Set(prev); next.delete(documentId); return next; });
             await loadPending();
         } catch (err) {
@@ -317,7 +317,7 @@ export default function BulkStockInputs() {
         let deleted = 0;
         for (const docId of selected) {
             try {
-                await StockInputsEndpoints.putDelete(docId);
+                await StockInputsEndpoints.del(docId);
                 deleted++;
             } catch (err) {
                 console.error('Delete error for', docId, err);
@@ -335,7 +335,7 @@ export default function BulkStockInputs() {
         let deleted = 0;
         for (const si of pending) {
             try {
-                await StockInputsEndpoints.putDelete(si.documentId);
+                await StockInputsEndpoints.del(si.documentId);
                 deleted++;
             } catch (err) {
                 console.error('Delete error for', si.documentId, err);

@@ -72,11 +72,11 @@ export default function ProductPickerTabs({ selectedProductIds, connectedProduct
         (async () => {
             try {
                 const [brandsRes, categoriesRes, suppliersRes, termTypesRes, purchasesRes] = await Promise.all([
-                    BrandsEndpoints.fetchAll(),
-                    CategoriesEndpoints.fetchAll(),
-                    SuppliersEndpoints.fetchAll(),
-                    TermTypesEndpoints.fetchAllWithTerms(),
-                    PurchasesEndpoints.fetchAll({ sort: ["createdAt:desc"] }),
+                    BrandsEndpoints.listAll(),
+                    CategoriesEndpoints.listAll(),
+                    SuppliersEndpoints.listAll(),
+                    TermTypesEndpoints.listWithTerms(),
+                    PurchasesEndpoints.list({ sort: ["createdAt:desc"] }),
                 ]);
                 setBrands(brandsRes?.data || brandsRes || []);
                 setCategories(categoriesRes?.data || categoriesRes || []);

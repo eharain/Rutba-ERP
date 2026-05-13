@@ -57,7 +57,7 @@ export default function MediaPage() {
     const loadFolders = useCallback(async () => {
         if (!jwt) return;
         try {
-            const res = await MediaLibraryEndpoints.fetchFoldersTree();
+            const res = await MediaLibraryEndpoints.foldersTree();
             setFolderTree(res.data || []);
         } catch (err) {
             console.error('Failed to load folder tree', err);
@@ -71,7 +71,7 @@ export default function MediaPage() {
         try {
             const parentId = (currentFolderId && currentFolderId !== 'all' && currentFolderId !== 'root')
                 ? Number(currentFolderId) : null;
-            await MediaLibraryEndpoints.postCreateFolder({ name: newFolderName.trim(), parent: parentId });
+            await MediaLibraryEndpoints.createFolder({ name: newFolderName.trim(), parent: parentId });
             setNewFolderName('');
             setCreatingFolder(false);
             toast('Folder created.', 'success');
@@ -85,7 +85,7 @@ export default function MediaPage() {
     const handleRenameFolder = async (folderId) => {
         if (!renameValue.trim()) return;
         try {
-            await MediaLibraryEndpoints.putRenameFolder(folderId, { name: renameValue.trim() });
+            await MediaLibraryEndpoints.renameFolder(folderId, { name: renameValue.trim() });
             setRenamingFolderId(null);
             setRenameValue('');
             toast('Folder renamed.', 'success');
@@ -100,7 +100,7 @@ export default function MediaPage() {
         e.stopPropagation();
         if (!confirm('Delete this folder? Files will be moved to the root.')) return;
         try {
-            await MediaLibraryEndpoints.delFolder(folderId);
+            await MediaLibraryEndpoints.deleteFolder(folderId);
             if (String(currentFolderId) === String(folderId)) setCurrentFolderId('all');
             toast('Folder deleted.', 'success');
             await loadFolders();
@@ -143,7 +143,7 @@ export default function MediaPage() {
                 params.mime = 'other';
             }
 
-            const res = await MediaLibraryEndpoints.fetchFiles(params);
+            const res = await MediaLibraryEndpoints.files(params);
             setFiles(res.data || []);
             setPageCount(res.meta?.pagination?.pageCount || 1);
             setTotalCount(res.meta?.pagination?.total || 0);
@@ -168,7 +168,7 @@ export default function MediaPage() {
             const uploaded = await MediaLibraryEndpoints.uploadFile(newFiles, { name: null, alt: null, caption: null }, null, null, null);
             if (folderId && uploaded) {
                 const ids = (Array.isArray(uploaded) ? uploaded : [uploaded]).map(f => f.id);
-                await MediaLibraryEndpoints.postMoveFiles({
+                await MediaLibraryEndpoints.moveFiles({
                     fileIds: ids,
                     targetFolderId: Number(folderId),
                 });
@@ -203,7 +203,7 @@ export default function MediaPage() {
     const handleUpdateMeta = async () => {
         if (!selectedFile) return;
         try {
-            await MediaLibraryEndpoints.putUpdateFileInfo(selectedFile.id, {
+            await MediaLibraryEndpoints.updateFileInfo(selectedFile.id, {
                 name: selectedFile.name,
                 alternativeText: selectedFile.alternativeText,
                 caption: selectedFile.caption,
@@ -241,7 +241,7 @@ export default function MediaPage() {
         if (!id || isNaN(id)) { toast('Enter a valid file ID.', 'warning'); return; }
         setPasteIdLoading(true);
         try {
-            const res = await MediaLibraryEndpoints.fetchFile(id);
+            const res = await MediaLibraryEndpoints.file(id);
             const file = res.data;
             if (!file) { toast('File not found.', 'warning'); return; }
             setSelectedFile(file);
@@ -276,7 +276,7 @@ export default function MediaPage() {
             const uploaded = await MediaLibraryEndpoints.uploadFile(imageFiles, { name: null, alt: null, caption: null }, null, null, null);
             if (folderId && uploaded) {
                 const ids = (Array.isArray(uploaded) ? uploaded : [uploaded]).map(f => f.id);
-                await MediaLibraryEndpoints.postMoveFiles({
+                await MediaLibraryEndpoints.moveFiles({
                     fileIds: ids,
                     targetFolderId: Number(folderId),
                 });
@@ -321,7 +321,7 @@ export default function MediaPage() {
         }
         if (ids.length === 0) return;
         try {
-            await MediaLibraryEndpoints.postMoveFiles({
+            await MediaLibraryEndpoints.moveFiles({
                 fileIds: ids.map(Number),
                 targetFolderId: targetFolderId === 'root' ? null : Number(targetFolderId),
             });
@@ -341,7 +341,7 @@ export default function MediaPage() {
             : (selectedFile ? [selectedFile.id] : []);
         if (ids.length === 0) return;
         try {
-            await MediaLibraryEndpoints.postMoveFiles({
+            await MediaLibraryEndpoints.moveFiles({
                 fileIds: ids.map(Number),
                 targetFolderId: targetFolderId === 'root' ? null : Number(targetFolderId),
             });

@@ -105,9 +105,9 @@ export default function EditProduct() {
 
                 // Fetch categories, brands, suppliers, and stock statuses
                 const [categoriesRes, brandsRes, suppliersRes, statusRes] = await Promise.all([
-                    fetchAllRecords(p => CategoriesEndpoints.fetchList({ page: p, pageSize: 100 })),
-                    fetchAllRecords(p => BrandsEndpoints.fetchList({ page: p, pageSize: 100 })),
-                    fetchAllRecords(p => SuppliersEndpoints.fetchList({ page: p, pageSize: 100 })),
+                    fetchAllRecords(p => CategoriesEndpoints.list({ page: p, pageSize: 100 })),
+                    fetchAllRecords(p => BrandsEndpoints.list({ page: p, pageSize: 100 })),
+                    fetchAllRecords(p => SuppliersEndpoints.list({ page: p, pageSize: 100 })),
                     StockHelpersEndpoints.getStockStatus()
                 ]);
 
@@ -127,7 +127,7 @@ export default function EditProduct() {
 
                     // Override with most recent stock item's barcode prefix if available
                     try {
-                        const res = await StockItemsEndpoints.fetchListByProduct(documentId, {
+                        const res = await StockItemsEndpoints.listByProduct(documentId, {
                             page: 1,
                             pageSize: 5,
                             fields: ['barcode'],
@@ -161,7 +161,7 @@ export default function EditProduct() {
         if (!documentId || documentId === 'new') return;
         setStockItemsLoading(true);
         try {
-            const response = await StockItemsEndpoints.fetchListByProduct(documentId, { statusFilter, page: 1, pageSize: 1000 });
+            const response = await StockItemsEndpoints.listByProduct(documentId, { statusFilter, page: 1, pageSize: 1000 });
             const data = response.data || [];
             setStockItems(data);
             setStockItemsTotal(response.meta?.pagination?.total || 0);
@@ -214,7 +214,7 @@ export default function EditProduct() {
 
             const ids = Array.from(selectedStockItems);
             for (const id of ids) {
-                await StockItemsEndpoints.putUpdate(id, updates);
+                await StockItemsEndpoints.update(id, updates);
             }
 
             setSuccess(`Applied changes to ${ids.length} stock item(s)`);
@@ -271,7 +271,7 @@ export default function EditProduct() {
                     branch: branch?.documentId || branch?.id || undefined,
                 };
 
-                await StockItemsEndpoints.postCreate(data);
+                await StockItemsEndpoints.create(data);
             }
 
             setSuccess(`Created ${addQty} new stock item(s)`);
@@ -292,7 +292,7 @@ export default function EditProduct() {
         setScanAdding(true);
         setError('');
         try {
-            const existing = await StockItemsEndpoints.fetchCheckBarcode(code);
+            const existing = await StockItemsEndpoints.checkBarcode(code);
             if (existing?.data?.length > 0) {
                 setError(`Barcode "${code}" is already in use by another stock item`);
                 setScanAdding(false);
@@ -314,7 +314,7 @@ export default function EditProduct() {
                 branch: branch?.documentId || branch?.id || undefined,
             };
 
-            await StockItemsEndpoints.postCreate(data);
+            await StockItemsEndpoints.create(data);
             setSuccess(`Stock item created with barcode "${code}"`);
             setScanBarcode('');
             if (scanInputRef.current) scanInputRef.current.focus();
@@ -334,7 +334,7 @@ export default function EditProduct() {
         setAttachLoading(true);
         setError('');
         try {
-            const res = await StockItemsEndpoints.fetchByBarcode(code);
+            const res = await StockItemsEndpoints.searchByBarcode(code);
             const items = res?.data || [];
             if (items.length === 0) {
                 setError(`No stock item found with barcode "${code}"`);
@@ -345,7 +345,7 @@ export default function EditProduct() {
             const item = items[0];
             const itemId = item.documentId || item.id;
 
-            await StockItemsEndpoints.putUpdate(itemId, {
+            await StockItemsEndpoints.update(itemId, {
                 product: documentId,
                 name: product.name,
                 selling_price: parseFloat(product.selling_price) || 0,
@@ -373,7 +373,7 @@ export default function EditProduct() {
         try {
             const ids = Array.from(selectedStockItems);
             for (const id of ids) {
-                await StockItemsEndpoints.putUpdate(id, { barcode: product.barcode });
+                await StockItemsEndpoints.update(id, { barcode: product.barcode });
             }
             setSuccess(`Assigned product barcode "${product.barcode}" to ${ids.length} stock item(s)`);
             fetchStockItems(stockStatusFilter);
@@ -392,7 +392,7 @@ export default function EditProduct() {
         setMultiScanAdding(true);
         setError('');
         try {
-            const existing = await StockItemsEndpoints.fetchCheckBarcode(code);
+            const existing = await StockItemsEndpoints.checkBarcode(code);
             if (existing?.data?.length > 0) {
                 setError(`Barcode "${code}" is already in use by another stock item`);
                 setMultiScanAdding(false);
@@ -414,7 +414,7 @@ export default function EditProduct() {
                 branch: branch?.documentId || branch?.id || undefined,
             };
 
-            const res = await StockItemsEndpoints.postCreate(data);
+            const res = await StockItemsEndpoints.create(data);
             setMultiScanItems(prev => [
                 { barcode: code, sku: data.sku, id: res.data?.documentId || res.data?.id, time: new Date().toLocaleTimeString() },
                 ...prev

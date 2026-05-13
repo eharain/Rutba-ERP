@@ -128,7 +128,7 @@ function FileView({ onFileChange = function (field, files, multiple) { }, single
         if (!id || isNaN(id)) return;
         setPasteIdLoading(true);
         try {
-            const res = await MediaLibraryEndpoints.fetchFile(id);
+            const res = await MediaLibraryEndpoints.file(id);
             const file = res.data;
             if (!file) return;
             handleMediaLibrarySelect([file]);

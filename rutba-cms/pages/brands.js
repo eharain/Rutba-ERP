@@ -36,7 +36,7 @@ export default function Brands() {
     const publishOne = async (docId) => {
         setPublishing(prev => ({ ...prev, [docId]: true }));
         try {
-            await BrandsEndpoints.postPublish(docId);
+            await BrandsEndpoints.publish(docId);
             setBrands(prev => prev.map(b => b.documentId === docId ? { ...b, _isPublished: true } : b));
             toast("Published!", "success");
         } catch (err) {
@@ -50,7 +50,7 @@ export default function Brands() {
     const unpublishOne = async (docId) => {
         setPublishing(prev => ({ ...prev, [docId]: true }));
         try {
-            await BrandsEndpoints.postUnpublish(docId);
+            await BrandsEndpoints.unpublish(docId);
             setBrands(prev => prev.map(b => b.documentId === docId ? { ...b, _isPublished: false } : b));
             toast("Unpublished.", "success");
         } catch (err) {
@@ -68,7 +68,7 @@ export default function Brands() {
         let ok = 0, fail = 0;
         for (const docId of ids) {
             setPublishing(prev => ({ ...prev, [docId]: true }));
-            try { await BrandsEndpoints.postPublish(docId); ok++; setBrands(prev => prev.map(b => b.documentId === docId ? { ...b, _isPublished: true } : b)); }
+            try { await BrandsEndpoints.publish(docId); ok++; setBrands(prev => prev.map(b => b.documentId === docId ? { ...b, _isPublished: true } : b)); }
             catch { fail++; }
             finally { setPublishing(prev => ({ ...prev, [docId]: false })); }
         }
@@ -83,7 +83,7 @@ export default function Brands() {
         let ok = 0, fail = 0;
         for (const docId of ids) {
             setPublishing(prev => ({ ...prev, [docId]: true }));
-            try { await BrandsEndpoints.postUnpublish(docId); ok++; setBrands(prev => prev.map(b => b.documentId === docId ? { ...b, _isPublished: false } : b)); }
+            try { await BrandsEndpoints.unpublish(docId); ok++; setBrands(prev => prev.map(b => b.documentId === docId ? { ...b, _isPublished: false } : b)); }
             catch { fail++; }
             finally { setPublishing(prev => ({ ...prev, [docId]: false })); }
         }
@@ -98,8 +98,8 @@ export default function Brands() {
             const draftEp = BrandsEndpoints.listDraft(search.trim() ? { search: search.trim() } : {});
             const pubEp = BrandsEndpoints.listPublished();
             const [draftRes, pubRes] = await Promise.all([
-                BrandsEndpoints.fetchList({ search: search.trim() || undefined }),
-                BrandsEndpoints.fetchListPublished(),
+                BrandsEndpoints.list({ search: search.trim() || undefined }),
+                BrandsEndpoints.listPublished(),
             ]);
             const pubIds = new Set((pubRes.data || []).map(b => b.documentId));
             setBrands((draftRes.data || []).map(b => ({ ...b, _isPublished: pubIds.has(b.documentId) })));

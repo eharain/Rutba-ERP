@@ -1,8 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { toLegacyAlias } from './scaffold__property_mapper__.js';
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const packageRoot = path.resolve(__dirname, '..');
@@ -34,31 +32,56 @@ function scaffoldDirectoryIndexes(rootDir) {
     for (const dir of directories) {
         const entries = fs.readdirSync(dir, { withFileTypes: true });
 
-        const fileExports = entries
+        const jsFiles = entries
             .filter((entry) => entry.isFile())
             .map((entry) => entry.name)
             .filter((name) => name.endsWith('.js') && name !== 'index.js')
             .filter((name) => name !== '__client_core__.js')
-            .sort((a, b) => a.localeCompare(b))
-            .map((name) => `export * from './${name}';`);
+            .sort((a, b) => a.localeCompare(b));
 
-        const dirExports = entries
+        const dtsFiles = entries
+            .filter((entry) => entry.isFile())
+            .map((entry) => entry.name)
+            .filter((name) => name.endsWith('.d.ts') && name !== 'index.d.ts')
+            .sort((a, b) => a.localeCompare(b));
+
+        const subDirs = entries
             .filter((entry) => entry.isDirectory())
             .map((entry) => entry.name)
-            .sort((a, b) => a.localeCompare(b))
-            .map((name) => `export * from './${name}/index.js';`);
+            .sort((a, b) => a.localeCompare(b));
 
-        const lines = [...fileExports, ...dirExports];
-        const indexPath = path.join(dir, 'index.js');
+        const fileExports = jsFiles.map((name) => `export * from './${name}';`);
+        const dirExports = subDirs.map((name) => `export * from './${name}/index.js';`);
+        const jsLines = [...fileExports, ...dirExports];
+        const indexJsPath = path.join(dir, 'index.js');
 
-        if (lines.length === 0) {
-            if (fs.existsSync(indexPath)) {
-                fs.unlinkSync(indexPath);
+        if (jsLines.length === 0) {
+            if (fs.existsSync(indexJsPath)) {
+                fs.unlinkSync(indexJsPath);
+            }
+        } else {
+            fs.writeFileSync(indexJsPath, `${jsLines.join('\n')}\n`, 'utf8');
+        }
+
+        const dtsFileExports = dtsFiles.map((name) => `export * from './${name.replace(/\.d\.ts$/, '')}';`);
+        const dtsDirExports = subDirs
+            .filter((name) => fs.existsSync(path.join(dir, name, 'index.d.ts')))
+            .map((name) => `export * from './${name}';`);
+        const dtsLines = [...dtsFileExports, ...dtsDirExports];
+        const indexDtsPath = path.join(dir, 'index.d.ts');
+
+        if (dtsLines.length === 0) {
+            if (fs.existsSync(indexDtsPath)) {
+                fs.unlinkSync(indexDtsPath);
             }
             continue;
         }
 
-        fs.writeFileSync(indexPath, `${lines.join('\n')}\n`, 'utf8');
+        fs.writeFileSync(
+            indexDtsPath,
+            `// AUTO-GENERATED — do not edit.\n${dtsLines.join('\n')}\n`,
+            'utf8',
+        );
     }
 }
 
@@ -293,11 +316,25 @@ function readExportedObjectLiteral(source, exportName) {
     let inSingle = false;
     let inDouble = false;
     let inTemplate = false;
+    let inLineComment = false;
+    let inBlockComment = false;
     let escaped = false;
 
     for (let i = openIndex; i < source.length; i += 1) {
         const ch = source[i];
+        const next = source[i + 1];
 
+        if (inLineComment) {
+            if (ch === '\n') inLineComment = false;
+            continue;
+        }
+        if (inBlockComment) {
+            if (ch === '*' && next === '/') {
+                inBlockComment = false;
+                i += 1;
+            }
+            continue;
+        }
         if ((inSingle || inDouble || inTemplate) && ch === '\\' && !escaped) {
             escaped = true;
             continue;
@@ -307,6 +344,8 @@ function readExportedObjectLiteral(source, exportName) {
         else if (inDouble && ch === '"' && !escaped) inDouble = false;
         else if (inTemplate && ch === '`' && !escaped) inTemplate = false;
         else if (!inSingle && !inDouble && !inTemplate) {
+            if (ch === '/' && next === '/') { inLineComment = true; i += 1; continue; }
+            if (ch === '/' && next === '*') { inBlockComment = true; i += 1; continue; }
             if (ch === "'") inSingle = true;
             else if (ch === '"') inDouble = true;
             else if (ch === '`') inTemplate = true;
@@ -334,11 +373,28 @@ function splitTopLevelProperties(objectBody) {
     let inSingle = false;
     let inDouble = false;
     let inTemplate = false;
+    let inLineComment = false;
+    let inBlockComment = false;
     let escaped = false;
 
     for (let i = 0; i < objectBody.length; i += 1) {
         const ch = objectBody[i];
+        const next = objectBody[i + 1];
 
+        if (inLineComment) {
+            token += ch;
+            if (ch === '\n') inLineComment = false;
+            continue;
+        }
+        if (inBlockComment) {
+            token += ch;
+            if (ch === '*' && next === '/') {
+                token += next;
+                i += 1;
+                inBlockComment = false;
+            }
+            continue;
+        }
         if ((inSingle || inDouble || inTemplate) && ch === '\\' && !escaped) {
             token += ch;
             escaped = true;
@@ -346,6 +402,16 @@ function splitTopLevelProperties(objectBody) {
         }
 
         if (!inSingle && !inDouble && !inTemplate) {
+            if (ch === '/' && next === '/') {
+                inLineComment = true;
+                token += ch;
+                continue;
+            }
+            if (ch === '/' && next === '*') {
+                inBlockComment = true;
+                token += ch;
+                continue;
+            }
             if (ch === '{') curlies += 1;
             else if (ch === '}') curlies -= 1;
             else if (ch === '[') brackets += 1;
@@ -373,13 +439,90 @@ function splitTopLevelProperties(objectBody) {
     return parts;
 }
 
+/**
+ * Strip leading whitespace + JS comments (line or block, possibly multiple)
+ * from the head of a string. Returns the remaining content unchanged.
+ */
+function stripLeadingComments(input) {
+    let s = input;
+    while (true) {
+        const trimmed = s.replace(/^\s+/, '');
+        if (trimmed.startsWith('//')) {
+            const nl = trimmed.indexOf('\n');
+            s = nl < 0 ? '' : trimmed.slice(nl + 1);
+            continue;
+        }
+        if (trimmed.startsWith('/*')) {
+            const end = trimmed.indexOf('*/');
+            s = end < 0 ? '' : trimmed.slice(end + 2);
+            continue;
+        }
+        return trimmed;
+    }
+}
+
+function extractParenContent(source, openIndex) {
+    if (source[openIndex] !== '(') return null;
+    let depth = 0;
+    let inSingle = false;
+    let inDouble = false;
+    let inTemplate = false;
+    let escaped = false;
+
+    for (let i = openIndex; i < source.length; i += 1) {
+        const ch = source[i];
+
+        if (escaped) {
+            escaped = false;
+            continue;
+        }
+        if (inSingle || inDouble || inTemplate) {
+            if (ch === '\\') { escaped = true; continue; }
+            if (inSingle && ch === "'") inSingle = false;
+            else if (inDouble && ch === '"') inDouble = false;
+            else if (inTemplate && ch === '`') inTemplate = false;
+            continue;
+        }
+
+        if (ch === "'") inSingle = true;
+        else if (ch === '"') inDouble = true;
+        else if (ch === '`') inTemplate = true;
+        else if (ch === '(') depth += 1;
+        else if (ch === ')') {
+            depth -= 1;
+            if (depth === 0) return source.slice(openIndex + 1, i);
+        }
+    }
+
+    return null;
+}
+
+function extractParamsFromValue(valuePart) {
+    let trimmed = valuePart.replace(/^async\s+/, '').trimStart();
+
+    if (trimmed.startsWith('function')) {
+        trimmed = trimmed.replace(/^function\s*(?:[A-Za-z_$][\w$]*)?\s*/, '');
+    }
+
+    if (trimmed.startsWith('(')) {
+        return extractParenContent(trimmed, 0) ?? '';
+    }
+
+    const singleArrowMatch = trimmed.match(/^([A-Za-z_$][\w$]*)\s*=>/);
+    if (singleArrowMatch) return singleArrowMatch[1];
+
+    return '';
+}
+
 function parseTopLevelProperty(part) {
-    const prop = part.replace(/^\/\*[\s\S]*?\*\//g, '').replace(/^\/\/.*$/gm, '').trim();
+    const prop = stripLeadingComments(part).trim();
     if (!prop) return null;
 
     const methodMatch = prop.match(/^([A-Za-z_$][\w$]*)\s*\(/);
     if (methodMatch) {
-        return { key: methodMatch[1], isFunction: true };
+        const openIndex = prop.indexOf('(');
+        const params = openIndex >= 0 ? (extractParenContent(prop, openIndex) ?? '') : '';
+        return { key: methodMatch[1], isFunction: true, params };
     }
 
     const quotedKeyMatch = prop.match(/^(?:'([^']+)'|"([^"]+)"|`([^`]+)`|([A-Za-z_$][\w$]*))\s*:/);
@@ -392,7 +535,106 @@ function parseTopLevelProperty(part) {
         || /^function\b/.test(valuePart)
         || /^async\s+function\b/.test(valuePart);
 
-    return { key, isFunction };
+    const params = isFunction ? extractParamsFromValue(valuePart) : '';
+
+    return { key, isFunction, params };
+}
+
+function splitParamList(paramsRaw) {
+    const trimmed = paramsRaw.trim();
+    if (!trimmed) return [];
+    return splitTopLevelProperties(trimmed)
+        .map((p) => p.trim())
+        .filter(Boolean);
+}
+
+function splitParamAtTopLevelEquals(paramRaw) {
+    let depth = 0;
+    let inSingle = false;
+    let inDouble = false;
+    let inTemplate = false;
+    let escaped = false;
+
+    for (let i = 0; i < paramRaw.length; i += 1) {
+        const ch = paramRaw[i];
+
+        if (escaped) { escaped = false; continue; }
+        if (inSingle || inDouble || inTemplate) {
+            if (ch === '\\') { escaped = true; continue; }
+            if (inSingle && ch === "'") inSingle = false;
+            else if (inDouble && ch === '"') inDouble = false;
+            else if (inTemplate && ch === '`') inTemplate = false;
+            continue;
+        }
+
+        if (ch === "'") inSingle = true;
+        else if (ch === '"') inDouble = true;
+        else if (ch === '`') inTemplate = true;
+        else if (ch === '{' || ch === '[' || ch === '(') depth += 1;
+        else if (ch === '}' || ch === ']' || ch === ')') depth -= 1;
+        else if (ch === '=' && depth === 0) {
+            return { name: paramRaw.slice(0, i).trim(), hasDefault: true };
+        }
+    }
+
+    return { name: paramRaw.trim(), hasDefault: false };
+}
+
+function toDtsParam(paramRaw) {
+    const { name, hasDefault } = splitParamAtTopLevelEquals(paramRaw);
+    if (!name) return '';
+    if (name.startsWith('...')) return `${name}: any[]`;
+    return `${name}${hasDefault ? '?' : ''}: any`;
+}
+
+function buildDtsParamList(paramsRaw) {
+    return splitParamList(paramsRaw)
+        .map(toDtsParam)
+        .filter(Boolean)
+        .join(', ');
+}
+
+/**
+ * Spread-helper expansions. The /api descriptors import these helpers from
+ * `__publish_generic_helper.js` and use them via object spread:
+ *
+ *     ...__publish_generic_helper('cms-pages'),
+ *
+ * The static parser cannot resolve the spread at runtime, so we hard-code the
+ * helper shapes here. Keep this in sync with `api/__publish_generic_helper.js`.
+ */
+const SPREAD_HELPER_SHAPES = {
+    __publish_generic_helper: [
+        { key: 'updateDraft', isFunction: true, params: 'documentId, data' },
+        { key: 'publish', isFunction: true, params: 'documentId' },
+        { key: 'unpublish', isFunction: true, params: 'documentId' },
+        { key: 'create', isFunction: true, params: 'data' },
+        { key: 'del', isFunction: true, params: 'documentId' },
+    ],
+    publishMethods: [
+        { key: 'updateDraft', isFunction: true, params: 'documentId, data' },
+        { key: 'publish', isFunction: true, params: 'documentId' },
+        { key: 'unpublish', isFunction: true, params: 'documentId' },
+    ],
+    standard: [
+        { key: 'create', isFunction: true, params: 'data' },
+        { key: 'del', isFunction: true, params: 'documentId' },
+    ],
+};
+
+function parseSpreadHelper(part) {
+    const trimmed = stripLeadingComments(part).trim();
+    if (!trimmed.startsWith('...')) return null;
+
+    const afterSpread = trimmed.slice(3).trimStart();
+    const helperMatch = afterSpread.match(/^([A-Za-z_$][\w$]*)\s*\(/);
+    if (!helperMatch) return null;
+
+    const helperName = helperMatch[1];
+    const shape = SPREAD_HELPER_SHAPES[helperName];
+    if (!shape) return null;
+
+    return shape.map((entry) => ({ ...entry }));
 }
 
 function loadApiShape(apiRelativePath, exportName) {
@@ -404,9 +646,28 @@ function loadApiShape(apiRelativePath, exportName) {
         throw new Error(`Unable to parse API export ${exportName} from ${apiRelativePath}`);
     }
 
-    const properties = splitTopLevelProperties(objectBody)
-        .map(parseTopLevelProperty)
-        .filter(Boolean);
+    const parts = splitTopLevelProperties(objectBody);
+    const properties = [];
+    const seenKeys = new Set();
+
+    for (const part of parts) {
+        const spreadShape = parseSpreadHelper(part);
+        if (spreadShape) {
+            for (const entry of spreadShape) {
+                if (!seenKeys.has(entry.key)) {
+                    properties.push(entry);
+                    seenKeys.add(entry.key);
+                }
+            }
+            continue;
+        }
+
+        const parsed = parseTopLevelProperty(part);
+        if (!parsed) continue;
+        if (seenKeys.has(parsed.key)) continue;
+        properties.push(parsed);
+        seenKeys.add(parsed.key);
+    }
 
     if (properties.length === 0) {
         throw new Error(`No properties found for API export ${exportName} in ${apiRelativePath}`);
@@ -415,7 +676,7 @@ function loadApiShape(apiRelativePath, exportName) {
     return properties;
 }
 
-function buildProviderFileContent(parsed, apiShape, imports) {
+function buildProviderArtifacts(parsed, apiShape, imports) {
     const clientName = parsed.clientName ?? 'authApi';
 
     const functionEntries = apiShape.filter((entry) => entry.isFunction);
@@ -424,8 +685,9 @@ function buildProviderFileContent(parsed, apiShape, imports) {
     const methodLines = [];
     const endpointPropertyLines = [];
     const methodNameByKey = new Map();
+    const dtsMembers = [];
 
-    functionEntries.forEach(({ key }) => {
+    functionEntries.forEach(({ key, params }) => {
         const functionName = isValidIdentifier(key) ? key : `_endpoint_${key.replace(/[^A-Za-z0-9_$]/g, '_')}`;
         methodNameByKey.set(key, functionName);
 
@@ -439,21 +701,10 @@ function buildProviderFileContent(parsed, apiShape, imports) {
         endpointPropertyLines.push(isValidIdentifier(key)
             ? `    ${key},`
             : `    '${key}': ${functionName},`);
-    });
 
-    const usedAliases = new Set(apiShape.map((entry) => entry.key));
-    functionEntries.forEach(({ key }) => {
-        const alias = toLegacyAlias(key);
-        if (!alias || usedAliases.has(alias)) return;
-        usedAliases.add(alias);
-
-        const targetMethod = methodNameByKey.get(key);
-        methodLines.push(`async function ${alias}(...args) {`);
-        methodLines.push(`    return ${targetMethod}(...args);`);
-        methodLines.push('}');
-        methodLines.push('');
-
-        endpointPropertyLines.push(`    ${alias},`);
+        const dtsParams = buildDtsParamList(params ?? '');
+        const memberKey = isValidIdentifier(key) ? key : JSON.stringify(key);
+        dtsMembers.push(`    ${memberKey}(${dtsParams}): Promise<any>;`);
     });
 
     nonFunctionEntries.forEach(({ key }) => {
@@ -461,22 +712,52 @@ function buildProviderFileContent(parsed, apiShape, imports) {
         endpointPropertyLines.push(isValidIdentifier(key)
             ? `    ${key}: ${apiRef},`
             : `    '${key}': ${apiRef},`);
+
+        const memberKey = isValidIdentifier(key) ? key : JSON.stringify(key);
+        dtsMembers.push(`    ${memberKey}: any;`);
     });
 
-    return [
+    const allowedKeysLiteral = JSON.stringify(
+        endpointPropertyLines
+            .map((line) => {
+                const m = line.match(/^\s*(?:'([^']+)'|([A-Za-z_$][\w$]*))/);
+                return m ? (m[1] ?? m[2]) : null;
+            })
+            .filter(Boolean),
+    );
+
+    const js = [
         `import { ${clientName} } from '${imports.libApiImportPath}';`,
-        `import { executeEndpoint } from '${imports.coreImportPath}';`,
+        `import { executeEndpoint, strictEndpointGuard } from '${imports.coreImportPath}';`,
         `import { ${parsed.apiExportName} as ${parsed.apiAliasName} } from '${imports.apiImportPath}';`,
         '',
         ...methodLines,
-        'const endpoints = {',
-        ...endpointPropertyLines,
-        '};',
+        'const endpoints = strictEndpointGuard(',
+        `    '${parsed.endpointExportName}',`,
+        '    {',
+        ...endpointPropertyLines.map((line) => `    ${line}`),
+        '    },',
+        `    ${allowedKeysLiteral},`,
+        ');',
         '',
         'export default endpoints;',
         `export const ${parsed.endpointExportName} = endpoints;`,
         '',
     ].join('\n');
+
+    const dts = [
+        '// AUTO-GENERATED — do not edit. Source: scaffold-endpoint-providers.mjs',
+        `export interface ${parsed.endpointExportName}Type {`,
+        ...dtsMembers,
+        '}',
+        '',
+        `export const ${parsed.endpointExportName}: ${parsed.endpointExportName}Type;`,
+        `declare const _default: ${parsed.endpointExportName}Type;`,
+        'export default _default;',
+        '',
+    ].join('\n');
+
+    return { js, dts };
 }
 
 function migrateEndpointFileContent(fileName, parsed, source) {
@@ -603,12 +884,13 @@ async function main() {
         const providerDir = path.dirname(providerPath);
         const apiAbsPath = path.join(packageRoot, toApiRelativePath(parsed));
         const apiShape = loadApiShape(toApiRelativePath(parsed), parsed.apiExportName);
-        const providerContent = normalizeSpacing(buildProviderFileContent(parsed, apiShape, {
+        const { js: providerJs, dts: providerDts } = buildProviderArtifacts(parsed, apiShape, {
             libApiImportPath: toImportPath(providerDir, path.join(packageRoot, 'lib', 'api.js')),
             coreImportPath: toImportPath(providerDir, coreOutputPath),
             apiImportPath: toImportPath(providerDir, apiAbsPath),
-        }));
-        fs.writeFileSync(providerPath, providerContent, 'utf8');
+        });
+        fs.writeFileSync(providerPath, normalizeSpacing(providerJs), 'utf8');
+        fs.writeFileSync(providerPath.replace(/\.js$/, '.d.ts'), normalizeSpacing(providerDts), 'utf8');
         generated.push(path.relative(packageRoot, providerPath));
 
         if (!alreadyMigrated) {
@@ -646,12 +928,21 @@ async function main() {
             continue;
         }
 
-        if (exportNames.length > 1) {
-            apiSkipped.push(`${apiRelative} (multiple exports: ${exportNames.join(', ')})`);
-            continue;
+        let exportName;
+        if (exportNames.length === 1) {
+            exportName = exportNames[0];
+        } else {
+            // Files with both `<X>Endpoints` and `<X>EndpointRules` exports:
+            // the rules object is metadata (per-method scopes/policies), not an
+            // endpoint surface, so prefer the `Endpoints` one.
+            const endpointCandidates = exportNames.filter((n) => n.endsWith('Endpoints'));
+            if (endpointCandidates.length === 1) {
+                exportName = endpointCandidates[0];
+            } else {
+                apiSkipped.push(`${apiRelative} (ambiguous exports: ${exportNames.join(', ')})`);
+                continue;
+            }
         }
-
-        const exportName = exportNames[0];
         const providerPath = path.join(providersGeneratedDir, apiRelative);
         const providerDir = path.dirname(providerPath);
         fs.mkdirSync(providerDir, { recursive: true });
@@ -664,13 +955,14 @@ async function main() {
         };
 
         const apiShape = loadApiShape(path.join('api', apiRelative).replace(/\\/g, '/'), exportName);
-        const providerContent = normalizeSpacing(buildProviderFileContent(parsed, apiShape, {
+        const { js: providerJs, dts: providerDts } = buildProviderArtifacts(parsed, apiShape, {
             libApiImportPath: toImportPath(providerDir, path.join(packageRoot, 'lib', 'api.js')),
             coreImportPath: toImportPath(providerDir, coreOutputPath),
             apiImportPath: toImportPath(providerDir, apiFileAbs),
-        }));
+        });
 
-        fs.writeFileSync(providerPath, providerContent, 'utf8');
+        fs.writeFileSync(providerPath, normalizeSpacing(providerJs), 'utf8');
+        fs.writeFileSync(providerPath.replace(/\.js$/, '.d.ts'), normalizeSpacing(providerDts), 'utf8');
         generatedFromApi.push(path.relative(packageRoot, providerPath));
     }
 

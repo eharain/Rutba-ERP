@@ -8,7 +8,8 @@
     "scaffold:endpoint-providers": "node ./scripts/scaffold-endpoint-providers.mjs",
     "validate:exports": "node ./scripts/validate-exports.mjs",
     "validate:web-proxies": "node ./scripts/validate-web-proxies.mjs",
-    "validate": "npm run validate:exports && npm run validate:web-proxies",
+    "validate:endpoint-usage": "node ./scripts/validate-endpoint-usage.mjs",
+    "validate": "npm run validate:exports && npm run validate:web-proxies && npm run validate:endpoint-usage",
     "build": "npm run scaffold:endpoint-providers && npm run validate",
     "watch": "node ./scripts/watch-api.mjs",
     "dev": "node ./scripts/watch-api.mjs"
@@ -17,15 +18,33 @@
     "./config/domains": "./config/domains.json",
     "./config/roles": "./config/roles.json",
     "./config/*": "./config/*",
-    "./endpoints": "./endpoints/index.js",
-    "./endpoints/index.js": "./endpoints/index.js",
-    "./endpoints/*": "./providers/generated/client/*",
-    "./lib/*": "./lib/*",
+    "./endpoints": {
+      "types": "./endpoints/index.d.ts",
+      "default": "./endpoints/index.js"
+    },
+    "./endpoints/index.js": {
+      "types": "./endpoints/index.d.ts",
+      "default": "./endpoints/index.js"
+    },
+    "./endpoints/*": {
+      "types": "./providers/generated/client/*.d.ts",
+      "default": "./providers/generated/client/*"
+    },
+    "./lib/*": [
+      "./lib/*",
+      "./lib/*.js"
+    ],
     "./scripts/*": "./scripts/*",
     "./pos": "./pos/index.js",
-    "./pos/*": "./pos/*",
+    "./pos/*": [
+      "./pos/*",
+      "./pos/*.js"
+    ],
     "./api/*": "./api/*",
-    "./client": "./client/index.js",
+    "./client": {
+      "types": "./providers/generated/client/index.d.ts",
+      "default": "./client/index.js"
+    },
     "./client/web": "./client/web/index.js",
     "./client/web/*": "./client/web/*",
     "./api/web": "./api/web/index.js",

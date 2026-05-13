@@ -52,7 +52,7 @@ export default function PostsPage() {
     const publishOne = async (docId) => {
         setPublishing(prev => ({ ...prev, [docId]: true }));
         try {
-            await SocialPostsEndpoints.postPublish(docId);
+            await SocialPostsEndpoints.publish(docId);
             setPosts(prev => prev.map(p => p.documentId === docId ? { ...p, _isPublished: true } : p));
             toast("Published!", "success");
         } catch (err) {
@@ -66,7 +66,7 @@ export default function PostsPage() {
     const unpublishOne = async (docId) => {
         setPublishing(prev => ({ ...prev, [docId]: true }));
         try {
-            await SocialPostsEndpoints.postUnpublish(docId);
+            await SocialPostsEndpoints.unpublish(docId);
             setPosts(prev => prev.map(p => p.documentId === docId ? { ...p, _isPublished: false } : p));
             toast("Unpublished.", "success");
         } catch (err) {
@@ -84,7 +84,7 @@ export default function PostsPage() {
         let ok = 0, fail = 0;
         for (const docId of ids) {
             setPublishing(prev => ({ ...prev, [docId]: true }));
-            try { await SocialPostsEndpoints.postPublish(docId); ok++; setPosts(prev => prev.map(p => p.documentId === docId ? { ...p, _isPublished: true } : p)); }
+            try { await SocialPostsEndpoints.publish(docId); ok++; setPosts(prev => prev.map(p => p.documentId === docId ? { ...p, _isPublished: true } : p)); }
             catch { fail++; }
             finally { setPublishing(prev => ({ ...prev, [docId]: false })); }
         }
@@ -99,7 +99,7 @@ export default function PostsPage() {
         let ok = 0, fail = 0;
         for (const docId of ids) {
             setPublishing(prev => ({ ...prev, [docId]: true }));
-            try { await SocialPostsEndpoints.postUnpublish(docId); ok++; setPosts(prev => prev.map(p => p.documentId === docId ? { ...p, _isPublished: false } : p)); }
+            try { await SocialPostsEndpoints.unpublish(docId); ok++; setPosts(prev => prev.map(p => p.documentId === docId ? { ...p, _isPublished: false } : p)); }
             catch { fail++; }
             finally { setPublishing(prev => ({ ...prev, [docId]: false })); }
         }
@@ -123,8 +123,8 @@ export default function PostsPage() {
             if (Object.keys(filters).length > 0) params.filters = filters;
 
             const [draftRes, pubRes] = await Promise.all([
-                SocialPostsEndpoints.fetchList(params),
-                SocialPostsEndpoints.fetchPublishedMarker(),
+                SocialPostsEndpoints.list(params),
+                SocialPostsEndpoints.publishedMarker(),
             ]);
             const pubIds = new Set((pubRes.data || []).map(p => p.documentId));
             setPosts((draftRes.data || []).map(p => ({ ...p, _isPublished: pubIds.has(p.documentId) })));

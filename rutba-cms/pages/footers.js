@@ -94,7 +94,7 @@ export default function Footers() {
     const publishOne = async (docId) => {
         setPublishing(prev => ({ ...prev, [docId]: true }));
         try {
-            await CmsFootersEndpoints.postPublish(docId);
+            await CmsFootersEndpoints.publish(docId);
             setFooters(prev => prev.map(f => f.documentId === docId ? { ...f, _isPublished: true } : f));
             toast("Published!", "success");
         } catch (err) {
@@ -108,7 +108,7 @@ export default function Footers() {
     const unpublishOne = async (docId) => {
         setPublishing(prev => ({ ...prev, [docId]: true }));
         try {
-            await CmsFootersEndpoints.postUnpublish(docId);
+            await CmsFootersEndpoints.unpublish(docId);
             setFooters(prev => prev.map(f => f.documentId === docId ? { ...f, _isPublished: false } : f));
             toast("Unpublished.", "success");
         } catch (err) {
@@ -126,7 +126,7 @@ export default function Footers() {
         let ok = 0, fail = 0;
         for (const docId of ids) {
             setPublishing(prev => ({ ...prev, [docId]: true }));
-            try { await CmsFootersEndpoints.postPublish(docId); ok++; setFooters(prev => prev.map(f => f.documentId === docId ? { ...f, _isPublished: true } : f)); }
+            try { await CmsFootersEndpoints.publish(docId); ok++; setFooters(prev => prev.map(f => f.documentId === docId ? { ...f, _isPublished: true } : f)); }
             catch { fail++; }
             finally { setPublishing(prev => ({ ...prev, [docId]: false })); }
         }
@@ -141,7 +141,7 @@ export default function Footers() {
         let ok = 0, fail = 0;
         for (const docId of ids) {
             setPublishing(prev => ({ ...prev, [docId]: true }));
-            try { await CmsFootersEndpoints.postUnpublish(docId); ok++; setFooters(prev => prev.map(f => f.documentId === docId ? { ...f, _isPublished: false } : f)); }
+            try { await CmsFootersEndpoints.unpublish(docId); ok++; setFooters(prev => prev.map(f => f.documentId === docId ? { ...f, _isPublished: false } : f)); }
             catch { fail++; }
             finally { setPublishing(prev => ({ ...prev, [docId]: false })); }
         }
@@ -154,8 +154,8 @@ export default function Footers() {
         setLoading(true);
         try {
             const [draftRes, pubRes] = await Promise.all([
-                CmsFootersEndpoints.fetchListDraft({ sort: ["createdAt:desc"], pagination: { pageSize: 50 } }),
-                CmsFootersEndpoints.fetchListPublished({ pageSize: 200 }),
+                CmsFootersEndpoints.listDraft({ sort: ["createdAt:desc"], pagination: { pageSize: 50 } }),
+                CmsFootersEndpoints.listPublished({ pageSize: 200 }),
             ]);
             const pubIds = new Set((pubRes.data || []).map(f => f.documentId));
             setFooters((draftRes.data || []).map(f => ({ ...f, _isPublished: pubIds.has(f.documentId) })));
@@ -182,16 +182,16 @@ export default function Footers() {
             const log = [];
             for (const row of rows) {
                 try {
-                    const existing = await CmsFootersEndpoints.fetchListDraft({
+                    const existing = await CmsFootersEndpoints.listDraft({
                         pagination: { pageSize: 1 },
                         filters: { slug: { $eq: row.slug } },
                     });
                     const doc = existing.data?.[0];
                     if (doc) {
-                        await CmsFootersEndpoints.putUpdateDraft(doc.documentId, row);
+                        await CmsFootersEndpoints.updateDraft(doc.documentId, row);
                         log.push({ type: "success", text: `Updated: ${row.slug}` });
                     } else {
-                        await CmsFootersEndpoints.postCreate(row);
+                        await CmsFootersEndpoints.create(row);
                         log.push({ type: "success", text: `Created: ${row.slug}` });
                     }
                 } catch (err) {

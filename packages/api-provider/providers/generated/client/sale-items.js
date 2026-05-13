@@ -1,5 +1,5 @@
 import { authApi } from '../../../lib/api.js';
-import { executeEndpoint } from './___core__.js';
+import { executeEndpoint, strictEndpointGuard } from './___core__.js';
 import { SaleItemsEndpoints as SaleItemsEndpointsApi } from '../../../api/sale-items.js';
 
 async function create(...args) {
@@ -14,22 +14,21 @@ async function disconnect(...args) {
     return executeEndpoint(authApi, 'disconnect', SaleItemsEndpointsApi.disconnect(...args));
 }
 
-async function postCreate(...args) {
-    return create(...args);
+async function saveSaleItems(...args) {
+    return executeEndpoint(authApi, 'saveSaleItems', SaleItemsEndpointsApi.saveSaleItems(...args));
 }
 
-async function putUpdate(...args) {
-    return update(...args);
-}
-
-const endpoints = {
-    create,
-    update,
-    disconnect,
-    postCreate,
-    putUpdate,
-    meta: SaleItemsEndpointsApi.meta,
-};
+const endpoints = strictEndpointGuard(
+    'SaleItemsEndpoints',
+    {
+        create,
+        update,
+        disconnect,
+        saveSaleItems,
+        meta: SaleItemsEndpointsApi.meta,
+    },
+    ["create","update","disconnect","saveSaleItems","meta"],
+);
 
 export default endpoints;
 export const SaleItemsEndpoints = endpoints;

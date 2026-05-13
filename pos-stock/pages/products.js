@@ -126,11 +126,11 @@ export default function Products() {
     useEffect(() => {
         // endpoint descriptors no longer needed here
         Promise.all([
-            BrandsEndpoints.fetchAll(),
-            CategoriesEndpoints.fetchAll(),
-            SuppliersEndpoints.fetchAll(),
-            TermTypesEndpoints.fetchAllWithTerms(),
-            PurchasesEndpoints.fetchAll({ sort: ['createdAt:desc'] }),
+            BrandsEndpoints.listAll(),
+            CategoriesEndpoints.listAll(),
+            SuppliersEndpoints.listAll(),
+            TermTypesEndpoints.listWithTerms(),
+            PurchasesEndpoints.list({ sort: ['createdAt:desc'] }),
         ]).then(([b, c, s, t, p]) => {
             setBrands(b?.data || b || []);
             setCategories(c?.data || c || []);
@@ -232,7 +232,7 @@ export default function Products() {
         if (!variantsMap[docId]) {
             setLoadingVariants(prev => ({ ...prev, [docId]: true }));
             try {
-                const res = await ProductsEndpoints.fetchByParent(docId, {
+                const res = await ProductsEndpoints.byParent(docId, {
                     pageSize: 100,
                     populate: {
                         logo: true,

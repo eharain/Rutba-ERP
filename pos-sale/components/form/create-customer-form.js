@@ -24,7 +24,7 @@ export default function CreateCustomerForm({
 
         setLoading(true);
         try {
-            const res = await CustomersEndpoints.postCreate({ name, email, phone });
+            const res = await CustomersEndpoints.create({ name, email, phone });
             onCreated(res?.data ?? res);
         } catch (err) {
             console.error(err);

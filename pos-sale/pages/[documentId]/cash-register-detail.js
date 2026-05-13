@@ -29,7 +29,7 @@ export default function CashRegisterDetailPage() {
     const loadRegister = async () => {
         setLoading(true);
         try {
-            const res = await CashRegistersEndpoints.fetchById(documentId, { populate: ["opened_by_user", "closed_by_user", "branch"] });
+            const res = await CashRegistersEndpoints.byId(documentId, { populate: ["opened_by_user", "closed_by_user", "branch"] });
             const reg = res?.data ?? res;
             setRegister(reg);
 

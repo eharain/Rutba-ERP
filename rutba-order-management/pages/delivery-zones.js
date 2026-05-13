@@ -26,7 +26,7 @@ export default function DeliveryZonesPage() {
     if (!jwt) return;
     setLoading(true);
     try {
-      const res = await DeliveryZonesEndpoints.fetchList({
+      const res = await DeliveryZonesEndpoints.list({
         sort: ["createdAt:desc"],
         pagination: { pageSize: 200 },
       });
@@ -61,7 +61,7 @@ export default function DeliveryZonesPage() {
 
     setCreating(true);
     try {
-      await DeliveryZonesEndpoints.postCreate({
+      await DeliveryZonesEndpoints.create({
         data: {
           name: newZone.name.trim(),
           zone_type: newZone.zone_type,

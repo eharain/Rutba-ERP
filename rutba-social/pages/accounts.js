@@ -32,7 +32,7 @@ export default function AccountsPage() {
         if (!jwt) return;
         setLoading(true);
         try {
-            const res = await SocialAccountsEndpoints.fetchList({ sort: ['createdAt:desc'] });
+            const res = await SocialAccountsEndpoints.list({ sort: ['createdAt:desc'] });
             setAccounts(res.data || []);
         } catch (err) {
             console.error("Failed to load accounts", err);
@@ -76,10 +76,10 @@ export default function AccountsPage() {
         try {
             const payload = { data: { ...form } };
             if (editing) {
-                await SocialAccountsEndpoints.putUpdate(editing.documentId, payload);
+                await SocialAccountsEndpoints.update(editing.documentId, payload);
                 toast("Account updated.", "success");
             } else {
-                await SocialAccountsEndpoints.postCreate(payload);
+                await SocialAccountsEndpoints.create(payload);
                 toast("Account created.", "success");
             }
             setShowForm(false);
@@ -97,7 +97,7 @@ export default function AccountsPage() {
     const handleDelete = async (account) => {
         if (!confirm(`Delete account "${account.account_name}"?`)) return;
         try {
-            await SocialAccountsEndpoints.putDelete(account.documentId);
+            await SocialAccountsEndpoints.del(account.documentId);
             toast("Account deleted.", "success");
             await loadAccounts();
         } catch (err) {

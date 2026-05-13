@@ -17,7 +17,7 @@ export default function DeliveryOfferDetailPage() {
   const load = () => {
     if (!jwt) return;
 
-    RiderEndpoints.fetchDeliveryOffers()
+    RiderEndpoints.deliveryOffers()
       .then((res) => setOffers(res.data || []))
       .catch((err) => console.error('Failed to load delivery offers', err))
       .finally(() => setLoading(false));
@@ -42,7 +42,7 @@ export default function DeliveryOfferDetailPage() {
     if (!jwt || !id) return;
     try {
       setActionLoading(true);
-      const res = await RiderEndpoints.postAcceptDeliveryOffer(id, {});
+      const res = await RiderEndpoints.acceptDeliveryOffer(id, {});
       const assignedOrder = res?.data;
       if (assignedOrder?.documentId) {
         router.push(`/deliveries/${assignedOrder.documentId}`);
@@ -60,7 +60,7 @@ export default function DeliveryOfferDetailPage() {
     if (!jwt || !id) return;
     try {
       setActionLoading(true);
-      await RiderEndpoints.postRejectDeliveryOffer(id, {});
+      await RiderEndpoints.rejectDeliveryOffer(id, {});
       router.push('/delivery-offers');
     } catch (err) {
       alert(err?.response?.data?.error?.message || 'Failed to reject offer');

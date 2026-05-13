@@ -15,8 +15,7 @@ import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { BranchesEndpoints, StockHelpersEndpoints, StockItemsEndpoints } from "@rutba/api-provider/endpoints/index.js";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
-import { loadProduct } from "@rutba/api-provider/pos/fetchs";
-import { searchStockItems } from "@rutba/api-provider/pos/search";
+import { loadProduct, searchStockItems } from "@rutba/api-provider/pos";
 
 export default function StockItemsPage() {
     const router = useRouter();
@@ -42,7 +41,7 @@ export default function StockItemsPage() {
     useEffect(() => {
         (async () => {
             setStockStatus(await StockHelpersEndpoints.getStockStatus());
-            const branches = await BranchesEndpoints.fetchList();
+            const branches = await BranchesEndpoints.list();
             setBranches(branches.data);
         })();
     }, [])
@@ -116,7 +115,7 @@ export default function StockItemsPage() {
                 productDocId: productFilter || undefined,
                 showArchived,
             });
-            const response = await StockItemsEndpoints.fetchList(page + 1, rowsPerPage, {
+            const response = await StockItemsEndpoints.list(page + 1, rowsPerPage, {
                 statusFilter,
                 branchDocId: selectedBranch || undefined,
                 productDocId: productFilter || undefined,
@@ -144,7 +143,7 @@ export default function StockItemsPage() {
         const documentIdsToUpdate = Array.from(selectedItems);
         try {
             for (const id of documentIdsToUpdate) {
-                await StockItemsEndpoints.putUpdate(id, { status: 'InStock', branch: destinationBranch });
+                await StockItemsEndpoints.update(id, { status: 'InStock', branch: destinationBranch });
             }
             alert(`Stock sent to ${destinationBranch} successfully for ${documentIdsToUpdate.length} items`);
             loadStockItems();

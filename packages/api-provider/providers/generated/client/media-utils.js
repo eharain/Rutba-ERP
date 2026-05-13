@@ -1,5 +1,5 @@
 import { authApi } from '../../../lib/api.js';
-import { executeEndpoint } from './___core__.js';
+import { executeEndpoint, strictEndpointGuard } from './___core__.js';
 import { MediaUtilsEndpoints as MediaUtilsEndpointsApi } from '../../../api/media-utils.js';
 
 async function imageBaseUrl(...args) {
@@ -22,13 +22,17 @@ async function isVideo(...args) {
     return executeEndpoint(authApi, 'isVideo', MediaUtilsEndpointsApi.isVideo(...args));
 }
 
-const endpoints = {
-    imageBaseUrl,
-    strapiImageUrl,
-    isImage,
-    isPDF,
-    isVideo,
-};
+const endpoints = strictEndpointGuard(
+    'MediaUtilsEndpoints',
+    {
+        imageBaseUrl,
+        strapiImageUrl,
+        isImage,
+        isPDF,
+        isVideo,
+    },
+    ["imageBaseUrl","strapiImageUrl","isImage","isPDF","isVideo"],
+);
 
 export default endpoints;
 export const MediaUtilsEndpoints = endpoints;

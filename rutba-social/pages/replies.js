@@ -42,7 +42,7 @@ export default function RepliesPage() {
             if (directionFilter === 'inbound') filters.is_outbound = { $eq: false };
             if (directionFilter === 'outbound') filters.is_outbound = { $eq: true };
             if (Object.keys(filters).length > 0) params.filters = filters;
-            const res = await SocialRepliesEndpoints.fetchList(params);
+            const res = await SocialRepliesEndpoints.list(params);
             setReplies(res.data || []);
             setPageCount(res.meta?.pagination?.pageCount || 1);
         } catch (err) {
@@ -58,7 +58,7 @@ export default function RepliesPage() {
     const handleDelete = async (reply) => {
         if (!confirm("Delete this reply?")) return;
         try {
-            await SocialRepliesEndpoints.putDelete(reply.documentId);
+            await SocialRepliesEndpoints.del(reply.documentId);
             toast("Reply deleted.", "success");
             await loadReplies();
         } catch (err) {

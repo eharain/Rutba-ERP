@@ -41,7 +41,7 @@ export default function SaleOrdersPage() {
         if (!jwt) return;
         setLoading(true);
         try {
-            const res = await SaleOrdersEndpoints.fetchList({
+            const res = await SaleOrdersEndpoints.list({
                 sort: ["createdAt:desc"],
                 pagination: { page, pageSize: 25 },
                 populate: ["customer_contact", "delivery_method", "assigned_rider", "delivery_zone"],

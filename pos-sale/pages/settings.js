@@ -10,7 +10,7 @@ export default function SettingsPage() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const response = await BranchesEndpoints.fetchWithDesks();
+                const response = await BranchesEndpoints.listWithDesks();
                 setBranches(response.data || []);
                 setSelectedBranch(branch);
                 setSelectedDesk(desk)

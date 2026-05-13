@@ -1,5 +1,5 @@
 import { authApi } from '../../../../lib/api.js';
-import { executeEndpoint } from '../___core__.js';
+import { executeEndpoint, strictEndpointGuard } from '../___core__.js';
 import { WebCmsPagesEndpoints as WebCmsPagesEndpointsApi } from '../../../../api/web/cms-pages.js';
 
 async function list(...args) {
@@ -18,27 +18,16 @@ async function header(...args) {
     return executeEndpoint(authApi, 'header', WebCmsPagesEndpointsApi.header(...args));
 }
 
-async function fetchList(...args) {
-    return list(...args);
-}
-
-async function fetchListByType(...args) {
-    return listByType(...args);
-}
-
-async function fetchBySlug(...args) {
-    return bySlug(...args);
-}
-
-const endpoints = {
-    list,
-    listByType,
-    bySlug,
-    header,
-    fetchList,
-    fetchListByType,
-    fetchBySlug,
-};
+const endpoints = strictEndpointGuard(
+    'WebCmsPagesEndpoints',
+    {
+        list,
+        listByType,
+        bySlug,
+        header,
+    },
+    ["list","listByType","bySlug","header"],
+);
 
 export default endpoints;
 export const WebCmsPagesEndpoints = endpoints;

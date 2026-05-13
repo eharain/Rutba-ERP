@@ -53,7 +53,7 @@ export default function CashRegisterHistoryPage() {
                 }
             }
 
-            const res = await CashRegistersEndpoints.fetchList({
+            const res = await CashRegistersEndpoints.list({
                 filters,
                 sort: ["opened_at:desc"],
                 page: page + 1,

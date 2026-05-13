@@ -31,7 +31,7 @@ export default function SiteSettingsPage() {
         if (!jwt) return;
         Promise.all([
             SiteSettingEndpoints.fetchDraft({ populate: ["site_logo", "favicon"] }).catch(() => ({ data: null })),
-            SiteSettingEndpoints.fetchPublished({ fields: ["id"] }).catch(() => ({ data: null })),
+            SiteSettingEndpoints.getPublished({ fields: ["id"] }).catch(() => ({ data: null })),
         ])
             .then(([draftRes, pubRes]) => {
                 const d = draftRes.data || draftRes;
@@ -75,12 +75,7 @@ export default function SiteSettingsPage() {
         setSaving(true);
         try {
             let res;
-            if (!record) {
-                // First time — singleType doesn't exist yet, use PUT to create it
-                res = await SiteSettingEndpoints.putUpdate(buildPayload());
-            } else {
-                res = await SiteSettingEndpoints.putUpdateDraft(buildPayload());
-            }
+            res = await SiteSettingEndpoints.updateDraft(buildPayload());
             const saved = res.data || res;
             setRecord(saved);
             toast("Draft saved!", "success");
@@ -95,8 +90,8 @@ export default function SiteSettingsPage() {
     const handlePublish = async () => {
         setSaving(true);
         try {
-            await SiteSettingEndpoints.putUpdateDraft(buildPayload());
-            await SiteSettingEndpoints.postPublish();
+            await SiteSettingEndpoints.updateDraft(buildPayload());
+            await SiteSettingEndpoints.publish();
             setIsPublished(true);
             toast("Site settings saved & published!", "success");
         } catch (err) {
@@ -111,7 +106,7 @@ export default function SiteSettingsPage() {
         if (!confirm("Discard draft changes and load the published version?")) return;
         setSaving(true);
         try {
-            await SiteSettingEndpoints.postDiscard();
+            await SiteSettingEndpoints.discard();
             const res = await SiteSettingEndpoints.fetchDraft({ populate: ["site_logo", "favicon"] });
             const d = res.data || res;
             setRecord(d);

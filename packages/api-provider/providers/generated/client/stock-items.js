@@ -1,5 +1,5 @@
 import { authApi } from '../../../lib/api.js';
-import { executeEndpoint } from './___core__.js';
+import { executeEndpoint, strictEndpointGuard } from './___core__.js';
 import { StockItemsEndpoints as StockItemsEndpointsApi } from '../../../api/stock-items.js';
 
 async function list(...args) {
@@ -54,67 +54,26 @@ async function transfer(...args) {
     return executeEndpoint(authApi, 'transfer', StockItemsEndpointsApi.transfer(...args));
 }
 
-async function fetchList(...args) {
-    return list(...args);
-}
-
-async function fetchListByProduct(...args) {
-    return listByProduct(...args);
-}
-
-async function fetchListByBarcode(...args) {
-    return listByBarcode(...args);
-}
-
-async function postCreate(...args) {
-    return create(...args);
-}
-
-async function fetchSearchByBarcode(...args) {
-    return searchByBarcode(...args);
-}
-
-async function fetchSearchByName(...args) {
-    return searchByName(...args);
-}
-
-async function fetchById(...args) {
-    return byId(...args);
-}
-
-async function putUpdate(...args) {
-    return update(...args);
-}
-
-async function fetchByProduct(...args) {
-    return byProduct(...args);
-}
-
-const endpoints = {
-    list,
-    listByProduct,
-    listByBarcode,
-    checkBarcode,
-    orphanGroups,
-    orphanGroupItems,
-    create,
-    searchByBarcode,
-    searchByName,
-    byId,
-    update,
-    byProduct,
-    transfer,
-    fetchList,
-    fetchListByProduct,
-    fetchListByBarcode,
-    postCreate,
-    fetchSearchByBarcode,
-    fetchSearchByName,
-    fetchById,
-    putUpdate,
-    fetchByProduct,
-    meta: StockItemsEndpointsApi.meta,
-};
+const endpoints = strictEndpointGuard(
+    'StockItemsEndpoints',
+    {
+        list,
+        listByProduct,
+        listByBarcode,
+        checkBarcode,
+        orphanGroups,
+        orphanGroupItems,
+        create,
+        searchByBarcode,
+        searchByName,
+        byId,
+        update,
+        byProduct,
+        transfer,
+        meta: StockItemsEndpointsApi.meta,
+    },
+    ["list","listByProduct","listByBarcode","checkBarcode","orphanGroups","orphanGroupItems","create","searchByBarcode","searchByName","byId","update","byProduct","transfer","meta"],
+);
 
 export default endpoints;
 export const StockItemsEndpoints = endpoints;

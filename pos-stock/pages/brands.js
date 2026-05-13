@@ -57,7 +57,7 @@ export default function BrandsPage() {
         const timer = setTimeout(async () => {
             setProductSearchLoading(true);
             try {
-                const res = await ProductsEndpoints.fetchSearch(searchValue, {
+                const res = await ProductsEndpoints.search(searchValue, {
                     pageSize: 20,
                     populate: { brands: true },
                 });
@@ -88,7 +88,7 @@ export default function BrandsPage() {
             let page = 1;
             let totalPages = 1;
             do {
-                const res = await BrandsEndpoints.fetchList({ page, pageSize: 100 });
+                const res = await BrandsEndpoints.list({ page, pageSize: 100 });
                 const data = res?.data ?? res;
                 allBrands = [...allBrands, ...(data || [])];
                 totalPages = res?.meta?.pagination?.pageCount || 1;
@@ -118,7 +118,7 @@ export default function BrandsPage() {
             let page = 1;
             let totalPages = 1;
             do {
-                const res = await ProductsEndpoints.fetchList(page, 100, {
+                const res = await ProductsEndpoints.list(page, 100, {
                     sort: 'name:asc',
                     brands: [selectedBrandId],
                     populate: { brands: true },
@@ -163,9 +163,9 @@ export default function BrandsPage() {
                 slug: brandForm.slug.trim() || undefined
             };
             if (isEditing && selectedBrandId) {
-                await BrandsEndpoints.putUpdate(selectedBrandId, payload);
+                await BrandsEndpoints.update(selectedBrandId, payload);
             } else {
-                const created = await BrandsEndpoints.postCreate(payload);
+                const created = await BrandsEndpoints.create(payload);
                 setSelectedBrandId(getEntryId(created));
             }
             setIsEditing(false);
@@ -187,7 +187,7 @@ export default function BrandsPage() {
         if (!confirm("Are you sure you want to delete this brand?")) return;
         setLoading(true);
         try {
-            await BrandsEndpoints.putDelete(selectedBrandId);
+            await BrandsEndpoints.del(selectedBrandId);
             setSelectedBrandId("");
             await loadBrands();
         } catch (error) {
@@ -222,7 +222,7 @@ export default function BrandsPage() {
                 let page = 1;
                 let totalPages = 1;
                 do {
-                    const res = await ProductsEndpoints.fetchList(page, 100, {
+                    const res = await ProductsEndpoints.list(page, 100, {
                         brands: [sourceBrandId],
                         populate: { brands: true },
                     });
@@ -231,7 +231,7 @@ export default function BrandsPage() {
 
                     for (const product of sourceProducts) {
                         const productDocId = getEntryId(product);
-                        await ProductsEndpoints.putUpdate(productDocId, {
+                        await ProductsEndpoints.update(productDocId, {
                             brands: {
                                 connect: [selectedBrandId],
                                 disconnect: [sourceBrandId]
@@ -241,7 +241,7 @@ export default function BrandsPage() {
                     page++;
                 } while (page <= totalPages);
 
-                await BrandsEndpoints.putDelete(sourceBrandId);
+                await BrandsEndpoints.del(sourceBrandId);
             }
 
             setMergeSelection(new Set());
@@ -285,7 +285,7 @@ export default function BrandsPage() {
         setLoading(true);
         try {
             for (const productDocId of selectedProductIds) {
-                await ProductsEndpoints.putUpdate(productDocId, {
+                await ProductsEndpoints.update(productDocId, {
                     brands: {
                         connect: [moveTargetBrandId],
                         disconnect: [selectedBrandId]
@@ -310,7 +310,7 @@ export default function BrandsPage() {
         setLoading(true);
         try {
             for (const productDocId of selectedProductIds) {
-                await ProductsEndpoints.putUpdate(productDocId, {
+                await ProductsEndpoints.update(productDocId, {
                     brands: { connect: [moveTargetBrandId] }
                 });
             }
@@ -329,7 +329,7 @@ export default function BrandsPage() {
         if (!confirm("Remove this product from the brand?")) return;
         setLoading(true);
         try {
-            await ProductsEndpoints.putUpdate(productDocId, {
+            await ProductsEndpoints.update(productDocId, {
                 brands: { disconnect: [selectedBrandId] }
             });
             await loadProducts();
@@ -345,7 +345,7 @@ export default function BrandsPage() {
         if (!selectedBrandId) return alert("Select a brand first");
         setLoading(true);
         try {
-            await ProductsEndpoints.putUpdate(productDocId, {
+            await ProductsEndpoints.update(productDocId, {
                 brands: { connect: [selectedBrandId] }
             });
             await loadProducts();

@@ -1,5 +1,5 @@
 import { authApi } from '../../../../lib/api.js';
-import { executeEndpoint } from '../___core__.js';
+import { executeEndpoint, strictEndpointGuard } from '../___core__.js';
 import { WebAuthEndpoints as WebAuthEndpointsApi } from '../../../../api/web/auth.js';
 
 async function localSignIn(...args) {
@@ -14,11 +14,15 @@ async function providerCallback(...args) {
     return executeEndpoint(authApi, 'providerCallback', WebAuthEndpointsApi.providerCallback(...args));
 }
 
-const endpoints = {
-    localSignIn,
-    localRegister,
-    providerCallback,
-};
+const endpoints = strictEndpointGuard(
+    'WebAuthEndpoints',
+    {
+        localSignIn,
+        localRegister,
+        providerCallback,
+    },
+    ["localSignIn","localRegister","providerCallback"],
+);
 
 export default endpoints;
 export const WebAuthEndpoints = endpoints;

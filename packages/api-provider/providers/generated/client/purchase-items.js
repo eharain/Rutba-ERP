@@ -1,5 +1,5 @@
 import { authApi } from '../../../lib/api.js';
-import { executeEndpoint } from './___core__.js';
+import { executeEndpoint, strictEndpointGuard } from './___core__.js';
 import { PurchaseItemsEndpoints as PurchaseItemsEndpointsApi } from '../../../api/purchase-items.js';
 
 async function list(...args) {
@@ -18,33 +18,27 @@ async function update(...args) {
     return executeEndpoint(authApi, 'update', PurchaseItemsEndpointsApi.update(...args));
 }
 
-async function fetchList(...args) {
-    return list(...args);
+async function del(...args) {
+    return executeEndpoint(authApi, 'del', PurchaseItemsEndpointsApi.del(...args));
 }
 
-async function postCreate(...args) {
-    return create(...args);
+async function savePurchaseItem(...args) {
+    return executeEndpoint(authApi, 'savePurchaseItem', PurchaseItemsEndpointsApi.savePurchaseItem(...args));
 }
 
-async function fetchByProduct(...args) {
-    return byProduct(...args);
-}
-
-async function putUpdate(...args) {
-    return update(...args);
-}
-
-const endpoints = {
-    list,
-    create,
-    byProduct,
-    update,
-    fetchList,
-    postCreate,
-    fetchByProduct,
-    putUpdate,
-    meta: PurchaseItemsEndpointsApi.meta,
-};
+const endpoints = strictEndpointGuard(
+    'PurchaseItemsEndpoints',
+    {
+        list,
+        create,
+        byProduct,
+        update,
+        del,
+        savePurchaseItem,
+        meta: PurchaseItemsEndpointsApi.meta,
+    },
+    ["list","create","byProduct","update","del","savePurchaseItem","meta"],
+);
 
 export default endpoints;
 export const PurchaseItemsEndpoints = endpoints;

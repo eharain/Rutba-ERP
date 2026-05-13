@@ -99,7 +99,7 @@ export default function Pages() {
     const publishOne = async (docId) => {
         setPublishing(prev => ({ ...prev, [docId]: true }));
         try {
-            await CmsPagesEndpoints.postPublish(docId);
+            await CmsPagesEndpoints.publish(docId);
             setPages(prev => prev.map(p => p.documentId === docId ? { ...p, _isPublished: true } : p));
             toast("Published!", "success");
         } catch (err) {
@@ -114,7 +114,7 @@ export default function Pages() {
         setPublishing(prev => ({ ...prev, [docId]: true }));
         try {
             //:todo: bad pattern to have separate publish and unpublish endpoints, should we just have a single /cms-pages/:id/publish endpoint that toggles state based on current value to avoid this?
-            await CmsPagesEndpoints.postUnpublish(docId);
+            await CmsPagesEndpoints.unpublish(docId);
             setPages(prev => prev.map(p => p.documentId === docId ? { ...p, _isPublished: false } : p));
             toast("Unpublished.", "success");
         } catch (err) {
@@ -134,7 +134,7 @@ export default function Pages() {
             setPublishing(prev => ({ ...prev, [docId]: true }));
             try {
                 //todo: bad pattern to have separate publish and unpublish endpoints, should we just have a single /cms-pages/:id/publish endpoint that toggles state based on current value to avoid this?
-                await CmsPagesEndpoints.postPublish(docId);
+                await CmsPagesEndpoints.publish(docId);
                 ok++;
                 setPages(prev => prev.map(p => p.documentId === docId ? { ...p, _isPublished: true } : p));
             }
@@ -154,7 +154,7 @@ export default function Pages() {
             setPublishing(prev => ({ ...prev, [docId]: true }));
             try {
                 //:todo: bad pattern to have separate publish and unpublish endpoints, should we just have a single /cms-pages/:id/publish endpoint that toggles state based on current value to avoid this?
-                await CmsPagesEndpoints.postUnpublish(docId); ok++; 
+                await CmsPagesEndpoints.unpublish(docId); ok++; 
                 
                 setPages(prev => prev.map(p => p.documentId === docId ? { ...p, _isPublished: false } : p)); }
             catch { fail++; }
@@ -173,8 +173,8 @@ export default function Pages() {
             const draftEp = CmsPagesEndpoints.listDraft({ search: search.trim() || undefined, typeFilter: typeFilter || undefined, pageSize: 50 });
             const pubEp = CmsPagesEndpoints.listPublished({ pageSize: 200 });
             const [draftRes, pubRes] = await Promise.all([
-                CmsPagesEndpoints.fetchListDraft({ search: search.trim() || undefined, typeFilter: typeFilter || undefined, pageSize: 50 }),
-                CmsPagesEndpoints.fetchListPublished({ pageSize: 200 }),
+                CmsPagesEndpoints.listDraft({ search: search.trim() || undefined, typeFilter: typeFilter || undefined, pageSize: 50 }),
+                CmsPagesEndpoints.listPublished({ pageSize: 200 }),
             ]);
             const pubIds = new Set((pubRes.data || []).map(p => p.documentId));
             setPages((draftRes.data || []).map(p => ({ ...p, _isPublished: pubIds.has(p.documentId) })));
@@ -209,15 +209,14 @@ export default function Pages() {
             for (const row of rows) {
                 try {
                     //todo: bad pattern why not the msPagesEndpoints.bySlugCheck should return the existing docId if found and then we can just call update without a separate fetch?
-                    const existing = await CmsPagesEndpoints.fetchBySlugCheck(row.slug);
+                    const existing = await CmsPagesEndpoints.bySlugCheck(row.slug);
                     const doc = existing.data?.[0];
                     if (doc) {
-                        //todo:bad pattern why not to  await  CmsPagesEndpoints.update(doc.documentId,{ data: row });
-                        await CmsPagesEndpoints.putUpdate(doc.documentId, row);
+                        await CmsPagesEndpoints.update(doc.documentId, row);
                         log.push({ type: "success", text: `Updated: ${row.slug}` });
                     } else {
                         //todo: bad pattern why not to await CmsPagesEndpoints.create({ data: row });
-                        await CmsPagesEndpoints.postCreate(row);
+                        await CmsPagesEndpoints.create(row);
                         log.push({ type: "success", text: `Created: ${row.slug}` });
                     }
                 } catch (err) {

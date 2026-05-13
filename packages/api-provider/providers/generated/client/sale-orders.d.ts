@@ -1,0 +1,16 @@
+// AUTO-GENERATED — do not edit. Source: scaffold-endpoint-providers.mjs
+export interface SaleOrdersEndpointsType {
+    list({ sort, pagination, populate }?: any): Promise<any>;
+    byId(documentId: any, params?: any): Promise<any>;
+    create(data: any): Promise<any>;
+    update(documentId: any, data: any): Promise<any>;
+    updateStatus(documentId: any, data: any): Promise<any>;
+    assignRider(documentId: any, data: any): Promise<any>;
+    messages(documentId: any): Promise<any>;
+    sendMessage(documentId: any, data: any): Promise<any>;
+    meta: any;
+}
+
+export const SaleOrdersEndpoints: SaleOrdersEndpointsType;
+declare const _default: SaleOrdersEndpointsType;
+export default _default;

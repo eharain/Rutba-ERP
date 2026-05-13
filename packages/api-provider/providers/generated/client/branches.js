@@ -1,5 +1,5 @@
 import { authApi } from '../../../lib/api.js';
-import { executeEndpoint } from './___core__.js';
+import { executeEndpoint, strictEndpointGuard } from './___core__.js';
 import { BranchesEndpoints as BranchesEndpointsApi } from '../../../api/branches.js';
 
 async function searchBranches(...args) {
@@ -34,42 +34,21 @@ async function unarchiveStock(...args) {
     return executeEndpoint(authApi, 'unarchiveStock', BranchesEndpointsApi.unarchiveStock(...args));
 }
 
-async function fetchSearchBranches(...args) {
-    return searchBranches(...args);
-}
-
-async function fetchListWithDesks(...args) {
-    return listWithDesks(...args);
-}
-
-async function fetchList(...args) {
-    return list(...args);
-}
-
-async function fetchById(...args) {
-    return byId(...args);
-}
-
-async function putUpdate(...args) {
-    return update(...args);
-}
-
-const endpoints = {
-    searchBranches,
-    listWithDesks,
-    list,
-    byId,
-    update,
-    archiveStats,
-    archiveStock,
-    unarchiveStock,
-    fetchSearchBranches,
-    fetchListWithDesks,
-    fetchList,
-    fetchById,
-    putUpdate,
-    meta: BranchesEndpointsApi.meta,
-};
+const endpoints = strictEndpointGuard(
+    'BranchesEndpoints',
+    {
+        searchBranches,
+        listWithDesks,
+        list,
+        byId,
+        update,
+        archiveStats,
+        archiveStock,
+        unarchiveStock,
+        meta: BranchesEndpointsApi.meta,
+    },
+    ["searchBranches","listWithDesks","list","byId","update","archiveStats","archiveStock","unarchiveStock","meta"],
+);
 
 export default endpoints;
 export const BranchesEndpoints = endpoints;

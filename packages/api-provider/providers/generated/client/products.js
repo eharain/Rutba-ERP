@@ -1,6 +1,10 @@
 import { authApi } from '../../../lib/api.js';
-import { executeEndpoint } from './___core__.js';
+import { executeEndpoint, strictEndpointGuard } from './___core__.js';
 import { ProductsEndpoints as ProductsEndpointsApi } from '../../../api/products.js';
+
+async function listPaged(...args) {
+    return executeEndpoint(authApi, 'listPaged', ProductsEndpointsApi.listPaged(...args));
+}
 
 async function listAll(...args) {
     return executeEndpoint(authApi, 'listAll', ProductsEndpointsApi.listAll(...args));
@@ -38,12 +42,20 @@ async function del(...args) {
     return executeEndpoint(authApi, 'del', ProductsEndpointsApi.del(...args));
 }
 
+async function searchByTerm(...args) {
+    return executeEndpoint(authApi, 'searchByTerm', ProductsEndpointsApi.searchByTerm(...args));
+}
+
 async function loadProduct(...args) {
     return executeEndpoint(authApi, 'loadProduct', ProductsEndpointsApi.loadProduct(...args));
 }
 
 async function byParent(...args) {
     return executeEndpoint(authApi, 'byParent', ProductsEndpointsApi.byParent(...args));
+}
+
+async function byParentDraft(...args) {
+    return executeEndpoint(authApi, 'byParentDraft', ProductsEndpointsApi.byParentDraft(...args));
 }
 
 async function byIdDraft(...args) {
@@ -66,75 +78,32 @@ async function unpublish(...args) {
     return executeEndpoint(authApi, 'unpublish', ProductsEndpointsApi.unpublish(...args));
 }
 
-async function fetchListAll(...args) {
-    return listAll(...args);
-}
-
-async function fetchList(...args) {
-    return list(...args);
-}
-
-async function fetchSearch(...args) {
-    return search(...args);
-}
-
-async function fetchSearchInRelation(...args) {
-    return searchInRelation(...args);
-}
-
-async function fetchById(...args) {
-    return byId(...args);
-}
-
-async function postCreate(...args) {
-    return create(...args);
-}
-
-async function putUpdate(...args) {
-    return update(...args);
-}
-
-async function fetchByParent(...args) {
-    return byParent(...args);
-}
-
-async function fetchByIdDraft(...args) {
-    return byIdDraft(...args);
-}
-
-async function fetchByIdPublished(...args) {
-    return byIdPublished(...args);
-}
-
-const endpoints = {
-    listAll,
-    list,
-    search,
-    searchInRelation,
-    byId,
-    save,
-    create,
-    update,
-    del,
-    loadProduct,
-    byParent,
-    byIdDraft,
-    byIdPublished,
-    updateDraft,
-    publish,
-    unpublish,
-    fetchListAll,
-    fetchList,
-    fetchSearch,
-    fetchSearchInRelation,
-    fetchById,
-    postCreate,
-    putUpdate,
-    fetchByParent,
-    fetchByIdDraft,
-    fetchByIdPublished,
-    meta: ProductsEndpointsApi.meta,
-};
+const endpoints = strictEndpointGuard(
+    'ProductsEndpoints',
+    {
+        listPaged,
+        listAll,
+        list,
+        search,
+        searchInRelation,
+        byId,
+        save,
+        create,
+        update,
+        del,
+        searchByTerm,
+        loadProduct,
+        byParent,
+        byParentDraft,
+        byIdDraft,
+        byIdPublished,
+        updateDraft,
+        publish,
+        unpublish,
+        meta: ProductsEndpointsApi.meta,
+    },
+    ["listPaged","listAll","list","search","searchInRelation","byId","save","create","update","del","searchByTerm","loadProduct","byParent","byParentDraft","byIdDraft","byIdPublished","updateDraft","publish","unpublish","meta"],
+);
 
 export default endpoints;
 export const ProductsEndpoints = endpoints;

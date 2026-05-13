@@ -46,7 +46,7 @@ export default function ProductVariantManager({ productId, onUpdate }) {
         if (!productId) return;
         setLoading(true);
         try {
-            const res = await ProductsEndpoints.fetchById(productId);
+            const res = await ProductsEndpoints.byId(productId);
             const prod = res.data || res;
             setProduct(prod);
             setVariants(prod.variants || []);
@@ -60,7 +60,7 @@ export default function ProductVariantManager({ productId, onUpdate }) {
 
     const loadTermTypes = useCallback(async () => {
         try {
-            setTermTypes(((await TermTypesEndpoints.fetchVariants())?.data ?? []) || []);
+            setTermTypes(((await TermTypesEndpoints.listVariants())?.data ?? []) || []);
         } catch (err) {
             console.error('Failed to load term types', err);
         }
@@ -108,7 +108,7 @@ export default function ProductVariantManager({ productId, onUpdate }) {
             const existingTermIds = (product.terms || []).map(t => getEntryId(t));
             const newIds = selectedTerms.map(t => getEntryId(t)).filter(id => !existingTermIds.includes(id));
             if (newIds.length > 0) {
-                await ProductsEndpoints.putUpdate(getEntryId(product), {
+                await ProductsEndpoints.update(getEntryId(product), {
                     terms: { connect: [...existingTermIds, ...newIds] },
                 });
             }
@@ -127,7 +127,7 @@ export default function ProductVariantManager({ productId, onUpdate }) {
         if (!product) return;
         setLoading(true);
         try {
-            await ProductsEndpoints.putUpdate(getEntryId(product), {
+            await ProductsEndpoints.update(getEntryId(product), {
                 terms: { disconnect: [termDocId] },
             });
             await loadData();
@@ -149,7 +149,7 @@ export default function ProductVariantManager({ productId, onUpdate }) {
             const existingTermIds = (variant.terms || []).map(t => getEntryId(t));
             const newIds = selectedTerms.map(t => getEntryId(t)).filter(id => !existingTermIds.includes(id));
             if (newIds.length > 0) {
-                await ProductsEndpoints.putUpdate(variantDocId, {
+                await ProductsEndpoints.update(variantDocId, {
                     terms: { connect: [...existingTermIds, ...newIds] },
                 });
             }
@@ -167,7 +167,7 @@ export default function ProductVariantManager({ productId, onUpdate }) {
     async function handleRemoveTermFromVariant(variantDocId, termDocId) {
         setLoading(true);
         try {
-            await ProductsEndpoints.putUpdate(variantDocId, {
+            await ProductsEndpoints.update(variantDocId, {
                 terms: { disconnect: [termDocId] },
             });
             await loadData();

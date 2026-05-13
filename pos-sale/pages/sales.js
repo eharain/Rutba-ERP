@@ -105,7 +105,7 @@ export default function Sales() {
         if (!admin) return;
         (async () => {
             try {
-                const res = await BranchesEndpoints.fetchList();
+                const res = await BranchesEndpoints.list();
                 const data = res?.data ?? res;
                 setBranches(Array.isArray(data) ? data : []);
             } catch { setBranches([]); }
@@ -181,7 +181,7 @@ export default function Sales() {
 
                 // Stock item search: resolve matching sale documentIds via custom endpoint
                 if (searchField === "stock_item" && searchText.trim()) {
-                    const stockRes = await SalesEndpoints.fetchByStockItem(searchText.trim());
+                    const stockRes = await SalesEndpoints.searchByStockItem(searchText.trim());
                     const matchedIds = stockRes?.data ?? [];
                     if (matchedIds.length === 0) {
                         if (!cancelled) { setSales([]); setTotal(0); setLoading(false); }
@@ -192,7 +192,7 @@ export default function Sales() {
 
                 // Item price range: resolve matching sale documentIds via custom endpoint
                 if (priceByItem && (totalMin !== "" || totalMax !== "")) {
-                    const priceRes = await SalesEndpoints.fetchByItemPrice({ min: totalMin, max: totalMax });
+                    const priceRes = await SalesEndpoints.searchByItemPrice({ min: totalMin, max: totalMax });
                     const priceMatchedIds = priceRes?.data ?? [];
                     if (priceMatchedIds.length === 0) {
                         if (!cancelled) { setSales([]); setTotal(0); setLoading(false); }

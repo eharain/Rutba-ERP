@@ -94,9 +94,9 @@ export default function OfferDetail() {
     useEffect(() => {
         if (!jwt) return;
         Promise.all([
-            ProductGroupsEndpoints.fetchListDraft({ pagination: { pageSize: 200 } }),
-            CmsPagesEndpoints.fetchListDraft({ pageSize: 200 }),
-            CategoriesEndpoints.fetchListDraft({ pagination: { pageSize: 200 }, populate: [] }),
+            ProductGroupsEndpoints.listDraft({ pagination: { pageSize: 200 } }),
+            CmsPagesEndpoints.listDraft({ pageSize: 200 }),
+            CategoriesEndpoints.listDraft({ pagination: { pageSize: 200 }, populate: [] }),
         ]).then(([gRes, pRes, cRes]) => {
             setAllGroups(gRes.data || []);
             setAllPages(pRes.data || []);
@@ -108,8 +108,8 @@ export default function OfferDetail() {
     useEffect(() => {
         if (!jwt || !documentId || isNew) { setLoading(false); return; }
         Promise.all([
-            SaleOffersEndpoints.fetchByIdDraft(documentId, { populate: ["product_groups", "cms_pages", "categories"] }),
-            SaleOffersEndpoints.fetchByIdPublished(documentId, { fields: ["documentId"] }).catch(() => ({ data: null })),
+            SaleOffersEndpoints.byIdDraft(documentId, { populate: ["product_groups", "cms_pages", "categories"] }),
+            SaleOffersEndpoints.byIdPublished(documentId, { fields: ["documentId"] }).catch(() => ({ data: null })),
         ]).then(([draftRes, pubRes]) => {
             const o = draftRes.data || draftRes;
             setOffer(o);
@@ -148,11 +148,11 @@ export default function OfferDetail() {
         setSaving(true);
         try {
             if (isNew) {
-                const res = await SaleOffersEndpoints.postCreate(buildPayload().data);
+                const res = await SaleOffersEndpoints.create(buildPayload().data);
                 const created = res.data || res;
                 router.push(`/${created.documentId}/sale-offer`);
             } else {
-                await SaleOffersEndpoints.putUpdateDraft(documentId, buildPayload().data);
+                await SaleOffersEndpoints.updateDraft(documentId, buildPayload().data);
                 toast("Draft saved!", "success");
             }
         } catch (err) {
@@ -166,8 +166,8 @@ export default function OfferDetail() {
     const handlePublish = async () => {
         setSaving(true);
         try {
-            await SaleOffersEndpoints.putUpdateDraft(documentId, buildPayload().data);
-            await SaleOffersEndpoints.postPublish(documentId);
+            await SaleOffersEndpoints.updateDraft(documentId, buildPayload().data);
+            await SaleOffersEndpoints.publish(documentId);
             setIsPublished(true);
             toast("Offer saved & published!", "success");
         } catch (err) {
@@ -181,7 +181,7 @@ export default function OfferDetail() {
     const handleUnpublish = async () => {
         setSaving(true);
         try {
-            await SaleOffersEndpoints.postUnpublish(documentId);
+            await SaleOffersEndpoints.unpublish(documentId);
             setIsPublished(false);
             toast("Offer unpublished.", "success");
         } catch (err) {
@@ -195,7 +195,7 @@ export default function OfferDetail() {
     const handleDelete = async () => {
         if (!confirm("Are you sure you want to delete this sale offer?")) return;
         try {
-            await SaleOffersEndpoints.delById(documentId);
+            await SaleOffersEndpoints.del(documentId);
             router.push("/sale-offers");
         } catch (err) {
             console.error("Failed to delete sale offer", err);

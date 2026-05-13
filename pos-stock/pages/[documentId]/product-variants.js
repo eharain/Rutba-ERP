@@ -54,14 +54,14 @@ export default function ProductVariantsPage() {
     async function loadProductDetails(id) {
         setLoading(true);
         try {
-            const res = await ProductsEndpoints.fetchById(id);
+            const res = await ProductsEndpoints.byId(id);
             const prod = res.data || res;
             setSelectedProduct(prod);
             const loadedVariants = prod.variants || [];
             setVariants(loadedVariants);
             setVariantBaseName(prod?.name || '');
 
-            const itemsRes = await StockItemsEndpoints.fetchByProduct(id, { pageSize: 500, sort: ['createdAt:desc'] });
+            const itemsRes = await StockItemsEndpoints.byProduct(id, { pageSize: 500, sort: ['createdAt:desc'] });
             const items = itemsRes?.data ?? itemsRes;
             setStockItems(items || []);
             setSelectedItems(new Set());
@@ -70,7 +70,7 @@ export default function ProductVariantsPage() {
             for (const v of loadedVariants) {
                 const vId = getEntryId(v);
                 try {
-                    const countRes = await StockItemsEndpoints.fetchByProduct(vId, { pageSize: 1 });
+                    const countRes = await StockItemsEndpoints.byProduct(vId, { pageSize: 1 });
                     counts[vId] = countRes?.meta?.pagination?.total ?? 0;
                 } catch { counts[vId] = 0; }
             }
@@ -85,7 +85,7 @@ export default function ProductVariantsPage() {
 
     async function loadTermTypes() {
         try {
-            const res = await TermTypesEndpoints.fetchVariants();
+            const res = await TermTypesEndpoints.listVariants();
             const types = res?.data ?? res;
             setTermTypes(types || []);
         } catch (err) {
@@ -166,7 +166,7 @@ export default function ProductVariantsPage() {
             if (formValues.move_count > 0 && createdVariantId) {
                 const itemsToMove = stockItems.slice(0, Math.min(formValues.move_count, stockItems.length));
                 for (const item of itemsToMove) {
-                    await StockItemsEndpoints.putUpdate(getEntryId(item), { product: { set: [createdVariantId] }, name: createdVariantName });
+                    await StockItemsEndpoints.update(getEntryId(item), { product: { set: [createdVariantId] }, name: createdVariantName });
                 }
             }
             await loadProductDetails(parentDocumentId);
@@ -209,10 +209,10 @@ export default function ProductVariantsPage() {
                 const createdVariantId = getEntryId(createdVariant);
                 const createdVariantName = createdVariant?.name || name;
                 if (formValues.move_count > 0 && createdVariantId) {
-                    const currentItems = await StockItemsEndpoints.fetchByProduct(parentDocumentId, { pageSize: formValues.move_count, sort: ['createdAt:desc'] });
+                    const currentItems = await StockItemsEndpoints.byProduct(parentDocumentId, { pageSize: formValues.move_count, sort: ['createdAt:desc'] });
                     const items = currentItems?.data ?? currentItems ?? [];
                     for (const item of items) {
-                        await StockItemsEndpoints.putUpdate(getEntryId(item), { product: { set: [createdVariantId] }, name: createdVariantName });
+                        await StockItemsEndpoints.update(getEntryId(item), { product: { set: [createdVariantId] }, name: createdVariantName });
                     }
                 }
                 created++;
@@ -240,18 +240,18 @@ export default function ProductVariantsPage() {
                 let page = 1;
                 let totalPages = 1;
                 do {
-                    const res = await StockItemsEndpoints.fetchByProduct(vId, { page, pageSize: 100 });
+                    const res = await StockItemsEndpoints.byProduct(vId, { page, pageSize: 100 });
                     const items = res?.data ?? res ?? [];
                     totalPages = res?.meta?.pagination?.pageCount || 1;
                     for (const item of items) {
-                        await StockItemsEndpoints.putUpdate(getEntryId(item), {
+                        await StockItemsEndpoints.update(getEntryId(item), {
                             product: { connect: [parentDocumentId], disconnect: [vId] }, name: selectedProduct.name
                         });
                     }
                     page++;
                 } while (page <= totalPages);
             }
-            await ProductsEndpoints.putDelete(vId);
+            await ProductsEndpoints.del(vId);
             await loadProductDetails(parentDocumentId);
             setSuccess(`Variant "${variant.name}" deleted${count > 0 ? `, ${count} item(s) moved to parent` : ''}`);
         } catch (err) {
@@ -277,18 +277,18 @@ export default function ProductVariantsPage() {
                     let page = 1;
                     let totalPages = 1;
                     do {
-                        const res = await StockItemsEndpoints.fetchByProduct(vId, { page, pageSize: 100 });
+                        const res = await StockItemsEndpoints.byProduct(vId, { page, pageSize: 100 });
                         const items = res?.data ?? res ?? [];
                         totalPages = res?.meta?.pagination?.pageCount || 1;
                         for (const item of items) {
-                            await StockItemsEndpoints.putUpdate(getEntryId(item), {
+                            await StockItemsEndpoints.update(getEntryId(item), {
                                 product: { connect: [parentDocumentId], disconnect: [vId] }, name: selectedProduct.name
                             });
                         }
                         page++;
                     } while (page <= totalPages);
                 }
-                await ProductsEndpoints.putDelete(vId);
+                await ProductsEndpoints.del(vId);
             }
             setSelectedVariants(new Set());
             await loadProductDetails(parentDocumentId);
@@ -343,7 +343,7 @@ export default function ProductVariantsPage() {
         try {
             const ids = Array.from(selectedItems);
             for (const id of ids) {
-                await StockItemsEndpoints.putUpdate(id, {
+                await StockItemsEndpoints.update(id, {
                     product: { set: [getEntryId(variant)] },
                     name: variant.name
                 });

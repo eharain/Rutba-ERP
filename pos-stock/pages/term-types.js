@@ -51,7 +51,7 @@ export default function TermTypesPage() {
         const timer = setTimeout(async () => {
             setIsTermSearchLoading(true);
             try {
-                const res = await TermsEndpoints.fetchList({ filters: { name: { $containsi: searchValue } } });
+                const res = await TermsEndpoints.list({ filters: { name: { $containsi: searchValue } } });
                 const data = res?.data ?? res;
                 if (isActive) {
                     setTermSearchResults(data || []);
@@ -83,8 +83,8 @@ export default function TermTypesPage() {
         setLoading(true);
         try {
             const [termTypesRes, termsRes] = await Promise.all([
-                TermTypesEndpoints.fetchWithTerms(),
-                TermsEndpoints.fetchList(),
+                TermTypesEndpoints.listWithTerms(),
+                TermsEndpoints.list(),
             ]);
             const termTypesData = termTypesRes?.data ?? termTypesRes;
             const termsData = termsRes?.data ?? termsRes;
@@ -120,10 +120,10 @@ export default function TermTypesPage() {
                 (source?.terms || []).forEach((term) => mergedTermIds.add(getEntryId(term)));
             });
 
-            await TermTypesEndpoints.putUpdate(selectedTermTypeId, { terms: { connect: Array.from(mergedTermIds) } });
+            await TermTypesEndpoints.update(selectedTermTypeId, { terms: { connect: Array.from(mergedTermIds) } });
 
             await Promise.all(
-                Array.from(mergeSelection).map((typeId) => TermTypesEndpoints.putDelete(typeId))
+                Array.from(mergeSelection).map((typeId) => TermTypesEndpoints.del(typeId))
             );
 
             setMergeSelection(new Set());
@@ -201,9 +201,9 @@ export default function TermTypesPage() {
                 is_public: termTypeForm.is_public
             };
             if (isEditingTermType && selectedTermTypeId) {
-                await TermTypesEndpoints.putUpdate(selectedTermTypeId, payload);
+                await TermTypesEndpoints.update(selectedTermTypeId, payload);
             } else {
-                const res = await TermTypesEndpoints.postCreate(payload);
+                const res = await TermTypesEndpoints.create(payload);
                 const created = res?.data ?? res;
                 setSelectedTermTypeId(getEntryId(created));
             }
@@ -228,7 +228,7 @@ export default function TermTypesPage() {
                 slug: termForm.slug || undefined,
                 term_types: { connect: [selectedTermTypeId] }
             };
-            await TermsEndpoints.postCreate(payload);
+            await TermsEndpoints.create(payload);
             setTermForm({ name: "", slug: "" });
             await loadData();
         } catch (error) {
@@ -244,7 +244,7 @@ export default function TermTypesPage() {
         if (!termId) return alert("Select a term to add");
         setLoading(true);
         try {
-            await TermTypesEndpoints.putUpdate(selectedTermTypeId, { terms: { connect: [termId] } });
+            await TermTypesEndpoints.update(selectedTermTypeId, { terms: { connect: [termId] } });
             await loadData();
         } catch (error) {
             console.error("Failed to add term", error);
@@ -258,7 +258,7 @@ export default function TermTypesPage() {
         if (!selectedTermTypeId) return;
         setLoading(true);
         try {
-            await TermTypesEndpoints.putUpdate(selectedTermTypeId, { terms: { disconnect: [termId] } });
+            await TermTypesEndpoints.update(selectedTermTypeId, { terms: { disconnect: [termId] } });
             await loadData();
         } catch (error) {
             console.error("Failed to remove term", error);
@@ -374,7 +374,7 @@ export default function TermTypesPage() {
                         slug: row.slug.trim() || undefined,
                         term_types: { connect: [selectedTermTypeId] }
                     };
-                    await TermsEndpoints.postCreate(payload);
+                    await TermsEndpoints.create(payload);
                     existingNames.add(trimmedName.toLowerCase());
                     setImportRows(prev => prev.map((r, idx) => idx === i ? { ...r, _status: 'created' } : r));
                     created++;

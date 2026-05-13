@@ -1,5 +1,5 @@
 import { authApi } from '../../../lib/api.js';
-import { executeEndpoint } from './___core__.js';
+import { executeEndpoint, strictEndpointGuard } from './___core__.js';
 import { SiteSettingEndpoints as SiteSettingEndpointsApi } from '../../../api/site-setting.js';
 
 async function getDraft(...args) {
@@ -26,24 +26,18 @@ async function discard(...args) {
     return executeEndpoint(authApi, 'discard', SiteSettingEndpointsApi.discard(...args));
 }
 
-async function fetchGetDraft(...args) {
-    return getDraft(...args);
-}
-
-async function fetchGetPublished(...args) {
-    return getPublished(...args);
-}
-
-const endpoints = {
-    getDraft,
-    fetchDraft,
-    getPublished,
-    updateDraft,
-    publish,
-    discard,
-    fetchGetDraft,
-    fetchGetPublished,
-};
+const endpoints = strictEndpointGuard(
+    'SiteSettingEndpoints',
+    {
+        getDraft,
+        fetchDraft,
+        getPublished,
+        updateDraft,
+        publish,
+        discard,
+    },
+    ["getDraft","fetchDraft","getPublished","updateDraft","publish","discard"],
+);
 
 export default endpoints;
 export const SiteSettingEndpoints = endpoints;

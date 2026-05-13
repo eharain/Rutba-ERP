@@ -55,7 +55,7 @@ const BulkBarcodePrint = ({
 
                 const results = await Promise.all(
                     documentIds.map(id => {
-                        return StockItemsEndpoints.fetchById(id, { populate: ['product'] })
+                        return StockItemsEndpoints.byId(id, { populate: ['product'] })
                             .then(res => res.data)
                             .catch(() => null);
                     })

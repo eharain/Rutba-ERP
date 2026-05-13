@@ -15,8 +15,8 @@ export default function ProductGroups() {
         setLoading(true);
         try {
             const [draftRes, pubRes] = await Promise.all([
-                ProductGroupsEndpoints.fetchListDraft({ sort: ["createdAt:desc"], populate: ["gallery", "cover_image", "products"], pagination: { pageSize: 50 } }),
-                ProductGroupsEndpoints.fetchListPublished({ pageSize: 200 }),
+                ProductGroupsEndpoints.listDraft({ sort: ["createdAt:desc"], populate: ["gallery", "cover_image", "products"], pagination: { pageSize: 50 } }),
+                ProductGroupsEndpoints.listPublished({ pageSize: 200 }),
             ]);
             const pubIds = new Set((pubRes.data || []).map(g => g.documentId));
             const mapped = (draftRes.data || []).map(g => ({ ...g, _isPublished: pubIds.has(g.documentId) }));

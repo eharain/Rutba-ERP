@@ -43,7 +43,7 @@ const PurchaseReceiveList = ({ purchase, onComplete }) => {
             const generatedStockItems = await generateStockItems(purchase,item, item.received_quantity);
 
             // Update purchase item with received quantity
-            await PurchaseItemsEndpoints.putUpdate(item.documentId, {
+            await PurchaseItemsEndpoints.update(item.documentId, {
                 received_quantity: item.received_quantity,
                 status: 'Received'
             });
@@ -68,7 +68,7 @@ const PurchaseReceiveList = ({ purchase, onComplete }) => {
         setLoading(true);
         try {
             // Update purchase status to "Received"
-            await PurchasesEndpoints.putUpdate(purchase.documentId, {
+            await PurchasesEndpoints.update(purchase.documentId, {
                 status: 'Received',
                 order_recieved_date: new Date().toISOString()
             });

@@ -59,35 +59,36 @@ export const PurchaseItemsEndpoints = {
         action: 'update',
         method: 'put',
         apps: ['purchase', 'stock'],
-        approle: ['admin', 'manager']
+        approle: ['admin', 'manager'],
+        data,
     }),
 
-    /** Async: fetch purchase items by product documentId. */
-
-
-    /** Async: fetch all purchase items for a given purchase. */
-
-
-    /** Async: create a new purchase item. */
-
-
-    /** Async: update a purchase item by documentId. */
-
-
-    /** Async: delete a purchase item by documentId. */
-
+    /**
+     * Delete a purchase item by documentId.
+     *
+     * todo: speculative stub — added because pos-stock/pages/[documentId]/purchase.js
+     * needs to remove items from an open purchase. Confirm the Strapi controller
+     * actually accepts DELETE on this route (the content type's policies may block
+     * mid-flow deletion). If blocked, switch to a soft-delete or disconnect pattern.
+     */
+    del: (documentId) => ({
+        path: `/purchase-items/${documentId}`,
+        action: 'delete',
+        method: 'delete',
+        apps: ['purchase', 'stock'],
+        approle: ['admin', 'manager'],
+    }),
 
     /**
      * Save a single purchase item — PUT if it already exists (id > -1), POST otherwise.
-     * Previously standalone function, now part of the endpoint object.
      * @param {Object} item
      */
     savePurchaseItem: async (item) => {
         if (item.id > -1) {
-            const res = await PurchaseItemsEndpoints.putUpdate(item.documentId, prepareForPut(item, []));
+            const res = await PurchaseItemsEndpoints.update(item.documentId, prepareForPut(item, []));
             return dataNode(res);
         } else {
-            const res = await PurchaseItemsEndpoints.postCreate(prepareForPut(item, []));
+            const res = await PurchaseItemsEndpoints.create(prepareForPut(item, []));
             return dataNode(res);
         }
     },

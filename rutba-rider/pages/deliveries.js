@@ -12,7 +12,7 @@ export default function DeliveriesPage() {
 
   useEffect(() => {
     if (!jwt) return;
-    RiderEndpoints.fetchDeliveries({ status: 'active' })
+    RiderEndpoints.deliveries({ status: 'active' })
       .then((res) => setDeliveries(res.data || []))
       .catch((err) => console.error('Failed to load deliveries', err))
       .finally(() => setLoading(false));

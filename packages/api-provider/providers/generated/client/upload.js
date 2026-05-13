@@ -1,5 +1,5 @@
 import { authApi } from '../../../lib/api.js';
-import { executeEndpoint } from './___core__.js';
+import { executeEndpoint, strictEndpointGuard } from './___core__.js';
 import { UploadEndpoints as UploadEndpointsApi } from '../../../api/upload.js';
 
 async function upload(...args) {
@@ -14,11 +14,15 @@ async function deleteFile(...args) {
     return executeEndpoint(authApi, 'deleteFile', UploadEndpointsApi.deleteFile(...args));
 }
 
-const endpoints = {
-    upload,
-    uploadFiles,
-    deleteFile,
-};
+const endpoints = strictEndpointGuard(
+    'UploadEndpoints',
+    {
+        upload,
+        uploadFiles,
+        deleteFile,
+    },
+    ["upload","uploadFiles","deleteFile"],
+);
 
 export default endpoints;
 export const UploadEndpoints = endpoints;

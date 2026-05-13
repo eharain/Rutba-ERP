@@ -1,5 +1,5 @@
 import { authApi } from '../../../../lib/api.js';
-import { executeEndpoint } from '../___core__.js';
+import { executeEndpoint, strictEndpointGuard } from '../___core__.js';
 import { WebDeliveryEndpoints as WebDeliveryEndpointsApi } from '../../../../api/web/delivery.js';
 
 async function calculateMethods(...args) {
@@ -18,17 +18,16 @@ async function tracking(...args) {
     return executeEndpoint(authApi, 'tracking', WebDeliveryEndpointsApi.tracking(...args));
 }
 
-async function fetchGetMessages(...args) {
-    return getMessages(...args);
-}
-
-const endpoints = {
-    calculateMethods,
-    getMessages,
-    sendMessage,
-    tracking,
-    fetchGetMessages,
-};
+const endpoints = strictEndpointGuard(
+    'WebDeliveryEndpoints',
+    {
+        calculateMethods,
+        getMessages,
+        sendMessage,
+        tracking,
+    },
+    ["calculateMethods","getMessages","sendMessage","tracking"],
+);
 
 export default endpoints;
 export const WebDeliveryEndpoints = endpoints;

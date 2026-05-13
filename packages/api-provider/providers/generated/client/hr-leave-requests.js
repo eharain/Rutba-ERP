@@ -1,5 +1,5 @@
 import { authApi } from '../../../lib/api.js';
-import { executeEndpoint } from './___core__.js';
+import { executeEndpoint, strictEndpointGuard } from './___core__.js';
 import { HrLeaveRequestsEndpoints as HrLeaveRequestsEndpointsApi } from '../../../api/hr-leave-requests.js';
 
 async function myRequests(...args) {
@@ -18,17 +18,16 @@ async function action(...args) {
     return executeEndpoint(authApi, 'action', HrLeaveRequestsEndpointsApi.action(...args));
 }
 
-async function postCreate(...args) {
-    return create(...args);
-}
-
-const endpoints = {
-    myRequests,
-    teamQueue,
-    create,
-    action,
-    postCreate,
-};
+const endpoints = strictEndpointGuard(
+    'HrLeaveRequestsEndpoints',
+    {
+        myRequests,
+        teamQueue,
+        create,
+        action,
+    },
+    ["myRequests","teamQueue","create","action"],
+);
 
 export default endpoints;
 export const HrLeaveRequestsEndpoints = endpoints;

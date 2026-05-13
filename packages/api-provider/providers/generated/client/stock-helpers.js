@@ -1,5 +1,5 @@
 import { authApi } from '../../../lib/api.js';
-import { executeEndpoint } from './___core__.js';
+import { executeEndpoint, strictEndpointGuard } from './___core__.js';
 import { StockHelpersEndpoints as StockHelpersEndpointsApi } from '../../../api/stock-helpers.js';
 
 async function getStockStatus(...args) {
@@ -10,15 +10,14 @@ async function relationConnects(...args) {
     return executeEndpoint(authApi, 'relationConnects', StockHelpersEndpointsApi.relationConnects(...args));
 }
 
-async function fetchGetStockStatus(...args) {
-    return getStockStatus(...args);
-}
-
-const endpoints = {
-    getStockStatus,
-    relationConnects,
-    fetchGetStockStatus,
-};
+const endpoints = strictEndpointGuard(
+    'StockHelpersEndpoints',
+    {
+        getStockStatus,
+        relationConnects,
+    },
+    ["getStockStatus","relationConnects"],
+);
 
 export default endpoints;
 export const StockHelpersEndpoints = endpoints;

@@ -1,0 +1,21 @@
+{
+    "compilerOptions": {
+        "allowJs": true,
+        "checkJs": true,
+        "noEmit": true,
+        "module": "esnext",
+        "moduleResolution": "bundler",
+        "target": "es2022",
+        "jsx": "preserve",
+        "esModuleInterop": true,
+        "resolveJsonModule": true,
+        "skipLibCheck": true,
+        "strict": false,
+        "noImplicitAny": false,
+        "maxNodeModuleJsDepth": 0,
+        "types": [],
+        "baseUrl": "."
+    },
+    "include": ["components/**/*", "context/**/*", "lib/**/*"],
+    "exclude": ["node_modules", ".next", "**/*.min.js"]
+}
