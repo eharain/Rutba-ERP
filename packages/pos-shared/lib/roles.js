@@ -25,6 +25,7 @@ export const APP_URLS = {
     payroll:   process.env.NEXT_PUBLIC_PAYROLL_URL   || 'http://localhost:4008',
     cms:       process.env.NEXT_PUBLIC_CMS_URL       || 'http://localhost:4009',
     social:    process.env.NEXT_PUBLIC_SOCIAL_URL    || 'http://localhost:4011',
+    web:       process.env.NEXT_PUBLIC_WEB_URL       || 'http://localhost:4010',
 };
 
 /** All recognised app keys */
