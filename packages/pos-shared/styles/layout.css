@@ -290,3 +290,252 @@ a:hover { text-decoration: underline; }
 .layout-header .layout-container { padding-top: 0 !important; padding-bottom: 0 !important; }
 
 .layout-footer { font-size: 0.85rem; color: var(--rutba-muted); }
+
+
+/* ─────────────────────────────────────────────────────────────
+   Sidebar layout (CMS — left rail, expand on hover)
+   ───────────────────────────────────────────────────────────── */
+
+:root {
+    --side-nav-collapsed: 64px;
+    --side-nav-expanded:  240px;
+    --side-nav-bg:        #1f242b;
+    --side-nav-bg-hover:  #2a3038;
+    --side-nav-text:      rgba(255, 255, 255, 0.78);
+    --side-nav-text-hi:   #ffffff;
+    --side-nav-accent:    var(--rutba-accent);
+    --topbar-h:           52px;
+}
+
+.layout-header-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: var(--topbar-h);
+    padding: 0 1rem;
+}
+
+.topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    color: var(--rutba-nav-text);
+}
+
+.topbar-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #fff;
+    font-weight: 600;
+    font-size: 1rem;
+    letter-spacing: -0.01em;
+    text-decoration: none;
+}
+
+.topbar-brand:hover { color: #fff; text-decoration: none; }
+
+.topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.topbar-actions .nav-link {
+    color: var(--rutba-nav-text);
+    padding: 0.35rem 0.7rem;
+    border-radius: 0.4rem;
+    font-size: 0.88rem;
+    font-weight: 500;
+    transition: background-color 120ms ease, color 120ms ease;
+}
+
+.topbar-actions .nav-link:hover,
+.topbar-actions .nav-link:focus,
+.topbar-actions .nav-link.show {
+    color: var(--rutba-nav-text-hi);
+    background-color: var(--rutba-nav-bg-hover);
+}
+
+.topbar-actions .nav-role-switcher .nav-link.text-warning {
+    background-color: rgba(245, 180, 0, 0.12);
+}
+
+/* Body wrapper holding sidebar + main */
+.layout-body {
+    display: flex;
+    flex: 1 1 auto;
+    min-height: 0;
+    position: relative;
+}
+
+.layout-sidebar {
+    flex: 0 0 auto;
+    width: var(--side-nav-collapsed);
+    position: relative;
+}
+
+.layout-main-with-sidebar {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 1.25rem 1.5rem;
+    background: #f6f7f9;
+}
+
+/* Sidebar surface */
+.side-nav {
+    position: fixed;
+    top: var(--topbar-h);
+    left: 0;
+    bottom: 0;
+    width: var(--side-nav-collapsed);
+    background: var(--side-nav-bg);
+    color: var(--side-nav-text);
+    overflow-x: hidden;
+    overflow-y: auto;
+    transition: width 180ms ease;
+    z-index: 1020;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 1px 0 0 rgba(255, 255, 255, 0.04);
+}
+
+.side-nav.is-expanded {
+    width: var(--side-nav-expanded);
+    box-shadow: 8px 0 24px rgba(15, 23, 42, 0.18);
+}
+
+/* Reserve room in main when sidebar is pinned (no content shift on hover) */
+.side-nav.is-pinned ~ * .layout-main-with-sidebar,
+.has-sidebar:has(.side-nav.is-pinned) .layout-sidebar {
+    width: var(--side-nav-expanded);
+}
+.has-sidebar:has(.side-nav.is-pinned) .layout-sidebar { width: var(--side-nav-expanded); }
+
+.side-nav-header {
+    padding: 0.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.side-nav-pin {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    background: transparent;
+    border: 0;
+    color: var(--side-nav-text);
+    padding: 0.5rem 0.6rem;
+    border-radius: 0.4rem;
+    font-size: 0.82rem;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.side-nav-pin:hover {
+    background: var(--side-nav-bg-hover);
+    color: var(--side-nav-text-hi);
+}
+
+.side-nav-pin i { width: 20px; text-align: center; font-size: 0.95rem; }
+
+.side-nav.is-pinned .side-nav-pin i { color: var(--side-nav-accent); }
+
+.side-nav-items {
+    padding: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.side-nav-link {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.55rem 0.6rem;
+    border-radius: 0.45rem;
+    color: var(--side-nav-text);
+    background: transparent;
+    border: 0;
+    text-align: left;
+    width: 100%;
+    font-size: 0.88rem;
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color 120ms ease, color 120ms ease;
+}
+
+.side-nav-link:hover,
+.side-nav-link:focus {
+    background: var(--side-nav-bg-hover);
+    color: var(--side-nav-text-hi);
+    text-decoration: none;
+}
+
+.side-nav-link.is-current {
+    background: rgba(245, 180, 0, 0.14);
+    color: var(--side-nav-text-hi);
+    box-shadow: inset 3px 0 0 var(--side-nav-accent);
+}
+
+.side-nav-icon {
+    width: 24px;
+    flex: 0 0 24px;
+    text-align: center;
+    font-size: 0.95rem;
+}
+
+.side-nav-label {
+    flex: 1 1 auto;
+    opacity: 0;
+    transform: translateX(-4px);
+    transition: opacity 120ms ease 40ms, transform 160ms ease 40ms;
+    pointer-events: none;
+}
+
+.side-nav.is-expanded .side-nav-label {
+    opacity: 1;
+    transform: translateX(0);
+    pointer-events: auto;
+}
+
+.side-nav-caret {
+    font-size: 0.7rem;
+    opacity: 0.6;
+    flex: 0 0 auto;
+    transition: opacity 120ms ease;
+}
+
+.side-nav:not(.is-expanded) .side-nav-caret { opacity: 0; }
+
+/* Grouped sections (Catalog / Content) */
+.side-nav-group { display: contents; }
+.side-nav-group .side-nav-children {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 180ms ease;
+    overflow: hidden;
+}
+.side-nav-group.is-open.side-nav-group:where(.is-open) .side-nav-children,
+.side-nav.is-expanded .side-nav-group.is-open .side-nav-children {
+    grid-template-rows: 1fr;
+}
+.side-nav-group .side-nav-children > * { min-height: 0; }
+
+.side-nav-child {
+    padding-left: 1.6rem;
+    font-size: 0.84rem;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.side-nav-child .side-nav-icon { font-size: 0.82rem; opacity: 0.85; }
+
+/* When collapsed, never show children even if a section is open */
+.side-nav:not(.is-expanded) .side-nav-children { grid-template-rows: 0fr !important; }
+
+
+/* Page surface for sidebar layout — pages keep their own internal
+   layout; we just give the main area a softer canvas. */
+.layout-main-with-sidebar { padding: 1rem 1.25rem; }
