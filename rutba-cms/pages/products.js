@@ -9,6 +9,8 @@ import { ProductFilter } from "@rutba/pos-shared/components/filter/product-filte
 import Link from "next/link";
 import { useToast } from "../components/Toast";
 import BulkProductActions from "@rutba/pos-shared/components/BulkProductActions";
+import ListPageLayout, { AddButton } from "@rutba/pos-shared/components/ListPageLayout";
+import ListPagination from "@rutba/pos-shared/components/ListPagination";
 
 const DEFAULT_PAGE_SIZE = 25;
 const PAGE_SIZE_OPTIONS = [5, 10, 25, 50, 100, 150, 200];
@@ -255,16 +257,8 @@ export default function Products() {
         return () => { cancelled = true; };
     }, [router.isReady, jwt, page, pageSize, selectedBrand, selectedCategory, selectedSupplier, selectedTerm, selectedPurchase, searchText, sortField, sortDir]);
 
-    const fromItem = total === 0 ? 0 : (page - 1) * pageSize + 1;
-    const toItem = Math.min(page * pageSize, total);
-    const [goToPage, setGoToPage] = useState("");
-
-    const paginationItems = (() => {
-        if (pageCount <= 7) return Array.from({ length: pageCount }, (_, i) => i + 1);
-        if (page <= 4) return [1, 2, 3, 4, 5, "…", pageCount];
-        if (page >= pageCount - 3) return [1, "…", pageCount - 4, pageCount - 3, pageCount - 2, pageCount - 1, pageCount];
-        return [1, "…", page - 1, page, page + 1, "…", pageCount];
-    })();
+    const setPage = (p) => updateQuery({ page: p > 1 ? p : undefined });
+    const setPageSize = (s) => updateQuery({ pageSize: s, page: undefined });
 
     const toggleVariants = async (product) => {
         const docId = product.documentId;
@@ -306,73 +300,62 @@ export default function Products() {
         <ProtectedRoute>
             <Layout>
                 <ToastContainer />
-                <div className="d-flex align-items-center justify-content-between mb-3">
-                    <div className="d-flex align-items-center gap-2">
-                        <h2 className="mb-0">Products</h2>
-                        <Link className="btn btn-sm btn-primary" href="/new/product">
-                            <i className="fas fa-plus me-1"></i>New Product
-                        </Link>
-                    </div>
-                    <BulkProductActions
-                        selectedIds={selectedIds}
-                        categories={categories}
-                        brands={brands}
-                        suppliers={suppliers}
-                        onAssigned={handleBulkAssigned}
-                        onPublished={handleBulkPublished}
-                        onUnpublished={handleBulkUnpublished}
-                        onComplete={() => setSelectedIds(new Set())}
-                        toast={toast}
-                    />
-                </div>
-
-                <ProductFilter
-                    brands={brands}
-                    categories={categories}
-                    suppliers={suppliers}
-                    termTypes={termTypes}
-                    purchases={purchases}
-                    selectedBrand={selectedBrand}
-                    selectedCategory={selectedCategory}
-                    selectedSupplier={selectedSupplier}
-                    selectedTerm={selectedTerm}
-                    selectedPurchase={selectedPurchase}
-                    searchText={searchText}
-                    onBrandChange={(v) => updateQuery({ brands: v || undefined, page: undefined })}
-                    onCategoryChange={(v) => updateQuery({ categories: v || undefined, page: undefined })}
-                    onSupplierChange={(v) => updateQuery({ suppliers: v || undefined, page: undefined })}
-                    onTermChange={(v) => updateQuery({ terms: v || undefined, page: undefined })}
-                    onPurchaseChange={(v) => updateQuery({ purchases: v || undefined, page: undefined })}
-                    onSearchTextChange={(v) => updateQuery({ searchText: v || undefined, page: undefined })}
-                />
-
-                <div className="d-flex align-items-center justify-content-between my-2">
-                    <small className="text-muted">{total} products found{total > 0 ? ` · Showing ${fromItem}-${toItem}` : ""}</small>
-                    <div className="d-flex align-items-center gap-2">
-                        <label className="small text-muted mb-0">Rows:</label>
-                        <select
-                            className="form-select form-select-sm"
-                            style={{ width: 90 }}
-                            value={pageSize}
-                            onChange={(e) => updateQuery({ pageSize: e.target.value, page: undefined })}
-                        >
-                            {PAGE_SIZE_OPTIONS.map((size) => (
-                                <option key={size} value={size}>{size}</option>
-                            ))}
-                        </select>
-                    </div>
-                </div>
-
-                {loading && <p>Loading products...</p>}
-
-                {!loading && products.length === 0 && (
-                    <div className="alert alert-info">No products found.</div>
-                )}
-
-                {!loading && products.length > 0 && (
+                <ListPageLayout
+                    title="Products"
+                    subtitle={`${total} products found`}
+                    headerActions={<AddButton label="New Product" href="/new/product" />}
+                    filters={
+                        <ProductFilter
+                            brands={brands}
+                            categories={categories}
+                            suppliers={suppliers}
+                            termTypes={termTypes}
+                            purchases={purchases}
+                            selectedBrand={selectedBrand}
+                            selectedCategory={selectedCategory}
+                            selectedSupplier={selectedSupplier}
+                            selectedTerm={selectedTerm}
+                            selectedPurchase={selectedPurchase}
+                            searchText={searchText}
+                            onBrandChange={(v) => updateQuery({ brands: v || undefined, page: undefined })}
+                            onCategoryChange={(v) => updateQuery({ categories: v || undefined, page: undefined })}
+                            onSupplierChange={(v) => updateQuery({ suppliers: v || undefined, page: undefined })}
+                            onTermChange={(v) => updateQuery({ terms: v || undefined, page: undefined })}
+                            onPurchaseChange={(v) => updateQuery({ purchases: v || undefined, page: undefined })}
+                            onSearchTextChange={(v) => updateQuery({ searchText: v || undefined, page: undefined })}
+                        />
+                    }
+                    bulkActions={
+                        <BulkProductActions
+                            selectedIds={selectedIds}
+                            categories={categories}
+                            brands={brands}
+                            suppliers={suppliers}
+                            onAssigned={handleBulkAssigned}
+                            onPublished={handleBulkPublished}
+                            onUnpublished={handleBulkUnpublished}
+                            onComplete={() => setSelectedIds(new Set())}
+                            toast={toast}
+                        />
+                    }
+                    selectedCount={selectedIds.size}
+                    loading={loading}
+                    pagination={
+                        <ListPagination
+                            page={page}
+                            pageSize={pageSize}
+                            total={total}
+                            onPage={setPage}
+                            onPageSize={setPageSize}
+                            pageSizeOptions={PAGE_SIZE_OPTIONS}
+                        />
+                    }
+                    emptyState={<div>No products found.</div>}
+                >
+                    {products.length > 0 && (
                     <div className="table-responsive">
-                        <table className="table table-striped table-hover">
-                            <thead className="table-dark">
+                        <table className="table table-hover list-table">
+                            <thead>
                                 <tr>
                                     <th style={{ width: 30 }}>
                                         <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} title="Select all" />
@@ -428,18 +411,20 @@ export default function Products() {
                                             <td className="small text-nowrap">{p.updatedAt ? new Date(p.updatedAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "—"}</td>
                                             <td className="small text-nowrap">
                                                 {p._isPublished
-                                                    ? <button className="btn btn-sm btn-success py-0 px-1" onClick={() => unpublishOne(p.documentId)} disabled={publishing[p.documentId]} title="Click to unpublish">
+                                                    ? <button className="list-status btn border-0" style={{ background: '#198754', color: '#fff' }} onClick={() => unpublishOne(p.documentId)} disabled={publishing[p.documentId]} title="Click to unpublish">
                                                         {publishing[p.documentId] ? <i className="fas fa-spinner fa-spin"></i> : <><i className="fas fa-check me-1"></i>{p._publishedAt ? new Date(p._publishedAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "Published"}</>}
                                                     </button>
-                                                    : <button className="btn btn-sm btn-outline-secondary py-0 px-1" onClick={() => publishOne(p.documentId)} disabled={publishing[p.documentId]} title="Click to publish">
+                                                    : <button className="list-status btn border-0" style={{ background: '#e9ecef', color: '#495057' }} onClick={() => publishOne(p.documentId)} disabled={publishing[p.documentId]} title="Click to publish">
                                                         {publishing[p.documentId] ? <i className="fas fa-spinner fa-spin"></i> : "Draft"}
                                                     </button>
                                                 }
                                             </td>
                                             <td>
-                                                <Link className="btn btn-sm btn-outline-primary" href={`/${p.documentId}/product`}>
-                                                    Edit
-                                                </Link>
+                                                <div className="list-actions">
+                                                    <Link className="btn btn-outline-primary" href={`/${p.documentId}/product`}>
+                                                        Edit
+                                                    </Link>
+                                                </div>
                                             </td>
                                         </tr>
                                         {expandedProducts[p.documentId] && (
@@ -484,18 +469,20 @@ export default function Products() {
                                                         <td className="small text-nowrap">{v.updatedAt ? new Date(v.updatedAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "—"}</td>
                                                         <td className="small text-nowrap">
                                                             {v._isPublished
-                                                                ? <button className="btn btn-sm btn-success py-0 px-1" onClick={() => unpublishOne(v.documentId)} disabled={publishing[v.documentId]} title="Click to unpublish">
+                                                                ? <button className="list-status btn border-0" style={{ background: '#198754', color: '#fff' }} onClick={() => unpublishOne(v.documentId)} disabled={publishing[v.documentId]} title="Click to unpublish">
                                                                     {publishing[v.documentId] ? <i className="fas fa-spinner fa-spin"></i> : <><i className="fas fa-check me-1"></i>{v._publishedAt ? new Date(v._publishedAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "Published"}</>}
                                                                 </button>
-                                                                : <button className="btn btn-sm btn-outline-secondary py-0 px-1" onClick={() => publishOne(v.documentId)} disabled={publishing[v.documentId]} title="Click to publish">
+                                                                : <button className="list-status btn border-0" style={{ background: '#e9ecef', color: '#495057' }} onClick={() => publishOne(v.documentId)} disabled={publishing[v.documentId]} title="Click to publish">
                                                                     {publishing[v.documentId] ? <i className="fas fa-spinner fa-spin"></i> : "Draft"}
                                                                 </button>
                                                             }
                                                         </td>
                                                         <td>
-                                                            <Link className="btn btn-sm btn-outline-primary" href={`/${v.documentId}/product`}>
-                                                                Edit
-                                                            </Link>
+                                                            <div className="list-actions">
+                                                                <Link className="btn btn-outline-primary" href={`/${v.documentId}/product`}>
+                                                                    Edit
+                                                                </Link>
+                                                            </div>
                                                         </td>
                                                     </tr>
                                                 ))
@@ -506,71 +493,8 @@ export default function Products() {
                             </tbody>
                         </table>
                     </div>
-                )}
-
-                {pageCount > 1 && (
-                    <nav className="d-flex align-items-center justify-content-between">
-                        <div>
-                            <button
-                                className="btn btn-sm btn-outline-secondary me-1"
-                                disabled={page <= 1}
-                                onClick={() => updateQuery({ page: page - 1 > 1 ? page - 1 : undefined })}
-                            >
-                                &laquo; Prev
-                            </button>
-                            <button
-                                className="btn btn-sm btn-outline-secondary"
-                                disabled={page >= pageCount}
-                                onClick={() => updateQuery({ page: page + 1 })}
-                            >
-                                Next &raquo;
-                            </button>
-                        </div>
-                        <div className="d-flex align-items-center gap-2">
-                            <ul className="pagination pagination-sm mb-0">
-                                {paginationItems.map((item, idx) => (
-                                    typeof item === "number" ? (
-                                        <li key={item} className={`page-item ${page === item ? "active" : ""}`}>
-                                            <button className="page-link" onClick={() => updateQuery({ page: item > 1 ? item : undefined })}>{item}</button>
-                                        </li>
-                                    ) : (
-                                        <li key={`ellipsis-${idx}`} className="page-item disabled">
-                                            <span className="page-link">…</span>
-                                        </li>
-                                    )
-                                ))}
-                            </ul>
-                            <div className="d-flex align-items-center gap-1">
-                                <span className="small text-muted">Go to</span>
-                                <input
-                                    type="number"
-                                    min={1}
-                                    max={pageCount}
-                                    className="form-control form-control-sm"
-                                    style={{ width: 80 }}
-                                    value={goToPage}
-                                    onChange={(e) => setGoToPage(e.target.value)}
-                                    onKeyDown={(e) => {
-                                        if (e.key !== "Enter") return;
-                                        const target = Math.max(1, Math.min(pageCount, parseInt(goToPage, 10) || 1));
-                                        updateQuery({ page: target > 1 ? target : undefined });
-                                        setGoToPage("");
-                                    }}
-                                />
-                                <button
-                                    className="btn btn-sm btn-outline-secondary"
-                                    onClick={() => {
-                                        const target = Math.max(1, Math.min(pageCount, parseInt(goToPage, 10) || 1));
-                                        updateQuery({ page: target > 1 ? target : undefined });
-                                        setGoToPage("");
-                                    }}
-                                >
-                                    Go
-                                </button>
-                            </div>
-                        </div>
-                    </nav>
-                )}
+                    )}
+                </ListPageLayout>
             </Layout>
         </ProtectedRoute>
     );

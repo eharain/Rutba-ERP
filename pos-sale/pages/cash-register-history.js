@@ -6,7 +6,8 @@ import { AppContextEndpoints, CashRegistersEndpoints } from "@rutba/api-provider
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { isAppAdmin } from "@rutba/pos-shared/lib/roles";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
-import { Table, TableHead, TableRow, TableCell, TableBody, TablePagination } from "@rutba/pos-shared/components/Table";
+import ListPageLayout from "@rutba/pos-shared/components/ListPageLayout";
+import ListPagination from "@rutba/pos-shared/components/ListPagination";
 
 const STATUS_OPTIONS = ["Active", "Open", "Closed", "Expired", "Cancelled"];
 
@@ -16,8 +17,8 @@ export default function CashRegisterHistoryPage() {
     const userIsAdmin = isAppAdmin(adminAppAccess, AppContextEndpoints.getAppName());
     const [registers, setRegisters] = useState([]);
     const [loading, setLoading] = useState(false);
-    const [page, setPage] = useState(0);
-    const [rowsPerPage, setRowsPerPage] = useState(10);
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
     const [total, setTotal] = useState(0);
 
     // Filters
@@ -30,7 +31,7 @@ export default function CashRegisterHistoryPage() {
     useEffect(() => {
         loadRegisters();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [page, rowsPerPage]);
+    }, [page, pageSize]);
 
     const loadRegisters = async () => {
         setLoading(true);
@@ -56,8 +57,8 @@ export default function CashRegisterHistoryPage() {
             const res = await CashRegistersEndpoints.list({
                 filters,
                 sort: ["opened_at:desc"],
-                page: page + 1,
-                pageSize: rowsPerPage,
+                page,
+                pageSize,
                 populate: ["opened_by_user", "closed_by_user"],
             });
             setRegisters(res?.data ?? []);
@@ -69,10 +70,9 @@ export default function CashRegisterHistoryPage() {
         }
     };
 
-    const handleSearch = (e) => {
-        e.preventDefault();
-        setPage(0);
-        loadRegisters();
+    const handleSearch = () => {
+        setPage(1);
+        setTimeout(() => loadRegisters(), 0);
     };
 
     const handleClearFilters = () => {
@@ -81,7 +81,7 @@ export default function CashRegisterHistoryPage() {
         setFilterUser("");
         setFilterDateFrom("");
         setFilterDateTo("");
-        setPage(0);
+        setPage(1);
         setTimeout(() => loadRegisters(), 0);
     };
 
@@ -95,133 +95,119 @@ export default function CashRegisterHistoryPage() {
             Expired: 'bg-warning text-dark',
             Cancelled: 'bg-danger'
         }[status] || 'bg-light text-dark';
-        return <span className={`badge ${cls}`}>{status}</span>;
+        return <span className={`list-status ${cls}`}>{status}</span>;
     };
+
+    const filterNodes = [
+        <select key="status" className="form-select form-select-sm" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} title="Status">
+            <option value="">Status: All</option>
+            {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+        </select>,
+        <input key="desk" type="text" className="form-control form-control-sm" value={filterDesk}
+            onChange={(e) => setFilterDesk(e.target.value)} placeholder="Desk name" />,
+        <input key="user" type="text" className="form-control form-control-sm" value={filterUser}
+            onChange={(e) => setFilterUser(e.target.value)} placeholder="Opened by" />,
+        <input key="from" type="date" className="form-control form-control-sm" value={filterDateFrom}
+            onChange={(e) => setFilterDateFrom(e.target.value)} title="From" />,
+        <input key="to" type="date" className="form-control form-control-sm" value={filterDateTo}
+            onChange={(e) => setFilterDateTo(e.target.value)} title="To" />,
+        <div key="actions" className="d-flex gap-1">
+            <button type="button" className="btn btn-primary btn-sm" onClick={handleSearch}>
+                <i className="fas fa-search me-1"></i>Search
+            </button>
+            <button type="button" className="btn btn-outline-secondary btn-sm" onClick={handleClearFilters}>
+                <i className="fas fa-times"></i>
+            </button>
+        </div>,
+    ];
+
+    const headerActions = (
+        <Link href="/cash-register" className="btn btn-outline-primary btn-sm">
+            <i className="fas fa-cash-register me-1"></i>Current Register
+        </Link>
+    );
+
+    const title = (
+        <h4 className="mb-0"><i className="fas fa-history me-2"></i>Cash Register History</h4>
+    );
 
     return (
         <ProtectedRoute>
             <Layout>
-                <div className="p-3">
-                    <div className="d-flex align-items-center justify-content-between mb-3">
-                        <h4 className="mb-0"><i className="fas fa-history me-2"></i>Cash Register History</h4>
-                        <Link href="/cash-register" className="btn btn-outline-primary btn-sm">
-                            <i className="fas fa-cash-register me-1"></i>Current Register
-                        </Link>
-                    </div>
-
-                    {/* Filters */}
-                    <form onSubmit={handleSearch} className="card mb-3">
-                        <div className="card-body py-2">
-                            <div className="row g-2 align-items-end">
-                                <div className="col-sm-6 col-lg-2">
-                                    <label className="form-label small mb-1">Status</label>
-                                    <select className="form-select form-select-sm" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
-                                        <option value="">All</option>
-                                        {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
-                                    </select>
-                                </div>
-                                <div className="col-sm-6 col-lg-2">
-                                    <label className="form-label small mb-1">Desk</label>
-                                    <input type="text" className="form-control form-control-sm" value={filterDesk}
-                                        onChange={(e) => setFilterDesk(e.target.value)} placeholder="Desk name" />
-                                </div>
-                                <div className="col-sm-6 col-lg-2">
-                                    <label className="form-label small mb-1">User</label>
-                                    <input type="text" className="form-control form-control-sm" value={filterUser}
-                                        onChange={(e) => setFilterUser(e.target.value)} placeholder="Opened by" />
-                                </div>
-                                <div className="col-sm-6 col-lg-2">
-                                    <label className="form-label small mb-1">From</label>
-                                    <input type="date" className="form-control form-control-sm" value={filterDateFrom}
-                                        onChange={(e) => setFilterDateFrom(e.target.value)} />
-                                </div>
-                                <div className="col-sm-6 col-lg-2">
-                                    <label className="form-label small mb-1">To</label>
-                                    <input type="date" className="form-control form-control-sm" value={filterDateTo}
-                                        onChange={(e) => setFilterDateTo(e.target.value)} />
-                                </div>
-                                <div className="col-sm-6 col-lg-2 d-flex gap-1">
-                                    <button type="submit" className="btn btn-primary btn-sm flex-fill">
-                                        <i className="fas fa-search me-1"></i>Search
-                                    </button>
-                                    <button type="button" className="btn btn-outline-secondary btn-sm" onClick={handleClearFilters}>
-                                        <i className="fas fa-times"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </form>
-
-                    {/* Table */}
-                    {loading ? (
-                        <div className="text-center text-muted p-4"><span className="spinner-border spinner-border-sm me-2"></span>Loading...</div>
-                    ) : (
-                        <>
-                            <Table>
-                                <TableHead>
-                                    <TableRow>
-                                        <TableCell>#</TableCell>
-                                        <TableCell>Desk</TableCell>
-                                        <TableCell>Opened By</TableCell>
-                                        <TableCell>Open Time</TableCell>
-                                        <TableCell>Close Time</TableCell>
-                                        <TableCell align="right">Opening</TableCell>
-                                        <TableCell align="right">Expected</TableCell>
-                                        <TableCell align="right">Counted</TableCell>
-                                        <TableCell align="right">Difference</TableCell>
-                                        <TableCell>Status</TableCell>
-                                        <TableCell></TableCell>
-                                    </TableRow>
-                                </TableHead>
-                                <TableBody>
-                                    {registers.length === 0 && (
-                                        <TableRow>
-                                            <TableCell colSpan={11}>
-                                                <div className="text-muted text-center py-3">No registers found.</div>
-                                            </TableCell>
-                                        </TableRow>
-                                    )}
-                                    {registers.map((reg) => (
-                                        <TableRow key={reg.documentId ?? reg.id}>
-                                            <TableCell>{reg.id}</TableCell>
-                                            <TableCell>{reg.desk_name || `Desk ${reg.desk_id}`}</TableCell>
-                                            <TableCell>{reg.opened_by || '-'}</TableCell>
-                                            <TableCell className="small">{reg.opened_at ? new Date(reg.opened_at).toLocaleString() : '-'}</TableCell>
-                                            <TableCell className="small">{reg.closed_at ? new Date(reg.closed_at).toLocaleString() : '-'}</TableCell>
-                                            <TableCell align="right">{fmt(reg.opening_cash)}</TableCell>
-                                            <TableCell align="right">{reg.expected_cash != null ? fmt(reg.expected_cash) : '-'}</TableCell>
-                                            <TableCell align="right">{reg.counted_cash != null ? fmt(reg.counted_cash) : '-'}</TableCell>
-                                            <TableCell align="right">
-                                                {reg.difference != null ? (
-                                                    <span className={reg.difference >= 0 ? 'text-success' : 'text-danger'}>
-                                                        {reg.difference >= 0 ? '+' : ''}{fmt(reg.difference)}
-                                                    </span>
-                                                ) : '-'}
-                                            </TableCell>
-                                            <TableCell>{statusBadge(reg.status)}</TableCell>
-                                            <TableCell>
+                <ListPageLayout
+                    title={title}
+                    subtitle={total != null ? `${total} total${!userIsAdmin ? ' • last 7 days' : ''}` : undefined}
+                    headerActions={headerActions}
+                    filters={filterNodes}
+                    loading={loading}
+                    pagination={
+                        <ListPagination
+                            page={page}
+                            pageSize={pageSize}
+                            total={total}
+                            onPage={setPage}
+                            onPageSize={(n) => { setPageSize(n); setPage(1); }}
+                            pageSizeOptions={[5, 10, 25]}
+                        />
+                    }
+                    emptyState={<div>No registers found.</div>}
+                >
+                    <div className="table-responsive">
+                        <table className="table table-hover list-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Desk</th>
+                                    <th>Opened By</th>
+                                    <th>Open Time</th>
+                                    <th>Close Time</th>
+                                    <th style={{ textAlign: 'right' }}>Opening</th>
+                                    <th style={{ textAlign: 'right' }}>Expected</th>
+                                    <th style={{ textAlign: 'right' }}>Counted</th>
+                                    <th style={{ textAlign: 'right' }}>Difference</th>
+                                    <th>Status</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {registers.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={11}>
+                                            <div className="text-muted text-center py-3">No registers found.</div>
+                                        </td>
+                                    </tr>
+                                ) : registers.map((reg) => (
+                                    <tr key={reg.documentId ?? reg.id}>
+                                        <td>{reg.id}</td>
+                                        <td>{reg.desk_name || `Desk ${reg.desk_id}`}</td>
+                                        <td>{reg.opened_by || '-'}</td>
+                                        <td className="small">{reg.opened_at ? new Date(reg.opened_at).toLocaleString() : '-'}</td>
+                                        <td className="small">{reg.closed_at ? new Date(reg.closed_at).toLocaleString() : '-'}</td>
+                                        <td style={{ textAlign: 'right' }}>{fmt(reg.opening_cash)}</td>
+                                        <td style={{ textAlign: 'right' }}>{reg.expected_cash != null ? fmt(reg.expected_cash) : '-'}</td>
+                                        <td style={{ textAlign: 'right' }}>{reg.counted_cash != null ? fmt(reg.counted_cash) : '-'}</td>
+                                        <td style={{ textAlign: 'right' }}>
+                                            {reg.difference != null ? (
+                                                <span className={reg.difference >= 0 ? 'text-success' : 'text-danger'}>
+                                                    {reg.difference >= 0 ? '+' : ''}{fmt(reg.difference)}
+                                                </span>
+                                            ) : '-'}
+                                        </td>
+                                        <td>{statusBadge(reg.status)}</td>
+                                        <td>
+                                            <div className="list-actions">
                                                 <Link href={`/${reg.documentId}/cash-register-detail`} className="btn btn-outline-primary btn-sm">
                                                     <i className="fas fa-eye"></i>
                                                 </Link>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                            <TablePagination
-                                count={total}
-                                page={page}
-                                onPageChange={(e, p) => setPage(p)}
-                                rowsPerPage={rowsPerPage}
-                                onRowsPerPageChange={(e) => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0); }}
-                                rowsPerPageOptions={[5, 10, 25]}
-                            />
-                        </>
-                    )}
-                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </ListPageLayout>
             </Layout>
         </ProtectedRoute>
     );
 }
-
-

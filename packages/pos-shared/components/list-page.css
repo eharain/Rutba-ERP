@@ -1,0 +1,68 @@
+/* =========================================================
+   List page — shared visual primitives
+   Loaded once per app's _app.js so every list page renders with
+   the same table density, action-column shape, status pills,
+   and responsive breakpoints.
+   ========================================================= */
+
+/* Tables inside ListPageLayout get a uniform density + alignment.
+   The .list-table class is opt-in so we don't accidentally restyle
+   tables in other surfaces (modals, sale details, etc.). */
+.list-table {
+    margin-bottom: 0;
+    font-size: 14px;
+    vertical-align: middle;
+}
+.list-table > :not(caption) > * > * {
+    padding: 0.55rem 0.6rem;
+}
+.list-table thead th {
+    background-color: #f8f9fa;
+    color: #495057;
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    border-bottom: 1px solid #dee2e6;
+    white-space: nowrap;
+}
+.list-table tbody tr:hover {
+    background-color: rgba(13, 110, 253, 0.04);
+}
+
+/* Compact icon-button row used in action columns. Standard width so
+   every list page's action column lines up visually. */
+.list-actions {
+    display: inline-flex;
+    gap: 4px;
+    flex-wrap: nowrap;
+    white-space: nowrap;
+}
+.list-actions .btn {
+    --bs-btn-padding-y: 2px;
+    --bs-btn-padding-x: 8px;
+    --bs-btn-font-size: 12px;
+}
+
+/* Status pill — uniform shape regardless of color. */
+.list-status {
+    display: inline-block;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    border-radius: 10px;
+    line-height: 1.4;
+    white-space: nowrap;
+}
+
+/* Mobile: collapse the filter card paddings so the row of inputs
+   doesn't push past the viewport edge. */
+@media (max-width: 575.98px) {
+    .list-table thead th,
+    .list-table > :not(caption) > * > * {
+        padding: 0.4rem 0.4rem;
+        font-size: 13px;
+    }
+}

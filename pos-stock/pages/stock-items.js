@@ -2,20 +2,13 @@
 import React, { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import {
-    Table,
-    TableHead,
-    TableRow,
-    TableCell,
-    TableBody,
-    CircularProgress,
-    TablePagination,
-} from "@rutba/pos-shared/components/Table";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { BranchesEndpoints, StockHelpersEndpoints, StockItemsEndpoints } from "@rutba/api-provider/endpoints/index.js";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
 import { loadProduct, searchStockItems } from "@rutba/api-provider/pos";
+import ListPageLayout from "@rutba/pos-shared/components/ListPageLayout";
+import ListPagination from "@rutba/pos-shared/components/ListPagination";
 
 export default function StockItemsPage() {
     const router = useRouter();
@@ -23,8 +16,8 @@ export default function StockItemsPage() {
     const [stockItems, setStockItems] = useState([]);
     const [stock_status, setStockStatus] = useState({ statuses: [] });
     const [filteredItems, setFilteredItems] = useState([]);
-    const [page, setPage] = useState(0);
-    const [rowsPerPage, setRowsPerPage] = useState(20);
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(25);
     const [total, setTotal] = useState(0);
     const [loading, setLoading] = useState(false);
     const [selectedItems, setSelectedItems] = useState(new Set());
@@ -47,7 +40,7 @@ export default function StockItemsPage() {
     }, [])
 
     useEffect(() => {
-        setPage(0);
+        setPage(1);
     }, [productFilter]);
 
     useEffect(() => {
@@ -71,25 +64,21 @@ export default function StockItemsPage() {
     useEffect(() => {
         const trimmed = searchTerm.trim();
         setSelectedItems(new Set()); // Clear selections on new load
-        // Handle Debounce for Search
         const handler = setTimeout(() => {
-            // If there's a search term (3+ chars), use search logic
             if (trimmed.length >= 2) {
                 handleStockItemsSearch(trimmed);
             } else {
-                // Otherwise, load default list (Received/InStock etc)
                 loadStockItems();
             }
         }, 200);
 
         return () => clearTimeout(handler);
-    }, [page, rowsPerPage, statusFilter, searchTerm, selectedBranch, productFilter, showArchived]);
+    }, [page, pageSize, statusFilter, searchTerm, selectedBranch, productFilter, showArchived]);
 
     const handleStockItemsSearch = async (searchText) => {
         setLoading(true);
         try {
-            // We pass current 'page + 1' so pagination works while searching
-            const stockItemsResult = await searchStockItems(searchText, page + 1, rowsPerPage, statusFilter, selectedBranch, productFilter);
+            const stockItemsResult = await searchStockItems(searchText, page, pageSize, statusFilter, selectedBranch, productFilter);
             setStockItems(stockItemsResult.data);
             setFilteredItems(stockItemsResult.data);
             setTotal(stockItemsResult.meta?.pagination?.total ?? 0);
@@ -102,20 +91,13 @@ export default function StockItemsPage() {
 
     const handleSearchChange = (e) => {
         setSearchTerm(e.target.value);
-        setPage(0); // Reset to first page because results will change entirely
+        setPage(1);
     };
 
     async function loadStockItems() {
         setLoading(true);
         try {
-
-            const ep = StockItemsEndpoints.list(page + 1, rowsPerPage, {
-                statusFilter,
-                branchDocId: selectedBranch || undefined,
-                productDocId: productFilter || undefined,
-                showArchived,
-            });
-            const response = await StockItemsEndpoints.list(page + 1, rowsPerPage, {
+            const response = await StockItemsEndpoints.list(page, pageSize, {
                 statusFilter,
                 branchDocId: selectedBranch || undefined,
                 productDocId: productFilter || undefined,
@@ -133,9 +115,8 @@ export default function StockItemsPage() {
     };
 
     const onBranchChange = async (selectedBranch) => {
-
         setSelectedBranch(selectedBranch ? selectedBranch : null);
-        setPage(0);
+        setPage(1);
     };
 
     const sendStockToBranch = async (destinationBranch) => {
@@ -155,15 +136,6 @@ export default function StockItemsPage() {
             setSelectedDestinationBranch(null);
             setLoading(false);
         }
-    };
-
-    const handleChangePage = (event, newPage) => {
-        setPage(newPage);
-    };
-
-    const handleChangeRowsPerPage = (event) => {
-        setRowsPerPage(parseInt(event.target.value, 10));
-        setPage(0);
     };
 
     const handleSelectItem = (itemId) => {
@@ -192,10 +164,7 @@ export default function StockItemsPage() {
             return;
         }
 
-        // Get document IDs
         const documentIdsToPrint = Array.from(selectedItems);
-
-        // Store data in localStorage and get a key
         const storageKey = `bulk_print_data_${Date.now()}`;
         localStorage.setItem(storageKey, JSON.stringify({
             documentIds: documentIdsToPrint,
@@ -205,7 +174,6 @@ export default function StockItemsPage() {
         const title = `Bulk Barcode Labels - ${documentIdsToPrint.length} Items`;
         const titleParam = encodeURIComponent(title);
 
-        // Pass only the storage key in URL
         window.open(`/print-bulk-barcodes?key=${storageKey}&title=${titleParam}`, '_blank', 'width=1200,height=800');
     };
 
@@ -215,10 +183,7 @@ export default function StockItemsPage() {
             return;
         }
 
-        // Get document IDs
         const documentIdsToPrint = filteredItems.map(item => item.documentId || item.id);
-
-        // Store data in localStorage and get a key
         const storageKey = `bulk_print_data_${Date.now()}`;
         localStorage.setItem(storageKey, JSON.stringify({
             documentIds: documentIdsToPrint,
@@ -228,15 +193,11 @@ export default function StockItemsPage() {
         const title = `Bulk ${statusFilter} Items - ${documentIdsToPrint.length} Total`;
         const titleParam = encodeURIComponent(title);
 
-        // Pass only the storage key in URL
         window.open(`/print-bulk-barcodes?key=${storageKey}&title=${titleParam}`, '_blank', 'width=1200,height=800');
     };
 
     const handleQuickPrint = (item) => {
-        // Get document ID
         const documentId = item.documentId || item.id;
-
-        // Store data in localStorage and get a key
         const storageKey = `bulk_print_data_${Date.now()}`;
         localStorage.setItem(storageKey, JSON.stringify({
             documentIds: [documentId],
@@ -246,13 +207,12 @@ export default function StockItemsPage() {
         const title = `Single Label - ${item.sku || item.product?.name || 'Item'}`;
         const titleParam = encodeURIComponent(title);
 
-        // Pass only the storage key in URL
         window.open(`/print-bulk-barcodes?key=${storageKey}&title=${titleParam}`, '_blank', 'width=800,height=600');
     };
 
     const handleStatusFilterChange = (event) => {
         setStatusFilter(event.target.value);
-        setPage(0);
+        setPage(1);
     };
 
     const getStatusColor = (status) => {
@@ -266,225 +226,192 @@ export default function StockItemsPage() {
         }
     };
 
+    const filters = [
+        <div key="status">
+            <label className="form-label small mb-1">Status</label>
+            <select className="form-select form-select-sm" value={statusFilter} onChange={handleStatusFilterChange}>
+                <option value="">All Statuses</option>
+                {stock_status.statuses.map(status => (
+                    <option key={status} value={status}>{status}</option>
+                ))}
+            </select>
+        </div>,
+        <div key="search">
+            <label className="form-label small mb-1">Search</label>
+            <input type="text" value={searchTerm} onChange={handleSearchChange} className="form-control form-control-sm" placeholder="SKU, barcode, product name, purchase no..." />
+        </div>,
+        <div key="branch">
+            <label className="form-label small mb-1">Branch</label>
+            <select className="form-select form-select-sm" value={selectedBranch || ''} onChange={(e) => onBranchChange(e.target.value)}>
+                <option value="">Select Branch...</option>
+                {branches.map(branch => (
+                    <option key={branch.id} value={branch.documentId}>{branch.name}</option>
+                ))}
+            </select>
+        </div>,
+        <div key="actions" className="d-grid gap-1">
+            <button className="btn btn-danger btn-sm" onClick={handleBulkPrintSelected} disabled={selectedItems.size === 0}><i className="fas fa-print me-1"></i> Print Selected</button>
+            <button className="btn btn-success btn-sm" onClick={handleBulkPrintAllFiltered} disabled={filteredItems.length === 0}><i className="fas fa-print me-1"></i> Print All</button>
+            <select className="form-select form-select-sm" value={selectedDestinationBranch || ''} disabled={selectedItems.size === 0} onChange={(e) => sendStockToBranch(e.target.value)}>
+                <option value="">Send selected to branch...</option>
+                {branches.map(branch => (
+                    <option key={branch.id} value={branch.documentId}>{branch.name}</option>
+                ))}
+            </select>
+        </div>,
+        <div key="archived" className="form-check form-switch mt-2">
+            <input
+                className="form-check-input"
+                type="checkbox"
+                id="showArchivedToggle"
+                checked={showArchived}
+                onChange={(e) => { setShowArchived(e.target.checked); setPage(1); }}
+            />
+            <label className="form-check-label small" htmlFor="showArchivedToggle">
+                <i className="fas fa-archive me-1"></i>Show Archived Only
+            </label>
+        </div>,
+    ];
+
+    const title = (
+        <div>
+            <h4 className="mb-0">
+                Stock Items - Bulk Print
+                {productName && (
+                    <span className="ms-2 text-muted small">{productName}</span>
+                )}
+            </h4>
+            {productFilter && (
+                <div className="small">
+                    <Link href="/stock-items">View all stock items</Link>
+                </div>
+            )}
+        </div>
+    );
+
     return (
         <ProtectedRoute>
             <Layout>
-                <div className="p-4">
-                    <div className="d-flex justify-content-between align-items-center mb-3">
-                        <div>
-                            <h2 className="mb-0">
-                                Stock Items - Bulk Print
-                                {productName && (
-                                    <span className="ms-2 text-muted">{productName}</span>
+                <ListPageLayout
+                    title={title}
+                    subtitle={total != null ? `${total} total · ${selectedItems.size} selected` : undefined}
+                    filters={filters}
+                    loading={loading}
+                    pagination={
+                        <ListPagination
+                            page={page}
+                            pageSize={pageSize}
+                            total={total}
+                            onPage={setPage}
+                            onPageSize={(n) => { setPageSize(n); setPage(1); }}
+                        />
+                    }
+                    emptyState={<div>No stock items found.</div>}
+                >
+                    <div className="table-responsive">
+                        <table className="table table-hover list-table">
+                            <thead>
+                                <tr>
+                                    <th style={{ width: '50px' }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedItems.size === filteredItems.length && filteredItems.length > 0}
+                                            onChange={handleSelectAll}
+                                        />
+                                    </th>
+                                    <th>SKU</th>
+                                    <th>Barcode</th>
+                                    <th>Purchase No</th>
+                                    <th>Product</th>
+                                    <th>Return / Exchange</th>
+                                    <th>Offer Price</th>
+                                    <th>Selling Price</th>
+                                    <th>Status</th>
+                                    <th style={{ width: '120px' }} className="text-center">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {filteredItems.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={10} className="text-center text-muted py-4">
+                                            No stock items found.
+                                            {stockItems.length > 0 && searchTerm && (
+                                                <div style={{ marginTop: '10px' }}>
+                                                    Try changing your search term
+                                                </div>
+                                            )}
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    filteredItems.map((item) => {
+                                        const itemId = item.documentId || item.id;
+                                        const isSelected = selectedItems.has(itemId);
+
+                                        return (
+                                            <tr key={itemId}>
+                                                <td>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={isSelected}
+                                                        onChange={() => handleSelectItem(itemId)}
+                                                    />
+                                                </td>
+                                                <td>
+                                                    <strong>{item.sku || 'N/A'}</strong>
+                                                </td>
+                                                <td>
+                                                    {item.barcode ? (
+                                                        <code style={{
+                                                            background: '#f8f9fa',
+                                                            padding: '4px 8px',
+                                                            borderRadius: '4px',
+                                                            fontFamily: 'monospace'
+                                                        }}>
+                                                            {item.barcode}
+                                                        </code>
+                                                    ) : (
+                                                        'No Barcode'
+                                                    )}
+                                                </td>
+                                                <td>{item.purchase_item?.purchase?.orderId || 'N/A'}</td>
+                                                <td>{item.product?.name || 'N/A'}</td>
+                                                <td>
+                                                    {item.product?.is_returnable === false ? (
+                                                        <span className="badge bg-danger" title="Non-returnable"><i className="fas fa-ban"></i></span>
+                                                    ) : (
+                                                        <span className="badge bg-success" title="Returnable"><i className="fas fa-undo"></i></span>
+                                                    )}
+                                                    {' '}
+                                                    {item.product?.is_exchangeable === false ? (
+                                                        <span className="badge bg-warning text-dark" title="Non-exchangeable"><i className="fas fa-ban"></i></span>
+                                                    ) : (
+                                                        <span className="badge bg-success" title="Exchangeable"><i className="fas fa-exchange-alt"></i></span>
+                                                    )}
+                                                </td>
+                                                <td>{currency}{parseFloat(item.offer_price || 0).toFixed(2)}</td>
+                                                <td>{currency}{parseFloat(item.selling_price || 0).toFixed(2)}</td>
+                                                <td>
+                                                    <span
+                                                        className="list-status"
+                                                        style={{ backgroundColor: getStatusColor(item.status), color: 'white' }}
+                                                    >
+                                                        {item.status}
+                                                    </span>
+                                                </td>
+                                                <td className="text-center">
+                                                    <div className="list-actions justify-content-center">
+                                                        <button className="btn btn-sm btn-outline-primary" onClick={() => handleQuickPrint(item)} title="Print single label"><i className="fas fa-print"></i></button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
                                 )}
-                            </h2>
-                            {productFilter && (
-                                <div className="small">
-                                    <Link href="/stock-items">View all stock items</Link>
-                                </div>
-                            )}
-                        </div>
-                        <div className="text-end">
-                            <div className="small text-muted">Selected</div>
-                            <div className="badge bg-primary">{selectedItems.size} / {filteredItems.length}</div>
-                        </div>
+                            </tbody>
+                        </table>
                     </div>
-                </div>
-                {/* Filters and actions toolbar */}
-                <div className="card mb-3">
-                    <div className="card-body">
-                        <div className="row g-2 align-items-end">
-                            <div className="col-sm-12 col-md-3">
-                                <label className="form-label small mb-1">Status</label>
-                                <select className="form-select form-select-sm" value={statusFilter} onChange={handleStatusFilterChange}>
-                                    <option value="">All Statuses</option>
-                                    {stock_status.statuses.map(status => (
-                                        <option key={status} value={status}>{status}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div className="col-sm-12 col-md-4">
-                                <label className="form-label small mb-1">Search</label>
-                                <input type="text" value={searchTerm} onChange={handleSearchChange} className="form-control form-control-sm" placeholder="SKU, barcode, product name, purchase no..." />
-                            </div>
-
-                            <div className="col-sm-12 col-md-3">
-                                <label className="form-label small mb-1">Branch</label>
-                                <select className="form-select form-select-sm" value={selectedBranch || ''} onChange={(e) => onBranchChange(e.target.value)}>
-                                    <option value="">Select Branch...</option>
-                                    {branches.map(branch => (
-                                        <option key={branch.id} value={branch.documentId}>{branch.name}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div className="col-sm-12 col-md-2 d-grid">
-                                <button className="btn btn-danger btn-sm mb-2" onClick={handleBulkPrintSelected} disabled={selectedItems.size === 0}><i className="fas fa-print me-1"></i> Bulk Print Selected</button>
-                                <button className="btn btn-success btn-sm" onClick={handleBulkPrintAllFiltered} disabled={filteredItems.length === 0}><i className="fas fa-print me-1"></i> Bulk Print All</button>
-                                   <select className="form-select form-select-sm" value={selectedDestinationBranch || ''} disabled={selectedItems.size === 0} onChange={(e) => sendStockToBranch(e.target.value)}>
-                                    <option value="">Send selected to branch...</option>
-                                    {branches.map(branch => (
-                                        <option key={branch.id} value={branch.documentId}>{branch.name}</option>
-                                    ))}
-                                </select>
-                            </div>
-                        </div>
-                        <div className="row g-2 mt-1">
-                            <div className="col-auto">
-                                <div className="form-check form-switch">
-                                    <input
-                                        className="form-check-input"
-                                        type="checkbox"
-                                        id="showArchivedToggle"
-                                        checked={showArchived}
-                                        onChange={(e) => { setShowArchived(e.target.checked); setPage(0); }}
-                                    />
-                                    <label className="form-check-label small" htmlFor="showArchivedToggle">
-                                        <i className="fas fa-archive me-1"></i>Show Archived Only
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-
-                    </div>
-                </div>
-
-                <div className="table-responsive">
-                    <Table>
-                        <TableHead>
-                            <TableRow>
-                                <TableCell style={{ width: '50px' }}>
-                                    <input
-                                        type="checkbox"
-                                        checked={selectedItems.size === filteredItems.length && filteredItems.length > 0}
-                                        onChange={handleSelectAll}
-                                    />
-                                </TableCell>
-                                <TableCell>SKU</TableCell>
-                                <TableCell>Barcode</TableCell>
-                                <TableCell>Purchase No</TableCell>
-                                <TableCell>Product</TableCell>
-                                <TableCell>Return / Exchange</TableCell>
-                                <TableCell>Offer Price</TableCell>
-                                <TableCell>Selling Price</TableCell>
-                                <TableCell>Status</TableCell>
-                                <TableCell style={{ width: '120px' }} className="text-center">Actions</TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {loading ? (
-                                <TableRow>
-                                    <TableCell colSpan={8} align="center">
-                                        <CircularProgress size={24} />
-                                        <div style={{ marginTop: '10px' }}>Loading stock items...</div>
-                                    </TableCell>
-                                </TableRow>
-                            ) : filteredItems.length === 0 ? (
-                                <TableRow>
-                                    <TableCell colSpan={8} align="center">
-                                        No stock items found.
-                                        {stockItems.length > 0 && searchTerm && (
-                                            <div style={{ marginTop: '10px', color: '#666' }}>
-                                                Try changing your search term
-                                            </div>
-                                        )}
-                                    </TableCell>
-                                </TableRow>
-                            ) : (
-                                filteredItems.map((item) => {
-                                    const itemId = item.documentId || item.id;
-                                    const isSelected = selectedItems.has(itemId);
-
-                                    return (
-                                        <TableRow key={itemId}>
-                                            <TableCell>
-                                                <input
-                                                    type="checkbox"
-                                                    checked={isSelected}
-                                                    onChange={() => handleSelectItem(itemId)}
-                                                />
-                                            </TableCell>
-                                            <TableCell>
-                                                <strong>{item.sku || 'N/A'}</strong>
-                                            </TableCell>
-                                            <TableCell>
-                                                {item.barcode ? (
-                                                    <code style={{
-                                                        background: '#f8f9fa',
-                                                        padding: '4px 8px',
-                                                        borderRadius: '4px',
-                                                        fontFamily: 'monospace'
-                                                    }}>
-                                                        {item.barcode}
-                                                    </code>
-                                                ) : (
-                                                    'No Barcode'
-                                                )}
-                                            </TableCell>
-                                            <TableCell>
-                                                {item.purchase_item?.purchase?.orderId || 'N/A'}
-                                            </TableCell>
-                                            <TableCell>
-                                                {item.product?.name || 'N/A'}
-                                            </TableCell>
-                                            <TableCell>
-                                                {item.product?.is_returnable === false ? (
-                                                    <span className="badge bg-danger" title="Non-returnable"><i className="fas fa-ban"></i></span>
-                                                ) : (
-                                                    <span className="badge bg-success" title="Returnable"><i className="fas fa-undo"></i></span>
-                                                )}
-                                                {' '}
-                                                {item.product?.is_exchangeable === false ? (
-                                                    <span className="badge bg-warning text-dark" title="Non-exchangeable"><i className="fas fa-ban"></i></span>
-                                                ) : (
-                                                    <span className="badge bg-success" title="Exchangeable"><i className="fas fa-exchange-alt"></i></span>
-                                                )}
-                                            </TableCell>
-                                            <TableCell>
-                                                {currency}{parseFloat(item.offer_price || 0).toFixed(2)}
-                                            </TableCell>
-                                            <TableCell>
-                                                {currency}{parseFloat(item.selling_price || 0).toFixed(2)}
-                                            </TableCell>
-                                            <TableCell>
-                                                <span
-                                                    style={{
-                                                        padding: '4px 8px',
-                                                        borderRadius: '4px',
-                                                        backgroundColor: getStatusColor(item.status),
-                                                        color: 'white',
-                                                        fontSize: '12px',
-                                                        fontWeight: 'bold'
-                                                    }}
-                                                >
-                                                    {item.status}
-                                                </span>
-                                            </TableCell>
-                                            <TableCell className="text-center">
-                                                <button className="btn btn-sm btn-outline-primary" onClick={() => handleQuickPrint(item)} title="Print single label"><i className="fas fa-print"></i></button>
-                                            </TableCell>
-                                        </TableRow>
-                                    );
-                                })
-                            )}
-                        </TableBody>
-                    </Table>
-
-                    <TablePagination
-                        count={total}
-                        page={page}
-                        onPageChange={handleChangePage}
-                        rowsPerPage={rowsPerPage}
-                        onRowsPerPageChange={handleChangeRowsPerPage}
-                        rowsPerPageOptions={[10, 20, 50, 100]}
-                    />
-                </div>
+                </ListPageLayout>
             </Layout>
         </ProtectedRoute>
     );
 }
-
-
-
-

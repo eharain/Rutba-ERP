@@ -3,6 +3,8 @@ import Layout from "../components/Layout";
 import ProductPickerModal from "../components/ProductPickerModal";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { StockItemsEndpoints, ProductsEndpoints } from "@rutba/api-provider/endpoints/index.js";
+import ListPageLayout from "@rutba/pos-shared/components/ListPageLayout";
+import ListPagination from "@rutba/pos-shared/components/ListPagination";
 
 const STATUS_OPTIONS = [
     "InStock", "Sold", "Received", "Reserved",
@@ -400,113 +402,110 @@ export default function OrphanStockItemsPage() {
 
     const totalPages = Math.ceil(total / pageSize) || 1;
 
+    const filters = [
+        <input
+            key="search"
+            type="text"
+            className="form-control form-control-sm"
+            placeholder="Search by name..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+        />,
+        <select
+            key="status"
+            className="form-select form-select-sm"
+            value={statusFilter}
+            onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
+        >
+            <option value="">All Statuses</option>
+            {STATUS_OPTIONS.map(s => (
+                <option key={s} value={s}>{s}</option>
+            ))}
+        </select>,
+        <select
+            key="sku"
+            className="form-select form-select-sm"
+            value={skuFilter}
+            onChange={e => { setSkuFilter(e.target.value); setPage(1); }}
+        >
+            <option value="">All SKUs</option>
+            <option value="has">Has SKU</option>
+            <option value="none">No SKU</option>
+        </select>,
+        <div key="dup" className="form-check">
+            <input
+                type="checkbox"
+                className="form-check-input"
+                id="dupCheck"
+                checked={duplicatesOnly}
+                onChange={e => setDuplicatesOnly(e.target.checked)}
+            />
+            <label className="form-check-label" htmlFor="dupCheck">Duplicates only</label>
+        </div>,
+        hasActiveFilters && (
+            <button
+                key="clear"
+                className="btn btn-sm btn-outline-secondary"
+                onClick={() => { setStatusFilter(""); setSkuFilter(""); setDuplicatesOnly(false); setPage(1); }}
+            >
+                Clear filters
+            </button>
+        ),
+    ].filter(Boolean);
+
+    const bulkActions = (
+        <>
+            <button
+                className="btn btn-sm btn-primary"
+                onClick={handleBulkCreateProducts}
+                disabled={bulkBusy}
+            >
+                Create Product & Link All
+            </button>
+            <button
+                className="btn btn-sm btn-outline-secondary"
+                onClick={() => openProductPicker(
+                    `Attach ${selected.size} selected items to…`,
+                    (docId) => handleBulkAttachProduct(docId)
+                )}
+                disabled={bulkBusy}
+            >
+                Attach all to…
+            </button>
+            <button className="btn btn-sm btn-outline-secondary" onClick={() => setSelected(new Set())} disabled={bulkBusy}>
+                Clear
+            </button>
+            {bulkProgress && <span className="text-muted ms-2">{bulkProgress}</span>}
+        </>
+    );
+
     return (
         <ProtectedRoute>
             <Layout>
-                <h2 className="mb-3">Orphan Stock Items</h2>
-                <p className="text-muted">Stock items that are not linked to any product.</p>
-
-                {error && <div className="alert alert-danger">{error}</div>}
-
-                <div className="mb-3 d-flex align-items-center flex-wrap gap-2">
-                    <input
-                        type="text"
-                        className="form-control"
-                        placeholder="Search by name..."
-                        value={search}
-                        onChange={e => setSearch(e.target.value)}
-                        style={{ maxWidth: 220 }}
-                    />
-                    <select
-                        className="form-select"
-                        value={statusFilter}
-                        onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
-                        style={{ width: 160 }}
-                    >
-                        <option value="">All Statuses</option>
-                        {STATUS_OPTIONS.map(s => (
-                            <option key={s} value={s}>{s}</option>
-                        ))}
-                    </select>
-                    <select
-                        className="form-select"
-                        value={skuFilter}
-                        onChange={e => { setSkuFilter(e.target.value); setPage(1); }}
-                        style={{ width: 140 }}
-                    >
-                        <option value="">All SKUs</option>
-                        <option value="has">Has SKU</option>
-                        <option value="none">No SKU</option>
-                    </select>
-                    <div className="form-check ms-1">
-                        <input
-                            type="checkbox"
-                            className="form-check-input"
-                            id="dupCheck"
-                            checked={duplicatesOnly}
-                            onChange={e => setDuplicatesOnly(e.target.checked)}
+                <ListPageLayout
+                    title="Orphan Stock Items"
+                    subtitle={`Stock items not linked to any product${total ? ` · ${total} total` : ''}`}
+                    filters={filters}
+                    bulkActions={bulkActions}
+                    selectedCount={selected.size}
+                    loading={loading}
+                    pagination={
+                        <ListPagination
+                            page={page}
+                            pageSize={pageSize}
+                            total={total}
+                            onPage={setPage}
+                            onPageSize={(n) => { setPageSize(n); setPage(1); }}
                         />
-                        <label className="form-check-label" htmlFor="dupCheck">Duplicates only</label>
-                    </div>
-                    {hasActiveFilters && (
-                        <button
-                            className="btn btn-sm btn-outline-secondary"
-                            onClick={() => { setStatusFilter(""); setSkuFilter(""); setDuplicatesOnly(false); setPage(1); }}
-                        >
-                            Clear filters
-                        </button>
-                    )}
-                    <select
-                        className="form-select"
-                        value={pageSize}
-                        onChange={e => { setPageSize(Number(e.target.value)); setPage(1); }}
-                        style={{ width: 90 }}
-                    >
-                        {[10, 25, 50, 100,150,200,250].map(s => (
-                            <option key={s} value={s}>{s}</option>
-                        ))}
-                    </select>
-                    <span className="text-muted">
-                        {total} item{total !== 1 ? "s" : ""}
-                    </span>
-                </div>
-
-                {selected.size > 0 && (
-                    <div className="alert alert-info d-flex align-items-center flex-wrap gap-2 py-2">
-                        <strong>{selected.size} selected</strong>
-                        <button
-                            className="btn btn-sm btn-primary"
-                            onClick={handleBulkCreateProducts}
-                            disabled={bulkBusy}
-                        >
-                            Create Product & Link All
-                        </button>
-                        <button
-                            className="btn btn-sm btn-outline-secondary"
-                            onClick={() => openProductPicker(
-                                `Attach ${selected.size} selected items to…`,
-                                (docId) => handleBulkAttachProduct(docId)
-                            )}
-                            disabled={bulkBusy}
-                        >
-                            Attach all to…
-                        </button>
-                        <button className="btn btn-sm btn-outline-secondary" onClick={() => setSelected(new Set())} disabled={bulkBusy}>
-                            Clear
-                        </button>
-                        {bulkProgress && <span className="text-muted ms-2">{bulkProgress}</span>}
-                    </div>
-                )}
-
-                {loading && <div className="text-center py-4"><div className="spinner-border" role="status" /></div>}
-
-                {!loading && items.length === 0 && (
-                    <div className="alert alert-success">All stock items are linked to a product.</div>
-                )}
-
-                {!loading && items.length > 0 && (
-                    <>
-                        <table className="table table-bordered table-hover">
+                    }
+                    emptyState={
+                        <div className="alert alert-success mb-0">All stock items are linked to a product.</div>
+                    }
+                >
+                    {error && <div className="alert alert-danger m-3 mb-0">{error}</div>}
+                    {items.length === 0 ? null : (
+                    <div className="table-responsive">
+                        <table className="table table-hover list-table">
                             <thead className="table-light">
                                 <tr>
                                     <th style={{ width: 40 }}>
@@ -691,22 +690,9 @@ export default function OrphanStockItemsPage() {
                                 })}
                             </tbody>
                         </table>
-
-                        <nav className="d-flex justify-content-between align-items-center">
-                            <span className="text-muted">
-                                Page {page} of {totalPages}
-                            </span>
-                            <div>
-                                <button className="btn btn-sm btn-outline-secondary me-1" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
-                                    &laquo; Prev
-                                </button>
-                                <button className="btn btn-sm btn-outline-secondary" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>
-                                    Next &raquo;
-                                </button>
-                            </div>
-                        </nav>
-                    </>
-                )}
+                    </div>
+                    )}
+                </ListPageLayout>
                 <ProductPickerModal
                     show={pickerOpen}
                     onClose={() => setPickerOpen(false)}

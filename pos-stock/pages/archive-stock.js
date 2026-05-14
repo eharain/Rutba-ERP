@@ -3,14 +3,10 @@ import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { BranchesEndpoints, StockItemsEndpoints } from "@rutba/api-provider/endpoints/index.js";
 import {
-    Table,
-    TableHead,
-    TableRow,
-    TableCell,
-    TableBody,
     CircularProgress,
-    TablePagination,
 } from "@rutba/pos-shared/components/Table";
+import ListPageLayout from "@rutba/pos-shared/components/ListPageLayout";
+import ListPagination from "@rutba/pos-shared/components/ListPagination";
 
 const TERMINAL_STATUSES = [
     'Sold',
@@ -221,12 +217,11 @@ export default function ArchiveStockPage() {
     return (
         <ProtectedRoute>
             <Layout>
-                <div className="p-4">
-                    <h2 className="mb-3"><i className="fas fa-archive me-2"></i>Archive Stock Items</h2>
-                    <p className="text-muted">
-                        Archive old stock items in terminal statuses to reduce data load. Archived items are hidden from
-                        default views but can be restored at any time.
-                    </p>
+                <ListPageLayout
+                    title={<h4 className="mb-0"><i className="fas fa-archive me-2"></i>Archive Stock Items</h4>}
+                    subtitle="Archive old stock items in terminal statuses to reduce data load. Archived items are hidden from default views but can be restored at any time."
+                >
+                    <div className="p-3">
 
                     {/* Branch selector + Stats */}
                     <div className="row mb-4">
@@ -387,88 +382,90 @@ export default function ArchiveStockPage() {
                                 )}
                             </div>
                             <div className="table-responsive">
-                                <Table>
-                                    <TableHead>
-                                        <TableRow>
-                                            <TableCell style={{ width: '40px' }}>
+                                <table className="table table-hover list-table mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th style={{ width: '40px' }}>
                                                 <input
                                                     type="checkbox"
                                                     checked={selectedArchivedItems.size === archivedItems.length && archivedItems.length > 0}
                                                     onChange={handleSelectAllArchived}
                                                 />
-                                            </TableCell>
-                                            <TableCell>SKU</TableCell>
-                                            <TableCell>Barcode</TableCell>
-                                            <TableCell>Product</TableCell>
-                                            <TableCell>Purchase No</TableCell>
-                                            <TableCell>Status</TableCell>
-                                            <TableCell>Archived At</TableCell>
-                                        </TableRow>
-                                    </TableHead>
-                                    <TableBody>
+                                            </th>
+                                            <th>SKU</th>
+                                            <th>Barcode</th>
+                                            <th>Product</th>
+                                            <th>Purchase No</th>
+                                            <th>Status</th>
+                                            <th>Archived At</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
                                         {loadingArchived ? (
-                                            <TableRow>
-                                                <TableCell colSpan={7} align="center">
+                                            <tr>
+                                                <td colSpan={7} className="text-center py-4">
                                                     <CircularProgress size={24} />
                                                     <div style={{ marginTop: '10px' }}>Loading archived items...</div>
-                                                </TableCell>
-                                            </TableRow>
+                                                </td>
+                                            </tr>
                                         ) : archivedItems.length === 0 ? (
-                                            <TableRow>
-                                                <TableCell colSpan={7} align="center">
+                                            <tr>
+                                                <td colSpan={7} className="text-center text-muted py-4">
                                                     No archived items for this branch.
-                                                </TableCell>
-                                            </TableRow>
+                                                </td>
+                                            </tr>
                                         ) : (
                                             archivedItems.map((item) => {
                                                 const docId = item.documentId || item.id;
                                                 return (
-                                                    <TableRow key={docId}>
-                                                        <TableCell>
+                                                    <tr key={docId}>
+                                                        <td>
                                                             <input
                                                                 type="checkbox"
                                                                 checked={selectedArchivedItems.has(docId)}
                                                                 onChange={() => handleSelectArchivedItem(docId)}
                                                             />
-                                                        </TableCell>
-                                                        <TableCell><strong>{item.sku || 'N/A'}</strong></TableCell>
-                                                        <TableCell>
+                                                        </td>
+                                                        <td><strong>{item.sku || 'N/A'}</strong></td>
+                                                        <td>
                                                             {item.barcode ? (
                                                                 <code style={{ background: '#f8f9fa', padding: '2px 6px', borderRadius: '4px' }}>
                                                                     {item.barcode}
                                                                 </code>
                                                             ) : 'N/A'}
-                                                        </TableCell>
-                                                        <TableCell>{item.product?.name || 'N/A'}</TableCell>
-                                                        <TableCell>{item.purchase_item?.purchase?.orderId || 'N/A'}</TableCell>
-                                                        <TableCell>
-                                                            <span className="badge" style={{ backgroundColor: getStatusColor(item.status) }}>
+                                                        </td>
+                                                        <td>{item.product?.name || 'N/A'}</td>
+                                                        <td>{item.purchase_item?.purchase?.orderId || 'N/A'}</td>
+                                                        <td>
+                                                            <span className="list-status" style={{ backgroundColor: getStatusColor(item.status), color: 'white' }}>
                                                                 {item.status}
                                                             </span>
-                                                        </TableCell>
-                                                        <TableCell>
+                                                        </td>
+                                                        <td>
                                                             {item.archived_at
                                                                 ? new Date(item.archived_at).toLocaleDateString()
                                                                 : 'N/A'}
-                                                        </TableCell>
-                                                    </TableRow>
+                                                        </td>
+                                                    </tr>
                                                 );
                                             })
                                         )}
-                                    </TableBody>
-                                </Table>
-                                <TablePagination
-                                    count={archivedTotal}
-                                    page={archivedPage}
-                                    onPageChange={(e, newPage) => setArchivedPage(newPage)}
-                                    rowsPerPage={archivedRowsPerPage}
-                                    onRowsPerPageChange={(e) => { setArchivedRowsPerPage(parseInt(e.target.value, 10)); setArchivedPage(0); }}
-                                    rowsPerPageOptions={[10, 20, 50, 100]}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div className="card-footer bg-white">
+                                <ListPagination
+                                    page={archivedPage + 1}
+                                    pageSize={archivedRowsPerPage}
+                                    total={archivedTotal}
+                                    onPage={(p) => setArchivedPage(p - 1)}
+                                    onPageSize={(n) => { setArchivedRowsPerPage(n); setArchivedPage(0); }}
                                 />
                             </div>
                         </div>
                     )}
-                </div>
+                    </div>
+                </ListPageLayout>
             </Layout>
         </ProtectedRoute>
     );
