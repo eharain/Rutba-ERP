@@ -27,8 +27,12 @@ export const StockItemsEndpoints = {
         apps: ['stock'],
         approle: ['admin', 'manager', 'staff'],
         params: {
+            // Populate product.logo + product.gallery so the sale-editor
+            // search dropdown can render a thumbnail per row. Keeping these
+            // to `fields: [...]` (or just allowing the whole relation)
+            // shaves the payload — the consumer only reads url/formats.
             populate: {
-                product: true,
+                product: { populate: { logo: true, gallery: true, brands: true } },
                 purchase_item: { populate: { purchase: true } },
             },
             filters: {

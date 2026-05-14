@@ -14,6 +14,7 @@ import ExchangeReturnSection from '../../components/ExchangeReturnSection';
 import CashRegisterGuard, { useCashRegister } from '../../components/CashRegisterGuard';
 import AddLeadModal from '../../components/AddLeadModal';
 import CashDrawTopUpModal from '../../components/CashDrawTopUpModal';
+import RecentProductsPanel, { recordRecentFromStockItem } from '../../components/RecentProductsPanel';
 
 import { useUtil } from '@rutba/pos-shared/context/UtilContext';
 
@@ -23,7 +24,7 @@ import SaleApi from '@rutba/pos-shared/lib/saleApi';
 export default function SalePage() {
     const router = useRouter();
     const { documentId } = router.query;
-    const { currency, generateNextInvoiceNumber, ensureBranchDesk } = useUtil();
+    const { currency, generateNextInvoiceNumber, ensureBranchDesk, branch, desk } = useUtil();
 
     // Single source of truth
     const [saleModel, setSaleModel] = useState(null);
@@ -235,55 +236,75 @@ export default function SalePage() {
         );
     }
 
+    // Collect stock-item documentIds already added to the sale so the recent
+    // panel can grey-out items that have no remaining stock to attach.
+    const usedStockIds = new Set();
+    for (const saleItem of saleModel.items || []) {
+        for (const si of saleItem.items || []) {
+            if (si?.documentId) usedStockIds.add(si.documentId);
+        }
+    }
+
+    const addStockItem = (stockItem) => {
+        saleModel.addStockItem(stockItem);
+        recordRecentFromStockItem(branch, desk, stockItem);
+        forceUpdate();
+        setIsDirty(true);
+    };
+
     return (
-        <Layout>
+        <Layout fullWidth>
             <ProtectedRoute>
                 <PermissionCheck required="sale">
                     <CashRegisterGuard>
-                    <div className="container-fluid px-3 py-2">
+                    <div className="d-flex align-items-start" style={{ minHeight: '100vh' }}>
+                        {/* Main content column — everything that was the page */}
+                        <div className="flex-grow-1 px-3 py-2" style={{ minWidth: 0 }}>
 
-                        {/* ── Header row ── */}
-                        <div className="d-flex align-items-center justify-content-between mb-2 border-bottom pb-2">
-                            <h4 className="mb-0">
-                                <i className="fas fa-file-invoice me-2 text-muted"></i>
-                                Invoice #{saleModel.invoice_no}
-                                {saleModel.isPaid && <span className="badge bg-success ms-2 align-middle">Paid</span>}
-                                {saleModel.isCanceled && <span className="badge bg-danger ms-2 align-middle">Cancelled</span>}
-                            </h4>
-                            <div style={{ minWidth: 320 }}>
-                                <CustomerSelect
-                                    value={saleModel.customer}
-                                    onChange={handleCustomerChange}
-                                    disabled={!saleModel.isEditable && !(saleModel.isPaid && !saleModel.customer?.name)}
-                                />
-                            </div>
-                            {saleModel.customer?.name && (
-                                <button
-                                    className="btn btn-sm btn-outline-info ms-2"
-                                    title="Create CRM Lead for this customer"
-                                    onClick={() => setShowLeadModal(true)}
-                                >
-                                    <i className="fas fa-bullhorn me-1"></i>Lead
-                                </button>
+                        {/* ── Compact header strip ── */}
+                        <div className="d-flex align-items-center gap-2 mb-2 border-bottom pb-2">
+                            <span className="small text-muted text-nowrap">
+                                <i className="fas fa-file-invoice me-1"></i>{saleModel.invoice_no || 'New Sale'}
+                            </span>
+                            {saleModel.isPaid && <span className="badge bg-success">Paid</span>}
+                            {saleModel.isCanceled && <span className="badge bg-danger">Cancelled</span>}
+                            {!saleModel.isPaid && !saleModel.isCanceled && saleModel.items.length > 0 && (
+                                <span className="badge bg-secondary">Draft</span>
                             )}
-                            <button
-                                className="btn btn-sm btn-outline-warning ms-2"
-                                title="Cash Draw / Top-Up"
-                                onClick={() => setShowCashDrawModal(true)}
-                            >
-                                <i className="fas fa-coins"></i>
-                            </button>
+                            <div className="ms-auto d-flex gap-2">
+                                {saleModel.customer?.name && (
+                                    <button
+                                        className="btn btn-sm btn-outline-info"
+                                        title="Create CRM Lead for this customer"
+                                        onClick={() => setShowLeadModal(true)}
+                                    >
+                                        <i className="fas fa-bullhorn me-1"></i>Lead
+                                    </button>
+                                )}
+                                <button
+                                    className="btn btn-sm btn-outline-warning"
+                                    title="Cash Draw / Top-Up"
+                                    onClick={() => setShowCashDrawModal(true)}
+                                >
+                                    <i className="fas fa-coins me-1"></i>Cash
+                                </button>
+                            </div>
                         </div>
 
-                        {/* ── Add Items ── */}
+                        {/* ── Customer row (compact, single line) ── */}
+                        <div className="mb-2">
+                            <CustomerSelect
+                                value={saleModel.customer}
+                                onChange={handleCustomerChange}
+                                disabled={!saleModel.isEditable && !(saleModel.isPaid && !saleModel.customer?.name)}
+                            />
+                        </div>
+
+                        {/* ── Items area: search + list (full width — Quick Add is the right rail) ── */}
                         <SalesItemsForm
                             disabled={!saleModel.isEditable}
                             currentItems={saleModel.items}
-                            onAddItem={(stockItem) => {
-                                saleModel.addStockItem(stockItem);
-                                forceUpdate();
-                                setIsDirty(true);
-                            }}
+                            onAddItem={addStockItem}
                             onAddNonStock={(data) => {
                                 saleModel.addNonStockItem(data);
                                 forceUpdate();
@@ -291,7 +312,6 @@ export default function SalePage() {
                             }}
                         />
 
-                        {/* ── Items List ── */}
                         <SalesItemsList
                             items={saleModel.items}
                             disabled={!saleModel.isEditable}
@@ -553,7 +573,15 @@ export default function SalePage() {
                             onClose={() => setShowCashDrawModal(false)}
                             saleRegister={saleModel.cashRegister}
                         />
-                    </div>
+                        </div>{/* /flex-grow-1 main content */}
+
+                        {/* ── Right-rail Quick Add (sticky, collapsible) ── */}
+                        <RecentProductsPanel
+                            disabled={!saleModel.isEditable}
+                            usedStockIds={usedStockIds}
+                            onAddStockItem={addStockItem}
+                        />
+                    </div>{/* /d-flex outer wrapper */}
                     </CashRegisterGuard>
                 </PermissionCheck>
             </ProtectedRoute>

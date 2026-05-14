@@ -1,3 +1,21 @@
+import { StraipImageUrl, isImage } from '@rutba/api-provider/lib/api';
+
+/** Resolve the best thumbnail for a SaleItem. Prefers product.logo, falls
+ *  back to the first image in product.gallery. Returns null for ad-hoc
+ *  (non-stock) custom items or products without media. */
+function saleItemThumbUrl(item) {
+    const stockItem = typeof item?.first === 'function' ? item.first() : null;
+    const product = stockItem?.product;
+    if (!product) return null;
+    const pick = (file) => {
+        if (!file || !isImage(file)) return null;
+        const thumb = file.formats?.thumbnail || file;
+        return StraipImageUrl(thumb);
+    };
+    return pick(product.logo)
+        || pick(Array.isArray(product.gallery) ? product.gallery.find(isImage) : null);
+}
+
 export default function SalesItemsList({
     items,
     onUpdate,
@@ -12,6 +30,7 @@ export default function SalesItemsList({
                 <thead className="table-light">
                     <tr>
                         <th>#</th>
+                        <th width="48"></th>
                         <th>Item</th>
                         <th width="140">Unit Price</th>
                         <th width="70" className="text-center">Qty</th>
@@ -22,10 +41,31 @@ export default function SalesItemsList({
                 </thead>
 
                 <tbody>
-                    {items.map((item, index) => (
+                    {items.map((item, index) => {
+                        const thumbUrl = saleItemThumbUrl(item);
+                        return (
                         <tr key={index}>
                             {/* # */}
                             <td className="text-muted small">{index + 1}</td>
+
+                            {/* THUMB */}
+                            <td>
+                                <div
+                                    className="d-flex align-items-center justify-content-center bg-white border rounded"
+                                    style={{ width: 40, height: 40, overflow: 'hidden' }}
+                                >
+                                    {thumbUrl ? (
+                                        <img
+                                            src={thumbUrl}
+                                            alt=""
+                                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                                        />
+                                    ) : (
+                                        <i className="fas fa-box text-muted" style={{ fontSize: 14, opacity: 0.4 }}></i>
+                                    )}
+                                </div>
+                            </td>
 
                             {/* NAME */}
                             <td>
@@ -164,7 +204,8 @@ export default function SalesItemsList({
                                 </button>
                             </td>
                         </tr>
-                    ))}
+                        );
+                    })}
                 </tbody>
             </table>
         </div>
