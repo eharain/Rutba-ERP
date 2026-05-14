@@ -14,8 +14,9 @@ const BulkBarcodePrint = ({
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const { currency, branch } = useUtil();
+    const { currency, branch, labelPriceMode } = useUtil();
     const size = labelSize || '2.4x1.5';
+    const priceMode = labelPriceMode || 'selling';
 
     function displayBranchName() {
         return branch?.companyName ?? branch?.company_name ?? '';
@@ -30,9 +31,41 @@ const BulkBarcodePrint = ({
         return item?.barcode || item?.sku || '';
     }
 
-    function displayPrice(item) {
-        const priceVal = item?.selling_price ?? item?.offer_price;
-        return priceVal ? `${currency || 'Rs'} ${Math.round(parseFloat(priceVal))}` : '';
+    /** Format a number as the configured currency, no decimals (matching
+     *  the existing label convention — labels are small, decimals waste
+     *  ink and rarely matter in retail). */
+    function fmt(n) {
+        if (n == null || isNaN(parseFloat(n))) return '';
+        return `${currency || 'Rs'} ${Math.round(parseFloat(n))}`;
+    }
+
+    /** Render the price block per `labelPriceMode`:
+     *    selling — selling price only
+     *    offer   — offer price if set (and lower), else fall back to selling
+     *    both    — selling price crossed out + offer price beside it
+     *  Returns a React node (not a string) because 'both' renders two
+     *  spans with strikethrough.
+     */
+    function renderPrice(item) {
+        const sell = parseFloat(item?.selling_price);
+        const offer = parseFloat(item?.offer_price);
+        const hasSell = Number.isFinite(sell) && sell > 0;
+        const hasOffer = Number.isFinite(offer) && offer > 0 && offer < (hasSell ? sell : Infinity);
+
+        if (priceMode === 'offer' && hasOffer) return fmt(offer);
+        if (priceMode === 'offer') return hasSell ? fmt(sell) : '';
+        if (priceMode === 'both' && hasOffer && hasSell) {
+            return (
+                <>
+                    <span style={{ textDecoration: 'line-through', color: '#888', fontWeight: 600, marginRight: 4 }}>
+                        {fmt(sell)}
+                    </span>
+                    <span>{fmt(offer)}</span>
+                </>
+            );
+        }
+        // Default — 'selling', or 'both' with no offer set
+        return hasSell ? fmt(sell) : (hasOffer ? fmt(offer) : '');
     }
 
     // determine if label is "small" (< 1.5 inches in either dimension)
@@ -93,7 +126,7 @@ const BulkBarcodePrint = ({
         return (
             <>
                 <div className="price">
-                    {displayPrice(item)}
+                    {renderPrice(item)}
                 </div>
                 <div className="code-text">
                     {codeValue}

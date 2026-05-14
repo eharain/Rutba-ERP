@@ -11,7 +11,10 @@ const SaleInvoice = ({ sale, items, totals, printerSettings, branchPrintOverride
     const branchName = branch?.name || 'Branch Name';
     const userName = user?.displayName || user?.username || user?.email || 'User';
     const invoiceNo = sale?.invoice_no || 'N/A';
-    const saleDate = sale?.sale_date ? new Date(sale.sale_date).toLocaleDateString() : new Date().toLocaleDateString();
+    // Include time on the receipt — useful for shift reconciliation and dispute lookup.
+    const saleDateObj = sale?.sale_date ? new Date(sale.sale_date) : new Date();
+    const saleDate = saleDateObj.toLocaleDateString();
+    const saleTime = saleDateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const customerName = sale?.customer?.name || sale?.customer?.email || sale?.customer?.phone || 'Walk-in Customer';
     const website = branch?.web ? branch.web.toUpperCase() : '';
 
@@ -123,50 +126,97 @@ const SaleInvoice = ({ sale, items, totals, printerSettings, branchPrintOverride
                 }
             `}</style>
 
-            <div className="invoice-header mb-2 pb-1" style={{ borderBottom: '1px dashed #555' }}>
-                <div className="company-name fs-5 fw-bold text-uppercase">{companyName}</div>
-                <div className="invoice-meta small mt-1" style={{ lineHeight: 1.4 }}>
+            <div className="invoice-header mb-2 pb-2" style={{ borderBottom: '1px solid #000' }}>
+                <div className="company-name fw-bold text-uppercase" style={{ fontSize: `${fontSize + 6}px`, letterSpacing: 0.5 }}>{companyName}</div>
+                <div className="invoice-meta mt-1" style={{ lineHeight: 1.35, fontSize: `${fontSize - 1}px` }}>
                     {showBranch && renderBranchFields()}
-                    {saleDate}<br />
-                    User: {userName}
                 </div>
+
+                {/* Status pill — DRAFT when not yet paid, otherwise omitted
+                    so a printed paid receipt doesn't carry redundant text. */}
                 {statusLabel && (
-                    <div className="text-uppercase fw-bold text-danger small mt-1">
+                    <div className="text-uppercase fw-bold mt-2" style={{
+                        display: 'inline-block',
+                        padding: '2px 8px',
+                        border: '2px solid #000',
+                        borderRadius: 3,
+                        letterSpacing: 1,
+                        fontSize: `${fontSize}px`,
+                    }}>
                         {statusLabel}
                     </div>
                 )}
 
-                {showCustomer && (
-                    <div className="customer-contact small mt-2" style={{ lineHeight: 1.2 }}>
-                        <strong>Customer: </strong>{customerName}
-                        {sale?.customer?.email && <div>{sale.customer.email}</div>}
-                        {sale?.customer?.phone && <div>{sale.customer.phone}</div>}
-                    </div>
-                )}
+                {/* Invoice metadata block: invoice #, date, time, user — laid out
+                    as a tight key/value table so it's scannable on thermal print. */}
+                <table className="w-100 mt-2" style={{ fontSize: `${fontSize - 1}px`, borderCollapse: 'collapse', textAlign: 'left' }}>
+                    <tbody>
+                        <tr>
+                            <td style={{ padding: '1px 0', whiteSpace: 'nowrap' }}><strong>Invoice</strong></td>
+                            <td style={{ padding: '1px 0', textAlign: 'right' }}><strong style={{ fontFamily: 'monospace' }}>{invoiceNo}</strong></td>
+                        </tr>
+                        <tr>
+                            <td style={{ padding: '1px 0' }}>Date</td>
+                            <td style={{ padding: '1px 0', textAlign: 'right' }}>{saleDate} · {saleTime}</td>
+                        </tr>
+                        <tr>
+                            <td style={{ padding: '1px 0' }}>Cashier</td>
+                            <td style={{ padding: '1px 0', textAlign: 'right' }}>{userName}</td>
+                        </tr>
+                        {showCustomer && customerName && customerName !== 'Walk-in Customer' && (
+                            <tr>
+                                <td style={{ padding: '1px 0', verticalAlign: 'top' }}>Customer</td>
+                                <td style={{ padding: '1px 0', textAlign: 'right' }}>
+                                    <div>{customerName}</div>
+                                    {(sale?.customer?.phone || sale?.customer?.email) && (
+                                        <div style={{ fontSize: `${fontSize - 2}px` }}>
+                                            {[sale?.customer?.phone, sale?.customer?.email].filter(Boolean).join(' · ')}
+                                        </div>
+                                    )}
+                                </td>
+                            </tr>
+                        )}
+                    </tbody>
+                </table>
             </div>
 
-            {/* ── Section 1: Sale Items ── */}
+            {/* ── Section 1: Sale Items ──
+                Two-line per row when meaningful: line 1 = name + total,
+                line 2 = "<qty> × <unit price>" (also "−<discount>%" when set).
+                Single-qty no-discount items collapse to one line to save
+                space on thermal print. */}
             <table className="items-table w-100" style={{ fontSize: `${itemsFontSize}px`, marginBottom: '6px', borderCollapse: 'collapse' }}>
                 <thead>
                     <tr style={{ borderBottom: '1px solid #000' }}>
-                        <th className="text-center" style={{ width: '12%', padding: '2px 0', fontWeight: 'bold' }}>Qty</th>
-                        <th className="text-start" style={{ width: '58%', padding: '2px 0', fontWeight: 'bold' }}>Item</th>
-                        <th className="text-end" style={{ width: '30%', padding: '2px 0', fontWeight: 'bold' }}>Amt</th>
+                        <th className="text-start" style={{ padding: '3px 0', fontWeight: 'bold' }}>Item</th>
+                        <th className="text-end" style={{ padding: '3px 0', fontWeight: 'bold', whiteSpace: 'nowrap' }}>Total</th>
                     </tr>
                 </thead>
                 <tbody>
                     {items.map((item, index) => {
                         const rowSubtotal = Number(item.subtotal) || 0;
                         const rowDiscount = Number(item.discount) || 0;
+                        const rowDiscountPct = Number(item.discount_percentage) || 0;
                         const rowTotal = rowSubtotal - rowDiscount;
+                        const qty = Number(item.quantity) || 1;
+                        const unitPrice = qty > 0 ? rowSubtotal / qty : rowSubtotal;
+                        const showDetail = qty > 1 || rowDiscount > 0;
+                        const itemName = item?.items?.[0]?.name || item.product?.name || 'Item';
                         return (
-                            <tr key={index} style={{ borderBottom: '1px dotted #ccc' }}>
-                                <td className="text-center" style={{ padding: '2px 0', verticalAlign: 'top' }}>{item.quantity}</td>
-                                <td className="text-start" style={{ padding: '2px 2px', verticalAlign: 'top', wordBreak: 'break-word', maxWidth: 0 }}>
-                                    {item?.items?.[0]?.name || item.product?.name || 'Item'}
+                            <tr key={index} style={{ borderBottom: '1px dotted #bbb' }}>
+                                <td className="text-start" style={{ padding: '3px 4px 3px 0', verticalAlign: 'top', wordBreak: 'break-word' }}>
+                                    <div>{itemName}</div>
+                                    {showDetail && (
+                                        <div style={{ fontSize: `${Math.max(itemsFontSize - 2, 8)}px`, color: '#555' }}>
+                                            {qty} × {currency}{unitPrice.toFixed(2)}
+                                            {rowDiscount > 0 && (
+                                                <> &nbsp;·&nbsp; −{rowDiscountPct ? `${rowDiscountPct}%` : `${currency}${rowDiscount.toFixed(2)}`}</>
+                                            )}
+                                        </div>
+                                    )}
                                 </td>
-                                <td className="text-end" style={{ padding: '2px 0', verticalAlign: 'top', whiteSpace: 'nowrap' }}>
-                                    {Math.round(rowTotal)}
+                                <td className="text-end" style={{ padding: '3px 0', verticalAlign: 'top', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+                                    {currency}{rowTotal.toFixed(2)}
                                 </td>
                             </tr>
                         );
@@ -212,28 +262,32 @@ const SaleInvoice = ({ sale, items, totals, printerSettings, branchPrintOverride
             )}
 
             {/* ── Section 3: Totals ── */}
-            <div className="totals-section" style={{ borderTop: '1px dashed #555', paddingTop: '4px', fontSize: `${fontSize}px` }}>
-                <table className="totals-table w-100" style={{ borderCollapse: 'collapse', fontSize: `${fontSize}px` }}>
+            <div className="totals-section" style={{ borderTop: '1px solid #000', paddingTop: '5px', fontSize: `${fontSize}px` }}>
+                <table className="totals-table w-100" style={{ borderCollapse: 'collapse', fontSize: `${fontSize}px`, fontVariantNumeric: 'tabular-nums' }}>
                     <tbody>
                         <tr>
-                            <td className="text-start" style={{ width: '50%', padding: '1px 0' }}>Subtotal:</td>
-                            <td className="text-end" style={{ width: '50%', padding: '1px 0' }}>{currency}{safeTotals.subtotal.toFixed(2)}</td>
+                            <td className="text-start" style={{ width: '50%', padding: '2px 0' }}>Subtotal</td>
+                            <td className="text-end" style={{ width: '50%', padding: '2px 0' }}>{currency}{safeTotals.subtotal.toFixed(2)}</td>
                         </tr>
-                        {showTax && safeTotals.tax > 0 && (
-                            <tr>
-                                <td className="text-start" style={{ padding: '1px 0' }}>Tax:</td>
-                                <td className="text-end" style={{ padding: '1px 0' }}>{currency}{safeTotals.tax.toFixed(2)}</td>
-                            </tr>
-                        )}
                         {safeTotals.discount > 0 && (
                             <tr>
-                                <td className="text-start" style={{ padding: '1px 0' }}>Discount:</td>
-                                <td className="text-end" style={{ padding: '1px 0' }}>-{currency}{safeTotals.discount.toFixed(2)}</td>
+                                <td className="text-start" style={{ padding: '2px 0' }}>Discount</td>
+                                <td className="text-end" style={{ padding: '2px 0' }}>−{currency}{safeTotals.discount.toFixed(2)}</td>
                             </tr>
                         )}
-                        <tr className="fw-bold" style={{ fontSize: `${fontSize + 3}px`, borderTop: '1px solid #555' }}>
-                            <td className="text-start" style={{ padding: '3px 0' }}>Total:</td>
-                            <td className="text-end" style={{ padding: '3px 0' }}>{currency}{safeTotals.total.toFixed(2)}</td>
+                        {showTax && safeTotals.tax > 0 && (
+                            <tr>
+                                <td className="text-start" style={{ padding: '2px 0' }}>Tax</td>
+                                <td className="text-end" style={{ padding: '2px 0' }}>{currency}{safeTotals.tax.toFixed(2)}</td>
+                            </tr>
+                        )}
+                        <tr className="fw-bold" style={{
+                            fontSize: `${fontSize + 4}px`,
+                            borderTop: '2px solid #000',
+                            borderBottom: '2px solid #000',
+                        }}>
+                            <td className="text-start text-uppercase" style={{ padding: '5px 0', letterSpacing: 0.5 }}>Total</td>
+                            <td className="text-end" style={{ padding: '5px 0' }}>{currency}{safeTotals.total.toFixed(2)}</td>
                         </tr>
                     </tbody>
                 </table>
@@ -278,17 +332,25 @@ const SaleInvoice = ({ sale, items, totals, printerSettings, branchPrintOverride
                 </div>
             )}
 
-            <div className="invoice-footer mt-3">
-                <div className="invoice-number-section">
-                    <div className="barcode-container">
-                        <BarcodeDisplay barcode={invoiceNo} fontSize={fontSize} />
-                        {invoiceNo}
-                    </div>
+            {/* Footer: prominent QR + invoice no so customers / staff can
+                scan to look up the sale later. Tabular-nums on the
+                invoice number for thermal-friendly alignment. */}
+            <div className="invoice-footer mt-3 pt-2" style={{ borderTop: '1px solid #000', textAlign: 'center' }}>
+                <BarcodeDisplay barcode={invoiceNo} fontSize={fontSize} />
+                <div style={{
+                    marginTop: '4px',
+                    fontFamily: 'monospace',
+                    fontSize: `${fontSize}px`,
+                    letterSpacing: 1,
+                    fontWeight: 700,
+                }}>{invoiceNo}</div>
+                <div style={{ fontSize: `${fontSize - 2}px`, color: '#555', marginTop: '2px' }}>
+                    Scan to view sale
                 </div>
             </div>
 
-            <div className="footer mt-2">
-                Thank You!
+            <div className="footer mt-3" style={{ textAlign: 'center', fontSize: `${fontSize}px`, fontStyle: 'italic' }}>
+                Thank you for your purchase!
             </div>
 
             {showTerms && branch?.invoiceTerms && (
