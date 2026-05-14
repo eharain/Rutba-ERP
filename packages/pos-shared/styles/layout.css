@@ -370,6 +370,15 @@ a:hover { text-decoration: underline; }
     padding: 0 1rem;
 }
 
+/* In sidebar mode, the footer spans the same full width as the
+   top bar (no max-width clamp). The inner FooterInfo handles its
+   own padding so it lines up edge-to-edge with the header. */
+.layout-footer-bar {
+    width: 100%;
+}
+.has-sidebar .layout-footer { background: var(--rutba-nav-bg); }
+.has-sidebar .layout-footer .footer-info { padding: 0.5rem 1rem; }
+
 .topbar {
     display: flex;
     align-items: center;

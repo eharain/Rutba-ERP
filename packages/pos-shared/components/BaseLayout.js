@@ -63,7 +63,7 @@ export default function BaseLayout({
             )}
 
             <footer className="layout-footer border-top mt-auto">
-                <div className="layout-container">
+                <div className={hasSidebar ? "layout-footer-bar" : "layout-container"}>
                     <FooterInfo currentApp={currentApp} />
                 </div>
             </footer>
