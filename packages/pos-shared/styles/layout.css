@@ -26,55 +26,267 @@
 
 /* ─────────────────────────────────────────────────────────────
    Page Content Utilities
-   Use these classes instead of inline styles for consistency
    ───────────────────────────────────────────────────────────── */
 
-/* Standard page wrapper - use as default for all page content */
-.page-content {
-    padding: 1.25rem;
-}
+.page-content { padding: 1.25rem; }
 
-/* Narrower content for forms and focused content (max 900px) */
-.content-narrow {
-    max-width: 900px;
-    margin-left: auto;
-    margin-right: auto;
-}
+.content-narrow { max-width: 900px; margin-left: auto; margin-right: auto; }
+.content-medium { max-width: 1200px; margin-left: auto; margin-right: auto; }
 
-/* Medium width content (max 1200px) */
-.content-medium {
-    max-width: 1200px;
-    margin-left: auto;
-    margin-right: auto;
-}
+.section-spacing { margin-bottom: 1.25rem; }
 
-/* Section spacing */
-.section-spacing {
-    margin-bottom: 1.25rem;
-}
-
-/* Card/panel style box */
 .content-card {
     padding: 1rem;
     background: #f8f9fa;
-    border-radius: 0.375rem;
-    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+    border: 1px solid #e5e7eb;
 }
 
-/* Loading/error/empty state wrapper */
-.state-message {
-    padding: 2.5rem;
-    text-align: center;
-}
+.state-message { padding: 2.5rem; text-align: center; }
+.state-message--error { color: #dc3545; }
 
-.state-message--error {
-    color: #dc3545;
-}
+.action-row { margin-bottom: 1.25rem; }
 
-/* Action button row */
-.action-row {
-    margin-bottom: 1.25rem;
-}
-
-/* Legacy container class - kept for backward compatibility */
 .container { width: 100%; max-width: 1280px; margin: 0 auto; padding: 1rem; }
+
+
+/* ─────────────────────────────────────────────────────────────
+   Typography polish
+   ───────────────────────────────────────────────────────────── */
+:root {
+    --rutba-font-sans: var(--font-geist-sans, "Inter", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif);
+    --rutba-font-mono: var(--font-geist-mono, "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace);
+    --rutba-text: #1f2937;
+    --rutba-muted: #6b7280;
+    --rutba-border: #e5e7eb;
+    --rutba-accent: #f5b400;
+    --rutba-nav-bg: #1f242b;
+    --rutba-nav-bg-hover: #2a3038;
+    --rutba-nav-text: rgba(255, 255, 255, 0.78);
+    --rutba-nav-text-hover: #ffffff;
+}
+
+body {
+    font-family: var(--rutba-font-sans);
+    color: var(--rutba-text);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    letter-spacing: -0.005em;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: var(--rutba-font-sans);
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    color: #111827;
+}
+
+h1 { font-size: 1.75rem; line-height: 1.2; }
+h2 { font-size: 1.4rem;  line-height: 1.25; }
+h3 { font-size: 1.2rem;  line-height: 1.3; }
+
+.text-muted, .small { color: var(--rutba-muted) !important; }
+
+code, kbd, pre, samp { font-family: var(--rutba-font-mono); }
+
+a { text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* Bootstrap table refinements */
+.table {
+    --bs-table-bg: transparent;
+    font-size: 0.92rem;
+}
+.table thead th {
+    text-transform: uppercase;
+    font-size: 0.72rem;
+    letter-spacing: 0.04em;
+    color: var(--rutba-muted);
+    font-weight: 600;
+    border-bottom: 1px solid var(--rutba-border);
+    background: #f9fafb;
+}
+.table tbody tr { border-bottom: 1px solid #f1f3f5; }
+.table tbody tr:hover { background: #fafbfc; }
+
+/* Generic lists */
+.list-group-item { border-color: var(--rutba-border); }
+
+
+/* ─────────────────────────────────────────────────────────────
+   Top navigation (shared across apps)
+   ───────────────────────────────────────────────────────────── */
+
+.navbar.navbar-dark {
+    background-color: var(--rutba-nav-bg) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    padding-top: 0.4rem;
+    padding-bottom: 0.4rem;
+}
+
+.navbar.navbar-dark .navbar-brand {
+    color: #fff;
+    font-size: 1.05rem;
+    letter-spacing: -0.01em;
+}
+
+.navbar.navbar-dark .nav-link {
+    color: var(--rutba-nav-text);
+    padding: 0.45rem 0.75rem;
+    border-radius: 0.4rem;
+    font-size: 0.92rem;
+    font-weight: 500;
+    transition: background-color 120ms ease, color 120ms ease;
+}
+
+.navbar.navbar-dark .nav-link:hover,
+.navbar.navbar-dark .nav-link:focus,
+.navbar.navbar-dark .nav-link.show {
+    color: var(--rutba-nav-text-hover);
+    background-color: var(--rutba-nav-bg-hover);
+}
+
+.navbar.navbar-dark .nav-link.disabled {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.navbar.navbar-dark .nav-link i {
+    font-size: 0.9rem;
+    opacity: 0.9;
+}
+
+/* The slim divider between menu groups and switchers */
+.navbar .nav-divider {
+    width: 1px;
+    height: 22px;
+    background: rgba(255, 255, 255, 0.15);
+    margin: 0 0.5rem;
+}
+
+/* Dropdown menu refinements */
+.navbar .dropdown-menu {
+    border: 1px solid var(--rutba-border);
+    border-radius: 0.55rem;
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.14), 0 2px 6px rgba(15, 23, 42, 0.06);
+    padding: 0.35rem;
+    min-width: 220px;
+    font-size: 0.9rem;
+}
+
+.navbar .dropdown-menu .dropdown-header {
+    font-size: 0.7rem;
+    letter-spacing: 0.05em;
+    color: var(--rutba-muted);
+    padding: 0.4rem 0.6rem 0.25rem;
+}
+
+.navbar .dropdown-menu .dropdown-item {
+    border-radius: 0.4rem;
+    padding: 0.4rem 0.6rem;
+    color: var(--rutba-text);
+}
+
+.navbar .dropdown-menu .dropdown-item:hover,
+.navbar .dropdown-menu .dropdown-item:focus {
+    background-color: #f3f4f6;
+    color: #111827;
+}
+
+.navbar .dropdown-menu .dropdown-item.active,
+.navbar .dropdown-menu .dropdown-item:active {
+    background-color: #fff7e0;
+    color: #7c4a00;
+}
+
+.navbar .dropdown-divider {
+    margin: 0.3rem 0.2rem;
+    border-color: var(--rutba-border);
+}
+
+/* App switcher & role switcher inherit nav-link look automatically.
+   These tweaks keep their icons aligned and add a subtle accent. */
+.nav-app-switcher > .nav-link i,
+.nav-role-switcher > .nav-link i {
+    font-size: 0.95rem;
+}
+
+.nav-role-switcher > .nav-link.text-warning {
+    background-color: rgba(245, 180, 0, 0.12);
+}
+
+
+/* ─────────────────────────────────────────────────────────────
+   Secondary nav (Quick access ribbon)
+   ───────────────────────────────────────────────────────────── */
+.nav-secondary {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.55rem 1rem;
+    flex-wrap: wrap;
+    background: #ffffff;
+    border-top: 1px solid var(--rutba-border);
+    margin: 0 -1.5rem -0.5rem;
+}
+
+.nav-secondary-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--rutba-muted);
+    font-weight: 600;
+    padding-right: 0.5rem;
+    border-right: 1px solid var(--rutba-border);
+    margin-right: 0.25rem;
+}
+
+.nav-secondary-items {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.nav-secondary-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.3rem 0.7rem;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: #374151;
+    background: #f3f4f6;
+    border: 1px solid transparent;
+    transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+
+.nav-secondary-link:hover {
+    background: #fff;
+    color: #111827;
+    border-color: var(--rutba-border);
+    text-decoration: none;
+}
+
+.nav-secondary-link.is-active {
+    background: #111827;
+    color: #fff;
+    border-color: #111827;
+}
+
+.nav-secondary-link i {
+    font-size: 0.78rem;
+    opacity: 0.8;
+}
+
+
+/* Layout container softening (header/footer) */
+.layout-header { background: var(--rutba-nav-bg); }
+.layout-header .layout-container { padding-top: 0 !important; padding-bottom: 0 !important; }
+
+.layout-footer { font-size: 0.85rem; color: var(--rutba-muted); }

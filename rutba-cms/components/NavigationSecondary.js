@@ -1,28 +1,40 @@
 import Link from "next/link";
+import { useRouter } from "next/router";
+
+const QUICK_LINKS = [
+    { href: "/products",       label: "Products",   icon: "fa-tag" },
+    { href: "/categories",     label: "Categories", icon: "fa-folder-tree" },
+    { href: "/brands",         label: "Brands",     icon: "fa-copyright" },
+    { href: "/product-groups", label: "Groups",     icon: "fa-object-group" },
+    { href: "/pages",          label: "Pages",      icon: "fa-file-lines" },
+    { href: "/media",          label: "Media",      icon: "fa-photo-film" },
+];
 
 export default function NavigationSecondary() {
+    const router = useRouter();
+    const pathname = router?.pathname || "";
+
     return (
-        <nav className="navbar navbar-expand navbar-grey bg-light px-3 py-2 border-bottom">
-            <ul className="navbar-nav align-items-center gap-2">
-                <li className="nav-item fw-semibold text-uppercase small text-muted me-1">Quick:</li>
-                <li className="nav-item">
-                    <Link className="btn btn-sm btn-outline-primary" href="/products">Products</Link>
-                </li>
-                <li className="nav-item">
-                    <Link className="btn btn-sm btn-outline-info" href="/categories">Categories</Link>
-                </li>
-                <li className="nav-item">
-                    <Link className="btn btn-sm btn-outline-secondary" href="/brands">Brands</Link>
-                </li>
-                <li className="nav-item">
-                    <Link className="btn btn-sm btn-outline-success" href="/product-groups">Groups</Link>
-                </li>
-                <li className="nav-item">
-                    <Link className="btn btn-sm btn-outline-warning" href="/pages">Pages</Link>
-                </li>
-                <li className="nav-item">
-                    <Link className="btn btn-sm btn-outline-dark" href="/media">Media</Link>
-                </li>
+        <nav className="nav-secondary">
+            <div className="nav-secondary-label">
+                <i className="fa-solid fa-bolt"></i>
+                <span>Quick access</span>
+            </div>
+            <ul className="nav-secondary-items">
+                {QUICK_LINKS.map((item) => {
+                    const active = pathname === item.href || pathname.startsWith(item.href + "/");
+                    return (
+                        <li key={item.href}>
+                            <Link
+                                className={`nav-secondary-link${active ? " is-active" : ""}`}
+                                href={item.href}
+                            >
+                                <i className={`fa-solid ${item.icon}`}></i>
+                                <span>{item.label}</span>
+                            </Link>
+                        </li>
+                    );
+                })}
             </ul>
         </nav>
     );
