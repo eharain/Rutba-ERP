@@ -3,6 +3,14 @@ import Topbar from "@rutba/pos-shared/components/Topbar";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { MediaUtilsEndpoints, SiteSettingEndpoints } from "@rutba/api-provider/endpoints/index.js";
 
+const SECONDARY = [
+    { href: "/sale-orders",            label: "Orders",   variant: "primary" },
+    { href: "/riders",                 label: "Riders",   variant: "info" },
+    { href: "/delivery-methods",       label: "Methods",  variant: "secondary" },
+    { href: "/delivery-zones",         label: "Zones",    variant: "success" },
+    { href: "/notification-templates", label: "Templates",variant: "warning" },
+];
+
 export default function Navigation() {
     const { jwt } = useAuth();
     const [siteLogo, setSiteLogo] = useState(null);
@@ -30,5 +38,5 @@ export default function Navigation() {
         </>
     );
 
-    return <Topbar currentApp="order-management" brand={brand} />;
+    return <Topbar currentApp="order-management" brand={brand} secondary={SECONDARY} />;
 }
