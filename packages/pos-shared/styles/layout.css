@@ -535,6 +535,23 @@ a:hover { text-decoration: underline; }
 /* When collapsed, never show children even if a section is open */
 .side-nav:not(.is-expanded) .side-nav-children { grid-template-rows: 0fr !important; }
 
+/* Heading + divider variants */
+.side-nav-divider {
+    height: 1px;
+    margin: 0.5rem 0.6rem;
+    background: rgba(255, 255, 255, 0.08);
+}
+.side-nav-heading {
+    padding: 0.6rem 0.6rem 0.2rem;
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 600;
+    min-height: 1.5rem;
+}
+.side-nav:not(.is-expanded) .side-nav-heading { padding: 0.35rem 0; }
+
 
 /* Page surface for sidebar layout — pages keep their own internal
    layout; we just give the main area a softer canvas. */
