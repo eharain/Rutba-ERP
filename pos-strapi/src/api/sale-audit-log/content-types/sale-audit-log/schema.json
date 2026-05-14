@@ -1,0 +1,81 @@
+{
+  "kind": "collectionType",
+  "collectionName": "sale_audit_logs",
+  "info": {
+    "singularName": "sale-audit-log",
+    "pluralName": "sale-audit-logs",
+    "displayName": "Sale Audit Log",
+    "description": "Append-only trail of teller actions on a sale: add/remove/edit items, save, print, checkout, customer changes, notes, payments. Read-only after creation."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "action": {
+      "type": "enumeration",
+      "enum": [
+        "Created",
+        "Viewed",
+        "ItemAdded",
+        "ItemUpdated",
+        "ItemRemoved",
+        "CustomerSet",
+        "CustomerCleared",
+        "NoteSaved",
+        "Saved",
+        "ReceiptPrintedDraft",
+        "ReceiptPrintedPaid",
+        "CheckedOut",
+        "PaymentRecorded",
+        "ExchangeReturnLinked",
+        "ExchangeReturnRemoved",
+        "Cancelled"
+      ],
+      "required": true
+    },
+    "description": {
+      "type": "text"
+    },
+    "performed_at": {
+      "type": "datetime",
+      "required": true
+    },
+    "performed_by": {
+      "type": "string"
+    },
+    "performed_by_user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "sale": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::sale.sale"
+    },
+    "cash_register": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::cash-register.cash-register"
+    },
+    "branch_id": {
+      "type": "integer"
+    },
+    "branch_name": {
+      "type": "string"
+    },
+    "desk_id": {
+      "type": "integer"
+    },
+    "desk_name": {
+      "type": "string"
+    },
+    "app_name": {
+      "type": "string"
+    },
+    "role_key": {
+      "type": "string"
+    }
+  }
+}

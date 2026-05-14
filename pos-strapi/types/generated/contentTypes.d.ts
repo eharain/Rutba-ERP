@@ -3012,6 +3012,74 @@ export interface ApiRiderRider extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiSaleAuditLogSaleAuditLog
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'sale_audit_logs';
+  info: {
+    description: 'Append-only trail of teller actions on a sale: add/remove/edit items, save, print, checkout, customer changes, notes, payments. Read-only after creation.';
+    displayName: 'Sale Audit Log';
+    pluralName: 'sale-audit-logs';
+    singularName: 'sale-audit-log';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    action: Schema.Attribute.Enumeration<
+      [
+        'Created',
+        'Viewed',
+        'ItemAdded',
+        'ItemUpdated',
+        'ItemRemoved',
+        'CustomerSet',
+        'CustomerCleared',
+        'NoteSaved',
+        'Saved',
+        'ReceiptPrintedDraft',
+        'ReceiptPrintedPaid',
+        'CheckedOut',
+        'PaymentRecorded',
+        'ExchangeReturnLinked',
+        'ExchangeReturnRemoved',
+        'Cancelled',
+      ]
+    > &
+      Schema.Attribute.Required;
+    app_name: Schema.Attribute.String;
+    branch_id: Schema.Attribute.Integer;
+    branch_name: Schema.Attribute.String;
+    cash_register: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::cash-register.cash-register'
+    >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    description: Schema.Attribute.Text;
+    desk_id: Schema.Attribute.Integer;
+    desk_name: Schema.Attribute.String;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::sale-audit-log.sale-audit-log'
+    > &
+      Schema.Attribute.Private;
+    performed_at: Schema.Attribute.DateTime & Schema.Attribute.Required;
+    performed_by: Schema.Attribute.String;
+    performed_by_user: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    role_key: Schema.Attribute.String;
+    sale: Schema.Attribute.Relation<'manyToOne', 'api::sale.sale'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiSaleItemSaleItem extends Struct.CollectionTypeSchema {
   collectionName: 'sale_items';
   info: {
@@ -4956,6 +5024,7 @@ declare module '@strapi/strapi' {
       'api::purchase-return.purchase-return': ApiPurchaseReturnPurchaseReturn;
       'api::purchase.purchase': ApiPurchasePurchase;
       'api::rider.rider': ApiRiderRider;
+      'api::sale-audit-log.sale-audit-log': ApiSaleAuditLogSaleAuditLog;
       'api::sale-item.sale-item': ApiSaleItemSaleItem;
       'api::sale-offer.sale-offer': ApiSaleOfferSaleOffer;
       'api::sale-order.sale-order': ApiSaleOrderSaleOrder;
