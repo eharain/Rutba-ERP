@@ -50,6 +50,14 @@ export default function CmsFooterDetail() {
     const [assignedPageIds, setAssignedPageIds] = useState([]);
     const [savingAssignment, setSavingAssignment] = useState(false);
 
+    // Tracking codes
+    const [gaMeasurementId, setGaMeasurementId] = useState("");
+    const [metaPixelId, setMetaPixelId] = useState("");
+    const [gtmContainerId, setGtmContainerId] = useState("");
+    const [customHeadHtml, setCustomHeadHtml] = useState("");
+    const [customBodyEndHtml, setCustomBodyEndHtml] = useState("");
+    const [trackingOpen, setTrackingOpen] = useState(false);
+
     useEffect(() => {
         if (!jwt || !documentId || isNew) { setLoading(false); return; }
         Promise.all([
@@ -70,6 +78,11 @@ export default function CmsFooterDetail() {
                 setSocialLinks(f.social_links || DEFAULT_SOCIALS);
                 setSelectedPageIds((f.pinned_pages || []).map(p => p.documentId));
                 setAssignedPageIds((f.cms_pages || []).map(p => p.documentId));
+                setGaMeasurementId(f.ga_measurement_id || "");
+                setMetaPixelId(f.meta_pixel_id || "");
+                setGtmContainerId(f.gtm_container_id || "");
+                setCustomHeadHtml(f.custom_head_html || "");
+                setCustomBodyEndHtml(f.custom_body_end_html || "");
             })
             .catch(err => console.error("Failed to load footer", err))
             .finally(() => setLoading(false));
@@ -158,6 +171,11 @@ export default function CmsFooterDetail() {
                     opening_hours: openingHours,
                     social_links: socialLinks.filter(s => s.platform && s.url),
                     pinned_pages: { set: selectedPageIds },
+                    ga_measurement_id: gaMeasurementId.trim() || null,
+                    meta_pixel_id: metaPixelId.trim() || null,
+                    gtm_container_id: gtmContainerId.trim() || null,
+                    custom_head_html: customHeadHtml || null,
+                    custom_body_end_html: customBodyEndHtml || null,
                 },
             };
             if (isNew) {
@@ -190,6 +208,11 @@ export default function CmsFooterDetail() {
                     opening_hours: openingHours,
                     social_links: socialLinks.filter(s => s.platform && s.url),
                     pinned_pages: { set: selectedPageIds },
+                    ga_measurement_id: gaMeasurementId.trim() || null,
+                    meta_pixel_id: metaPixelId.trim() || null,
+                    gtm_container_id: gtmContainerId.trim() || null,
+                    custom_head_html: customHeadHtml || null,
+                    custom_body_end_html: customBodyEndHtml || null,
                 },
             };
             await CmsFootersEndpoints.updateDraft(documentId, payload.data);
@@ -228,6 +251,11 @@ export default function CmsFooterDetail() {
                 opening_hours: openingHours,
                 social_links: socialLinks.filter(s => s.platform && s.url),
                 pinned_pages: { set: selectedPageIds },
+                ga_measurement_id: gaMeasurementId.trim() || null,
+                meta_pixel_id: metaPixelId.trim() || null,
+                gtm_container_id: gtmContainerId.trim() || null,
+                custom_head_html: customHeadHtml || null,
+                custom_body_end_html: customBodyEndHtml || null,
             });
             const res = await CmsFootersEndpoints.byIdPublished(documentId, { populate: ["pinned_pages", "cms_pages"] });
             const f = res.data || res;
@@ -242,6 +270,11 @@ export default function CmsFooterDetail() {
             setSocialLinks(f.social_links || DEFAULT_SOCIALS);
             setSelectedPageIds((f.pinned_pages || []).map(p => p.documentId));
             setAssignedPageIds((f.cms_pages || []).map(p => p.documentId));
+            setGaMeasurementId(f.ga_measurement_id || "");
+            setMetaPixelId(f.meta_pixel_id || "");
+            setGtmContainerId(f.gtm_container_id || "");
+            setCustomHeadHtml(f.custom_head_html || "");
+            setCustomBodyEndHtml(f.custom_body_end_html || "");
             toast("Draft saved. Showing published version — click Save Draft to overwrite.", "success");
         } catch (err) {
             console.error("Failed to load published version", err);
@@ -389,6 +422,95 @@ export default function CmsFooterDetail() {
                                         <i className="fas fa-plus me-1"></i>Add Social Link
                                     </button>
                                 </div>
+                            </div>
+
+                            {/* Tracking & Analytics */}
+                            <div className="card mb-3">
+                                <div
+                                    className="card-header d-flex align-items-center justify-content-between"
+                                    style={{ cursor: "pointer" }}
+                                    onClick={() => setTrackingOpen(v => !v)}
+                                >
+                                    <span>
+                                        <i className={`fas fa-chevron-${trackingOpen ? "down" : "right"} me-2`}></i>
+                                        <i className="fas fa-chart-line me-2"></i>
+                                        <strong>Tracking &amp; Analytics</strong>
+                                    </span>
+                                    {(gaMeasurementId || metaPixelId || gtmContainerId || customHeadHtml || customBodyEndHtml) && (
+                                        <span className="badge bg-success">configured</span>
+                                    )}
+                                </div>
+                                {trackingOpen && (
+                                    <div className="card-body">
+                                        <div className="alert alert-info py-2 px-3 small mb-3">
+                                            <i className="fas fa-info-circle me-1"></i>
+                                            These scripts fire on every page that uses this footer (set in Site
+                                            Settings as the default to make them site-wide).
+                                        </div>
+
+                                        <div className="mb-3">
+                                            <label className="form-label">Google Analytics Measurement ID</label>
+                                            <input
+                                                type="text"
+                                                className="form-control"
+                                                value={gaMeasurementId}
+                                                onChange={e => setGaMeasurementId(e.target.value)}
+                                                placeholder="G-XXXXXXXXXX"
+                                            />
+                                            <small className="text-muted">GA4 measurement ID. Found in Admin → Data streams.</small>
+                                        </div>
+
+                                        <div className="mb-3">
+                                            <label className="form-label">Meta (Facebook) Pixel ID</label>
+                                            <input
+                                                type="text"
+                                                className="form-control"
+                                                value={metaPixelId}
+                                                onChange={e => setMetaPixelId(e.target.value)}
+                                                placeholder="123456789012345"
+                                            />
+                                            <small className="text-muted">15–16 digit ID from Meta Events Manager.</small>
+                                        </div>
+
+                                        <div className="mb-3">
+                                            <label className="form-label">Google Tag Manager Container ID</label>
+                                            <input
+                                                type="text"
+                                                className="form-control"
+                                                value={gtmContainerId}
+                                                onChange={e => setGtmContainerId(e.target.value)}
+                                                placeholder="GTM-XXXXXX"
+                                            />
+                                            <small className="text-muted">Use this OR GA4 — GTM lets you manage GA + Pixel + others from one place.</small>
+                                        </div>
+
+                                        <div className="mb-3">
+                                            <label className="form-label">Custom &lt;head&gt; HTML</label>
+                                            <textarea
+                                                className="form-control font-monospace"
+                                                rows={4}
+                                                value={customHeadHtml}
+                                                onChange={e => setCustomHeadHtml(e.target.value)}
+                                                placeholder='<!-- Hotjar, Clarity, LinkedIn Insight, custom verification meta, etc. -->'
+                                                style={{ fontSize: "0.85rem" }}
+                                            />
+                                            <small className="text-muted">Raw HTML injected into the document head. Editor-trusted input.</small>
+                                        </div>
+
+                                        <div className="mb-3">
+                                            <label className="form-label">Custom end-of-&lt;body&gt; HTML</label>
+                                            <textarea
+                                                className="form-control font-monospace"
+                                                rows={4}
+                                                value={customBodyEndHtml}
+                                                onChange={e => setCustomBodyEndHtml(e.target.value)}
+                                                placeholder="<!-- Chat widgets, support buttons, etc. -->"
+                                                style={{ fontSize: "0.85rem" }}
+                                            />
+                                            <small className="text-muted">Rendered at the bottom of every page using this footer.</small>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Pinned Pages */}

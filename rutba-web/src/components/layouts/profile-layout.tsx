@@ -3,13 +3,13 @@ import { SidebarProfile } from "@/components/layouts/sidebar-profile";
 import { Separator } from "@/components/ui/separator";
 
 const sidebarNavItems = [
-  // {
-  //   title: "Profile",
-  //   href: "/profile",
-  // },
   {
     title: "Orders",
     href: "/profile/orders",
+  },
+  {
+    title: "Saved address",
+    href: "/profile/address",
   },
   // {
   //   title: "Waiting for Payment",

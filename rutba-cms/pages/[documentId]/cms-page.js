@@ -10,8 +10,7 @@ import Link from "next/link";
 import { useToast } from "../../components/Toast";
 import GroupPickerTabs from "../../components/GroupPickerTabs";
 import PagePickerTabs from "../../components/PagePickerTabs";
-
-const PAGE_TYPES = ["shop", "blog", "news", "info", "page"];
+import EnumSelect from "../../components/EnumSelect";
 
 export default function CmsPageDetail() {
     const router = useRouter();
@@ -49,6 +48,14 @@ export default function CmsPageDetail() {
     const [backgroundImageId, setBackgroundImageId] = useState(null);
     const [galleryIds, setGalleryIds] = useState([]);
 
+    // SEO
+    const [metaTitle, setMetaTitle] = useState("");
+    const [metaDescription, setMetaDescription] = useState("");
+    const [metaKeywords, setMetaKeywords] = useState("");
+    const [noindex, setNoindex] = useState(false);
+    const [ogImageId, setOgImageId] = useState(null);
+    const [seoOpen, setSeoOpen] = useState(false);
+
     const [allGroups, setAllGroups] = useState([]);
     const [allBrandGroups, setAllBrandGroups] = useState([]);
     const [allCategoryGroups, setAllCategoryGroups] = useState([]);
@@ -59,7 +66,7 @@ export default function CmsPageDetail() {
         if (!jwt || !documentId || isNew) { setLoading(false); return; }
         Promise.all([
             CmsPagesEndpoints.byIdDraft(documentId, {
-                populate: ["featured_image", "gallery", "background_image", "hero_product_groups", "brand_groups", "category_groups", "product_groups", "related_pages", "footer"],
+                populate: ["featured_image", "gallery", "background_image", "hero_product_groups", "brand_groups", "category_groups", "product_groups", "related_pages", "footer", "og_image"],
             }),
             CmsPagesEndpoints.byIdPublished(documentId, { fields: ["documentId"] }).catch(() => ({ data: null })),
         ])
@@ -86,6 +93,11 @@ export default function CmsPageDetail() {
                 setRelatedPagesPriority(p.related_pages_priority ?? 102);
                 setFeaturedImageId(p.featured_image?.id || null);
                 setBackgroundImageId(p.background_image?.id || null);
+                setMetaTitle(p.meta_title || "");
+                setMetaDescription(p.meta_description || "");
+                setMetaKeywords(p.meta_keywords || "");
+                setNoindex(!!p.noindex);
+                setOgImageId(p.og_image?.id || null);
                 setGalleryIds((p.gallery || []).map(g => g.id));
             })
             .catch(err => console.error("Failed to load page", err))
@@ -159,12 +171,17 @@ export default function CmsPageDetail() {
                     content_priority: contentPriority,
                     gallery_priority: galleryPriority,
                     related_pages_priority: relatedPagesPriority,
+                    meta_title: metaTitle,
+                    meta_description: metaDescription,
+                    meta_keywords: metaKeywords,
+                    noindex,
                 },
             };
             // Only include media when adding/keeping; omit when null to avoid affecting published
             if (featuredImageId) payload.data.featured_image = featuredImageId;
             if (backgroundImageId) payload.data.background_image = backgroundImageId;
             if (galleryIds.length > 0) payload.data.gallery = galleryIds;
+            if (ogImageId) payload.data.og_image = ogImageId;
             if (isNew) {
                 payload.data.slug = slug || title.toLowerCase().replace(/\s+/g, "-");
                 const res = await CmsPagesEndpoints.create(payload.data);
@@ -207,6 +224,11 @@ export default function CmsPageDetail() {
                     featured_image: featuredImageId || null,
                     background_image: backgroundImageId || null,
                     gallery: galleryIds.length > 0 ? galleryIds : null,
+                    meta_title: metaTitle,
+                    meta_description: metaDescription,
+                    meta_keywords: metaKeywords,
+                    noindex,
+                    og_image: ogImageId || null,
                 },
             };
             await CmsPagesEndpoints.updateDraft(documentId, payload.data);
@@ -450,16 +472,106 @@ export default function CmsPageDetail() {
                         </div>
 
                         <div className="col-md-4">
+                            {/* SEO — collapsed by default, expand to override defaults from Site Settings */}
+                            <div className="card mb-3">
+                                <div
+                                    className="card-header d-flex align-items-center justify-content-between"
+                                    style={{ cursor: "pointer" }}
+                                    onClick={() => setSeoOpen(v => !v)}
+                                >
+                                    <span>
+                                        <i className={`fas fa-chevron-${seoOpen ? "down" : "right"} me-2`}></i>
+                                        SEO &amp; Social
+                                    </span>
+                                    {(metaTitle || metaDescription || metaKeywords || ogImageId || noindex) && (
+                                        <span className="badge bg-success">customised</span>
+                                    )}
+                                </div>
+                                {seoOpen && (
+                                    <div className="card-body">
+                                        <div className="mb-3">
+                                            <label className="form-label">Meta Title <span className="text-muted small">(optional)</span></label>
+                                            <input
+                                                type="text"
+                                                className="form-control"
+                                                value={metaTitle}
+                                                onChange={e => setMetaTitle(e.target.value)}
+                                                placeholder="Falls back to page title"
+                                                maxLength={70}
+                                            />
+                                            <small className="text-muted">{metaTitle.length}/70 — keep under 60 for best display in Google.</small>
+                                        </div>
+
+                                        <div className="mb-3">
+                                            <label className="form-label">Meta Description <span className="text-muted small">(optional)</span></label>
+                                            <textarea
+                                                className="form-control"
+                                                rows={3}
+                                                value={metaDescription}
+                                                onChange={e => setMetaDescription(e.target.value)}
+                                                placeholder="Falls back to excerpt → site description"
+                                                maxLength={200}
+                                            />
+                                            <small className="text-muted">{metaDescription.length}/200 — Google typically shows ~155.</small>
+                                        </div>
+
+                                        <div className="mb-3">
+                                            <label className="form-label">Keywords <span className="text-muted small">(comma-separated)</span></label>
+                                            <input
+                                                type="text"
+                                                className="form-control"
+                                                value={metaKeywords}
+                                                onChange={e => setMetaKeywords(e.target.value)}
+                                                placeholder="e.g. summer collection, linen shirts, sustainable"
+                                            />
+                                            <small className="text-muted">Merged with site-wide default keywords (deduped).</small>
+                                        </div>
+
+                                        {!isNew && page && (
+                                            <div className="mb-3">
+                                                <label className="form-label">Social Share Image (OG)</label>
+                                                <FileView
+                                                    single={page.og_image}
+                                                    refName="cms-page"
+                                                    refId={page.id}
+                                                    refDocumentId={documentId}
+                                                    refDraft
+                                                    field="og_image"
+                                                    name={title}
+                                                    onFileChange={(_field, value) => setOgImageId(value?.id || null)}
+                                                />
+                                                <small className="text-muted d-block mt-1">Falls back to featured image → site default OG image. Recommended 1200×630.</small>
+                                            </div>
+                                        )}
+
+                                        <div className="form-check">
+                                            <input
+                                                type="checkbox"
+                                                className="form-check-input"
+                                                id="noindex"
+                                                checked={noindex}
+                                                onChange={e => setNoindex(e.target.checked)}
+                                            />
+                                            <label className="form-check-label" htmlFor="noindex">
+                                                Hide from search engines (noindex)
+                                            </label>
+                                            <div className="form-text">Page will be excluded from sitemap and tagged <code>noindex,nofollow</code>.</div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
                             <div className="card mb-3">
                                 <div className="card-header">Settings</div>
                                 <div className="card-body">
                                     <div className="mb-3">
                                         <label className="form-label">Page Type</label>
-                                        <select className="form-select" value={pageType} onChange={e => setPageType(e.target.value)}>
-                                            {PAGE_TYPES.map(t => (
-                                                <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>
-                                            ))}
-                                        </select>
+                                        <EnumSelect
+                                            name="cms-page"
+                                            field="page_type"
+                                            value={pageType}
+                                            onChange={e => setPageType(e.target.value)}
+                                        />
                                     </div>
                                     <div className="mb-3">
                                         <label className="form-label">Sort Order</label>

@@ -35,7 +35,13 @@ export default function ProductGroupRenderer({
   const showSort = !hideControls && group.enable_sort_dropdown !== false;
   const showViewToggle = !hideControls && group.enable_view_toggle !== false;
 
-  const allProducts = group.products ?? [];
+  // Defensive filter: never paint cards for draft/unpublished products.
+  // /product/:id 404s for them and the click is a dead end. The API
+  // descriptor already filters at populate time; this is the second layer
+  // in case Strapi populate behaviour changes.
+  const allProducts = (group.products ?? []).filter(
+    (p) => (p as { publishedAt?: string }).publishedAt
+  );
   if (allProducts.length === 0) return null;
 
   // Resolve active offer from offers relation
@@ -91,12 +97,23 @@ export default function ProductGroupRenderer({
 
   const isFullWidth = layout === "hero-slider" || layout === "banner-single";
 
+  // Eyebrow above the section title. Pulled from the group name when a title
+  // is provided so they aren't repeated.
+  const eyebrow =
+    group.title && group.name && group.title !== group.name
+      ? group.name
+      : undefined;
+
+  // Bare-hero layouts shouldn't have vertical padding — they own the full
+  // viewport. Inline layouts get generous, alternating section rhythm.
+  const sectionPadding = isFullWidth
+    ? ""
+    : even
+    ? "py-16 md:py-24 bg-secondary/30"
+    : "py-16 md:py-24 bg-background";
+
   return (
-    <section
-      className={
-        even ? "bg-slate-50 py-12 md:py-16" : "bg-white py-12 md:py-16"
-      }
-    >
+    <section className={cn("relative", sectionPadding)}>
       <div className={isFullWidth ? "" : "container-fluid"}>
         {(activeOffer || upcomingOffer) && (
           <OfferBanner
@@ -109,6 +126,7 @@ export default function ProductGroupRenderer({
         {!hideControls && (
           <GroupHeader
             name={group.title || group.name}
+            eyebrow={eyebrow}
             excerpt={group.excerpt}
             sort={sort}
             onSortChange={setSort}
@@ -124,7 +142,7 @@ export default function ProductGroupRenderer({
         {group.content && (
           <div
             className={cn(
-              "mt-6 prose prose-slate max-w-none prose-img:rounded-lg prose-a:text-blue-600",
+              "mt-10 max-w-3xl mx-auto prose prose-lg max-w-none prose-headings:font-display prose-headings:tracking-tight prose-img:rounded-xl prose-a:text-brand hover:prose-a:text-foreground",
               isFullWidth ? "container-fluid" : ""
             )}
             dangerouslySetInnerHTML={{ __html: marked.parse(group.content) as string }}
@@ -159,15 +177,22 @@ function OfferBanner({
     });
   };
 
+  const baseClasses =
+    "mb-6 rounded-xl px-5 py-3 flex flex-wrap items-center justify-between gap-3 shadow-card";
+
   if (active) {
     return (
-      <div className="mb-4 rounded-lg bg-gradient-to-r from-red-500 to-rose-600 text-white px-4 py-3 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <span className="text-lg">🔥</span>
-          <span className="font-semibold text-sm md:text-base">{label}</span>
+      <div className={cn(baseClasses, "bg-brand text-brand-foreground")}>
+        <div className="flex items-center gap-2.5">
+          <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-brand-foreground/15 text-sm">
+            🔥
+          </span>
+          <span className="font-semibold text-sm md:text-base tracking-wide">
+            {label}
+          </span>
         </div>
         {endDate && (
-          <span className="text-xs md:text-sm opacity-90">
+          <span className="text-xs md:text-sm opacity-90 font-medium">
             Ends {formatDate(endDate)}
           </span>
         )}
@@ -175,15 +200,23 @@ function OfferBanner({
     );
   }
 
-  // Upcoming
   return (
-    <div className="mb-4 rounded-lg bg-gradient-to-r from-amber-400 to-orange-500 text-white px-4 py-3 flex flex-wrap items-center justify-between gap-2">
-      <div className="flex items-center gap-2">
-        <span className="text-lg">⏳</span>
-        <span className="font-semibold text-sm md:text-base">{label}</span>
+    <div
+      className={cn(
+        baseClasses,
+        "bg-foreground/95 text-background border border-border/30"
+      )}
+    >
+      <div className="flex items-center gap-2.5">
+        <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-brand text-brand-foreground text-sm">
+          ⏳
+        </span>
+        <span className="font-semibold text-sm md:text-base tracking-wide">
+          {label}
+        </span>
       </div>
       {startDate && (
-        <span className="text-xs md:text-sm opacity-90">
+        <span className="text-xs md:text-sm opacity-80 font-medium">
           Starts {formatDate(startDate)}
         </span>
       )}

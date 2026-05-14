@@ -318,14 +318,35 @@ export function relationConnects(relations) {
     return connects;
 }
 // ------------------ Public API (no auth) ------------------
+// Drop-in equivalent of `authApi`, minus the JWT plumbing. The generated
+// clients under api/web/ use this so storefront SSR calls don't hang
+// looking for a session that never exists.
 export const api = {
     fetch: async (path, params) => await get(path, params),
-    get: async (path) => await get(path),
-    post: async (path, data) => await post(path, data),
-    put: async (path, data) => await get(path, data),
-    del: async (path) => await del(path),
-    uploadFile: async (file, ref, field, refId) => await uploadFile(file, ref, field, refId),
+    fetchWithPagination: async (path, params) => await getWithPagination(path, params),
+    get: async (path, params) => await get(path, params),
     getAll: async (path, params) => await getAll(path, params),
+    post: async (path, data) => await post(path, data),
+    patch: async (path, data) => await patch(path, data),
+    put: async (path, data) => await put(path, data),
+    del: async (path) => await del(path),
+    uploadFile: async (file, ref, field, refId, info) =>
+        await uploadFile(file, ref, field, refId, info ?? {}),
+    /**
+     * Fire a request described by an endpoint descriptor.
+     * Mirrors authApi.call() so descriptor-driven public clients work without
+     * needing to know which surface they target.
+     */
+    call: (ep, body) => {
+        const method = (ep.method ?? 'GET').toUpperCase();
+        switch (method) {
+            case 'POST':   return post(ep.path, body ?? ep.params);
+            case 'PATCH':  return patch(ep.path, body ?? ep.params);
+            case 'PUT':    return put(ep.path, body ?? ep.params);
+            case 'DELETE': return del(ep.path);
+            default:       return get(ep.path, ep.params);
+        }
+    },
 };
 
 // ------------------ Auth API (uses localStorage JWT) ------------------
@@ -363,7 +384,21 @@ async function authCall(fn, ...args) {
     // Short-circuit: if we have neither an access nor a refresh token, the
     // call cannot possibly succeed. Skip the wasted request + refresh round
     // trip and go straight to recovery.
+    //
+    // SSR / Node has no SessionExpiredDialog to drive recovery — suspending
+    // there would hang the request forever (we hit this from
+    // getServerSideProps on public pages). On the server we just proceed
+    // unauthenticated and let public Strapi routes serve us; auth-only
+    // calls will return a clean 401 the caller can handle, instead of
+    // blocking the entire render.
     if (!jwt && !storage.getItem('refreshToken')) {
+        if (typeof window === 'undefined') {
+            try {
+                return await fn(...args, null);
+            } catch (err) {
+                throw stripLibFrames(err);
+            }
+        }
         return suspendForSessionRecovery();
     }
 

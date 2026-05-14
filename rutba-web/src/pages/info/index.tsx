@@ -12,8 +12,7 @@ import {
 import { CmsPageInterface } from "@/types/api/cms-page";
 import { getPageUrl } from "@/lib/cms-page-types";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
-import Head from "next/head";
-import { useSiteSettings } from "@/hooks/use-site-settings";
+import Seo from "@/components/seo/seo";
 import { BASE_URL } from "@/static/const";
 
 const PAGE_TYPE = "info";
@@ -33,7 +32,6 @@ export default function InfoIndex({
   initialPages,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const cmsPagesService = createWebCmsPagesService({ baseURL: BASE_URL });
-  const settings = useSiteSettings();
 
   const {
     data: pages,
@@ -50,9 +48,10 @@ export default function InfoIndex({
   return (
     <LayoutMain>
       <>
-        <Head>
-          <title>Information - {settings.site_name}</title>
-        </Head>
+        <Seo
+          title="Information"
+          description="Helpful guides and policies."
+        />
 
         <div className="container-fluid my-16">
           <h1 className="text-3xl font-bold mb-8">Information</h1>

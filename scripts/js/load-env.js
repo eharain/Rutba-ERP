@@ -36,7 +36,7 @@
  *   Double underscore (__) separates prefix from var name:
  *     POS_STRAPI__PORT=4010  →  PORT=4010  (for pos-strapi only)
  */
-
+console.log('Time Now' , new Date().toISOString());
 const { spawn } = require('child_process');
 const {
   resolveAllVariables,
@@ -130,34 +130,39 @@ if (platformPort && envForApp.PORT === platformPort) {
   );
 }
 
-// ── 7. Spawn the command ───────────────────────────────────
+// ── 7. One-shot scaffold ───────────────────────────────────
+// Every dev/build/start runs the api-provider scaffolder once before
+// launching its command, so generated providers are always in sync with the
+// `api/` descriptors at process start. The scaffolder is idempotent and
+// content-aware — repeat invocations from sibling workspaces are cheap and
+// don't churn webpack caches.
+//
+// RUTBA_API_SCAFFOLDED=1 short-circuits this so a parent process (run-all.js)
+// can scaffold once for the whole tree and have children skip.
+//
+// Developers actively editing `api/` descriptors should run the watcher
+// in a side terminal:
+//   npm run watch --workspace=@rutba/api-provider
+const path = require('path');
 
-// In dev mode, spawn the api-provider watcher so changes to
-// packages/api-provider/api/*.js regenerate providers/generated/* automatically.
-// Skipped when the target IS api-provider itself, when running start/build, or
-// when a parent process (run-all.js) has already started a shared watcher.
-const isDevRun =
-  commandArgs[0] === 'run' &&
-  commandArgs[1] === 'dev' &&
-  targetDir !== 'packages/api-provider' &&
-  !targetDir.endsWith('/api-provider');
-
-let apiWatcher = null;
-if (isDevRun && process.env.RUTBA_API_WATCHER_STARTED !== '1') {
-  console.log('[env] starting @rutba/api-provider watcher (regenerates on api/ change)');
-  apiWatcher = spawn('npm', ['run', 'watch', '--workspace=@rutba/api-provider'], {
-    cwd: process.cwd(),
-    stdio: 'inherit',
-    shell: true,
-    env: process.env,
-  });
-  apiWatcher.on('error', (err) => {
-    console.error(`[env] api-provider watcher failed to start: ${err.message}`);
-  });
-  // Prevent the child npm-run-dev process from inheriting the flag *off* —
-  // mark it so any nested load-env invocations also skip.
-  process.env.RUTBA_API_WATCHER_STARTED = '1';
+function scaffoldOnce() {
+  if (process.env.RUTBA_API_SCAFFOLDED === '1') return;
+  if (targetDir === 'packages/api-provider' || targetDir.endsWith('/api-provider')) return;
+  const { spawnSync } = require('child_process');
+  const scriptPath = path.resolve(
+    __dirname, '..', '..', 'packages', 'api-provider', 'scripts', 'scaffold-endpoint-providers.mjs'
+  );
+  if (!require('fs').existsSync(scriptPath)) return;
+  console.log('[env] scaffolding @rutba/api-provider (one-shot)');
+  const res = spawnSync('node', [scriptPath], { stdio: 'inherit' });
+  if (res.status !== 0) {
+    console.warn('[env] api-provider scaffolder exited non-zero — continuing');
+  }
+  process.env.RUTBA_API_SCAFFOLDED = '1';
 }
+scaffoldOnce();
+
+// ── 8. Spawn the command ───────────────────────────────────
 
 const child = spawn(command, commandArgs, {
   stdio: 'inherit',
@@ -166,7 +171,6 @@ const child = spawn(command, commandArgs, {
 });
 
 function shutdown(code) {
-  if (apiWatcher && !apiWatcher.killed) apiWatcher.kill();
   process.exit(code ?? 1);
 }
 

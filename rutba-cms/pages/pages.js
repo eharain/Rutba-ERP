@@ -6,8 +6,7 @@ import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { CmsPagesEndpoints } from "@rutba/api-provider/endpoints";
 import Link from "next/link";
 import { useToast } from "../components/Toast";
-
-const PAGE_TYPES = ["shop", "blog", "news", "info", "page"];
+import EnumSelect from "../components/EnumSelect";
 
 const PAGE_EXPORT_COLUMNS = ["slug", "title", "excerpt", "content", "page_type", "sort_order"];
 
@@ -295,10 +294,14 @@ export default function Pages() {
                         />
                     </div>
                     <div className="col-auto">
-                        <select className="form-select form-select-sm" value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
-                            <option value="">All types</option>
-                            {PAGE_TYPES.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
-                        </select>
+                        <EnumSelect
+                            name="cms-page"
+                            field="page_type"
+                            className="form-select form-select-sm"
+                            value={typeFilter}
+                            onChange={e => setTypeFilter(e.target.value)}
+                            includeBlank="All types"
+                        />
                     </div>
                 </div>
 

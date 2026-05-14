@@ -20,15 +20,31 @@
  * is ready before the Next.js apps connect.
  */
 
-const { spawn } = require('child_process');
+const { spawn, spawnSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const prefix = process.argv[2];
 
-// Shared api-provider watcher handle — started once in dev/all-apps mode below.
-let apiWatcher = null;
+// Run the api-provider scaffolder once for the entire tree. Children inherit
+// RUTBA_API_SCAFFOLDED=1 via process.env so they skip their own scaffold step
+// in load-env.js. The watcher is no longer auto-spawned — developers actively
+// editing api/ descriptors should run it themselves:
+//   npm run watch --workspace=@rutba/api-provider
+function scaffoldOnce() {
+  if (process.env.RUTBA_API_SCAFFOLDED === '1') return;
+  const scriptPath = path.join(
+    ROOT, 'packages', 'api-provider', 'scripts', 'scaffold-endpoint-providers.mjs'
+  );
+  if (!fs.existsSync(scriptPath)) return;
+  console.log('\x1b[36m[run-all]\x1b[0m scaffolding @rutba/api-provider (one-shot)');
+  const res = spawnSync('node', [scriptPath], { cwd: ROOT, stdio: 'inherit' });
+  if (res.status !== 0) {
+    console.warn('\x1b[33m[run-all]\x1b[0m api-provider scaffolder exited non-zero — continuing');
+  }
+  process.env.RUTBA_API_SCAFFOLDED = '1';
+}
 
 if (!prefix) {
   console.error('Usage: node scripts/run-all.js <dev|start> [app-name]');
@@ -66,7 +82,6 @@ function runScript(name) {
 
 // Graceful shutdown — kill all children on SIGINT / SIGTERM
 function cleanup() {
-  if (apiWatcher && !apiWatcher.killed) apiWatcher.kill();
   for (const child of children) {
     child.kill();
   }
@@ -91,6 +106,7 @@ if (appArg) {
     process.exit(1);
   }
   console.log(`\x1b[36m[run-all]\x1b[0m Single-app mode (${source})`);
+  scaffoldOnce();
   runScript(scriptKey);
   // Exit when the single child exits
   children[0].on('exit', (code) => process.exit(code ?? 1));
@@ -110,20 +126,8 @@ if (allKeys.length === 0) {
   process.exit(1);
 }
 
-// Start the api-provider watcher exactly once for the whole tree.
-// Children see RUTBA_API_WATCHER_STARTED=1 and skip their own watcher in load-env.js.
-if (prefix === 'dev') {
-  console.log('\x1b[36m[run-all]\x1b[0m starting @rutba/api-provider watcher (shared)');
-  apiWatcher = spawn('npm', ['run', 'watch', '--workspace=@rutba/api-provider'], {
-    cwd: ROOT,
-    stdio: 'inherit',
-    shell: true,
-  });
-  apiWatcher.on('error', (err) => {
-    console.error(`\x1b[31m[run-all]\x1b[0m api-provider watcher error: ${err.message}`);
-  });
-  process.env.RUTBA_API_WATCHER_STARTED = '1';
-}
+
+scaffoldOnce();
 
 for (const key of allKeys) {
   runScript(key);

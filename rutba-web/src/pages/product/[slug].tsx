@@ -1,6 +1,7 @@
 import LayoutMain from "@/components/layouts";
 import { Button } from "@/components/ui/button";
-import { ShoppingBasket, Star } from "lucide-react";
+import { ChevronRight, ShoppingBasket, Truck, Shield, RotateCcw, Star } from "lucide-react";
+import Link from "next/link";
 
 import {
   Accordion,
@@ -19,6 +20,10 @@ import { cn } from "@/lib/utils";
 import { useCartService } from "@/services/cart";
 import { ErrorCard } from "@/components/errors/error-card";
 import { useStoreCart } from "@/store/store-cart";
+import { useRecentlyViewed } from "@/store/store-recently-viewed";
+import RecentlyViewed from "@/components/product-list/recently-viewed";
+import Seo from "@/components/seo/seo";
+import ProductJsonLd from "@/components/seo/product-json-ld";
 // import Reviews from "@/components/product-detail/reviews";
 // import useReviewsService from "@/services/reviews";
 import { createWebProductsService, getProductDetailSSR } from "@/services";
@@ -296,6 +301,23 @@ export default function ProductDetail({
     }
   }, [isLoading, hasTermVariants, product]);
 
+  // Record this product in the recently-viewed store (client-side only)
+  const pushRecentlyViewed = useRecentlyViewed((s) => s.push);
+  useEffect(() => {
+    if (!product?.documentId || !product?.name) return;
+    pushRecentlyViewed({
+      documentId: product.documentId,
+      slug: product.documentId,
+      name: product.name,
+      thumbnail: product.gallery?.[0]?.url ?? product.logo?.url ?? null,
+      secondaryThumbnail: product.gallery?.[1]?.url ?? null,
+      sellingPrice: product.selling_price ?? 0,
+      offerPrice: product.offer_price && product.offer_price > 0 ? product.offer_price : undefined,
+      categoryName: product.categories?.[0]?.name,
+      brandName: product.brands?.[0]?.name,
+    });
+  }, [product?.documentId, product?.name, pushRecentlyViewed]);
+
   // Auto-select terms when only one option per term type (variant + public)
   useEffect(() => {
     const allTypes = [...variantTermTypes, ...publicTermTypes];
@@ -331,11 +353,114 @@ export default function ProductDetail({
   const hasVariants = (product?.variants?.length ?? 0) > 0;
   const canAddToCart = !hasVariants || (hasTermVariants ? resolvedVariant != null : selectVariant != null);
 
+  const category = product?.categories?.[0];
+  const brand = product?.brands?.[0];
+  const savingsPct =
+    getOfferPrice != null && typeof getPrice === "number" && getPrice > 0
+      ? Math.round(((getPrice - getOfferPrice) / getPrice) * 100)
+      : 0;
+
+  const handleAddToCart = () => {
+    if (!canAddToCart) return;
+    const variantId = resolvedVariant?.id ?? selectVariant;
+    const resolvedOfferPrice =
+      offerActive && resolvedVariant
+        ? resolvedVariant.offer_price > 0
+          ? resolvedVariant.offer_price
+          : undefined
+        : undefined;
+    addToCart(
+      product?.id ?? null,
+      variantId,
+      1,
+      selectedTermsForCart,
+      selectedImageUrl,
+      resolvedOfferPrice,
+      offerActive ? offerId : undefined,
+      offerActive ? sourceGroupId : undefined
+    );
+    cartStore.setIsCartOpen(true);
+  };
+
+  // Strip markdown for SEO meta — keep the first decent paragraph.
+  const seoDescription =
+    (displaySummary || product?.summary || product?.description || "")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/[#*_~`>\[\]()!|]/g, "")
+      .replace(/\s+/g, " ")
+      .trim() || undefined;
+
+  const seoKeywords = [
+    product?.name,
+    category?.name,
+    brand?.name,
+    ...(product?.categories?.map((c) => c.name) ?? []),
+    ...(product?.brands?.map((b) => b.name) ?? []),
+  ]
+    .filter(Boolean)
+    .join(", ");
+
   return (
     <LayoutMain>
-      <div className="container-fluid my-20">
-        <div className="grid grid-cols-12 gap-[15px] lg:gap-[30px]">
-          <div className="col-span-12 md:col-span-6 lg:col-span-6">
+      <Seo
+        title={product?.name}
+        description={seoDescription}
+        keywords={seoKeywords}
+        image={product?.gallery?.[0]?.url || product?.logo?.url}
+        type="product"
+      />
+      {product?.name && (
+        <ProductJsonLd
+          name={product.name}
+          description={seoDescription}
+          slug={product.documentId}
+          images={product.gallery ?? (product.logo ? [{ url: product.logo.url }] : [])}
+          brand={brand?.name}
+          category={category?.name}
+          price={
+            typeof getPrice === "number"
+              ? (getPrice as number)
+              : (product.selling_price ?? 0)
+          }
+          offerPrice={typeof getOfferPrice === "number" ? (getOfferPrice as number) : undefined}
+        />
+      )}
+      <div className="container-fluid pt-6 md:pt-8 pb-20 md:pb-28">
+        {/* Breadcrumbs */}
+        <nav
+          aria-label="Breadcrumb"
+          className="mb-6 text-xs md:text-sm text-muted-foreground flex items-center gap-1.5 flex-wrap"
+        >
+          <Link href="/" className="hover:text-foreground transition-colors">
+            Home
+          </Link>
+          <ChevronRight className="h-3.5 w-3.5 opacity-60" />
+          <Link
+            href="/product"
+            className="hover:text-foreground transition-colors"
+          >
+            Products
+          </Link>
+          {category && (
+            <>
+              <ChevronRight className="h-3.5 w-3.5 opacity-60" />
+              <Link
+                href={`/product?category=${category.slug}`}
+                className="hover:text-foreground transition-colors"
+              >
+                {category.name}
+              </Link>
+            </>
+          )}
+          <ChevronRight className="h-3.5 w-3.5 opacity-60" />
+          <span className="text-foreground font-medium truncate max-w-[40ch]">
+            {product?.name}
+          </span>
+        </nav>
+
+        <div className="grid grid-cols-12 gap-6 lg:gap-12">
+          {/* Gallery */}
+          <div className="col-span-12 md:col-span-6 lg:col-span-7">
             <ImageListProduct
               logo={product?.logo}
               imageList={product?.gallery}
@@ -345,269 +470,422 @@ export default function ProductDetail({
                 if (!hasTermVariants) setSelectedVariant(id);
               }}
               onImageChange={setSelectedImageUrl}
-            ></ImageListProduct>
+            />
           </div>
+
+          {/* Info / CTA — sticky on desktop */}
           <div className="col-span-12 md:col-span-6 lg:col-span-5">
-            <div className="flex flex-wrap items-center justify-between">
-              <h2 className="text-2xl font-bold">{product?.name}</h2>
-              <p className="text-slate-500">{product?.categories?.[0]?.name}</p>
-            </div>
+            <div className="lg:sticky lg:top-24">
+              {(brand || category) && (
+                <p className="text-[11px] uppercase tracking-[0.18em] font-bold text-brand mb-2">
+                  {[brand?.name, category?.name].filter(Boolean).join(" · ")}
+                </p>
+              )}
 
-            <hr className="opacity-50" />
+              <h1 className="font-display text-3xl md:text-4xl font-bold tracking-tight leading-tight">
+                {product?.name}
+              </h1>
 
-            <div className="mt-3">
+              {/* Price block */}
+              <div className="mt-5 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                {getOfferPrice != null ? (
+                  <>
+                    <span className="font-display text-3xl md:text-4xl font-bold text-brand">
+                      {currencyFormat(getOfferPrice)}
+                    </span>
+                    {getPrice != null && (
+                      <span className="text-lg text-muted-foreground line-through">
+                        {currencyFormat(getPrice as number)}
+                      </span>
+                    )}
+                    {savingsPct > 0 && (
+                      <span className="inline-flex items-center rounded-full bg-brand text-brand-foreground text-xs font-bold tracking-wide px-2.5 py-1">
+                        Save {savingsPct}%
+                      </span>
+                    )}
+                  </>
+                ) : offerPriceRange ? (
+                  <span className="font-display text-3xl md:text-4xl font-bold text-brand">
+                    {currencyFormat(offerPriceRange.min)} – {currencyFormat(offerPriceRange.max)}
+                  </span>
+                ) : (
+                  <span className="font-display text-3xl md:text-4xl font-bold text-foreground">
+                    {getPrice != null
+                      ? currencyFormat(getPrice as number)
+                      : priceRange
+                      ? `${currencyFormat(priceRange.min)} – ${currencyFormat(priceRange.max)}`
+                      : currencyFormat(product?.selling_price ?? 0)}
+                  </span>
+                )}
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Inclusive of all taxes
+              </p>
+
+              <div className="h-px bg-border my-6" />
+
+              {/* Summary (short, above the fold) */}
               {displaySummary && (
                 <div
-                  className="prose prose-slate max-w-none"
+                  className="prose prose-sm max-w-none text-muted-foreground prose-p:leading-relaxed"
                   dangerouslySetInnerHTML={{ __html: marked.parse(displaySummary) as string }}
                 />
               )}
-              {displayDescription && (
-                <div
-                  className="prose prose-slate max-w-none mt-3"
-                  dangerouslySetInnerHTML={{ __html: marked.parse(displayDescription) as string }}
-                />
-              )}
-            </div>
 
-            {/* ---- TERM-BASED VARIANT SELECTOR ---- */}
-            {hasTermVariants && (
-              <div className="my-4 space-y-4">
-                {variantTermTypes.map((tt) => {
-                  const available = availableTermsForType(tt.documentId);
-                  return (
-                    <div key={tt.documentId}>
-                      <label className="text-sm font-bold mb-1.5 block">
-                        {tt.name}
-                        {termSelection[tt.documentId] && (
-                          <span className="font-normal text-slate-500 ml-2">
-                            {tt.terms.find((t) => t.documentId === termSelection[tt.documentId])?.name}
+              {/* Term selectors */}
+              {hasTermVariants && (
+                <div className="mt-6 space-y-5">
+                  {variantTermTypes.map((tt) => {
+                    const available = availableTermsForType(tt.documentId);
+                    const selectedName = tt.terms.find(
+                      (t) => t.documentId === termSelection[tt.documentId]
+                    )?.name;
+                    return (
+                      <div key={tt.documentId}>
+                        <div className="flex items-baseline justify-between mb-2.5">
+                          <span className="text-sm font-bold uppercase tracking-wide">
+                            {tt.name}
                           </span>
-                        )}
-                      </label>
-                      <div className="flex flex-wrap gap-2">
-                        {tt.terms.map((t) => {
-                          const isAvailable = available.has(t.documentId);
-                          const isSelected = termSelection[tt.documentId] === t.documentId;
-                          return (
-                            <Button
-                              key={t.documentId}
-                              size={"sm"}
-                              variant={isSelected ? "secondary" : "outline"}
-                              className={cn(
-                                "border",
-                                isSelected ? "border-black" : "",
-                                !isAvailable ? "opacity-30 line-through" : ""
-                              )}
-                              disabled={!isAvailable}
-                              onClick={() => {
-                                setTermSelection((prev) => ({
-                                  ...prev,
-                                  [tt.documentId]: isSelected ? undefined : t.documentId,
-                                }));
-                              }}
-                            >
-                              {t.name}
-                            </Button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })}
-
-                {matchedVariants.length > 1 && Object.values(termSelection).some((v) => v) && (
-                  <p className="text-sm text-slate-500">
-                    {matchedVariants.length} variants match — select more options to narrow down.
-                  </p>
-                )}
-              </div>
-            )}
-
-            {/* ---- PUBLIC TERM SELECTOR ---- */}
-            {hasPublicTerms && (
-              <div className="my-4 space-y-4">
-                {publicTermTypes.map((tt) => {
-                  const available = availableTermsForType(tt.documentId);
-                  const isExpanded = termSelection[tt.documentId] !== undefined;
-                  return (
-                    <div key={tt.documentId}>
-                      <button
-                        type="button"
-                        className="text-sm font-bold mb-1.5 flex items-center gap-1.5 w-full text-left"
-                        onClick={() => {
-                          if (termSelection[tt.documentId] != null) {
+                          {selectedName && (
+                            <span className="text-sm text-muted-foreground">
+                              {selectedName}
+                            </span>
+                          )}
+                        </div>
+                        <TermPicker
+                          tt={tt}
+                          available={available}
+                          selectedId={termSelection[tt.documentId]}
+                          onSelect={(termId) =>
                             setTermSelection((prev) => ({
                               ...prev,
-                              [tt.documentId]: undefined,
-                            }));
+                              [tt.documentId]:
+                                prev[tt.documentId] === termId
+                                  ? undefined
+                                  : termId,
+                            }))
                           }
-                        }}
-                      >
-                        <span className={cn(
-                          "inline-block transition-transform",
-                          isExpanded ? "rotate-90" : ""
-                        )}>▶</span>
-                        {tt.name}
-                        {termSelection[tt.documentId] && (
-                          <span className="font-normal text-slate-500 ml-1">
-                            — {tt.terms.find((t) => t.documentId === termSelection[tt.documentId])?.name}
+                        />
+                      </div>
+                    );
+                  })}
+
+                  {matchedVariants.length > 1 &&
+                    Object.values(termSelection).some((v) => v) && (
+                      <p className="text-sm text-muted-foreground">
+                        {matchedVariants.length} variants match — select more
+                        options to narrow down.
+                      </p>
+                    )}
+                </div>
+              )}
+
+              {hasPublicTerms && (
+                <div className="mt-6 space-y-5">
+                  {publicTermTypes.map((tt) => {
+                    const available = availableTermsForType(tt.documentId);
+                    const selectedName = tt.terms.find(
+                      (t) => t.documentId === termSelection[tt.documentId]
+                    )?.name;
+                    return (
+                      <div key={tt.documentId}>
+                        <div className="flex items-baseline justify-between mb-2.5">
+                          <span className="text-sm font-bold uppercase tracking-wide">
+                            {tt.name}
                           </span>
-                        )}
-                      </button>
-                      <div className="flex flex-wrap gap-2">
-                        {tt.terms.map((t) => {
-                          const isAvailable = available.has(t.documentId);
-                          const isSelected = termSelection[tt.documentId] === t.documentId;
-                          return (
-                            <Button
-                              key={t.documentId}
-                              size={"sm"}
-                              variant={isSelected ? "secondary" : "outline"}
-                              className={cn(
-                                "border",
-                                isSelected ? "border-black" : "",
-                                !isAvailable ? "opacity-30 line-through" : ""
-                              )}
-                              disabled={!isAvailable}
-                              onClick={() => {
+                          {selectedName && (
+                            <button
+                              type="button"
+                              className="text-xs text-muted-foreground hover:text-foreground"
+                              onClick={() =>
                                 setTermSelection((prev) => ({
                                   ...prev,
-                                  [tt.documentId]: isSelected ? undefined : t.documentId,
-                                }));
-                              }}
+                                  [tt.documentId]: undefined,
+                                }))
+                              }
                             >
-                              {t.name}
-                            </Button>
-                          );
-                        })}
+                              Clear
+                            </button>
+                          )}
+                        </div>
+                        <TermPicker
+                          tt={tt}
+                          available={available}
+                          selectedId={termSelection[tt.documentId]}
+                          onSelect={(termId) =>
+                            setTermSelection((prev) => ({
+                              ...prev,
+                              [tt.documentId]:
+                                prev[tt.documentId] === termId
+                                  ? undefined
+                                  : termId,
+                            }))
+                          }
+                        />
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+                    );
+                  })}
+                </div>
+              )}
 
-            {/* ---- NAME-BASED VARIANT SELECTOR (fallback) ---- */}
-            {!hasTermVariants && product?.variants && product.variants.length > 0 && (
-              <div className="grid grid-cols-12 gap-[5px] my-4">
-                {product.variants.map((item) => {
-                  const isAvailable = matchedVariants.some((v) => v.id === item.id);
-                  return (
-                    <div
-                      key={"product-variant-" + item.id}
-                      className="col-span-6 md:col-span-4 lg:col-span-4"
-                    >
-                      <Button
-                        onClick={() => setSelectedVariant(item.id)}
-                        size={"lg"}
-                        variant={
-                          selectVariant === item.id ? "secondary" : "outline"
-                        }
-                        disabled={!isAvailable}
-                        className={cn(
-                          "w-full border",
-                          selectVariant === item.id ? "border-black" : "",
-                          !isAvailable ? "opacity-30" : ""
-                        )}
-                      >
-                        {item.name}
-                      </Button>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+              {!hasTermVariants &&
+                product?.variants &&
+                product.variants.length > 0 && (
+                  <div className="mt-6 grid grid-cols-2 md:grid-cols-3 gap-2">
+                    {product.variants.map((item) => {
+                      const isAvailable = matchedVariants.some(
+                        (v) => v.id === item.id
+                      );
+                      const isSelected = selectVariant === item.id;
+                      return (
+                        <button
+                          key={"product-variant-" + item.id}
+                          type="button"
+                          disabled={!isAvailable}
+                          onClick={() => setSelectedVariant(item.id)}
+                          className={cn(
+                            "rounded-xl border px-3 py-3 text-sm font-medium transition-all",
+                            isSelected
+                              ? "border-foreground bg-foreground text-background"
+                              : "border-border bg-background hover:border-foreground/40",
+                            !isAvailable && "opacity-40 line-through cursor-not-allowed"
+                          )}
+                        >
+                          {item.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
 
-            <Button
-              size={"lg"}
-              className="w-full"
-              disabled={!canAddToCart}
-              onClick={() => {
-                const variantId = resolvedVariant?.id ?? selectVariant;
-                const resolvedOfferPrice = offerActive && resolvedVariant
-                  ? (resolvedVariant.offer_price > 0 ? resolvedVariant.offer_price : undefined)
-                  : undefined;
-                addToCart(
-                  product?.id ?? null,
-                  variantId,
-                  1,
-                  selectedTermsForCart,
-                  selectedImageUrl,
-                  resolvedOfferPrice,
-                  offerActive ? offerId : undefined,
-                  offerActive ? sourceGroupId : undefined
-                );
-                cartStore.setIsCartOpen(true);
-              }}
-            >
-              <div className="flex w-full justify-between items-center">
-                <span className="font-bold uppercase flex items-center gap-3">
-                  <ShoppingBasket></ShoppingBasket>
-                  {canAddToCart ? "Add to Cart" : "Select Options"}
-                </span>
-                <span className="font-bold">
-                  {getOfferPrice != null ? (
-                    <>
-                      <span className="text-red-400">{currencyFormat(getOfferPrice)}</span>
-                      {getPrice != null && (
-                        <span className="text-xs line-through text-slate-400 ml-2">{currencyFormat(getPrice as number)}</span>
-                      )}
-                    </>
-                  ) : offerPriceRange ? (
-                    <>
-                      <span className="text-red-400">{currencyFormat(offerPriceRange.min)} – {currencyFormat(offerPriceRange.max)}</span>
-                    </>
-                  ) : getPrice != null
-                    ? currencyFormat(getPrice as number)
-                    : priceRange
-                    ? `${currencyFormat(priceRange.min)} – ${currencyFormat(priceRange.max)}`
-                    : currencyFormat(product?.selling_price ?? 0)}
-                </span>
-              </div>
-            </Button>
-            <Accordion type="multiple" className="mt-8" defaultValue={["delivery", ...(displaySummary ? ["summary"] : []), ...(displayDescription ? ["description"] : [])]}>
-              {displaySummary && (
-                <AccordionItem value="summary">
-                  <AccordionTrigger>Summary</AccordionTrigger>
+              {/* Primary CTA */}
+              <Button
+                size="lg"
+                className="w-full mt-8 h-14 rounded-full text-base font-bold tracking-wide group"
+                disabled={!canAddToCart}
+                onClick={handleAddToCart}
+              >
+                <ShoppingBasket className="h-5 w-5 mr-2 transition-transform group-hover:scale-110" />
+                {canAddToCart ? "Add to Cart" : "Select Options"}
+              </Button>
+
+              {/* Trust strip */}
+              <ul className="mt-6 grid grid-cols-3 gap-3 text-center">
+                <TrustItem icon={<Truck className="h-4 w-4" />} label="Free delivery" sub="On qualifying orders" />
+                <TrustItem icon={<RotateCcw className="h-4 w-4" />} label="Easy returns" sub="14-day window" />
+                <TrustItem icon={<Shield className="h-4 w-4" />} label="Secure checkout" sub="Encrypted" />
+              </ul>
+
+              {/* Details accordion */}
+              <Accordion
+                type="multiple"
+                className="mt-8"
+                defaultValue={[
+                  ...(displayDescription ? ["description"] : []),
+                  "delivery",
+                ]}
+              >
+                {displayDescription && (
+                  <AccordionItem value="description">
+                    <AccordionTrigger className="text-sm font-semibold uppercase tracking-wide">
+                      Description
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <div
+                        className="prose prose-sm max-w-none prose-p:leading-relaxed"
+                        dangerouslySetInnerHTML={{
+                          __html: marked.parse(displayDescription) as string,
+                        }}
+                      />
+                    </AccordionContent>
+                  </AccordionItem>
+                )}
+                <AccordionItem value="delivery">
+                  <AccordionTrigger className="text-sm font-semibold uppercase tracking-wide">
+                    Delivery &amp; Returns
+                  </AccordionTrigger>
                   <AccordionContent>
-                    <div
-                      className="prose prose-slate max-w-none"
-                      dangerouslySetInnerHTML={{ __html: marked.parse(displaySummary) as string }}
-                    />
+                    <div className="prose prose-sm max-w-none text-muted-foreground">
+                      <p>
+                        Standard delivery 6–12 working days. Express delivery
+                        3–10 working days.
+                      </p>
+                      <p>
+                        During checkout, we'll provide an estimated delivery
+                        date based on your shipping address. Orders are
+                        processed Monday–Thursday and weekends (excluding
+                        public holidays).
+                      </p>
+                      <p>Enjoy free returns. Exclusions apply.</p>
+                    </div>
                   </AccordionContent>
                 </AccordionItem>
-              )}
-              {displayDescription && (
-                <AccordionItem value="description">
-                  <AccordionTrigger>Description</AccordionTrigger>
-                  <AccordionContent>
-                    <div
-                      className="prose prose-slate max-w-none"
-                      dangerouslySetInnerHTML={{ __html: marked.parse(displayDescription) as string }}
-                    />
-                  </AccordionContent>
-                </AccordionItem>
-              )}
-              <AccordionItem value="delivery">
-                <AccordionTrigger>Delivery and Returns</AccordionTrigger>
-                <AccordionContent>
-                  <p>
-                    Standard delivery 6–12 Working Days <br />
-                    Express delivery 3–10 Working Days <br /> <br />
-                    During checkout, we will provide you with the estimated
-                    delivery date based on your order delivery address. Orders
-                    are processed and delivered Monday - Thursday and Saturday, Sunday (excluding
-                    public holidays). <br /> <br />
-                    Enjoy free returns. Exclusions Apply.
-                  </p>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
+              </Accordion>
+            </div>
           </div>
         </div>
       </div>
+
+      <RecentlyViewed excludeDocumentId={product?.documentId} />
+
+      {/* Mobile sticky Add-to-Cart bar — sticks to the bottom on phones so
+          the CTA is always reachable. The desktop right column already
+          handles this via `lg:sticky`. */}
+      <div className="lg:hidden fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background/95 backdrop-blur-md shadow-card">
+        <div className="container-fluid py-3 flex items-center gap-3">
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-muted-foreground truncate">
+              {product?.name}
+            </p>
+            <p className="font-display font-bold text-foreground leading-tight">
+              {getOfferPrice != null ? (
+                <>
+                  <span className="text-brand">
+                    {currencyFormat(getOfferPrice)}
+                  </span>
+                  {getPrice != null && (
+                    <span className="text-xs text-muted-foreground line-through ml-1.5">
+                      {currencyFormat(getPrice as number)}
+                    </span>
+                  )}
+                </>
+              ) : (
+                currencyFormat(
+                  typeof getPrice === "number"
+                    ? (getPrice as number)
+                    : product?.selling_price ?? 0
+                )
+              )}
+            </p>
+          </div>
+          <Button
+            size="lg"
+            disabled={!canAddToCart}
+            onClick={handleAddToCart}
+            className="h-12 px-5 rounded-full text-sm font-bold tracking-wide shrink-0"
+          >
+            <ShoppingBasket className="h-4 w-4 mr-2" />
+            {canAddToCart ? "Add" : "Pick options"}
+          </Button>
+        </div>
+      </div>
+      {/* Spacer so the sticky bar doesn't cover the last bit of content */}
+      <div aria-hidden className="lg:hidden h-20" />
     </LayoutMain>
   );
+}
+
+/* ─── Helpers ─── */
+
+function TrustItem({
+  icon,
+  label,
+  sub,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  sub: string;
+}) {
+  return (
+    <li className="rounded-xl border border-border bg-card p-3 flex flex-col items-center gap-1">
+      <span className="text-brand">{icon}</span>
+      <span className="text-xs font-semibold">{label}</span>
+      <span className="text-[10px] text-muted-foreground leading-tight">{sub}</span>
+    </li>
+  );
+}
+
+// Renders a list of terms as chips. If the term-type name contains "color"
+// the chips become circular swatches (best-effort lookup via CSS named colors).
+function TermPicker({
+  tt,
+  available,
+  selectedId,
+  onSelect,
+}: {
+  tt: { documentId: string; name: string; terms: { documentId: string; name: string }[] };
+  available: Set<string>;
+  selectedId: string | undefined;
+  onSelect: (termId: string) => void;
+}) {
+  const isColor = /colou?r/i.test(tt.name);
+
+  if (isColor) {
+    return (
+      <div className="flex flex-wrap gap-2.5">
+        {tt.terms.map((t) => {
+          const isAvailable = available.has(t.documentId);
+          const isSelected = selectedId === t.documentId;
+          return (
+            <button
+              key={t.documentId}
+              type="button"
+              disabled={!isAvailable}
+              onClick={() => onSelect(t.documentId)}
+              aria-label={t.name}
+              title={t.name}
+              className={cn(
+                "relative h-9 w-9 rounded-full border-2 transition-all",
+                isSelected ? "border-foreground ring-2 ring-offset-2 ring-foreground" : "border-border hover:border-foreground/40",
+                !isAvailable && "opacity-30 cursor-not-allowed"
+              )}
+              style={{ backgroundColor: cssColorFor(t.name) }}
+            >
+              {!isAvailable && (
+                <span className="absolute inset-0 flex items-center justify-center text-foreground/60 text-lg">×</span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {tt.terms.map((t) => {
+        const isAvailable = available.has(t.documentId);
+        const isSelected = selectedId === t.documentId;
+        return (
+          <button
+            key={t.documentId}
+            type="button"
+            disabled={!isAvailable}
+            onClick={() => onSelect(t.documentId)}
+            className={cn(
+              "rounded-full border px-4 py-2 text-sm font-medium transition-all",
+              isSelected
+                ? "border-foreground bg-foreground text-background"
+                : "border-border bg-background hover:border-foreground/40",
+              !isAvailable && "opacity-40 line-through cursor-not-allowed"
+            )}
+          >
+            {t.name}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+const COLOR_ALIASES: Record<string, string> = {
+  charcoal: "#36454F",
+  cream: "#FFFDD0",
+  beige: "#F5F5DC",
+  tan: "#D2B48C",
+  navy: "#001F3F",
+  rose: "#FF66B2",
+  mint: "#98FB98",
+  sand: "#C2B280",
+  burgundy: "#800020",
+  ivory: "#FFFFF0",
+  off: "#FAFAFA",
+};
+
+function cssColorFor(name: string): string {
+  const key = name.toLowerCase().trim().replace(/\s+/g, "");
+  if (COLOR_ALIASES[key]) return COLOR_ALIASES[key];
+  // Browser tolerates unknown values — falls back to a neutral via inline test
+  return name.toLowerCase().replace(/\s+/g, "");
 }
 

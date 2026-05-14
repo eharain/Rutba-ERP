@@ -1,6 +1,5 @@
 import NextImage from "@/components/next-image";
 import Link from "next/link";
-import Head from "next/head";
 import { marked } from "marked";
 import { markedVideoEmbed } from "@/lib/marked-video-embed";
 
@@ -8,7 +7,7 @@ import { IMAGE_URL } from "@/static/const";
 import { CmsPageDetailInterface } from "@/types/api/cms-page";
 import { getPageUrl } from "@/lib/cms-page-types";
 import CmsArticleSidebar from "./cms-article-sidebar";
-import { useSiteSettings } from "@/hooks/use-site-settings";
+import Seo from "@/components/seo/seo";
 
 marked.use({ breaks: true, gfm: true });
 marked.use(markedVideoEmbed({ imageBaseUrl: IMAGE_URL }));
@@ -18,7 +17,6 @@ export default function CmsBlogPageContent({
 }: {
   page: CmsPageDetailInterface;
 }) {
-  const settings = useSiteSettings();
   const publishedDate = page.publishedAt
     ? new Date(page.publishedAt).toLocaleDateString("en-PK", {
         year: "numeric",
@@ -29,15 +27,19 @@ export default function CmsBlogPageContent({
 
   return (
     <>
-      <Head>
-        <title>{page.title} - {settings.site_name}</title>
-        {page.excerpt && (
-          <meta
-            name="description"
-            content={page.excerpt.replace(/[#*_~`>\[\]()!|-]/g, "").trim()}
-          />
-        )}
-      </Head>
+      <Seo
+        title={page.meta_title || page.title}
+        description={
+          page.meta_description ||
+          (page.excerpt
+            ? page.excerpt.replace(/[#*_~`>\[\]()!|-]/g, "").trim()
+            : undefined)
+        }
+        keywords={page.meta_keywords}
+        image={page.og_image?.url || page.featured_image?.url}
+        type="article"
+        noindex={!!page.noindex}
+      />
 
       <div className="container-fluid my-16">
         <div className="flex flex-col lg:flex-row gap-10">

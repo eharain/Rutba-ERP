@@ -1,11 +1,17 @@
 import FormLeadCapture from "@/components/form/lead/form-lead-capture";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/router";
+import Seo from "@/components/seo/seo";
 
 export default function ContactPage() {
   const router = useRouter();
 
   return (
+    <>
+    <Seo
+      title="Contact"
+      description="Fill in your details and we'll get back to you."
+    />
     <div className="flex">
       <div className="container relative my-20 md:my-0 min-h-[100vh] flex-col items-center justify-center md:grid lg:max-w-none lg:grid-cols-2 lg:px-0">
         <div className="relative hidden h-full flex-col bg-muted text-white dark:border-r lg:flex items-center justify-center">
@@ -37,6 +43,7 @@ export default function ContactPage() {
         </div>
       </div>
     </div>
+    </>
   );
 }
 

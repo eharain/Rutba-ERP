@@ -5,108 +5,156 @@ import { IMAGE_URL } from "@/static/const";
 import { BrandInterface } from "@/types/api/brand";
 import { currencyFormat } from "@/lib/use-currency";
 import { VariantTermSummary } from "@/types/api/product";
+import { cn } from "@/lib/utils";
 
 export interface ProductCardInterface {
   name: string;
   category?: Pick<CategoryInterface, "name" | "slug">;
   brand?: Pick<BrandInterface, "name" | "slug">;
   thumbnail: string | null;
+  secondaryThumbnail?: string | null;
   variantPrice: number[];
   variantOfferPrice?: number[];
   slug: string;
   variantTermSummary?: VariantTermSummary[];
   offerId?: string;
   sourceGroupId?: string;
+  createdAt?: string;
 }
+
+const FOURTEEN_DAYS = 14 * 24 * 60 * 60 * 1000;
 
 export default function ProductCard({
   name,
   category,
   brand,
   thumbnail,
+  secondaryThumbnail,
   variantPrice,
   variantOfferPrice,
   slug,
   variantTermSummary,
   offerId,
   sourceGroupId,
+  createdAt,
 }: ProductCardInterface) {
-  const getCheapestPrice = () => {
-    if (variantPrice.length <= 0) {
-      return 0;
-    }
-    return Math.min(...variantPrice);
-  };
+  const cheapest = variantPrice.length ? Math.min(...variantPrice) : 0;
+  const highest = variantPrice.length ? Math.max(...variantPrice) : 0;
 
-  const getHighestPrice = () => {
-    if (variantPrice.length <= 0) {
-      return 0;
-    }
-    return Math.max(...variantPrice);
-  };
+  const hasOffer = !!variantOfferPrice && variantOfferPrice.length > 0;
+  const offerMin = hasOffer ? Math.min(...variantOfferPrice!) : 0;
+  const offerMax = hasOffer ? Math.max(...variantOfferPrice!) : 0;
 
-  const hasOffer = variantOfferPrice && variantOfferPrice.length > 0;
-  const offerMin = hasOffer ? Math.min(...variantOfferPrice) : 0;
-  const offerMax = hasOffer ? Math.max(...variantOfferPrice) : 0;
+  const savingsPct =
+    hasOffer && cheapest > 0
+      ? Math.round(((cheapest - offerMin) / cheapest) * 100)
+      : 0;
 
-  const productHref = offerId && sourceGroupId
-    ? `/product/${slug}?offerId=${offerId}&groupId=${sourceGroupId}`
-    : `/product/${slug}`;
+  const isNew =
+    !!createdAt && Date.now() - new Date(createdAt).getTime() < FOURTEEN_DAYS;
+
+  const productHref =
+    offerId && sourceGroupId
+      ? `/product/${slug}?offerId=${offerId}&groupId=${sourceGroupId}`
+      : `/product/${slug}`;
 
   return (
-    <Link href={productHref}>
-      <NextImage
-        src={IMAGE_URL + (thumbnail ?? "")}
-        height={500}
-        width={500}
-        classNames={{
-          image: "object-cover aspect-square",
-        }}
-        alt={name}
-        className="w-full rounded-md"
-      ></NextImage>
-      <div className="mt-3">
-        <div className="flex items-center">
-          {category && <p className="text-xs">{category.name}</p>}
-          {brand && (
-            <div className="flex items-center">
-              <span className="mx-1">-</span>
-              <p className="text-xs">{brand.name}</p>
-            </div>
+    <Link
+      href={productHref}
+      className="group block focus:outline-none"
+      aria-label={name}
+    >
+      <div className="relative overflow-hidden rounded-xl bg-secondary/40 aspect-square">
+        {/* Primary image */}
+        <NextImage
+          src={IMAGE_URL + (thumbnail ?? "")}
+          height={600}
+          width={600}
+          classNames={{
+            image: cn(
+              "object-cover aspect-square w-full h-full",
+              "transition-transform duration-600 ease-smooth",
+              "group-hover:scale-[1.06]"
+            ),
+          }}
+          alt={name}
+          className="w-full"
+        />
+
+        {/* Hover swap image (only if a second gallery image exists) */}
+        {secondaryThumbnail && (
+          <NextImage
+            src={IMAGE_URL + secondaryThumbnail}
+            height={600}
+            width={600}
+            classNames={{
+              image: cn(
+                "object-cover aspect-square w-full h-full absolute inset-0",
+                "opacity-0 transition-opacity duration-500 ease-smooth",
+                "group-hover:opacity-100"
+              ),
+            }}
+            alt={name}
+            className="w-full absolute inset-0"
+          />
+        )}
+
+        {/* Badges */}
+        <div className="absolute top-3 left-3 flex flex-col gap-1.5">
+          {hasOffer && savingsPct > 0 && (
+            <span className="inline-flex items-center rounded-full bg-brand text-brand-foreground text-[11px] font-bold tracking-wide px-2 py-1 shadow-card">
+              -{savingsPct}%
+            </span>
+          )}
+          {isNew && !hasOffer && (
+            <span className="inline-flex items-center rounded-full bg-foreground text-background text-[11px] font-bold tracking-wide px-2 py-1 shadow-card">
+              NEW
+            </span>
           )}
         </div>
-        <p className="font-bold">{name}</p>
+      </div>
 
-        <div className="flex flex-wrap items-center gap-1">
+      <div className="mt-3 px-0.5">
+        {(category || brand) && (
+          <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-muted-foreground">
+            {category && <span>{category.name}</span>}
+            {category && brand && <span aria-hidden>·</span>}
+            {brand && <span>{brand.name}</span>}
+          </div>
+        )}
+
+        <p className="mt-1 font-semibold text-foreground leading-snug line-clamp-2 group-hover:text-brand transition-colors duration-200">
+          {name}
+        </p>
+
+        <div className="mt-1.5 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
           {hasOffer ? (
             <>
-              <p className="text-sm font-semibold text-red-600">{currencyFormat(offerMin)}</p>
-              {offerMin !== offerMax && (
-                <p className="text-sm font-semibold text-red-600"> - {currencyFormat(offerMax)}</p>
-              )}
-              <p className="text-xs text-slate-400 line-through ml-1">{currencyFormat(getCheapestPrice())}</p>
-              {getCheapestPrice() !== getHighestPrice() && (
-                <p className="text-xs text-slate-400 line-through"> - {currencyFormat(getHighestPrice())}</p>
-              )}
+              <span className="text-base font-bold text-brand">
+                {currencyFormat(offerMin)}
+                {offerMin !== offerMax && ` – ${currencyFormat(offerMax)}`}
+              </span>
+              <span className="text-sm text-muted-foreground line-through">
+                {currencyFormat(cheapest)}
+                {cheapest !== highest && ` – ${currencyFormat(highest)}`}
+              </span>
             </>
           ) : (
-            <>
-              <p className="text-sm">{currencyFormat(getCheapestPrice())}</p>
-              {getCheapestPrice() !== getHighestPrice() && (
-                <p className="text-sm"> - {currencyFormat(getHighestPrice())}</p>
-              )}
-            </>
+            <span className="text-base font-semibold text-foreground">
+              {currencyFormat(cheapest)}
+              {cheapest !== highest && ` – ${currencyFormat(highest)}`}
+            </span>
           )}
         </div>
 
         {variantTermSummary && variantTermSummary.length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-1">
+          <div className="mt-2 flex flex-wrap gap-1">
             {variantTermSummary.map((s) => (
               <span
                 key={s.typeName}
-                className="text-[10px] text-slate-500 bg-slate-100 rounded px-1.5 py-0.5"
+                className="text-[10px] text-muted-foreground bg-secondary rounded-full px-2 py-0.5"
               >
-                {s.typeName}: {s.termNames.join(", ")}
+                {s.termNames.join(" · ")}
               </span>
             ))}
           </div>

@@ -1,10 +1,10 @@
-import { authApi } from '../../../../lib/api.js';
+import { api } from '../../../../lib/api.js';
 import { strictEndpointGuard } from '../___core__.js';
 import { WebCollectionsEndpoints as WebCollectionsEndpointsApi } from '../../../../api/web/collections.js';
 
 async function list() {
     const ep = WebCollectionsEndpointsApi.list();
-    return authApi.fetch(ep.path, ep.params);
+    return api.fetch(ep.path, ep.params);
 }
 
 const endpoints = strictEndpointGuard(

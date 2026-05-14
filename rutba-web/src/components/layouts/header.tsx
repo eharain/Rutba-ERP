@@ -29,26 +29,29 @@ import { useSession } from "next-auth/react";
 import { createWebCmsPagesService } from "@/services/";
 import { BrandInterface } from "@/types/api/brand";
 import { CategoryInterface } from "@/types/api/category";
-import { CmsPageInterface } from "@/types/api/cms-page";
 import { BASE_URL } from "@/static/const";
+import { useEffect, useState } from "react";
+import { cn } from "@/lib/utils";
 
 function BrandHeader({ brands }: { brands: BrandInterface[] }) {
   return (
-    <ul className="grid w-[200px]">
+    <ul className="grid w-[240px] p-1.5">
       {brands.map((item) => (
         <li key={"brand-list-header" + item.id}>
           <Link
-            className="px-4 py-2 flex items-center hover:bg-slate-100"
+            className="px-3 py-2.5 flex items-center rounded-md hover:bg-secondary transition-colors"
             href={`/product?brand=${item.slug}`}
           >
-            <NextImage
-              src={IMAGE_URL + (item.logo?.url ?? "")}
-              width={30}
-              height={30}
-              useSkeleton
-              alt="nike"
-            ></NextImage>
-            <p className="ml-3">{item.name}</p>
+            <div className="h-8 w-8 flex items-center justify-center rounded-full bg-secondary overflow-hidden mr-3 shrink-0">
+              <NextImage
+                src={IMAGE_URL + (item.logo?.url ?? "")}
+                width={32}
+                height={32}
+                useSkeleton
+                alt={item.name}
+              />
+            </div>
+            <p className="text-sm font-medium">{item.name}</p>
           </Link>
         </li>
       ))}
@@ -58,20 +61,24 @@ function BrandHeader({ brands }: { brands: BrandInterface[] }) {
 
 function CategoryHeader({ categories }: { categories: CategoryInterface[] }) {
   return (
-    <ul className="grid w-[400px]">
+    <ul className="grid w-[420px] p-1.5">
       {categories.map((item) => (
         <li key={"category-list-header-" + item.id}>
           <Link
-            className="p-4 flex items-center justify-between hover:bg-slate-100"
+            className="group p-3.5 flex items-center justify-between rounded-md hover:bg-secondary transition-colors"
             href={`/product?category=${item.slug}`}
           >
-            <div>
-              <p className="font-bold">{item.name}</p>
-              <p className="text-sm">{item.short_description}</p>
+            <div className="min-w-0">
+              <p className="font-semibold text-sm group-hover:text-brand transition-colors">
+                {item.name}
+              </p>
+              {item.short_description && (
+                <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+                  {item.short_description}
+                </p>
+              )}
             </div>
-            <div>
-              <ChevronRight />
-            </div>
+            <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-brand group-hover:translate-x-0.5 transition-all" />
           </Link>
         </li>
       ))}
@@ -84,6 +91,14 @@ export default function Header() {
   const session = useSession();
   const cmsPagesService = createWebCmsPagesService({ baseURL: BASE_URL });
   const settings = useSiteSettings();
+
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   const {
     data: cmsPage,
@@ -104,42 +119,57 @@ export default function Header() {
   return (
     <>
       <HeaderTopPromo />
-      <div className="border-b border-[#DEDEDE]">
-        <div className="container-fluid py-6">
-          <div className="flex justify-between">
-            <div className="flex items-center">
-              <Link href="/">
+      <header
+        className={cn(
+          "sticky top-0 z-40 w-full transition-all duration-300 ease-smooth",
+          scrolled
+            ? "bg-background/85 backdrop-blur-md border-b border-border shadow-card"
+            : "bg-background border-b border-transparent"
+        )}
+      >
+        <div className="container-fluid">
+          <div
+            className={cn(
+              "flex items-center justify-between transition-all duration-300 ease-smooth",
+              scrolled ? "py-3" : "py-5"
+            )}
+          >
+            <div className="flex items-center min-w-0">
+              <Link href="/" className="shrink-0">
                 {settings.site_logo?.url ? (
                   <img
                     src={resolveMediaUrl(settings.site_logo.url)}
                     alt={settings.site_name}
-                    className="h-8 md:h-10 w-auto mr-10"
+                    className={cn(
+                      "w-auto transition-all duration-300 ease-smooth mr-8",
+                      scrolled ? "h-7 md:h-8" : "h-8 md:h-10"
+                    )}
                   />
                 ) : (
-                  <p className="text-2xl font-bold mr-10">{settings.site_name}</p>
+                  <p className="font-display text-2xl font-bold mr-8 tracking-tight">
+                    {settings.site_name}
+                  </p>
                 )}
               </Link>
 
-              <div className="flex items-center hidden md:block">
-                <SearchInput></SearchInput>
+              <div className="hidden md:block min-w-0 max-w-md w-full">
+                <SearchInput />
               </div>
             </div>
 
-            <div className="flex items-center">
-              <NavigationMenu className="mr-4 hidden md:block">
-                <NavigationMenuList>
+            <div className="flex items-center gap-1 md:gap-2">
+              <NavigationMenu className="hidden md:block">
+                <NavigationMenuList className="gap-0.5">
                   {categories.length > 0 && (
                     <NavigationMenuItem>
-                      <NavigationMenuTrigger>
+                      <NavigationMenuTrigger className="text-sm font-medium hover:text-brand data-[state=open]:text-brand">
                         {settings.nav_explore_products_label || "Explore Products"}
                       </NavigationMenuTrigger>
                       <NavigationMenuContent>
                         {isCmsLoading ? (
                           <SkeletonCategory />
                         ) : isCmsError ? (
-                          <ErrorCard
-                            message={(cmsError as Error).message}
-                          />
+                          <ErrorCard message={(cmsError as Error).message} />
                         ) : (
                           <CategoryHeader categories={categories} />
                         )}
@@ -149,16 +179,14 @@ export default function Header() {
 
                   {brands.length > 0 && (
                     <NavigationMenuItem>
-                      <NavigationMenuTrigger>
+                      <NavigationMenuTrigger className="text-sm font-medium hover:text-brand data-[state=open]:text-brand">
                         {settings.nav_explore_brands_label || "Explore Brands"}
                       </NavigationMenuTrigger>
                       <NavigationMenuContent>
                         {isCmsLoading ? (
                           <SkeletonBrand />
                         ) : isCmsError ? (
-                          <ErrorCard
-                            message={(cmsError as Error).message}
-                          />
+                          <ErrorCard message={(cmsError as Error).message} />
                         ) : (
                           <BrandHeader brands={brands} />
                         )}
@@ -171,7 +199,7 @@ export default function Header() {
                       <NavigationMenuItem key={pp.documentId}>
                         <Link
                           href={getPageUrl(pp)}
-                          className="px-4 py-2 text-sm font-medium hover:text-gray-600 transition-colors"
+                          className="px-4 py-2 text-sm font-medium hover:text-brand transition-colors"
                         >
                           {pp.title}
                         </Link>
@@ -179,58 +207,77 @@ export default function Header() {
                     ))}
                 </NavigationMenuList>
 
-                <NavigationMenuViewport className="right-0"></NavigationMenuViewport>
+                <NavigationMenuViewport className="right-0" />
               </NavigationMenu>
 
-              <div className="cursor-pointer mr-4">
-                <Cart
-                  trigger={
-                    <Button variant="outline" size="icon" className="relative">
-                      <ShoppingBasket />
-                      <div className="absolute -right-2 -top-2 text-xs bg-black h-5 w-5 flex items-center justify-center rounded-full text-white">
+              <Cart
+                trigger={
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="relative rounded-full hover:bg-secondary"
+                    aria-label="Cart"
+                  >
+                    <ShoppingBasket className="h-5 w-5" />
+                    {cartItem.length > 0 && (
+                      <span className="absolute -right-1 -top-1 text-[10px] font-bold bg-brand text-brand-foreground h-5 min-w-5 px-1 flex items-center justify-center rounded-full ring-2 ring-background">
                         {cartItem.length}
-                      </div>
-                    </Button>
-                  }
-                ></Cart>
-              </div>
+                      </span>
+                    )}
+                  </Button>
+                }
+              />
 
-              <div className="block md:hidden relative">
+              <div className="block md:hidden">
                 <MenuSideBarMobile
                   pinnedPages={pinnedPages}
                   trigger={
-                    <Button variant={"ghost"}>
-                      <Menu></Menu>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="rounded-full"
+                      aria-label="Menu"
+                    >
+                      <Menu className="h-5 w-5" />
                     </Button>
                   }
-                ></MenuSideBarMobile>
+                />
               </div>
 
               {session.status === "unauthenticated" && (
-                <Button size={"sm"} asChild className="hidden md:flex">
+                <Button
+                  size="sm"
+                  asChild
+                  className="hidden md:inline-flex rounded-full"
+                >
                   <Link href="/login">
-                    <span className="md:visible lg:hidden">
-                      <User2></User2>
+                    <span className="lg:hidden">
+                      <User2 className="h-4 w-4" />
                     </span>
-                    <span className="hidden lg:block">{settings.nav_login_label || "Login or Register"}</span>
+                    <span className="hidden lg:inline">
+                      {settings.nav_login_label || "Login or Register"}
+                    </span>
                   </Link>
                 </Button>
               )}
 
               {session.status === "authenticated" && (
-                <Button size={"sm"} asChild className="hidden md:flex">
+                <Button
+                  size="sm"
+                  asChild
+                  variant="outline"
+                  className="hidden md:inline-flex rounded-full"
+                >
                   <Link href="/profile">
-                    <span>
-                      <User2 className="h-4"></User2>
-                    </span>
-                    <span className="hidden lg:block ml-1">My Profile</span>
+                    <User2 className="h-4 w-4 lg:mr-1.5" />
+                    <span className="hidden lg:inline">My Profile</span>
                   </Link>
                 </Button>
               )}
             </div>
           </div>
         </div>
-      </div>
+      </header>
     </>
   );
 }

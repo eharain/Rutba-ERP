@@ -3,7 +3,8 @@
 	"version": "0.1.0",
 	"private": true,
 	"scripts": {
-		"dev": "next dev --webpack",
+		"dev": "next dev --turbopack",
+		"dev:webpack": "next dev --webpack",
 		"build": "next build && node ../scripts/js/flatten-standalone.js",
 		"start": "next start",
 		"prettier": "prettier --write --list-different .",

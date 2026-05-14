@@ -49,6 +49,21 @@
     },
     "copyright_text": {
       "type": "string"
+    },
+    "ga_measurement_id": {
+      "type": "string"
+    },
+    "meta_pixel_id": {
+      "type": "string"
+    },
+    "gtm_container_id": {
+      "type": "string"
+    },
+    "custom_head_html": {
+      "type": "text"
+    },
+    "custom_body_end_html": {
+      "type": "text"
     }
   }
 }

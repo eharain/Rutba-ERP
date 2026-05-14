@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useRouter } from "next/router";
-import Head from "next/head";
+import Seo from "@/components/seo/seo";
 import Link from "next/link";
 import { marked } from "marked";
 import { useQuery } from "@tanstack/react-query";
@@ -15,7 +15,6 @@ import { createWebProductGroupsService } from "@/services";
 import { CmsProductGroupInterface } from "@/types/api/cms-page";
 import { MetaInterface } from "@/types/api/meta";
 import { sortProducts, getProductCardProps } from "@/components/cms/layouts/sort-products";
-import { useSiteSettings } from "@/hooks/use-site-settings";
 import type { SortOption } from "@/components/cms/layouts/GroupHeader";
 
 interface ProductGroupDetailResponse {
@@ -56,7 +55,6 @@ export default function ProductGroupPage({
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const productGroupsService = createWebProductGroupsService({ baseURL: BASE_URL });
   const router = useRouter();
-  const settings = useSiteSettings();
   const slug = (router.query.slug as string) ?? ssrSlug;
   const [page, setPage] = useState(
     parseInt(router.query.page as string, 10) || 1
@@ -144,15 +142,15 @@ export default function ProductGroupPage({
 
   return (
     <>
-      <Head>
-        <title>{group.title || group.name} - {settings.site_name}</title>
-        {group.excerpt && (
-          <meta
-            name="description"
-            content={group.excerpt.replace(/[#*_~`>\[\]()!|-]/g, "").trim()}
-          />
-        )}
-      </Head>
+      <Seo
+        title={group.title || group.name}
+        description={
+          group.excerpt
+            ? group.excerpt.replace(/[#*_~`>\[\]()!|-]/g, "").trim()
+            : undefined
+        }
+        image={group.cover_image?.url}
+      />
     <LayoutMain>
       <div>
       {/* Cover Image */}

@@ -1327,13 +1327,18 @@ export interface ApiCmsFooterCmsFooter extends Struct.CollectionTypeSchema {
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    custom_body_end_html: Schema.Attribute.Text;
+    custom_head_html: Schema.Attribute.Text;
     email: Schema.Attribute.String;
+    ga_measurement_id: Schema.Attribute.String;
+    gtm_container_id: Schema.Attribute.String;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
       'api::cms-footer.cms-footer'
     > &
       Schema.Attribute.Private;
+    meta_pixel_id: Schema.Attribute.String;
     name: Schema.Attribute.String & Schema.Attribute.Required;
     opening_hours: Schema.Attribute.JSON;
     phone: Schema.Attribute.String;
@@ -1404,10 +1409,15 @@ export interface ApiCmsPageCmsPage extends Struct.CollectionTypeSchema {
       'api::cms-page.cms-page'
     > &
       Schema.Attribute.Private;
+    meta_description: Schema.Attribute.Text;
+    meta_keywords: Schema.Attribute.String;
+    meta_title: Schema.Attribute.String;
+    noindex: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     offers: Schema.Attribute.Relation<
       'manyToMany',
       'api::sale-offer.sale-offer'
     >;
+    og_image: Schema.Attribute.Media<'images'>;
     owners: Schema.Attribute.Relation<
       'manyToMany',
       'plugin::users-permissions.user'
@@ -3369,6 +3379,14 @@ export interface ApiSiteSettingSiteSetting extends Struct.SingleTypeSchema {
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    default_footer: Schema.Attribute.Relation<
+      'oneToOne',
+      'api::cms-footer.cms-footer'
+    >;
+    default_meta_description: Schema.Attribute.Text;
+    default_meta_keywords: Schema.Attribute.String;
+    default_meta_title: Schema.Attribute.String;
+    default_og_image: Schema.Attribute.Media<'images'>;
     favicon: Schema.Attribute.Media<'images'>;
     header_promo_cta_text: Schema.Attribute.String;
     header_promo_cta_url: Schema.Attribute.String;
@@ -3398,6 +3416,8 @@ export interface ApiSiteSettingSiteSetting extends Struct.SingleTypeSchema {
       Schema.Attribute.DefaultTo<'Rutba.pk'>;
     site_tagline: Schema.Attribute.String &
       Schema.Attribute.DefaultTo<'Premium Products at Exceptional Prices'>;
+    site_url: Schema.Attribute.String;
+    twitter_handle: Schema.Attribute.String;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;

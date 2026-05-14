@@ -40,7 +40,7 @@ export const useCartService = () => {
     const cart = localStorage.getItem("cart");
 
     if (!productId && !variantId) {
-      showError("Please select product and the variant!");
+      showError("Pick the options first — colour, size, the lot — then we'll pop it in your bag.");
       return;
     }
 
