@@ -12,6 +12,11 @@ export function UtilProvider({ children }) {
     const [currency, setCurrencyState] = useState('Rs');
     const [labelSize, setLabelSizeState] = useState('2.4x1.5'); // in inches
     const [printMode, setPrintModeState] = useState('thermal');
+    // How the label renders the price:
+    //   'selling' — selling price only (current default)
+    //   'offer'   — offer price if set, else fall back to selling
+    //   'both'    — selling crossed out + offer beside it (for promo labels)
+    const [labelPriceMode, setLabelPriceModeState] = useState('selling');
     const [cashRegister, setCashRegisterState] = useState(null);
     const [showBranchDeskModal, setShowBranchDeskModal] = useState(false);
     const [hydrated, setHydrated] = useState(false);
@@ -53,6 +58,7 @@ export function UtilProvider({ children }) {
             setCurrencyState(storage.getJSON("currency") ?? 'Rs');
             setLabelSizeState(storage.getJSON("label-size") ?? '2.4x1.5');
             setPrintModeState(storage.getJSON("print-mode") ?? 'thermal');
+            setLabelPriceModeState(storage.getJSON("label-price-mode") ?? 'selling');
             setCashRegisterState(storage.getJSON("cash-register") ?? null);
             // Printer-level settings — stored in localStorage per device.
             const rawPrint = localStorage.getItem("invoice-print-settings");
@@ -134,6 +140,14 @@ export function UtilProvider({ children }) {
             storage.setJSON("print-mode", newMode);
         } catch (err) {
             console.error('Failed to persist print-mode', err);
+        }
+    }
+    function setLabelPriceMode(newMode) {
+        setLabelPriceModeState(newMode);
+        try {
+            storage.setJSON("label-price-mode", newMode);
+        } catch (err) {
+            console.error('Failed to persist label-price-mode', err);
         }
     }
 
@@ -279,6 +293,8 @@ export function UtilProvider({ children }) {
         setLabelSize,
         printMode,
         setPrintMode,
+        labelPriceMode,
+        setLabelPriceMode,
         cashRegister,
         setCashRegister,
         invoicePrintSettings,
@@ -290,7 +306,7 @@ export function UtilProvider({ children }) {
         showBranchDeskModal,
         setShowBranchDeskModal,
         hydrated
-    }), [branch, desk, user, labelSize, currency, printMode, cashRegister, invoicePrintSettings, ensureBranchDesk, showBranchDeskModal, hydrated]);
+    }), [branch, desk, user, labelSize, currency, printMode, labelPriceMode, cashRegister, invoicePrintSettings, ensureBranchDesk, showBranchDeskModal, hydrated]);
 
     return (
         <UtilContext.Provider value={value}>

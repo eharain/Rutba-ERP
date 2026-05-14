@@ -15,6 +15,12 @@ export { MediaUtilsEndpoints } from '../api/media-utils.js';
 // (no path → /apiundefined, no multipart → empty body). Source override.
 export { UploadEndpoints } from '../api/upload.js';
 
+// StockHelpersEndpoints are pure local helpers (getStockStatus returns a
+// static array, relationConnects is a synchronous transform). Same scaffolder
+// issue as MediaUtils/Upload — the generated wrapper calls authApi.fetch on a
+// non-endpoint descriptor and 404s. Source override.
+export { StockHelpersEndpoints } from '../api/stock-helpers.js';
+
 export {AppContextEndpoints } from './app-context.js';
 
 export { searchBranches } from './helpers/branches.js';
