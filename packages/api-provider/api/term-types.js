@@ -7,7 +7,7 @@ import { listParams } from './__param_builders.js';
 export const TermTypesEndpoints = {
     meta: {
         uid: 'api::term-type.term-type',
-        domains: ['stock', 'sale'],
+        domains: ['cms', 'order-management', 'sale', 'stock'],
         roles: ['admin', 'manager', 'staff']
     },
 

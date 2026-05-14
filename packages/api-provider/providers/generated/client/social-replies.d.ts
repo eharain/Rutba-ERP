@@ -2,6 +2,7 @@
 export interface SocialRepliesEndpointsType {
     list({ page, pageSize, sort, populate, filters, fields }?: any): Promise<any>;
     del(documentId: any): Promise<any>;
+    meta: any;
 }
 
 export const SocialRepliesEndpoints: SocialRepliesEndpointsType;

@@ -7,7 +7,14 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import Head from "next/head";
 import { useSiteSettings } from "@/hooks/use-site-settings";
 import { resolveMediaUrl } from "@/lib/media-url";
+import { AppContextEndpoints } from "@rutba/api-provider/endpoints";
 // import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+
+// Tag every request from rutba-web with X-Rutba-App so the strapi-api-pro
+// claim middleware can pick the correct policy. The storefront acts in the
+// 'web' domain; anonymous calls resolve to the web_public role, signed-in
+// calls to web_user (server-side fallback or explicit X-Rutba-App-Role).
+AppContextEndpoints.setAppName('web');
 
 const queryClient = new QueryClient();
 

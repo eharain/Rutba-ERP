@@ -6,7 +6,7 @@ export const CustomersEndpoints = {
 
     meta: {
         uid: 'api::customer.customer',
-        domains: ['sale', 'crm', 'delivery', 'web-authenticated', 'web-user'],
+        domains: ['crm', 'delivery', 'sale', 'web', 'web-user'],
         roles: ['admin', 'manager', 'staff', 'user']
     },
 
@@ -18,7 +18,7 @@ export const CustomersEndpoints = {
         path: '/customers',
         action: 'find',
         method: 'get',
-        apps: ['sale', 'crm', 'delivery', 'web-authenticated', 'web-user'],
+        apps: ['sale', 'crm', 'delivery', 'web', 'web-user'],
         approle: ['admin', 'manager', 'staff', 'user'],
         params: {
             filters: {
@@ -34,7 +34,7 @@ export const CustomersEndpoints = {
         path: '/customers',
         action: 'create',
         method: 'post',
-        apps: ['sale', 'crm', 'delivery', 'web-authenticated', 'web-user'],
+        apps: ['sale', 'crm', 'delivery', 'web', 'web-user'],
         approle: ['admin', 'manager', 'staff', 'user'],
         data,
     }),
@@ -48,7 +48,7 @@ export const CustomersEndpoints = {
         path: '/customers',
         action: 'find',
         method: 'get',
-        apps: ['sale', 'crm', 'delivery', 'web-authenticated', 'web-user'],
+        apps: ['sale', 'crm', 'delivery', 'web', 'web-user'],
         approle: ['admin', 'manager', 'staff', 'user'],
         params: {
             filters: {
@@ -69,7 +69,7 @@ export const CustomersEndpoints = {
         path: `/customers/${documentId}`,
         action: 'update',
         method: 'put',
-        apps: ['sale', 'crm', 'delivery', 'web-authenticated', 'web-user'],
+        apps: ['sale', 'crm', 'delivery', 'web', 'web-user'],
         approle: ['admin', 'manager', 'staff', 'user'],
         data,
     }),

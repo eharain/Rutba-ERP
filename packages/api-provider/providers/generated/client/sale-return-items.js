@@ -17,8 +17,9 @@ const endpoints = strictEndpointGuard(
     {
         create,
         update,
+        meta: SaleReturnItemsEndpointsApi.meta,
     },
-    ["create","update"],
+    ["create","update","meta"],
 );
 
 export default endpoints;

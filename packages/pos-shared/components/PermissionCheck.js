@@ -6,24 +6,30 @@ import dynamic from 'next/dynamic';
 /**
  * PermissionCheck
  *
+ * Gates UI on domain access derived from /me/permissions. The backend
+ * (strapi-api-pro request-interceptor + api-method-policy) enforces per-action
+ * authorization at request time, so the client gate's only job is to hide
+ * pages the user has no role for at all, and to hide admin-only chrome.
+ *
  * Props:
- *   required  — comma-separated Strapi permission actions; shows
- *               access-denied message if ANY are missing
- *   has       — comma-separated Strapi permission actions; hides
- *               children silently if ANY are missing
- *   showIf    — "admin" → render children only when the user is CURRENTLY
- *               acting as an admin role for the current app (silent hide).
- *               Falls back to "user holds an admin role" when no activeRoleKey
- *               is set yet (initial bootstrap).
- *   adminOnly — truthy → render children only when the user is acting as
- *               an admin role for the current app (shows access-denied
- *               otherwise)
+ *   required  — comma-separated app-domain keys (e.g. "sale", "stock,cms");
+ *               shows access-denied message if the user has NO role in
+ *               ANY of those domains.
+ *   has       — comma-separated app-domain keys; hides children silently
+ *               if the user has NO role in any of those domains. Use for
+ *               buttons / panels that should just disappear.
+ *   showIf    — "admin" → render only when the user is CURRENTLY acting
+ *               as an admin role for the current app (silent hide). Falls
+ *               back to "user holds any admin role for this app" before
+ *               activeRoleKey is set.
+ *   adminOnly — truthy → render only when the user is acting as an admin
+ *               role for the current app (shows access-denied otherwise).
  *   appKey    — optional app key for the admin check; defaults to the
- *               value set by setAppName() in _app.js
+ *               value set by setAppName() in _app.js.
  */
 export function PermissionCheck({ required, has, showIf, adminOnly, appKey, children }) {
 
-    const { permissions, appAccess, adminAppAccess, activeRoleKey, loading } = useAuth();
+    const { appAccess, adminAppAccess, activeRoleKey, loading } = useAuth();
 
     // ── wait for auth context to finish loading ─────────────
     if (loading) return null;
@@ -31,7 +37,7 @@ export function PermissionCheck({ required, has, showIf, adminOnly, appKey, chil
     // ── admin helpers ───────────────────────────────────────
     // Prefer "is the active role admin-level". Fall back to "user holds any
     // admin role for this app" only when activeRoleKey hasn't been set yet
-    // (bootstrap race) — this preserves AGP-era behaviour on first paint.
+    // (bootstrap race) — this preserves first-paint behaviour.
     const effectiveAppKey = appKey || getAppName();
     const userIsAdmin = activeRoleKey
         ? isActiveAdminRole(activeRoleKey)
@@ -40,7 +46,6 @@ export function PermissionCheck({ required, has, showIf, adminOnly, appKey, chil
     // ── showIf="admin" — silent hide ────────────────────────
     if (showIf === 'admin') {
         if (!userIsAdmin) return null;
-        // If no other checks, just render children
         if (!required && !has) return children;
     }
 
@@ -54,41 +59,39 @@ export function PermissionCheck({ required, has, showIf, adminOnly, appKey, chil
                 </p>
             );
         }
-        // If no other checks, just render children
         if (!required && !has) return children;
     }
 
-    // ── permission checks ───────────────────────────────────
-    function findMissing(requiredString) {
-        if (!requiredString) return [];
-        const userPerms = Array.isArray(permissions) ? permissions : [];
-
-        const requiredArray = requiredString.split(',').map(s => s.trim());
-        const missing = requiredArray.filter(p => !userPerms.includes(p));
-        return missing;
+    // ── domain checks ───────────────────────────────────────
+    // missingDomains(spec) returns the domain keys from the spec that the
+    // user does NOT have access to (i.e. no role in that domain).
+    function missingDomains(spec) {
+        if (!spec) return [];
+        const allowed = Array.isArray(appAccess) ? appAccess : [];
+        return spec
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean)
+            .filter((domain) => !allowed.includes(domain));
     }
-    if (required) {
-        const miss = findMissing(required);
-        if (miss.length > 0) {
-            console.log("permission check miss ",miss);
-            return <p style={{ color: "crimson", fontWeight: 600 }}>
-                Access Denied — missing permission: {miss.length} Required {required}
-                {miss.map((perm, i) => {
-                    return <span key={i} className="badge bg-danger ms-1">{perm}</span>;
-                })}
-                <button style={{ marginLeft: 10 }} onClick={() => {
-                    window.history.back();
-                }}>Back</button>
-            </p>
 
+    if (required) {
+        const miss = missingDomains(required);
+        if (miss.length > 0) {
+            return (
+                <p style={{ color: "crimson", fontWeight: 600 }}>
+                    Access Denied — no role in domain: {required}
+                    {miss.map((d, i) => (
+                        <span key={i} className="badge bg-danger ms-1">{d}</span>
+                    ))}
+                    <button style={{ marginLeft: 10 }} onClick={() => window.history.back()}>Back</button>
+                </p>
+            );
         }
     } else if (has) {
-        const miss = findMissing(has);
-        if (miss.length > 0) {
-            return null;
-        }
+        if (missingDomains(has).length > 0) return null;
     } else if (!showIf && !adminOnly) {
-        return <p style={{ color: "crimson", fontWeight: 600 }}>Access Denied —PermissionChek has no required or requested has permission </p>;
+        return <p style={{ color: "crimson", fontWeight: 600 }}>Access Denied — PermissionCheck has no required/has/showIf/adminOnly prop</p>;
     }
     return children;
 }

@@ -1,6 +1,8 @@
 import { listParams, byIdParams } from './__param_builders.js';
 
 export const HrEmployeesEndpoints = {
+    meta: { domains: ['hr'] },
+
     list: ({ page, pageSize, sort, populate, filters, fields } = {}) => ({
         path: '/hr-employees',
         params: listParams(

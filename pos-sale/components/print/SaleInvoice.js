@@ -45,8 +45,8 @@ const SaleInvoice = ({ sale, items, totals, printerSettings, branchPrintOverride
 
     const remaining = Math.max(0, safeTotals.total - paid);
 
-    // Separate actual cash/card/bank payments from exchange-return bookkeeping entries
-    const actualPayments = payments.filter(p => p.payment_method !== 'Exchange Return');
+    // Include all payment lines on the receipt — Exchange Return tenders count toward Paid
+    const actualPayments = payments;
     const actualPaid = actualPayments.reduce((s, p) => s + (Number(p.amount) || 0), 0);
     const actualChange = actualPayments.reduce((s, p) => s + (Number(p.change) || 0), 0);
 
@@ -231,15 +231,9 @@ const SaleInvoice = ({ sale, items, totals, printerSettings, branchPrintOverride
                                 <td className="text-end" style={{ padding: '1px 0' }}>-{currency}{safeTotals.discount.toFixed(2)}</td>
                             </tr>
                         )}
-                        {exchangeReturnTotal > 0 && (
-                            <tr>
-                                <td className="text-start" style={{ padding: '1px 0' }}>Exchange Credit:</td>
-                                <td className="text-end" style={{ padding: '1px 0' }}>-{currency}{exchangeReturnTotal.toFixed(2)}</td>
-                            </tr>
-                        )}
                         <tr className="fw-bold" style={{ fontSize: `${fontSize + 3}px`, borderTop: '1px solid #555' }}>
                             <td className="text-start" style={{ padding: '3px 0' }}>Total:</td>
-                            <td className="text-end" style={{ padding: '3px 0' }}>{currency}{Math.max(0, safeTotals.total - exchangeReturnTotal).toFixed(2)}</td>
+                            <td className="text-end" style={{ padding: '3px 0' }}>{currency}{safeTotals.total.toFixed(2)}</td>
                         </tr>
                     </tbody>
                 </table>
@@ -257,7 +251,7 @@ const SaleInvoice = ({ sale, items, totals, printerSettings, branchPrintOverride
                                 <tr key={i}>
                                     <td className="text-start" style={{ padding: '1px 0 1px 4px', fontSize: `${fontSize - 1}px` }}>
                                         {p.payment_method || 'Payment'}
-                                        {p.transaction_no ? ` (${p.transaction_no})` : ''}
+                                        {p.sale_return?.return_no ? ` ← ${p.sale_return.return_no}` : (p.transaction_no ? ` (${p.transaction_no})` : '')}
                                     </td>
                                     <td className="text-end" style={{ padding: '1px 0', fontSize: `${fontSize - 1}px` }}>
                                         {currency}{Number(p.amount || 0).toFixed(2)}

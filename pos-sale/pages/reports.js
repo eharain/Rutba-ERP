@@ -34,13 +34,13 @@ export default function Reports() {
     <ProtectedRoute>
       <Layout>
         <h1>Reports</h1>
-        <PermissionCheck required="api::sale.sale.find">
+        <PermissionCheck required="sale">
           <h3>Sales</h3>
           <div>Count: {sales.length}</div>
           <div>Total: ${totals.salesTotal.toFixed(2)}</div>
         </PermissionCheck>
 
-        <PermissionCheck required="api::sale-return.sale-return.find">
+        <PermissionCheck required="sale">
           <h3 style={{ marginTop: 16 }}>Returns</h3>
           <div>Count: {returns.length}</div>
           <div>Total Refund: ${totals.returnTotal.toFixed(2)}</div>

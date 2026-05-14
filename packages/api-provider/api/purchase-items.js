@@ -8,7 +8,7 @@ export const PurchaseItemsEndpoints = {
 
     meta: {
         uid: 'api::purchase-item.purchase-item',
-        domains: ['purchase', 'stock'],
+        domains: ['stock'],
         roles: ['admin', 'manager', 'staff']
     },
 

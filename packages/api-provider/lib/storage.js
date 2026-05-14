@@ -2,7 +2,22 @@
 
 const REMEMBER_KEY = '__rememberMe';
 
+// On the server (Next.js API routes, NextAuth `authorize()`, SSR), neither
+// localStorage nor sessionStorage exist. Returning an in-memory no-op store
+// lets shared code that imports this module load without throwing.
+const NOOP_STORE = (() => {
+    const m = new Map();
+    return {
+        getItem: (k) => (m.has(k) ? m.get(k) : null),
+        setItem: (k, v) => { m.set(k, String(v)); },
+        removeItem: (k) => { m.delete(k); },
+    };
+})();
+
 function getStore() {
+    if (typeof window === 'undefined' || typeof sessionStorage === 'undefined') {
+        return NOOP_STORE;
+    }
     try {
         if (localStorage.getItem(REMEMBER_KEY) === '1') return localStorage;
         if (sessionStorage.getItem(REMEMBER_KEY) === '1') return sessionStorage;

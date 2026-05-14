@@ -28,7 +28,7 @@ module.exports = {
       },
     },
     {
-      method: 'PUT',
+      method: 'POST',
       path: '/cash-registers/:id/close',
       handler: 'cash-register.close',
       config: {
@@ -36,7 +36,7 @@ module.exports = {
       },
     },
     {
-      method: 'PUT',
+      method: 'POST',
       path: '/cash-registers/:id/expire',
       handler: 'cash-register.expire',
       config: {

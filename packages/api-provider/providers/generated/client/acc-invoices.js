@@ -11,8 +11,9 @@ const endpoints = strictEndpointGuard(
     'AccInvoicesEndpoints',
     {
         list,
+        meta: AccInvoicesEndpointsApi.meta,
     },
-    ["list"],
+    ["list","meta"],
 );
 
 export default endpoints;

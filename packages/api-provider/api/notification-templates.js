@@ -7,7 +7,7 @@ import { listParams, byIdParams } from './__param_builders.js';
 export const NotificationTemplatesEndpoints = {
     meta: {
         uid: 'api::notification-template.notification-template',
-        domains: ['auth', 'cms', 'sale', 'social'],
+        domains: ['auth', 'cms', 'order-management', 'sale', 'social'],
         roles: ['admin', 'manager', 'staff']
     },
 

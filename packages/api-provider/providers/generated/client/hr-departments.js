@@ -11,8 +11,9 @@ const endpoints = strictEndpointGuard(
     'HrDepartmentsEndpoints',
     {
         list,
+        meta: HrDepartmentsEndpointsApi.meta,
     },
-    ["list"],
+    ["list","meta"],
 );
 
 export default endpoints;

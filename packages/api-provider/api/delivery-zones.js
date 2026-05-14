@@ -1,6 +1,8 @@
 import { listParams } from './__param_builders.js';
 
 export const DeliveryZonesEndpoints = {
+    meta: { domains: ['order-management'] },
+
     list: ({ page, pageSize, sort, populate, filters, fields } = {}) => ({
         path: '/delivery-zones',
         params: listParams(

@@ -11,8 +11,9 @@ const endpoints = strictEndpointGuard(
     'PayPayrollRunsEndpoints',
     {
         list,
+        meta: PayPayrollRunsEndpointsApi.meta,
     },
-    ["list"],
+    ["list","meta"],
 );
 
 export default endpoints;

@@ -8,7 +8,7 @@ export const StockItemsEndpoints = {
 
     meta: {
         uid: 'api::stock-item.stock-item',
-        domains: ['stock'],
+        domains: ['sale', 'stock'],
         roles: ['admin', 'manager', 'staff']
     },
 

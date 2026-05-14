@@ -15,7 +15,7 @@ export const SaleReturnsEndpoints = {
 
     meta: {
         uid: 'api::sale-return.sale-return',
-        domains: ['sale', 'return'],
+        domains: ['sale'],
         roles: ['admin', 'manager', 'staff'],
     },
 
@@ -67,8 +67,14 @@ export const SaleReturnsEndpoints = {
             {
                 populate: {
                     sale: { populate: { customer: true } },
+                    exchange_sale: { fields: ['id', 'documentId', 'invoice_no'] },
                     items: { populate: { product: true, items: true } },
-                    payments: true,
+                    payments: {
+                        populate: {
+                            sale: { fields: ['id', 'documentId', 'invoice_no'] },
+                            cash_register: { fields: ['id', 'documentId', 'desk_name'] },
+                        },
+                    },
                     cash_register: true,
                     returned_by_user: true,
                 },

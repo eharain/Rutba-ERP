@@ -29,8 +29,9 @@ const endpoints = strictEndpointGuard(
         teamQueue,
         create,
         action,
+        meta: HrLeaveRequestsEndpointsApi.meta,
     },
-    ["myRequests","teamQueue","create","action"],
+    ["myRequests","teamQueue","create","action","meta"],
 );
 
 export default endpoints;

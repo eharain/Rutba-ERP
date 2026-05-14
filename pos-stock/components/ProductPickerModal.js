@@ -105,7 +105,7 @@ export default function ProductPickerModal({ show, onClose, onSelect, title }) {
             CategoriesEndpoints.listAll(),
             SuppliersEndpoints.listAll(),
             TermTypesEndpoints.listWithTerms(),
-            PurchasesEndpoints.list({ sort: ["createdAt:desc"] }),
+            PurchasesEndpoints.list(1, 100, { sort: ["createdAt:desc"] }),
         ]).then(([b, c, s, t, p]) => {
             setBrands(b?.data || b || []);
             setCategories(c?.data || c || []);

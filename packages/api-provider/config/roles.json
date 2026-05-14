@@ -181,11 +181,11 @@
   },
   "web_public": {
     "level": "public",
-    "domain": "web-public"
+    "domain": "web"
   },
   "web_user": {
     "level": "user",
-    "domain": "web-authenticated"
+    "domain": "web"
   },
   "webuser_admin": {
     "level": "admin",

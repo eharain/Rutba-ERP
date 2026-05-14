@@ -11,8 +11,9 @@ const endpoints = strictEndpointGuard(
     'WebOrdersEndpoints',
     {
         byId,
+        meta: WebOrdersEndpointsApi.meta,
     },
-    ["byId"],
+    ["byId","meta"],
 );
 
 export default endpoints;

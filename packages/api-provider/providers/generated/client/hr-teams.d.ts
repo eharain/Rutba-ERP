@@ -4,6 +4,7 @@ export interface HrTeamsEndpointsType {
     appRoleOptions(): Promise<any>;
     create(data: any): Promise<any>;
     update(documentId: any, data: any): Promise<any>;
+    meta: any;
 }
 
 export const HrTeamsEndpoints: HrTeamsEndpointsType;

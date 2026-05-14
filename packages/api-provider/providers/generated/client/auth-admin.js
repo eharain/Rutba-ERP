@@ -11,8 +11,9 @@ const endpoints = strictEndpointGuard(
     'AuthAdminEndpoints',
     {
         users,
+        meta: AuthAdminEndpointsApi.meta,
     },
-    ["users"],
+    ["users","meta"],
 );
 
 export default endpoints;

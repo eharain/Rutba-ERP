@@ -47,8 +47,9 @@ const endpoints = strictEndpointGuard(
         rejectDeliveryOffer,
         deliveries,
         updateDeliveryStatus,
+        meta: RiderEndpointsApi.meta,
     },
-    ["myProfile","updateStatus","deliveryOffers","acceptDeliveryOffer","rejectDeliveryOffer","deliveries","updateDeliveryStatus"],
+    ["myProfile","updateStatus","deliveryOffers","acceptDeliveryOffer","rejectDeliveryOffer","deliveries","updateDeliveryStatus","meta"],
 );
 
 export default endpoints;

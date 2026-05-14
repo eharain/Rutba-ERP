@@ -9,6 +9,7 @@ export interface SaleOffersEndpointsType {
     publish(documentId: any): Promise<any>;
     unpublish(documentId: any): Promise<any>;
     del(documentId: any): Promise<any>;
+    meta: any;
 }
 
 export const SaleOffersEndpoints: SaleOffersEndpointsType;

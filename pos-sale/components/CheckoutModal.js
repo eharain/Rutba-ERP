@@ -34,16 +34,20 @@ const CheckoutModal = ({ isOpen, onClose, total, exchangeReturnCredit = 0, exist
                 });
             }
 
-            if (exchangeReturnCredit > 0) {
+            const alreadyExchangeReturn = (existingPayments || [])
+                .filter(p => (p.payment_method || '').toLowerCase() === 'exchange return')
+                .reduce((s, p) => s + Number(p.amount || 0), 0);
+            const pendingExchangeReturn = Math.max(exchangeReturnCredit - alreadyExchangeReturn, 0);
+            if (pendingExchangeReturn > 0) {
                 initial.push({
                     id: Date.now() - 1,
                     payment_method: 'Exchange Return',
-                    amount: exchangeReturnCredit.toFixed(2),
+                    amount: pendingExchangeReturn.toFixed(2),
                     transaction_no: '',
                     _locked: true
                 });
             }
-            const remaining = Math.max(total - exchangeReturnCredit - alreadyPaid, 0);
+            const remaining = Math.max(total - alreadyPaid - pendingExchangeReturn, 0);
             if (remaining > 0 || initial.length === 0) {
                 initial.push({
                     id: Date.now(),

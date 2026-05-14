@@ -27,6 +27,9 @@ const fs = require('fs');
 const ROOT = path.resolve(__dirname, '..', '..');
 const prefix = process.argv[2];
 
+// Shared api-provider watcher handle — started once in dev/all-apps mode below.
+let apiWatcher = null;
+
 if (!prefix) {
   console.error('Usage: node scripts/run-all.js <dev|start> [app-name]');
   process.exit(1);
@@ -63,6 +66,7 @@ function runScript(name) {
 
 // Graceful shutdown — kill all children on SIGINT / SIGTERM
 function cleanup() {
+  if (apiWatcher && !apiWatcher.killed) apiWatcher.kill();
   for (const child of children) {
     child.kill();
   }
@@ -104,6 +108,21 @@ const allKeys = Object.keys(pkg.scripts)
 if (allKeys.length === 0) {
   console.error(`[run-all] No scripts found matching "${prefix}:*"`);
   process.exit(1);
+}
+
+// Start the api-provider watcher exactly once for the whole tree.
+// Children see RUTBA_API_WATCHER_STARTED=1 and skip their own watcher in load-env.js.
+if (prefix === 'dev') {
+  console.log('\x1b[36m[run-all]\x1b[0m starting @rutba/api-provider watcher (shared)');
+  apiWatcher = spawn('npm', ['run', 'watch', '--workspace=@rutba/api-provider'], {
+    cwd: ROOT,
+    stdio: 'inherit',
+    shell: true,
+  });
+  apiWatcher.on('error', (err) => {
+    console.error(`\x1b[31m[run-all]\x1b[0m api-provider watcher error: ${err.message}`);
+  });
+  process.env.RUTBA_API_WATCHER_STARTED = '1';
 }
 
 for (const key of allKeys) {

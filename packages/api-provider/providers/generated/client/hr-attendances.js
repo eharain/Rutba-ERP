@@ -11,8 +11,9 @@ const endpoints = strictEndpointGuard(
     'HrAttendancesEndpoints',
     {
         list,
+        meta: HrAttendancesEndpointsApi.meta,
     },
-    ["list"],
+    ["list","meta"],
 );
 
 export default endpoints;

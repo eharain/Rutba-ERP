@@ -1,12 +1,27 @@
 import LayoutMain from "@/components/layouts";
 import CmsPageContent from "@/components/cms/cms-page-content";
 import { useQuery } from "@tanstack/react-query";
-import { createWebCmsPagesService } from "@/services";
+import { createWebCmsPagesService, getCmsPageBySlugSSR } from "@/services";
 import { SkeletonBanner } from "@/components/skeleton";
 import { ErrorCard } from "@/components/errors/error-card";
 import { BASE_URL } from "@/static/const";
+import { CmsPageDetailInterface } from "@/types/api/cms-page";
+import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 
-export default function Home() {
+export const getServerSideProps: GetServerSideProps<{
+  initialPage: CmsPageDetailInterface | null;
+}> = async () => {
+  try {
+    const page = await getCmsPageBySlugSSR("index");
+    return { props: { initialPage: page ?? null } };
+  } catch {
+    return { props: { initialPage: null } };
+  }
+};
+
+export default function Home({
+  initialPage,
+}: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const cmsPagesService = createWebCmsPagesService({ baseURL: BASE_URL });
 
   const {
@@ -18,6 +33,7 @@ export default function Home() {
     queryKey: ["cms-page", "index"],
     queryFn: () => cmsPagesService.getCmsPageBySlug("index"),
     staleTime: 60_000,
+    initialData: initialPage ?? undefined,
   });
 
   if (isLoading) {

@@ -2,6 +2,7 @@
 export interface DeliveryZonesEndpointsType {
     list({ page, pageSize, sort, populate, filters, fields }?: any): Promise<any>;
     create(data: any): Promise<any>;
+    meta: any;
 }
 
 export const DeliveryZonesEndpoints: DeliveryZonesEndpointsType;

@@ -60,7 +60,7 @@ function scaffoldDirectoryIndexes(rootDir) {
                 fs.unlinkSync(indexJsPath);
             }
         } else {
-            fs.writeFileSync(indexJsPath, `${jsLines.join('\n')}\n`, 'utf8');
+            writeIfChanged(indexJsPath, `${jsLines.join('\n')}\n`);
         }
 
         const dtsFileExports = dtsFiles.map((name) => `export * from './${name.replace(/\.d\.ts$/, '')}';`);
@@ -77,10 +77,9 @@ function scaffoldDirectoryIndexes(rootDir) {
             continue;
         }
 
-        fs.writeFileSync(
+        writeIfChanged(
             indexDtsPath,
             `// AUTO-GENERATED — do not edit.\n${dtsLines.join('\n')}\n`,
-            'utf8',
         );
     }
 }
@@ -288,6 +287,15 @@ function parseExistingProviderFile(fileName) {
 
 function normalizeSpacing(content) {
     return `${content.replace(/\n{3,}/g, '\n\n').replace(/\s+$/g, '')}\n`;
+}
+
+function writeIfChanged(filePath, nextContent) {
+    try {
+        const current = fs.readFileSync(filePath, 'utf8');
+        if (current === nextContent) return false;
+    } catch (_) { /* file does not exist yet */ }
+    fs.writeFileSync(filePath, nextContent, 'utf8');
+    return true;
 }
 
 function isValidIdentifier(name) {
@@ -522,6 +530,19 @@ function extractExplicitMethod(propBody) {
     return m ? m[1].toLowerCase() : null;
 }
 
+// Detect whether the descriptor body targets a Strapi non-CRUD path that must
+// receive the request body RAW (no { data: ... } envelope). Auth endpoints
+// (/auth/local, /auth/local/register, /auth/forgot-password, /auth/reset-password,
+// /auth/<provider>/callback) and the upload plugin use raw bodies; Strapi
+// content-API endpoints take the { data } envelope. The scaffolder uses this
+// to decide between `wrapData(ep.data)` and `ep.data` at the call site.
+function descriptorWantsRawBody(propBody) {
+    const m = propBody.match(/\bpath\s*:\s*[`'"]([^`'"]+)[`'"]/);
+    if (!m) return false;
+    const p = m[1];
+    return p.startsWith('/auth/') || p === '/auth' || p.startsWith('/upload');
+}
+
 function parseTopLevelProperty(part) {
     const prop = stripLeadingComments(part).trim();
     if (!prop) return null;
@@ -530,7 +551,13 @@ function parseTopLevelProperty(part) {
     if (methodMatch) {
         const openIndex = prop.indexOf('(');
         const params = openIndex >= 0 ? (extractParenContent(prop, openIndex) ?? '') : '';
-        return { key: methodMatch[1], isFunction: true, params, method: extractExplicitMethod(prop) };
+        return {
+            key: methodMatch[1],
+            isFunction: true,
+            params,
+            method: extractExplicitMethod(prop),
+            rawBody: descriptorWantsRawBody(prop),
+        };
     }
 
     const quotedKeyMatch = prop.match(/^(?:'([^']+)'|"([^"]+)"|`([^`]+)`|([A-Za-z_$][\w$]*))\s*:/);
@@ -545,8 +572,9 @@ function parseTopLevelProperty(part) {
 
     const params = isFunction ? extractParamsFromValue(valuePart) : '';
     const method = isFunction ? extractExplicitMethod(valuePart) : null;
+    const rawBody = isFunction ? descriptorWantsRawBody(valuePart) : false;
 
-    return { key, isFunction, params, method };
+    return { key, isFunction, params, method, rawBody };
 }
 
 function splitParamList(paramsRaw) {
@@ -734,7 +762,7 @@ function buildSignatureAndForwarding(paramsRaw) {
     return { signature: sigParts.join(', '), forwarding: fwdParts.join(', ') };
 }
 
-function buildActionBody(functionName, clientName, apiRef, verb, signature, forwarding) {
+function buildActionBody(functionName, clientName, apiRef, verb, signature, forwarding, rawBody) {
     // Each generated action calls authApi.<verb> directly — the verb is
     // resolved at scaffold time from the descriptor's `method:` literal (or
     // its key prefix as a fallback). withQuery/wrapData are pure shape
@@ -747,11 +775,13 @@ function buildActionBody(functionName, clientName, apiRef, verb, signature, forw
     } else if (verb === 'DELETE') {
         lines.push(`    return ${clientName}.del(withQuery(ep.path, ep.params));`);
     } else {
-        // POST / PUT / PATCH — params (if any) ride in the query string, the
-        // request body is the descriptor's `data`, envelope-wrapped to match
-        // Strapi's { data: ... } convention.
+        // POST / PUT / PATCH — params (if any) ride in the query string. By
+        // default the request body is wrapped to match Strapi's { data: ... }
+        // CRUD convention; non-CRUD endpoints (auth/upload — see
+        // descriptorWantsRawBody) bypass the wrap and send ep.data raw.
         const verbLower = verb.toLowerCase();
-        lines.push(`    return ${clientName}.${verbLower}(withQuery(ep.path, ep.params), wrapData(ep.data));`);
+        const body = rawBody ? 'ep.data' : 'wrapData(ep.data)';
+        lines.push(`    return ${clientName}.${verbLower}(withQuery(ep.path, ep.params), ${body});`);
     }
 
     lines.push('}');
@@ -770,7 +800,7 @@ function buildProviderArtifacts(parsed, apiShape, imports) {
     const dtsMembers = [];
     const usedCoreHelpers = new Set(['strictEndpointGuard']);
 
-    functionEntries.forEach(({ key, params, method }) => {
+    functionEntries.forEach(({ key, params, method, rawBody }) => {
         const functionName = isValidIdentifier(key) ? key : `_endpoint_${key.replace(/[^A-Za-z0-9_$]/g, '_')}`;
         methodNameByKey.set(key, functionName);
 
@@ -780,12 +810,12 @@ function buildProviderArtifacts(parsed, apiShape, imports) {
         if (verb === 'DELETE' || verb === 'POST' || verb === 'PUT' || verb === 'PATCH') {
             usedCoreHelpers.add('withQuery');
         }
-        if (verb === 'POST' || verb === 'PUT' || verb === 'PATCH') {
+        if ((verb === 'POST' || verb === 'PUT' || verb === 'PATCH') && !rawBody) {
             usedCoreHelpers.add('wrapData');
         }
 
         const { signature, forwarding } = buildSignatureAndForwarding(params);
-        methodLines.push(...buildActionBody(functionName, clientName, apiRef, verb, signature, forwarding));
+        methodLines.push(...buildActionBody(functionName, clientName, apiRef, verb, signature, forwarding, !!rawBody));
         methodLines.push('');
 
         endpointPropertyLines.push(isValidIdentifier(key)
@@ -983,9 +1013,11 @@ async function main() {
             coreImportPath: toImportPath(providerDir, coreOutputPath),
             apiImportPath: toImportPath(providerDir, apiAbsPath),
         });
-        fs.writeFileSync(providerPath, normalizeSpacing(providerJs), 'utf8');
-        fs.writeFileSync(providerPath.replace(/\.js$/, '.d.ts'), normalizeSpacing(providerDts), 'utf8');
-        generated.push(path.relative(packageRoot, providerPath));
+        const jsChanged = writeIfChanged(providerPath, normalizeSpacing(providerJs));
+        const dtsChanged = writeIfChanged(providerPath.replace(/\.js$/, '.d.ts'), normalizeSpacing(providerDts));
+        if (jsChanged || dtsChanged) {
+            generated.push(path.relative(packageRoot, providerPath));
+        }
 
         if (!alreadyMigrated) {
         const migratedContent = migrateEndpointFileContent(fileName, parsed, source);
@@ -1055,9 +1087,11 @@ async function main() {
             apiImportPath: toImportPath(providerDir, apiFileAbs),
         });
 
-        fs.writeFileSync(providerPath, normalizeSpacing(providerJs), 'utf8');
-        fs.writeFileSync(providerPath.replace(/\.js$/, '.d.ts'), normalizeSpacing(providerDts), 'utf8');
-        generatedFromApi.push(path.relative(packageRoot, providerPath));
+        const jsChanged = writeIfChanged(providerPath, normalizeSpacing(providerJs));
+        const dtsChanged = writeIfChanged(providerPath.replace(/\.js$/, '.d.ts'), normalizeSpacing(providerDts));
+        if (jsChanged || dtsChanged) {
+            generatedFromApi.push(path.relative(packageRoot, providerPath));
+        }
     }
 
     scaffoldDirectoryIndexes(providersGeneratedDir);

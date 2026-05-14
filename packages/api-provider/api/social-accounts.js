@@ -1,6 +1,8 @@
 import { listParams } from './__param_builders.js';
 
 export const SocialAccountsEndpoints = {
+    meta: { domains: ['social'] },
+
     list: ({ page, pageSize, sort, populate, filters, fields } = {}) => ({
         path: '/social-accounts',
         params: listParams(

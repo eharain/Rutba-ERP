@@ -2,31 +2,24 @@
  * UploadEndpoints
  * Centralised path definitions for the Strapi /upload media library routes.
  *
- * Note: upload uses multipart/form-data — params are not applicable.
- * The path is provided for consistency; the caller handles form construction.
+ * Note: upload uses multipart/form-data — params are not applicable. The
+ * actual multipart request (auth header, full Strapi URL, parsed response)
+ * is handled inside lib/api.js via authApi.uploadFile / authApi.deleteFile,
+ * so the descriptors here delegate to those rather than reinventing the
+ * request. This module is also re-exported as-is from endpoints/index.js to
+ * bypass the auto-generated HTTP wrapper, which otherwise mangles the
+ * non-descriptor return shapes into `/apiundefined` requests.
  */
+import { authApi } from '../lib/api.js';
 
 export const UploadEndpoints = {
+    meta: { domains: ['social', 'stock'] },
 
-    /** Upload one or more files to the Strapi media library. */
-    upload: () => ({ path: '/upload' }),
-    uploadFiles: (files, ref, field, refId, info) => {
-        const form = new FormData();
-        if (Array.isArray(files)) {
-            for (const file of files) form.append('files', file);
-        } else {
-            form.append('files', files);
-        }
-        if (ref) form.append('ref', `api::${ref}.${ref}`);
-        if (field) form.append('field', field);
-        if (refId) form.append('refId', refId);
-        if (info) form.append('fileInfo', JSON.stringify(info));
-        return fetch('/api/upload', { method: 'POST', body: form });
-    },
+    /** Upload one or more files to the Strapi media library, optionally
+     *  attaching them to an entity field (`ref`/`refId`/`field`). */
+    uploadFiles: (files, ref, field, refId, info) =>
+        authApi.uploadFile(files, ref, field, refId, info),
 
-    /**
-     * Delete a media file by its numeric id.
-     * @param {number} fileId
-     */
-    deleteFile: (fileId) => ({ path: `/upload/files/${fileId}` }),
+    /** Delete a media file by its numeric id. */
+    deleteFile: (fileId) => authApi.deleteFile(fileId),
 };

@@ -40,16 +40,36 @@ async function fetchPermissions(jwt) {
             // rolesByApp drives the role-selector menu and (when there's only
             // one role for an app) the auto-selected active role.
             //   { [appDomainKey]: [{ key, name }, ...] }
-            const rolesByApp = (data?.rolesByApp && typeof data.rolesByApp === 'object')
+            //
+            // The current /me/permissions response no longer ships rolesByApp
+            // directly — derive it from `domains[]` (one entry per domain ×
+            // role) by grouping roleKey values per domain key and looking up
+            // names from `appRoles[]`. Falls through to the server-provided
+            // map when present (older endpoint).
+            const appRoleNameByKey = new Map(
+                (Array.isArray(data?.appRoles) ? data.appRoles : [])
+                    .filter((r) => r && typeof r.key === 'string')
+                    .map((r) => [r.key, r.name || r.key])
+            );
+            const derivedRolesByApp = {};
+            for (const entry of Array.isArray(data?.domains) ? data.domains : []) {
+                const dKey = entry?.key;
+                const rKey = entry?.roleKey;
+                if (!dKey || !rKey) continue;
+                if (!derivedRolesByApp[dKey]) derivedRolesByApp[dKey] = [];
+                if (derivedRolesByApp[dKey].some((r) => r.key === rKey)) continue;
+                derivedRolesByApp[dKey].push({ key: rKey, name: appRoleNameByKey.get(rKey) || rKey });
+            }
+            const rolesByApp = (data?.rolesByApp && typeof data.rolesByApp === 'object' && Object.keys(data.rolesByApp).length)
                 ? data.rolesByApp
-                : {};
+                : derivedRolesByApp;
 
             // Backward-compat: derive adminAppAccess from rolesByApp by
             // checking whether any role for the app ends in '_admin'. Apps
             // and shared components still read adminAppAccess for now; once
             // they all migrate to currentAppRoles/activeRole this can be
             // removed. We skip the '*' bucket (debug-only mirror of global
-            // roles â€” the server already fans those into every real app key).
+            // roles — the server already fans those into every real app key).
             const derivedAdminAppAccess = [];
             for (const [appKey, roles] of Object.entries(rolesByApp)) {
                 if (appKey === '*') continue;
@@ -272,7 +292,7 @@ export function AuthProvider({ children }) {
 
             if (!freshUser) {
                 // JWT expired — try refreshing
-                const newJwt = await refreshAccessToken();
+                const { jwt: newJwt } = await refreshAccessToken();
                 if (newJwt) {
                     validJwt = newJwt;
                     freshUser = await fetchMe(newJwt);

@@ -77,7 +77,7 @@ export default function AppAccessPage() {
         <Layout>
             <ProtectedRoute>
                 <AppAccessGate appKey="auth">
-                <PermissionCheck adminOnly appKey="auth" required="plugin::users-permissions.user.update">
+                <PermissionCheck adminOnly appKey="auth" required="auth">
                 <div className="d-flex justify-content-between align-items-center mb-3">
                     <h2><i className="fas fa-key me-2"></i>App Domains</h2>
                     <button className="btn btn-primary" onClick={() => setShowForm(!showForm)}>

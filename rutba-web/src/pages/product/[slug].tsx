@@ -21,23 +21,42 @@ import { ErrorCard } from "@/components/errors/error-card";
 import { useStoreCart } from "@/store/store-cart";
 // import Reviews from "@/components/product-detail/reviews";
 // import useReviewsService from "@/services/reviews";
-import { createWebProductsService } from "@/services";
+import { createWebProductsService, getProductDetailSSR } from "@/services";
 import { currencyFormat } from "@/lib/use-currency";
 import { marked } from "marked";
 import { markedVideoEmbed } from "@/lib/marked-video-embed";
 import { IMAGE_URL, BASE_URL } from "@/static/const";
 import { CartTermInfo } from "@/types/api/cart";
 import axios from "axios";
+import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 
 marked.use({ breaks: true, gfm: true });
 marked.use(markedVideoEmbed({ imageBaseUrl: IMAGE_URL }));
 
-export default function ProductDetail() {
+export const getServerSideProps: GetServerSideProps<{
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  initialProduct: any | null;
+  slug: string;
+}> = async (context) => {
+  const slug = context.params?.slug as string;
+  try {
+    const product = await getProductDetailSSR(slug);
+    if (!product) return { notFound: true };
+    return { props: { initialProduct: product, slug } };
+  } catch {
+    return { props: { initialProduct: null, slug } };
+  }
+};
+
+export default function ProductDetail({
+  initialProduct,
+  slug: ssrSlug,
+}: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const cartStore = useStoreCart();
   const router = useRouter();
   const productsService = createWebProductsService({ baseURL: BASE_URL });
 
-  const { slug } = router.query;
+  const slug = (router.query.slug as string) ?? ssrSlug;
   const offerId = router.query.offerId as string | undefined;
   const sourceGroupId = router.query.groupId as string | undefined;
 
@@ -54,6 +73,8 @@ export default function ProductDetail() {
       return productsService.getProductDetail(slug as string);
     },
     enabled: !!slug,
+    initialData: initialProduct ?? undefined,
+    staleTime: 60_000,
   });
 
   // Validate offer is still active

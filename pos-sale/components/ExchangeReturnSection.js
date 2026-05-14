@@ -214,7 +214,15 @@ export default function ExchangeReturnSection({ saleModel, onUpdate, disabled = 
                 {savedReturns.map((saved, sIdx) => (
                     <div key={sIdx} className={sIdx > 0 ? 'mt-2 pt-2 border-top' : ''}>
                         <div className="small text-muted mb-2">
-                            {saved.returnNo && <>Return <strong>#{saved.returnNo}</strong> — </>}
+                            {saved.returnNo && (
+                                <>Return{' '}
+                                {saved.documentId || saved.id ? (
+                                    <a href={`/${saved.documentId || saved.id}/sale-return`} className="text-warning fw-bold">
+                                        #{saved.returnNo}
+                                    </a>
+                                ) : <strong>#{saved.returnNo}</strong>}
+                                {' '}—{' '}</>
+                            )}
                             From Invoice{' '}
                             <a href={`/${saved.sale?.documentId || saved.sale?.id}/sale`} className="text-primary fw-bold">
                                 #{saved.sale?.invoice_no || '?'}

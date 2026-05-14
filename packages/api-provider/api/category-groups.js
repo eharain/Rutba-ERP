@@ -2,6 +2,8 @@ import __publish_generic_helper from './__publish_generic_helper.js'
 import { listParams, byIdParams } from './__param_builders.js';
 
 export const CategoryGroupsEndpoints = {
+    meta: { domains: ['cms'] },
+
     listDraft: ({ page, pageSize, sort, populate, filters, fields } = {}) => ({
         path: '/category-groups',
         params: listParams(

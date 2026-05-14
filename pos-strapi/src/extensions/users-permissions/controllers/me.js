@@ -26,17 +26,22 @@ module.exports = createCoreController('plugin::users-permissions.me', ({ strapi 
             const roleType = fullUser?.role?.type;
             const appRoles = fullUser?.app_roles || [];
 
-            // ── Build unique domain list from assigned app roles ─────────────
+            // ── Build domain list: one entry per (domain × role) pair ────────
+            // The client (pos-shared AuthContext) derives rolesByApp from
+            // this array, so emitting only the first role per domain would
+            // hide the user's other roles from the RoleSwitcher.
             const domains = [];
+            const seenDomainRole = new Set();
             const appRoleKeys = [];
 
             for (const role of appRoles) {
                 if (!role.isActive) continue;
                 appRoleKeys.push(role.key);
                 for (const domain of role.appDomains || []) {
-                    if (!domains.find((d) => d.key === domain.key)) {
-                        domains.push({ key: domain.key, name: domain.name, roleKey: role.key });
-                    }
+                    const dedupeKey = `${domain.key}|${role.key}`;
+                    if (seenDomainRole.has(dedupeKey)) continue;
+                    seenDomainRole.add(dedupeKey);
+                    domains.push({ key: domain.key, name: domain.name, roleKey: role.key });
                 }
             }
 

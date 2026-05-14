@@ -32,8 +32,8 @@ async function cancel(documentId, data) {
     return authApi.put(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
-async function saveNotes(documentId, data) {
-    const ep = SalesEndpointsApi.saveNotes(documentId, data);
+async function saveNotes(documentId, notes) {
+    const ep = SalesEndpointsApi.saveNotes(documentId, notes);
     return authApi.put(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 

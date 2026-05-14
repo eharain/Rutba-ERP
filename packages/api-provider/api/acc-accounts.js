@@ -8,7 +8,7 @@ export const AccAccountsEndpoints = {
 
     meta: {
         uid: 'api::acc-account.acc-account',
-        domains: ['accounting', 'finance'],
+        domains: ['accounts'],
         roles: ['admin', 'manager', 'accountant']
     },
 

@@ -2,6 +2,7 @@
 export interface StockHelpersEndpointsType {
     getStockStatus(): Promise<any>;
     relationConnects(relations: any): Promise<any>;
+    meta: any;
 }
 
 export const StockHelpersEndpoints: StockHelpersEndpointsType;

@@ -18,6 +18,7 @@ module.exports = ({ env }) => {
           'Content-Type',
           'Authorization',
           'X-Rutba-App',
+          'X-Rutba-App-Role',
           'X-Rutba-App-Admin',
           'Origin',
           'Accept',

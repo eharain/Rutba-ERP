@@ -65,8 +65,9 @@ const endpoints = strictEndpointGuard(
         byIdDraft,
         byIdPublished,
         update,
+        meta: DeliveryMethodsEndpointsApi.meta,
     },
-    ["updateDraft","publish","unpublish","create","del","list","byId","byIdDraft","byIdPublished","update"],
+    ["updateDraft","publish","unpublish","create","del","list","byId","byIdDraft","byIdPublished","update","meta"],
 );
 
 export default endpoints;

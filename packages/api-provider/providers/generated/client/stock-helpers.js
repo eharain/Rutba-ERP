@@ -17,8 +17,9 @@ const endpoints = strictEndpointGuard(
     {
         getStockStatus,
         relationConnects,
+        meta: StockHelpersEndpointsApi.meta,
     },
-    ["getStockStatus","relationConnects"],
+    ["getStockStatus","relationConnects","meta"],
 );
 
 export default endpoints;

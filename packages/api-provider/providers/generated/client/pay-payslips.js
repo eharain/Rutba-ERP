@@ -11,8 +11,9 @@ const endpoints = strictEndpointGuard(
     'PayPayslipsEndpoints',
     {
         list,
+        meta: PayPayslipsEndpointsApi.meta,
     },
-    ["list"],
+    ["list","meta"],
 );
 
 export default endpoints;

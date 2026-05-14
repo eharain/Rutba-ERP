@@ -66,7 +66,11 @@ export const SalesEndpoints = {
                 ],
             },
             populate: {
-                payments: true,
+                payments: {
+                    populate: {
+                        sale_return: { fields: ['id', 'documentId', 'return_no', 'type'] },
+                    },
+                },
                 customer: true,
                 cash_register: {
                     fields: ['id', 'documentId', 'desk_id', 'desk_name', 'branch_name', 'opened_by', 'opened_at', 'status'],
@@ -141,15 +145,16 @@ export const SalesEndpoints = {
         data,
     }),
 
-    /** Save notes on a sale. */
-    saveNotes: (documentId, data) => ({
+    /** Save notes on a sale. Caller passes the raw notes string; the
+     * descriptor shapes it into the field-update payload Strapi expects. */
+    saveNotes: (documentId, notes) => ({
         path: `/sales/${documentId}`,
         action: 'saveNotes',
         method: 'put',
         apps: ['sale'],
         approle: ['admin', 'manager', 'staff'],
         scope: ROLE_SCOPES,
-        data,
+        data: { notes },
     }),
 
     /**

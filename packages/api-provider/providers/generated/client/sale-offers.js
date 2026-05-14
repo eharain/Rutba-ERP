@@ -59,8 +59,9 @@ const endpoints = strictEndpointGuard(
         publish,
         unpublish,
         del,
+        meta: SaleOffersEndpointsApi.meta,
     },
-    ["listDraft","listPublished","byIdDraft","byIdPublished","create","updateDraft","publish","unpublish","del"],
+    ["listDraft","listPublished","byIdDraft","byIdPublished","create","updateDraft","publish","unpublish","del","meta"],
 );
 
 export default endpoints;

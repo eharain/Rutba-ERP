@@ -11,8 +11,9 @@ const endpoints = strictEndpointGuard(
     'ReturnRequestsEndpoints',
     {
         create,
+        meta: ReturnRequestsEndpointsApi.meta,
     },
-    ["create"],
+    ["create","meta"],
 );
 
 export default endpoints;

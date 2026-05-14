@@ -85,7 +85,7 @@ export default function CustomerSelect({ value, onChange, disabled }) {
     const fetchCustomers = async () => {
         setLoading(true);
         try {
-            const res = await CustomersEndpoints.search(query, { pageSize: 20 });
+            const res = await CustomersEndpoints.search(query, 20);
             setResults(res?.data || res || []);
         } catch (e) {
             console.error('Customer search failed', e);

@@ -107,7 +107,7 @@ export default function PurchasesPage() {
             <Layout>
                 <div>
                     <h2 style={{ marginBottom: 16 }}>Purchases</h2>
-                    <PermissionCheck required="api::purchase.purchase.find">
+                    <PermissionCheck required="stock">
 
                     {/* Optional: Add New Purchase Button */}
                     <div style={{ marginBottom: 16 }}>

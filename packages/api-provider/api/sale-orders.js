@@ -11,7 +11,7 @@ const ROLE_SCOPES = {
 export const SaleOrdersEndpoints = {
     meta: {
         uid: 'api::sale-order.sale-order',
-        domains: ['order-management', 'sale', 'delivery'],
+        domains: ['delivery', 'order-management', 'sale', 'web-user'],
         roles: ['admin', 'manager', 'staff'],
     },
 

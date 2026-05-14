@@ -9,6 +9,7 @@ export interface CategoryGroupsEndpointsType {
     unpublish(documentId: any): Promise<any>;
     create(data: any): Promise<any>;
     del(documentId: any): Promise<any>;
+    meta: any;
 }
 
 export const CategoryGroupsEndpoints: CategoryGroupsEndpointsType;

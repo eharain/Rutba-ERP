@@ -13,7 +13,7 @@ export const SuppliersEndpoints = {
 
     meta: {
         uid: 'api::supplier.supplier',
-        domains: ['stock', 'purchase'],
+        domains: ['cms', 'order-management', 'stock'],
         roles: ['admin', 'manager', 'staff']
     },
 
