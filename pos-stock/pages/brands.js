@@ -706,6 +706,8 @@ export default function BrandsPage() {
                                                 multiple={false}
                                                 refName="brand"
                                                 refId={selectedBrand.id}
+                                                refDocumentId={selectedBrand.documentId}
+                                                refDraft
                                                 field="logo"
                                                 name={selectedBrand.name}
                                             />
@@ -718,6 +720,8 @@ export default function BrandsPage() {
                                                 multiple={true}
                                                 refName="brand"
                                                 refId={selectedBrand.id}
+                                                refDocumentId={selectedBrand.documentId}
+                                                refDraft
                                                 field="gallery"
                                                 name={selectedBrand.name}
                                             />

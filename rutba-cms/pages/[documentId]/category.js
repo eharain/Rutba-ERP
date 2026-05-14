@@ -236,6 +236,8 @@ export default function CategoryDetail() {
                                             single={category.logo}
                                             refName="category"
                                             refId={category.id}
+                                            refDocumentId={documentId}
+                                            refDraft
                                             field="logo"
                                             name={name}
                                         />
@@ -249,6 +251,8 @@ export default function CategoryDetail() {
                                             multiple
                                             refName="category"
                                             refId={category.id}
+                                            refDocumentId={documentId}
+                                            refDraft
                                             field="gallery"
                                             name={name}
                                         />

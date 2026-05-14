@@ -688,6 +688,8 @@ export default function ProductEditPage() {
                                                 multiple={false}
                                                 refName="product"
                                                 refId={productId}
+                                                refDocumentId={documentId}
+                                                refDraft
                                                 field="logo"
                                                 name={product.name}
                                             />
@@ -700,6 +702,8 @@ export default function ProductEditPage() {
                                                 multiple={true}
                                                 refName="product"
                                                 refId={productId}
+                                                refDocumentId={documentId}
+                                                refDraft
                                                 field="gallery"
                                                 name={product.name}
                                             />

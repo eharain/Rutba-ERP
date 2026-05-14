@@ -2,7 +2,11 @@ import __publish_generic_helper from "./__publish_generic_helper.js";
 import { listParams, byIdParams } from './__param_builders.js';
 
 export const CmsFootersEndpoints = {
-    meta: { domains: ['cms'] },
+    meta: {
+        uid: 'api::cms-footer.cms-footer',
+        domains: ['cms', 'web', 'web-user'],
+        roles: ['admin', 'manager', 'staff', 'public', 'user'],
+    },
 
     listDraft: ({ page, pageSize, sort, populate, filters, fields } = {}) => ({
         path: '/cms-footers',

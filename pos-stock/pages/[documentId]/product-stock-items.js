@@ -874,11 +874,11 @@ export default function EditProduct() {
                             <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'black' }}>
                                 Logo
                             </label>
-                            <FileView onFileChange={handleFileChange} single={product.logo} multiple={false} refName='product' refId={productId} field="logo" name={product.name} />
+                            <FileView onFileChange={handleFileChange} single={product.logo} multiple={false} refName='product' refId={productId} refDocumentId={product.documentId} refDraft field="logo" name={product.name} />
                             <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'black' }}>
                                 Gallery
                             </label>
-                            <FileView onFileChange={handleFileChange} gallery={product.gallery} multiple={true} refName='product' refId={productId} field="gallery" name={product.name} />
+                            <FileView onFileChange={handleFileChange} gallery={product.gallery} multiple={true} refName='product' refId={productId} refDocumentId={product.documentId} refDraft field="gallery" name={product.name} />
                         </div>
 
                         <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>

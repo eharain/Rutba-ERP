@@ -1,11 +1,13 @@
-import { UploadEndpoints } from './upload.js';
-
 /**
  * MediaLibraryEndpoints
  * Centralised path + params definitions for the custom media library routes.
  */
 export const MediaLibraryEndpoints = {
-    meta: { domains: ['cms', 'social'] },
+    meta: {
+        uid: 'plugin::upload.file',
+        domains: ['cms', 'social', 'stock'],
+        roles: ['admin', 'manager', 'staff'],
+    },
 
     foldersTree: () => ({ path: '/media-library/folders/tree' }),
     folders: (parentId = null) => ({

@@ -222,6 +222,8 @@ export default function BrandDetail() {
                                             single={brand.logo}
                                             refName="brand"
                                             refId={brand.id}
+                                            refDocumentId={documentId}
+                                            refDraft
                                             field="logo"
                                             name={name}
                                         />
@@ -235,6 +237,8 @@ export default function BrandDetail() {
                                             multiple
                                             refName="brand"
                                             refId={brand.id}
+                                            refDocumentId={documentId}
+                                            refDraft
                                             field="gallery"
                                             name={name}
                                         />

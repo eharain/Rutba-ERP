@@ -780,6 +780,8 @@ export default function CategoriesPage() {
                                                 multiple={false}
                                                 refName="category"
                                                 refId={selectedCategory.id}
+                                                refDocumentId={selectedCategory.documentId}
+                                                refDraft
                                                 field="logo"
                                                 name={selectedCategory.name}
                                             />
@@ -792,6 +794,8 @@ export default function CategoriesPage() {
                                                 multiple={true}
                                                 refName="category"
                                                 refId={selectedCategory.id}
+                                                refDocumentId={selectedCategory.documentId}
+                                                refDraft
                                                 field="gallery"
                                                 name={selectedCategory.name}
                                             />
