@@ -57,17 +57,24 @@ export default function NavAppSwitcher({ currentApp }) {
                     <span className="text-uppercase small fw-semibold">{currentMeta.label || currentApp || 'Current app'}</span>
                 </div>
                 <hr className="dropdown-divider" />
-                {links.map((link) => (
-                    <a
-                        key={link.key}
-                        className="dropdown-item d-flex align-items-center gap-2 py-2"
-                        href={link.href}
-                        onClick={() => setOpen(false)}
-                    >
-                        <i className={`${link.icon} ${link.color}`} style={{ width: 18, textAlign: 'center' }}></i>
-                        <span>{link.label}</span>
-                    </a>
-                ))}
+                {links.map((link) => {
+                    const linkProps = link.external
+                        ? { target: "_blank", rel: "noopener noreferrer" }
+                        : {};
+                    return (
+                        <a
+                            key={link.key}
+                            {...linkProps}
+                            className="dropdown-item d-flex align-items-center gap-2 py-2"
+                            href={link.href}
+                            onClick={() => setOpen(false)}
+                        >
+                            <i className={`${link.icon} ${link.color}`} style={{ width: 18, textAlign: 'center' }}></i>
+                            <span>{link.label}</span>
+                            {link.external && <i className="fa-solid fa-arrow-up-right-from-square ms-auto small text-muted"></i>}
+                        </a>
+                    );
+                })}
             </div>
         </div>
     );

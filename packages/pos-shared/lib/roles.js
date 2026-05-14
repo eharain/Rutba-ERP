@@ -50,6 +50,7 @@ export const APP_META = {
     payroll:    { icon: 'fa-solid fa-money-check-dollar', label: 'Payroll',            description: 'Salary structures, payroll runs, payslips',   border: 'border-danger',    color: 'text-danger' },
     cms:        { icon: 'fa-solid fa-pen-nib',            label: 'Content Management', description: 'Website content, pages, banners, and sales offers', border: 'border-purple',    color: 'text-purple' },
     social:     { icon: 'fa-solid fa-share-nodes',         label: 'Social Media',       description: 'Posts, replies, multi-platform publishing',   border: 'border-info',      color: 'text-info' },
+    web:        { icon: 'fa-solid fa-globe',               label: 'Storefront',         description: 'Public customer-facing website',              border: 'border-info',      color: 'text-info', public: true },
 };
 
 /**
@@ -159,6 +160,26 @@ export function getCrossAppLinks(appAccess, currentApp) {
             color: meta.color || 'text-secondary',
         });
     }
+
+    // Public apps (e.g. the storefront) are visible to everyone
+    // regardless of access. Append after gated apps so admin tools
+    // come first in the menu.
+    for (const [appKey, meta] of Object.entries(APP_META)) {
+        if (!meta || !meta.public) continue;
+        if (appKey === currentApp) continue;
+        if (!APP_URLS[appKey]) continue;
+        if (links.find((l) => l.key === appKey)) continue;
+
+        links.push({
+            key: appKey,
+            label: meta.label || appKey,
+            href: APP_URLS[appKey],
+            icon: meta.icon || 'fa-solid fa-cube',
+            color: meta.color || 'text-secondary',
+            external: true,
+        });
+    }
+
     return links;
 }
 
