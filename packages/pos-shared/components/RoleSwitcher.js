@@ -1,28 +1,20 @@
 'use client'
-import { useState, useRef, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { getAppName } from '@rutba/api-provider/lib/api';
 
 /**
  * RoleSwitcher
  *
- * Renders the user's active role for the current app in the navbar.
+ * Renders the user's active role for the current app as a navbar
+ * dropdown item (matches the surrounding nav-links). Selecting a
+ * different role updates X-Rutba-App-Role via AuthContext and reloads
+ * the page.
  *
- *   - 0 roles  → renders nothing (the user can't act in this app at all).
- *   - 1 role   → renders a non-clickable chip with the role name (so the
- *                user always knows which role they're acting as).
- *   - 2+ roles → renders a dropdown. Selecting a different role updates the
- *                X-Rutba-App-Role header (via AuthContext.setActiveRoleForApp)
- *                and reloads the page so every query refetches under the new
- *                policy scope.
- *
- * This component supersedes the legacy AdminModeToggle — admin elevation is
- * now expressed by switching to an admin-level role from this menu.
- *
- * Usage:
- *   import RoleSwitcher from '@rutba/pos-shared/components/RoleSwitcher';
- *   // … inside the navbar …
- *   <RoleSwitcher />
+ *   - 0 roles  → renders nothing.
+ *   - 1 role   → renders a static nav-link chip (the user always sees
+ *                which role they're acting as).
+ *   - 2+ roles → renders a dropdown trigger.
  */
 export default function RoleSwitcher() {
     const { rolesByApp, activeRoleKey, setActiveRoleForApp, loading } = useAuth();
@@ -34,18 +26,18 @@ export default function RoleSwitcher() {
         const onClickOutside = (e) => {
             if (ref.current && !ref.current.contains(e.target)) setOpen(false);
         };
+        const onKeyDown = (e) => { if (e.key === "Escape") setOpen(false); };
         document.addEventListener('mousedown', onClickOutside);
-        return () => document.removeEventListener('mousedown', onClickOutside);
+        window.addEventListener('keydown', onKeyDown);
+        return () => {
+            document.removeEventListener('mousedown', onClickOutside);
+            window.removeEventListener('keydown', onKeyDown);
+        };
     }, [open]);
 
     if (loading) return null;
 
     const appName = getAppName();
-    // Merge per-app roles with the wildcard '*' bucket (global / no-domain
-    // roles). The server expands wildcards across every active app-domain
-    // already, but we also fold '*' here so older /me/permissions payloads
-    // â€” and any role added at runtime under '*' â€” still surface in the
-    // switcher.
     const perApp = Array.isArray(rolesByApp?.[appName]) ? rolesByApp[appName] : [];
     const wildcard = Array.isArray(rolesByApp?.['*']) ? rolesByApp['*'] : [];
     const seen = new Set();
@@ -59,74 +51,61 @@ export default function RoleSwitcher() {
 
     const active = list.find((r) => r.key === activeRoleKey) || list[0];
     const isAdminLevel = /(?:^|_)admin$/.test(String(active.key || ''));
-
-    const baseChipClass = `btn btn-sm me-2 ${isAdminLevel ? 'btn-warning' : 'btn-outline-secondary'}`;
+    const icon = isAdminLevel ? 'fa-shield-halved' : 'fa-user-shield';
+    const adminTint = isAdminLevel ? ' text-warning' : '';
 
     if (list.length === 1) {
         return (
-            <span
-                className={baseChipClass}
-                style={{ cursor: 'default', pointerEvents: 'none' }}
-                title={`Acting as ${active.name || active.key}`}
-            >
-                <i className={`fa-solid ${isAdminLevel ? 'fa-shield-halved' : 'fa-shield'} me-1`}></i>
-                <span style={{ fontSize: '0.78rem' }}>{active.name || active.key}</span>
-            </span>
+            <div className="nav-item nav-role-switcher">
+                <span
+                    className={`nav-link d-inline-flex align-items-center gap-2 disabled${adminTint}`}
+                    style={{ cursor: 'default', opacity: 0.95 }}
+                    title={`Acting as ${active.name || active.key}`}
+                >
+                    <i className={`fa-solid ${icon}`}></i>
+                    <span>{active.name || active.key}</span>
+                </span>
+            </div>
         );
     }
 
     return (
-        <div ref={ref} style={{ position: 'relative', display: 'inline-block' }}>
+        <div className="nav-item dropdown nav-role-switcher" ref={ref}>
             <button
                 type="button"
-                className={baseChipClass}
-                title={`Acting as ${active.name || active.key} — click to switch role`}
+                className={`nav-link dropdown-toggle d-inline-flex align-items-center gap-2${adminTint}${open ? ' show' : ''}`}
+                aria-expanded={open}
                 onClick={() => setOpen((v) => !v)}
+                title={`Acting as ${active.name || active.key} — click to switch role`}
             >
-                <i className={`fa-solid ${isAdminLevel ? 'fa-shield-halved' : 'fa-shield'} me-1`}></i>
-                <span style={{ fontSize: '0.78rem' }}>{active.name || active.key}</span>
-                <i className="fa-solid fa-caret-down ms-1" style={{ fontSize: '0.7rem' }}></i>
+                <i className={`fa-solid ${icon}`}></i>
+                <span>{active.name || active.key}</span>
             </button>
-            {open && (
-                <ul
-                    className="dropdown-menu show"
-                    style={{
-                        position: 'absolute',
-                        top: '100%',
-                        right: 0,
-                        minWidth: 200,
-                        zIndex: 1050,
-                        marginTop: 4,
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                    }}
-                >
-                    <li className="dropdown-header" style={{ fontSize: '0.7rem', textTransform: 'uppercase' }}>
-                        Switch role for <strong>{appName}</strong>
-                    </li>
-                    {list.map((role) => {
-                        const selected = role.key === active.key;
-                        const adminish = /(?:^|_)admin$/.test(String(role.key || ''));
-                        return (
-                            <li key={role.key}>
-                                <button
-                                    type="button"
-                                    className={`dropdown-item${selected ? ' active' : ''}`}
-                                    onClick={() => {
-                                        setOpen(false);
-                                        if (!selected) setActiveRoleForApp(role.key);
-                                    }}
-                                >
-                                    <i className={`fa-solid ${adminish ? 'fa-shield-halved' : 'fa-user'} me-2`}></i>
-                                    <span>{role.name || role.key}</span>
-                                    {selected && (
-                                        <i className="fa-solid fa-check ms-2 float-end" style={{ marginTop: 4 }}></i>
-                                    )}
-                                </button>
-                            </li>
-                        );
-                    })}
-                </ul>
-            )}
+            <div className={`dropdown-menu dropdown-menu-end${open ? ' show' : ''}`} style={{ minWidth: 220 }}>
+                <div className="dropdown-header text-uppercase small fw-semibold">
+                    Switch role for <span className="text-primary">{appName}</span>
+                </div>
+                <hr className="dropdown-divider" />
+                {list.map((role) => {
+                    const selected = role.key === active.key;
+                    const adminish = /(?:^|_)admin$/.test(String(role.key || ''));
+                    return (
+                        <button
+                            key={role.key}
+                            type="button"
+                            className={`dropdown-item d-flex align-items-center gap-2 py-2${selected ? ' active' : ''}`}
+                            onClick={() => {
+                                setOpen(false);
+                                if (!selected) setActiveRoleForApp(role.key);
+                            }}
+                        >
+                            <i className={`fa-solid ${adminish ? 'fa-shield-halved' : 'fa-user'}`} style={{ width: 18, textAlign: 'center' }}></i>
+                            <span className="flex-grow-1">{role.name || role.key}</span>
+                            {selected && <i className="fa-solid fa-check ms-2"></i>}
+                        </button>
+                    );
+                })}
+            </div>
         </div>
     );
 }
