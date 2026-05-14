@@ -33,11 +33,8 @@ export default function Navigation() {
             style={{ height: 28, objectFit: "contain" }}
         />
     ) : (
-        <>
-            <i className="fa-solid fa-feather-pointed text-warning"></i>
-            <span>Rutba CMS</span>
-        </>
+        <i className="fa-solid fa-feather-pointed text-warning"></i>
     );
 
-    return <Topbar currentApp="cms" brand={brand} secondary={SECONDARY} />;
+    return <Topbar currentApp="cms" brand={brand} appName="Rutba CMS" secondary={SECONDARY} />;
 }

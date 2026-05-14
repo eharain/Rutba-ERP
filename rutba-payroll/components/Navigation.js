@@ -10,11 +10,9 @@ export default function Navigation() {
     return (
         <Topbar
             currentApp="payroll"
+            appName="Rutba Payroll"
             secondary={SECONDARY}
-            brand={<>
-                <i className="fa-solid fa-money-bill-trend-up text-warning"></i>
-                <span>Rutba Payroll</span>
-            </>}
+            brand={<i className="fa-solid fa-money-bill-trend-up text-warning"></i>}
         />
     );
 }

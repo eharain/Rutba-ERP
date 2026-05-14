@@ -20,12 +20,10 @@ export default function Navigation() {
     return (
         <Topbar
             currentApp="stock"
+            appName="Rutba Stock"
             secondaryLabel="Create"
             secondary={SECONDARY}
-            brand={<>
-                <i className="fa-solid fa-warehouse text-warning"></i>
-                <span>Rutba Stock</span>
-            </>}
+            brand={<i className="fa-solid fa-warehouse text-warning"></i>}
         />
     );
 }

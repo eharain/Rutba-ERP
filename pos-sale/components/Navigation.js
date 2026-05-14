@@ -21,12 +21,10 @@ export default function Navigation() {
     return (
         <Topbar
             currentApp="sale"
+            appName="Rutba POS"
             secondaryLabel="Create"
             secondary={SECONDARY}
-            brand={<>
-                <i className="fa-solid fa-cash-register text-warning"></i>
-                <span>Rutba POS</span>
-            </>}
+            brand={<i className="fa-solid fa-cash-register text-warning"></i>}
         />
     );
 }

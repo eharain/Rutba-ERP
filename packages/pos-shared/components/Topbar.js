@@ -28,6 +28,7 @@ import NavAppSwitcher from "./NavAppSwitcher";
 export default function Topbar({
     currentApp,
     brand,
+    appName,
     secondary,
     secondaryLabel = "Quick",
     authCallbackPath = "/auth/callback",
@@ -41,16 +42,22 @@ export default function Topbar({
     const userLabel = user?.username || user?.email || "";
     const appOrigin = (typeof window !== "undefined" && window.location?.origin) || APP_URLS[currentApp] || "";
 
+    const fallbackName = meta.label || (currentApp ? `Rutba ${currentApp}` : 'Rutba');
+    const resolvedAppName = appName || fallbackName;
+
     return (
         <nav className="topbar">
             <Link className="topbar-brand" href="/">
                 {brand || (
-                    <>
-                        <i className={`${meta.icon || 'fa-solid fa-cube'} ${meta.color || 'text-warning'}`}></i>
-                        <span>{meta.label || (currentApp ? `Rutba ${currentApp}` : 'Rutba')}</span>
-                    </>
+                    <i className={`${meta.icon || 'fa-solid fa-cube'} ${meta.color || 'text-warning'}`}></i>
                 )}
             </Link>
+
+            {resolvedAppName && (
+                <span className="topbar-appname" title={resolvedAppName}>
+                    {resolvedAppName}
+                </span>
+            )}
 
             {Array.isArray(secondary) && secondary.length > 0 && (
                 <ul className="topbar-secondary">
