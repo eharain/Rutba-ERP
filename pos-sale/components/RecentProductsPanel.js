@@ -259,15 +259,16 @@ export default function RecentProductsPanel({ disabled, usedStockIds, onAddStock
         );
     };
 
-    const renderTile = (entry, { showUnpin = false } = {}) => {
+    const renderTile = (entry, { unpinMode = false } = {}) => {
         const key = entryKeyOf(entry);
         const isBusy = busy === key;
         const isPinned = pinnedKeys.has(key);
         return (
-            <div key={`${key}`} className="position-relative">
+            <div key={`${key}`} className={`position-relative ${unpinMode ? 'rounded' : ''}`}
+                 style={unpinMode ? { background: 'rgba(255,193,7,0.08)' } : undefined}>
                 <button
                     type="button"
-                    className="btn btn-sm btn-outline-secondary text-start w-100 pe-4 d-flex align-items-center gap-2"
+                    className={`btn btn-sm ${unpinMode ? 'btn-outline-warning' : 'btn-outline-secondary'} text-start w-100 pe-4 d-flex align-items-center gap-2`}
                     disabled={disabled || isBusy}
                     onClick={() => handlePick(entry)}
                     style={{ fontSize: 12, lineHeight: 1.2, whiteSpace: 'normal' }}
@@ -303,13 +304,31 @@ export default function RecentProductsPanel({ disabled, usedStockIds, onAddStock
                 </button>
                 <button
                     type="button"
-                    className="btn btn-link btn-sm position-absolute end-0 top-0 p-1 text-muted"
-                    title={isPinned ? 'Unpin' : 'Pin'}
+                    className={`btn btn-sm position-absolute end-0 top-0 ${unpinMode ? 'text-danger' : 'btn-link text-muted'}`}
+                    title={unpinMode ? `Unpin "${entry.name}"` : (isPinned ? 'Unpin' : 'Pin to Quick add')}
                     onClick={(e) => togglePin(entry, e)}
-                    style={{ lineHeight: 1 }}
+                    style={{
+                        lineHeight: 1,
+                        padding: '2px 6px',
+                        background: unpinMode ? 'rgba(220,53,69,0.1)' : undefined,
+                        borderRadius: '0 4px 0 4px',
+                    }}
                 >
-                    <i className={`fas ${isPinned ? 'fa-thumbtack text-warning' : 'fa-thumbtack'}`}
-                        style={{ fontSize: 10, opacity: isPinned ? 1 : 0.4, transform: isPinned ? 'none' : 'rotate(45deg)' }} />
+                    {unpinMode ? (
+                        // Small per-tile × — clearly visible (red) so the
+                        // user knows each pinned tile can be removed
+                        // independently, but kept compact so it doesn't
+                        // overpower the tile content.
+                        <i className="fas fa-times" style={{ fontSize: 10, fontWeight: 700 }} />
+                    ) : (
+                        <i className="fas fa-thumbtack"
+                            style={{
+                                fontSize: 10,
+                                opacity: isPinned ? 1 : 0.4,
+                                transform: isPinned ? 'none' : 'rotate(45deg)',
+                                color: isPinned ? '#f0a500' : undefined,
+                            }} />
+                    )}
                 </button>
             </div>
         );
@@ -389,7 +408,7 @@ export default function RecentProductsPanel({ disabled, usedStockIds, onAddStock
                                 <i className="fas fa-thumbtack me-1 text-warning" style={{ fontSize: 10 }}></i>Pinned
                             </div>
                             <div className="d-grid gap-1 mb-2">
-                                {pinned.map((p) => renderTile(p, { showUnpin: true }))}
+                                {pinned.map((p) => renderTile(p, { unpinMode: true }))}
                             </div>
                         </>
                     )

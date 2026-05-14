@@ -40,6 +40,7 @@ export { PurchasesEndpoints } from './purchases.js';
 export { ReturnRequestsEndpoints } from './return-requests.js';
 export { RiderEndpoints } from './rider-endpoints.js';
 export { RidersEndpoints } from './riders.js';
+export { SaleAuditLogsEndpoints } from './sale-audit-logs.js';
 export { SaleItemsEndpoints } from './sale-items.js';
 export { SaleOffersEndpoints } from './sale-offers.js';
 export { SaleOrdersEndpoints } from './sale-orders.js';
