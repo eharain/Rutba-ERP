@@ -2,7 +2,7 @@ import dynamic from "next/dynamic";
 import { useUtil } from "../context/UtilContext";
 import { useAuth } from "../context/AuthContext";
 import { useEffect, useState } from "react";
-import { getCrossAppLinks, APP_URLS } from "../lib/roles";
+import { getCrossAppLinks } from "../lib/roles";
 
 function FooterInfo({ currentApp }) {
     const [location, setLocation] = useState("");
@@ -17,10 +17,6 @@ function FooterInfo({ currentApp }) {
     const apps = getCrossAppLinks(effectiveAccess, currentApp)
         .sort((a, b) => String(a.label || '').localeCompare(String(b.label || '')));
 
-    // Public storefront — not gated by appAccess, always shown
-    const webHref = APP_URLS.web;
-    const showWeb = Boolean(webHref) && currentApp !== 'web';
-
     return (
         <footer className="footer-info">
             <span className="footer-info-location">
@@ -32,34 +28,26 @@ function FooterInfo({ currentApp }) {
                 )}
             </span>
 
-            {(apps.length > 0 || showWeb) && (
+            {apps.length > 0 && (
                 <ul className="footer-info-apps">
-                    {showWeb && (
-                        <li>
-                            <a
-                                href={webHref}
-                                className="footer-info-app text-info"
-                                title="Storefront"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                            >
-                                <i className="fa-solid fa-globe"></i>
-                                <span>Storefront</span>
-                            </a>
-                        </li>
-                    )}
-                    {apps.map((app) => (
-                        <li key={app.key}>
-                            <a
-                                href={app.href}
-                                className={`footer-info-app ${app.color || ''}`}
-                                title={app.label}
-                            >
-                                <i className={app.icon}></i>
-                                <span>{app.label}</span>
-                            </a>
-                        </li>
-                    ))}
+                    {apps.map((app) => {
+                        const linkProps = app.external
+                            ? { target: "_blank", rel: "noopener noreferrer" }
+                            : {};
+                        return (
+                            <li key={app.key}>
+                                <a
+                                    {...linkProps}
+                                    href={app.href}
+                                    className={`footer-info-app ${app.color || ''}`}
+                                    title={app.label}
+                                >
+                                    <i className={app.icon}></i>
+                                    <span>{app.label}</span>
+                                </a>
+                            </li>
+                        );
+                    })}
                 </ul>
             )}
         </footer>
