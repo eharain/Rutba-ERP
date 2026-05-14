@@ -769,6 +769,8 @@ export default function SuppliersPage() {
                                                 multiple={false}
                                                 refName="supplier"
                                                 refId={selectedSupplier.id}
+                                                refDocumentId={selectedSupplier.documentId}
+                                                refDraft
                                                 field="logo"
                                                 name={selectedSupplier.name}
                                             />
@@ -781,6 +783,8 @@ export default function SuppliersPage() {
                                                 multiple={true}
                                                 refName="supplier"
                                                 refId={selectedSupplier.id}
+                                                refDocumentId={selectedSupplier.documentId}
+                                                refDraft
                                                 field="gallery"
                                                 name={selectedSupplier.name}
                                             />

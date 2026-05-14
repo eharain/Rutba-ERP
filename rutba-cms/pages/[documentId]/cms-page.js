@@ -531,6 +531,8 @@ export default function CmsPageDetail() {
                                                 single={page.featured_image}
                                                 refName="cms-page"
                                                 refId={page.id}
+                                                refDocumentId={documentId}
+                                                refDraft
                                                 field="featured_image"
                                                 name={title}
                                                 onFileChange={(f, file) => setFeaturedImageId(file?.id || null)}
@@ -544,6 +546,8 @@ export default function CmsPageDetail() {
                                                 single={page.background_image}
                                                 refName="cms-page"
                                                 refId={page.id}
+                                                refDocumentId={documentId}
+                                                refDraft
                                                 field="background_image"
                                                 name={title}
                                                 onFileChange={(f, file) => setBackgroundImageId(file?.id || null)}
@@ -559,6 +563,8 @@ export default function CmsPageDetail() {
                                                 multiple
                                                 refName="cms-page"
                                                 refId={page.id}
+                                                refDocumentId={documentId}
+                                                refDraft
                                                 field="gallery"
                                                 name={title}
                                                 onFileChange={(f, files) => setGalleryIds((files || []).map(g => g.id).filter(Boolean))}

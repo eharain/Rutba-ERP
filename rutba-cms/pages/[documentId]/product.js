@@ -32,6 +32,8 @@ export default function ProductDetail() {
     const [sellingPrice, setSellingPrice] = useState("");
     const [offerPrice, setOfferPrice] = useState("");
     const [isActive, setIsActive] = useState(true);
+    const [logoFile, setLogoFile] = useState(null);
+    const [galleryFiles, setGalleryFiles] = useState([]);
     const [allGroups, setAllGroups] = useState([]);
     const [selectedGroupIds, setSelectedGroupIds] = useState([]);
     const [groupsLoading, setGroupsLoading] = useState(false);
@@ -70,6 +72,8 @@ export default function ProductDetail() {
             setSellingPrice(p.selling_price ?? "");
             setOfferPrice(p.offer_price ?? "");
             setIsActive(p.is_active ?? true);
+            setLogoFile(p.logo || null);
+            setGalleryFiles(Array.isArray(p.gallery) ? p.gallery : []);
         } catch (err) {
             console.error("Failed to load product", err);
         } finally {
@@ -78,6 +82,27 @@ export default function ProductDetail() {
     }, [jwt, documentId, isNew]);
 
     useEffect(() => { loadProduct(); }, [loadProduct]);
+
+    // FileView reports both upload-attachments and media-library picks here.
+    // Upload-attachments are persisted server-side by Strapi's /upload route
+    // (via ref/refId/field), but media-library picks need to be written to
+    // the entity's relation explicitly. Mirroring the value into local state
+    // lets handleSave/handlePublish include it in the draft payload either
+    // way, so a reload re-hydrates whatever the user last picked.
+    const handleFileFieldChange = (field, value, isMultiple) => {
+        if (field === "logo") setLogoFile(value || null);
+        else if (field === "gallery") setGalleryFiles(Array.isArray(value) ? value : []);
+    };
+
+    // Strapi 5 media payload shape: a numeric id (or null) for single media,
+    // and a plain array of numeric ids for multiple media. The relation-style
+    // { set: [...] } / { connect: [...] } syntax is for ordinary relations,
+    // not media fields — using it here makes the update silently no-op and
+    // the populated relation comes back null on reload.
+    const fileFieldsPayload = () => ({
+        logo: logoFile?.id ?? null,
+        gallery: galleryFiles.map(f => f?.id).filter(Boolean),
+    });
 
     const loadProductGroups = useCallback(async () => {
         if (!jwt || !documentId || isNew) return;
@@ -113,6 +138,7 @@ export default function ProductDetail() {
                 selling_price: parseFloat(sellingPrice) || 0,
                 offer_price: offerPrice ? parseFloat(offerPrice) : null,
                 is_active: isActive,
+                ...(isNew ? {} : fileFieldsPayload()),
             };
             if (isNew) {
                 const res = await ProductsEndpoints.create({ ...payload, status: "draft" });
@@ -141,6 +167,7 @@ export default function ProductDetail() {
                 selling_price: parseFloat(sellingPrice) || 0,
                 offer_price: offerPrice ? parseFloat(offerPrice) : null,
                 is_active: isActive,
+                ...(isNew ? {} : fileFieldsPayload()),
             };
             if (isNew) {
                 const res = await ProductsEndpoints.create(data);
@@ -205,6 +232,8 @@ export default function ProductDetail() {
             setSellingPrice(p.selling_price ?? "");
             setOfferPrice(p.offer_price ?? "");
             setIsActive(p.is_active ?? true);
+            setLogoFile(p.logo || null);
+            setGalleryFiles(Array.isArray(p.gallery) ? p.gallery : []);
             setProduct(p);
             toast("Draft saved. Showing published version — click Save Draft to overwrite.", "success");
         } catch (err) {
@@ -414,11 +443,14 @@ export default function ProductDetail() {
                                         <div className="card-header">Logo</div>
                                         <div className="card-body">
                                             <FileView
-                                                single={product.logo}
+                                                single={logoFile}
                                                 refName="product"
                                                 refId={product.id}
+                                                refDocumentId={documentId}
+                                                refDraft
                                                 field="logo"
                                                 name={name}
+                                                onFileChange={handleFileFieldChange}
                                             />
                                         </div>
                                     </div>
@@ -426,12 +458,15 @@ export default function ProductDetail() {
                                         <div className="card-header">Gallery</div>
                                         <div className="card-body">
                                             <FileView
-                                                gallery={product.gallery || []}
+                                                gallery={galleryFiles}
                                                 multiple
                                                 refName="product"
                                                 refId={product.id}
+                                                refDocumentId={documentId}
+                                                refDraft
                                                 field="gallery"
                                                 name={name}
+                                                onFileChange={handleFileFieldChange}
                                             />
                                         </div>
                                     </div>

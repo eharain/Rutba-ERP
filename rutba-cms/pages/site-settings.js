@@ -243,6 +243,8 @@ export default function SiteSettingsPage() {
                                             single={record.site_logo}
                                             refName="site-setting"
                                             refId={record.id}
+                                            refIsSingleType
+                                            refDraft
                                             field="site_logo"
                                             name="site-logo"
                                         />
@@ -260,6 +262,8 @@ export default function SiteSettingsPage() {
                                             single={record.favicon}
                                             refName="site-setting"
                                             refId={record.id}
+                                            refIsSingleType
+                                            refDraft
                                             field="favicon"
                                             name="favicon"
                                         />

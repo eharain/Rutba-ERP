@@ -1,5 +1,5 @@
 import { authApi } from '../../../lib/api.js';
-import { withQuery, strictEndpointGuard } from './___core__.js';
+import { withQuery, wrapData, strictEndpointGuard } from './___core__.js';
 import { SaleOffersEndpoints as SaleOffersEndpointsApi } from '../../../api/sale-offers.js';
 
 async function listDraft(arg1 = {}) {
@@ -24,22 +24,22 @@ async function byIdPublished(documentId, arg2 = {}) {
 
 async function create(data) {
     const ep = SaleOffersEndpointsApi.create(data);
-    return authApi.fetch(ep.path, ep.params);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
 async function updateDraft(documentId, data) {
     const ep = SaleOffersEndpointsApi.updateDraft(documentId, data);
-    return authApi.fetch(ep.path, ep.params);
+    return authApi.put(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
 async function publish(documentId) {
     const ep = SaleOffersEndpointsApi.publish(documentId);
-    return authApi.fetch(ep.path, ep.params);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
 async function unpublish(documentId) {
     const ep = SaleOffersEndpointsApi.unpublish(documentId);
-    return authApi.fetch(ep.path, ep.params);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
 async function del(documentId) {

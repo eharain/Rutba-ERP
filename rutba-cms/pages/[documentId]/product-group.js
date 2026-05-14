@@ -503,6 +503,8 @@ export default function ProductGroupDetail() {
                                                 single={group.cover_image}
                                                 refName="product-group"
                                                 refId={group.id}
+                                                refDocumentId={documentId}
+                                                refDraft
                                                 field="cover_image"
                                                 name={name}
                                             />
@@ -515,6 +517,8 @@ export default function ProductGroupDetail() {
                                                 single={group.gallery}
                                                 refName="product-group"
                                                 refId={group.id}
+                                                refDocumentId={documentId}
+                                                refDraft
                                                 field="gallery"
                                                 name={name}
                                             />

@@ -325,6 +325,8 @@ export default function PostDetailPage() {
                                     single={post.cover}
                                     refName="social-post"
                                     refId={post.id}
+                                    refDocumentId={documentId}
+                                    refDraft
                                     field="cover"
                                     name={title}
                                     onFileChange={(f, file) => setCoverId(file?.id || null)}
@@ -341,6 +343,8 @@ export default function PostDetailPage() {
                                     multiple
                                     refName="social-post"
                                     refId={post.id}
+                                    refDocumentId={documentId}
+                                    refDraft
                                     field="video"
                                     name={title}
                                     accept="video/*"

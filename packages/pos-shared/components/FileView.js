@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { storage } from '@rutba/api-provider/lib/storage';
 import { StraipImageUrl, isImage, isPDF, isVideo } from "@rutba/api-provider/lib/api";
+import { authApi } from "@rutba/api-provider/lib/api";
 import { MediaLibraryEndpoints, UploadEndpoints } from "@rutba/api-provider/endpoints";
 import StrapiMediaLibrary from './StrapiMediaLibrary';
 // Utility functions
@@ -11,9 +12,68 @@ export async function uploadToStrapiFiles(files = [], ref, field, refId, info) {
     return await UploadEndpoints.uploadFiles(files, ref, field, refId, info);
 }
 
-function FileView({ onFileChange = function (field, files, multiple) { }, single = null, gallery = [], multiple = false, refName = null, refId = null, field = null, autoUpload = true, name = null, accept = null, buttonLabel = null }) {
+// Strapi's pluralisation rules (matches pluralize.js for the simple cases
+// this codebase uses). Consumers can override via the `refPlural` prop for
+// irregular nouns we don't cover here.
+function defaultPluralOf(singular) {
+    if (!singular) return null;
+    const s = singular.toLowerCase();
+    if (/[^aeiou]y$/.test(s)) return s.slice(0, -1) + 'ies';
+    if (/(s|x|z|ch|sh)$/.test(s)) return s + 'es';
+    return s + 's';
+}
+
+// Persist a media-relation change to the entity. The Strapi /upload route
+// auto-attaches NEW uploads via ref/refId/field, but Browse-Gallery picks
+// and Remove buttons don't go through /upload, so we have to PUT the
+// content-type endpoint directly. Without this, those flows update only
+// FileView's local state and the relation reverts on page reload.
+async function persistMediaRelation({ refName, refPlural, refDocumentId, refDraft, refIsSingleType, field, value }) {
+    if (!refName || !field) return;
+    // Single types: PUT /api/{singular} — no plural form, no id. Collection
+    // types: PUT /api/{plural}/{documentId}.
+    let path;
+    if (refIsSingleType) {
+        path = `/${refName}`;
+    } else {
+        if (!refDocumentId) return;
+        const plural = refPlural || defaultPluralOf(refName);
+        if (!plural) return;
+        path = `/${plural}/${refDocumentId}`;
+    }
+    const query = refDraft ? '?status=draft' : '';
+    try {
+        await authApi.put(`${path}${query}`, { data: { [field]: value } });
+    } catch (err) {
+        console.error(`Failed to persist ${field} on ${path}`, err);
+        throw err;
+    }
+}
+
+function FileView({
+    onFileChange = function (field, files, multiple) { },
+    single = null, gallery = [], multiple = false,
+    refName = null, refId = null, refDocumentId = null, refPlural = null, refDraft = false, refIsSingleType = false,
+    field = null, autoUpload = true, name = null, accept = null, buttonLabel = null,
+}) {
     const [singleFile, setSingleFile] = useState(single);
     const [galleryFiles, setGalleryFiles] = useState(gallery);
+    // Sync internal state when the parent's prop CONTENT changes — not on
+    // every render. Callers commonly write `gallery={x.gallery || []}` which
+    // creates a fresh `[]` each render; depending on the array reference
+    // would re-fire the effect, call setState, re-render, and loop.
+    // Depending on id-derived primitive keys gates the sync to real changes.
+    const singleKey = single?.id ?? null;
+    const galleryKey = Array.isArray(gallery) ? gallery.map(f => f?.id ?? '').join(',') : '';
+    useEffect(() => {
+        if ((singleFile?.id ?? null) !== singleKey) setSingleFile(single);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [singleKey]);
+    useEffect(() => {
+        const stateKey = galleryFiles.map(f => f?.id ?? '').join(',');
+        if (stateKey !== galleryKey) setGalleryFiles(Array.isArray(gallery) ? gallery : []);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [galleryKey]);
     const [uploading, setUploading] = useState(false);
     const [uploadError, setUploadError] = useState(null);
     const [showMediaLibrary, setShowMediaLibrary] = useState(false);
@@ -84,42 +144,65 @@ function FileView({ onFileChange = function (field, files, multiple) { }, single
         e.target.value = '';
     };
 
-    const handleRemove = (index) => {
+    const handleRemove = async (index) => {
         const updated = galleryFiles.filter((_, i) => i !== index);
         setGalleryFiles(updated);
         onFileChange(field, updated, multiple);
+        if (autoUpload && refName && field && (refDocumentId || refIsSingleType)) {
+            try {
+                await persistMediaRelation({
+                    refName, refPlural, refDocumentId, refDraft, refIsSingleType, field,
+                    value: updated.map(f => f?.id).filter(Boolean),
+                });
+            } catch (err) {
+                setUploadError(err?.message || 'Failed to update');
+            }
+        }
     };
 
-    const handleRemoveSingle = () => {
+    const handleRemoveSingle = async () => {
         if (!singleFile) return;
         setSingleFile(null);
         onFileChange(field, null, multiple);
+        if (autoUpload && refName && field && (refDocumentId || refIsSingleType)) {
+            try {
+                await persistMediaRelation({
+                    refName, refPlural, refDocumentId, refDraft, refIsSingleType, field, value: null,
+                });
+            } catch (err) {
+                setUploadError(err?.message || 'Failed to update');
+            }
+        }
     };
 
     const handleMediaLibrarySelect = async (selectedFiles) => {
         if (!selectedFiles || selectedFiles.length === 0) return;
 
+        let value;
         if (multiple) {
-            if (autoUpload && refName && refId && field) {
-                // Attach selected media to the entity by updating the relation
-                const current = (galleryFiles ?? []).map(f => ({ ...f }));
-                const existingIds = new Set(current.map(f => f.id));
-                const newFiles = selectedFiles.filter(f => !existingIds.has(f.id));
-                const all = [...current, ...newFiles];
-                setGalleryFiles(all);
-                onFileChange(field, all, multiple);
-            } else {
-                const current = (galleryFiles ?? []).map(f => ({ ...f }));
-                const existingIds = new Set(current.map(f => f.id));
-                const newFiles = selectedFiles.filter(f => !existingIds.has(f.id));
-                const all = [...current, ...newFiles];
-                setGalleryFiles(all);
-                onFileChange(field, all, multiple);
-            }
+            const current = (galleryFiles ?? []).map(f => ({ ...f }));
+            const existingIds = new Set(current.map(f => f.id));
+            const newFiles = selectedFiles.filter(f => !existingIds.has(f.id));
+            const all = [...current, ...newFiles];
+            setGalleryFiles(all);
+            onFileChange(field, all, multiple);
+            value = all.map(f => f?.id).filter(Boolean);
         } else {
             const picked = selectedFiles[0];
             setSingleFile(picked);
             onFileChange(field, picked, multiple);
+            value = picked?.id ?? null;
+        }
+
+        // Persist the media-relation change. Browse-Gallery doesn't go
+        // through Strapi's /upload route, so the relation has to be written
+        // explicitly or the pick is forgotten on reload.
+        if (autoUpload && refName && field && (refDocumentId || refIsSingleType)) {
+            try {
+                await persistMediaRelation({ refName, refPlural, refDocumentId, refDraft, field, value });
+            } catch (err) {
+                setUploadError(err?.message || 'Failed to save selection');
+            }
         }
     };
 

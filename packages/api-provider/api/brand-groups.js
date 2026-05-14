@@ -9,7 +9,7 @@ export const BrandGroupsEndpoints = {
     meta: {
         uid: 'api::brand-group.brand-group',
         domains: ['cms', 'stock'],
-        roles: ['admin', 'manager', 'staff']
+        roles: ['admin', 'manager', 'staff'],
     },
 
     listDraft: ({ page, pageSize, sort, populate, filters, fields } = {}) => ({
