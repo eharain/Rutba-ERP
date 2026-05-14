@@ -8,16 +8,32 @@ import NavAppSwitcher from "./NavAppSwitcher";
 /**
  * Shared slim top bar used alongside the left Sidebar rail.
  *
- * Holds only the brand (left) and the Apps/Role/User actions (right).
- * The primary nav lives in the Sidebar.
+ * Layout: brand on the left, an optional inline list of quick-action
+ * shortcuts in the middle (`secondary`), and Apps/Role/User on the
+ * right. The primary nav lives in the Sidebar.
  *
  * @param {string} currentApp - app key (e.g. 'sale', 'hr', 'cms')
- * @param {React.ReactNode} brand - optional custom brand node; if
- *   omitted, falls back to APP_META[currentApp] (icon + label).
+ * @param {React.ReactNode} brand - optional custom brand node
+ * @param {string} secondaryLabel - small uppercase label before the
+ *   secondary list (e.g. "Create", "Quick"). Hidden if no items.
+ * @param {Array<{href:string,label:string,icon?:string,variant?:string,external?:boolean}>} secondary
+ *   - inline shortcut buttons rendered in the middle of the bar.
+ *   `variant` is a Bootstrap colour suffix (success, info, warning,
+ *   primary, secondary, dark) and defaults to 'light'.
  * @param {string} authCallbackPath - relative path used as the
  *   post-login callback (defaults to '/auth/callback').
+ * @param {string} loginHref - override the login button target.
+ * @param {boolean} showRoleSwitcher - hide the role switcher.
  */
-export default function Topbar({ currentApp, brand, authCallbackPath = "/auth/callback", loginHref, showRoleSwitcher = true }) {
+export default function Topbar({
+    currentApp,
+    brand,
+    secondary,
+    secondaryLabel = "Quick",
+    authCallbackPath = "/auth/callback",
+    loginHref,
+    showRoleSwitcher = true,
+}) {
     const { user } = useAuth();
     const router = useRouter();
 
@@ -35,6 +51,32 @@ export default function Topbar({ currentApp, brand, authCallbackPath = "/auth/ca
                     </>
                 )}
             </Link>
+
+            {Array.isArray(secondary) && secondary.length > 0 && (
+                <ul className="topbar-secondary">
+                    {secondaryLabel && (
+                        <li className="topbar-secondary-label">{secondaryLabel}</li>
+                    )}
+                    {secondary.map((item) => {
+                        const linkProps = item.external
+                            ? { href: item.href, target: "_blank", rel: "noopener noreferrer" }
+                            : { href: item.href };
+                        const LinkEl = item.external ? "a" : Link;
+                        const variant = item.variant || "light";
+                        return (
+                            <li key={item.href} className="topbar-secondary-item">
+                                <LinkEl
+                                    {...linkProps}
+                                    className={`btn btn-sm btn-outline-${variant} d-inline-flex align-items-center gap-1`}
+                                >
+                                    {item.icon && <i className={`fa-solid ${item.icon}`}></i>}
+                                    <span>{item.label}</span>
+                                </LinkEl>
+                            </li>
+                        );
+                    })}
+                </ul>
+            )}
 
             <div className="topbar-actions">
                 <NavAppSwitcher currentApp={currentApp} />

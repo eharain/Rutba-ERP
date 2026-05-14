@@ -342,6 +342,44 @@ a:hover { text-decoration: underline; }
     gap: 0.25rem;
 }
 
+/* Inline quick-action shortcuts in the top bar */
+.topbar-secondary {
+    list-style: none;
+    margin: 0 0.5rem;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-wrap: nowrap;
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: thin;
+}
+
+.topbar-secondary::-webkit-scrollbar { height: 4px; }
+.topbar-secondary::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.18); border-radius: 2px; }
+
+.topbar-secondary-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.55);
+    padding-right: 0.4rem;
+    border-right: 1px solid rgba(255, 255, 255, 0.12);
+    margin-right: 0.25rem;
+    white-space: nowrap;
+}
+
+.topbar-secondary-item .btn {
+    --bs-btn-padding-y: 0.2rem;
+    --bs-btn-padding-x: 0.6rem;
+    --bs-btn-font-size: 0.78rem;
+    --bs-btn-border-radius: 0.4rem;
+    white-space: nowrap;
+}
+
 .topbar-actions .nav-link {
     color: var(--rutba-nav-text);
     padding: 0.35rem 0.7rem;
