@@ -3,6 +3,15 @@ import Topbar from "@rutba/pos-shared/components/Topbar";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { MediaUtilsEndpoints, SiteSettingEndpoints } from "@rutba/api-provider/endpoints";
 
+const SECONDARY = [
+    { href: "/products",       label: "Products",   icon: "fa-tag",          variant: "primary"   },
+    { href: "/categories",     label: "Categories", icon: "fa-folder-tree",  variant: "info"      },
+    { href: "/brands",         label: "Brands",     icon: "fa-copyright",    variant: "secondary" },
+    { href: "/product-groups", label: "Groups",     icon: "fa-object-group", variant: "success"   },
+    { href: "/pages",          label: "Pages",      icon: "fa-file-lines",   variant: "warning"   },
+    { href: "/media",          label: "Media",      icon: "fa-photo-film",   variant: "dark"      },
+];
+
 export default function Navigation() {
     const { jwt } = useAuth();
     const [siteLogo, setSiteLogo] = useState(null);
@@ -30,5 +39,5 @@ export default function Navigation() {
         </>
     );
 
-    return <Topbar currentApp="cms" brand={brand} />;
+    return <Topbar currentApp="cms" brand={brand} secondary={SECONDARY} />;
 }
