@@ -8,8 +8,9 @@ import { isAppAdmin, isActiveAdminRole } from "@rutba/pos-shared/lib/roles";
 import { BranchesEndpoints, SalesEndpoints } from "@rutba/api-provider/endpoints";
 import SaleApi from "@rutba/pos-shared/lib/saleApi";
 import Link from "next/link";
-import { Table, TableHead, TableRow, TableCell, TableBody, CircularProgress, TablePagination } from "@rutba/pos-shared/components/Table";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
+import ListPageLayout, { AddButton } from "@rutba/pos-shared/components/ListPageLayout";
+import ListPagination from "@rutba/pos-shared/components/ListPagination";
 
 const PAYMENT_STATUSES = ["Paid", "Partial", "Unpaid"];
 const RETURN_STATUSES = ["None", "Returned", "PartiallyReturned"];
@@ -18,7 +19,7 @@ const SEARCH_FIELDS = [
     { key: "stock_item", label: "Stock Item" },
     { key: "customer", label: "Customer" },
     { key: "invoice_no", label: "Invoice No" },
-   
+
 ];
 const ADMIN_SEARCH_FIELDS = [
     { key: "owner", label: "Owner" },
@@ -65,8 +66,9 @@ export default function Sales() {
     const { jwt, adminAppAccess, activeRoleKey } = useAuth();
     const admin = isAppAdmin(adminAppAccess, "sale");
     const elevated = admin && isActiveAdminRole(activeRoleKey);
-    const [page, setPage] = useState(0);
-    const [rowsPerPage, setRowsPerPage] = useState(10);
+    // 1-based page for ListPagination
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
     const [total, setTotal] = useState(0);
     const [loading, setLoading] = useState(false);
     const [cancellingId, setCancellingId] = useState(null);
@@ -211,7 +213,7 @@ export default function Sales() {
                     }
                 }
 
-                const res = await fetchSales(page + 1, rowsPerPage, {
+                const res = await fetchSales(page, pageSize, {
                     sort: [`${sortField}:${sortOrder}`],
                     filters: Object.keys(filters).length > 0 ? filters : undefined,
                     populate,
@@ -227,14 +229,7 @@ export default function Sales() {
             }
         })();
         return () => { cancelled = true; };
-    }, [jwt, page, rowsPerPage, sortField, sortOrder, buildFilters, populate, refreshKey, searchText, searchField, priceByItem, totalMin, totalMax]);
-
-    const handleChangePage = (_, newPage) => setPage(newPage);
-
-    const handleChangeRowsPerPage = (e) => {
-        setRowsPerPage(parseInt(e.target.value, 10));
-        setPage(0);
-    };
+    }, [jwt, page, pageSize, sortField, sortOrder, buildFilters, populate, refreshKey, searchText, searchField, priceByItem, totalMin, totalMax]);
 
     const handleSort = (field) => {
         if (sortField === field) {
@@ -243,7 +238,7 @@ export default function Sales() {
             setSortField(field);
             setSortOrder("asc");
         }
-        setPage(0);
+        setPage(1);
     };
 
     const handleClearFilters = () => {
@@ -257,7 +252,7 @@ export default function Sales() {
         setTotalMax("");
         setPriceByItem(false);
         setBranchFilter("");
-        setPage(0);
+        setPage(1);
     };
 
     const hasFilters = paymentStatus || returnStatus || searchText || dateFrom || dateTo || totalMin || totalMax || priceByItem || branchFilter;
@@ -310,179 +305,158 @@ export default function Sales() {
     const visibleColumns = showTotal ? COLUMNS : COLUMNS.filter(c => c.key !== 'total');
     const colCount = visibleColumns.length + 2;
 
+    const filterNodes = [
+        <div key="search" className="input-group input-group-sm">
+            <select
+                className="form-select form-select-sm"
+                value={searchField}
+                onChange={e => { setSearchField(e.target.value); setPage(1); }}
+                style={{ maxWidth: 140 }}
+            >
+                {SEARCH_FIELDS.map(f => <option key={f.key} value={f.key}>{f.label}</option>)}
+                {admin && ADMIN_SEARCH_FIELDS.map(f => <option key={f.key} value={f.key}>{f.label}</option>)}
+            </select>
+            <input
+                type="text"
+                className="form-control form-control-sm"
+                placeholder="Search…"
+                value={searchText}
+                onChange={e => { setSearchText(e.target.value); setPage(1); }}
+            />
+        </div>,
+        <select key="payment" className="form-select form-select-sm" value={paymentStatus} onChange={e => { setPaymentStatus(e.target.value); setPage(1); }} title="Payment">
+            <option value="">Payment: All</option>
+            {PAYMENT_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+        </select>,
+        <select key="return" className="form-select form-select-sm" value={returnStatus} onChange={e => { setReturnStatus(e.target.value); setPage(1); }} title="Return">
+            <option value="">Return: All</option>
+            {RETURN_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+        </select>,
+        <input key="min" type="number" className="form-control form-control-sm" placeholder={priceByItem ? 'Item Price Min' : 'Total Min'} min="0" step="any" value={totalMin} onChange={e => { setTotalMin(e.target.value); setPage(1); }} />,
+        <input key="max" type="number" className="form-control form-control-sm" placeholder={priceByItem ? 'Item Price Max' : 'Total Max'} min="0" step="any" value={totalMax} onChange={e => { setTotalMax(e.target.value); setPage(1); }} />,
+        <div key="byItem" className="form-check">
+            <input
+                className="form-check-input"
+                type="checkbox"
+                id="priceByItem"
+                checked={priceByItem}
+                onChange={e => { setPriceByItem(e.target.checked); setPage(1); }}
+            />
+            <label className="form-check-label small" htmlFor="priceByItem">By Item Price</label>
+        </div>,
+        ...(admin ? [
+            <input key="from" type="date" className="form-control form-control-sm" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setPage(1); }} title="From" />,
+            <input key="to" type="date" className="form-control form-control-sm" value={dateTo} onChange={e => { setDateTo(e.target.value); setPage(1); }} title="To" />,
+            <select key="branch" className="form-select form-select-sm" value={branchFilter} onChange={e => { setBranchFilter(e.target.value); setPage(1); }} title="Branch">
+                <option value="">Branch: All</option>
+                {branches.map(b => <option key={b.documentId || b.id} value={b.documentId || b.id}>{b.name}</option>)}
+            </select>,
+        ] : []),
+        ...(hasFilters ? [
+            <button key="clear" className="btn btn-outline-secondary btn-sm" onClick={handleClearFilters}>
+                <i className="fas fa-times me-1"></i>Clear
+            </button>
+        ] : []),
+    ];
+
+    const headerActions = (
+        <>
+            <button
+                className="btn btn-sm btn-outline-secondary"
+                onClick={() => setShowTotal(v => !v)}
+                title={showTotal ? 'Hide totals' : 'Show totals'}
+            >
+                <i className={`fas ${showTotal ? 'fa-eye-slash' : 'fa-eye'} me-1`}></i>{showTotal ? 'Hide' : 'Show'} Totals
+            </button>
+            {!admin && <span className="badge bg-secondary">Last 24 hours</span>}
+            <AddButton label="New Sale" href="/new/sale" />
+        </>
+    );
+
+    const bulkActions = selectedIds.size >= 2 ? (
+        <button className="btn btn-sm btn-outline-info" onClick={handlePrintCombined}>
+            <i className="fas fa-print me-1"></i>Print Combined Receipt
+        </button>
+    ) : null;
+
+    const subtitle = total != null ? `${total} record${total !== 1 ? 's' : ''}` : undefined;
+
     return (
         <ProtectedRoute>
             <PermissionCheck required="sale">
                 <Layout>
-                    <div className="mb-3">
-                        <div className="d-flex align-items-center justify-content-between mb-3">
-                            <h2 className="mb-0">Sales</h2>
-                            <div className="d-flex align-items-center gap-2">
-                                {selectedIds.size >= 2 && (
-                                    <button className="btn btn-sm btn-outline-info" onClick={handlePrintCombined}>
-                                        <i className="fas fa-print me-1"></i>Print Combined Receipt ({selectedIds.size})
-                                    </button>
-                                )}
-                                <button
-                                    className="btn btn-sm btn-outline-secondary"
-                                    onClick={() => setShowTotal(v => !v)}
-                                    title={showTotal ? 'Hide totals' : 'Show totals'}
-                                >
-                                    <i className={`fas ${showTotal ? 'fa-eye-slash' : 'fa-eye'} me-1`}></i>{showTotal ? 'Hide' : 'Show'} Totals
-                                </button>
-                                <span className="text-muted small">
-                                    {total} record{total !== 1 ? "s" : ""}
-                                    {!admin && <span className="ms-2 badge bg-secondary">Last 24 hours</span>}
-                                </span>
-                            </div>
-                        </div>
-
-                        {/* Filters */}
-                        <div className="row g-2 mb-3 align-items-end">
-                            <div className="col-auto">
-                                <label className="form-label small mb-1">Search In</label>
-                                <div className="input-group input-group-sm">
-                                    <select
-                                        className="form-select form-select-sm"
-                                        value={searchField}
-                                        onChange={e => { setSearchField(e.target.value); setPage(0); }}
-                                        style={{ maxWidth: 140 }}
-                                    >
-                                        {SEARCH_FIELDS.map(f => <option key={f.key} value={f.key}>{f.label}</option>)}
-                                        {admin && ADMIN_SEARCH_FIELDS.map(f => <option key={f.key} value={f.key}>{f.label}</option>)}
-                                    </select>
-                                    <input
-                                        type="text"
-                                        className="form-control form-control-sm"
-                                        placeholder="Search…"
-                                        value={searchText}
-                                        onChange={e => { setSearchText(e.target.value); setPage(0); }}
-                                        style={{ minWidth: 180 }}
-                                    />
-                                </div>
-                            </div>
-                            <div className="col-auto">
-                                <label className="form-label small mb-1">Payment</label>
-                                <select className="form-select form-select-sm" value={paymentStatus} onChange={e => { setPaymentStatus(e.target.value); setPage(0); }}>
-                                    <option value="">All</option>
-                                    {PAYMENT_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-                                </select>
-                            </div>
-                            <div className="col-auto">
-                                <label className="form-label small mb-1">Return</label>
-                                <select className="form-select form-select-sm" value={returnStatus} onChange={e => { setReturnStatus(e.target.value); setPage(0); }}>
-                                    <option value="">All</option>
-                                    {RETURN_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-                                </select>
-                            </div>
-                            <div className="col-auto">
-                                <label className="form-label small mb-1">{priceByItem ? 'Item Price Min' : 'Total Min'}</label>
-                                <input type="number" className="form-control form-control-sm" placeholder="0" min="0" step="any" value={totalMin} onChange={e => { setTotalMin(e.target.value); setPage(0); }} />
-                            </div>
-                            <div className="col-auto">
-                                <label className="form-label small mb-1">{priceByItem ? 'Item Price Max' : 'Total Max'}</label>
-                                <input type="number" className="form-control form-control-sm" placeholder="∞" min="0" step="any" value={totalMax} onChange={e => { setTotalMax(e.target.value); setPage(0); }} />
-                            </div>
-                            <div className="col-auto d-flex align-items-end pb-1">
-                                <div className="form-check form-check-inline">
-                                    <input
-                                        className="form-check-input"
-                                        type="checkbox"
-                                        id="priceByItem"
-                                        checked={priceByItem}
-                                        onChange={e => { setPriceByItem(e.target.checked); setPage(0); }}
-                                    />
-                                    <label className="form-check-label small" htmlFor="priceByItem">By Item Price</label>
-                                </div>
-                            </div>
-                            {admin && (
-                                <>
-                                    <div className="col-auto">
-                                        <label className="form-label small mb-1">From</label>
-                                        <input type="date" className="form-control form-control-sm" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setPage(0); }} />
-                                    </div>
-                                    <div className="col-auto">
-                                        <label className="form-label small mb-1">To</label>
-                                        <input type="date" className="form-control form-control-sm" value={dateTo} onChange={e => { setDateTo(e.target.value); setPage(0); }} />
-                                    </div>
-                                    <div className="col-auto">
-                                        <label className="form-label small mb-1">Branch</label>
-                                        <select className="form-select form-select-sm" value={branchFilter} onChange={e => { setBranchFilter(e.target.value); setPage(0); }}>
-                                            <option value="">All</option>
-                                            {branches.map(b => <option key={b.documentId || b.id} value={b.documentId || b.id}>{b.name}</option>)}
-                                        </select>
-                                    </div>
-                                </>
-                            )}
-                            {hasFilters && (
-                                <div className="col-auto">
-                                    <button className="btn btn-outline-secondary btn-sm" onClick={handleClearFilters}>
-                                        <i className="fas fa-times me-1"></i>Clear
-                                    </button>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Table */}
-                        <div>
-                            <Table>
-                                <TableHead>
-                                    <TableRow>
-                                        <TableCell style={{ width: '30px' }}>
+                    <ListPageLayout
+                        title="Sales"
+                        subtitle={subtitle}
+                        headerActions={headerActions}
+                        filters={filterNodes}
+                        bulkActions={bulkActions}
+                        selectedCount={selectedIds.size}
+                        loading={loading}
+                        pagination={
+                            <ListPagination
+                                page={page}
+                                pageSize={pageSize}
+                                total={total}
+                                onPage={setPage}
+                                onPageSize={(n) => { setPageSize(n); setPage(1); }}
+                                pageSizeOptions={[5, 10, 25, 50]}
+                            />
+                        }
+                        emptyState={<div>No sales found.</div>}
+                    >
+                        <div className="table-responsive">
+                            <table className="table table-hover list-table">
+                                <thead>
+                                    <tr>
+                                        <th style={{ width: '30px' }}>
                                             <input type="checkbox" checked={sales.length > 0 && selectedIds.size === sales.length} onChange={toggleSelectAll} title="Select all" />
-                                        </TableCell>
+                                        </th>
                                         {visibleColumns.map(col => (
-                                            <TableCell
+                                            <th
                                                 key={col.key}
-                                                align={col.align}
+                                                style={{ cursor: col.relation ? "default" : "pointer", userSelect: "none", whiteSpace: "nowrap", textAlign: col.align || 'left' }}
                                                 onClick={() => !col.relation && handleSort(col.key)}
-                                                style={{ cursor: col.relation ? "default" : "pointer", userSelect: "none", whiteSpace: "nowrap" }}
                                             >
                                                 {col.label}{!col.relation && sortIcon(col.key)}
-                                            </TableCell>
+                                            </th>
                                         ))}
-                                        <TableCell>Actions</TableCell>
-                                    </TableRow>
-                                </TableHead>
-                                <TableBody>
-                                    {loading ? (
-                                        <TableRow>
-                                            <TableCell colSpan={colCount} align="center">
-                                                <CircularProgress size={24} />
-                                            </TableCell>
-                                        </TableRow>
-                                    ) : sales.length === 0 ? (
-                                        <TableRow>
-                                            <TableCell colSpan={colCount} align="center">
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {sales.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={colCount} className="text-center text-muted py-3">
                                                 No sales found.
-                                            </TableCell>
-                                        </TableRow>
+                                            </td>
+                                        </tr>
                                     ) : (
                                         sales.map(s => (
-                                            <TableRow key={s.id}>
-                                                <TableCell>
+                                            <tr key={s.id}>
+                                                <td>
                                                     <input type="checkbox" checked={selectedIds.has(s.documentId)} onChange={() => toggleSelect(s.documentId)} />
-                                                </TableCell>
-                                                <TableCell>{s.id}</TableCell>
-                                                <TableCell>{s.invoice_no}</TableCell>
-                                                <TableCell style={{ whiteSpace: "nowrap" }}>{new Date(s.sale_date).toLocaleString([], { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</TableCell>
-                                                <TableCell>{s?.customer?.name || "—"}</TableCell>
-                                                <TableCell>{s?.employee?.name || "—"}</TableCell>
-                                                {showTotal && <TableCell align="right">{currency}{parseFloat(s.total || 0).toFixed(2)}</TableCell>}
-                                                <TableCell>
-                                                    <span className={`badge ${getPaymentBadgeClass(s.payment_status)}`}>{s.payment_status}</span>
-                                                </TableCell>
-                                                <TableCell>
+                                                </td>
+                                                <td>{s.id}</td>
+                                                <td>{s.invoice_no}</td>
+                                                <td style={{ whiteSpace: "nowrap" }}>{new Date(s.sale_date).toLocaleString([], { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</td>
+                                                <td>{s?.customer?.name || "—"}</td>
+                                                <td>{s?.employee?.name || "—"}</td>
+                                                {showTotal && <td style={{ textAlign: 'right' }}>{currency}{parseFloat(s.total || 0).toFixed(2)}</td>}
+                                                <td>
+                                                    <span className={`list-status ${getPaymentBadgeClass(s.payment_status)}`}>{s.payment_status}</span>
+                                                </td>
+                                                <td>
                                                     {s.status === 'Cancelled'
-                                                        ? <span className="badge bg-danger">Cancelled</span>
-                                                        : <span className="badge bg-light text-muted">{s.status || 'Draft'}</span>
+                                                        ? <span className="list-status bg-danger">Cancelled</span>
+                                                        : <span className="list-status bg-light text-muted">{s.status || 'Draft'}</span>
                                                     }
-                                                </TableCell>
-                                                <TableCell>
-                                                    <span className={`badge ${getReturnBadgeClass(s.return_status)}`}>{s.return_status || "None"}</span>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <div className="d-flex gap-1">
+                                                </td>
+                                                <td>
+                                                    <span className={`list-status ${getReturnBadgeClass(s.return_status)}`}>{s.return_status || "None"}</span>
+                                                </td>
+                                                <td>
+                                                    <div className="list-actions">
                                                         <Link href={`/${s.documentId}/sale`} className="btn btn-sm btn-outline-primary" style={{ textDecoration: "none" }}>
                                                             <i className="fas fa-edit me-1"></i>Edit
                                                         </Link>
@@ -499,26 +473,16 @@ export default function Sales() {
                                                             </button>
                                                         )}
                                                     </div>
-                                                </TableCell>
-                                            </TableRow>
+                                                </td>
+                                            </tr>
                                         ))
                                     )}
-                                </TableBody>
-                            </Table>
-                            <TablePagination
-                                count={total}
-                                page={page}
-                                onPageChange={handleChangePage}
-                                rowsPerPage={rowsPerPage}
-                                onRowsPerPageChange={handleChangeRowsPerPage}
-                                rowsPerPageOptions={[5, 10, 25, 50]}
-                            />
+                                </tbody>
+                            </table>
                         </div>
-                    </div>
+                    </ListPageLayout>
                 </Layout>
             </PermissionCheck>
         </ProtectedRoute>
     );
 }
-
-

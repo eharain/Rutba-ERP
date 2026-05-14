@@ -4,6 +4,7 @@ import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { MediaUtilsEndpoints, ProductGroupsEndpoints } from "@rutba/api-provider/endpoints";
 import Link from "next/link";
+import ListPageLayout, { AddButton } from "@rutba/pos-shared/components/ListPageLayout";
 
 export default function ProductGroups() {
     const { jwt } = useAuth();
@@ -34,27 +35,17 @@ export default function ProductGroups() {
     return (
         <ProtectedRoute>
             <Layout>
-                <div className="d-flex align-items-center justify-content-between mb-3">
-                    <h2 className="mb-0">Product Groups</h2>
-                    <Link className="btn btn-primary btn-sm" href="/new/product-group">
-                        <i className="fas fa-plus me-1"></i>New Group
-                    </Link>
-                </div>
-
-                <p className="text-muted small mb-3">
-                    Product groups power the homepage banners, featured sections, and collections on the website.
-                </p>
-
-                {loading && <p>Loading product groups...</p>}
-
-                {!loading && groups.length === 0 && (
-                    <div className="alert alert-info">No product groups found.</div>
-                )}
-
-                {!loading && groups.length > 0 && (
+                <ListPageLayout
+                    title="Product Groups"
+                    subtitle="Product groups power the homepage banners, featured sections, and collections on the website."
+                    headerActions={<AddButton label="New Group" href="/new/product-group" />}
+                    loading={loading}
+                    emptyState={<div>No product groups found.</div>}
+                >
+                    {groups.length > 0 && (
                     <div className="table-responsive">
-                        <table className="table table-striped table-hover">
-                            <thead className="table-dark">
+                        <table className="table table-hover list-table">
+                            <thead>
                                 <tr>
                                     <th style={{ width: 50 }}></th>
                                     <th>Name</th>
@@ -79,27 +70,30 @@ export default function ProductGroups() {
                                             )}
                                         </td>
                                         <td>{g.name}</td>
-                                        <td><span className="badge bg-info text-dark">{g.layout || 'grid-4'}</span></td>
+                                        <td><span className="list-status" style={{ background: '#0dcaf0', color: '#212529' }}>{g.layout || 'grid-4'}</span></td>
                                         <td>{g.priority ?? 0}</td>
                                         <td><code>{g.slug}</code></td>
-                                        <td><span className="badge bg-primary">{(g.products || []).length}</span></td>
+                                        <td><span className="list-status" style={{ background: '#0d6efd', color: '#fff' }}>{(g.products || []).length}</span></td>
                                         <td>
                                             {g._isPublished
-                                                ? <span className="badge bg-success">Published</span>
-                                                : <span className="badge bg-secondary">Draft</span>
+                                                ? <span className="list-status" style={{ background: '#198754', color: '#fff' }}>Published</span>
+                                                : <span className="list-status" style={{ background: '#6c757d', color: '#fff' }}>Draft</span>
                                             }
                                         </td>
                                         <td>
-                                            <Link className="btn btn-sm btn-outline-primary" href={`/${g.documentId}/product-group`}>
-                                                Edit
-                                            </Link>
+                                            <div className="list-actions">
+                                                <Link className="btn btn-outline-primary" href={`/${g.documentId}/product-group`}>
+                                                    Edit
+                                                </Link>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
                     </div>
-                )}
+                    )}
+                </ListPageLayout>
             </Layout>
         </ProtectedRoute>
     );

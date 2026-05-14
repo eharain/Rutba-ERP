@@ -5,6 +5,7 @@ import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { BrandsEndpoints, ProductsEndpoints } from "@rutba/api-provider/endpoints/index.js";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
 import FileView from "@rutba/pos-shared/components/FileView";
+import ListPageLayout from "@rutba/pos-shared/components/ListPageLayout";
 
 export default function BrandsPage() {
     const { currency } = useUtil();
@@ -379,12 +380,12 @@ export default function BrandsPage() {
     return (
         <ProtectedRoute>
             <Layout>
-                <div className="p-3">
-                    <div className="d-flex justify-content-between align-items-center mb-3">
-                        <h1 className="mb-0">Brands</h1>
-                        {loading && <span className="text-muted">Loading...</span>}
-                    </div>
-
+                <ListPageLayout
+                    title="Brands"
+                    subtitle={brands.length ? `${brands.length} total` : undefined}
+                    headerActions={loading ? <span className="text-muted small">Loading...</span> : null}
+                >
+                    <div className="p-3">
                     <div className="row">
                         {/* Left column: Brands list + Products */}
                         <div className="col-lg-8">
@@ -731,7 +732,8 @@ export default function BrandsPage() {
                             )}
                         </div>
                     </div>
-                </div>
+                    </div>
+                </ListPageLayout>
 
                 {/* Merge modal */}
                 {isMergeOpen && (

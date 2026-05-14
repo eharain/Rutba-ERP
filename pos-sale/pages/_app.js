@@ -11,6 +11,7 @@ AppContextEndpoints.setAppName('sale');
 import 'bootstrap/dist/css/bootstrap.min.css';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 import '@rutba/pos-shared/styles/layout.css';
+import '@rutba/pos-shared/components/list-page.css';
 import '../src/styles/globals.css';
 import 'primereact/resources/themes/saga-blue/theme.css';
 import 'primereact/resources/primereact.min.css';

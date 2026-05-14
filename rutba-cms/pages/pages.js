@@ -7,6 +7,7 @@ import { CmsPagesEndpoints } from "@rutba/api-provider/endpoints";
 import Link from "next/link";
 import { useToast } from "../components/Toast";
 import EnumSelect from "../components/EnumSelect";
+import ListPageLayout, { AddButton } from "@rutba/pos-shared/components/ListPageLayout";
 
 const PAGE_EXPORT_COLUMNS = ["slug", "title", "excerpt", "content", "page_type", "sort_order"];
 
@@ -60,6 +61,16 @@ function getTypeBadgeClass(type) {
         case "news": return "bg-danger";
         case "info": return "bg-info";
         default: return "bg-secondary";
+    }
+}
+
+function getTypeStatusStyle(type) {
+    switch (type) {
+        case "shop": return { background: "#0d6efd", color: "#fff" };
+        case "blog": return { background: "#198754", color: "#fff" };
+        case "news": return { background: "#dc3545", color: "#fff" };
+        case "info": return { background: "#0dcaf0", color: "#212529" };
+        default: return { background: "#6c757d", color: "#fff" };
     }
 }
 
@@ -237,88 +248,78 @@ export default function Pages() {
         <ProtectedRoute>
             <Layout>
                 <ToastContainer />
-                <div className="d-flex align-items-center justify-content-between mb-3">
-                    <h2 className="mb-0">Pages</h2>
-                    <div className="d-flex gap-2">
-                        {selectedIds.size > 0 && (
-                            <>
-                                <span className="badge bg-primary align-self-center">{selectedIds.size} selected</span>
-                                <button className="btn btn-sm btn-success" onClick={bulkPublish}>
-                                    <i className="fas fa-upload me-1"></i>Publish
-                                </button>
-                                <button className="btn btn-sm btn-outline-secondary" onClick={bulkUnpublish}>
-                                    <i className="fas fa-eye-slash me-1"></i>Unpublish
-                                </button>
-                            </>
-                        )}
-                        <button
-                            className="btn btn-outline-success btn-sm"
-                            disabled={pages.length === 0}
-                            onClick={() => exportPagesToExcel(pages)}
-                        >
-                            <i className="fas fa-file-excel me-1"></i>Export Excel
-                        </button>
-                        <label className={`btn btn-outline-info btn-sm mb-0${importing ? " disabled" : ""}`}>
-                            <i className="fas fa-upload me-1"></i>{importing ? "Importing…" : "Import Excel"}
-                            <input
-                                ref={importRef}
-                                type="file"
-                                accept=".xlsx,.xls,.csv"
-                                className="d-none"
-                                disabled={importing}
-                                onChange={handleImport}
-                            />
-                        </label>
-                        <Link className="btn btn-primary btn-sm" href="/new/cms-page">
-                            <i className="fas fa-plus me-1"></i>New Page
-                        </Link>
-                    </div>
-                </div>
-
-                {importLog.length > 0 && (
-                    <div className="mb-3">
-                        {importLog.map((l, i) => (
-                            <div key={i} className={`alert alert-${l.type} py-1 px-2 mb-1 small`}>{l.text}</div>
-                        ))}
-                    </div>
-                )}
-
-                <div className="row g-2 mb-3">
-                    <div className="col-md-4">
+                <ListPageLayout
+                    title="Pages"
+                    headerActions={
+                        <>
+                            <button
+                                className="btn btn-outline-success btn-sm"
+                                disabled={pages.length === 0}
+                                onClick={() => exportPagesToExcel(pages)}
+                            >
+                                <i className="fas fa-file-excel me-1"></i>Export Excel
+                            </button>
+                            <label className={`btn btn-outline-info btn-sm mb-0${importing ? " disabled" : ""}`}>
+                                <i className="fas fa-upload me-1"></i>{importing ? "Importing…" : "Import Excel"}
+                                <input
+                                    ref={importRef}
+                                    type="file"
+                                    accept=".xlsx,.xls,.csv"
+                                    className="d-none"
+                                    disabled={importing}
+                                    onChange={handleImport}
+                                />
+                            </label>
+                            <AddButton label="New Page" href="/new/cms-page" />
+                        </>
+                    }
+                    filters={[
                         <input
+                            key="search"
                             type="text"
                             className="form-control form-control-sm"
                             placeholder="Search pages…"
                             value={search}
                             onChange={e => setSearch(e.target.value)}
-                        />
-                    </div>
-                    <div className="col-auto">
+                        />,
                         <EnumSelect
+                            key="type"
                             name="cms-page"
                             field="page_type"
                             className="form-select form-select-sm"
                             value={typeFilter}
                             onChange={e => setTypeFilter(e.target.value)}
                             includeBlank="All types"
-                        />
-                    </div>
-                </div>
-
-                {loading && <p>Loading pages...</p>}
-
-                {!loading && error && (
-                    <div className="alert alert-danger"><i className="fas fa-exclamation-triangle me-2"></i>{error}</div>
-                )}
-
-                {!loading && !error && pages.length === 0 && (
-                    <div className="alert alert-info">No pages found. Create your first page!</div>
-                )}
-
-                {!loading && pages.length > 0 && (
+                        />,
+                    ]}
+                    bulkActions={
+                        <>
+                            <button className="btn btn-sm btn-success" onClick={bulkPublish}>
+                                <i className="fas fa-upload me-1"></i>Publish
+                            </button>
+                            <button className="btn btn-sm btn-outline-secondary" onClick={bulkUnpublish}>
+                                <i className="fas fa-eye-slash me-1"></i>Unpublish
+                            </button>
+                        </>
+                    }
+                    selectedCount={selectedIds.size}
+                    loading={loading}
+                    emptyState={<div>{error ? error : "No pages found. Create your first page!"}</div>}
+                >
+                    {importLog.length > 0 && (
+                        <div className="p-3 border-bottom">
+                            {importLog.map((l, i) => (
+                                <div key={i} className={`alert alert-${l.type} py-1 px-2 mb-1 small`}>{l.text}</div>
+                            ))}
+                        </div>
+                    )}
+                    {error && (
+                        <div className="p-3"><div className="alert alert-danger mb-0"><i className="fas fa-exclamation-triangle me-2"></i>{error}</div></div>
+                    )}
+                    {!error && pages.length > 0 && (
                     <div className="table-responsive">
-                        <table className="table table-striped table-hover">
-                            <thead className="table-dark">
+                        <table className="table table-hover list-table">
+                            <thead>
                                 <tr>
                                     <th style={{ width: 30 }}>
                                         <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} title="Select all" />
@@ -339,29 +340,32 @@ export default function Pages() {
                                         </td>
                                         <td>{p.title}</td>
                                         <td><code>{p.slug}</code></td>
-                                        <td><span className={`badge ${getTypeBadgeClass(p.page_type)}`}>{p.page_type}</span></td>
+                                        <td><span className="list-status" style={getTypeStatusStyle(p.page_type)}>{p.page_type}</span></td>
                                         <td>{p.sort_order}</td>
                                         <td>
                                             {p._isPublished
-                                                ? <button className="btn btn-sm btn-success py-0 px-1" onClick={() => unpublishOne(p.documentId)} disabled={publishing[p.documentId]} title="Click to unpublish">
+                                                ? <button className="list-status btn border-0" style={{ background: '#198754', color: '#fff' }} onClick={() => unpublishOne(p.documentId)} disabled={publishing[p.documentId]} title="Click to unpublish">
                                                     {publishing[p.documentId] ? <i className="fas fa-spinner fa-spin"></i> : <><i className="fas fa-check me-1"></i>Published</>}
                                                 </button>
-                                                : <button className="btn btn-sm btn-outline-secondary py-0 px-1" onClick={() => publishOne(p.documentId)} disabled={publishing[p.documentId]} title="Click to publish">
+                                                : <button className="list-status btn border-0" style={{ background: '#e9ecef', color: '#495057' }} onClick={() => publishOne(p.documentId)} disabled={publishing[p.documentId]} title="Click to publish">
                                                     {publishing[p.documentId] ? <i className="fas fa-spinner fa-spin"></i> : "Draft"}
                                                 </button>
                                             }
                                         </td>
                                         <td>
-                                            <Link className="btn btn-sm btn-outline-primary" href={`/${p.documentId}/cms-page`}>
-                                                Edit
-                                            </Link>
+                                            <div className="list-actions">
+                                                <Link className="btn btn-outline-primary" href={`/${p.documentId}/cms-page`}>
+                                                    Edit
+                                                </Link>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
                     </div>
-                )}
+                    )}
+                </ListPageLayout>
             </Layout>
         </ProtectedRoute>
     );

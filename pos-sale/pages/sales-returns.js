@@ -1,22 +1,24 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { SaleReturnsEndpoints } from "@rutba/api-provider/endpoints/index.js";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
 import Link from "next/link";
-import { Table, TableHead, TableRow, TableCell, TableBody, TablePagination } from "@rutba/pos-shared/components/Table";
+import ListPageLayout, { AddButton } from "@rutba/pos-shared/components/ListPageLayout";
+import ListPagination from "@rutba/pos-shared/components/ListPagination";
 
 export default function SalesReturnsPage() {
     const { currency } = useUtil();
     const [returns, setReturns] = useState([]);
-    const [page, setPage] = useState(0);
-    const [rowsPerPage, setRowsPerPage] = useState(10);
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
     const [total, setTotal] = useState(0);
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
         loadReturns();
-    }, [page, rowsPerPage]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [page, pageSize]);
 
     function getEntryId(entry) {
         return entry?.documentId || entry?.id;
@@ -25,7 +27,7 @@ export default function SalesReturnsPage() {
     async function loadReturns() {
         setLoading(true);
         try {
-            const res = await SaleReturnsEndpoints.list(page + 1, rowsPerPage, {
+            const res = await SaleReturnsEndpoints.list(page, pageSize, {
                 populate: { sale: true, items: { populate: { product: true } } },
             });
             setReturns(res?.data ?? []);
@@ -40,81 +42,75 @@ export default function SalesReturnsPage() {
     return (
         <ProtectedRoute>
             <Layout>
-                <div className="p-3">
-                    <div className="d-flex justify-content-between align-items-center mb-3">
-                        <h2 className="mb-0">Sales Returns</h2>
-                        <Link href="/new/sale-return" className="btn btn-primary">
-                            <i className="fas fa-plus me-1"></i>New Return
-                        </Link>
+                <ListPageLayout
+                    title="Sales Returns"
+                    subtitle={total != null ? `${total} total` : undefined}
+                    headerActions={<AddButton label="New Return" href="/new/sale-return" />}
+                    loading={loading}
+                    pagination={
+                        <ListPagination
+                            page={page}
+                            pageSize={pageSize}
+                            total={total}
+                            onPage={setPage}
+                            onPageSize={(n) => { setPageSize(n); setPage(1); }}
+                            pageSizeOptions={[5, 10, 25]}
+                        />
+                    }
+                    emptyState={<div>No returns found.</div>}
+                >
+                    <div className="table-responsive">
+                        <table className="table table-hover list-table">
+                            <thead>
+                                <tr>
+                                    <th>Return No</th>
+                                    <th>Type</th>
+                                    <th>Date</th>
+                                    <th>Sale Invoice</th>
+                                    <th>Items</th>
+                                    <th>Refund Method</th>
+                                    <th style={{ textAlign: 'right' }}>Refund</th>
+                                    <th>Status</th>
+                                    <th>View</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {returns.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={9} className="text-center text-muted py-3">No returns found.</td>
+                                    </tr>
+                                ) : returns.map(ret => (
+                                    <tr key={getEntryId(ret)}>
+                                        <td><strong>{ret.return_no || "-"}</strong></td>
+                                        <td>
+                                            <span className={`list-status ${ret.type === "Exchange" ? "bg-info" : "bg-secondary"}`}>
+                                                {ret.type || "Return"}
+                                            </span>
+                                        </td>
+                                        <td>{ret.return_date ? new Date(ret.return_date).toLocaleString() : "-"}</td>
+                                        <td>{ret.sale?.invoice_no || "-"}</td>
+                                        <td>{ret.items?.length || 0}</td>
+                                        <td>{ret.refund_method || "-"}</td>
+                                        <td style={{ textAlign: 'right' }}>{currency}{Number(ret.total_refund || 0).toFixed(2)}</td>
+                                        <td>
+                                            <span className={`list-status ${ret.refund_status === "Refunded" ? "bg-success" : ret.refund_status === "Credited" ? "bg-info" : "bg-warning text-dark"}`}>
+                                                {ret.refund_status || "Pending"}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div className="list-actions">
+                                                <Link href={`/${getEntryId(ret)}/sale-return`} className="btn btn-sm btn-outline-primary" style={{ textDecoration: "none" }}>
+                                                    <i className="fas fa-eye me-1"></i>View
+                                                </Link>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
                     </div>
-
-                    <Table>
-                        <TableHead>
-                             <TableRow>
-                                <TableCell>Return No</TableCell>
-                                <TableCell>Type</TableCell>
-                                <TableCell>Date</TableCell>
-                                <TableCell>Sale Invoice</TableCell>
-                                <TableCell>Items</TableCell>
-                                <TableCell>Refund Method</TableCell>
-                                <TableCell align="right">Refund</TableCell>
-                                <TableCell>Status</TableCell>
-                                <TableCell>View</TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {loading && (
-                                <TableRow>
-                                    <TableCell colSpan={9} className="text-center">
-                                        <span className="spinner-border spinner-border-sm me-1"></span>Loading...
-                                    </TableCell>
-                                </TableRow>
-                            )}
-                            {!loading && returns.length === 0 && (
-                                <TableRow>
-                                    <TableCell colSpan={9} className="text-center text-muted">No returns found.</TableCell>
-                                </TableRow>
-                            )}
-                            {returns.map(ret => (
-                                <TableRow key={getEntryId(ret)}>
-                                    <TableCell><strong>{ret.return_no || "-"}</strong></TableCell>
-                                    <TableCell>
-                                        <span className={`badge ${ret.type === "Exchange" ? "bg-info" : "bg-secondary"}`}>
-                                            {ret.type || "Return"}
-                                        </span>
-                                    </TableCell>
-                                    <TableCell>{ret.return_date ? new Date(ret.return_date).toLocaleString() : "-"}</TableCell>
-                                    <TableCell>{ret.sale?.invoice_no || "-"}</TableCell>
-                                    <TableCell>{ret.items?.length || 0}</TableCell>
-                                    <TableCell>{ret.refund_method || "-"}</TableCell>
-                                    <TableCell align="right">{currency}{Number(ret.total_refund || 0).toFixed(2)}</TableCell>
-                                    <TableCell>
-                                        <span className={`badge ${ret.refund_status === "Refunded" ? "bg-success" : ret.refund_status === "Credited" ? "bg-info" : "bg-warning text-dark"}`}>
-                                            {ret.refund_status || "Pending"}
-                                        </span>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Link href={`/${getEntryId(ret)}/sale-return`} style={{ textDecoration: "none" }}>
-                                            <i className="fas fa-eye me-1"></i>View
-                                        </Link>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                    <TablePagination
-                        count={total}
-                        page={page}
-                        onPageChange={(e, newPage) => setPage(newPage)}
-                        rowsPerPage={rowsPerPage}
-                        onRowsPerPageChange={(e) => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0); }}
-                        rowsPerPageOptions={[5, 10, 25]}
-                    />
-                </div>
+                </ListPageLayout>
             </Layout>
         </ProtectedRoute>
     );
 }
-
-
-

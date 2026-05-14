@@ -3,6 +3,7 @@ import * as XLSX from 'xlsx';
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { TermTypesEndpoints, TermsEndpoints } from "@rutba/api-provider/endpoints/index.js";
+import ListPageLayout from "@rutba/pos-shared/components/ListPageLayout";
 
 export default function TermTypesPage() {
     const [termTypes, setTermTypes] = useState([]);
@@ -412,9 +413,12 @@ export default function TermTypesPage() {
     return (
         <ProtectedRoute>
             <Layout>
-                <div className="p-3">
-                    <h1>Term Types</h1>
-                    {loading && <div className="text-muted mb-2">Loading...</div>}
+                <ListPageLayout
+                    title="Term Types"
+                    subtitle={termTypes.length ? `${termTypes.length} total` : undefined}
+                    headerActions={loading ? <span className="text-muted small">Loading...</span> : null}
+                >
+                    <div className="p-3">
                     <div className="row">
                         <div className="col-lg-8">
                             <div className="card mb-3">
@@ -742,7 +746,8 @@ export default function TermTypesPage() {
                             </div>
                         </div>
                     </div>
-                </div>
+                    </div>
+                </ListPageLayout>
             </Layout>
             {isMergeOpen && (
                 <div className="modal show d-block" tabIndex="-1" role="dialog" onClick={closeMergeDialog}>

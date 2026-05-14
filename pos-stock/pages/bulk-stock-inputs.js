@@ -5,6 +5,7 @@ import ProtectedRoute from '@rutba/pos-shared/components/ProtectedRoute';
 import PermissionCheck from '@rutba/pos-shared/components/PermissionCheck';
 import { StockInputsEndpoints, BrandsEndpoints, CategoriesEndpoints, SuppliersEndpoints } from '@rutba/api-provider/endpoints/index.js';
 import { useUtil } from '@rutba/pos-shared/context/UtilContext';
+import ListPageLayout from '@rutba/pos-shared/components/ListPageLayout';
 
 // ── Column mapping (mirrors export-catalog/utils/excel-helper.js) ──
 const COLUMN_ALIASES = {
@@ -386,10 +387,11 @@ export default function BulkStockInputs() {
         <ProtectedRoute>
             <PermissionCheck required="stock">
                 <Layout>
-                    <div className="page-content">
-                        <h1><i className="fas fa-boxes me-2"></i>Bulk Stock Inputs</h1>
-                        <p className="text-muted">Add multiple stock input rows and save them. Then process to create products, purchases and stock items.</p>
-
+                    <ListPageLayout
+                        title={<h4 className="mb-0"><i className="fas fa-boxes me-2"></i>Bulk Stock Inputs</h4>}
+                        subtitle="Add multiple stock input rows and save them. Then process to create products, purchases and stock items."
+                    >
+                    <div className="p-3">
                         {alert && (
                             <div className={`alert alert-${alert.type} alert-dismissible fade show`} role="alert">
                                 {alert.message}
@@ -684,6 +686,7 @@ export default function BulkStockInputs() {
                         </>)
                         }
                     </div>
+                    </ListPageLayout>
                 </Layout>
             </PermissionCheck>
         </ProtectedRoute>

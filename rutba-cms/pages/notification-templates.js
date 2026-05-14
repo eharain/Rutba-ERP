@@ -4,6 +4,7 @@ import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { NotificationTemplatesEndpoints } from "@rutba/api-provider/endpoints";
 import Link from "next/link";
+import ListPageLayout, { AddButton } from "@rutba/pos-shared/components/ListPageLayout";
 
 export default function NotificationTemplatesPage() {
   const { jwt } = useAuth();
@@ -34,32 +35,24 @@ export default function NotificationTemplatesPage() {
   return (
     <ProtectedRoute>
       <Layout>
-        <div className="d-flex align-items-center justify-content-between mb-3">
-          <h2 className="mb-0">Notification Templates</h2>
-          <div className="d-flex gap-2">
-            <Link className="btn btn-sm btn-primary" href="/new/notification-template">
-              <i className="fas fa-plus me-1" />New Template
-            </Link>
-            <button className="btn btn-sm btn-outline-secondary" onClick={load}>
-              <i className="fas fa-rotate me-1" />Refresh
-            </button>
-          </div>
-        </div>
-
-        <p className="text-muted small mb-3">
-          Manage notification templates used by order and delivery lifecycle events.
-        </p>
-
-        {loading && <p>Loading templates...</p>}
-
-        {!loading && templates.length === 0 && (
-          <div className="alert alert-info">No templates found.</div>
-        )}
-
-        {!loading && templates.length > 0 && (
+        <ListPageLayout
+          title="Notification Templates"
+          subtitle="Manage notification templates used by order and delivery lifecycle events."
+          headerActions={
+            <>
+              <AddButton label="New Template" href="/new/notification-template" />
+              <button className="btn btn-sm btn-outline-secondary" onClick={load}>
+                <i className="fas fa-rotate me-1" />Refresh
+              </button>
+            </>
+          }
+          loading={loading}
+          emptyState={<div>No templates found.</div>}
+        >
+          {templates.length > 0 && (
           <div className="table-responsive">
-            <table className="table table-striped table-hover">
-              <thead className="table-dark">
+            <table className="table table-hover list-table">
+              <thead>
                 <tr>
                   <th>Name</th>
                   <th>Trigger Event</th>
@@ -79,27 +72,30 @@ export default function NotificationTemplatesPage() {
                         {t.name}
                       </Link>
                     </td>
-                    <td><span className="badge bg-primary">{t.trigger_event || "—"}</span></td>
+                    <td><span className="list-status" style={{ background: '#0d6efd', color: '#fff' }}>{t.trigger_event || "—"}</span></td>
                     <td>{t.channel || "—"}</td>
                     <td>{t.send_to || "—"}</td>
                     <td>{t.scope || "—"}</td>
                     <td>{t.branch?.name || "—"}</td>
                     <td>
-                      <span className={`badge ${t.is_active ? "bg-success" : "bg-secondary"}`}>
+                      <span className="list-status" style={{ background: t.is_active ? '#198754' : '#6c757d', color: '#fff' }}>
                         {t.is_active ? "Yes" : "No"}
                       </span>
                     </td>
                     <td>
-                      <Link href={`/${t.documentId || t.id}/notification-template`} className="btn btn-sm btn-outline-primary">
-                        <i className="fas fa-edit"></i>
-                      </Link>
+                      <div className="list-actions">
+                        <Link href={`/${t.documentId || t.id}/notification-template`} className="btn btn-outline-primary">
+                          <i className="fas fa-edit"></i>
+                        </Link>
+                      </div>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        )}
+          )}
+        </ListPageLayout>
       </Layout>
     </ProtectedRoute>
   );

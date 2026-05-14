@@ -6,6 +6,7 @@ import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { CmsFootersEndpoints } from "@rutba/api-provider/endpoints";
 import Link from "next/link";
 import { useToast } from "../components/Toast";
+import ListPageLayout, { AddButton } from "@rutba/pos-shared/components/ListPageLayout";
 
 const FOOTER_EXPORT_COLUMNS = ["slug", "name", "phone", "email", "address", "opening_hours", "social_links", "copyright_text"];
 
@@ -212,63 +213,57 @@ export default function Footers() {
         <ProtectedRoute>
             <Layout>
                 <ToastContainer />
-                <div className="d-flex align-items-center justify-content-between mb-3">
-                    <h2 className="mb-0">Footers</h2>
-                    <div className="d-flex gap-2">
-                        {selectedIds.size > 0 && (
-                            <>
-                                <span className="badge bg-primary align-self-center">{selectedIds.size} selected</span>
-                                <button className="btn btn-sm btn-success" onClick={bulkPublish}>
-                                    <i className="fas fa-upload me-1"></i>Publish
-                                </button>
-                                <button className="btn btn-sm btn-outline-secondary" onClick={bulkUnpublish}>
-                                    <i className="fas fa-eye-slash me-1"></i>Unpublish
-                                </button>
-                            </>
-                        )}
-                        <button
-                            className="btn btn-outline-success btn-sm"
-                            disabled={footers.length === 0}
-                            onClick={() => exportFootersToExcel(footers)}
-                        >
-                            <i className="fas fa-file-excel me-1"></i>Export Excel
-                        </button>
-                        <label className={`btn btn-outline-info btn-sm mb-0${importing ? " disabled" : ""}`}>
-                            <i className="fas fa-upload me-1"></i>{importing ? "Importing…" : "Import Excel"}
-                            <input
-                                ref={importRef}
-                                type="file"
-                                accept=".xlsx,.xls,.csv"
-                                className="d-none"
-                                disabled={importing}
-                                onChange={handleImport}
-                            />
-                        </label>
-                        <Link className="btn btn-primary btn-sm" href="/new/cms-footer">
-                            <i className="fas fa-plus me-1"></i>New Footer
-                        </Link>
-                    </div>
-                </div>
-
-                {importLog.length > 0 && (
-                    <div className="mb-3">
-                        {importLog.map((l, i) => (
-                            <div key={i} className={`alert alert-${l.type} py-1 px-2 mb-1 small`}>{l.text}</div>
-                        ))}
-                    </div>
-                )}
-
-                <p className="text-muted small mb-3">
-                    Footer configurations contain contact info, opening hours, social links and pinned page links. Attach a footer to a CMS page to display it on the website.
-                </p>
-
-                {loading && <p>Loading footers...</p>}
-                {!loading && footers.length === 0 && <div className="alert alert-info">No footers found.</div>}
-
-                {!loading && footers.length > 0 && (
+                <ListPageLayout
+                    title="Footers"
+                    subtitle="Footer configurations contain contact info, opening hours, social links and pinned page links. Attach a footer to a CMS page to display it on the website."
+                    headerActions={
+                        <>
+                            <button
+                                className="btn btn-outline-success btn-sm"
+                                disabled={footers.length === 0}
+                                onClick={() => exportFootersToExcel(footers)}
+                            >
+                                <i className="fas fa-file-excel me-1"></i>Export Excel
+                            </button>
+                            <label className={`btn btn-outline-info btn-sm mb-0${importing ? " disabled" : ""}`}>
+                                <i className="fas fa-upload me-1"></i>{importing ? "Importing…" : "Import Excel"}
+                                <input
+                                    ref={importRef}
+                                    type="file"
+                                    accept=".xlsx,.xls,.csv"
+                                    className="d-none"
+                                    disabled={importing}
+                                    onChange={handleImport}
+                                />
+                            </label>
+                            <AddButton label="New Footer" href="/new/cms-footer" />
+                        </>
+                    }
+                    bulkActions={
+                        <>
+                            <button className="btn btn-sm btn-success" onClick={bulkPublish}>
+                                <i className="fas fa-upload me-1"></i>Publish
+                            </button>
+                            <button className="btn btn-sm btn-outline-secondary" onClick={bulkUnpublish}>
+                                <i className="fas fa-eye-slash me-1"></i>Unpublish
+                            </button>
+                        </>
+                    }
+                    selectedCount={selectedIds.size}
+                    loading={loading}
+                    emptyState={<div>No footers found.</div>}
+                >
+                    {importLog.length > 0 && (
+                        <div className="p-3 border-bottom">
+                            {importLog.map((l, i) => (
+                                <div key={i} className={`alert alert-${l.type} py-1 px-2 mb-1 small`}>{l.text}</div>
+                            ))}
+                        </div>
+                    )}
+                    {footers.length > 0 && (
                     <div className="table-responsive">
-                        <table className="table table-striped table-hover">
-                            <thead className="table-dark">
+                        <table className="table table-hover list-table">
+                            <thead>
                                 <tr>
                                     <th style={{ width: 30 }}>
                                         <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} title="Select all" />
@@ -291,25 +286,28 @@ export default function Footers() {
                                         <td>{f.phone || "—"}</td>
                                         <td>
                                             {f._isPublished
-                                                ? <button className="btn btn-sm btn-success py-0 px-1" onClick={() => unpublishOne(f.documentId)} disabled={publishing[f.documentId]} title="Click to unpublish">
+                                                ? <button className="list-status btn border-0" style={{ background: '#198754', color: '#fff' }} onClick={() => unpublishOne(f.documentId)} disabled={publishing[f.documentId]} title="Click to unpublish">
                                                     {publishing[f.documentId] ? <i className="fas fa-spinner fa-spin"></i> : <><i className="fas fa-check me-1"></i>Published</>}
                                                 </button>
-                                                : <button className="btn btn-sm btn-outline-secondary py-0 px-1" onClick={() => publishOne(f.documentId)} disabled={publishing[f.documentId]} title="Click to publish">
+                                                : <button className="list-status btn border-0" style={{ background: '#e9ecef', color: '#495057' }} onClick={() => publishOne(f.documentId)} disabled={publishing[f.documentId]} title="Click to publish">
                                                     {publishing[f.documentId] ? <i className="fas fa-spinner fa-spin"></i> : "Draft"}
                                                 </button>
                                             }
                                         </td>
                                         <td>
-                                            <Link className="btn btn-sm btn-outline-primary" href={`/${f.documentId}/cms-footer`}>
-                                                Edit
-                                            </Link>
+                                            <div className="list-actions">
+                                                <Link className="btn btn-outline-primary" href={`/${f.documentId}/cms-footer`}>
+                                                    Edit
+                                                </Link>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
                     </div>
-                )}
+                    )}
+                </ListPageLayout>
             </Layout>
         </ProtectedRoute>
     );

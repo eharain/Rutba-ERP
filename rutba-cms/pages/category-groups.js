@@ -5,6 +5,7 @@ import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { CategoryGroupsEndpoints } from "@rutba/api-provider/endpoints";
 import Link from "next/link";
 import { useToast } from "../components/Toast";
+import ListPageLayout, { AddButton } from "@rutba/pos-shared/components/ListPageLayout";
 
 export default function CategoryGroups() {
     const { jwt } = useAuth();
@@ -113,40 +114,28 @@ export default function CategoryGroups() {
         <ProtectedRoute>
             <Layout>
                 <ToastContainer />
-                <div className="d-flex align-items-center justify-content-between mb-3">
-                    <h2 className="mb-0">Category Groups</h2>
-                    <div className="d-flex align-items-center gap-2">
-                        {selectedIds.size > 0 && (
-                            <>
-                                <span className="badge bg-primary">{selectedIds.size} selected</span>
-                                <button className="btn btn-sm btn-success" onClick={bulkPublish}>
-                                    <i className="fas fa-upload me-1"></i>Publish
-                                </button>
-                                <button className="btn btn-sm btn-outline-secondary" onClick={bulkUnpublish}>
-                                    <i className="fas fa-eye-slash me-1"></i>Unpublish
-                                </button>
-                            </>
-                        )}
-                        <Link className="btn btn-primary btn-sm" href="/new/category-group">
-                            <i className="fas fa-plus me-1"></i>New Category Group
-                        </Link>
-                    </div>
-                </div>
-
-                <p className="text-muted small mb-3">
-                    Category groups let you curate which categories appear on each CMS page.
-                </p>
-
-                {loading && <p>Loading category groups...</p>}
-
-                {!loading && groups.length === 0 && (
-                    <div className="alert alert-info">No category groups found.</div>
-                )}
-
-                {!loading && groups.length > 0 && (
+                <ListPageLayout
+                    title="Category Groups"
+                    subtitle="Category groups let you curate which categories appear on each CMS page."
+                    headerActions={<AddButton label="New Category Group" href="/new/category-group" />}
+                    bulkActions={
+                        <>
+                            <button className="btn btn-sm btn-success" onClick={bulkPublish}>
+                                <i className="fas fa-upload me-1"></i>Publish
+                            </button>
+                            <button className="btn btn-sm btn-outline-secondary" onClick={bulkUnpublish}>
+                                <i className="fas fa-eye-slash me-1"></i>Unpublish
+                            </button>
+                        </>
+                    }
+                    selectedCount={selectedIds.size}
+                    loading={loading}
+                    emptyState={<div>No category groups found.</div>}
+                >
+                    {groups.length > 0 && (
                     <div className="table-responsive">
-                        <table className="table table-striped table-hover">
-                            <thead className="table-dark">
+                        <table className="table table-hover list-table">
+                            <thead>
                                 <tr>
                                     <th style={{ width: 30 }}>
                                         <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} title="Select all" />
@@ -171,25 +160,28 @@ export default function CategoryGroups() {
                                         <td>{g.sort_order}</td>
                                         <td>
                                             {g._isPublished
-                                                ? <button className="btn btn-sm btn-success py-0 px-1" onClick={() => unpublishOne(g.documentId)} disabled={publishing[g.documentId]} title="Click to unpublish">
+                                                ? <button className="list-status btn border-0" style={{ background: '#198754', color: '#fff' }} onClick={() => unpublishOne(g.documentId)} disabled={publishing[g.documentId]} title="Click to unpublish">
                                                     {publishing[g.documentId] ? <i className="fas fa-spinner fa-spin"></i> : <><i className="fas fa-check me-1"></i>Published</>}
                                                 </button>
-                                                : <button className="btn btn-sm btn-outline-secondary py-0 px-1" onClick={() => publishOne(g.documentId)} disabled={publishing[g.documentId]} title="Click to publish">
+                                                : <button className="list-status btn border-0" style={{ background: '#e9ecef', color: '#495057' }} onClick={() => publishOne(g.documentId)} disabled={publishing[g.documentId]} title="Click to publish">
                                                     {publishing[g.documentId] ? <i className="fas fa-spinner fa-spin"></i> : "Draft"}
                                                 </button>
                                             }
                                         </td>
                                         <td>
-                                            <Link className="btn btn-sm btn-outline-primary" href={`/${g.documentId}/category-group`}>
-                                                Edit
-                                            </Link>
+                                            <div className="list-actions">
+                                                <Link className="btn btn-outline-primary" href={`/${g.documentId}/category-group`}>
+                                                    Edit
+                                                </Link>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
                     </div>
-                )}
+                    )}
+                </ListPageLayout>
             </Layout>
         </ProtectedRoute>
     );
