@@ -14,7 +14,7 @@ export const CategoriesEndpoints = {
     /** Resource metadata for policy generation */
     meta: {
         uid: 'api::category.category',
-        domains: ['stock', 'sale', 'cms'],
+        domains: ['cms', 'order-management', 'sale', 'stock'],
         roles: ['admin', 'manager', 'staff']
     },
 

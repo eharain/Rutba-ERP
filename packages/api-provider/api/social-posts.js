@@ -1,6 +1,8 @@
 import __publish_generic_helper from "./__publish_generic_helper.js";
 
 export const SocialPostsEndpoints = {
+    meta: { domains: ['social'] },
+
     // todo: spread adds updateDraft/publish/unpublish/create/del. Inline
     // create/update/publish/unpublish below override the helper versions —
     // the helper's contribution here is effectively just `updateDraft` + `del`.

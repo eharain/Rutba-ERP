@@ -130,7 +130,7 @@ export default function Products() {
             CategoriesEndpoints.listAll(),
             SuppliersEndpoints.listAll(),
             TermTypesEndpoints.listWithTerms(),
-            PurchasesEndpoints.list({ sort: ['createdAt:desc'] }),
+            PurchasesEndpoints.list(1, 100, { sort: ['createdAt:desc'] }),
         ]).then(([b, c, s, t, p]) => {
             setBrands(b?.data || b || []);
             setCategories(c?.data || c || []);
@@ -254,7 +254,7 @@ export default function Products() {
 
     return (
         <ProtectedRoute>
-            <PermissionCheck required="api::product.product.find">
+            <PermissionCheck required="stock">
                 <Layout>
                     <div style={{ padding: 10 }}>
                         <div className="d-flex flex-wrap align-items-center gap-2 mb-2">

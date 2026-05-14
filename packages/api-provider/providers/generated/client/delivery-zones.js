@@ -17,8 +17,9 @@ const endpoints = strictEndpointGuard(
     {
         list,
         create,
+        meta: DeliveryZonesEndpointsApi.meta,
     },
-    ["list","create"],
+    ["list","create","meta"],
 );
 
 export default endpoints;

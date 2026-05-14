@@ -17,8 +17,9 @@ const endpoints = strictEndpointGuard(
     {
         list,
         del,
+        meta: SocialRepliesEndpointsApi.meta,
     },
-    ["list","del"],
+    ["list","del","meta"],
 );
 
 export default endpoints;

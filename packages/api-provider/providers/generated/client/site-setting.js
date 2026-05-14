@@ -41,8 +41,9 @@ const endpoints = strictEndpointGuard(
         updateDraft,
         publish,
         discard,
+        meta: SiteSettingEndpointsApi.meta,
     },
-    ["getDraft","fetchDraft","getPublished","updateDraft","publish","discard"],
+    ["getDraft","fetchDraft","getPublished","updateDraft","publish","discard","meta"],
 );
 
 export default endpoints;

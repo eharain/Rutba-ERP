@@ -3,6 +3,7 @@
  * Pure endpoint descriptors for the /sale-return-items resource.
  */
 export const SaleReturnItemsEndpoints = {
+    meta: { domains: ['sale'] },
 
     /** Create a new sale return item. */
     create: (data) => ({ path: '/sale-return-items', action: 'create', method: 'post', data , data }),

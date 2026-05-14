@@ -11,7 +11,7 @@ export const ProductsEndpoints = {
 
     meta: {
         uid: 'api::product.product',
-        domains: ['stock', 'product'],
+        domains: ['cms', 'order-management', 'social', 'stock'],
         roles: ['admin', 'manager', 'staff']
     },
 
@@ -316,16 +316,18 @@ export const ProductsEndpoints = {
      * Publish a product — custom Strapi action.
      * @param {string} documentId
      */
-    publish: (documentId) => ({ 
+    publish: (documentId) => ({
         path: `/products/${documentId}/publish`,
+        method: 'post',
     }),
 
     /**
      * Unpublish a product — custom Strapi action.
      * @param {string} documentId
      */
-    unpublish: (documentId) => ({ 
+    unpublish: (documentId) => ({
         path: `/products/${documentId}/unpublish`,
+        method: 'post',
     }),
 };
 

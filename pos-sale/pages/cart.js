@@ -54,7 +54,7 @@ export default function Cart() {
 
     return (
         <ProtectedRoute>
-            <PermissionCheck required="api::sale-item.sale-item.create">
+            <PermissionCheck required="sale">
                 <Layout>
                     <h1>Cart</h1>
                     {cartItems.length === 0 ? <p>No items.</p> : (

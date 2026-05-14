@@ -11,8 +11,9 @@ const endpoints = strictEndpointGuard(
     'PaySalaryStructuresEndpoints',
     {
         list,
+        meta: PaySalaryStructuresEndpointsApi.meta,
     },
-    ["list"],
+    ["list","meta"],
 );
 
 export default endpoints;

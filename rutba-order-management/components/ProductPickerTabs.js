@@ -76,7 +76,7 @@ export default function ProductPickerTabs({ selectedProductIds, connectedProduct
                     CategoriesEndpoints.listAll(),
                     SuppliersEndpoints.listAll(),
                     TermTypesEndpoints.listWithTerms(),
-                    PurchasesEndpoints.list({ sort: ["createdAt:desc"] }),
+                    PurchasesEndpoints.list(1, 100, { sort: ["createdAt:desc"] }),
                 ]);
                 setBrands(brandsRes?.data || brandsRes || []);
                 setCategories(categoriesRes?.data || categoriesRes || []);

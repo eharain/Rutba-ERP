@@ -17,8 +17,9 @@ const endpoints = strictEndpointGuard(
     {
         forgotPassword,
         resetPassword,
+        meta: AuthEndpointsApi.meta,
     },
-    ["forgotPassword","resetPassword"],
+    ["forgotPassword","resetPassword","meta"],
 );
 
 export default endpoints;

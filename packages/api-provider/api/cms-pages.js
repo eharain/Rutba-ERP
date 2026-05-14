@@ -10,7 +10,7 @@ export const CmsPagesEndpoints = {
 
     meta: {
         uid: 'api::cms-page.cms-page',
-        domains: ['cms', 'auth', 'stock', 'sale', 'web-public', 'web-authenticated', 'web-user'],
+        domains: ['auth', 'cms', 'sale', 'stock', 'web', 'web-user'],
         roles: ['admin', 'manager', 'staff', 'public', 'user']
     },
 
@@ -22,7 +22,7 @@ export const CmsPagesEndpoints = {
         path: '/cms-pages',
         action: 'find',
         method: 'get',
-        apps: ['cms', 'auth', 'stock', 'sale', 'web-public', 'web-authenticated', 'web-user'],
+        apps: ['cms', 'auth', 'stock', 'sale', 'web', 'web-user'],
         approle: ['admin', 'manager', 'staff', 'public', 'user'],
         params: listParams(
             { page, pageSize, sort, populate, filters, fields },
@@ -71,7 +71,7 @@ export const CmsPagesEndpoints = {
         path: '/cms-pages',
         action: 'find',
         method: 'get',
-        apps: ['cms', 'auth', 'stock', 'sale', 'web-public', 'web-authenticated', 'web-user'],
+        apps: ['cms', 'auth', 'stock', 'sale', 'web', 'web-user'],
         approle: ['admin', 'manager', 'staff', 'public', 'user'],
         params: listParams(
             { page, pageSize, sort, populate, filters, fields },
@@ -89,7 +89,7 @@ export const CmsPagesEndpoints = {
         path: '/cms-pages',
         action: 'find',
         method: 'get',
-        apps: ['cms', 'auth', 'stock', 'sale', 'web-public', 'web-authenticated', 'web-user'],
+        apps: ['cms', 'auth', 'stock', 'sale', 'web', 'web-user'],
         approle: ['admin', 'manager', 'staff', 'public', 'user'],
         params: {
             filters: { slug: { $eq: slug } },
@@ -114,7 +114,7 @@ export const CmsPagesEndpoints = {
         path: '/cms-pages',
         action: 'find',
         method: 'get',
-        apps: ['cms', 'auth', 'stock', 'sale', 'web-public', 'web-authenticated', 'web-user'],
+        apps: ['cms', 'auth', 'stock', 'sale', 'web', 'web-user'],
         approle: ['admin', 'manager', 'staff', 'public', 'user'],
         params: {
             filters: { slug: { $eq: slug } },
@@ -130,7 +130,7 @@ export const CmsPagesEndpoints = {
         path: '/cms-pages',
         action: 'find',
         method: 'get',
-        apps: ['cms', 'auth', 'stock', 'sale', 'web-public', 'web-authenticated', 'web-user'],
+        apps: ['cms', 'auth', 'stock', 'sale', 'web', 'web-user'],
         approle: ['admin', 'manager', 'staff', 'public', 'user'],
         params: {
             filters: { slug: { $eq: 'index' } },
@@ -156,7 +156,7 @@ export const CmsPagesEndpoints = {
         path: `/cms-pages/${documentId}`,
         action: 'findOne',
         method: 'get',
-        apps: ['cms', 'auth', 'stock', 'sale', 'web-public', 'web-authenticated', 'web-user'],
+        apps: ['cms', 'auth', 'stock', 'sale', 'web', 'web-user'],
         approle: ['admin', 'manager', 'staff', 'public', 'user'],
         params: byIdParams({ populate, fields }, {}, { status: 'published' }),
     }),

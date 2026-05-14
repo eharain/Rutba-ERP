@@ -29,8 +29,9 @@ const endpoints = strictEndpointGuard(
         byId,
         create,
         update,
+        meta: HrEmployeesEndpointsApi.meta,
     },
-    ["list","byId","create","update"],
+    ["list","byId","create","update","meta"],
 );
 
 export default endpoints;

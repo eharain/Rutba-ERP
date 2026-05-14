@@ -1,6 +1,8 @@
 import { byIdParams } from './__param_builders.js';
 
 export const SiteSettingEndpoints = {
+    meta: { domains: ['cms', 'order-management', 'web'] },
+
     getDraft: ({ populate, fields } = {}) => ({
         path: '/site-setting',
         params: byIdParams({ populate, fields }, { populate: ['site_logo'] }, { status: 'draft' }),

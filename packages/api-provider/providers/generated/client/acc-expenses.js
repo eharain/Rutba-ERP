@@ -11,8 +11,9 @@ const endpoints = strictEndpointGuard(
     'AccExpensesEndpoints',
     {
         list,
+        meta: AccExpensesEndpointsApi.meta,
     },
-    ["list"],
+    ["list","meta"],
 );
 
 export default endpoints;

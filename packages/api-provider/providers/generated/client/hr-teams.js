@@ -29,8 +29,9 @@ const endpoints = strictEndpointGuard(
         appRoleOptions,
         create,
         update,
+        meta: HrTeamsEndpointsApi.meta,
     },
-    ["list","appRoleOptions","create","update"],
+    ["list","appRoleOptions","create","update","meta"],
 );
 
 export default endpoints;

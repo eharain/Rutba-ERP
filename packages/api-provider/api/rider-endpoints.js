@@ -1,4 +1,6 @@
 export const RiderEndpoints = {
+  meta: { domains: ['delivery'] },
+
   myProfile: () => ({ path: '/rider/me', action: 'findOne', method: 'get' }),
   updateStatus: (data) => ({ path: '/rider/me/status', action: 'updateStatus', method: 'put', data }),
   deliveryOffers: () => ({ path: '/rider/delivery-offers', action: 'find', method: 'get' }),

@@ -10,6 +10,7 @@ export interface SocialPostsEndpointsType {
     update(documentId: any, data: any): Promise<any>;
     replies(documentId: any): Promise<any>;
     publishedMarker(): Promise<any>;
+    meta: any;
 }
 
 export const SocialPostsEndpoints: SocialPostsEndpointsType;

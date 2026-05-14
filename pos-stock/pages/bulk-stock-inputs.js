@@ -384,7 +384,7 @@ export default function BulkStockInputs() {
 
     return (
         <ProtectedRoute>
-            <PermissionCheck required="api::stock-input.stock-input.create">
+            <PermissionCheck required="stock">
                 <Layout>
                     <div className="page-content">
                         <h1><i className="fas fa-boxes me-2"></i>Bulk Stock Inputs</h1>

@@ -5,6 +5,26 @@ const seedAccounting = require('./seed/accounting-seed');
 const runJsonSeeds = require('./seed/json-seed-runner');
 const { resolveHrRolesForUser } = require('./utils/hr-role-provider');
 
+// Ensures the site-setting singleType has a published row so consumers
+// (especially rutba-web's storefront, which fetches this on every page
+// render) don't 404 on a fresh DB. Schema defaults fill in everything;
+// only site_name is required. Idempotent — bails if a row already exists.
+async function ensureSiteSettingSingleton(strapi) {
+    try {
+        const uid = 'api::site-setting.site-setting';
+        const existing = await strapi.db.query(uid).findOne({ where: {} });
+        if (existing) return;
+
+        await strapi.documents(uid).create({
+            data: { site_name: 'Rutba.pk' },
+            status: 'published',
+        });
+        strapi.log.info('[bootstrap] Seeded default site-setting singleton');
+    } catch (err) {
+        strapi.log.error('[bootstrap] site-setting ensure failed: ' + err.message);
+    }
+}
+
 async function ensureUsersPermissionsDefaults(strapi) {
     try {
         const roleQuery = strapi.query('plugin::users-permissions.role');
@@ -57,6 +77,7 @@ module.exports = {
 
     async bootstrap({ strapi }) {
         await ensureUsersPermissionsDefaults(strapi);
+        await ensureSiteSettingSingleton(strapi);
 
         // ─── Register HR team-role provider with api-pro ─────────────
         // api-pro's bootstrap runs before this (plugin bootstraps fire before

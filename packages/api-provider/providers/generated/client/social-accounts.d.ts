@@ -4,6 +4,7 @@ export interface SocialAccountsEndpointsType {
     create(data: any): Promise<any>;
     update(documentId: any, data: any): Promise<any>;
     del(documentId: any): Promise<any>;
+    meta: any;
 }
 
 export const SocialAccountsEndpoints: SocialAccountsEndpointsType;

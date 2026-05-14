@@ -2,6 +2,8 @@ import __publish_generic_helper from "./__publish_generic_helper.js";
 import { listParams, byIdParams } from './__param_builders.js';
 
 export const DeliveryMethodsEndpoints = {
+    meta: { domains: ['cms', 'order-management'] },
+
     // todo: spread adds updateDraft/publish/unpublish/create/del. Verify the
     // delivery-method content type has draft-publish enabled; the inline
     // create/update below will override the helper's versions either way.

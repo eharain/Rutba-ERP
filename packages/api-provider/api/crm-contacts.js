@@ -1,6 +1,8 @@
 import { listParams, byIdParams } from './__param_builders.js';
 
 export const CrmContactsEndpoints = {
+    meta: { domains: ['crm'] },
+
     list: ({ page, pageSize, sort, populate, filters, fields } = {}) => ({
         path: '/crm-contacts',
         params: listParams(

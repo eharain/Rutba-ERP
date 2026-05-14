@@ -13,6 +13,7 @@ export interface MediaLibraryEndpointsType {
     updateFileInfo(id: any, data: any): Promise<any>;
     uploadFile(data: any): Promise<any>;
     delFile(id: any): Promise<any>;
+    meta: any;
 }
 
 export const MediaLibraryEndpoints: MediaLibraryEndpointsType;

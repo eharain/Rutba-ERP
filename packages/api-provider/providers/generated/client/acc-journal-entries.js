@@ -11,8 +11,9 @@ const endpoints = strictEndpointGuard(
     'AccJournalEntriesEndpoints',
     {
         list,
+        meta: AccJournalEntriesEndpointsApi.meta,
     },
-    ["list"],
+    ["list","meta"],
 );
 
 export default endpoints;

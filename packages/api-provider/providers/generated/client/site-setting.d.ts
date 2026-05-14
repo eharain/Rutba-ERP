@@ -6,6 +6,7 @@ export interface SiteSettingEndpointsType {
     updateDraft(data: any): Promise<any>;
     publish(data: any): Promise<any>;
     discard(data: any): Promise<any>;
+    meta: any;
 }
 
 export const SiteSettingEndpoints: SiteSettingEndpointsType;

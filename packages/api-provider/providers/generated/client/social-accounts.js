@@ -29,8 +29,9 @@ const endpoints = strictEndpointGuard(
         create,
         update,
         del,
+        meta: SocialAccountsEndpointsApi.meta,
     },
-    ["list","create","update","del"],
+    ["list","create","update","del","meta"],
 );
 
 export default endpoints;

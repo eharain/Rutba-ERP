@@ -1,6 +1,8 @@
 export const WebAuthEndpoints = {
-  localSignIn: () => ({ path: '/auth/local', method: 'post' }),
-  localRegister: () => ({ path: '/auth/local/register', method: 'post' }),
+  meta: { domains: ['web'] },
+
+  localSignIn: (data) => ({ path: '/auth/local', method: 'post', data }),
+  localRegister: (data) => ({ path: '/auth/local/register', method: 'post', data }),
   providerCallback: (provider, accessToken) => ({
     path: `/auth/${provider}/callback`,
     method: 'get',

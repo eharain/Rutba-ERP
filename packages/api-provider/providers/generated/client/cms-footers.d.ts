@@ -9,6 +9,7 @@ export interface CmsFootersEndpointsType {
     unpublish(documentId: any): Promise<any>;
     create(data: any): Promise<any>;
     del(documentId: any): Promise<any>;
+    meta: any;
 }
 
 export const CmsFootersEndpoints: CmsFootersEndpointsType;

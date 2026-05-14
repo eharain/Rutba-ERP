@@ -1,15 +1,15 @@
 import { authApi } from '../../../../lib/api.js';
-import { withQuery, wrapData, strictEndpointGuard } from '../___core__.js';
+import { withQuery, strictEndpointGuard } from '../___core__.js';
 import { WebAuthEndpoints as WebAuthEndpointsApi } from '../../../../api/web/auth.js';
 
-async function localSignIn() {
-    const ep = WebAuthEndpointsApi.localSignIn();
-    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+async function localSignIn(data) {
+    const ep = WebAuthEndpointsApi.localSignIn(data);
+    return authApi.post(withQuery(ep.path, ep.params), ep.data);
 }
 
-async function localRegister() {
-    const ep = WebAuthEndpointsApi.localRegister();
-    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+async function localRegister(data) {
+    const ep = WebAuthEndpointsApi.localRegister(data);
+    return authApi.post(withQuery(ep.path, ep.params), ep.data);
 }
 
 async function providerCallback(provider, accessToken) {
@@ -23,8 +23,9 @@ const endpoints = strictEndpointGuard(
         localSignIn,
         localRegister,
         providerCallback,
+        meta: WebAuthEndpointsApi.meta,
     },
-    ["localSignIn","localRegister","providerCallback"],
+    ["localSignIn","localRegister","providerCallback","meta"],
 );
 
 export default endpoints;

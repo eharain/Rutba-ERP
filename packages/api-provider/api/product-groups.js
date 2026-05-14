@@ -3,7 +3,7 @@ import { listParams, byIdParams } from './__param_builders.js';
 export const ProductGroupsEndpoints = {
     meta: {
         uid: 'api::product-group.product-group',
-        domains: ['stock', 'cms', 'web-public', 'web-authenticated', 'web-user'],
+        domains: ['cms', 'stock', 'web', 'web-user'],
         roles: ['admin', 'manager', 'staff', 'public', 'user']
     },
 
@@ -24,7 +24,7 @@ export const ProductGroupsEndpoints = {
         path: '/product-groups',
         action: 'find',
         method: 'get',
-        apps: ['stock', 'cms', 'web-public', 'web-authenticated', 'web-user'],
+        apps: ['stock', 'cms', 'web', 'web-user'],
         approle: ['admin', 'manager', 'staff', 'public', 'user'],
         params: listParams(
             { page, pageSize, sort, populate, filters, fields },
@@ -46,7 +46,7 @@ export const ProductGroupsEndpoints = {
         path: `/product-groups/${documentId}`,
         action: 'findOne',
         method: 'get',
-        apps: ['stock', 'cms', 'web-public', 'web-authenticated', 'web-user'],
+        apps: ['stock', 'cms', 'web', 'web-user'],
         approle: ['admin', 'manager', 'staff', 'public', 'user'],
         params: byIdParams({ populate, fields }, {}, { status: 'published' }),
     }),

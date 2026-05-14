@@ -105,26 +105,42 @@ function emitSessionExpired() {
 }
 
 // -- Token Refresh --
+//
+// `refreshAccessToken` returns `{ jwt, reason }`:
+//   reason === 'ok'        → refresh succeeded, jwt is the new access token
+//   reason === 'no-token'  → no refresh token in storage (session not present)
+//   reason === 'rejected'  → server rejected the refresh token (401/403/4xx)
+//   reason === 'network'   → transient failure (network drop, 5xx, CORS, …)
+//
+// Only the first three reasons mean the session is definitively dead.
+// `network` is transient — callers should NOT log the user out on it.
+//
+// `.jwt` (string|null) is also returned for backward-compatible call sites
+// that only care whether a usable token came back.
 let _refreshPromise = null;
 
 export async function refreshAccessToken() {
     if (_refreshPromise) return _refreshPromise;
     _refreshPromise = (async () => {
+        const refreshToken = storage.getItem('refreshToken');
+        if (!refreshToken) return { jwt: null, reason: 'no-token' };
         try {
-            const refreshToken = storage.getItem('refreshToken');
-            if (!refreshToken) return null;
             const res = await axios.post(`${API_URL}/auth/refresh`, { refreshToken }, {
                 headers: { 'Content-Type': 'application/json' },
             });
             const newJwt = res.data?.jwt;
             const newRefresh = res.data?.refreshToken;
-            if (!newJwt) return null;
+            if (!newJwt) return { jwt: null, reason: 'rejected' };
             storage.setItem('jwt', newJwt);
             if (newRefresh) storage.setItem('refreshToken', newRefresh);
-            return newJwt;
+            return { jwt: newJwt, reason: 'ok' };
         } catch (err) {
-            console.warn('Token refresh failed', err?.response?.status || err.message);
-            return null;
+            const status = err?.response?.status;
+            console.warn('Token refresh failed', status || err.message);
+            // 4xx from the refresh endpoint = the refresh token itself is no
+            // good. Anything else is treated as transient.
+            const reason = (status >= 400 && status < 500) ? 'rejected' : 'network';
+            return { jwt: null, reason };
         } finally {
             _refreshPromise = null;
         }
@@ -313,22 +329,71 @@ export const api = {
 };
 
 // ------------------ Auth API (uses localStorage JWT) ------------------
+// Strip this lib's own async frames (get/post/authCall in api.js) from the
+// error stack so devtools/Next overlay land on the caller (e.g.
+// `NotificationTemplatesPage.load`) instead of api.js:135.
+function stripLibFrames(err) {
+    if (!err || typeof err !== 'object' || typeof err.stack !== 'string') return err;
+    err.stack = err.stack
+        .split('\n')
+        .filter((line) => !/api-provider[\\/]lib[\\/]api\.js/.test(line))
+        .join('\n');
+    return err;
+}
+
+// Hang the call so the originating component doesn't flash an error; the
+// session-expired listener (SessionExpiredDialog) drives recovery from here.
+function suspendForSessionRecovery() {
+    emitSessionExpired();
+    return new Promise(() => {});
+}
+
 // On 401, automatically attempts a token refresh and retries once.
+//
+// session-expired is emitted ONLY when the session is definitively dead:
+//   - no JWT and no refresh token at call time (short-circuit)
+//   - refresh server rejected the refresh token (4xx)
+//   - retry with a fresh JWT still returns 401 (the new token is also bad)
+//
+// Transient refresh failures (network, 5xx) propagate the original 401 to
+// the caller without logging the user out.
 async function authCall(fn, ...args) {
     const jwt = storage.getItem('jwt');
+
+    // Short-circuit: if we have neither an access nor a refresh token, the
+    // call cannot possibly succeed. Skip the wasted request + refresh round
+    // trip and go straight to recovery.
+    if (!jwt && !storage.getItem('refreshToken')) {
+        return suspendForSessionRecovery();
+    }
+
     try {
         return await fn(...args, jwt);
     } catch (err) {
-        if (err?.response?.status !== 401) throw err;
-        const newJwt = await refreshAccessToken();
+        if (err?.response?.status !== 401) throw stripLibFrames(err);
+
+        const { jwt: newJwt, reason } = await refreshAccessToken();
         if (!newJwt) {
-            emitSessionExpired();
-            // Return a never-resolving promise so the calling component
-            // does not receive an error (which would flash a 401 message).
-            // The SessionExpiredDialog handles recovery from here.
-            return new Promise(() => {});
+            if (reason === 'no-token' || reason === 'rejected') {
+                return suspendForSessionRecovery();
+            }
+            // 'network' / transient — surface the original 401 to the caller
+            // instead of logging them out for an outage.
+            throw stripLibFrames(err);
         }
-        return await fn(...args, newJwt);
+
+        try {
+            return await fn(...args, newJwt);
+        } catch (retryErr) {
+            // A fresh JWT being rejected means the session is dead at the
+            // server level (token revoked between refresh and retry, user
+            // disabled, etc.) — recover the same way as an unrecoverable
+            // refresh failure.
+            if (retryErr?.response?.status === 401) {
+                return suspendForSessionRecovery();
+            }
+            throw stripLibFrames(retryErr);
+        }
     }
 }
 

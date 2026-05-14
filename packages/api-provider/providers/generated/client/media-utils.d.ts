@@ -5,6 +5,7 @@ export interface MediaUtilsEndpointsType {
     isImage(file: any): Promise<any>;
     isPDF(file: any): Promise<any>;
     isVideo(file: any): Promise<any>;
+    meta: any;
 }
 
 export const MediaUtilsEndpoints: MediaUtilsEndpointsType;

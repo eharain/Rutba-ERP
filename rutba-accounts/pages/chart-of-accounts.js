@@ -11,8 +11,7 @@ export default function ChartOfAccounts() {
 
     useEffect(() => {
         if (!jwt) return;
-        const ep = AccAccountsEndpoints.list();
-        AccAccountsEndpoints.fetchList(ep.params)
+        AccAccountsEndpoints.list()
             .then((res) => setAccounts(res.data || []))
             .catch((err) => console.error("Failed to load accounts", err))
             .finally(() => setLoading(false));

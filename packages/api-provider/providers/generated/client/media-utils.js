@@ -35,8 +35,9 @@ const endpoints = strictEndpointGuard(
         isImage,
         isPDF,
         isVideo,
+        meta: MediaUtilsEndpointsApi.meta,
     },
-    ["imageBaseUrl","strapiImageUrl","isImage","isPDF","isVideo"],
+    ["imageBaseUrl","strapiImageUrl","isImage","isPDF","isVideo","meta"],
 );
 
 export default endpoints;

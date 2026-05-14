@@ -17,8 +17,9 @@ const endpoints = strictEndpointGuard(
     {
         list,
         byId,
+        meta: CrmContactsEndpointsApi.meta,
     },
-    ["list","byId"],
+    ["list","byId","meta"],
 );
 
 export default endpoints;

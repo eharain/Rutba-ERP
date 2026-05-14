@@ -133,7 +133,7 @@ function SaleReturnDetail({ documentId }) {
                             </div>
                             <hr />
                             <div className="row">
-                                <div className="col-md-4">
+                                <div className="col-md-3">
                                     <div className="small text-muted">Original Sale Invoice</div>
                                     <div className="fw-bold">
                                         {saleReturn.sale?.invoice_no ? (
@@ -143,11 +143,21 @@ function SaleReturnDetail({ documentId }) {
                                         ) : "N/A"}
                                     </div>
                                 </div>
-                                <div className="col-md-4">
+                                <div className="col-md-3">
+                                    <div className="small text-muted">Exchange Sale</div>
+                                    <div className="fw-bold">
+                                        {saleReturn.exchange_sale?.invoice_no ? (
+                                            <Link href={`/${getEntryId(saleReturn.exchange_sale)}/sale`}>
+                                                <i className="fas fa-exchange-alt me-1"></i>{saleReturn.exchange_sale.invoice_no}
+                                            </Link>
+                                        ) : <span className="text-muted">—</span>}
+                                    </div>
+                                </div>
+                                <div className="col-md-3">
                                     <div className="small text-muted">Customer</div>
                                     <div>{saleReturn.sale?.customer?.name || "Walk-in Customer"}</div>
                                 </div>
-                                <div className="col-md-4">
+                                <div className="col-md-3">
                                     <div className="small text-muted">Total Refund</div>
                                     <div className="fw-bold fs-5 text-danger">{currency}{totalRefund.toFixed(2)}</div>
                                 </div>
@@ -238,17 +248,33 @@ function SaleReturnDetail({ documentId }) {
                                                 <th className="text-end">Amount</th>
                                                 <th>Date</th>
                                                 <th>Txn No</th>
+                                                <th>Linked</th>
                                                 <th></th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {saleReturn.payments.map((p, idx) => (
+                                            {saleReturn.payments.map((p, idx) => {
+                                                const pSaleDocId = getEntryId(p.sale);
+                                                const pRegDocId = getEntryId(p.cash_register);
+                                                return (
                                                 <tr key={getEntryId(p) || idx}>
                                                     <td>{idx + 1}</td>
                                                     <td>{p.payment_method || "N/A"}</td>
                                                     <td className={`text-end ${Number(p.amount || 0) < 0 ? 'text-danger' : ''}`}>{currency}{Number(p.amount || 0).toFixed(2)}</td>
                                                     <td className="small">{p.payment_date ? new Date(p.payment_date).toLocaleString() : "-"}</td>
                                                     <td className="small text-muted">{p.transaction_no || "-"}</td>
+                                                    <td>
+                                                        {pSaleDocId && (
+                                                            <Link href={`/${pSaleDocId}/sale`} className="badge bg-success text-decoration-none me-1">
+                                                                <i className="fas fa-receipt me-1"></i>{p.sale?.invoice_no || 'Sale'}
+                                                            </Link>
+                                                        )}
+                                                        {pRegDocId && (
+                                                            <Link href={`/${pRegDocId}/cash-register-detail`} className="badge bg-primary text-decoration-none">
+                                                                <i className="fas fa-cash-register me-1"></i>{p.cash_register?.desk_name || 'Register'}
+                                                            </Link>
+                                                        )}
+                                                    </td>
                                                     <td>
                                                         {getEntryId(p) && (
                                                             <Link href={`/${getEntryId(p)}/payment`} className="btn btn-outline-secondary btn-sm py-0 px-1">
@@ -257,7 +283,8 @@ function SaleReturnDetail({ documentId }) {
                                                         )}
                                                     </td>
                                                 </tr>
-                                            ))}
+                                                );
+                                            })}
                                         </tbody>
                                     </table>
                                 </div>

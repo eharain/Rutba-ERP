@@ -1,6 +1,8 @@
 import { listParams, byIdParams } from './__param_builders.js';
 
 export const SaleOffersEndpoints = {
+    meta: { domains: ['cms'] },
+
     listDraft: ({ page, pageSize, sort, populate, filters, fields } = {}) => ({
         path: '/sale-offers',
         params: listParams(

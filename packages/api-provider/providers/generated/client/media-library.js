@@ -83,8 +83,9 @@ const endpoints = strictEndpointGuard(
         updateFileInfo,
         uploadFile,
         delFile,
+        meta: MediaLibraryEndpointsApi.meta,
     },
-    ["foldersTree","folders","folder","files","file","moveFiles","uploadToFolder","createFolder","renameFolder","deleteFolder","updateFileInfo","uploadFile","delFile"],
+    ["foldersTree","folders","folder","files","file","moveFiles","uploadToFolder","createFolder","renameFolder","deleteFolder","updateFileInfo","uploadFile","delFile","meta"],
 );
 
 export default endpoints;

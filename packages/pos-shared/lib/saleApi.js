@@ -447,13 +447,14 @@ export default class SaleApi {
             }
         }
 
-        // 4) Create payout payment linked to the return, original sale, and cash register
+        // 4) Create the Exchange Return tender as a single payment linked to the NEW sale
+        //    and the sale_return — this payment is what bridges the new sale to the return.
         await PaymentsEndpoints.postRefund({
             payment_method: 'Exchange Return',
-            amount: -returnTotal,
+            amount: returnTotal,
             payment_date: new Date().toISOString(),
             transaction_no: returnNo,
-            sale: { connect: [originalSaleDocId] },
+            ...(newSaleDocId ? { sale: { connect: [newSaleDocId] } } : {}),
             sale_return: { connect: [saleReturnDocId] },
             ...(registerDocId ? { cash_register: { connect: [registerDocId] } } : {}),
         });

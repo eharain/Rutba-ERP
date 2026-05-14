@@ -7,6 +7,7 @@ export interface RiderEndpointsType {
     rejectDeliveryOffer(offerDocumentId: any, data: any): Promise<any>;
     deliveries({ status }?: any): Promise<any>;
     updateDeliveryStatus(orderDocumentId: any, data: any): Promise<any>;
+    meta: any;
 }
 
 export const RiderEndpoints: RiderEndpointsType;

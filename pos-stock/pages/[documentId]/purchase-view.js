@@ -97,7 +97,7 @@ export default function PurchaseViewPage() {
     return (
         <ProtectedRoute>
             <Layout>
-                <PermissionCheck required="api::purchase.purchase.find">
+                <PermissionCheck required="stock">
                     <div className="page-content">
                         {/* Header Actions */}
                         <div className="action-row">

@@ -104,13 +104,9 @@
       "stock_staff"
     ]
   },
-  "web-public": {
+  "web": {
     "roles": [
-      "web_public"
-    ]
-  },
-  "web-authenticated": {
-    "roles": [
+      "web_public",
       "web_user"
     ]
   },

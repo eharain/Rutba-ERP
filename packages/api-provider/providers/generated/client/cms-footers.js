@@ -59,8 +59,9 @@ const endpoints = strictEndpointGuard(
         unpublish,
         create,
         del,
+        meta: CmsFootersEndpointsApi.meta,
     },
-    ["listDraft","listPublished","byIdDraft","byIdPublished","updateDraft","publish","unpublish","create","del"],
+    ["listDraft","listPublished","byIdDraft","byIdPublished","updateDraft","publish","unpublish","create","del","meta"],
 );
 
 export default endpoints;

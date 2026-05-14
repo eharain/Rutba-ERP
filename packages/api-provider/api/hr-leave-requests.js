@@ -1,4 +1,6 @@
 export const HrLeaveRequestsEndpoints = {
+    meta: { domains: ['hr'] },
+
     myRequests: () => ({ path: '/hr-leave-requests/my-requests' }),
     teamQueue: () => ({ path: '/hr-leave-requests/team-queue' }),
     create: (data) => ({ path: '/hr-leave-requests' , data }),

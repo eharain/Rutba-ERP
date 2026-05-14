@@ -10,7 +10,7 @@ export { createWebDeliveryService } from './delivery';
 export { createWebLeadsService } from './leads';
 export { createWebOrdersService } from './orders';
 export { createWebProductGroupsService } from './product-groups';
-export { createWebProductsService } from './products';
+export { createWebProductsService, getProductDetailSSR } from './products';
 export { createWebReviewsService } from './reviews';
 export { createWebSiteSettingsService, SITE_SETTINGS_DEFAULTS } from './site-settings';
 

@@ -14,6 +14,9 @@ const SaleReturnReceipt = ({ saleReturn, onClose }) => {
     const customerName = saleReturn?.sale?.customer?.name || saleReturn?.sale?.customer?.email || 'Walk-in Customer';
     const totalRefund = Number(saleReturn?.total_refund || 0);
     const items = saleReturn?.items || [];
+    const payments = Array.isArray(saleReturn?.payments) ? saleReturn.payments : [];
+    const exchangeInvoice = saleReturn?.exchange_sale?.invoice_no || null;
+    const registerLabel = saleReturn?.cash_register?.desk_name || saleReturn?.desk_name || null;
 
     const paperWidth = invoicePrintSettings?.paperWidth || '80mm';
     const fontSize = invoicePrintSettings?.fontSize || 11;
@@ -100,9 +103,11 @@ const SaleReturnReceipt = ({ saleReturn, onClose }) => {
                 <div className="text-start small mb-2" style={{ lineHeight: 1.4 }}>
                     <div><strong>Return #:</strong> {returnNo}</div>
                     <div><strong>Original Invoice:</strong> {saleInvoice}</div>
+                    {exchangeInvoice && <div><strong>Exchange Invoice:</strong> {exchangeInvoice}</div>}
                     <div><strong>Customer:</strong> {customerName}</div>
                     <div><strong>Type:</strong> {saleReturn?.type || 'Return'}</div>
                     <div><strong>Refund Via:</strong> {saleReturn?.refund_method || 'Cash'}</div>
+                    {registerLabel && <div><strong>Register:</strong> {registerLabel}</div>}
                 </div>
 
                 {/* Items */}
@@ -134,16 +139,39 @@ const SaleReturnReceipt = ({ saleReturn, onClose }) => {
                                 <td className="text-end">{currency}{totalRefund.toFixed(2)}</td>
                             </tr>
                             <tr>
-                                <td className="text-start">Refund Method:</td>
-                                <td className="text-end">{saleReturn?.refund_method || 'Cash'}</td>
-                            </tr>
-                            <tr>
                                 <td className="text-start">Status:</td>
                                 <td className="text-end">{saleReturn?.refund_status || 'Refunded'}</td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
+
+                {/* Payments (derived from payment records — the bridge to sale + register) */}
+                {payments.length > 0 && (
+                    <div style={{ borderTop: '1px dashed #555', paddingTop: '5px', fontSize: '11px' }}>
+                        <table className="w-100" style={{ borderCollapse: 'collapse', fontSize: '11px' }}>
+                            <tbody>
+                                <tr>
+                                    <td colSpan="2" className="text-start fw-bold" style={{ padding: '2px 0 1px' }}>Payments:</td>
+                                </tr>
+                                {payments.map((p, i) => {
+                                    const linkedInvoice = p.sale?.invoice_no;
+                                    return (
+                                        <tr key={i}>
+                                            <td className="text-start" style={{ padding: '1px 0 1px 4px' }}>
+                                                {p.payment_method || 'Payment'}
+                                                {linkedInvoice ? ` → ${linkedInvoice}` : (p.transaction_no ? ` (${p.transaction_no})` : '')}
+                                            </td>
+                                            <td className="text-end" style={{ padding: '1px 0' }}>
+                                                {currency}{Number(p.amount || 0).toFixed(2)}
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
 
                 {/* Footer */}
                 <div className="mt-3" style={{ borderTop: '1px dashed #555', paddingTop: '5px' }}>

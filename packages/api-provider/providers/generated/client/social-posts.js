@@ -65,8 +65,9 @@ const endpoints = strictEndpointGuard(
         update,
         replies,
         publishedMarker,
+        meta: SocialPostsEndpointsApi.meta,
     },
-    ["updateDraft","publish","unpublish","create","del","list","byId","update","replies","publishedMarker"],
+    ["updateDraft","publish","unpublish","create","del","list","byId","update","replies","publishedMarker","meta"],
 );
 
 export default endpoints;

@@ -1,16 +1,27 @@
 /**
  * api-url-resolver.js
- * Single file global API + IMAGE URL resolver
+ *
+ * Resolves the API base URL for the active browser context. Deterministic
+ * rewrite — no network probes.
+ *
+ * Rule:
+ *   - SSR / Node: use the env URL as-is.
+ *   - Browser on localhost / 127.0.0.1: use the env URL as-is.
+ *   - Browser on any other host (LAN IP, mDNS name, staging domain): swap
+ *     the API hostname to match the browser hostname, keeping the API
+ *     port + path. Same scheme as the env URL.
+ *
+ * The point: when you load the storefront from your phone via
+ * http://192.168.2.105:4000, every API call should target
+ * http://192.168.2.105:4010/api — not localhost.
  */
 
 // ================================
 // INTERNAL GLOBAL STATE
 // ================================
 
-let API_URL_INTERNAL =  (process.env.NEXT_PUBLIC_API_URL || "http://localhost:4010/api").replace(/\/+$/, '');
-
-let IMAGE_URL_INTERNAL =
-  API_URL_INTERNAL.replace(/\/api$/, '');
+let API_URL_INTERNAL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:4010/api").replace(/\/+$/, '');
+let IMAGE_URL_INTERNAL = API_URL_INTERNAL.replace(/\/api$/, '');
 
 let initialized = false;
 
@@ -36,26 +47,22 @@ export function getImageUrl() {
 // INIT (CALL ON APP START)
 // ================================
 
-export async function initApiConfig(options = {}) {
-  if (initialized) {
-    return { API_URL, IMAGE_URL };
-  }
+// Note: kept `async` purely for backward compatibility with the existing
+// `await initApiConfig(...)` call sites. The body is sync — no awaits inside.
+export async function initApiConfig(_options = {}) {
+  if (initialized) return { API_URL, IMAGE_URL };
 
   try {
-    const resolved = await resolveApiUrl(API_URL_INTERNAL, options);
-
+    const resolved = resolveApiUrl(API_URL_INTERNAL);
     if (resolved) {
       API_URL_INTERNAL = resolved.replace(/\/+$/, '');
       IMAGE_URL_INTERNAL = API_URL_INTERNAL.replace(/\/api$/, '');
-
       API_URL = API_URL_INTERNAL;
       IMAGE_URL = IMAGE_URL_INTERNAL;
     }
-
     initialized = true;
-
   } catch (err) {
-    console.warn('API resolver failed, using default:', err);
+    console.warn('[api-url-resolver] rewrite failed, using env value:', err?.message);
   }
 
   return { API_URL, IMAGE_URL };
@@ -66,93 +73,19 @@ export async function initApiConfig(options = {}) {
 // CORE RESOLVER
 // ================================
 
-async function resolveApiUrl(apiUrl, options = {}) {
-  const {
-    timeout = 3000,
-    testPath = '',
-  } = options;
+const LOCAL_NAMES = new Set(['localhost', '127.0.0.1', '0.0.0.0', '::1']);
 
-  if (!apiUrl) {
-    return apiUrl;
-  }
+function resolveApiUrl(apiUrl) {
+  if (!apiUrl) return apiUrl;
+  if (typeof window === 'undefined') return apiUrl; // SSR / Node
 
-  // Server-side (SSR / Node.js): prefer the original (localhost) URL directly
-  if (typeof window === 'undefined') {
-    return apiUrl;
-  }
+  const browserHost = window.location.hostname;
+  if (!browserHost || LOCAL_NAMES.has(browserHost)) return apiUrl;
 
-  const candidates = new Set();
-  const localhostNames = ['localhost', '127.0.0.1', '0.0.0.0'];
+  let parsed;
+  try { parsed = new URL(apiUrl); } catch { return apiUrl; }
 
-  try {
-    const inputUrl = new URL(apiUrl);
-
-    const protocol = inputUrl.protocol || window.location.protocol;
-    const port = inputUrl.port;
-    const path = inputUrl.pathname.replace(/\/$/, '');
-    const browserHost = window.location.hostname;
-    const isBrowserLocal = localhostNames.includes(browserHost);
-
-    // 1️⃣ Browser host + API port (the host/IP the user is actually browsing from)
-    if (!isBrowserLocal) {
-      if (port) {
-        candidates.add(`${protocol}//${browserHost}:${port}${path}`);
-      } else {
-        candidates.add(`${protocol}//${browserHost}${path}`);
-      }
-    }
-
-    // 2️⃣ Original URL from env
-    candidates.add(inputUrl.origin + path);
-
-    // 3️⃣ Browser origin fallback (browser host + browser port)
-    candidates.add(window.location.origin + path);
-
-    // 4️⃣ Localhost variations (lowest priority in browser)
-    const isConfigLocal = localhostNames.includes(inputUrl.hostname);
-
-    if (isConfigLocal) {
-      localhostNames.forEach(host => {
-        if (port) {
-          candidates.add(`${protocol}//${host}:${port}${path}`);
-        } else {
-          candidates.add(`${protocol}//${host}${path}`);
-        }
-      });
-    }
-
-  } catch {
-    return apiUrl;
-  }
-
-  for (const url of candidates) {
-    const ok = await testUrl(url + testPath, timeout);
-    if (ok) return url;
-  }
-
-  return apiUrl;
-}
-
-
-// ================================
-// URL TESTER
-// ================================
-
-async function testUrl(url, timeout = 3000) {
-  try {
-    const controller = new AbortController();
-    const id = setTimeout(() => controller.abort(), timeout);
-
-    const res = await fetch(url, {
-      method: 'GET',
-      signal: controller.signal,
-    });
-
-    clearTimeout(id);
-
-    return res.ok || [401, 403].includes(res.status);
-
-  } catch {
-    return false;
-  }
+  // Swap the API host to match the browser host, keep port + path + scheme.
+  parsed.hostname = browserHost;
+  return parsed.toString().replace(/\/+$/, '');
 }

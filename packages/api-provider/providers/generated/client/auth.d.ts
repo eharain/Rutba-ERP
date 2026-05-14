@@ -2,6 +2,7 @@
 export interface AuthEndpointsType {
     forgotPassword(email: any): Promise<any>;
     resetPassword({ code, password, passwordConfirmation }: any): Promise<any>;
+    meta: any;
 }
 
 export const AuthEndpoints: AuthEndpointsType;

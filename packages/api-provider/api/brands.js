@@ -11,7 +11,7 @@ export const BrandsEndpoints = {
 
     meta: {
         uid: 'api::brand.brand',
-        domains: ['stock', 'brand'],
+        domains: ['cms', 'order-management', 'stock'],
         roles: ['admin', 'manager', 'staff']
     },
 

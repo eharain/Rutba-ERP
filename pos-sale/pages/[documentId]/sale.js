@@ -238,7 +238,7 @@ export default function SalePage() {
     return (
         <Layout>
             <ProtectedRoute>
-                <PermissionCheck required="api::sale.sale.find">
+                <PermissionCheck required="sale">
                     <CashRegisterGuard>
                     <div className="container-fluid px-3 py-2">
 
@@ -361,13 +361,46 @@ export default function SalePage() {
                                         </div>
                                     </div>
 
+                                    {/* ── Returns made from this sale ── */}
+                                    {saleModel.saleReturns?.length > 0 && (
+                                        <div className="p-3 bg-warning bg-opacity-10 border border-warning rounded mb-2">
+                                            <div className="fw-bold small mb-1">
+                                                <i className="fas fa-undo me-1"></i>Returns from this Sale
+                                            </div>
+                                            {saleModel.saleReturns.map((sr, i) => {
+                                                const srDocId = sr.documentId || sr.id;
+                                                const exDocId = sr.exchangeSale?.documentId || sr.exchangeSale?.id;
+                                                return (
+                                                    <div key={i} className="d-flex justify-content-between small align-items-center">
+                                                        <span>
+                                                            {srDocId ? (
+                                                                <Link href={`/${srDocId}/sale-return`} className="text-decoration-none">
+                                                                    {sr.returnNo || 'Return'}
+                                                                </Link>
+                                                            ) : (sr.returnNo || 'Return')}
+                                                            <span className={`badge ms-2 ${sr.type === 'Exchange' ? 'bg-info' : 'bg-secondary'}`}>{sr.type || 'Return'}</span>
+                                                            {sr.type === 'Exchange' && sr.exchangeSale?.invoice_no && (
+                                                                exDocId ? (
+                                                                    <Link href={`/${exDocId}/sale`} className="badge bg-success text-decoration-none ms-1">
+                                                                        <i className="fas fa-receipt me-1"></i>{sr.exchangeSale.invoice_no}
+                                                                    </Link>
+                                                                ) : (
+                                                                    <span className="badge bg-success ms-1">{sr.exchangeSale.invoice_no}</span>
+                                                                )
+                                                            )}
+                                                        </span>
+                                                        <span className="text-danger">-{currency}{Number(sr.totalRefund || 0).toFixed(2)}</span>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+
                                     {/* ── Payments breakdown (shown after checkout) ── */}
                                     {saleModel.payments.length > 0 && (() => {
-                                        const actualPayments = saleModel.payments.filter(
-                                            p => (p.payment_method || '').toLowerCase() !== 'exchange return'
-                                        );
+                                        const actualPayments = saleModel.payments;
                                         const totalPaid = actualPayments.reduce((s, p) => s + Number(p.amount || 0), 0);
-                                        const amountDue = Math.max(0, saleModel.total - saleModel.exchangeReturnTotal);
+                                        const amountDue = saleModel.total;
                                         const change = Math.max(0, totalPaid - amountDue);
                                         const registerDocId = saleModel.cash_register?.documentId;
                                         if (!actualPayments.length) return null;
@@ -383,11 +416,18 @@ export default function SalePage() {
                                                 </div>
                                                 {actualPayments.map((p, i) => {
                                                     const pDocId = p.documentId;
+                                                    const returnDocId = p.sale_return?.documentId;
+                                                    const returnNo = p.sale_return?.return_no;
                                                     const content = (
-                                                        <div key={i} className="d-flex justify-content-between small">
+                                                        <div key={i} className="d-flex justify-content-between small align-items-center">
                                                             <span className="text-light">
                                                                 {p.payment_method || 'Payment'}
                                                                 {p.transaction_no ? ` (${p.transaction_no})` : ''}
+                                                                {returnDocId && (
+                                                                    <Link href={`/${returnDocId}/sale-return`} className="badge bg-warning text-dark ms-2 text-decoration-none" onClick={(e) => e.stopPropagation()}>
+                                                                        <i className="fas fa-undo me-1"></i>{returnNo || 'Return'}
+                                                                    </Link>
+                                                                )}
                                                             </span>
                                                             <span>{currency}{Number(p.amount || 0).toFixed(2)}</span>
                                                         </div>
@@ -564,7 +604,7 @@ function SaleButtons({ handlePrint, handleSave, saleModel, setShowCheckout, isDi
             >
                 <i className="fas fa-save me-1" />Save
             </button>
-            <PermissionCheck has="api::payment.payment.create">
+            <PermissionCheck has="sale">
                 <button
                     className={`btn flex-fill ${canCheckout ? 'btn-success' : 'btn-outline-secondary'}`}
                     onClick={handleCheckoutClick}

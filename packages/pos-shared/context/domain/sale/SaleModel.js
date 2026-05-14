@@ -90,6 +90,8 @@ export default class SaleModel {
                 }));
                 if (originalSale && returnItems.length > 0) {
                     model.exchangeReturns.push({
+                        documentId: excReturn.documentId,
+                        id: excReturn.id,
                         sale: originalSale,
                         returnItems,
                         returnNo: excReturn.return_no,
@@ -102,6 +104,8 @@ export default class SaleModel {
         // Hydrate sale returns (returns FROM this sale) if present
         if (Array.isArray(sale.sale_returns) && sale.sale_returns.length > 0) {
             model.saleReturns = sale.sale_returns.map(sr => ({
+                documentId: sr.documentId,
+                id: sr.id,
                 returnNo: sr.return_no,
                 type: sr.type,
                 totalRefund: Number(sr.total_refund || 0),

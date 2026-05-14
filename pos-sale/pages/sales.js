@@ -312,7 +312,7 @@ export default function Sales() {
 
     return (
         <ProtectedRoute>
-            <PermissionCheck required="api::sale.sale.find">
+            <PermissionCheck required="sale">
                 <Layout>
                     <div className="mb-3">
                         <div className="d-flex align-items-center justify-content-between mb-3">
@@ -465,7 +465,7 @@ export default function Sales() {
                                                 </TableCell>
                                                 <TableCell>{s.id}</TableCell>
                                                 <TableCell>{s.invoice_no}</TableCell>
-                                                <TableCell style={{ whiteSpace: "nowrap" }}>{new Date(s.sale_date).toLocaleDateString()}</TableCell>
+                                                <TableCell style={{ whiteSpace: "nowrap" }}>{new Date(s.sale_date).toLocaleString([], { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</TableCell>
                                                 <TableCell>{s?.customer?.name || "—"}</TableCell>
                                                 <TableCell>{s?.employee?.name || "—"}</TableCell>
                                                 {showTotal && <TableCell align="right">{currency}{parseFloat(s.total || 0).toFixed(2)}</TableCell>}

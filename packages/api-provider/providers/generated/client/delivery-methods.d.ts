@@ -10,6 +10,7 @@ export interface DeliveryMethodsEndpointsType {
     byIdDraft(documentId: any, { populate, fields }?: any): Promise<any>;
     byIdPublished(documentId: any, { populate, fields }?: any): Promise<any>;
     update(documentId: any, data: any): Promise<any>;
+    meta: any;
 }
 
 export const DeliveryMethodsEndpoints: DeliveryMethodsEndpointsType;

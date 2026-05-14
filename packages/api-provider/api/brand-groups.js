@@ -8,7 +8,7 @@ export const BrandGroupsEndpoints = {
 
     meta: {
         uid: 'api::brand-group.brand-group',
-        domains: ['stock', 'brand'],
+        domains: ['cms', 'stock'],
         roles: ['admin', 'manager', 'staff']
     },
 

@@ -18,7 +18,7 @@ export default function CashRegisterDetailPage() {
     const [payments, setPayments] = useState([]);
     const [transactions, setTransactions] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState("summary");
+    const [activeTab, setActiveTab] = useState("ledger");
 
     useEffect(() => {
         if (!documentId) return;
@@ -88,6 +88,100 @@ export default function CashRegisterDetailPage() {
         const opening = Number(register?.opening_cash || 0);
         return opening + paymentSummary.cashNet - txnTotals.refunds - txnTotals.expenses - txnTotals.cashDrops + txnTotals.adjustments;
     }, [register, paymentSummary.cashNet, txnTotals]);
+
+    /* ── Ledger: every cash-impacting + non-cash event, in chronological order with running cash balance ── */
+    const ledger = useMemo(() => {
+        const rows = [];
+
+        if (register?.opened_at) {
+            rows.push({
+                date: register.opened_at,
+                kind: 'Open',
+                method: '',
+                description: `Opened by ${register.opened_by || '—'}`,
+                inAmt: Number(register.opening_cash || 0),
+                outAmt: 0,
+                cashImpact: Number(register.opening_cash || 0),
+                refSale: null,
+                refReturn: null,
+            });
+        }
+
+        for (const p of payments) {
+            const isCash = p.payment_method === 'Cash';
+            const amt = Number(p.amount || 0);
+            const cashReceived = Number(p.cash_received || 0);
+            const change = Number(p.change || 0);
+            // Cash impact: only Cash payments move physical cash. Net = cash_received - change
+            // (falls back to signed amount when cash_received isn't recorded — e.g. refunds).
+            const cashFlow = isCash
+                ? (cashReceived || change ? cashReceived - change : amt)
+                : 0;
+            rows.push({
+                date: p.payment_date,
+                kind: 'Payment',
+                method: p.payment_method || '',
+                description: p.transaction_no || (p.sale_return?.return_no ? `Return ${p.sale_return.return_no}` : ''),
+                inAmt: cashFlow > 0 ? cashFlow : 0,
+                outAmt: cashFlow < 0 ? -cashFlow : 0,
+                cashImpact: cashFlow,
+                tenderAmount: amt,
+                refSale: p.sale || null,
+                refReturn: p.sale_return || null,
+            });
+        }
+
+        for (const tx of transactions) {
+            const amt = Number(tx.amount || 0);
+            // CashTopUp + Adjustment(positive) → cash in. CashDrop/Expense/Refund/Adjustment(negative) → cash out.
+            let cashFlow;
+            switch (tx.type) {
+                case 'CashTopUp': cashFlow = amt; break;
+                case 'Adjustment': cashFlow = amt; break;
+                case 'CashDrop': cashFlow = -amt; break;
+                case 'Expense':  cashFlow = -amt; break;
+                case 'Refund':   cashFlow = -amt; break;
+                default:         cashFlow = amt;
+            }
+            rows.push({
+                date: tx.transaction_date,
+                kind: tx.type,
+                method: '',
+                description: tx.description || '',
+                inAmt: cashFlow > 0 ? cashFlow : 0,
+                outAmt: cashFlow < 0 ? -cashFlow : 0,
+                cashImpact: cashFlow,
+                performedBy: tx.performed_by || '',
+                refSale: null,
+                refReturn: null,
+            });
+        }
+
+        rows.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+        let balance = 0;
+        for (const r of rows) {
+            balance += Number(r.cashImpact || 0);
+            r.balance = balance;
+        }
+
+        if (register?.closed_at) {
+            rows.push({
+                date: register.closed_at,
+                kind: 'Close',
+                method: '',
+                description: `Closed by ${register.closed_by || '—'} • Counted ${register.counted_cash != null ? `${currency}${Number(register.counted_cash).toFixed(2)}` : '—'}`,
+                inAmt: 0,
+                outAmt: 0,
+                cashImpact: 0,
+                balance,
+                refSale: null,
+                refReturn: null,
+            });
+        }
+
+        return rows;
+    }, [register, payments, transactions, currency]);
 
     /* ── Timeline: merge payments + transactions sorted by date ── */
     const timeline = useMemo(() => {
@@ -256,17 +350,100 @@ export default function CashRegisterDetailPage() {
 
                     {/* Tabs */}
                     <ul className="nav nav-tabs mb-3">
-                        {["summary", "payments", "transactions", "timeline"].map((tab) => (
+                        {["ledger", "summary", "payments", "transactions", "timeline"].map((tab) => (
                             <li className="nav-item" key={tab}>
                                 <button className={`nav-link ${activeTab === tab ? 'active' : ''}`}
                                     onClick={() => setActiveTab(tab)}>
                                     {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                                    {tab === 'ledger' && <span className="badge bg-secondary ms-1">{ledger.length}</span>}
                                     {tab === 'payments' && <span className="badge bg-secondary ms-1">{payments.length}</span>}
                                     {tab === 'transactions' && <span className="badge bg-secondary ms-1">{transactions.length}</span>}
                                 </button>
                             </li>
                         ))}
                     </ul>
+
+                    {/* Ledger tab — chronological cash-impact view with running balance */}
+                    {activeTab === "ledger" && (
+                        <div className="card">
+                            <div className="card-body p-0">
+                                {ledger.length === 0 ? (
+                                    <div className="text-muted p-3">No activity for this register.</div>
+                                ) : (
+                                    <div className="table-responsive">
+                                        <table className="table table-sm table-striped mb-0">
+                                            <thead className="table-light">
+                                                <tr>
+                                                    <th>Date / Time</th>
+                                                    <th>Kind</th>
+                                                    <th>Method</th>
+                                                    <th>Description</th>
+                                                    <th>Linked</th>
+                                                    <th className="text-end text-success">Cash In</th>
+                                                    <th className="text-end text-danger">Cash Out</th>
+                                                    <th className="text-end">Balance</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {ledger.map((r, i) => {
+                                                    const kindClass = {
+                                                        Open: 'bg-primary',
+                                                        Close: 'bg-secondary',
+                                                        Payment: r.cashImpact > 0 ? 'bg-success' : r.cashImpact < 0 ? 'bg-danger' : 'bg-light text-dark',
+                                                        CashTopUp: 'bg-success',
+                                                        CashDrop: 'bg-warning text-dark',
+                                                        Expense: 'bg-danger',
+                                                        Refund: 'bg-danger',
+                                                        Adjustment: 'bg-info',
+                                                    }[r.kind] || 'bg-secondary';
+                                                    const saleDocId = r.refSale?.documentId;
+                                                    const returnDocId = r.refReturn?.documentId;
+                                                    return (
+                                                        <tr key={i}>
+                                                            <td className="small text-nowrap">{r.date ? new Date(r.date).toLocaleString() : '-'}</td>
+                                                            <td><span className={`badge ${kindClass}`}>{r.kind}</span></td>
+                                                            <td className="small">{r.method || '—'}</td>
+                                                            <td className="small">
+                                                                {r.description || '—'}
+                                                                {r.kind === 'Payment' && r.method !== 'Cash' && r.tenderAmount != null && (
+                                                                    <span className="text-muted ms-2">(tender {fmt(r.tenderAmount)})</span>
+                                                                )}
+                                                                {r.performedBy && <span className="text-muted ms-2">• {r.performedBy}</span>}
+                                                            </td>
+                                                            <td>
+                                                                {saleDocId && (
+                                                                    <Link href={`/${saleDocId}/sale`} className="badge bg-success text-decoration-none me-1">
+                                                                        <i className="fas fa-receipt me-1"></i>{r.refSale.invoice_no || 'Sale'}
+                                                                    </Link>
+                                                                )}
+                                                                {returnDocId && (
+                                                                    <Link href={`/${returnDocId}/sale-return`} className="badge bg-warning text-dark text-decoration-none">
+                                                                        <i className="fas fa-undo me-1"></i>{r.refReturn.return_no || 'Return'}
+                                                                    </Link>
+                                                                )}
+                                                                {!saleDocId && !returnDocId && <span className="text-muted small">—</span>}
+                                                            </td>
+                                                            <td className="text-end text-success">{r.inAmt > 0 ? fmt(r.inAmt) : ''}</td>
+                                                            <td className="text-end text-danger">{r.outAmt > 0 ? fmt(r.outAmt) : ''}</td>
+                                                            <td className="text-end fw-bold">{fmt(r.balance)}</td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                            <tfoot className="table-light">
+                                                <tr className="fw-bold">
+                                                    <td colSpan={5} className="text-end">Totals:</td>
+                                                    <td className="text-end text-success">{fmt(ledger.reduce((s, r) => s + r.inAmt, 0))}</td>
+                                                    <td className="text-end text-danger">{fmt(ledger.reduce((s, r) => s + r.outAmt, 0))}</td>
+                                                    <td className="text-end">{fmt(ledger.length ? ledger[ledger.length - 1].balance : 0)}</td>
+                                                </tr>
+                                            </tfoot>
+                                        </table>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
 
                     {/* Summary tab */}
                     {activeTab === "summary" && (

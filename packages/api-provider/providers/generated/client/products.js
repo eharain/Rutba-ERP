@@ -1,5 +1,5 @@
 import { authApi } from '../../../lib/api.js';
-import { withQuery, strictEndpointGuard } from './___core__.js';
+import { withQuery, wrapData, strictEndpointGuard } from './___core__.js';
 import { ProductsEndpoints as ProductsEndpointsApi } from '../../../api/products.js';
 
 async function listPaged(page = 1, pageSize = 100, arg3 = {}) {
@@ -89,12 +89,12 @@ async function updateDraft(documentId, data) {
 
 async function publish(documentId) {
     const ep = ProductsEndpointsApi.publish(documentId);
-    return authApi.fetch(ep.path, ep.params);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
 async function unpublish(documentId) {
     const ep = ProductsEndpointsApi.unpublish(documentId);
-    return authApi.fetch(ep.path, ep.params);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
 const endpoints = strictEndpointGuard(

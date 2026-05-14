@@ -1,6 +1,15 @@
 import _ from 'lodash';
 import { WebProductsEndpoints, WebCollectionsEndpoints} from './endpoints';
 
+// SSR helpers — callable directly from getServerSideProps. They share the
+// underlying generated proxy so request shaping (X-Rutba-App header, base URL)
+// stays identical between server and client. The component re-runs the query
+// on hydration but useQuery({ initialData }) makes that first run a cache hit.
+export async function getProductDetailSSR(slug: string) {
+  const res = await WebProductsEndpoints.detail(slug);
+  return res?.data ?? null;
+}
+
 export function createWebProductsService(config = {}) {
   void config;
   const productsProxy = WebProductsEndpoints;
