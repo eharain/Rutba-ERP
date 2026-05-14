@@ -8,6 +8,7 @@ import { createWebProductsService } from "@/services";
 import { useRouter } from "next/router";
 import { useSiteSettings } from "@/hooks/use-site-settings";
 import { BASE_URL } from "@/static/const";
+import Seo from "@/components/seo/seo";
 
 /**
  * Retrieves the highest product price from the server.
@@ -49,6 +50,11 @@ export default function ProductList({
 
   return (
     <LayoutMain>
+      <>
+      <Seo
+        title="All products"
+        description="Browse the full range — filter by brand, category, and price."
+      />
       <div className="container-fluid">
         <div className="my-10">
           <h2 className="text-3xl font-bold mb-7">{settings.nav_explore_brands_label || "Explore Brands"}</h2>
@@ -68,6 +74,7 @@ export default function ProductList({
 
         <ProductListItem></ProductListItem>
       </div>
+      </>
     </LayoutMain>
   );
 }

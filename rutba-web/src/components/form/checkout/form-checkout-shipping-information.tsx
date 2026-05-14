@@ -8,7 +8,7 @@ import {
   ValidationShippingInformationSchema,
 } from "@/validations/shipping-information-validation";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { countryList } from "@/static/country";
 import { useStoreCheckout } from "@/store/store-checkout";
 import useErrorHandler from "@/hooks/useErrorHandler";
@@ -16,14 +16,18 @@ import Spinner from "@/components/ui/spinner";
 import { createWebDeliveryService } from "@/services/";
 import { useCartService } from "@/services/cart";
 import { BASE_URL } from "@/static/const";
+import { Coffee, Sparkles } from "lucide-react";
 
 interface Props {
   onDeliveryMethodsReady: () => void;
 }
 
 export default function FormCheckoutShippingInformation({ onDeliveryMethodsReady }: Props) {
-  const { showError } = useErrorHandler();
+  void useErrorHandler;
   const deliveryService = createWebDeliveryService({ baseURL: BASE_URL });
+  // Track delivery-fetch failure inline so we can render a warm, on-brand
+  // notice instead of a destructive toast that startles the visitor.
+  const [deliveryHiccup, setDeliveryHiccup] = useState<string | null>(null);
   const { getCart } = useCartService();
   const {
     formShippingInformation,
@@ -47,6 +51,7 @@ export default function FormCheckoutShippingInformation({ onDeliveryMethodsReady
   const onSubmitShippingInformation: SubmitHandler<ValidationShippingInformationSchema> = async (data) => {
     setFormShippingInformation(data);
     setSelectedDeliveryMethod(null);
+    setDeliveryHiccup(null);
 
     setIsLoadingDeliveryMethods(true);
     try {
@@ -67,10 +72,17 @@ export default function FormCheckoutShippingInformation({ onDeliveryMethodsReady
         cartTotal,
       });
 
+      if (!options || options.length === 0) {
+        // Address valid, but no rate matched — gentler than calling it an error.
+        setDeliveryHiccup("no-options");
+        return;
+      }
+
       setAvailableDeliveryMethods(options);
       onDeliveryMethodsReady();
     } catch (err) {
-      showError("Could not load delivery options. Please try again.");
+      // Soft, brand-coloured notice — no destructive red toast.
+      setDeliveryHiccup("fetch-failed");
     } finally {
       setIsLoadingDeliveryMethods(false);
     }
@@ -223,6 +235,36 @@ export default function FormCheckoutShippingInformation({ onDeliveryMethodsReady
           </div>
         </div>
       </div>
+
+      {deliveryHiccup && (
+        <div
+          role="status"
+          className="mt-4 rounded-2xl border border-brand/30 bg-brand/5 p-4 flex gap-3 items-start"
+        >
+          <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-brand/15 text-brand shrink-0">
+            {deliveryHiccup === "no-options" ? (
+              <Sparkles className="h-4 w-4" />
+            ) : (
+              <Coffee className="h-4 w-4" />
+            )}
+          </span>
+          <div className="text-sm">
+            <p className="font-semibold text-foreground mb-0.5">
+              {deliveryHiccup === "no-options"
+                ? "No instant rates for your area — yet"
+                : "Our delivery elf nipped out for chai"}
+            </p>
+            <p className="text-muted-foreground leading-relaxed">
+              {deliveryHiccup === "no-options"
+                ? "Don't worry — your order is safe with us. Scroll back up and tap "
+                : "We couldn't fetch shipping rates this second. No drama — your details are saved. Scroll back up and tap "}
+              <strong className="text-foreground">Place order</strong>{" "}
+              with the express form, and we'll WhatsApp you the delivery
+              options shortly. ✨
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="flex justify-between flex-wrap">
         <Button className="mt-4" type="submit" disabled={isSubmitting}>

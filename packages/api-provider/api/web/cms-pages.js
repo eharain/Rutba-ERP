@@ -12,16 +12,25 @@ const CMS_DETAIL_FIELDS = [
   'gallery_priority', 'related_pages_priority',
 ];
 
+// Storefront-side guard: only PUBLISHED products are reachable on the public
+// site (/product/:id returns nothing for draft-only content), so populating
+// drafts here paints dead links on the home page. Strapi 5 generally honours
+// the parent's publication state, but offer-shaped populate trees can let
+// drafts through. Filter explicitly to be safe.
+const PUBLISHED_FILTER = { filters: { publishedAt: { $notNull: true } } };
+
 const populate = {
     featured_image: true,
     background_image: true,
     gallery: true,
 
     hero_product_groups: {
+        ...PUBLISHED_FILTER,
         populate: {
             cover_image: true,
             offers: true,
             products: {
+                ...PUBLISHED_FILTER,
                 populate: {
                     gallery: true,
                     logo: true,
@@ -50,10 +59,12 @@ const populate = {
     },
 
     product_groups: {
+        ...PUBLISHED_FILTER,
         populate: {
             cover_image: true,
             offers: true,
             products: {
+                ...PUBLISHED_FILTER,
                 populate: {
                     gallery: true,
                     logo: true,
@@ -70,6 +81,12 @@ const populate = {
     },
 
     related_pages: {
+        // Explicit `fields`: getPageUrl(rp) on the storefront builds the link
+        // from page_type + slug, and the card body uses title + excerpt.
+        // Without this, some Strapi 5 populate shapes can omit scalars and
+        // produce /undefined/undefined links.
+        fields: ['title', 'slug', 'excerpt', 'page_type'],
+        ...PUBLISHED_FILTER,
         populate: {
             featured_image: true
         }

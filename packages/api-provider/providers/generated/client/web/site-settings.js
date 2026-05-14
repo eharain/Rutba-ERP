@@ -1,10 +1,10 @@
-import { authApi } from '../../../../lib/api.js';
+import { api } from '../../../../lib/api.js';
 import { strictEndpointGuard } from '../___core__.js';
 import { WebSiteSettingsEndpoints as WebSiteSettingsEndpointsApi } from '../../../../api/web/site-settings.js';
 
 async function get() {
     const ep = WebSiteSettingsEndpointsApi.get();
-    return authApi.fetch(ep.path, ep.params);
+    return api.fetch(ep.path, ep.params);
 }
 
 const endpoints = strictEndpointGuard(

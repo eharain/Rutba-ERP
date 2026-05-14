@@ -1,0 +1,17 @@
+# robots.txt
+User-agent: *
+Allow: /
+
+# Disallow account / checkout pages from indexing
+Disallow: /profile
+Disallow: /profile/
+Disallow: /checkout
+Disallow: /login
+Disallow: /register
+Disallow: /forgot-password
+Disallow: /payment
+Disallow: /order-tracking
+Disallow: /api/
+
+# Sitemap — served dynamically from /sitemap.xml
+Sitemap: /sitemap.xml

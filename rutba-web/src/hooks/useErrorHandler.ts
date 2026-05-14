@@ -24,7 +24,7 @@ export default function useErrorHandler() {
       if (error.message) {
         showError(error.message);
       } else {
-        showError("Something went wrong. our team still try to solve it.");
+        showError("Something tripped up on our end — give it another go in a moment, or WhatsApp us if it persists. We're on it.");
       }
     }
   };

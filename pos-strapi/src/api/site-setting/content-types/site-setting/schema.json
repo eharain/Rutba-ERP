@@ -65,6 +65,31 @@
     "nav_search_placeholder": {
       "type": "string",
       "default": "Search Products"
+    },
+    "site_url": {
+      "type": "string"
+    },
+    "default_meta_title": {
+      "type": "string"
+    },
+    "default_meta_description": {
+      "type": "text"
+    },
+    "default_meta_keywords": {
+      "type": "string"
+    },
+    "default_og_image": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": ["images"]
+    },
+    "twitter_handle": {
+      "type": "string"
+    },
+    "default_footer": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::cms-footer.cms-footer"
     }
   }
 }

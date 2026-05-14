@@ -1,15 +1,16 @@
 import NextImage from "@/components/next-image";
 import Link from "next/link";
-import Head from "next/head";
 import { marked } from "marked";
 import { markedVideoEmbed } from "@/lib/marked-video-embed";
+import { ArrowRight } from "lucide-react";
 
 import { IMAGE_URL } from "@/static/const";
 import { CmsPageDetailInterface, CmsProductGroupInterface } from "@/types/api/cms-page";
 import { getPageUrl } from "@/lib/cms-page-types";
 import ProductGroupRenderer from "./ProductGroupRenderer";
-import { useSiteSettings } from "@/hooks/use-site-settings";
 import CmsContactFormSection from "./cms-contact-form-section";
+import Seo from "@/components/seo/seo";
+import { cn } from "@/lib/utils";
 
 marked.use({ breaks: true, gfm: true });
 marked.use(markedVideoEmbed({ imageBaseUrl: IMAGE_URL }));
@@ -19,9 +20,6 @@ export default function CmsPageContent({
 }: {
   page: CmsPageDetailInterface;
 }) {
-  const settings = useSiteSettings();
-  // Only use product_groups
-  // A product group with layout 'hero-slider' assigned via product_groups will render as a slider.
   const groupMap = new Map<string, CmsProductGroupInterface>();
   for (const g of page.product_groups ?? []) {
     groupMap.set(g.documentId, g);
@@ -31,7 +29,6 @@ export default function CmsPageContent({
     ? IMAGE_URL + page.background_image.url
     : null;
 
-  // Build a unified list of renderable sections with priorities
   type Section =
     | { type: "product-group"; priority: number; group: CmsProductGroupInterface; key: string }
     | { type: "featured-image"; priority: number; key: string }
@@ -42,12 +39,10 @@ export default function CmsPageContent({
 
   const sections: Section[] = [];
 
-  // Product groups
   for (const g of groupMap.values()) {
     sections.push({ type: "product-group", priority: g.priority ?? 50, group: g, key: "pg-" + g.documentId });
   }
 
-  // Page-owned sections (only if they have content)
   if (page.featured_image?.url) {
     sections.push({ type: "featured-image", priority: page.featured_image_priority ?? 0, key: "featured-image" });
   }
@@ -64,17 +59,29 @@ export default function CmsPageContent({
     sections.push({ type: "related-pages", priority: page.related_pages_priority ?? 102, key: "related-pages" });
   }
 
-  // Sort by priority ascending
   sections.sort((a, b) => a.priority - b.priority);
 
   let groupIdx = 0;
 
+  // SEO type inference: blog/news → article, otherwise website
+  const seoType: "website" | "article" =
+    page.page_type === "blog" || page.page_type === "news" ? "article" : "website";
+
   return (
     <>
-      <Head>
-        <title>{page.title} - {settings.site_name}</title>
-        {page.excerpt && <meta name="description" content={page.excerpt.replace(/[#*_~`>\[\]()!|-]/g, '').trim()} />}
-      </Head>
+      <Seo
+        title={page.meta_title || page.title}
+        description={
+          page.meta_description ||
+          (page.excerpt
+            ? page.excerpt.replace(/[#*_~`>\[\]()!|-]/g, "").trim()
+            : undefined)
+        }
+        keywords={page.meta_keywords}
+        image={page.og_image?.url || page.featured_image?.url}
+        type={seoType}
+        noindex={!!page.noindex}
+      />
 
       <div
         style={
@@ -104,106 +111,132 @@ export default function CmsPageContent({
             }
             case "featured-image":
               return (
-                <div key={section.key} className="relative w-full overflow-hidden" style={{ maxHeight: '60vh' }}>
+                <section
+                  key={section.key}
+                  className="relative w-full overflow-hidden h-[60vh] md:h-[72vh] lg:h-[80vh] bg-secondary"
+                >
                   <img
                     src={IMAGE_URL + page.featured_image!.url}
-                    className="w-full block object-cover"
+                    className="absolute inset-0 w-full h-full object-cover"
                     alt={page.title}
                   />
-                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                    <h1 className="text-white text-3xl md:text-5xl font-bold text-center px-4">
+                  <div
+                    aria-hidden
+                    className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/30 to-black/10"
+                  />
+                  <div className="relative h-full container-fluid flex flex-col justify-end pb-12 md:pb-20">
+                    <p className="text-white/80 text-xs md:text-sm uppercase tracking-[0.22em] font-semibold mb-3">
+                      {page.page_type === "shop" ? "Collection" : page.page_type || "Featured"}
+                    </p>
+                    <h1 className="font-display text-white text-4xl md:text-6xl lg:text-7xl font-bold leading-[1.02] max-w-4xl drop-shadow-sm">
                       {page.title}
                     </h1>
+                    {page.excerpt && (
+                      <div
+                        className="mt-4 max-w-2xl text-white/85 text-base md:text-lg prose prose-invert prose-sm md:prose-base"
+                        dangerouslySetInnerHTML={{ __html: marked.parse(page.excerpt) as string }}
+                      />
+                    )}
                   </div>
-                </div>
+                </section>
               );
             case "excerpt":
               return (
-                <div key={section.key} className="container-fluid my-12">
-                  <div
-                    className="prose prose-slate max-w-none prose-img:rounded-lg prose-a:text-blue-600"
-                    dangerouslySetInnerHTML={{ __html: marked.parse(page.excerpt!) as string }}
-                  />
-                </div>
+                <section key={section.key} className="py-16 md:py-20">
+                  <div className="container-fluid">
+                    <div
+                      className="max-w-3xl mx-auto text-center prose prose-lg max-w-none prose-headings:font-display prose-headings:tracking-tight prose-img:rounded-xl prose-a:text-brand hover:prose-a:text-foreground"
+                      dangerouslySetInnerHTML={{ __html: marked.parse(page.excerpt!) as string }}
+                    />
+                  </div>
+                </section>
               );
             case "content":
               return (
-                <div key={section.key} className="container-fluid my-12">
-                  <div
-                    className="prose prose-slate max-w-none prose-img:rounded-lg prose-a:text-blue-600"
-                    dangerouslySetInnerHTML={{ __html: marked.parse(page.content!) as string }}
-                  />
-                </div>
+                <section key={section.key} className="py-16 md:py-20">
+                  <div className="container-fluid">
+                    <div
+                      className="max-w-3xl mx-auto prose prose-lg max-w-none prose-headings:font-display prose-headings:tracking-tight prose-img:rounded-xl prose-a:text-brand hover:prose-a:text-foreground"
+                      dangerouslySetInnerHTML={{ __html: marked.parse(page.content!) as string }}
+                    />
+                  </div>
+                </section>
               );
             case "gallery":
               return (
-                <div key={section.key} className="container-fluid my-12">
-                  <h2 className="text-2xl font-bold mb-4">Gallery</h2>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    {page.gallery!.map((img, i) => (
-                      <div
-                        key={i}
-                        className="relative aspect-square rounded-lg overflow-hidden"
-                      >
-                        <NextImage
-                          src={IMAGE_URL + img.url}
-                          fill
-                          className="object-cover"
-                          alt={img.alternativeText || page.title}
-                          useSkeleton
-                        />
-                      </div>
-                    ))}
+                <section key={section.key} className="py-16 md:py-20 bg-secondary/30">
+                  <div className="container-fluid">
+                    <div className="mb-8">
+                      <p className="eyebrow mb-2">Gallery</p>
+                      <h2 className="font-display text-3xl md:text-4xl font-bold tracking-tight">
+                        Captured moments
+                      </h2>
+                    </div>
+                    <MosaicGallery items={page.gallery!} alt={page.title} />
                   </div>
-                </div>
+                </section>
               );
             case "related-pages":
               return (
-                <div key={section.key} className="container-fluid my-12">
-                  <h2 className="text-2xl font-bold mb-5">Related Pages</h2>
-                  <div className="grid grid-cols-12 gap-4">
-                    {page.related_pages!.map((rp) => (
-                      <div
-                        key={rp.id}
-                        className="col-span-12 md:col-span-6 lg:col-span-4"
-                      >
-                        <Link href={getPageUrl(rp)} className="block group">
-                          <div className="rounded-lg border border-slate-200 overflow-hidden hover:shadow-md transition-shadow">
-                            {rp.featured_image?.url ? (
-                              <div className="relative w-full h-40">
-                                <NextImage
-                                  src={IMAGE_URL + rp.featured_image.url}
-                                  fill
-                                  className="object-cover"
-                                  alt={rp.title}
-                                  useSkeleton
-                                />
+                <section key={section.key} className="py-16 md:py-20">
+                  <div className="container-fluid">
+                    <div className="mb-8">
+                      <p className="eyebrow mb-2">More to explore</p>
+                      <h2 className="font-display text-3xl md:text-4xl font-bold tracking-tight">
+                        Related stories
+                      </h2>
+                    </div>
+                    <div className="grid grid-cols-12 gap-5">
+                      {page
+                        .related_pages!.filter((rp) => rp.slug && rp.page_type)
+                        .map((rp) => (
+                        <div key={rp.id} className="col-span-12 sm:col-span-6 lg:col-span-4">
+                          <Link href={getPageUrl(rp)} className="group block h-full">
+                            <article className="h-full flex flex-col rounded-2xl overflow-hidden bg-card border border-border shadow-card hover:shadow-card-hover transition-shadow duration-300 ease-smooth">
+                              <div className="relative w-full aspect-[16/10] bg-secondary overflow-hidden">
+                                {rp.featured_image?.url ? (
+                                  <NextImage
+                                    src={IMAGE_URL + rp.featured_image.url}
+                                    fill
+                                    className="object-cover transition-transform duration-700 ease-smooth group-hover:scale-105"
+                                    alt={rp.title}
+                                    useSkeleton
+                                  />
+                                ) : (
+                                  <div className="w-full h-full bg-gradient-to-br from-secondary to-muted flex items-center justify-center">
+                                    <span className="font-display text-5xl text-muted-foreground/40">
+                                      {rp.title.charAt(0)}
+                                    </span>
+                                  </div>
+                                )}
                               </div>
-                            ) : (
-                              <div className="w-full h-40 bg-slate-100 flex items-center justify-center">
-                                <span className="text-slate-400 text-3xl">📄</span>
+                              <div className="flex-1 flex flex-col p-5">
+                                {rp.page_type && (
+                                  <span className="text-[11px] uppercase tracking-[0.18em] font-bold text-brand">
+                                    {rp.page_type}
+                                  </span>
+                                )}
+                                <h3 className="font-display text-xl font-bold mt-1.5 group-hover:text-brand transition-colors">
+                                  {rp.title}
+                                </h3>
+                                {rp.excerpt && (
+                                  <div
+                                    className="text-sm text-muted-foreground mt-2 line-clamp-2 prose prose-sm max-w-none"
+                                    dangerouslySetInnerHTML={{ __html: marked.parse(rp.excerpt) as string }}
+                                  />
+                                )}
+                                <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-foreground group-hover:text-brand transition-colors">
+                                  Read more
+                                  <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+                                </span>
                               </div>
-                            )}
-                            <div className="p-4">
-                              <span className="text-xs uppercase tracking-wide text-slate-400">
-                                {rp.page_type}
-                              </span>
-                              <h3 className="font-semibold mt-1 group-hover:text-blue-600 transition-colors">
-                                {rp.title}
-                              </h3>
-                              {rp.excerpt && (
-                                <div
-                                  className="text-sm text-slate-500 mt-1 line-clamp-2 prose prose-sm"
-                                  dangerouslySetInnerHTML={{ __html: marked.parse(rp.excerpt) as string }}
-                                />
-                              )}
-                            </div>
-                          </div>
-                        </Link>
-                      </div>
-                    ))}
+                            </article>
+                          </Link>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                </section>
               );
             default:
               return null;
@@ -213,5 +246,56 @@ export default function CmsPageContent({
         {page.enable_contact_form && <CmsContactFormSection title={page.title} />}
       </div>
     </>
+  );
+}
+
+/* ─── Mosaic gallery — 1 tall hero + small tiles, repeats every 5 items ─── */
+
+function MosaicGallery({
+  items,
+  alt,
+}: {
+  items: { url: string; alternativeText?: string }[];
+  alt: string;
+}) {
+  // Each "block" = up to 5 images in an asymmetric grid.
+  const blocks: typeof items[] = [];
+  for (let i = 0; i < items.length; i += 5) blocks.push(items.slice(i, i + 5));
+
+  return (
+    <div className="space-y-3">
+      {blocks.map((block, bi) => (
+        <div
+          key={bi}
+          className={cn(
+            "grid grid-cols-2 md:grid-cols-4 gap-3",
+            "md:grid-rows-2"
+          )}
+        >
+          {block.map((img, i) => {
+            const isHero = i === 0;
+            return (
+              <div
+                key={i}
+                className={cn(
+                  "relative overflow-hidden rounded-xl bg-secondary group",
+                  isHero
+                    ? "col-span-2 md:row-span-2 aspect-square md:aspect-auto"
+                    : "aspect-square"
+                )}
+              >
+                <NextImage
+                  src={IMAGE_URL + img.url}
+                  fill
+                  className="object-cover transition-transform duration-700 ease-smooth group-hover:scale-105"
+                  alt={img.alternativeText || alt}
+                  useSkeleton
+                />
+              </div>
+            );
+          })}
+        </div>
+      ))}
+    </div>
   );
 }

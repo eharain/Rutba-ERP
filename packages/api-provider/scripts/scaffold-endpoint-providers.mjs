@@ -15,6 +15,25 @@ function escapeRegExp(value) {
     return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+// Idempotent file copy — only writes when content actually differs. Skipping
+// the write preserves the destination's mtime, which prevents downstream
+// watchers (webpack, vite, etc.) from invalidating their cache and triggering
+// spurious recompile loops on every scaffolder run.
+function copyIfDifferent(src, dst) {
+    try {
+        const srcBuf = fs.readFileSync(src);
+        if (fs.existsSync(dst)) {
+            const dstBuf = fs.readFileSync(dst);
+            if (srcBuf.equals(dstBuf)) return false;
+        }
+        fs.writeFileSync(dst, srcBuf);
+        return true;
+    } catch (err) {
+        if (err && err.code === 'EBUSY') return false;
+        throw err;
+    }
+}
+
 function getDirectoriesRecursive(rootDir) {
     const dirs = [rootDir];
     const entries = fs.readdirSync(rootDir, { withFileTypes: true });
@@ -952,7 +971,11 @@ async function main() {
     }
 
     fs.mkdirSync(providersGeneratedDir, { recursive: true });
-    fs.copyFileSync(coreTemplatePath, coreOutputPath);
+    // Content-equal short-circuit: rewriting ___core__.js unconditionally
+    // changes its mtime, which is enough to invalidate downstream webpack
+    // build caches and trigger an unnecessary recompile loop. Only copy when
+    // the content actually differs.
+    copyIfDifferent(coreTemplatePath, coreOutputPath);
 
     const staleClientCorePath = path.join(providersGeneratedDir, '__client_core__.js');
     if (fs.existsSync(staleClientCorePath)) {
@@ -1073,8 +1096,18 @@ async function main() {
         const providerDir = path.dirname(providerPath);
         fs.mkdirSync(providerDir, { recursive: true });
 
+        // Descriptors under api/web/ describe the public storefront surface
+        // and must NOT carry a JWT. Using authApi here breaks SSR (no token
+        // → suspendForSessionRecovery hangs the request) AND leaks the
+        // logged-in user's tokens to every CMS / product fetch. Default web
+        // descriptors to the unauthenticated `api`; everything else stays on
+        // authApi as before.
+        const isPublicWebDescriptor =
+            apiRelative.startsWith('web/') ||
+            apiRelative.startsWith(`web${path.sep}`);
+
         const parsed = {
-            clientName: 'authApi',
+            clientName: isPublicWebDescriptor ? 'api' : 'authApi',
             apiExportName: exportName,
             apiAliasName: `${exportName}Api`,
             endpointExportName: exportName,

@@ -17,6 +17,11 @@ export interface CmsPageInterface {
   publishedAt: string;
   featured_image?: ImageInterface;
   background_image?: ImageInterface;
+  meta_title?: string;
+  meta_description?: string;
+  meta_keywords?: string;
+  og_image?: ImageInterface;
+  noindex?: boolean;
 }
 
 export interface OfferInterface {
@@ -80,6 +85,12 @@ export interface CmsFooterInterface {
   social_links?: { platform: string; url: string }[];
   pinned_pages?: CmsPageInterface[];
   copyright_text?: string;
+  // Tracking codes — injected into the storefront when this footer is used.
+  ga_measurement_id?: string;
+  meta_pixel_id?: string;
+  gtm_container_id?: string;
+  custom_head_html?: string;
+  custom_body_end_html?: string;
 }
 
 export interface CmsPageDetailInterface extends CmsPageInterface {

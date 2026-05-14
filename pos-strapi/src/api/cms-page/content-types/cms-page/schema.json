@@ -134,6 +134,24 @@
     "related_pages_priority": {
       "type": "integer",
       "default": 102
+    },
+    "meta_title": {
+      "type": "string"
+    },
+    "meta_description": {
+      "type": "text"
+    },
+    "meta_keywords": {
+      "type": "string"
+    },
+    "og_image": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": ["images"]
+    },
+    "noindex": {
+      "type": "boolean",
+      "default": false
     }
   }
 }

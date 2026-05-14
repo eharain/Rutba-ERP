@@ -17,4 +17,11 @@ module.exports = createNextConfig({
 	// TODO: fix pre-existing type errors surfaced by React 19 / TS 5.7 upgrade
 	ignoreBuildErrors: true,
   },
+  // Compatibility redirects — keep legacy plural URLs working.
+  async redirects() {
+	return [
+	  { source: '/pages/:slug', destination: '/page/:slug', permanent: true },
+	  { source: '/pages', destination: '/', permanent: true },
+	];
+  },
 });

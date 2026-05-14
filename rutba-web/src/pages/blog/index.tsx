@@ -9,8 +9,7 @@ import {  createWebCmsPagesService,  getCmsPagesByTypeSSR,} from "../../services
 import { CmsPageInterface } from "@/types/api/cms-page";
 import { getPageUrl } from "@/lib/cms-page-types";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
-import Head from "next/head";
-import { useSiteSettings } from "@/hooks/use-site-settings";
+import Seo from "@/components/seo/seo";
 import { BASE_URL } from "@/static/const";
 
 const PAGE_TYPE = "blog";
@@ -30,7 +29,6 @@ export default function BlogIndex({
   initialPages,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const cmsPagesService = createWebCmsPagesService({ baseURL: BASE_URL });
-  const settings = useSiteSettings();
 
   const {
     data: pages,
@@ -47,9 +45,10 @@ export default function BlogIndex({
   return (
     <LayoutMain>
       <>
-        <Head>
-          <title>Blog - {settings.site_name}</title>
-        </Head>
+        <Seo
+          title="Blog"
+          description="Stories, guides, and behind-the-scenes from the team."
+        />
 
         <div className="container-fluid my-16">
           <h1 className="text-3xl font-bold mb-8">Blog</h1>

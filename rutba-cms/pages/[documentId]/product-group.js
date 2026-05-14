@@ -9,6 +9,23 @@ import MarkdownEditor from "@rutba/pos-shared/components/MarkdownEditor";
 import Link from "next/link";
 import { useToast } from "../../components/Toast";
 import ProductPickerTabs from "../../components/ProductPickerTabs";
+import EnumSelect from "../../components/EnumSelect";
+
+const LAYOUT_LABELS = {
+    "grid-4": "Grid 4 Columns",
+    "grid-6": "Grid 6 Columns",
+    "carousel": "Carousel",
+    "hero-slider": "Hero Slider",
+    "banner-single": "Banner (Single Product)",
+    "list": "List",
+};
+
+const SORT_LABELS = {
+    "default": "Default",
+    "newest": "Newest",
+    "price_asc": "Price: Low → High",
+    "price_desc": "Price: High → Low",
+};
 
 export default function ProductGroupDetail() {
     const router = useRouter();
@@ -445,14 +462,13 @@ export default function ProductGroupDetail() {
                                     <div className="card-body">
                                         <div className="mb-3">
                                             <label className="form-label">Layout</label>
-                                            <select className="form-select" value={layout} onChange={e => setLayout(e.target.value)}>
-                                                <option value="grid-4">Grid 4 Columns</option>
-                                                <option value="grid-6">Grid 6 Columns</option>
-                                                <option value="carousel">Carousel</option>
-                                                <option value="hero-slider">Hero Slider</option>
-                                                <option value="banner-single">Banner (Single Product)</option>
-                                                <option value="list">List</option>
-                                            </select>
+                                            <EnumSelect
+                                                name="product-group"
+                                                field="layout"
+                                                value={layout}
+                                                onChange={e => setLayout(e.target.value)}
+                                                labels={LAYOUT_LABELS}
+                                            />
                                             <small className="text-muted">Choose how products display</small>
                                         </div>
                                         <div className="mb-3">
@@ -462,12 +478,13 @@ export default function ProductGroupDetail() {
                                         </div>
                                         <div className="mb-3">
                                             <label className="form-label">Default Sort</label>
-                                            <select className="form-select" value={defaultSort} onChange={e => setDefaultSort(e.target.value)}>
-                                                <option value="default">Default</option>
-                                                <option value="newest">Newest</option>
-                                                <option value="price_asc">Price: Low → High</option>
-                                                <option value="price_desc">Price: High → Low</option>
-                                            </select>
+                                            <EnumSelect
+                                                name="product-group"
+                                                field="default_sort"
+                                                value={defaultSort}
+                                                onChange={e => setDefaultSort(e.target.value)}
+                                                labels={SORT_LABELS}
+                                            />
                                         </div>
                                         <div className="mb-3">
                                             <label className="form-label">Max Inline Products</label>
