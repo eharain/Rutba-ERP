@@ -32,11 +32,8 @@ export default function Navigation() {
             style={{ height: 28, objectFit: "contain" }}
         />
     ) : (
-        <>
-            <i className="fa-solid fa-shopping-bag text-warning"></i>
-            <span>Order Management</span>
-        </>
+        <i className="fa-solid fa-shopping-bag text-warning"></i>
     );
 
-    return <Topbar currentApp="order-management" brand={brand} secondary={SECONDARY} />;
+    return <Topbar currentApp="order-management" brand={brand} appName="Order Management" secondary={SECONDARY} />;
 }

@@ -9,11 +9,9 @@ export default function Navigation() {
     return (
         <Topbar
             currentApp="web-user"
+            appName="Rutba Web Orders"
             secondary={SECONDARY}
-            brand={<>
-                <i className="fa-solid fa-user text-warning"></i>
-                <span>Rutba Web Orders</span>
-            </>}
+            brand={<i className="fa-solid fa-user text-warning"></i>}
         />
     );
 }

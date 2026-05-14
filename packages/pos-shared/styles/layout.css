@@ -393,12 +393,30 @@ a:hover { text-decoration: underline; }
     gap: 0.5rem;
     color: #fff;
     font-weight: 600;
-    font-size: 1rem;
-    letter-spacing: -0.01em;
+    font-size: 1.05rem;
     text-decoration: none;
+    padding: 0.25rem 0.4rem;
+    border-radius: 0.35rem;
 }
 
-.topbar-brand:hover { color: #fff; text-decoration: none; }
+.topbar-brand:hover { color: #fff; text-decoration: none; background: var(--rutba-nav-bg-hover); }
+
+.topbar-brand img { display: block; }
+
+/* App name label sits between the brand mark and the secondary list */
+.topbar-appname {
+    display: inline-flex;
+    align-items: center;
+    padding: 0 0.6rem 0 0.3rem;
+    margin-right: 0.5rem;
+    color: rgba(255, 255, 255, 0.92);
+    font-weight: 600;
+    font-size: 0.95rem;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+    border-right: 1px solid rgba(255, 255, 255, 0.12);
+    line-height: 1;
+}
 
 .topbar-actions {
     display: flex;

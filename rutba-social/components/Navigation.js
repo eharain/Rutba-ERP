@@ -11,11 +11,9 @@ export default function Navigation() {
     return (
         <Topbar
             currentApp="social"
+            appName="Rutba Social"
             secondary={SECONDARY}
-            brand={<>
-                <i className="fa-solid fa-hashtag text-warning"></i>
-                <span>Rutba Social</span>
-            </>}
+            brand={<i className="fa-solid fa-hashtag text-warning"></i>}
         />
     );
 }

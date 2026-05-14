@@ -4,11 +4,9 @@ export default function Navigation() {
     return (
         <Topbar
             currentApp="auth"
+            appName="Rutba Auth"
             loginHref="/login"
-            brand={<>
-                <i className="fa-solid fa-shield-halved text-warning"></i>
-                <span>Rutba Auth</span>
-            </>}
+            brand={<i className="fa-solid fa-shield-halved text-warning"></i>}
         />
     );
 }

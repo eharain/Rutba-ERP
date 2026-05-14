@@ -10,11 +10,9 @@ export default function Navigation() {
     return (
         <Topbar
             currentApp="crm"
+            appName="Rutba CRM"
             secondary={SECONDARY}
-            brand={<>
-                <i className="fa-solid fa-headset text-warning"></i>
-                <span>Rutba CRM</span>
-            </>}
+            brand={<i className="fa-solid fa-headset text-warning"></i>}
         />
     );
 }
