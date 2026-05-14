@@ -13,8 +13,7 @@
         "strict": false,
         "noImplicitAny": false,
         "maxNodeModuleJsDepth": 0,
-        "types": [],
-        "baseUrl": "."
+        "types": []
     },
     "include": ["components/**/*", "context/**/*", "lib/**/*"],
     "exclude": ["node_modules", ".next", "**/*.min.js"]
