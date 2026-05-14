@@ -1,6 +1,12 @@
 import Link from "next/link";
 import { CmsFooterInterface } from "@/types/api/cms-page";
-import { getPageUrl } from "@/lib/cms-page-types";
+import {
+  getPageUrl,
+  PAGE_TYPES_WITH_LIST,
+  PAGE_TYPE_LIST_LABELS,
+  PAGE_TYPE_LABELS,
+  getListUrlForType,
+} from "@/lib/cms-page-types";
 import { useSiteSettings } from "@/hooks/use-site-settings";
 import { resolveMediaUrl } from "@/lib/media-url";
 import { ArrowRight, Mail, MapPin, Phone } from "lucide-react";
@@ -91,7 +97,7 @@ export default function Footer({ footer: pageFooter }: FooterProps) {
             </div>
           </div>
 
-          {/* Explore */}
+          {/* Explore — products + every CMS page type that has a list route */}
           <div className="md:col-span-3">
             <p className="text-xs uppercase tracking-[0.18em] font-bold text-brand">
               Explore
@@ -102,14 +108,18 @@ export default function Footer({ footer: pageFooter }: FooterProps) {
                   {settings.nav_explore_products_label || "All Products"}
                 </FooterLink>
               </li>
+              {PAGE_TYPES_WITH_LIST.map((t) => (
+                <li key={`pt-${t}`}>
+                  <FooterLink href={getListUrlForType(t)}>
+                    {PAGE_TYPE_LIST_LABELS[t] || PAGE_TYPE_LABELS[t]}
+                  </FooterLink>
+                </li>
+              ))}
               {pinnedPages.map((pp) => (
                 <li key={pp.documentId}>
                   <FooterLink href={getPageUrl(pp)}>{pp.title}</FooterLink>
                 </li>
               ))}
-              <li>
-                <FooterLink href="/blog">Blog</FooterLink>
-              </li>
             </ul>
           </div>
 

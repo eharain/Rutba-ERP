@@ -1,9 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
-import { CashRegistersEndpoints, PaymentsEndpoints, CashRegisterTransactionEndpoints } from "@rutba/api-provider/endpoints/index.js";
+import { useAuth } from "@rutba/pos-shared/context/AuthContext";
+import { isAppAdmin } from "@rutba/pos-shared/lib/roles";
+import { CashRegistersEndpoints, PaymentsEndpoints, CashRegisterTransactionEndpoints, AppContextEndpoints } from "@rutba/api-provider/endpoints/index.js";
 
 const EXPIRY_HOURS = 20;
 
@@ -14,6 +16,10 @@ function hoursOpen(register) {
 
 export default function CashRegisterPage() {
     const { branch, desk, user, currency, setCashRegister, ensureBranchDesk } = useUtil();
+    const { adminAppAccess, activeRoleKey } = useAuth();
+    const userIsAdmin = isAppAdmin(adminAppAccess, AppContextEndpoints.getAppName());
+    const userIsManager = typeof activeRoleKey === 'string' && /(?:^|_)manager$/.test(activeRoleKey);
+    const userIsPrivileged = userIsAdmin || userIsManager;
     const [activeRegister, setActiveRegister] = useState(null);
     const [openingCash, setOpeningCash] = useState("");
     const [closingCash, setClosingCash] = useState("");
@@ -30,6 +36,25 @@ export default function CashRegisterPage() {
     const [txnAmount, setTxnAmount] = useState("");
     const [txnDesc, setTxnDesc] = useState("");
     const [txnLoading, setTxnLoading] = useState(false);
+
+    // Close-day two-step confirmation: first click arms a short-lived
+    // "Confirm Close" button (auto-disarms after ~4s) to avoid accidental
+    // closes — second click within the window actually closes.
+    const [closeArmed, setCloseArmed] = useState(false);
+    const closeArmTimerRef = useRef(null);
+    useEffect(() => () => { if (closeArmTimerRef.current) clearTimeout(closeArmTimerRef.current); }, []);
+    const handleCloseDayClick = (event) => {
+        event.preventDefault();
+        if (!closeArmed) {
+            setCloseArmed(true);
+            if (closeArmTimerRef.current) clearTimeout(closeArmTimerRef.current);
+            closeArmTimerRef.current = setTimeout(() => setCloseArmed(false), 4000);
+            return;
+        }
+        if (closeArmTimerRef.current) clearTimeout(closeArmTimerRef.current);
+        setCloseArmed(false);
+        handleCloseRegister(event);
+    };
 
     useEffect(() => {
         if (!desk?.id && !user?.id) return;
@@ -89,6 +114,65 @@ export default function CashRegisterPage() {
         }
         return t;
     }, [registerTransactions]);
+
+    /* ── Ledger: same chronological cash-impact view as cash-register-detail ── */
+    const ledger = useMemo(() => {
+        const rows = [];
+        if (activeRegister?.opened_at) {
+            rows.push({
+                date: activeRegister.opened_at,
+                kind: 'Open',
+                method: '',
+                description: `Opened by ${activeRegister.opened_by || '—'}`,
+                inAmt: Number(activeRegister.opening_cash || 0),
+                outAmt: 0,
+                cashImpact: Number(activeRegister.opening_cash || 0),
+            });
+        }
+        for (const p of registerPayments) {
+            const isCash = p.payment_method === 'Cash';
+            const amt = Number(p.amount || 0);
+            const cashReceived = Number(p.cash_received || 0);
+            const change = Number(p.change || 0);
+            const cashFlow = isCash ? (cashReceived || change ? cashReceived - change : amt) : 0;
+            rows.push({
+                date: p.payment_date,
+                kind: 'Payment',
+                method: p.payment_method || '',
+                description: p.transaction_no || '',
+                inAmt: cashFlow > 0 ? cashFlow : 0,
+                outAmt: cashFlow < 0 ? -cashFlow : 0,
+                cashImpact: cashFlow,
+                tenderAmount: amt,
+            });
+        }
+        for (const tx of registerTransactions) {
+            const amt = Number(tx.amount || 0);
+            let cashFlow;
+            switch (tx.type) {
+                case 'CashTopUp': cashFlow = amt; break;
+                case 'Adjustment': cashFlow = amt; break;
+                case 'CashDrop': cashFlow = -amt; break;
+                case 'Expense':  cashFlow = -amt; break;
+                case 'Refund':   cashFlow = -amt; break;
+                default:         cashFlow = amt;
+            }
+            rows.push({
+                date: tx.transaction_date,
+                kind: tx.type,
+                method: '',
+                description: tx.description || '',
+                inAmt: cashFlow > 0 ? cashFlow : 0,
+                outAmt: cashFlow < 0 ? -cashFlow : 0,
+                cashImpact: cashFlow,
+                performedBy: tx.performed_by || '',
+            });
+        }
+        rows.sort((a, b) => new Date(a.date) - new Date(b.date));
+        let balance = 0;
+        for (const r of rows) { balance += Number(r.cashImpact || 0); r.balance = balance; }
+        return rows;
+    }, [activeRegister, registerPayments, registerTransactions]);
 
     const openingCashValue = useMemo(() => Number(activeRegister?.opening_cash || 0), [activeRegister]);
     const expectedCash = useMemo(
@@ -265,9 +349,11 @@ export default function CashRegisterPage() {
                             <h4 className="mb-0"><i className="fas fa-cash-register me-2"></i>Cash Register</h4>
                             {locationLabel && <div className="text-muted small">{locationLabel}</div>}
                         </div>
-                        <Link href="/cash-register-history" className="btn btn-outline-secondary btn-sm">
-                            <i className="fas fa-history me-1"></i>History
-                        </Link>
+                        {userIsPrivileged && (
+                            <Link href="/cash-register-history" className="btn btn-outline-secondary btn-sm">
+                                <i className="fas fa-history me-1"></i>History
+                            </Link>
+                        )}
                     </div>
 
                     {isExpired && activeRegister && (
@@ -350,157 +436,135 @@ export default function CashRegisterPage() {
                                 By: {activeRegister.opened_by}
                             </div>
 
-                            {/* Summary cards */}
-                            <div className="row g-2 mb-3">
-                                <div className="col-6 col-lg-2">
-                                    <div className="card text-center h-100">
-                                        <div className="card-body py-2">
-                                            <div className="text-muted small">Opening</div>
-                                            <div className="fw-bold">{fmt(openingCashValue)}</div>
-                                        </div>
+                            {/* ── Record Transaction strip (first line) ── */}
+                            {!isExpired && (
+                                <div className="card mb-2">
+                                    <div className="card-body py-2">
+                                        <form onSubmit={handleAddTransaction} className="row g-2 align-items-center">
+                                            <div className="col-auto text-muted small" style={{ minWidth: 70 }}>
+                                                <i className="fas fa-exchange-alt me-1"></i>Record
+                                            </div>
+                                            <div className="col-12 col-md-2">
+                                                <select className="form-select form-select-sm" value={txnType} onChange={(e) => setTxnType(e.target.value)}>
+                                                    <option value="CashDrop">Cash Drop</option>
+                                                    <option value="CashTopUp">Cash Top-Up</option>
+                                                    <option value="Expense">Expense</option>
+                                                    <option value="Refund">Refund</option>
+                                                    <option value="Adjustment">Adjustment</option>
+                                                </select>
+                                            </div>
+                                            <div className="col-12 col-md-2">
+                                                <div className="input-group input-group-sm">
+                                                    <span className="input-group-text">{currency}</span>
+                                                    <input type="number" step="0.01" min="0.01" className="form-control" value={txnAmount}
+                                                        onChange={(e) => setTxnAmount(e.target.value)} placeholder="Amount" required />
+                                                </div>
+                                            </div>
+                                            <div className="col">
+                                                <input type="text" className="form-control form-control-sm" value={txnDesc}
+                                                    onChange={(e) => setTxnDesc(e.target.value)} placeholder="Description (optional)" />
+                                            </div>
+                                            <div className="col-auto">
+                                                <button className="btn btn-primary btn-sm" type="submit" disabled={txnLoading || !txnAmount}>
+                                                    {txnLoading ? <span className="spinner-border spinner-border-sm me-1"></span> : <i className="fas fa-plus me-1"></i>}
+                                                    Add
+                                                </button>
+                                            </div>
+                                        </form>
                                     </div>
                                 </div>
-                                <div className="col-6 col-lg-2">
-                                    <div className="card text-center h-100">
-                                        <div className="card-body py-2">
-                                            <div className="text-muted small">Cash Sales</div>
-                                            <div className="fw-bold text-success">{fmt(paymentSummary.cashNet)}</div>
+                            )}
+
+                            {/* ── Close Day strip (same single-line shape, right under Record) ── */}
+                            <div className="card mb-3">
+                                <div className="card-body py-2">
+                                    {isExpired && !userIsPrivileged ? (
+                                        <div className="text-warning small mb-0">
+                                            <i className="fas fa-lock me-1"></i>
+                                            Register expired — only a <strong>manager</strong> or <strong>admin</strong> can close it.
                                         </div>
-                                    </div>
-                                </div>
-                                <div className="col-6 col-lg-2">
-                                    <div className="card text-center h-100">
-                                        <div className="card-body py-2">
-                                            <div className="text-muted small">Drops/Exp/Ref</div>
-                                            <div className="fw-bold text-danger">{fmt(txnTotals.cashDrops + txnTotals.expenses + txnTotals.refunds)}</div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="col-6 col-lg-2">
-                                    <div className="card text-center h-100">
-                                        <div className="card-body py-2">
-                                            <div className="text-muted small">Top-Ups</div>
-                                            <div className="fw-bold text-info">{fmt(txnTotals.topups)}</div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="col-6 col-lg-2">
-                                    <div className="card text-center h-100 border-primary">
-                                        <div className="card-body py-2">
-                                            <div className="text-muted small">Expected Cash</div>
-                                            <div className="fw-bold text-primary fs-5">{fmt(expectedCash)}</div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="col-6 col-lg-2">
-                                    <div className="card text-center h-100">
-                                        <div className="card-body py-2">
-                                            <div className="text-muted small">Total Sales</div>
-                                            <div className="fw-bold">{fmt(paymentSummary.total)}</div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="col-6 col-lg-2">
-                                    <div className="card text-center h-100">
-                                        <div className="card-body py-2">
-                                            <div className="text-muted small">Card/Bank</div>
-                                            <div className="fw-bold">{fmt(paymentSummary.card + paymentSummary.bank + paymentSummary.mobile)}</div>
-                                        </div>
-                                    </div>
+                                    ) : (
+                                        <form onSubmit={handleCloseDayClick} className="row g-2 align-items-center">
+                                            <div className="col-auto text-muted small" style={{ minWidth: 70 }}>
+                                                <i className="fas fa-door-closed me-1"></i>Close
+                                            </div>
+                                            <div className="col-12 col-md-3">
+                                                <div className="input-group input-group-sm">
+                                                    <span className="input-group-text">{currency}</span>
+                                                    <input type="number" step="0.01" className="form-control" value={closingCash}
+                                                        onChange={(e) => setClosingCash(e.target.value)} placeholder={`Counted (exp. ${expectedCash.toFixed(2)})`} required />
+                                                </div>
+                                            </div>
+                                            <div className="col-auto small">
+                                                {closingCash !== "" && (
+                                                    <span className={difference >= 0 ? 'text-success' : 'text-danger'}>
+                                                        Diff: {difference >= 0 ? '+' : ''}{fmt(difference)}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="col">
+                                                <input type="text" className="form-control form-control-sm" value={closingNotes}
+                                                    onChange={(e) => setClosingNotes(e.target.value)} placeholder="Notes (optional)" />
+                                            </div>
+                                            <div className="col-auto">
+                                                <button
+                                                    className={`btn btn-sm ${closeArmed ? 'btn-danger' : 'btn-dark'}`}
+                                                    type="submit"
+                                                    disabled={loading || paymentsLoading || closingCash === ""}
+                                                    title={closeArmed ? 'Click again to confirm — auto-cancels in a few seconds' : ''}
+                                                >
+                                                    {loading
+                                                        ? <span className="spinner-border spinner-border-sm me-1"></span>
+                                                        : <i className={`fas ${closeArmed ? 'fa-exclamation-triangle' : 'fa-lock'} me-1`}></i>}
+                                                    {closeArmed ? 'Confirm Close' : 'Close Day'}
+                                                </button>
+                                            </div>
+                                        </form>
+                                    )}
                                 </div>
                             </div>
 
+                            {/* spacer — summary cards now live in the left sidebar of the row below */}
+
                             <div className="row g-3">
-                                {/* ── Left: Close Register + Transactions ── */}
-                                <div className="col-lg-5">
-                                    {/* Close register */}
-                                    <div className="card mb-3">
-                                        <div className="card-header bg-dark text-white"><i className="fas fa-door-closed me-2"></i>Close Register</div>
-                                        <div className="card-body">
-                                            <form onSubmit={handleCloseRegister} className="d-grid gap-2">
-                                                <div>
-                                                    <label className="form-label">Counted Cash</label>
-                                                    <div className="input-group">
-                                                        <span className="input-group-text">{currency}</span>
-                                                        <input type="number" step="0.01" className="form-control" value={closingCash}
-                                                            onChange={(e) => setClosingCash(e.target.value)} required />
-                                                    </div>
-                                                    <div className="text-muted small mt-1">Expected: {fmt(expectedCash)}</div>
-                                                    {closingCash !== "" && (
-                                                        <div className={`small mt-1 ${difference >= 0 ? 'text-success' : 'text-danger'}`}>
-                                                            Difference: {difference >= 0 ? '+' : ''}{fmt(difference)}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                                <div>
-                                                    <label className="form-label">Notes (optional)</label>
-                                                    <textarea className="form-control" rows="2" value={closingNotes}
-                                                        onChange={(e) => setClosingNotes(e.target.value)} />
-                                                </div>
-                                                <button className="btn btn-primary" type="submit"
-                                                    disabled={loading || paymentsLoading || closingCash === ""}>
-                                                    {loading ? <span className="spinner-border spinner-border-sm me-2"></span> : <i className="fas fa-lock me-1"></i>}
-                                                    Close Day
-                                                </button>
-                                            </form>
-                                        </div>
+                                {/* ── Left sidebar: summary metrics stacked vertically ── */}
+                                <div className="col-lg-3">
+                                    <div className="d-grid gap-2">
+                                        <div className="card"><div className="card-body py-2 text-center">
+                                            <div className="text-muted small">Opening</div>
+                                            <div className="fw-bold">{fmt(openingCashValue)}</div>
+                                        </div></div>
+                                        <div className="card"><div className="card-body py-2 text-center">
+                                            <div className="text-muted small">Cash Sales</div>
+                                            <div className="fw-bold text-success">{fmt(paymentSummary.cashNet)}</div>
+                                        </div></div>
+                                        <div className="card"><div className="card-body py-2 text-center">
+                                            <div className="text-muted small">Drops / Expenses / Refunds</div>
+                                            <div className="fw-bold text-danger">{fmt(txnTotals.cashDrops + txnTotals.expenses + txnTotals.refunds)}</div>
+                                        </div></div>
+                                        <div className="card"><div className="card-body py-2 text-center">
+                                            <div className="text-muted small">Top-Ups</div>
+                                            <div className="fw-bold text-info">{fmt(txnTotals.topups)}</div>
+                                        </div></div>
+                                        <div className="card border-primary"><div className="card-body py-2 text-center">
+                                            <div className="text-muted small">Expected Cash</div>
+                                            <div className="fw-bold text-primary fs-5">{fmt(expectedCash)}</div>
+                                        </div></div>
+                                        <div className="card"><div className="card-body py-2 text-center">
+                                            <div className="text-muted small">Total Sales (all methods)</div>
+                                            <div className="fw-bold">{fmt(paymentSummary.total)}</div>
+                                        </div></div>
+                                        <div className="card"><div className="card-body py-2 text-center">
+                                            <div className="text-muted small">Card / Bank / Wallet</div>
+                                            <div className="fw-bold">{fmt(paymentSummary.card + paymentSummary.bank + paymentSummary.mobile)}</div>
+                                        </div></div>
                                     </div>
-
-                                    {/* Add transaction */}
-                                    {!isExpired && (<div className="card">
-                                        <div className="card-header"><i className="fas fa-exchange-alt me-2"></i>Record Transaction</div>
-                                        <div className="card-body">
-                                            <form onSubmit={handleAddTransaction} className="d-grid gap-2">
-                                                <div className="row g-2">
-                                                    <div className="col">
-                                                        <select className="form-select form-select-sm" value={txnType} onChange={(e) => setTxnType(e.target.value)}>
-                                                            <option value="CashDrop">Cash Drop</option>
-                                                            <option value="CashTopUp">Cash Top-Up</option>
-                                                            <option value="Expense">Expense</option>
-                                                            <option value="Refund">Refund</option>
-                                                            <option value="Adjustment">Adjustment</option>
-                                                        </select>
-                                                    </div>
-                                                    <div className="col">
-                                                        <div className="input-group input-group-sm">
-                                                            <span className="input-group-text">{currency}</span>
-                                                            <input type="number" step="0.01" min="0.01" className="form-control" value={txnAmount}
-                                                                onChange={(e) => setTxnAmount(e.target.value)} placeholder="Amount" required />
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <input type="text" className="form-control form-control-sm" value={txnDesc}
-                                                    onChange={(e) => setTxnDesc(e.target.value)} placeholder="Description (optional)" />
-                                                <button className="btn btn-outline-secondary btn-sm" type="submit" disabled={txnLoading || !txnAmount}>
-                                                    <i className="fas fa-plus me-1"></i>Add
-                                                </button>
-                                            </form>
-
-                                            {registerTransactions.length > 0 && (
-                                                <div className="table-responsive mt-3">
-                                                    <table className="table table-sm align-middle mb-0">
-                                                        <thead><tr><th>Time</th><th>Type</th><th className="text-end">Amount</th><th>Note</th></tr></thead>
-                                                        <tbody>
-                                                            {registerTransactions.map((tx) => (
-                                                                <tr key={tx.documentId ?? tx.id}>
-                                                                    <td className="small">{new Date(tx.transaction_date).toLocaleTimeString()}</td>
-                                                                    <td><span className={`badge ${tx.type === 'CashTopUp' ? 'bg-success' : tx.type === 'Adjustment' ? 'bg-info' : 'bg-secondary'}`}>{tx.type === 'CashTopUp' ? 'Top-Up' : tx.type}</span></td>
-                                                                    <td className="text-end">{fmt(tx.amount)}</td>
-                                                                    <td className="small text-muted">{tx.description || ''}</td>
-                                                                </tr>
-                                                            ))}
-                                                        </tbody>
-                                                    </table>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>)}
                                 </div>
 
-                                {/* ── Right: Payments table ────────────── */}
-                                <div className="col-lg-7">
-                                    <div className="card h-100">
-                                        <div className="card-header d-flex justify-content-between align-items-center">
+                                {/* ── Right column: Payments table + Ledger view ── */}
+                                <div className="col-lg-9">
+                                    <div className="card mb-3">
+                                        <div className="card-header d-flex justify-content-between align-items-center py-2">
                                             <span><i className="fas fa-list me-2"></i>Payments ({registerPayments.length})</span>
                                             <span className="badge bg-dark">{fmt(paymentSummary.total)}</span>
                                         </div>
@@ -511,7 +575,7 @@ export default function CashRegisterPage() {
                                                 <div className="text-muted p-3">No payments recorded yet.</div>
                                             )}
                                             {!paymentsLoading && !paymentsError && registerPayments.length > 0 && (
-                                                <div className="table-responsive" style={{ maxHeight: 500, overflowY: 'auto' }}>
+                                                <div className="table-responsive" style={{ maxHeight: 360, overflowY: 'auto' }}>
                                                     <table className="table table-sm table-striped align-middle mb-0">
                                                         <thead className="table-light sticky-top">
                                                             <tr>
@@ -533,6 +597,109 @@ export default function CashRegisterPage() {
                                                                 </tr>
                                                             ))}
                                                         </tbody>
+                                                        <tfoot className="table-light">
+                                                            {paymentSummary.cash !== 0 && (
+                                                                <tr>
+                                                                    <td colSpan={2} className="text-end fw-semibold">Cash</td>
+                                                                    <td className="text-end">{fmt(paymentSummary.cash)}</td>
+                                                                    <td className="text-end">{fmt(paymentSummary.cashReceived)}</td>
+                                                                    <td className="text-end">{fmt(paymentSummary.cashChange)}</td>
+                                                                </tr>
+                                                            )}
+                                                            {paymentSummary.card !== 0 && (
+                                                                <tr>
+                                                                    <td colSpan={2} className="text-end fw-semibold">Card</td>
+                                                                    <td className="text-end">{fmt(paymentSummary.card)}</td>
+                                                                    <td></td><td></td>
+                                                                </tr>
+                                                            )}
+                                                            {paymentSummary.bank !== 0 && (
+                                                                <tr>
+                                                                    <td colSpan={2} className="text-end fw-semibold">Bank</td>
+                                                                    <td className="text-end">{fmt(paymentSummary.bank)}</td>
+                                                                    <td></td><td></td>
+                                                                </tr>
+                                                            )}
+                                                            {paymentSummary.mobile !== 0 && (
+                                                                <tr>
+                                                                    <td colSpan={2} className="text-end fw-semibold">Mobile Wallet</td>
+                                                                    <td className="text-end">{fmt(paymentSummary.mobile)}</td>
+                                                                    <td></td><td></td>
+                                                                </tr>
+                                                            )}
+                                                            <tr className="table-primary">
+                                                                <td colSpan={2} className="text-end fw-bold">Total</td>
+                                                                <td className="text-end fw-bold">{fmt(paymentSummary.total)}</td>
+                                                                <td></td><td></td>
+                                                            </tr>
+                                                        </tfoot>
+                                                    </table>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* ── Ledger view: chronological cash-impact with running balance ── */}
+                                    <div className="card">
+                                        <div className="card-header py-2">
+                                            <i className="fas fa-book me-2"></i>Ledger
+                                            <span className="badge bg-secondary ms-2">{ledger.length}</span>
+                                        </div>
+                                        <div className="card-body p-0">
+                                            {ledger.length === 0 ? (
+                                                <div className="text-muted p-3">No activity yet.</div>
+                                            ) : (
+                                                <div className="table-responsive" style={{ maxHeight: 500, overflowY: 'auto' }}>
+                                                    <table className="table table-sm table-striped align-middle mb-0">
+                                                        <thead className="table-light sticky-top">
+                                                            <tr>
+                                                                <th>Time</th>
+                                                                <th>Kind</th>
+                                                                <th>Method</th>
+                                                                <th>Description</th>
+                                                                <th className="text-end text-success">In</th>
+                                                                <th className="text-end text-danger">Out</th>
+                                                                <th className="text-end">Balance</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {ledger.map((r, i) => {
+                                                                const kindClass = {
+                                                                    Open: 'bg-primary',
+                                                                    Payment: r.cashImpact > 0 ? 'bg-success' : r.cashImpact < 0 ? 'bg-danger' : 'bg-light text-dark',
+                                                                    CashTopUp: 'bg-success',
+                                                                    CashDrop: 'bg-warning text-dark',
+                                                                    Expense: 'bg-danger',
+                                                                    Refund: 'bg-danger',
+                                                                    Adjustment: 'bg-info',
+                                                                }[r.kind] || 'bg-secondary';
+                                                                return (
+                                                                    <tr key={i}>
+                                                                        <td className="small text-nowrap">{r.date ? new Date(r.date).toLocaleTimeString() : '-'}</td>
+                                                                        <td><span className={`badge ${kindClass}`}>{r.kind}</span></td>
+                                                                        <td className="small">{r.method || '—'}</td>
+                                                                        <td className="small">
+                                                                            {r.description || '—'}
+                                                                            {r.kind === 'Payment' && r.method !== 'Cash' && r.tenderAmount != null && (
+                                                                                <span className="text-muted ms-2">(tender {fmt(r.tenderAmount)})</span>
+                                                                            )}
+                                                                            {r.performedBy && <span className="text-muted ms-2">• {r.performedBy}</span>}
+                                                                        </td>
+                                                                        <td className="text-end text-success">{r.inAmt > 0 ? fmt(r.inAmt) : ''}</td>
+                                                                        <td className="text-end text-danger">{r.outAmt > 0 ? fmt(r.outAmt) : ''}</td>
+                                                                        <td className="text-end fw-bold">{fmt(r.balance)}</td>
+                                                                    </tr>
+                                                                );
+                                                            })}
+                                                        </tbody>
+                                                        <tfoot className="table-light">
+                                                            <tr className="fw-bold">
+                                                                <td colSpan={4} className="text-end">Totals:</td>
+                                                                <td className="text-end text-success">{fmt(ledger.reduce((s, r) => s + r.inAmt, 0))}</td>
+                                                                <td className="text-end text-danger">{fmt(ledger.reduce((s, r) => s + r.outAmt, 0))}</td>
+                                                                <td className="text-end">{fmt(ledger.length ? ledger[ledger.length - 1].balance : 0)}</td>
+                                                            </tr>
+                                                        </tfoot>
                                                     </table>
                                                 </div>
                                             )}

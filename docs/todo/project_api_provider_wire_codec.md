@@ -115,31 +115,25 @@ The codec is a **pure transport-layer concern**. It doesn't know about auth, pol
 
 3. **Codec middleware** — new file under `packages/strapi-api-pro/server/src/middlewares/wire-codec.js`. Registered in [bootstrap.js](packages/strapi-api-pro/server/src/bootstrap.js) **before** the existing request-interceptor. Owns the path-rewrite + qs-rebuild logic above.
 
-4. **Client emit changes — two parallel trees, no runtime variant logic.** The scaffolder emits **two complete generated trees**:
+4. **Client emit — scaffolder decides per app, single tree, no runtime variant logic.** The variant decision rides the existing workspace context-resolution chain (see §"Context resolution chain" below). When the scaffolder runs for a given app launch, `process.env.API_WIRE_MODE` and `targetPrefix` are already resolved by [load-env.js](scripts/js/load-env.js). The scaffolder reads them and emits **one variant** to a **per-app output directory**.
 
    ```
-   packages/api-provider/providers/generated/
-     client-long/
-       web/banners.js, cms-pages.js, …    ← long variant only
-     client-short/
-       web/banners.js, cms-pages.js, …    ← short variant only
+   packages/api-provider/.generated/
+     RUTBA_WEB/client/web/banners.js, cms-pages.js, …    ← short (because RUTBA_WEB__API_WIRE_MODE=short)
+     POS_AUTH/client/web/banners.js, …                   ← long (inherits global)
+     POS_SALE/client/web/banners.js, …                   ← long
+     …
    ```
 
-   Each file is single-purpose. A long-variant wrapper directly calls `api.fetch('/product-groups', { populate, filters, … })`. A short-variant wrapper directly calls `api.fetch('/api-pro/x/webBanners/homeBanner', args)`. No ternaries, no env-var reads in generated source, no `wireCall` / `longCall` helpers. The interface/method identity is baked into the URL string literal in the short-variant source — greppable end-to-end (`rg "/api-pro/x/cmsPages/bySlug"`).
+   Each file is single-purpose. A short-variant wrapper directly calls `api.fetch('/api-pro/x/webBanners/homeBanner', args)`. A long-variant wrapper directly calls `api.fetch('/product-groups', { populate, filters, … })`. **No ternaries, no env-var reads in generated source, no `wireCall` / `longCall` helpers, no client-side registry.** The interface/method identity is baked into the URL string literal in the short-variant source — greppable end-to-end (`rg "/api-pro/x/cmsPages/bySlug"`).
 
-   **No client-side registry.** The descriptor registry exists only on the server (item 2). The client just emits literal URLs; nothing to look up at runtime.
+   **How the app finds its tree.** The api-provider package's own `exports` map (or a tiny `lib/client-resolver.js` re-export) reads `process.env.RUTBA_TARGET_APP` (already set by load-env) and resolves `@rutba/api-provider/client` to `.generated/<APP_PREFIX>/client/`. The decision lives **once**, inside api-provider, not duplicated in every app's bundler config.
 
-   **Variant decision lives in each app's bundler config — once.** Webpack/Vite alias `@rutba/api-provider/client` to `client-short` or `client-long` based on the per-app env var resolved at the app's build time:
+   **What the app sees.** App source imports `from '@rutba/api-provider/client'` and never names a variant. No `next.config.js`/`vite.config.js` changes per app. No bundler alias maintenance. The `.d.ts` describes one method shape (signatures are identical across variants); the same types serve both modes because they only describe args in/response out.
 
-   ```js
-   // rutba-web/next.config.js
-   config.resolve.alias['@rutba/api-provider/client'] =
-       process.env.API_WIRE_MODE === 'short'
-           ? '@rutba/api-provider/providers/generated/client-short'
-           : '@rutba/api-provider/providers/generated/client-long';
-   ```
+   **Concurrent dev safety.** Per-app output directories mean `rutba-web` and `pos-auth` running side-by-side don't collide on `providers/generated/client/`. Each owns its own subtree.
 
-   App source imports `from '@rutba/api-provider/client'` and never names a variant. Flipping `RUTBA_WEB__API_WIRE_MODE=short` in the workspace `.env` swaps the entire generated tree the bundler sees for that app. The `.d.ts` describes one method shape (signatures are identical across variants).
+   **`RUTBA_API_SCAFFOLDED=1` short-circuit is dropped.** The existing cross-app skip in [load-env.js:149](scripts/js/load-env.js#L149) assumed app-agnostic output. With per-app trees the skip is incorrect: each launch must scaffold for *its* app. The scaffolder is idempotent and cheap (content-aware, mtime-gated), so the per-launch cost stays in the low seconds. Replace the boolean with `RUTBA_API_SCAFFOLDED_FOR=<APP_PREFIX>` if a same-app re-run optimization is wanted later.
 
 5. **Closed-shape sweep** — every descriptor method whose signature accepts `{ populate, fields, filters, sort } = {}` (currently most `list*` and `byId*` methods per [[project-api-provider-named-policy-architecture]] line 101) gets converted: the destructured surface is replaced with the declared `args` schema; any internal `param ?? [defaults]` fallbacks become the fixed values inside `build`. **This is the larger half of the work.**
 
@@ -182,29 +176,55 @@ Values: `long` | `short`. Default if unset = `long` (no behavior change).
 
 ### Browser-bundle exposure
 
-For SSR + Node-side api-provider usage the env var flows in naturally. For the browser bundle:
-
-- **rutba-web** (Next.js): expose via `next.config.js` → `env: { API_WIRE_MODE: process.env.API_WIRE_MODE }` so it inlines into the client bundle. No `NEXT_PUBLIC_` rename needed; Next pipes it through.
-- **pos-* apps** (Vite): expose via `vite.config.*` → `define: { 'process.env.API_WIRE_MODE': JSON.stringify(process.env.API_WIRE_MODE) }`.
-- **rutba-cms**: same pattern as the host framework requires.
-
-The api-provider lib reads `process.env.API_WIRE_MODE` at module-load time and caches it. No runtime config API needed; flipping the env var requires a rebuild/restart, which matches how the rest of the workspace handles env-driven config.
+**Nothing to configure per app.** Because the variant is resolved at scaffold time and baked into the generated source, the browser bundle just sees normal JavaScript with literal URLs. No env-var inlining via `next.config.js` `env:`, no Vite `define:`, no `NEXT_PUBLIC_` plumbing. The api-provider's exports map handles import resolution at the bundler's module-resolve step — visible to every bundler natively.
 
 ### What the switch actually does
 
-- `long` → existing `querify`/`withQuery` path. Wire format unchanged. Strapi sees `/api/<resource>?...long qs...`.
-- `short` → new `wireCall(interface, method, args)` path. Wire format `/api-pro/x/<interface>/<method>?<args>`. Server codec middleware reconstructs the full shape from the descriptor.
+- `long` → scaffolder emits wrappers that call `api.fetch('/api/<resource>', { populate, filters, … })`. Wire format unchanged.
+- `short` → scaffolder emits wrappers that call `api.fetch('/api-pro/x/<interface>/<method>', args)`. Server codec middleware reconstructs the full shape from the descriptor.
 
 The server **accepts both modes simultaneously** during rollout — short-form on `/api-pro/x/*`, long-form still on `/api/*`. This is what lets one app flip while others lag.
+
+### Context resolution chain (end-to-end)
+
+The wire-mode decision rides the workspace's existing per-app context resolution. No new mechanism — the same chain that resolves `PORT`, `DB_URL`, etc., resolves `API_WIRE_MODE`:
+
+```
+1. Workspace .env contains:
+     API_WIRE_MODE=long                       # global default
+     RUTBA_WEB__API_WIRE_MODE=short           # per-app override
+
+2. `npm run dev --workspace=rutba-web` invokes load-env.js
+   → findTargetDir() detects workspace dir = 'rutba-web'
+   → targetPrefix = 'RUTBA_WEB'
+   → splitVariables() routes RUTBA_WEB__API_WIRE_MODE → app-specific
+   → buildEnvForApp() strips the prefix, child env gets API_WIRE_MODE=short
+   → also exports RUTBA_TARGET_APP=RUTBA_WEB into child env
+
+3. load-env.js spawns the scaffolder (one-shot, line 148-163)
+   → scaffolder reads process.env.API_WIRE_MODE === 'short'
+   → reads process.env.RUTBA_TARGET_APP === 'RUTBA_WEB'
+   → emits short-variant wrappers into packages/api-provider/.generated/RUTBA_WEB/client/
+
+4. load-env.js spawns the app command (next dev)
+   → app code imports from '@rutba/api-provider/client'
+   → api-provider's exports map / resolver reads RUTBA_TARGET_APP
+   → resolves to .generated/RUTBA_WEB/client/
+   → bundler picks up the short-variant tree
+   → no per-app bundler config touched
+```
+
+Every decision is made **once**, at the boundary where the context is already known. No runtime branching anywhere — not in generated source, not in `lib/api.js`, not in bundler config.
 
 ### Sequence
 
 1. Phase 0 audit (scoped to `api/web/`) → punch list.
 2. Closed-shape sweep + `args` schemas on `api/web/*.js` descriptors. Old shape still works.
-3. Codec middleware + client `wireCall` lands. Both routes (`/api/*` long, `/api-pro/x/*` short) accept traffic. Env var defaults to `long` everywhere.
-4. **Flip `RUTBA_WIRE_MODE_WEB=short`.** rutba-web emits only short-form. Verify in Strapi console that no long-form public-role traffic remains.
-5. **Deny long-form for the public role** on Strapi side (permissions or middleware) — this is the actual security win per §"Why public-first". Authenticated roles still hit long-form for pos/cms.
-6. Later phases: repeat the sweep for pos and cms descriptors, flip their env vars, then deny long-form globally and retire the legacy path.
+3. Scaffolder gains the per-app emit + variant branch. `load-env.js` exports `RUTBA_TARGET_APP`. Drops the cross-app `RUTBA_API_SCAFFOLDED=1` short-circuit. api-provider's exports map / resolver resolves `client` per app.
+4. Codec middleware + descriptor bundle land in `strapi-api-pro`. Both routes (`/api/*` long, `/api-pro/x/*` short) accept traffic. Env var defaults to `long` everywhere.
+5. **Flip `RUTBA_WEB__API_WIRE_MODE=short`** in workspace `.env`. Restart rutba-web. Verify in Strapi console that no long-form public-role traffic remains.
+6. **Deny long-form for the public role** on Strapi side (permissions or middleware) — this is the actual security win per §"Why public-first". Authenticated roles still hit long-form for pos/cms.
+7. Later phases: repeat the sweep for pos and cms descriptors, flip their per-app env vars, then deny long-form globally and retire the legacy path.
 
 ## Out of scope
 
@@ -215,7 +235,9 @@ The server **accepts both modes simultaneously** during rollout — short-form o
 ## Pointers
 
 - Existing architecture this amends: [[project-api-provider-named-policy-architecture]]
+- Context-resolution chain (load-env, prefix split, scaffolder one-shot): [scripts/js/load-env.js](scripts/js/load-env.js), [scripts/js/env-utils.js](scripts/js/env-utils.js)
 - Existing client serialization to replace: [packages/api-provider/lib/api.js](packages/api-provider/lib/api.js) `querify()`, [providers/generated/client/___core__.js](packages/api-provider/providers/generated/client/___core__.js) `withQuery()`
 - Existing server interception (downstream of new codec): [packages/strapi-api-pro/server/src/services/request-interceptor.js](packages/strapi-api-pro/server/src/services/request-interceptor.js)
 - Scaffolder to extend: [packages/api-provider/scripts/scaffold-endpoint-providers.mjs](packages/api-provider/scripts/scaffold-endpoint-providers.mjs)
 - Bootstrap registration point for the new middleware: [packages/strapi-api-pro/server/src/bootstrap.js](packages/strapi-api-pro/server/src/bootstrap.js)
+- Public-client surface scope (which descriptors emit unauth `api`): [[project_api_provider_web_public_client]]
