@@ -291,6 +291,61 @@ a:hover { text-decoration: underline; }
 
 .layout-footer { font-size: 0.85rem; color: var(--rutba-muted); }
 
+/* Flat footer info bar — location text + horizontal app list */
+.footer-info {
+    background: var(--rutba-nav-bg);
+    color: rgba(255, 255, 255, 0.7);
+    padding: 0.5rem 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.footer-info-location {
+    font-size: 0.78rem;
+    color: rgba(255, 255, 255, 0.55);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.footer-info-apps {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.4rem;
+    align-items: center;
+    flex: 1 1 auto;
+    justify-content: flex-end;
+}
+
+.footer-info-app {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.2rem 0.55rem;
+    border-radius: 0.35rem;
+    font-size: 0.76rem;
+    color: rgba(255, 255, 255, 0.78);
+    background: transparent;
+    text-decoration: none;
+    transition: background-color 120ms ease, color 120ms ease;
+    white-space: nowrap;
+}
+
+.footer-info-app:hover,
+.footer-info-app:focus {
+    background: var(--rutba-nav-bg-hover);
+    color: #fff;
+    text-decoration: none;
+}
+
+.footer-info-app i { font-size: 0.78rem; opacity: 0.9; }
+
 
 /* ─────────────────────────────────────────────────────────────
    Sidebar layout (CMS — left rail, expand on hover)
