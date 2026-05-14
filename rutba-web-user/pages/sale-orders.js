@@ -12,7 +12,7 @@ export default function SaleOrdersPage() {
 
     useEffect(() => {
         if (!jwt) return;
-        SaleOrdersEndpoints.fetchList({ sort: ['createdAt:desc'] }, jwt)
+        SaleOrdersEndpoints.list({ sort: ['createdAt:desc'] })
             .then((res) => setOrders(res.data || []))
             .catch((err) => console.error("Failed to load orders", err))
             .finally(() => setLoading(false));
