@@ -7,9 +7,7 @@ import { StockHelpersEndpoints, StockItemsEndpoints, ProductsEndpoints, Categori
 import { useUtil } from '@rutba/pos-shared/context/UtilContext';
 import { printStorage } from '@rutba/pos-shared/lib/printStorage';
 import { getBranch } from '@rutba/pos-shared/lib/utils';
-import FileView from '@rutba/pos-shared/components/FileView';
-// Replaced local MultiSelect with PrimeReact MultiSelect
-import { MultiSelect } from 'primereact/multiselect';
+import ProductPageShell, { buildStockProductTabs } from '@rutba/pos-shared/components/product/ProductPageShell';
 
 /**
  * Generate a short barcode prefix from a product name.
@@ -30,6 +28,18 @@ function generateSmartPrefix(name) {
 export default function EditProduct() {
     const router = useRouter();
     const { documentId } = router.query;
+    // Top-level shell tabs route here for two distinct workflows:
+    //   ?tab=pricing → show ONLY the Stock Pricing form (no stock-item ops).
+    //   default      → show Stock: Apply Changes + three add-mode sub-tabs.
+    const tabParam = Array.isArray(router.query.tab) ? router.query.tab[0] : router.query.tab;
+    const isPricingView = tabParam === 'pricing';
+    const stockSubTabParam = Array.isArray(router.query.sub) ? router.query.sub[0] : router.query.sub;
+    // Sub-tabs:
+    //   list     — see existing stock items, print barcodes, apply price changes (default)
+    //   generate — auto-generate N items
+    //   scan     — continuous barcode scan to create
+    //   reduce   — mark items as gone (mistaken / lost / damaged)
+    const stockSubTab = ['list', 'generate', 'scan', 'reduce'].includes(stockSubTabParam) ? stockSubTabParam : 'list';
     const { currency } = useUtil();
 
     const [productId, setProductId] = useState([]);
@@ -178,6 +188,23 @@ export default function EditProduct() {
             fetchStockItems(stockStatusFilter);
         }
     }, [showStockSection, stockStatusFilter]);
+
+    // Auto-expand the section that matches the active stock sub-tab. The
+    // accordion toggle states (showStockSection / showAddSection /
+    // showMultiScanSection) pre-date the sub-tab IA — we still drive the
+    // bodies through them, but now the sub-tab is the source of truth.
+    useEffect(() => {
+        if (isPricingView) return;
+        setShowStockSection(stockSubTab === 'list' || stockSubTab === 'reduce');
+        setShowAddSection(stockSubTab === 'generate');
+        setShowMultiScanSection(stockSubTab === 'scan');
+        // Reduce mode pre-configures the Apply-Changes panel for status-only updates.
+        // The user just picks which items and confirms — no need to re-tick the boxes.
+        if (stockSubTab === 'reduce') {
+            setApplyFields({ name: false, selling_price: false, offer_price: false, status: true });
+            if (!applyStatus) setApplyStatus('Reduced');
+        }
+    }, [stockSubTab, isPricingView]);
 
     const handleStockSelectItem = (itemId) => {
         setSelectedStockItems(prev => {
@@ -456,77 +483,36 @@ export default function EditProduct() {
         setProduct({ ...product });
     };
 
-    const handleFileChange = (field, files, multiple) => {
-        if (multiple) {
-            let fa = product[field];
-            if (Array.isArray(fa)) {
-                while (fa.length > 0) {
-                    fa.pop();
-                }
-            } else {
-                fa = product[field] = [];
-            }
-            fa.push(...files);
-        } else {
-            product[field] = files;
-        }
-        setProduct({ ...product });
-    }
-
     const handleSubmit = async (e) => {
         e.preventDefault();
         setSubmitting(true);
         setError('');
         setSuccess('');
-
         try {
-
-            console.log('Form Data to submit:', product);
-
+            // Stock Pricing section only writes pricing-related fields. Identity,
+            // taxonomy, content and media are owned by the Details page — sending
+            // them here would risk overwriting concurrent edits from CMS.
             const payload = {
-                ...product,
-                ...StockHelpersEndpoints.relationConnects({
-                    categories: product.categories,
-                    brands: product.brands,
-                    suppliers: product.suppliers
-                }),
-
-                logo: product.logo?.id ? product.logo?.id : null,
-                gallery: product.gallery?.map(g => g.id) ?? null,
+                cost_price: product.cost_price ?? null,
+                selling_price: product.selling_price ?? null,
+                offer_price: product.offer_price ?? null,
+                tax_rate: product.tax_rate ?? null,
+                reorder_level: product.reorder_level ?? null,
+                bundle_units: product.bundle_units ?? null,
             };
-      
-            delete payload.createdAt;
-            delete payload.updatedAt;
-            delete payload.publishedAt;
-            delete payload.id;
-            delete payload.documentId;
-
             const response = await saveProduct(documentId, payload);
-
-            if (response.data?.documentId || response.data?.documentId) {
-                setSuccess('Product saved successfully!');
-                setTimeout(() => {
-                    router.push('/products');
-                }, 1500);
+            if (response.data?.documentId) {
+                setSuccess('Pricing saved.');
             } else {
-                setError('Failed to save product');
+                setError('Failed to save pricing.');
             }
         } catch (err) {
-            setError('An error occurred while saving the product');
-            console.error('Error saving product:', err);
+            setError('An error occurred while saving pricing.');
+            console.error('Error saving pricing:', err);
         } finally {
             setSubmitting(false);
         }
     };
-
-    const handleCancel = () => {
-        router.push('/products');
-    };
-
-    // Prepare PrimeReact options (label/value shape)
-    const categoryOptions = categories.map(c => ({ label: c.name ?? '', value: c }));
-    const brandOptions = brands.map(b => ({ label: b.name ?? '', value: b }));
-    const supplierOptions = suppliers.map(s => ({ label: (s.name ?? '') + (s.contact_person ? ' ' + s.contact_person : ''), value: s }));
 
     if (loading) {
         return (
@@ -540,403 +526,186 @@ export default function EditProduct() {
         );
     }
 
+    const statusPill = product?.is_active === false
+        ? <span className="badge bg-secondary">Inactive</span>
+        : <span className="badge bg-success">Active</span>;
+
     return (
         <ProtectedRoute>
             <Layout>
-                <div className="page-content">
-                    {/* Page navigation */}
-                    <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
-                        <Link href={`/${documentId}/product-edit`} className="btn btn-outline-secondary btn-sm">
-                            <i className="fas fa-edit me-1" /> Edit
-                        </Link>
-                        <span className="btn btn-primary btn-sm">
-                            <i className="fas fa-boxes me-1" /> Stock Control
-                        </span>
-                        <Link href={`/${documentId}/product-variants`} className="btn btn-outline-secondary btn-sm">
-                            <i className="fas fa-layer-group me-1" /> Variants
-                        </Link>
-                        <Link href={`/stock-items?product=${documentId}`} className="btn btn-outline-secondary btn-sm">
-                            <i className="fas fa-barcode me-1" /> Stock Items
-                        </Link>
-                        <Link href={`/${documentId}/product-relations`} className="btn btn-outline-secondary btn-sm">
-                            <i className="fas fa-compress-arrows-alt me-1" /> Relations &amp; Merge
-                        </Link>
-                        <Link href="/products" className="btn btn-outline-dark btn-sm ms-auto">
-                            <i className="fas fa-arrow-left me-1" /> Products
-                        </Link>
-                    </div>
-
-                    <h1 className="mb-3">
-                        {documentId && documentId !== 'new' ? 'Stock Control' : 'Create New Product'}
-                    </h1>
-
-                    {error && (
-                        <div style={{
-                            background: '#fee',
-                            border: '1px solid #fcc',
-                            color: '#c00',
-                            padding: '10px',
-                            borderRadius: '4px',
-                            marginBottom: '20px'
-                        }}>
-                            {error}
-                        </div>
+                <ProductPageShell
+                    product={product}
+                    backHref="/products"
+                    tabs={buildStockProductTabs({ documentId, badges: { stock: stockItemsTotal || undefined } })}
+                    currentTab={isPricingView ? 'pricing' : 'stock'}
+                    statusPill={statusPill}
+                    extraInfo={stockItemsTotal != null && (
+                        <span><i className="fas fa-cubes me-1 opacity-50" />{stockItemsTotal} stock item{stockItemsTotal === 1 ? '' : 's'}</span>
                     )}
-
-                    {success && (
-                        <div style={{
-                            background: '#efe',
-                            border: '1px solid #cfc',
-                            color: '#0c0',
-                            padding: '10px',
-                            borderRadius: '4px',
-                            marginBottom: '20px'
-                        }}>
-                            {success}
+                    alert={{
+                        error,
+                        success,
+                        onDismissError: () => setError(''),
+                        onDismissSuccess: () => setSuccess(''),
+                    }}
+                >
+                    {/* Stock Pricing — surfaced as the "Pricing" top-level tab. Stock-item ops
+                        (Apply / Generate / Scan / Reduce) live on the "Stock" tab and are
+                        hidden when ?tab=pricing. */}
+                    {isPricingView && (
+                    <form onSubmit={handleSubmit} className="card mb-3">
+                        <div className="card-header py-2 d-flex align-items-center justify-content-between">
+                            <h6 className="mb-0"><i className="fas fa-tags me-2" />Stock Pricing</h6>
+                            <button type="submit" className="btn btn-sm btn-primary" disabled={submitting}>
+                                {submitting ? (
+                                    <><span className="spinner-border spinner-border-sm me-1" />Saving…</>
+                                ) : (
+                                    <><i className="fas fa-save me-1" />Save Pricing</>
+                                )}
+                            </button>
                         </div>
-                    )}
-
-                    <form onSubmit={handleSubmit} style={{ background: '#f9f9f9', padding: '20px', borderRadius: '8px' }}>
-                        {/* Name */}
-                        <div style={{ marginBottom: '20px' }}>
-                            <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'black' }}>
-                                Product Name *
-                            </label>
-                            <input
-                                type="text"
-                                name="name"
-                                value={product.name ?? ""}
-                                onChange={handleChange}
-                                required
-                                style={{
-                                    width: '100%',
-                                    padding: '8px',
-                                    border: '1px solid #ccc',
-                                    borderRadius: '4px'
-                                }}
-                                placeholder="Product Name"
-                            />
-                        </div>
-
-                        {/* SKU + Barcode */}
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'black' }}>
-                                    SKU
-                                </label>
-                                <input
-                                    type="text"
-                                    name="sku"
-                                    value={product.sku ?? ""}
-                                    onChange={handleChange}
-                                    style={{
-                                        width: '100%',
-                                        padding: '8px',
-                                        border: '1px solid #ccc',
-                                        borderRadius: '4px'
-                                    }}
-                                    placeholder="SKU"
-                                />
-                            </div>
-
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'black' }}>
-                                    Barcode
-                                </label>
-                                <input
-                                    type="text"
-                                    name="barcode"
-                                    value={product.barcode ?? ""}
-                                    onChange={handleChange}
-                                    style={{
-                                        width: '100%',
-                                        padding: '8px',
-                                        border: '1px solid #ccc',
-                                        borderRadius: '4px'
-                                    }}
-                                    placeholder="Barcode"
-                                />
-                            </div>
-                        </div>
-
-                        {/* Selling Price + Cost Price */}
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'black' }}>
-                                    Selling Price *
-                                </label>
-                                <input
-                                    type="number"
-                                    name="selling_price"
-                                    step="0.01"
-                                    min="0"
-                                    value={product.selling_price ?? 0}
-                                    onChange={handleChange}
-                                    required
-                                    style={{
-                                        width: '100%',
-                                        padding: '8px',
-                                        border: '1px solid #ccc',
-                                        borderRadius: '4px'
-                                    }}
-                                    placeholder="0.00"
-                                />
-                            </div>
-
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'black' }}>
-                                    Offer Price
-                                </label>
-                                <input
-                                    type="number"
-                                    name="offer_price"
-                                    step="0.01"
-                                    min="0"
-                                    value={product.offer_price ?? 0}
-                                    onChange={handleChange}
-                                    style={{
-                                        width: '100%',
-                                        padding: '8px',
-                                        border: '1px solid #ccc',
-                                        borderRadius: '4px'
-                                    }}
-                                    placeholder="0.00"
-                                />
-                            </div>
-                        </div>
-
-                        {/* Tax Rate + Stock Quantity */}
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'black' }}>
-                                    Tax Rate (%)
-                                </label>
-                                <input
-                                    type="number"
-                                    name="tax_rate"
-                                    step="0.01"
-                                    min="0"
-                                    value={product.tax_rate ?? 0}
-                                    onChange={handleChange}
-                                    style={{
-                                        width: '100%',
-                                        padding: '8px',
-                                        border: '1px solid #ccc',
-                                        borderRadius: '4px'
-                                    }}
-                                    placeholder="0.00"
-                                />
-                            </div>
-
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'black' }}>
-                                    Stock Quantity
-                                </label>
-                                <input
-                                    type="number"
-                                    name="stock_quantity"
-                                    min="0"
-                                    value={product.stock_quantity ?? 0}
-                                    onChange={handleChange}
-                                    style={{
-                                        width: '100%',
-                                        padding: '8px',
-                                        border: '1px solid #ccc',
-                                        borderRadius: '4px'
-                                    }}
-                                    placeholder="0"
-                                />
-                            </div>
-                        </div>
-
-                        {/* Reorder Level + Bundle Units */}
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'black' }}>
-                                    Reorder Level
-                                </label>
-                                <input
-                                    type="number"
-                                    name="reorder_level"
-                                    min="0"
-                                    value={product.reorder_level ?? 0}
-                                    onChange={handleChange}
-                                    style={{
-                                        width: '100%',
-                                        padding: '8px',
-                                        border: '1px solid #ccc',
-                                        borderRadius: '4px'
-                                    }}
-                                    placeholder="0"
-                                />
-                            </div>
-
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'black' }}>
-                                    Bundle Units
-                                </label>
-                                <input
-                                    type="number"
-                                    name="bundle_units"
-                                    min="1"
-                                    value={product.bundle_units ?? 0}
-                                    onChange={handleChange}
-                                    style={{
-                                        width: '100%',
-                                        padding: '8px',
-                                        border: '1px solid #ccc',
-                                        borderRadius: '4px'
-                                    }}
-                                    placeholder="1"
-                                />
-                            </div>
-                        </div>
-
-                        {/* Category + Brand (PrimeReact MultiSelect) */}
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'black' }}>
-                                    Category
-                                </label>
-                                <MultiSelect
-                                    value={product.categories ?? []}
-                                    options={categoryOptions}
-                                    onChange={(e) => {
-                                        product.categories = e.value;
-                                        setProduct({ ...product });
-                                    }}
-                                    optionLabel="label"
-                                    optionValue="value"
-                                    placeholder="Select categories"
-                                    display="chip"
-                                    style={{ width: '100%' }}
-                                />
-                            </div>
-
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'black' }}>
-                                    Brands
-                                </label>
-                                <MultiSelect
-                                    value={product.brands ?? []}
-                                    options={brandOptions}
-                                    onChange={(e) => {
-                                        product.brands = e.value;
-                                        setProduct({ ...product });
-                                    }}
-                                    optionLabel="label"
-                                    optionValue="value"
-                                    placeholder="Select brands"
-                                    display="chip"
-                                    style={{ width: '100%' }}
-                                />
-                            </div>
-                        </div>
-
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'black' }}>
-                                    Active Status
-                                </label>
-                                <div style={{ marginTop: '8px' }}>
-                                    <input
-                                        type="checkbox"
-                                        name="is_active"
-                                        checked={product.is_active ?? true}
-                                        onChange={handleChange}
-                                        style={{ marginRight: '8px' }}
-                                    />
-                                    <span style={{ color: 'black' }}>Product is active</span>
+                        <div className="card-body">
+                            <div className="row g-3">
+                                <div className="col-md-6">
+                                    <label className="form-label fw-bold">Barcode</label>
+                                    <input type="text" name="barcode"
+                                        value={product.barcode ?? ''} onChange={handleChange}
+                                        className="form-control" placeholder="Barcode" />
+                                </div>
+                                <div className="col-md-6">
+                                    <label className="form-label fw-bold">Supplier Code</label>
+                                    <input type="text" name="supplierCode"
+                                        value={product.supplierCode ?? ''} onChange={handleChange}
+                                        className="form-control" placeholder="Supplier Code" />
+                                </div>
+                                <div className="col-md-3">
+                                    <label className="form-label fw-bold">Cost Price</label>
+                                    <div className="input-group">
+                                        <span className="input-group-text">{currency}</span>
+                                        <input type="number" name="cost_price" step="0.01" min="0"
+                                            value={product.cost_price ?? ''} onChange={handleChange}
+                                            className="form-control" placeholder="0.00" />
+                                    </div>
+                                </div>
+                                <div className="col-md-3">
+                                    <label className="form-label fw-bold">Selling Price *</label>
+                                    <div className="input-group">
+                                        <span className="input-group-text">{currency}</span>
+                                        <input type="number" name="selling_price" step="0.01" min="0" required
+                                            value={product.selling_price ?? ''} onChange={handleChange}
+                                            className="form-control" placeholder="0.00" />
+                                    </div>
+                                </div>
+                                <div className="col-md-3">
+                                    <label className="form-label fw-bold">Offer Price</label>
+                                    <div className="input-group">
+                                        <span className="input-group-text">{currency}</span>
+                                        <input type="number" name="offer_price" step="0.01" min="0"
+                                            value={product.offer_price ?? ''} onChange={handleChange}
+                                            className="form-control" placeholder="0.00" />
+                                    </div>
+                                </div>
+                                <div className="col-md-3">
+                                    <label className="form-label fw-bold">Tax Rate (%)</label>
+                                    <input type="number" name="tax_rate" step="0.01" min="0"
+                                        value={product.tax_rate ?? ''} onChange={handleChange}
+                                        className="form-control" placeholder="0.00" />
+                                </div>
+                                <div className="col-md-3">
+                                    <label className="form-label fw-bold">Reorder Level</label>
+                                    <input type="number" name="reorder_level" min="0"
+                                        value={product.reorder_level ?? ''} onChange={handleChange}
+                                        className="form-control" placeholder="0" />
+                                </div>
+                                <div className="col-md-3">
+                                    <label className="form-label fw-bold">Bundle Units</label>
+                                    <input type="number" name="bundle_units" min="1"
+                                        value={product.bundle_units ?? 1} onChange={handleChange}
+                                        className="form-control" placeholder="1" />
                                 </div>
                             </div>
-
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'black' }}>
-                                    Suppliers
-                                </label>
-                                <MultiSelect
-                                    value={product.suppliers ?? []}
-                                    options={supplierOptions}
-                                    onChange={(e) => {
-                                        product.suppliers = e.value;
-                                        setProduct({ ...product });
-                                    }}
-                                    optionLabel="label"
-                                    optionValue="value"
-                                    placeholder="Select suppliers"
-                                    display="chip"
-                                    style={{ width: '100%' }}
-                                />
-                            </div>
-                        </div>
-
-                        <div style={{ marginBottom: '20px' }}>
-                            <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'black' }}>
-                                Logo
-                            </label>
-                            <FileView onFileChange={handleFileChange} single={product.logo} multiple={false} refName='product' refId={productId} refDocumentId={product.documentId} refDraft field="logo" name={product.name} />
-                            <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'black' }}>
-                                Gallery
-                            </label>
-                            <FileView onFileChange={handleFileChange} gallery={product.gallery} multiple={true} refName='product' refId={productId} refDocumentId={product.documentId} refDraft field="gallery" name={product.name} />
-                        </div>
-
-                        <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
-                            <button
-                                type="submit"
-                                disabled={submitting}
-                                style={{
-                                    padding: '10px 20px',
-                                    background: '#007bff',
-                                    color: 'black',
-                                    border: 'none',
-                                    borderRadius: '4px',
-                                    cursor: submitting ? 'not-allowed' : 'pointer'
-                                }}
-                            >
-                                {submitting ? 'Saving...' : (documentId && documentId !== 'new' ? 'Update Product' : 'Create Product')}
-                            </button>
-                            <button
-                                type="button"
-                                onClick={handleCancel}
-                                style={{
-                                    padding: '10px 20px',
-                                    background: '#6c757d',
-                                    color: 'black',
-                                    border: 'none',
-                                    borderRadius: '4px',
-                                    cursor: 'pointer'
-                                }}
-                            >
-                                Cancel
-                            </button>
+                            {(product.cost_price > 0 && product.selling_price > 0) && (
+                                <div className="alert alert-info mt-3 mb-0 py-2 d-flex gap-4 small">
+                                    <span><strong>Margin:</strong> {currency}{(product.selling_price - product.cost_price).toFixed(2)}</span>
+                                    <span><strong>Markup:</strong> {((product.selling_price - product.cost_price) / product.cost_price * 100).toFixed(1)}%</span>
+                                </div>
+                            )}
                         </div>
                     </form>
+                    )}
 
+                    {/* Stock sub-tab strip — three modes for entering/managing stock items.
+                        Apply Changes (below) is transverse and stays visible across all modes. */}
+                    {!isPricingView && documentId && documentId !== 'new' && (
+                        <ul className="nav nav-pills mb-3 gap-1">
+                            <li className="nav-item">
+                                <a
+                                    href={`/${documentId}/product-stock-items`}
+                                    className={`nav-link ${stockSubTab === 'list' ? 'active' : ''}`}
+                                >
+                                    <i className="fas fa-list me-1" /> Stock List
+                                    {stockItemsTotal != null && stockItemsTotal > 0 && (
+                                        <span className="badge bg-secondary ms-1">{stockItemsTotal}</span>
+                                    )}
+                                </a>
+                            </li>
+                            <li className="nav-item">
+                                <a
+                                    href={`/${documentId}/product-stock-items?sub=generate`}
+                                    className={`nav-link ${stockSubTab === 'generate' ? 'active' : ''}`}
+                                >
+                                    <i className="fas fa-plus-circle me-1" /> Generate
+                                </a>
+                            </li>
+                            <li className="nav-item">
+                                <a
+                                    href={`/${documentId}/product-stock-items?sub=scan`}
+                                    className={`nav-link ${stockSubTab === 'scan' ? 'active' : ''}`}
+                                >
+                                    <i className="fas fa-barcode me-1" /> Scan
+                                </a>
+                            </li>
+                            <li className="nav-item">
+                                <a
+                                    href={`/${documentId}/product-stock-items?sub=reduce`}
+                                    className={`nav-link ${stockSubTab === 'reduce' ? 'active' : ''}`}
+                                >
+                                    <i className="fas fa-minus-circle me-1" /> Reduce
+                                </a>
+                            </li>
+                        </ul>
+                    )}
 
-                    {/* Stock Items Section - only for existing products */}
-                    {documentId && documentId !== 'new' && (
+                    {/* Stock List / Apply Changes — visible on the "list" and "reduce" sub-tabs.
+                        The same table powers both: list-mode prints barcodes & applies pricing;
+                        reduce-mode lets you select items and change their status to remove them. */}
+                    {!isPricingView && (stockSubTab === 'list' || stockSubTab === 'reduce') && documentId && documentId !== 'new' && (
                         <div style={{ marginTop: '30px' }}>
-                            <button
-                                type="button"
-                                onClick={() => setShowStockSection(!showStockSection)}
-                                style={{
-                                    background: 'none',
-                                    border: '1px solid #ccc',
-                                    borderRadius: '4px',
-                                    padding: '10px 16px',
-                                    cursor: 'pointer',
-                                    fontWeight: 'bold',
-                                    width: '100%',
-                                    textAlign: 'left',
-                                    fontSize: '16px'
-                                }}
-                            >
-                                {showStockSection ? '▼' : '▶'} Apply Changes to Stock Items ({stockItemsTotal})
-                            </button>
-
-                            {showStockSection && (
-                                <div style={{ background: '#f9f9f9', padding: '20px', borderRadius: '0 0 8px 8px', border: '1px solid #ccc', borderTop: 'none' }}>
+                            {stockSubTab === 'reduce' && (
+                                <div className="alert alert-warning py-2 mb-3 d-flex align-items-center gap-2">
+                                    <i className="fas fa-minus-circle" />
+                                    <div>
+                                        <strong>Reduce Stock</strong> — select items below to mark them as gone
+                                        (mistaken creates, lost, damaged). The Apply panel is pre-set to update
+                                        status only; pick the status and confirm.
+                                    </div>
+                                </div>
+                            )}
+                            <div className="d-flex justify-content-between align-items-center mb-2">
+                                <h6 className="mb-0">
+                                    <i className={`fas ${stockSubTab === 'reduce' ? 'fa-minus-circle' : 'fa-list'} me-2`} />
+                                    {stockSubTab === 'reduce'
+                                        ? `Reduce — Stock Items (${stockItemsTotal})`
+                                        : `Stock Items (${stockItemsTotal})`}
+                                </h6>
+                                <span className="text-muted small">
+                                    {stockSubTab === 'reduce'
+                                        ? 'Select items, set the new status, then confirm.'
+                                        : 'Select items to update prices, status, or print barcodes.'}
+                                </span>
+                            </div>
+                            {true && (
+                                <div style={{ background: '#f9f9f9', padding: '20px', borderRadius: '8px', border: '1px solid #ccc' }}>
                                     {/* Toolbar */}
                                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'flex-end', marginBottom: '16px' }}>
                                         <div>
@@ -995,21 +764,33 @@ export default function EditProduct() {
                                             disabled={applyingChanges || selectedStockItems.size === 0}
                                             style={{
                                                 padding: '8px 16px',
-                                                background: selectedStockItems.size === 0 ? '#aaa' : '#28a745',
+                                                background: selectedStockItems.size === 0 ? '#aaa' : (stockSubTab === 'reduce' ? '#dc3545' : '#28a745'),
                                                 color: 'white',
                                                 border: 'none',
                                                 borderRadius: '4px',
                                                 cursor: selectedStockItems.size === 0 ? 'not-allowed' : 'pointer',
                                                 fontWeight: 'bold'
                                             }}
+                                            title={
+                                                selectedStockItems.size === 0
+                                                    ? 'Tick at least one stock item to enable this action.'
+                                                    : stockSubTab === 'reduce'
+                                                        ? `Set status of ${selectedStockItems.size} item(s) to "${applyStatus || '— pick a status —'}". Items remain in the database (reversible).`
+                                                        : `Write the ticked field values onto ${selectedStockItems.size} item(s).`
+                                            }
                                         >
-                                            {applyingChanges ? 'Applying...' : `Apply to ${selectedStockItems.size} selected`}
+                                            {applyingChanges
+                                                ? (stockSubTab === 'reduce' ? 'Reducing…' : 'Updating…')
+                                                : (stockSubTab === 'reduce'
+                                                    ? `Mark ${selectedStockItems.size} item${selectedStockItems.size === 1 ? '' : 's'} as ${applyStatus || '…'}`
+                                                    : `Update ${selectedStockItems.size} item${selectedStockItems.size === 1 ? '' : 's'}`)}
                                         </button>
 
                                         <button
                                             type="button"
                                             onClick={() => handlePrintBarcodes('selected')}
                                             disabled={selectedStockItems.size === 0}
+                                            title="Open a print preview with one barcode label per selected item."
                                             style={{
                                                 padding: '8px 16px',
                                                 background: selectedStockItems.size === 0 ? '#aaa' : '#17a2b8',
@@ -1021,13 +802,14 @@ export default function EditProduct() {
                                             }}
                                         >
                                             <i className="fas fa-print" style={{ marginRight: '6px' }} />
-                                            Print {selectedStockItems.size} Selected
+                                            Print barcodes — {selectedStockItems.size} selected
                                         </button>
 
                                         <button
                                             type="button"
                                             onClick={() => handlePrintBarcodes('all')}
                                             disabled={stockItems.length === 0}
+                                            title="Open a print preview with one barcode label per stock item on this product."
                                             style={{
                                                 padding: '8px 16px',
                                                 background: stockItems.length === 0 ? '#aaa' : '#6c757d',
@@ -1039,7 +821,7 @@ export default function EditProduct() {
                                             }}
                                         >
                                             <i className="fas fa-print" style={{ marginRight: '6px' }} />
-                                            Print All ({stockItems.length})
+                                            Print barcodes — all {stockItems.length}
                                         </button>
 
                                         <button
@@ -1058,13 +840,15 @@ export default function EditProduct() {
                                             }}
                                         >
                                             <i className="fas fa-barcode" style={{ marginRight: '6px' }} />
-                                            {applyingChanges ? 'Attaching...' : `Attach Product Barcode (${selectedStockItems.size})`}
+                                            {applyingChanges
+                                                ? 'Copying…'
+                                                : `Copy product barcode to ${selectedStockItems.size} item${selectedStockItems.size === 1 ? '' : 's'}`}
                                         </button>
                                     </div>
 
                                     {/* Preview of values to apply */}
                                     <div style={{ marginBottom: '12px', padding: '8px 12px', background: '#e9ecef', borderRadius: '4px', fontSize: '13px', color: 'black' }}>
-                                        <strong>Values from product:</strong>
+                                        <strong>Values that will be written:</strong>
                                         {applyFields.name && <span style={{ marginLeft: '12px' }}>Name: <em>{product.name || '—'}</em></span>}
                                         {applyFields.selling_price && <span style={{ marginLeft: '12px' }}>Selling Price: <em>{currency}{parseFloat(product.selling_price || 0).toFixed(2)}</em></span>}
                                         {applyFields.offer_price && <span style={{ marginLeft: '12px' }}>Offer Price: <em>{currency}{parseFloat(product.offer_price || 0).toFixed(2)}</em></span>}
@@ -1141,8 +925,8 @@ export default function EditProduct() {
                         </div>
                     )}
 
-                    {/* ====== ADD STOCK ITEMS SECTION ====== */}
-                    {documentId && documentId !== 'new' && (
+                    {/* ====== ADD STOCK ITEMS — "Generate" sub-tab ====== */}
+                    {!isPricingView && stockSubTab === 'generate' && documentId && documentId !== 'new' && (
                         <div style={{ marginTop: '30px' }}>
                             <button
                                 type="button"
@@ -1321,8 +1105,8 @@ export default function EditProduct() {
                         </div>
                     )}
 
-                    {/* ====== MULTI-SCAN SECTION ====== */}
-                    {documentId && documentId !== 'new' && (
+                    {/* ====== MULTI-SCAN — "Continuous Scan" sub-tab ====== */}
+                    {!isPricingView && stockSubTab === 'scan' && documentId && documentId !== 'new' && (
                         <div style={{ marginTop: '30px' }}>
                             <button
                                 type="button"
@@ -1449,18 +1233,7 @@ export default function EditProduct() {
                             )}
                         </div>
                     )}
-                    <>
-                        <button type="button" className="btn btn-outline-info ms-auto" onClick={() => router.push(`/${documentId}/product-variants`)}>
-                            <i className="fas fa-fighter-jet me-1" /> Variants
-                        </button>
-                        <button type="button" className="btn btn-outline-info" onClick={() => router.push(`/stock-items?product=${documentId}`)}>
-                            <i className="fas fa-boxes me-1" /> Stock Items
-                        </button>
-                        <button type="button" className="btn btn-outline-warning" onClick={() => router.push(`/${documentId}/product-edit?product=${documentId}`)}>
-                            <i className="fas fa-boxes me-1" /> Edit
-                        </button>
-                    </>
-                </div>
+                </ProductPageShell>
             </Layout>
         </ProtectedRoute>
     );

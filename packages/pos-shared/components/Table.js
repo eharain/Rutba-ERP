@@ -34,6 +34,53 @@ export function TableCell({ children, align, colSpan, title, onClick, style }) {
         </td>
     );
 }
+/**
+ * Sortable <th> for list-page tables. One canonical implementation used by
+ * every "X list" across rutba-cms and pos-stock — replaces the three
+ * near-identical local copies (products.js, products-bulk-edit.js, cms
+ * products.js) that all rendered slightly different arrows.
+ *
+ * Always shows a faded sort glyph so columns advertise that they can be
+ * sorted; brightens and flips direction once active.
+ *
+ * Click semantics are owned by the parent: pass `onSort(field)` and toggle
+ * the direction in your handler. We don't manage state here because callers
+ * typically need to also reset the page, persist sort in the URL, etc.
+ *
+ * Props:
+ *   field      — column key (passed back to onSort)
+ *   label      — header text
+ *   sortField  — the column currently being sorted (string)
+ *   sortDir    — 'asc' | 'desc'
+ *   onSort     — (field) => void
+ *   align      — 'left' (default) | 'right' | 'center'
+ *   width      — fixed pixel width (optional)
+ *   className, style — passthrough
+ */
+export function SortableTh({ field, label, sortField, sortDir, onSort, align = undefined, width = undefined, className = "", style = undefined }) {
+    const active = sortField === field;
+    const icon = active
+        ? `fa-sort-${sortDir === "asc" ? "up" : "down"}`
+        : "fa-sort";
+    return (
+        <th
+            className={className}
+            style={{
+                cursor: "pointer",
+                userSelect: "none",
+                whiteSpace: "nowrap",
+                textAlign: align,
+                width,
+                ...style,
+            }}
+            onClick={() => onSort(field)}
+        >
+            {label}
+            <i className={`fas ${icon} ms-1`} style={!active ? { opacity: 0.3 } : undefined} />
+        </th>
+    );
+}
+
 // Simple Pagination Component
 export function TablePagination1({ count, page, rowsPerPage, onPageChange, onRowsPerPageChange, rowsPerPageOptions }) {
     const totalPages = Math.ceil(count / rowsPerPage);

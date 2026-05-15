@@ -23,6 +23,10 @@
       "./components/*",
       "./components/*.js"
     ],
+    "./hooks/*": [
+      "./hooks/*",
+      "./hooks/*.js"
+    ],
     "./domain/*": [
       "./context/domain/*",
       "./context/domain/*.js"

@@ -7,6 +7,7 @@ import { StockItemsEndpoints, PurchaseItemsEndpoints, ProductsEndpoints } from '
 import { loadProduct } from '@rutba/api-provider/pos';
 import { useUtil } from '@rutba/pos-shared/context/UtilContext';
 import StrapiImage from '@rutba/pos-shared/components/StrapiImage';
+import ProductPageShell, { buildStockProductTabs } from '@rutba/pos-shared/components/product/ProductPageShell';
 
 export default function ProductRelationsPage() {
     const router = useRouter();
@@ -22,9 +23,17 @@ export default function ProductRelationsPage() {
     const [mergeSearch, setMergeSearch] = useState('');
     const [mergeResults, setMergeResults] = useState([]);
     const [mergeSearchLoading, setMergeSearchLoading] = useState(false);
+    const [mergeSearchError, setMergeSearchError] = useState('');
     const [mergeSelection, setMergeSelection] = useState(new Set());
     const [merging, setMerging] = useState(false);
     const [mergeLog, setMergeLog] = useState([]);
+
+    // Variants of THIS product (the inverse merge — collapse selected variants
+    // back into the parent). Uses the same transfer-steps engine as the
+    // search-based merge, just with sourceDocId=variant / targetDocId=this.
+    const [variants, setVariants] = useState([]);
+    const [variantSelection, setVariantSelection] = useState(new Set());
+    const [mergingVariants, setMergingVariants] = useState(false);
 
     // Options for merge
     const [transferItems, setTransferItems] = useState(true);
@@ -57,11 +66,132 @@ export default function ProductRelationsPage() {
             prod._purchaseItemsCount = purchaseItemsRes?.meta?.pagination?.total ?? 0;
 
             setProduct({ ...prod });
+
+            // Load variants of this product so the "Merge variants into parent"
+            // section can list them. Populate categorisation refs so transfer
+            // can copy them onto the parent without an extra round-trip.
+            const variantsRes = await ProductsEndpoints.byParent(documentId, {
+                pageSize: 100,
+                populate: { categories: true, brands: true, suppliers: true, terms: true, logo: true },
+            });
+            setVariants(variantsRes?.data ?? variantsRes ?? []);
         } catch (err) {
             setError('Failed to load product data');
             console.error(err);
         } finally {
             setLoading(false);
+        }
+    }
+
+    function toggleVariantSelection(docId) {
+        setVariantSelection(prev => {
+            const next = new Set(prev);
+            if (next.has(docId)) next.delete(docId);
+            else next.add(docId);
+            return next;
+        });
+    }
+
+    // Run the same transfer pipeline as handleMerge, but with the current
+    // product as the target and each selected variant as a source. Always
+    // deletes the variant rows on success (a variant merged back into its
+    // parent has no remaining meaning).
+    async function handleMergeVariants() {
+        if (variantSelection.size === 0) return alert('Select at least one variant to merge');
+        const sourceNames = variants
+            .filter(v => variantSelection.has(getEntryId(v)))
+            .map(v => v.name || v.sku || getEntryId(v))
+            .join(', ');
+        if (!confirm(`Merge ${variantSelection.size} variant(s) (${sourceNames}) back into parent "${product?.name}"?\n\nStock items, purchase items, and terms will move to the parent; the variant rows will be deleted.`)) return;
+
+        setMergingVariants(true);
+        setError('');
+        setSuccess('');
+        const log = [];
+
+        try {
+            for (const sourceDocId of variantSelection) {
+                const sourceVariant = variants.find(v => getEntryId(v) === sourceDocId);
+                const sourceName = sourceVariant?.name || sourceDocId;
+                log.push(`--- Merging variant "${sourceName}" into parent ---`);
+
+                // 1) Transfer stock items to parent
+                if (transferItems) {
+                    let page = 1;
+                    let totalPages = 1;
+                    let itemCount = 0;
+                    do {
+                        const res = await StockItemsEndpoints.byProduct(sourceDocId, { page, pageSize: 100 });
+                        const items = res?.data ?? res ?? [];
+                        totalPages = res?.meta?.pagination?.pageCount || 1;
+                        for (const item of items) {
+                            await StockItemsEndpoints.update(getEntryId(item), {
+                                product: { connect: [documentId], disconnect: [sourceDocId] },
+                                name: product?.name,
+                            });
+                            itemCount++;
+                        }
+                        page++;
+                    } while (page <= totalPages);
+                    log.push(`  Transferred ${itemCount} stock item(s)`);
+                }
+
+                // 2) Transfer purchase items to parent
+                if (transferPurchaseItems) {
+                    let page = 1;
+                    let totalPages = 1;
+                    let itemCount = 0;
+                    do {
+                        const res = await PurchaseItemsEndpoints.byProduct(sourceDocId, { page, pageSize: 100 });
+                        const items = res?.data ?? res ?? [];
+                        totalPages = res?.meta?.pagination?.pageCount || 1;
+                        for (const item of items) {
+                            await PurchaseItemsEndpoints.update(getEntryId(item), {
+                                product: { connect: [documentId], disconnect: [sourceDocId] },
+                            });
+                            itemCount++;
+                        }
+                        page++;
+                    } while (page <= totalPages);
+                    log.push(`  Transferred ${itemCount} purchase item(s)`);
+                }
+
+                // 3) Copy categorisation onto parent (best-effort)
+                if (transferRelations && sourceVariant) {
+                    const srcCategories = (sourceVariant.categories || []).map(c => getEntryId(c)).filter(Boolean);
+                    const srcBrands = (sourceVariant.brands || []).map(b => getEntryId(b)).filter(Boolean);
+                    const srcSuppliers = (sourceVariant.suppliers || []).map(s => getEntryId(s)).filter(Boolean);
+                    const srcTerms = (sourceVariant.terms || []).map(t => getEntryId(t)).filter(Boolean);
+
+                    const relPayload = {};
+                    if (srcCategories.length) relPayload.categories = { connect: srcCategories };
+                    if (srcBrands.length) relPayload.brands = { connect: srcBrands };
+                    if (srcSuppliers.length) relPayload.suppliers = { connect: srcSuppliers };
+                    if (srcTerms.length) relPayload.terms = { connect: srcTerms };
+
+                    if (Object.keys(relPayload).length > 0) {
+                        await ProductsEndpoints.update(documentId, relPayload);
+                        log.push(`  Copied relations: ${Object.keys(relPayload).join(', ')}`);
+                    }
+                }
+
+                // 4) Delete the variant. Unlike the search-based merge (where
+                //    deleteSource is optional), collapsing a variant back into
+                //    its parent has no use-case for keeping the variant row.
+                await ProductsEndpoints.del(sourceDocId);
+                log.push(`  Deleted variant "${sourceName}"`);
+            }
+
+            setMergeLog(log);
+            setVariantSelection(new Set());
+            setSuccess(`Merge complete — ${variantSelection.size} variant(s) merged back into "${product?.name}".`);
+            await loadData();
+        } catch (err) {
+            console.error('Variant merge failed', err);
+            setError('Variant merge failed: ' + (err.message || 'Unknown error'));
+            setMergeLog(log);
+        } finally {
+            setMergingVariants(false);
         }
     }
 
@@ -76,13 +206,22 @@ export default function ProductRelationsPage() {
         let isActive = true;
         const timer = setTimeout(async () => {
             setMergeSearchLoading(true);
+            setMergeSearchError('');
             try {
-                const res = await ProductsEndpoints.search(searchValue, { excludeDocId: documentId });
-                const data = res?.data ?? res;
-                if (isActive) setMergeResults(data || []);
+                // search takes (searchText, page, pageSize) — exclude current
+                // product on the client since the API has no excludeDocId param.
+                const res = await ProductsEndpoints.search(searchValue, 1, 20);
+                const data = Array.isArray(res) ? res : (res?.data ?? []);
+                const filtered = data.filter(p => getEntryId(p) !== documentId);
+                if (isActive) setMergeResults(filtered);
             } catch (err) {
                 console.error('Merge search failed', err);
-                if (isActive) setMergeResults([]);
+                if (isActive) {
+                    setMergeResults([]);
+                    const status = err?.response?.status;
+                    const reason = err?.response?.data?.error?.message || err?.message || 'Unknown error';
+                    setMergeSearchError(status ? `Search failed (HTTP ${status}): ${reason}` : `Search failed: ${reason}`);
+                }
             } finally {
                 if (isActive) setMergeSearchLoading(false);
             }
@@ -228,50 +367,26 @@ export default function ProductRelationsPage() {
         );
     }
 
+    const statusPill = product?.is_active === false
+        ? <span className="badge bg-secondary">Inactive</span>
+        : product ? <span className="badge bg-success">Active</span> : null;
+
     return (
         <ProtectedRoute>
             <Layout>
-                <div className="page-content">
-                    {/* Page navigation */}
-                    <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
-                        <Link href={`/${documentId}/product-edit`} className="btn btn-outline-secondary btn-sm">
-                            <i className="fas fa-edit me-1" /> Edit
-                        </Link>
-                        <Link href={`/${documentId}/product-stock-items`} className="btn btn-outline-secondary btn-sm">
-                            <i className="fas fa-boxes me-1" /> Stock Control
-                        </Link>
-                        <Link href={`/${documentId}/product-variants`} className="btn btn-outline-secondary btn-sm">
-                            <i className="fas fa-layer-group me-1" /> Variants
-                        </Link>
-                        <Link href={`/stock-items?product=${documentId}`} className="btn btn-outline-secondary btn-sm">
-                            <i className="fas fa-barcode me-1" /> Stock Items
-                        </Link>
-                        <span className="btn btn-primary btn-sm">
-                            <i className="fas fa-compress-arrows-alt me-1" /> Relations &amp; Merge
-                        </span>
-                        <Link href="/products" className="btn btn-outline-dark btn-sm ms-auto">
-                            <i className="fas fa-arrow-left me-1" /> Products
-                        </Link>
-                    </div>
-
-                    <h2 className="mb-3">
-                        <i className="fas fa-compress-arrows-alt me-2" />
-                        Relations &amp; Merge: {product?.name || '...'}
-                    </h2>
-
-                    {/* Alerts */}
-                    {error && (
-                        <div className="alert alert-danger alert-dismissible fade show" role="alert">
-                            {error}
-                            <button type="button" className="btn-close" onClick={() => setError('')} />
-                        </div>
-                    )}
-                    {success && (
-                        <div className="alert alert-success alert-dismissible fade show" role="alert">
-                            {success}
-                            <button type="button" className="btn-close" onClick={() => setSuccess('')} />
-                        </div>
-                    )}
+                <ProductPageShell
+                    product={product}
+                    backHref="/products"
+                    tabs={buildStockProductTabs({ documentId })}
+                    currentTab="relations"
+                    statusPill={statusPill}
+                    alert={{
+                        error,
+                        success,
+                        onDismissError: () => setError(''),
+                        onDismissSuccess: () => setSuccess(''),
+                    }}
+                >
 
                     <div className="row">
                         {/* Left column: Current product overview */}
@@ -331,12 +446,98 @@ export default function ProductRelationsPage() {
                             </div>
                         </div>
 
-                        {/* Right column: Merge search & selection */}
+                        {/* Right column: variant collapse + product merge */}
                         <div className="col-lg-8">
+                            {/* Merge variants into parent — the inverse of the search-based merge.
+                                Lists this product's variants; selected ones are absorbed back into
+                                the parent and their rows deleted. */}
+                            {variants.length > 0 && (
+                                <div className="card mb-3 border-warning">
+                                    <div className="card-body">
+                                        <h5 className="card-title">
+                                            <i className="fas fa-compress me-2 text-warning" />
+                                            Merge Variants Into Parent
+                                            {variantSelection.size > 0 && (
+                                                <span className="badge bg-warning text-dark ms-2">{variantSelection.size} selected</span>
+                                            )}
+                                        </h5>
+                                        <p className="text-muted small mb-3">
+                                            Collapse a variant back into this parent product. Stock items and
+                                            purchase items move to the parent; the variant row is deleted.
+                                            Useful when a variant was created in error or is no longer needed.
+                                            The Merge Options on the left control which data transfers.
+                                        </p>
+                                        <div className="table-responsive">
+                                            <table className="table table-sm align-middle">
+                                                <thead className="table-light">
+                                                    <tr>
+                                                        <th style={{ width: 30 }}>
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={variantSelection.size > 0 && variantSelection.size === variants.length}
+                                                                onChange={() => {
+                                                                    if (variantSelection.size === variants.length) {
+                                                                        setVariantSelection(new Set());
+                                                                    } else {
+                                                                        setVariantSelection(new Set(variants.map(getEntryId)));
+                                                                    }
+                                                                }}
+                                                            />
+                                                        </th>
+                                                        <th>Variant</th>
+                                                        <th>SKU</th>
+                                                        <th>Barcode</th>
+                                                        <th className="text-end">Selling</th>
+                                                        <th>Terms</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {variants.map(v => {
+                                                        const vId = getEntryId(v);
+                                                        return (
+                                                            <tr key={vId}>
+                                                                <td>
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={variantSelection.has(vId)}
+                                                                        onChange={() => toggleVariantSelection(vId)}
+                                                                    />
+                                                                </td>
+                                                                <td>
+                                                                    <strong>{v.name || '—'}</strong>
+                                                                </td>
+                                                                <td className="small">{v.sku || '—'}</td>
+                                                                <td className="small">{v.barcode || '—'}</td>
+                                                                <td className="text-end small">{currency}{parseFloat(v.selling_price || 0).toFixed(2)}</td>
+                                                                <td className="small">{(v.terms || []).map(t => t.name).join(', ') || '—'}</td>
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <div className="d-flex justify-content-end">
+                                            <button
+                                                type="button"
+                                                className="btn btn-warning"
+                                                onClick={handleMergeVariants}
+                                                disabled={mergingVariants || variantSelection.size === 0}
+                                            >
+                                                {mergingVariants ? (
+                                                    <><span className="spinner-border spinner-border-sm me-1" />Merging…</>
+                                                ) : (
+                                                    <><i className="fas fa-compress me-1" />Merge {variantSelection.size || ''} variant(s) into parent</>
+                                                )}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="card mb-3">
                                 <div className="card-body">
                                     <h5 className="card-title">
-                                        Merge Products Into &quot;{product?.name}&quot;
+                                        Merge Other Products Into &quot;{product?.name}&quot;
                                         {mergeSelection.size > 0 && (
                                             <span className="badge bg-primary ms-2">{mergeSelection.size} selected</span>
                                         )}
@@ -354,6 +555,11 @@ export default function ProductRelationsPage() {
                                     />
 
                                     {mergeSearchLoading && <div className="text-muted small mb-2">Searching...</div>}
+                                    {mergeSearchError && (
+                                        <div className="alert alert-warning py-2 small mb-2">
+                                            <i className="fas fa-exclamation-triangle me-1" />{mergeSearchError}
+                                        </div>
+                                    )}
 
                                     {mergeSearch.trim().length >= 2 && !mergeSearchLoading && (
                                         <div style={{ maxHeight: 400, overflowY: 'auto' }}>
@@ -451,7 +657,7 @@ export default function ProductRelationsPage() {
                             )}
                         </div>
                     </div>
-                </div>
+                </ProductPageShell>
             </Layout>
         </ProtectedRoute>
     );

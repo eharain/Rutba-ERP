@@ -3,7 +3,8 @@ import { useRouter } from "next/router";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { BrandsEndpoints, CategoriesEndpoints, MediaUtilsEndpoints, ProductsEndpoints, PurchasesEndpoints, SuppliersEndpoints, TermTypesEndpoints, fetchProducts } from "@rutba/api-provider/endpoints";
+import { MediaUtilsEndpoints, ProductsEndpoints, fetchProducts } from "@rutba/api-provider/endpoints";
+import { useProductLookups } from "@rutba/pos-shared/hooks/useProductLookups";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
 import { ProductFilter } from "@rutba/pos-shared/components/filter/product-filter";
 import Link from "next/link";
@@ -11,26 +12,13 @@ import { useToast } from "../components/Toast";
 import BulkProductActions from "@rutba/pos-shared/components/BulkProductActions";
 import ListPageLayout, { AddButton } from "@rutba/pos-shared/components/ListPageLayout";
 import ListPagination from "@rutba/pos-shared/components/ListPagination";
+import { SortableTh } from "@rutba/pos-shared/components/Table";
 
 const DEFAULT_PAGE_SIZE = 25;
 const PAGE_SIZE_OPTIONS = [5, 10, 25, 50, 100, 150, 200];
 const DEFAULT_SORT_FIELD = "createdAt";
 const DEFAULT_SORT_DIR = "desc";
 const SORTABLE_FIELDS = new Set(["name", "sku", "selling_price", "stock_quantity", "updatedAt", "createdAt"]);
-
-function SortableHeader({ label, field, currentField, currentDir, onSort }) {
-    const active = currentField === field;
-    return (
-        <th style={{ cursor: "pointer", userSelect: "none", whiteSpace: "nowrap" }} onClick={() => onSort(field)}>
-            {label}
-            {active ? (
-                <i className={`fas fa-sort-${currentDir === "asc" ? "up" : "down"} ms-1`}></i>
-            ) : (
-                <i className="fas fa-sort ms-1" style={{ opacity: 0.3 }}></i>
-            )}
-        </th>
-    );
-}
 
 export default function Products() {
     const router = useRouter();
@@ -44,11 +32,7 @@ export default function Products() {
     const [total, setTotal] = useState(0);
 
     // --- lookup data (fetched once) ---
-    const [brands, setBrands] = useState([]);
-    const [categories, setCategories] = useState([]);
-    const [suppliers, setSuppliers] = useState([]);
-    const [termTypes, setTermTypes] = useState([]);
-    const [purchases, setPurchases] = useState([]);
+    const { brands, categories, suppliers, termTypes, purchases } = useProductLookups();
 
     // --- variant expansion ---
     const [expandedProducts, setExpandedProducts] = useState({});
@@ -191,23 +175,6 @@ export default function Products() {
         const newDir = sortField === field && sortDir === "asc" ? "desc" : "asc";
         updateQuery({ sortField: field === DEFAULT_SORT_FIELD && newDir === DEFAULT_SORT_DIR ? undefined : field, sortDir: newDir === DEFAULT_SORT_DIR && field === DEFAULT_SORT_FIELD ? undefined : newDir, page: undefined });
     }, [sortField, sortDir, updateQuery]);
-
-    // fetch lookup data once
-    useEffect(() => {
-        Promise.all([
-            BrandsEndpoints.listAll(),
-            CategoriesEndpoints.listAll(),
-            SuppliersEndpoints.listAll(),
-            TermTypesEndpoints.listWithTerms(),
-            PurchasesEndpoints.list(1, 100, { sort: ["createdAt:desc"] }),
-        ]).then(([b, c, s, t, p]) => {
-            setBrands(b?.data || b || []);
-            setCategories(c?.data || c || []);
-            setSuppliers(s?.data || s || []);
-            setTermTypes(t?.data || t || []);
-            setPurchases(p?.data || p || []);
-        });
-    }, []);
 
     // single effect: fetch products whenever URL params or jwt change
     useEffect(() => {
@@ -362,14 +329,14 @@ export default function Products() {
                                     </th>
                                     <th style={{ width: 30 }}></th>
                                     <th style={{ width: 50 }}></th>
-                                    <SortableHeader label="Name" field="name" currentField={sortField} currentDir={sortDir} onSort={handleSort} />
-                                    <SortableHeader label="SKU" field="sku" currentField={sortField} currentDir={sortDir} onSort={handleSort} />
-                                    <SortableHeader label="Price" field="selling_price" currentField={sortField} currentDir={sortDir} onSort={handleSort} />
-                                    <SortableHeader label="Stock" field="stock_quantity" currentField={sortField} currentDir={sortDir} onSort={handleSort} />
+                                    <SortableTh label="Name" field="name" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
+                                    <SortableTh label="SKU" field="sku" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
+                                    <SortableTh label="Price" field="selling_price" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
+                                    <SortableTh label="Stock" field="stock_quantity" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
                                     <th>Categories</th>
                                     <th>Brands</th>
                                     <th>Purchase #</th>
-                                    <SortableHeader label="Modified" field="updatedAt" currentField={sortField} currentDir={sortDir} onSort={handleSort} />
+                                    <SortableTh label="Modified" field="updatedAt" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
                                     <th>Published</th>
                                     <th>Actions</th>
                                 </tr>

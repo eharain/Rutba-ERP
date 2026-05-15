@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { StraipImageUrl, isImage, relationConnects } from "@rutba/api-provider/lib/api";
 import { ProductsEndpoints, UploadEndpoints, TermTypesEndpoints } from '@rutba/api-provider/endpoints/index.js';
+import { createVariant } from '../lib/variants';
 import StrapiMediaLibrary from './StrapiMediaLibrary';
 import TermTypeTermDialog from './TermTypeTermDialog';
 
@@ -451,26 +452,19 @@ export default function ProductGalleryManager({ productId, onUpdate }) {
         try {
             const parentDocId = getEntryId(product);
             const imagesToAssign = Array.from(selectedParentImages);
-            const remainingParentGallery = parentGallery.filter(img => !selectedParentImages.has(img.id));
+            const remainingParentGallery = parentGallery
+                .filter(img => !selectedParentImages.has(img.id))
+                .map(g => g.id);
 
-            const payload = {
-                name: newVariantName.trim(),
-                sku: product.sku || '',
-                barcode: product.barcode || '',
-                selling_price: product.selling_price ?? 0,
-                offer_price: product.offer_price ?? 0,
-                is_active: product.is_active ?? true,
-                parent: parentDocId,
-                is_variant: true,
-                gallery: imagesToAssign,
-                logo: imagesToAssign[0],
-            };
-
-            await ProductsEndpoints.create(payload);
-
-            // Remove assigned images from parent
-            await ProductsEndpoints.update(parentDocId, {
-                gallery: remainingParentGallery.map(g => g.id)
+            await createVariant(parentDocId, 'gallery-image', {
+                variantName: newVariantName.trim(),
+                imageIds: imagesToAssign,
+                parentRemainingGalleryIds: remainingParentGallery,
+                sku: product.sku,
+                barcode: product.barcode,
+                selling_price: product.selling_price,
+                offer_price: product.offer_price,
+                is_active: product.is_active,
             });
 
             await loadData();
@@ -500,32 +494,32 @@ export default function ProductGalleryManager({ productId, onUpdate }) {
             const selectedIds = Array.from(selectedParentImages);
             const selectedImages = parentGallery.filter(img => selectedParentImages.has(img.id));
 
+            // Remove assigned images from parent — pre-compute once; the helper
+            // applies this update after the last variant create. We pass an empty
+            // array for intermediate creates so the parent gallery only gets
+            // rewritten on the final iteration (avoids N parent updates).
+            const remainingParentGalleryIds = parentGallery
+                .filter(img => !selectedParentImages.has(img.id))
+                .map(g => g.id);
+
             for (let i = 0; i < selectedImages.length; i++) {
                 const img = selectedImages[i];
                 const variantName = selectedImages.length > 1
                     ? `${baseName} - ${i + 1}`
                     : baseName;
-                const payload = {
-                    name: variantName,
-                    sku: product.sku || '',
-                    barcode: product.barcode || '',
-                    selling_price: product.selling_price ?? 0,
-                    offer_price: product.offer_price ?? 0,
-                    is_active: product.is_active ?? true,
-                    parent: parentDocId,
-                    is_variant: true,
-                    gallery: [img.id],
-                    logo: img.id,
-                };
-                await ProductsEndpoints.create(payload);
+                const isLast = i === selectedImages.length - 1;
+                await createVariant(parentDocId, 'gallery-image', {
+                    variantName,
+                    imageIds: [img.id],
+                    parentRemainingGalleryIds: isLast ? remainingParentGalleryIds : undefined,
+                    sku: product.sku,
+                    barcode: product.barcode,
+                    selling_price: product.selling_price,
+                    offer_price: product.offer_price,
+                    is_active: product.is_active,
+                });
                 created++;
             }
-
-            // Remove assigned images from parent
-            const remainingParentGallery = parentGallery.filter(img => !selectedParentImages.has(img.id));
-            await ProductsEndpoints.update(parentDocId, {
-                gallery: remainingParentGallery.map(g => g.id)
-            });
 
             await loadData();
             if (onUpdate) onUpdate();
@@ -613,23 +607,23 @@ export default function ProductGalleryManager({ productId, onUpdate }) {
         try {
             setLoading(true);
             const parentDocumentId = getEntryId(product);
-            const name = buildVariantName(term.name);
-            const payload = {
+            // 'term-gallery' mode = same payload as 'term', but never touches stock items.
+            // This component is mounted in a publishing/gallery context (rutba-cms) where
+            // stock-item migration is out of scope.
+            const created = await createVariant(parentDocumentId, 'term-gallery', {
+                term,
+                baseName: variantBaseName || product?.name || '',
+                namingMode: nameAffix,
                 sku: formValues.sku,
                 barcode: formValues.barcode,
                 selling_price: formValues.selling_price,
                 offer_price: formValues.offer_price,
                 is_active: formValues.is_active,
-                name,
-                parent: parentDocumentId,
-                is_variant: true,
-                ...relationConnects({ terms: [term] }),
-            };
-            await ProductsEndpoints.create(payload);
+            });
             await loadData();
             if (onUpdate) onUpdate();
             setTermForms(prev => ({ ...prev, [getEntryId(term)]: getDefaultVariantForm() }));
-            setSuccess(`Variant "${name}" created`);
+            setSuccess(`Variant "${created.name || buildVariantName(term.name)}" created`);
         } catch (err) {
             console.error('Failed to create variant', err);
             setError('Failed to create variant');
@@ -648,21 +642,17 @@ export default function ProductGalleryManager({ productId, onUpdate }) {
         try {
             const parentDocumentId = getEntryId(product);
             for (const term of creatableTerms) {
-                const termId = getEntryId(term);
-                const formValues = getTermForm(termId);
-                const name = buildVariantName(term.name);
-                const payload = {
+                const formValues = getTermForm(getEntryId(term));
+                await createVariant(parentDocumentId, 'term-gallery', {
+                    term,
+                    baseName: variantBaseName || product?.name || '',
+                    namingMode: nameAffix,
                     sku: formValues.sku,
                     barcode: formValues.barcode,
                     selling_price: formValues.selling_price,
                     offer_price: formValues.offer_price,
                     is_active: formValues.is_active,
-                    name,
-                    parent: parentDocumentId,
-                    is_variant: true,
-                    ...relationConnects({ terms: [term] }),
-                };
-                await ProductsEndpoints.create(payload);
+                });
                 created++;
             }
             await loadData();

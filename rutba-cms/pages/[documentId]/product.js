@@ -8,6 +8,7 @@ import FileView from "@rutba/pos-shared/components/FileView";
 import ProductGalleryManager from "@rutba/pos-shared/components/ProductGalleryManager";
 import ProductVariantManager from "@rutba/pos-shared/components/ProductVariantManager";
 import MarkdownEditor from "@rutba/pos-shared/components/MarkdownEditor";
+import ProductPageShell from "@rutba/pos-shared/components/product/ProductPageShell";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
 import Link from "next/link";
 import { useToast } from "../../components/Toast";
@@ -310,88 +311,63 @@ export default function ProductDetail() {
     const variantCount = product?.variants?.length || 0;
     const galleryCount = (product?.gallery || []).length;
 
+    const statusPill = isNew
+        ? null
+        : isPublished
+            ? <span className="badge bg-success">Published</span>
+            : product ? <span className="badge bg-secondary">Draft</span> : null;
+
+    const headerActions = (
+        <>
+            {!isNew && isPublished && (
+                <button className="btn btn-sm btn-outline-secondary" onClick={handleUnpublish} disabled={saving}>
+                    <i className="fas fa-eye-slash me-1"></i>Unpublish
+                </button>
+            )}
+            {!isNew && isPublished && (
+                <button className="btn btn-sm btn-outline-warning" onClick={handleDiscardDraft} disabled={saving}>
+                    <i className="fas fa-undo me-1"></i>Load Published
+                </button>
+            )}
+            {activeTab === "details" && (
+                <button className="btn btn-sm btn-primary" onClick={handleSave} disabled={saving}>
+                    {saving ? "Saving…" : isNew ? "Create Draft" : "Save Draft"}
+                </button>
+            )}
+            <button className="btn btn-sm btn-success" onClick={handlePublish} disabled={saving}>
+                <i className="fas fa-upload me-1"></i>{saving ? "Publishing…" : isNew ? "Create & Publish" : "Save & Publish"}
+            </button>
+        </>
+    );
+
+    const tabs = product && !isNew ? [
+        { key: "details", label: "Product Details", icon: "fa-edit", onClick: () => { setActiveTab("details"); return true; } },
+        { key: "gallery", label: "Gallery & Variants", icon: "fa-images", onClick: () => { setActiveTab("gallery"); return true; }, badge: (galleryCount + variantCount) || undefined },
+        { key: "variants", label: "Product & Variants", icon: "fa-layer-group", onClick: () => { setActiveTab("variants"); return true; }, badge: variantCount || undefined },
+    ] : [];
+
     return (
         <ProtectedRoute>
             <Layout>
                 <ToastContainer />
-                <div className="d-flex align-items-center mb-3">
-                    <Link className="btn btn-sm btn-outline-secondary me-3" href="/products">
-                        <i className="fas fa-arrow-left"></i> Back
-                    </Link>
-                    <h2 className="mb-0">{isNew ? "New Product" : "Edit Product"}</h2>
-                    {!isNew && isPublished && <span className="badge bg-success ms-2 align-self-center">Published</span>}
-                    {!isNew && product && !isPublished && <span className="badge bg-secondary ms-2 align-self-center">Draft</span>}
-                    <div className="ms-auto d-flex gap-2">
-                        {!isNew && isPublished && (
-                            <button className="btn btn-sm btn-outline-secondary" onClick={handleUnpublish} disabled={saving}>
-                                <i className="fas fa-eye-slash me-1"></i>Unpublish
-                            </button>
-                        )}
-                        {!isNew && isPublished && (
-                            <button className="btn btn-sm btn-outline-warning" onClick={handleDiscardDraft} disabled={saving}>
-                                <i className="fas fa-undo me-1"></i>Load Published
-                            </button>
-                        )}
-                        {activeTab === "details" && (
-                            <button className="btn btn-sm btn-primary" onClick={handleSave} disabled={saving}>
-                                {saving ? "Saving…" : isNew ? "Create Draft" : "Save Draft"}
-                            </button>
-                        )}
-                        <button className="btn btn-sm btn-success" onClick={handlePublish} disabled={saving}>
-                            <i className="fas fa-upload me-1"></i>{saving ? "Publishing…" : isNew ? "Create & Publish" : "Save & Publish"}
-                        </button>
-                    </div>
-                </div>
-
+                <ProductPageShell
+                    product={product}
+                    isNew={isNew}
+                    backHref="/products"
+                    titleOverride={isNew ? "New Product" : undefined}
+                    tabs={tabs}
+                    currentTab={activeTab}
+                    statusPill={statusPill}
+                    actions={headerActions}
+                >
                 {loading && <p>Loading...</p>}
 
-                {!loading && !product && (
+                {!loading && !product && !isNew && (
                     <div className="alert alert-warning">Product not found.</div>
                 )}
 
-                {!loading && product && (
+                {(isNew || (!loading && product)) && (
                     <>
-                        {/* Tabs */}
-                        <ul className="nav nav-tabs mb-3">
-                            <li className="nav-item">
-                                <button
-                                    type="button"
-                                    className={`nav-link ${activeTab === "details" ? "active" : ""}`}
-                                    onClick={() => setActiveTab("details")}
-                                >
-                                    <i className="fas fa-edit me-1" /> Product Details
-                                </button>
-                            </li>
-                            {!isNew && (
-                                <li className="nav-item">
-                                    <button
-                                        type="button"
-                                        className={`nav-link ${activeTab === "gallery" ? "active" : ""}`}
-                                        onClick={() => setActiveTab("gallery")}
-                                    >
-                                        <i className="fas fa-images me-1" /> Gallery &amp; Variants
-                                        {(variantCount > 0 || galleryCount > 0) && (
-                                            <span className="badge bg-secondary ms-1">{galleryCount} img · {variantCount} var</span>
-                                        )}
-                                    </button>
-                                </li>
-                            )}
-                            {!isNew && (
-                                <li className="nav-item">
-                                    <button
-                                        type="button"
-                                        className={`nav-link ${activeTab === "variants" ? "active" : ""}`}
-                                        onClick={() => setActiveTab("variants")}
-                                    >
-                                        <i className="fas fa-layer-group me-1" /> Product &amp; Variants
-                                        {variantCount > 0 && (
-                                            <span className="badge bg-secondary ms-1">{variantCount}</span>
-                                        )}
-                                    </button>
-                                </li>
-                            )}
-                        </ul>
-
                         {/* ---- PRODUCT DETAILS TAB ---- */}
                         {activeTab === "details" && (
                             <div className="row">
@@ -577,6 +553,7 @@ export default function ProductDetail() {
                         )}
                     </>
                 )}
+                </ProductPageShell>
             </Layout>
         </ProtectedRoute>
     );

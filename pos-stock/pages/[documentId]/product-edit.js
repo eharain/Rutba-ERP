@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '../../components/Layout';
 import ProtectedRoute from '@rutba/pos-shared/components/ProtectedRoute';
+import ProductPageShell, { buildStockProductTabs } from '@rutba/pos-shared/components/product/ProductPageShell';
 import { StockHelpersEndpoints, CategoriesEndpoints, BrandsEndpoints, SuppliersEndpoints, ProductsEndpoints, StockItemsEndpoints, TermsEndpoints, fetchProducts, saveProduct, loadProduct } from '@rutba/api-provider/endpoints';
 
 import { useUtil } from '@rutba/pos-shared/context/UtilContext';
@@ -25,8 +26,15 @@ export default function ProductEditPage() {
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
-    const [activeTab, setActiveTab] = useState('basic');
     const [dirty, setDirty] = useState(false);
+
+    // The page is now mounted from three top-level shell tabs (details,
+    // categorization, media) — each navigates to /product-edit?tab=X. We
+    // read the active section from the URL instead of internal nav-pills.
+    const tabParam = Array.isArray(router.query.tab) ? router.query.tab[0] : router.query.tab;
+    const activeTab = tabParam && ['details', 'categorization', 'media'].includes(tabParam)
+        ? tabParam
+        : 'details';
 
     async function fetchAllRecords(epBuilder) {
         let allRecords = [];
@@ -241,14 +249,6 @@ export default function ProductEditPage() {
     const termOptions = terms.map(t => ({ label: t.name ?? '', value: t }));
     const parentOptions = [{ label: '— None —', value: null }, ...products.map(p => ({ label: p.name ?? p.sku ?? p.documentId, value: p }))];
 
-    const tabs = [
-        { key: 'basic', label: 'Basic Info', icon: 'fa-info-circle' },
-        { key: 'pricing', label: 'Pricing & Stock', icon: 'fa-tags' },
-        { key: 'content', label: 'Content', icon: 'fa-file-alt' },
-        { key: 'relations', label: 'Relations', icon: 'fa-project-diagram' },
-        { key: 'media', label: 'Media', icon: 'fa-images' },
-    ];
-
     if (loading) {
         return (
             <ProtectedRoute>
@@ -262,73 +262,58 @@ export default function ProductEditPage() {
         );
     }
 
+    const statusPill = isEdit ? (
+        product.is_active === false
+            ? <span className="badge bg-secondary">Inactive</span>
+            : <span className="badge bg-success">Active</span>
+    ) : null;
+
+    const headerActions = (
+        <>
+            <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => router.push('/products')}>
+                Cancel
+            </button>
+            <button type="submit" form="product-edit-form" className="btn btn-primary btn-sm" disabled={submitting}>
+                {submitting ? (
+                    <><span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true" />Saving…</>
+                ) : (
+                    <><i className="fas fa-save me-1" />{isEdit ? 'Save' : 'Create'}</>
+                )}
+            </button>
+        </>
+    );
+
     return (
         <ProtectedRoute>
             <Layout>
-                <div className="page-content">
-                    {/* Page navigation */}
-                    <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
-                        <span className="btn btn-primary btn-sm">
-                            <i className="fas fa-edit me-1" /> Edit
-                        </span>
-                        {isEdit && (
-                            <>
-                                <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => saveAndNavigate(`/${documentId}/product-stock-items`)} disabled={submitting}>
-                                    <i className="fas fa-boxes me-1" /> Stock Control
-                                </button>
-                                <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => saveAndNavigate(`/${documentId}/product-variants`)} disabled={submitting}>
-                                    <i className="fas fa-layer-group me-1" /> Variants
-                                </button>
-                                <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => saveAndNavigate(`/stock-items?product=${documentId}`)} disabled={submitting}>
-                                    <i className="fas fa-barcode me-1" /> Stock Items
-                                </button>
-                                <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => saveAndNavigate(`/${documentId}/product-relations`)} disabled={submitting}>
-                                    <i className="fas fa-compress-arrows-alt me-1" /> Relations &amp; Merge
-                                </button>
-                            </>
-                        )}
-                        <button type="button" className="btn btn-outline-dark btn-sm ms-auto" onClick={() => router.push('/products')}>
-                            <i className="fas fa-arrow-left me-1" /> Products
-                        </button>
-                    </div>
+                <ProductPageShell
+                    product={isEdit ? product : null}
+                    isNew={!isEdit}
+                    backHref="/products"
+                    titleOverride={isEdit ? undefined : 'New Product'}
+                    tabs={isEdit ? buildStockProductTabs({
+                        documentId,
+                        onNavigate: saveAndNavigate,
+                    }) : []}
+                    currentTab={activeTab}
+                    statusPill={statusPill}
+                    actions={headerActions}
+                    alert={{
+                        error,
+                        success,
+                        onDismissError: () => setError(''),
+                        onDismissSuccess: () => setSuccess(''),
+                    }}
+                >
+                    <form id="product-edit-form" onSubmit={handleSubmit}>
+                        {/* The three sections below are surfaced as separate top-level shell
+                            tabs (Details / Categorization / Media). The URL ?tab= drives which
+                            one renders, so there is no second nav-pill strip here. */}
 
-                    <h2 className="mb-3">
-                        <i className={`fas ${isEdit ? 'fa-edit' : 'fa-plus-circle'} me-2`} />
-                        {isEdit ? 'Edit Product' : 'Create New Product'}
-                    </h2>
-
-                    {/* Alerts */}
-                    {error && (
-                        <div className="alert alert-danger alert-dismissible fade show" role="alert">
-                            {error}
-                            <button type="button" className="btn-close" onClick={() => setError('')} />
-                        </div>
-                    )}
-                    {success && (
-                        <div className="alert alert-success alert-dismissible fade show" role="alert">
-                            {success}
-                            <button type="button" className="btn-close" onClick={() => setSuccess('')} />
-                        </div>
-                    )}
-
-                    <form onSubmit={handleSubmit}>
-                        {/* Tabs */}
-                        <ul className="nav nav-tabs mb-3">
-                            {tabs.map(tab => (
-                                <li className="nav-item" key={tab.key}>
-                                    <button
-                                        type="button"
-                                        className={`nav-link ${activeTab === tab.key ? 'active' : ''}`}
-                                        onClick={() => setActiveTab(tab.key)}
-                                    >
-                                        <i className={`fas ${tab.icon} me-1`} /> {tab.label}
-                                    </button>
-                                </li>
-                            ))}
-                        </ul>
-
-                        {/* ---- BASIC INFO TAB ---- */}
-                        {activeTab === 'basic' && (
+                        {/* ---- DETAILS TAB (identity + flags + content) ----
+                            Barcode and Supplier Code live on the Stock tab — they're stock-side
+                            identifiers, not content-side. Pricing fields are also stock-side. */}
+                        {activeTab === 'details' && (
                             <div className="card">
                                 <div className="card-body">
                                     <div className="row g-3">
@@ -355,29 +340,7 @@ export default function ProductEditPage() {
                                                 placeholder="SKU"
                                             />
                                         </div>
-                                        <div className="col-md-4">
-                                            <label className="form-label fw-bold">Barcode</label>
-                                            <input
-                                                type="text"
-                                                name="barcode"
-                                                value={product.barcode ?? ''}
-                                                onChange={handleChange}
-                                                className="form-control"
-                                                placeholder="Barcode"
-                                            />
-                                        </div>
-                                        <div className="col-md-4">
-                                            <label className="form-label fw-bold">Supplier Code</label>
-                                            <input
-                                                type="text"
-                                                name="supplierCode"
-                                                value={product.supplierCode ?? ''}
-                                                onChange={handleChange}
-                                                className="form-control"
-                                                placeholder="Supplier Code"
-                                            />
-                                        </div>
-                                        <div className="col-md-4">
+                                        <div className="col-12">
                                             <label className="form-label fw-bold">Keywords</label>
                                             <input
                                                 type="text"
@@ -388,216 +351,69 @@ export default function ProductEditPage() {
                                             />
                                             <div className="form-text">Comma separated</div>
                                         </div>
-                                        <div className="col-md-6">
-                                            <div className="form-check mt-4">
-                                                <input
-                                                    className="form-check-input"
-                                                    type="checkbox"
-                                                    name="is_active"
-                                                    id="is_active"
-                                                    checked={product.is_active ?? true}
-                                                    onChange={handleChange}
-                                                />
+                                        <div className="col-md-3">
+                                            <div className="form-check mt-2">
+                                                <input className="form-check-input" type="checkbox"
+                                                    name="is_active" id="is_active"
+                                                    checked={product.is_active ?? true} onChange={handleChange} />
                                                 <label className="form-check-label" htmlFor="is_active">Product is active</label>
                                             </div>
                                         </div>
-                                        <div className="col-md-6">
-                                            <div className="form-check mt-4">
-                                                <input
-                                                    className="form-check-input"
-                                                    type="checkbox"
-                                                    name="is_variant"
-                                                    id="is_variant"
-                                                    checked={product.is_variant ?? false}
-                                                    onChange={handleChange}
-                                                />
+                                        <div className="col-md-3">
+                                            <div className="form-check mt-2">
+                                                <input className="form-check-input" type="checkbox"
+                                                    name="is_variant" id="is_variant"
+                                                    checked={product.is_variant ?? false} onChange={handleChange} />
                                                 <label className="form-check-label" htmlFor="is_variant">Is a variant</label>
                                             </div>
                                         </div>
-                                        <div className="col-md-6">
-                                            <div className="form-check mt-4">
-                                                <input
-                                                    className="form-check-input"
-                                                    type="checkbox"
-                                                    name="is_returnable"
-                                                    id="is_returnable"
-                                                    checked={product.is_returnable ?? true}
-                                                    onChange={handleChange}
-                                                />
+                                        <div className="col-md-3">
+                                            <div className="form-check mt-2">
+                                                <input className="form-check-input" type="checkbox"
+                                                    name="is_returnable" id="is_returnable"
+                                                    checked={product.is_returnable ?? true} onChange={handleChange} />
                                                 <label className="form-check-label" htmlFor="is_returnable">
-                                                    <i className="fas fa-undo me-1 text-muted"></i>Returnable
+                                                    <i className="fas fa-undo me-1 text-muted" />Returnable
                                                 </label>
                                             </div>
                                         </div>
-                                        <div className="col-md-6">
-                                            <div className="form-check mt-4">
-                                                <input
-                                                    className="form-check-input"
-                                                    type="checkbox"
-                                                    name="is_exchangeable"
-                                                    id="is_exchangeable"
-                                                    checked={product.is_exchangeable ?? true}
-                                                    onChange={handleChange}
-                                                />
+                                        <div className="col-md-3">
+                                            <div className="form-check mt-2">
+                                                <input className="form-check-input" type="checkbox"
+                                                    name="is_exchangeable" id="is_exchangeable"
+                                                    checked={product.is_exchangeable ?? true} onChange={handleChange} />
                                                 <label className="form-check-label" htmlFor="is_exchangeable">
-                                                    <i className="fas fa-exchange-alt me-1 text-muted"></i>Exchangeable
+                                                    <i className="fas fa-exchange-alt me-1 text-muted" />Exchangeable
                                                 </label>
                                             </div>
                                         </div>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* ---- PRICING & STOCK TAB ---- */}
-                        {activeTab === 'pricing' && (
-                            <div className="card">
-                                <div className="card-body">
-                                    <div className="row g-3">
-                                        {
-                                            product.cost_price <= 0 &&
-                                            (                                   
-                                                <div className="col-md-4">
-                                                    <label className="form-label fw-bold">Cost Price</label>
-                                                    <div className="input-group">
-                                                        <span className="input-group-text">{currency}</span>
-                                                        <input
-                                                            type="number"
-                                                            name="cost_price"
-                                                            step="0.01"
-                                                            min="0"
-                                                            value={product.cost_price ?? ''}
-                                                            onChange={handleChange}
-                                                            className="form-control"
-                                                            placeholder="0.00"
-                                                        />
-                                                    </div></div>) 
-                                        }
-                                        
-                                        <div className="col-md-4">
-                                            <label className="form-label fw-bold">Selling Price *</label>
-                                            <div className="input-group">
-                                                <span className="input-group-text">{currency}</span>
-                                                <input
-                                                    type="number"
-                                                    name="selling_price"
-                                                    step="0.01"
-                                                    min="0"
-                                                    value={product.selling_price ?? ''}
-                                                    onChange={handleChange}
-                                                    required
-                                                    className="form-control"
-                                                    placeholder="0.00"
-                                                />
-                                            </div>
-                                        </div>
-                                        <div className="col-md-4">
-                                            <label className="form-label fw-bold">Offer Price</label>
-                                            <div className="input-group">
-                                                <span className="input-group-text">{currency}</span>
-                                                <input
-                                                    type="number"
-                                                    name="offer_price"
-                                                    step="0.01"
-                                                    min="0"
-                                                    value={product.offer_price ?? ''}
-                                                    onChange={handleChange}
-                                                    className="form-control"
-                                                    placeholder="0.00"
-                                                />
-                                            </div>
-                                        </div>
-                                        <div className="col-md-3">
-                                            <label className="form-label fw-bold">Tax Rate (%)</label>
-                                            <input
-                                                type="number"
-                                                name="tax_rate"
-                                                step="0.01"
-                                                min="0"
-                                                value={product.tax_rate ?? ''}
+                                        <div className="col-12 mt-3">
+                                            <label className="form-label fw-bold">Summary (Markdown)</label>
+                                            <MarkdownEditor
+                                                name="summary"
+                                                value={product.summary ?? ''}
                                                 onChange={handleChange}
-                                                className="form-control"
-                                                placeholder="0.00"
+                                                rows={6}
+                                                placeholder="Write a short product summary..."
                                             />
                                         </div>
-                                        <div className="col-md-3">
-                                            <label className="form-label fw-bold">Stock Quantity</label>
-                                            <input
-                                                type="number"
-                                                name="stock_quantity"
-                                                min="0"
-                                                value={product.stock_quantity ?? ''}
+                                        <div className="col-12">
+                                            <label className="form-label fw-bold">Description (Markdown)</label>
+                                            <MarkdownEditor
+                                                name="description"
+                                                value={product.description ?? ''}
                                                 onChange={handleChange}
-                                                className="form-control"
-                                                placeholder="0"
+                                                rows={14}
+                                                placeholder="Write a detailed product description..."
                                             />
                                         </div>
-                                        <div className="col-md-3">
-                                            <label className="form-label fw-bold">Reorder Level</label>
-                                            <input
-                                                type="number"
-                                                name="reorder_level"
-                                                min="0"
-                                                value={product.reorder_level ?? ''}
-                                                onChange={handleChange}
-                                                className="form-control"
-                                                placeholder="0"
-                                            />
-                                        </div>
-                                        <div className="col-md-3">
-                                            <label className="form-label fw-bold">Bundle Units</label>
-                                            <input
-                                                type="number"
-                                                name="bundle_units"
-                                                min="1"
-                                                value={product.bundle_units ?? 1}
-                                                onChange={handleChange}
-                                                className="form-control"
-                                                placeholder="1"
-                                            />
-                                        </div>
-                                    </div>
-                                    {/* Margin preview */}
-                                    {(product.cost_price > 0 && product.selling_price > 0) && (
-                                        <div className="alert alert-info mt-3 mb-0 py-2 d-flex gap-4">
-                                            <span><strong>Margin:</strong> {currency}{(product.selling_price - product.cost_price).toFixed(2)}</span>
-                                            <span><strong>Markup:</strong> {((product.selling_price - product.cost_price) / product.cost_price * 100).toFixed(1)}%</span>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* ---- CONTENT TAB ---- */}
-                        {activeTab === 'content' && (
-                            <div className="card">
-                                <div className="card-body">
-                                    <div className="mb-4">
-                                        <label className="form-label fw-bold">Summary (Markdown)</label>
-                                        <MarkdownEditor
-                                            name="summary"
-                                            value={product.summary ?? ''}
-                                            onChange={handleChange}
-                                            rows={6}
-                                            placeholder="Write a short product summary..."
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="form-label fw-bold">Description (Markdown)</label>
-                                        <MarkdownEditor
-                                            name="description"
-                                            value={product.description ?? ''}
-                                            onChange={handleChange}
-                                            rows={14}
-                                            placeholder="Write a detailed product description..."
-                                        />
                                     </div>
                                 </div>
                             </div>
                         )}
 
                         {/* ---- RELATIONS TAB ---- */}
-                        {activeTab === 'relations' && (
+                        {activeTab === 'categorization' && (
                             <div className="card">
                                 <div className="card-body">
                                     <div className="row g-3">
@@ -714,27 +530,8 @@ export default function ProductEditPage() {
                             </div>
                         )}
 
-                        {/* Action buttons */}
-                        <div className="d-flex gap-2 mt-4">
-                            <button type="submit" className="btn btn-primary" disabled={submitting}>
-                                {submitting ? (
-                                    <>
-                                        <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true" />
-                                        Saving...
-                                    </>
-                                ) : (
-                                    <>
-                                        <i className="fas fa-save me-1" />
-                                        {isEdit ? 'Update Product' : 'Create Product'}
-                                    </>
-                                )}
-                            </button>
-                            <button type="button" className="btn btn-outline-secondary" onClick={() => router.push('/products')}>
-                                Cancel
-                            </button>
-                        </div>
                     </form>
-                </div>
+                </ProductPageShell>
             </Layout>
         </ProtectedRoute>
     );
