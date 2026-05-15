@@ -2,7 +2,7 @@
 export interface WebCmsPagesEndpointsType {
     list(pageSize?: any): Promise<any>;
     listByType(pageType: any, pageSize?: any): Promise<any>;
-    bySlug(slug: any): Promise<any>;
+    bySlug(slug: any, { draft }?: any): Promise<any>;
     header(): Promise<any>;
 }
 

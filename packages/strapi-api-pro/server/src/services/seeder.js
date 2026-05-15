@@ -18,6 +18,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { createHash } = require('crypto');
 const { pathToFileURL } = require('url');
 
 const fileStore = require('./file-store');
@@ -28,11 +29,11 @@ const INTERFACE_UID = 'plugin::api-pro.api-interface';
 const METHOD_UID = 'plugin::api-pro.api-interface-method';
 const POLICY_UID = 'plugin::api-pro.api-method-policy';
 
-// Bump when the seeder's logic changes in a way that affects what gets
-// written to the DB (column added, action inference changed, scope shorthand
-// expanded, etc). The checkpoint records this version; a mismatch forces a
-// reseed even when source mtimes are unchanged.
-const SEEDER_VERSION = 1;
+// Bump when the seeder's DB-write logic changes in a way that requires every
+// deployment to reseed even if descriptor contents are unchanged. A mismatch
+// between this constant and the value stored in the checkpoint forces a
+// reseed regardless of file hashes.
+const SEEDER_VERSION = 2;
 
 // â”€â”€â”€ api-provider resolution â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // api-provider's package.json doesn't export './package.json', so we can't
@@ -499,59 +500,54 @@ async function seedPolicies(strapi, descriptors, methodByCompositeKey, rolesConf
   return count;
 }
 
-// â”€â”€â”€ Fingerprint (source mtimes) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// The full seed walks 25+ descriptor files via `import()`, parses two JSON
-// configs, and issues ~1000 sequential upserts â€” ~50s on a cold start.
-// Fingerprint sidesteps all of that when nothing has changed on disk:
-//   â€¢ record each source file's path + mtimeMs
-//   â€¢ on next boot, recompute and compare entry-for-entry
-//   â€¢ equal â†’ skip the seed entirely
-// Files watched: config/domains.json, config/roles.json, every api/*.js
-// (using the same filter walkApiDescriptors uses, so adding/removing an
-// endpoint file changes the fingerprint and forces a reseed).
-function listFingerprintTargets(root) {
-  const targets = [
-    path.join(root, 'config', 'domains.json'),
-    path.join(root, 'config', 'roles.json'),
-  ];
-
+// Fingerprint: one rolling SHA-256 over (path + content) of every seeder
+// input file (config/domains.json, config/roles.json, every api/*.js except
+// index.js and _-prefixed helpers). One hex string in, one hex string out;
+// any change to file names, count, or content yields a different digest.
+//
+// Hashes (not mtimes) so that `git checkout`, `npm install`, or stray
+// filesystem touches don't trigger spurious reseeds. Developer loop is just:
+// edit api/foo.js → restart Strapi → reseed happens automatically.
+function computeSourceFingerprint(root) {
+  const hash = createHash('sha256');
+  const targets = [path.join(root, 'config', 'domains.json'), path.join(root, 'config', 'roles.json')];
   const apiDir = path.join(root, 'api');
   if (fs.existsSync(apiDir)) {
-    const files = fs
-      .readdirSync(apiDir)
-      .filter((n) => n.endsWith('.js') && n !== 'index.js' && !n.startsWith('_'))
-      .sort();
-    for (const f of files) targets.push(path.join(apiDir, f));
-  }
-
-  return targets;
-}
-
-function computeSourceFingerprint(root) {
-  const entries = [];
-  for (const abs of listFingerprintTargets(root)) {
-    let mtimeMs = null;
-    try {
-      mtimeMs = fs.statSync(abs).mtimeMs;
-    } catch {
-      // missing file â€” record as null; checkpoint comparison will catch
-      // an addition/removal because the entry list itself differs.
+    for (const f of fs.readdirSync(apiDir).filter((n) => n.endsWith('.js') && n !== 'index.js' && !n.startsWith('_')).sort()) {
+      targets.push(path.join(apiDir, f));
     }
-    entries.push({ path: path.relative(root, abs).replace(/\\/g, '/'), mtimeMs });
   }
-  return { seederVersion: SEEDER_VERSION, entries };
+  for (const abs of targets) {
+    hash.update(path.relative(root, abs).replace(/\\/g, '/'));
+    hash.update('\0');
+    try { hash.update(fs.readFileSync(abs)); }
+    catch { hash.update('MISSING'); }
+    hash.update('\0');
+  }
+  return `v${SEEDER_VERSION}:${hash.digest('hex')}`;
 }
 
-function fingerprintsEqual(a, b) {
-  if (!a || !b) return false;
-  if (a.seederVersion !== b.seederVersion) return false;
-  if (!Array.isArray(a.entries) || !Array.isArray(b.entries)) return false;
-  if (a.entries.length !== b.entries.length) return false;
-  for (let i = 0; i < a.entries.length; i += 1) {
-    if (a.entries[i].path !== b.entries[i].path) return false;
-    if (a.entries[i].mtimeMs !== b.entries[i].mtimeMs) return false;
+// DB row counts for the tables the seeder writes. Persisted in the checkpoint
+// after each successful run; compared on boot to detect drift (manual row
+// delete, partial DB restore, etc.) so the seed re-runs even when file
+// hashes match.
+async function countSeededRows(strapi) {
+  const [domains, roles, interfaces, methods, policies] = await Promise.all([
+    strapi.db.query(APP_DOMAIN_UID).count({}),
+    strapi.db.query(APP_ROLE_UID).count({}),
+    strapi.db.query(INTERFACE_UID).count({}),
+    strapi.db.query(METHOD_UID).count({}),
+    strapi.db.query(POLICY_UID).count({}),
+  ]);
+  return { domains, roles, interfaces, methods, policies };
+}
+
+function countsDiffer(a, b) {
+  if (!a || !b) return true;
+  for (const k of ['domains', 'roles', 'interfaces', 'methods', 'policies']) {
+    if (Number(a[k]) !== Number(b[k])) return `${k} ${a[k]} → ${b[k]}`;
   }
-  return true;
+  return false;
 }
 
 // â”€â”€â”€ public API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -566,11 +562,17 @@ async function runFullSeed(strapi, options = {}) {
 
   if (!force) {
     const checkpoint = await fileStore.readSeedCheckpoint(strapi).catch(() => null);
-    if (fingerprintsEqual(checkpoint?.fingerprint, fingerprint)) {
-      strapi.log.info(
-        `[api-pro seeder] skip: source unchanged since ${checkpoint.seededAt} (${fingerprint.entries.length} files tracked)`
-      );
-      return { ok: true, skipped: true, ...checkpoint.summary };
+    if (checkpoint?.fingerprint === fingerprint) {
+      // Files match — verify the DB still holds what we wrote last time.
+      const currentCounts = await countSeededRows(strapi).catch(() => null);
+      const drift = countsDiffer(checkpoint.counts, currentCounts);
+      if (!drift) {
+        strapi.log.info(`[api-pro seeder] skip: descriptors unchanged since ${checkpoint.seededAt}`);
+        return { ok: true, skipped: true, ...checkpoint.summary };
+      }
+      strapi.log.info(`[api-pro seeder] reseed: DB drift detected (${drift})`);
+    } else {
+      strapi.log.info(`[api-pro seeder] reseed: fingerprint ${checkpoint?.fingerprint ?? '(none)'} → ${fingerprint}`);
     }
   }
 
@@ -595,12 +597,17 @@ async function runFullSeed(strapi, options = {}) {
     descriptorsScanned: descriptors.length,
   };
 
+  // Snapshot DB row counts right after the seed succeeds — the boot check
+  // compares the live counts against these to catch drift between runs.
+  const counts = await countSeededRows(strapi).catch(() => null);
+
   // Persist checkpoint AFTER the seed succeeds. A failed/aborted seed leaves
-  // the old checkpoint in place so the next boot retries.
+  // the previous checkpoint (or nothing) in place so the next boot retries.
   try {
     await fileStore.writeSeedCheckpoint(strapi, {
       seededAt: new Date().toISOString(),
       fingerprint,
+      counts,
       summary,
     });
   } catch (e) {

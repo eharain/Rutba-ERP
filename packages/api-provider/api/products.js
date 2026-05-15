@@ -189,27 +189,27 @@ export const ProductsEndpoints = {
             },
         },
     }),
-    save(id,data) {
-        if(typeof id === 'new' || typeof id === 'undefined') {
+    save(id, data) {
+        if (!id || id === 'new') {
             return ProductsEndpoints.create(data);
         }
         return ProductsEndpoints.update(id, data);
     },
-    
+
     /** Create a new product — body provided by caller as { data }. */
-    create: (data) => ({ path: '/products' , data }),
+    create: (data) => ({ path: '/products', method: 'post', data }),
 
     /**
      * Update a product by documentId — body provided by caller as { data }.
      * @param {string} documentId
      */
-    update: (documentId, data) => ({ path: `/products/${documentId}` , data }),
+    update: (documentId, data) => ({ path: `/products/${documentId}`, method: 'put', data }),
 
     /**
      * Delete a product by documentId.
      * @param {string} documentId
      */
-    del: (documentId) => ({ path: `/products/${documentId}` }),
+    del: (documentId) => ({ path: `/products/${documentId}`, method: 'delete' }),
 
     /**
      * Search products by name/SKU/barcode, excluding a specific documentId.

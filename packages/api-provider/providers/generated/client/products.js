@@ -39,12 +39,12 @@ async function save(id, data) {
 
 async function create(data) {
     const ep = ProductsEndpointsApi.create(data);
-    return authApi.fetch(ep.path, ep.params);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
 async function update(documentId, data) {
     const ep = ProductsEndpointsApi.update(documentId, data);
-    return authApi.fetch(ep.path, ep.params);
+    return authApi.put(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
 async function del(documentId) {

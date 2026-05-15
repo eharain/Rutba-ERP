@@ -1,5 +1,5 @@
 import { authApi } from '../../../lib/api.js';
-import { strictEndpointGuard } from './___core__.js';
+import { withQuery, wrapData, strictEndpointGuard } from './___core__.js';
 import { DeliveryZonesEndpoints as DeliveryZonesEndpointsApi } from '../../../api/delivery-zones.js';
 
 async function list(arg1 = {}) {
@@ -9,7 +9,7 @@ async function list(arg1 = {}) {
 
 async function create(data) {
     const ep = DeliveryZonesEndpointsApi.create(data);
-    return authApi.fetch(ep.path, ep.params);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
 const endpoints = strictEndpointGuard(

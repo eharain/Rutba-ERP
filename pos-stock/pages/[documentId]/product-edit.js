@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '../../components/Layout';
 import ProtectedRoute from '@rutba/pos-shared/components/ProtectedRoute';
-import { StockHelpersEndpoints, CategoriesEndpoints, BrandsEndpoints, SuppliersEndpoints, ProductsEndpoints, StockItemsEndpoints, fetchProducts, saveProduct, loadProduct } from '@rutba/api-provider/endpoints';
+import { StockHelpersEndpoints, CategoriesEndpoints, BrandsEndpoints, SuppliersEndpoints, ProductsEndpoints, StockItemsEndpoints, TermsEndpoints, fetchProducts, saveProduct, loadProduct } from '@rutba/api-provider/endpoints';
 
 import { useUtil } from '@rutba/pos-shared/context/UtilContext';
 import FileView from '@rutba/pos-shared/components/FileView';
@@ -50,14 +50,15 @@ export default function ProductEditPage() {
                     CategoriesEndpoints.listAll({ pageSize: 100 }),
                     BrandsEndpoints.listAll({ pageSize: 100 }),
                     SuppliersEndpoints.listAll({ pageSize: 100 }),
-                    ProductsEndpoints.list(1, 100, { sort: 'name:asc' }),
+                    TermsEndpoints.list({ pageSize: 100 }),
                     ProductsEndpoints.list(1, 100, { sort: 'name:asc' }),
                 ]);
-                setCategories(categoriesRes || []);
-                setBrands(brandsRes || []);
-                setSuppliers(suppliersRes || []);
-                setTerms(termsRes || []);
-                setProducts((productsRes || []).filter(p => p.documentId !== documentId));
+                const unwrap = (r) => r?.data || r || [];
+                setCategories(unwrap(categoriesRes));
+                setBrands(unwrap(brandsRes));
+                setSuppliers(unwrap(suppliersRes));
+                setTerms(unwrap(termsRes));
+                setProducts(unwrap(productsRes).filter(p => p.documentId !== documentId));
 
                 if (documentId && documentId !== 'new') {
                     const productData = await loadProduct(documentId);

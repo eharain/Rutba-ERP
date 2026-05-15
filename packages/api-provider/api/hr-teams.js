@@ -12,7 +12,7 @@ export const HrTeamsEndpoints = {
     }),
 
     appRoleOptions: () => ({ path: '/hr-teams/app-role-options' }),
-    create: (data) => ({ path: '/hr-teams' , data }),
-    update: (documentId, data) => ({ path: `/hr-teams/${documentId}` , data }),
+    create: (data) => ({ path: '/hr-teams', method: 'post', data }),
+    update: (documentId, data) => ({ path: `/hr-teams/${documentId}`, method: 'put', data }),
 
 };

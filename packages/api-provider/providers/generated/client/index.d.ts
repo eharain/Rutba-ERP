@@ -40,6 +40,7 @@ export * from './purchases';
 export * from './return-requests';
 export * from './rider-endpoints';
 export * from './riders';
+export * from './sale-audit-logs';
 export * from './sale-items';
 export * from './sale-offers';
 export * from './sale-orders';

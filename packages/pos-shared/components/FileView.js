@@ -57,7 +57,7 @@ function FileView({
     field = null, autoUpload = true, name = null, accept = null, buttonLabel = null,
 }) {
     const [singleFile, setSingleFile] = useState(single);
-    const [galleryFiles, setGalleryFiles] = useState(gallery);
+    const [galleryFiles, setGalleryFiles] = useState(Array.isArray(gallery) ? gallery : []);
     // Sync internal state when the parent's prop CONTENT changes — not on
     // every render. Callers commonly write `gallery={x.gallery || []}` which
     // creates a fresh `[]` each render; depending on the array reference
@@ -70,7 +70,7 @@ function FileView({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [singleKey]);
     useEffect(() => {
-        const stateKey = galleryFiles.map(f => f?.id ?? '').join(',');
+        const stateKey = (galleryFiles ?? []).map(f => f?.id ?? '').join(',');
         if (stateKey !== galleryKey) setGalleryFiles(Array.isArray(gallery) ? gallery : []);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [galleryKey]);

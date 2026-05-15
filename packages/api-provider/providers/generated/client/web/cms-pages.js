@@ -12,8 +12,8 @@ async function listByType(pageType, pageSize = 50) {
     return api.fetch(ep.path, ep.params);
 }
 
-async function bySlug(slug) {
-    const ep = WebCmsPagesEndpointsApi.bySlug(slug);
+async function bySlug(slug, arg2 = {}) {
+    const ep = WebCmsPagesEndpointsApi.bySlug(slug, arg2);
     return api.fetch(ep.path, ep.params);
 }
 

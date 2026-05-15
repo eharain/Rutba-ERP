@@ -16,7 +16,7 @@ export const HrEmployeesEndpoints = {
         params: byIdParams({ populate, fields }),
     }),
 
-    create: (data) => ({ path: '/hr-employees' , data }),
-    update: (documentId, data) => ({ path: `/hr-employees/${documentId}` , data }),
+    create: (data) => ({ path: '/hr-employees', method: 'post', data }),
+    update: (documentId, data) => ({ path: `/hr-employees/${documentId}`, method: 'put', data }),
 
 };

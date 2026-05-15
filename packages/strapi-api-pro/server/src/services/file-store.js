@@ -205,10 +205,9 @@ async function ensureStorage(strapi) {
 }
 
 // ── Seed checkpoint ─────────────────────────────────────────────────────────
-// Tiny JSON file recording the source-file mtimes at the time of the last
-// successful runFullSeed. The seeder reads it on boot; if every recorded
-// mtime still matches the live file, it short-circuits and skips the seed
-// (saves ~50s of boot time on unchanged repos).
+// Records the content hashes (SHA-256) of the seeder's input files at the
+// time of the last successful runFullSeed. On boot the seeder rehashes and
+// compares; any mismatch triggers a reseed automatically — no manual step.
 async function readSeedCheckpoint(strapi) {
   return readJsonSafe(seedCheckpointFile(strapi));
 }
