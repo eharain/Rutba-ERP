@@ -47,6 +47,7 @@
     "build": "strapi-plugin build && node scripts/ensure-dist-package-json.cjs",
     "watch": "strapi-plugin watch",
     "clean": "rimraf dist",
+    "prepare": "npm run build",
     "prepublishOnly": "npm run clean && npm run build"
   },
   "peerDependencies": {

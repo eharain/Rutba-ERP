@@ -1,5 +1,5 @@
 import { authApi } from '../../../lib/api.js';
-import { strictEndpointGuard } from './___core__.js';
+import { withQuery, wrapData, strictEndpointGuard } from './___core__.js';
 import { HrEmployeesEndpoints as HrEmployeesEndpointsApi } from '../../../api/hr-employees.js';
 
 async function list(arg1 = {}) {
@@ -14,12 +14,12 @@ async function byId(documentId, arg2 = {}) {
 
 async function create(data) {
     const ep = HrEmployeesEndpointsApi.create(data);
-    return authApi.fetch(ep.path, ep.params);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
 async function update(documentId, data) {
     const ep = HrEmployeesEndpointsApi.update(documentId, data);
-    return authApi.fetch(ep.path, ep.params);
+    return authApi.put(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
 const endpoints = strictEndpointGuard(

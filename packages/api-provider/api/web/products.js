@@ -1,3 +1,7 @@
+// `featured` queries /product-groups (different content type) so the
+// PRODUCT_POPULATE block is kept here for that one call. Every /products
+// endpoint is served by a server-side controller under /products/public/*
+// and no longer ships populate URLs.
 const PRODUCT_POPULATE = {
   gallery: true,
   logo: true,
@@ -10,59 +14,33 @@ const PRODUCT_POPULATE = {
   },
 };
 
+function buildListQuery(filter = {}, page = '1') {
+  const params = { page };
+  if (filter?.collection) params.collection = filter.collection;
+  if (filter?.brand) params.brand = filter.brand;
+  if (filter?.category) params.category = filter.category;
+  if (filter?.minPrice != null && filter.minPrice !== '') params.minPrice = filter.minPrice;
+  if (filter?.maxPrice != null && filter.maxPrice !== '') params.maxPrice = filter.maxPrice;
+  if (filter?.sort) params.sort = filter.sort;
+  return params;
+}
+
 export const WebProductsEndpoints = {
-  list: (filter = {}, page = '1') => {
-    const sort = (() => {
-      if (filter?.sort === 'price-low-high') return ['selling_price:ASC', 'name:ASC'];
-      if (filter?.sort === 'price-high-low') return ['selling_price:DESC', 'name:ASC'];
-      return ['createdAt:DESC'];
-    })();
-
-    return {
-      path: '/products',
-      method: 'get',
-      params: {
-        pagination: { pageSize: 24, page },
-        populate: PRODUCT_POPULATE,
-        sort,
-        filters: {
-          $and: [
-            { collections: { slug: { $eq: filter?.collection ?? undefined } } },
-            { selling_price: { $gte: filter?.minPrice ?? undefined, $lte: filter?.maxPrice ?? undefined } },
-            { brands: { slug: { $eq: filter?.brand ?? undefined } } },
-            { categories: { slug: { $eq: filter?.category ?? undefined } } },
-          ],
-        },
-      },
-    };
-  },
-
-  detail: (slug) => ({
-    path: `/products/${slug}`,
+  list: (filter = {}, page = '1') => ({
+    path: '/products/public/list',
     method: 'get',
-    params: {
-      fields: [
-        'name', 'sku', 'barcode', 'selling_price', 'cost_price', 'offer_price',
-        'stock_quantity', 'summary', 'description', 'is_variant', 'is_active', 'keywords',
-      ],
-      populate: {
-        gallery: true,
-        logo: true,
-        brands: true,
-        categories: true,
-        terms: { populate: { term_types: true } },
-        variants: {
-          fields: ['name', 'sku', 'barcode', 'selling_price', 'cost_price', 'offer_price', 'stock_quantity', 'summary', 'description', 'is_variant'],
-          populate: {
-            gallery: true,
-            logo: true,
-            terms: { populate: { term_types: true } },
-          },
-        },
-      },
-    },
+    params: buildListQuery(filter, page),
   }),
 
+  // `slug` here is the documentId — the storefront builds product links from
+  // documentId, not a separate slug field on the product schema.
+  detail: (slug) => ({
+    path: `/products/public/by-id/${encodeURIComponent(slug)}`,
+    method: 'get',
+    params: {},
+  }),
+
+  // /product-groups is a different content type; keep its existing shape.
   featured: () => ({
     path: '/product-groups',
     method: 'get',
@@ -74,43 +52,20 @@ export const WebProductsEndpoints = {
   }),
 
   search: (search, pageSize = 5) => ({
-    path: '/products',
+    path: '/products/public/search',
     method: 'get',
-    params: {
-      populate: PRODUCT_POPULATE,
-      pagination: { limit: pageSize },
-      filters: { name: { $contains: search } },
-    },
+    params: { q: search, pageSize },
   }),
 
   byIds: (idProducts = []) => ({
-    path: '/products',
+    path: '/products/public/by-ids',
     method: 'get',
-    params: {
-      populate: {
-        gallery: true,
-        logo: true,
-        brands: true,
-        categories: true,
-        variants: {
-          populate: {
-            gallery: true,
-            logo: true,
-            terms: { populate: { term_types: true } },
-          },
-        },
-      },
-      filters: { id: { $in: idProducts } },
-    },
+    params: { ids: (idProducts ?? []).join(',') },
   }),
 
   highestPrice: () => ({
-    path: '/products',
+    path: '/products/public/highest-price',
     method: 'get',
-    params: {
-      pagination: { limit: 1 },
-      sort: ['selling_price:DESC', 'id:ASC'],
-      populate: ['gallery', 'variants', 'brands', 'categories', 'logo'],
-    },
+    params: {},
   }),
 };

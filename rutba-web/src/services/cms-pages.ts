@@ -14,16 +14,17 @@ export function createWebCmsPagesService(config = {}) {
     return res?.data ?? [];
   };
 
-  const getCmsPageBySlug = async (slug) => {
-    const res = await proxy.bySlug(slug);
-    const pages = res?.data ?? [];
-    return pages.length > 0 ? pages[0] : null;
+  // The page detail endpoint is now built server-side and returns a single
+  // record (or null). Pass { draft: true } to preview the draft document —
+  // requires an authenticated CMS editor session.
+  const getCmsPageBySlug = async (slug, options = {}) => {
+    const res = await proxy.bySlug(slug, options);
+    return res?.data ?? null;
   };
 
   const getCmsHeaderData = async () => {
     const res = await proxy.header();
-    const pages = res?.data ?? [];
-    return pages.length > 0 ? pages[0] : null;
+    return res?.data ?? null;
   };
 
   return {
@@ -49,11 +50,8 @@ export async function getCmsPagesByTypeSSR(pageType, config = {}) {
   return res?.data ?? [];
 }
 
-export async function getCmsPageBySlugSSR(slug, config = {}) {
-  void config;
+export async function getCmsPageBySlugSSR(slug, options = {}) {
   const proxy = WebCmsPagesEndpoints;
-  const res = await proxy.bySlug(slug);
-  const pages = res?.data ?? [];
-  return pages.length > 0 ? pages[0] : null;
+  const res = await proxy.bySlug(slug, options);
+  return res?.data ?? null;
 }
-

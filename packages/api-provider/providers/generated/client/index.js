@@ -40,6 +40,7 @@ export * from './purchases.js';
 export * from './return-requests.js';
 export * from './rider-endpoints.js';
 export * from './riders.js';
+export * from './sale-audit-logs.js';
 export * from './sale-items.js';
 export * from './sale-offers.js';
 export * from './sale-orders.js';

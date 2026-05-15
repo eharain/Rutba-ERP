@@ -14,6 +14,6 @@ export const DeliveryZonesEndpoints = {
             { sort: ['createdAt:desc'], pageSize: 200 },
         ),
     }),
-    create: (data) => ({ path: '/delivery-zones' , data }),
+    create: (data) => ({ path: '/delivery-zones', method: 'post', data }),
 
 };

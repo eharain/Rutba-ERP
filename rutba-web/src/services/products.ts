@@ -53,7 +53,7 @@ export function createWebProductsService(config = {}) {
 
   const getHighestProductPrice = async () => {
     const res = await productsProxy.highestPrice();
-    return res?.data?.[0] ?? null;
+    return res?.data ?? null;
   };
 
   return {
