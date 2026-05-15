@@ -3,10 +3,12 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import Layout from '../../components/Layout';
 import ProtectedRoute from '@rutba/pos-shared/components/ProtectedRoute';
-import { StockHelpersEndpoints, TermTypesEndpoints, StockItemsEndpoints, ProductsEndpoints, fetchProducts, saveProduct } from '@rutba/api-provider/endpoints';
+import { TermTypesEndpoints, StockItemsEndpoints, ProductsEndpoints, fetchProducts } from '@rutba/api-provider/endpoints';
 import ProductGalleryManager from '@rutba/pos-shared/components/ProductGalleryManager';
 import ProductVariantManager from '@rutba/pos-shared/components/ProductVariantManager';
 import TermTypeTermDialog from '@rutba/pos-shared/components/TermTypeTermDialog';
+import ProductPageShell, { buildStockProductTabs } from '@rutba/pos-shared/components/product/ProductPageShell';
+import { createVariant } from '@rutba/pos-shared/lib/variants';
 
 function getEntryId(entry) {
     return entry?.documentId || entry?.id;
@@ -147,31 +149,23 @@ export default function ProductVariantsPage() {
         try {
             setLoading(true);
             const parentDocumentId = getEntryId(selectedProduct);
-            const name = buildVariantName(term.name);
-            const payload = {
+            const moveStockItemDocIds = formValues.move_count > 0
+                ? stockItems.slice(0, Math.min(formValues.move_count, stockItems.length)).map(getEntryId)
+                : [];
+            const created = await createVariant(parentDocumentId, 'term', {
+                term,
+                baseName: variantBaseName || selectedProduct?.name || '',
+                namingMode: nameAffix,
                 sku: formValues.sku,
                 barcode: formValues.barcode,
                 selling_price: formValues.selling_price,
                 offer_price: formValues.offer_price,
                 is_active: formValues.is_active,
-                name,
-                parent: parentDocumentId,
-                is_variant: true,
-                ...StockHelpersEndpoints.relationConnects({ terms: [term] })
-            };
-            const response = await saveProduct('new', payload);
-            const createdVariant = response?.data?.data ?? response?.data ?? response;
-            const createdVariantId = getEntryId(createdVariant);
-            const createdVariantName = createdVariant?.name || name;
-            if (formValues.move_count > 0 && createdVariantId) {
-                const itemsToMove = stockItems.slice(0, Math.min(formValues.move_count, stockItems.length));
-                for (const item of itemsToMove) {
-                    await StockItemsEndpoints.update(getEntryId(item), { product: { set: [createdVariantId] }, name: createdVariantName });
-                }
-            }
+                moveStockItemDocIds,
+            });
             await loadProductDetails(parentDocumentId);
             setTermForms(prev => ({ ...prev, [getEntryId(term)]: getDefaultVariantForm() }));
-            setSuccess(`Variant "${createdVariantName}" created`);
+            setSuccess(`Variant "${created.name || buildVariantName(term.name)}" created`);
         } catch (err) {
             console.error('Failed to create variant', err);
             setError('Failed to create variant');
@@ -190,31 +184,26 @@ export default function ProductVariantsPage() {
         try {
             const parentDocumentId = getEntryId(selectedProduct);
             for (const term of creatableTerms) {
-                const termId = getEntryId(term);
-                const formValues = getTermForm(termId);
-                const name = buildVariantName(term.name);
-                const payload = {
+                const formValues = getTermForm(getEntryId(term));
+                // Bulk path fetches a fresh tail of parent stock items per variant
+                // (parent stock-item count changes after each create).
+                let moveStockItemDocIds = [];
+                if (formValues.move_count > 0) {
+                    const currentItems = await StockItemsEndpoints.byProduct(parentDocumentId, { pageSize: formValues.move_count, sort: ['createdAt:desc'] });
+                    const items = currentItems?.data ?? currentItems ?? [];
+                    moveStockItemDocIds = items.map(getEntryId);
+                }
+                await createVariant(parentDocumentId, 'term', {
+                    term,
+                    baseName: variantBaseName || selectedProduct?.name || '',
+                    namingMode: nameAffix,
                     sku: formValues.sku,
                     barcode: formValues.barcode,
                     selling_price: formValues.selling_price,
                     offer_price: formValues.offer_price,
                     is_active: formValues.is_active,
-                    name,
-                    parent: parentDocumentId,
-                    is_variant: true,
-                    ...StockHelpersEndpoints.relationConnects({ terms: [term] })
-                };
-                const response = await saveProduct('new', payload);
-                const createdVariant = response?.data?.data ?? response?.data ?? response;
-                const createdVariantId = getEntryId(createdVariant);
-                const createdVariantName = createdVariant?.name || name;
-                if (formValues.move_count > 0 && createdVariantId) {
-                    const currentItems = await StockItemsEndpoints.byProduct(parentDocumentId, { pageSize: formValues.move_count, sort: ['createdAt:desc'] });
-                    const items = currentItems?.data ?? currentItems ?? [];
-                    for (const item of items) {
-                        await StockItemsEndpoints.update(getEntryId(item), { product: { set: [createdVariantId] }, name: createdVariantName });
-                    }
-                }
+                    moveStockItemDocIds,
+                });
                 created++;
             }
             await loadProductDetails(parentDocumentId);
@@ -380,44 +369,41 @@ export default function ProductVariantsPage() {
         loadTermTypes();
     }
 
+    const statusPill = selectedProduct?.is_active === false
+        ? <span className="badge bg-secondary">Inactive</span>
+        : selectedProduct ? <span className="badge bg-success">Active</span> : null;
+
+    const headerActions = (
+        <Link href={`/${documentId}/catalogue-import`} className="btn btn-outline-secondary btn-sm">
+            <i className="fas fa-file-pdf me-1" /> Catalogue Import
+        </Link>
+    );
+
     return (
         <ProtectedRoute>
             <Layout>
-                <div style={{ padding: 5 }}>
-                    {/* Page navigation */}
-                    <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
-                        <Link href={`/${documentId}/product-edit`} className="btn btn-outline-secondary btn-sm">
-                            <i className="fas fa-edit me-1" /> Edit
-                        </Link>
-                        <Link href={`/${documentId}/product-stock-items`} className="btn btn-outline-secondary btn-sm">
-                            <i className="fas fa-boxes me-1" /> Stock Control
-                        </Link>
-                        <span className="btn btn-primary btn-sm">
-                            <i className="fas fa-layer-group me-1" /> Variants
-                        </span>
-                        <Link href={`/${documentId}/catalogue-import`} className="btn btn-outline-secondary btn-sm">
-                            <i className="fas fa-file-pdf me-1" /> Catalogue Import
-                        </Link>
-                        <Link href={`/stock-items?product=${documentId}`} className="btn btn-outline-secondary btn-sm">
-                            <i className="fas fa-barcode me-1" /> Stock Items
-                        </Link>
-                        <Link href={`/${documentId}/product-relations`} className="btn btn-outline-secondary btn-sm">
-                            <i className="fas fa-compress-arrows-alt me-1" /> Relations &amp; Merge
-                        </Link>
-                        <Link href="/products" className="btn btn-outline-dark btn-sm ms-auto">
-                            <i className="fas fa-arrow-left me-1" /> Products
-                        </Link>
-                    </div>
-
-                    <h5 className="mb-3">
-                        <i className="fas fa-layer-group me-2" />
-                        Variants for: {selectedProduct?.name}
-                        {selectedProduct && <span className="badge bg-secondary ms-2">{variants.length} variant(s)</span>}
-                        {selectedProduct && <span className="badge bg-info ms-2">{stockItems.length} parent stock item(s)</span>}
-                    </h5>
-
-                    {error && <div className="alert alert-danger alert-dismissible py-2">{error}<button type="button" className="btn-close" onClick={() => setError('')} /></div>}
-                    {success && <div className="alert alert-success alert-dismissible py-2">{success}<button type="button" className="btn-close" onClick={() => setSuccess('')} /></div>}
+                <ProductPageShell
+                    product={selectedProduct}
+                    backHref="/products"
+                    tabs={buildStockProductTabs({ documentId, badges: { variants: variants.length || undefined } })}
+                    currentTab="variants"
+                    statusPill={statusPill}
+                    extraInfo={selectedProduct && (
+                        <>
+                            <span><i className="fas fa-layer-group me-1 opacity-50" />{variants.length} variant{variants.length === 1 ? '' : 's'}</span>
+                            {stockItems.length > 0 && (
+                                <span><i className="fas fa-cubes me-1 opacity-50" />{stockItems.length} parent item{stockItems.length === 1 ? '' : 's'}</span>
+                            )}
+                        </>
+                    )}
+                    actions={headerActions}
+                    alert={{
+                        error,
+                        success,
+                        onDismissError: () => setError(''),
+                        onDismissSuccess: () => setSuccess(''),
+                    }}
+                >
                     {loading && <div className="alert alert-info py-2"><i className="fas fa-spinner fa-spin me-2" />Processing...</div>}
 
                     {/* Existing Variants */}
@@ -542,7 +528,7 @@ export default function ProductVariantsPage() {
                     {/* Create Variants */}
                     <div className="card mb-3">
                         <div className="card-header d-flex justify-content-between align-items-center py-2">
-                            <h6 className="mb-0"><i className="fas fa-plus-circle me-2" />Create Variants</h6>
+                            <h6 className="mb-0"><i className="fas fa-plus-circle me-2" />Create Variants by Term Type</h6>
                             {selectedTermTypeId && creatableTerms.length > 0 && (
                                 <button
                                     className="btn btn-success btn-sm"
@@ -820,7 +806,7 @@ export default function ProductVariantsPage() {
                             )}
                         </div>
                     </div>
-                </div>
+                </ProductPageShell>
             </Layout>
         </ProtectedRoute>
     );

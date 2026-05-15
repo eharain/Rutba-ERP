@@ -1,31 +1,19 @@
 import { useEffect, useState, useCallback, Fragment } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { CircularProgress } from "@rutba/pos-shared/components/Table";
+import { CircularProgress, SortableTh } from "@rutba/pos-shared/components/Table";
 import Layout from "../components/Layout";
 import ProductCard from "@rutba/pos-shared/components/ProductCard";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import PermissionCheck from "@rutba/pos-shared/components/PermissionCheck";
-import { MediaUtilsEndpoints, ProductsEndpoints, BrandsEndpoints, CategoriesEndpoints, SuppliersEndpoints, PurchasesEndpoints, TermTypesEndpoints } from "@rutba/api-provider/endpoints";
+import { MediaUtilsEndpoints, ProductsEndpoints } from "@rutba/api-provider/endpoints";
+import { useProductLookups } from "@rutba/pos-shared/hooks/useProductLookups";
 import { fetchProducts } from "@rutba/api-provider/pos";
 import { ProductFilter } from "@rutba/pos-shared/components/filter/product-filter";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
 import BulkProductActions from "@rutba/pos-shared/components/BulkProductActions";
 import ListPageLayout, { AddButton } from "@rutba/pos-shared/components/ListPageLayout";
 import ListPagination from "@rutba/pos-shared/components/ListPagination";
-
-function SortableTh({ label, field, sortField, sortOrder, onSort, align, style }) {
-    const isActive = sortField === field;
-    const arrow = isActive ? (sortOrder === 'asc' ? ' ▲' : ' ▼') : '';
-    return (
-        <th
-            style={{ cursor: 'pointer', userSelect: 'none', textAlign: align, ...style }}
-            onClick={() => onSort(field)}
-        >
-            {label}{arrow}
-        </th>
-    );
-}
 
 export default function Products() {
     const router = useRouter();
@@ -36,11 +24,7 @@ export default function Products() {
     const [total, setTotal] = useState(0);
     const [loading, setLoading] = useState(false);
     const [filters, setFilters] = useState({});
-    const [brands, setBrands] = useState([]);
-    const [categories, setCategories] = useState([]);
-    const [suppliers, setSuppliers] = useState([]);
-    const [termTypes, setTermTypes] = useState([]);
-    const [purchases, setPurchases] = useState([]);
+    const { brands, categories, suppliers, termTypes, purchases } = useProductLookups();
     const [selectedBrand, setSelectedBrand] = useState("");
     const [selectedCategory, setSelectedCategory] = useState("");
     const [selectedSupplier, setSelectedSupplier] = useState("");
@@ -122,22 +106,6 @@ export default function Products() {
         if (!filtersInitialized) return;
         loadProductsData();
     }, [page, pageSize, filters, filtersInitialized, sortString]);
-
-    useEffect(() => {
-        Promise.all([
-            BrandsEndpoints.listAll(),
-            CategoriesEndpoints.listAll(),
-            SuppliersEndpoints.listAll(),
-            TermTypesEndpoints.listWithTerms(),
-            PurchasesEndpoints.list(1, 100, { sort: ['createdAt:desc'] }),
-        ]).then(([b, c, s, t, p]) => {
-            setBrands(b?.data || b || []);
-            setCategories(c?.data || c || []);
-            setSuppliers(s?.data || s || []);
-            setTermTypes(t?.data || t || []);
-            setPurchases(p?.data || p || []);
-        });
-    }, []);
 
     useEffect(() => {
         if (!router.isReady || filtersInitialized) {
@@ -292,6 +260,21 @@ export default function Products() {
                                 onTermChange={setSelectedTerm}
                                 onPurchaseChange={setSelectedPurchase}
                                 onSearchTextChange={setSearchText}
+                                extra={[
+                                    {
+                                        key: "stockStatus",
+                                        type: "select",
+                                        label: "Stock",
+                                        value: stockStatus || "",
+                                        onChange: (v) => setStockStatus(v || false),
+                                        placeholder: "All stock",
+                                        options: [
+                                            { value: "inStock", label: "In stock" },
+                                            { value: "outOfStock", label: "Out of stock" },
+                                            { value: "low", label: "Low stock" },
+                                        ],
+                                    },
+                                ]}
                             />
                         }
                         bulkActions={bulkActions}
@@ -316,17 +299,17 @@ export default function Products() {
                                             <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} title="Select all" />
                                         </th>
                                         <th style={{ width: 30 }}></th>
-                                        <SortableTh label="id" field="id" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />
-                                        <SortableTh label="Product Name" field="name" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />
+                                        <SortableTh label="id" field="id" sortField={sortField} sortDir={sortOrder} onSort={handleSort} />
+                                        <SortableTh label="Product Name" field="name" sortField={sortField} sortDir={sortOrder} onSort={handleSort} />
                                         <th>Logo</th>
-                                        <SortableTh label="Barcode" field="barcode" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />
-                                        <SortableTh label="SKU" field="sku" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />
+                                        <SortableTh label="Barcode" field="barcode" sortField={sortField} sortDir={sortOrder} onSort={handleSort} />
+                                        <SortableTh label="SKU" field="sku" sortField={sortField} sortDir={sortOrder} onSort={handleSort} />
                                         <th>Suppliers</th>
                                         <th>Purchase #</th>
-                                        <SortableTh label="Offer Price" field="offer_price" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} align="right" />
-                                        <SortableTh label="Selling Price" field="selling_price" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} align="right" />
-                                        <SortableTh label="Stock Quantity" field="stock_quantity" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} align="right" />
-                                        <SortableTh label="Status" field="status" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />
+                                        <SortableTh label="Offer Price" field="offer_price" sortField={sortField} sortDir={sortOrder} onSort={handleSort} align="right" />
+                                        <SortableTh label="Selling Price" field="selling_price" sortField={sortField} sortDir={sortOrder} onSort={handleSort} align="right" />
+                                        <SortableTh label="Stock Quantity" field="stock_quantity" sortField={sortField} sortDir={sortOrder} onSort={handleSort} align="right" />
+                                        <SortableTh label="Status" field="status" sortField={sortField} sortDir={sortOrder} onSort={handleSort} />
                                         <th>Actions</th>
                                     </tr>
                                 </thead>

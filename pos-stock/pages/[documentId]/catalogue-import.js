@@ -3,7 +3,8 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import Layout from '../../components/Layout';
 import ProtectedRoute from '@rutba/pos-shared/components/ProtectedRoute';
-import { StockHelpersEndpoints, TermTypesEndpoints, ProductsEndpoints, UploadEndpoints, fetchProducts, saveProduct } from '@rutba/api-provider/endpoints';
+import { TermTypesEndpoints, ProductsEndpoints, fetchProducts } from '@rutba/api-provider/endpoints';
+import { createVariant } from '@rutba/pos-shared/lib/variants';
 
 function getEntryId(entry) {
     return entry?.documentId || entry?.id;
@@ -222,57 +223,26 @@ export default function CatalogueImportPage() {
                 }
 
                 try {
-                    // Build variant payload
-                    const payload = {
-                        name: variantName,
-                        sku: page.sku || undefined,
-                        barcode: page.barcode || undefined,
+                    const term = page.termId ? availableTerms.find(t => getEntryId(t) === page.termId) : null;
+                    const blob = await renderPageToBlob(pdfDoc, page.pageNum, uploadScale);
+                    const pdfPageFile = new File(
+                        [blob],
+                        `${variantName.replace(/[^a-zA-Z0-9-_ ]/g, '')}-page${page.pageNum}.png`,
+                        { type: 'image/png' }
+                    );
+                    await createVariant(parentDocumentId, 'pdf-page', {
+                        baseName,
+                        pageName: page.name,
+                        namingMode: nameAffix,
+                        sku: page.sku,
+                        barcode: page.barcode,
                         selling_price: page.selling_price,
                         offer_price: page.offer_price,
                         is_active: page.is_active,
-                        parent: parentDocumentId,
-                        is_variant: true,
-                    };
-
-                    // Connect term if selected
-                    if (page.termId) {
-                        const term = availableTerms.find(t => getEntryId(t) === page.termId);
-                        if (term) {
-                            Object.assign(payload, StockHelpersEndpoints.relationConnects({ terms: [term] }));
-                        }
-                    }
-
-                    // Create the variant product
-                    const response = await saveProduct('new', payload);
-                    const createdVariant = response?.data?.data ?? response?.data ?? response;
-                    const createdVariantId = getEntryId(createdVariant);
-                    // Strapi upload requires the numeric id, not the documentId string
-                    const createdVariantNumericId = createdVariant?.id;
-
-                    if (createdVariantId) {
-                        // Render the page at upload quality and upload as logo
-                        if (createdVariantNumericId) {
-                            try {
-                                const blob = await renderPageToBlob(pdfDoc, page.pageNum, uploadScale);
-                                const imageFile = new File(
-                                    [blob],
-                                    `${variantName.replace(/[^a-zA-Z0-9-_ ]/g, '')}-page${page.pageNum}.png`,
-                                    { type: 'image/png' }
-                                );
-                                await UploadEndpoints.uploadFiles(
-                                    [imageFile],
-                                    'product',
-                                    'logo',
-                                    createdVariantNumericId,
-                                    { name: variantName, alt: variantName, caption: `Page ${page.pageNum} from ${pdfFileName}` }
-                                );
-                            } catch (uploadErr) {
-                                console.error(`Image upload failed for page ${page.pageNum}`, uploadErr);
-                                // Variant was created, just logo upload failed — continue
-                            }
-                        }
-                    }
-
+                        term,
+                        pdfPageFile,
+                        logoCaption: `Page ${page.pageNum} from ${pdfFileName}`,
+                    });
                     updatePage(i, 'status', 'created');
                     created++;
                 } catch (err) {
@@ -299,48 +269,26 @@ export default function CatalogueImportPage() {
         setCreating(true);
         try {
             const parentDocumentId = getEntryId(product);
-            const payload = {
-                name: variantName,
-                sku: page.sku || undefined,
-                barcode: page.barcode || undefined,
+            const term = page.termId ? availableTerms.find(t => getEntryId(t) === page.termId) : null;
+            const blob = await renderPageToBlob(pdfDoc, page.pageNum, uploadScale);
+            const pdfPageFile = new File(
+                [blob],
+                `${variantName.replace(/[^a-zA-Z0-9-_ ]/g, '')}-page${page.pageNum}.png`,
+                { type: 'image/png' }
+            );
+            await createVariant(parentDocumentId, 'pdf-page', {
+                baseName: baseName || product?.name || '',
+                pageName: page.name,
+                namingMode: nameAffix,
+                sku: page.sku,
+                barcode: page.barcode,
                 selling_price: page.selling_price,
                 offer_price: page.offer_price,
                 is_active: page.is_active,
-                parent: parentDocumentId,
-                is_variant: true,
-            };
-
-            if (page.termId) {
-                const term = availableTerms.find(t => getEntryId(t) === page.termId);
-                if (term) Object.assign(payload, StockHelpersEndpoints.relationConnects({ terms: [term] }));
-            }
-
-            const response = await saveProduct('new', payload);
-            const createdVariant = response?.data?.data ?? response?.data ?? response;
-            const createdVariantId = getEntryId(createdVariant);
-            // Strapi upload requires the numeric id, not the documentId string
-            const createdVariantNumericId = createdVariant?.id;
-
-            if (createdVariantId && createdVariantNumericId) {
-                try {
-                    const blob = await renderPageToBlob(pdfDoc, page.pageNum, uploadScale);
-                    const imageFile = new File(
-                        [blob],
-                        `${variantName.replace(/[^a-zA-Z0-9-_ ]/g, '')}-page${page.pageNum}.png`,
-                        { type: 'image/png' }
-                    );
-                    await UploadEndpoints.uploadFiles(
-                        [imageFile],
-                        'product',
-                        'logo',
-                        createdVariantNumericId,
-                        { name: variantName, alt: variantName, caption: `Page ${page.pageNum} from ${pdfFileName}` }
-                    );
-                } catch (uploadErr) {
-                    console.error(`Image upload failed for page ${page.pageNum}`, uploadErr);
-                }
-            }
-
+                term,
+                pdfPageFile,
+                logoCaption: `Page ${page.pageNum} from ${pdfFileName}`,
+            });
             updatePage(index, 'status', 'created');
             await loadProduct(parentDocumentId);
             setSuccess(`Variant "${variantName}" created`);
