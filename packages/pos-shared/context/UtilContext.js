@@ -1,10 +1,12 @@
 import React, { createContext, useContext, useMemo, useState, useEffect, useCallback } from "react";
 import { storage } from "@rutba/api-provider/lib/storage";
 import { BranchesEndpoints } from "@rutba/api-provider/endpoints";
+import { useAuth } from "./AuthContext";
 
 const UtilContext = createContext(null);
 
 export function UtilProvider({ children }) {
+    const { jwt: authJwt, loading: authLoading } = useAuth() || {};
     // State variables for branch, branch-desk, and user
     const [branch, setBranchState] = useState(null);
     const [desk, setDeskState] = useState(null);
@@ -73,8 +75,12 @@ export function UtilProvider({ children }) {
 
     // Refresh the branch entity from the API after hydration so that
     // fields edited in the admin panel (social links, etc.) are always current.
+    // Wait for auth to be ready — otherwise this fires during the fresh-login
+    // window (AuthCallback in flight) with no JWT in storage, which trips the
+    // "session expired" dialog via authCall's no-tokens short-circuit.
     useEffect(() => {
         if (!hydrated || !branch?.documentId) return;
+        if (authLoading || !authJwt) return;
         (async () => {
             try {
                 const response = await BranchesEndpoints.byId(branch.documentId);
@@ -88,7 +94,7 @@ export function UtilProvider({ children }) {
                 console.warn('Branch refresh failed, using cached data', err?.message);
             }
         })();
-    }, [hydrated]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [hydrated, authJwt, authLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
     function getBranch() {
         return branch;

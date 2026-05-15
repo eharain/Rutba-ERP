@@ -7,6 +7,7 @@ import { MediaUtilsEndpoints, ProductGroupsEndpoints, ProductsEndpoints } from "
 import FileView from "@rutba/pos-shared/components/FileView";
 import ProductGalleryManager from "@rutba/pos-shared/components/ProductGalleryManager";
 import ProductVariantManager from "@rutba/pos-shared/components/ProductVariantManager";
+import ProductMergeTool from "@rutba/pos-shared/components/product/ProductMergeTool";
 import MarkdownEditor from "@rutba/pos-shared/components/MarkdownEditor";
 import ProductPageShell from "@rutba/pos-shared/components/product/ProductPageShell";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
@@ -340,10 +341,16 @@ export default function ProductDetail() {
         </>
     );
 
+    // Single "Variants" tab — previously split across "Gallery & Variants" and
+    // "Product & Variants", but every CMS user we asked treated them as one
+    // surface (image-based + term-based variant management belong together).
+    // ProductGalleryManager handles gallery + creation; ProductVariantManager
+    // handles per-variant term assignment. Stacked, they cover what the
+    // pos-stock Variants page does, just with CMS-friendly gallery affordances.
     const tabs = product && !isNew ? [
         { key: "details", label: "Product Details", icon: "fa-edit", onClick: () => { setActiveTab("details"); return true; } },
-        { key: "gallery", label: "Gallery & Variants", icon: "fa-images", onClick: () => { setActiveTab("gallery"); return true; }, badge: (galleryCount + variantCount) || undefined },
-        { key: "variants", label: "Product & Variants", icon: "fa-layer-group", onClick: () => { setActiveTab("variants"); return true; }, badge: variantCount || undefined },
+        { key: "variants", label: "Variants", icon: "fa-layer-group", onClick: () => { setActiveTab("variants"); return true; }, badge: (galleryCount + variantCount) || undefined },
+        { key: "merge", label: "Merge", icon: "fa-compress-arrows-alt", onClick: () => { setActiveTab("merge"); return true; } },
     ] : [];
 
     return (
@@ -536,19 +543,42 @@ export default function ProductDetail() {
                             </div>
                         )}
 
-                        {/* ---- GALLERY & VARIANTS TAB ---- */}
-                        {activeTab === "gallery" && (
-                            <ProductGalleryManager
-                                productId={documentId}
-                                onUpdate={loadProduct}
-                            />
+                        {/* ---- VARIANTS TAB (unified gallery + variant management) ----
+                            Mirrors the pos-stock Variants page in structure: existing variants
+                            list (with gallery), create-by-term form, parent gallery, all in one
+                            scroll. ProductVariantManager exposes per-variant term editing below
+                            for CMS users who curate term assignments. */}
+                        {activeTab === "variants" && (
+                            <>
+                                <ProductGalleryManager
+                                    productId={documentId}
+                                    onUpdate={loadProduct}
+                                />
+                                <div className="mt-4 pt-3 border-top">
+                                    <h5 className="mb-3">
+                                        <i className="fas fa-tags me-2 text-muted" />
+                                        Variant Term Assignments
+                                    </h5>
+                                    <p className="text-muted small">
+                                        Edit which terms each existing variant is tied to. Use this
+                                        when a variant was created with the wrong term, or to attach
+                                        additional axes (e.g. size on a colour variant).
+                                    </p>
+                                    <ProductVariantManager
+                                        productId={documentId}
+                                        onUpdate={loadProduct}
+                                    />
+                                </div>
+                            </>
                         )}
 
-                        {/* ---- PRODUCT & VARIANTS TAB ---- */}
-                        {activeTab === "variants" && (
-                            <ProductVariantManager
-                                productId={documentId}
-                                onUpdate={loadProduct}
+                        {/* ---- MERGE TAB ---- */}
+                        {activeTab === "merge" && (
+                            <ProductMergeTool
+                                product={product}
+                                documentId={documentId}
+                                currency={currency}
+                                onChange={loadProduct}
                             />
                         )}
                     </>

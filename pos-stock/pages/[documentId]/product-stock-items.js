@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import Layout from '../../components/Layout';
 import ProtectedRoute from '@rutba/pos-shared/components/ProtectedRoute';
-import { StockHelpersEndpoints, StockItemsEndpoints, ProductsEndpoints, CategoriesEndpoints, BrandsEndpoints, SuppliersEndpoints, fetchProducts, saveProduct, loadProduct } from '@rutba/api-provider/endpoints';
+import { BranchesEndpoints, StockHelpersEndpoints, StockItemsEndpoints, ProductsEndpoints, CategoriesEndpoints, BrandsEndpoints, SuppliersEndpoints, fetchProducts, saveProduct, loadProduct } from '@rutba/api-provider/endpoints';
 import { useUtil } from '@rutba/pos-shared/context/UtilContext';
 import { printStorage } from '@rutba/pos-shared/lib/printStorage';
 import { getBranch } from '@rutba/pos-shared/lib/utils';
@@ -39,7 +39,8 @@ export default function EditProduct() {
     //   generate — auto-generate N items
     //   scan     — continuous barcode scan to create
     //   reduce   — mark items as gone (mistaken / lost / damaged)
-    const stockSubTab = ['list', 'generate', 'scan', 'reduce'].includes(stockSubTabParam) ? stockSubTabParam : 'list';
+    //   assign   — assign selected items to a branch (sets status=InStock + branch)
+    const stockSubTab = ['list', 'generate', 'scan', 'reduce', 'assign'].includes(stockSubTabParam) ? stockSubTabParam : 'list';
     const { currency } = useUtil();
 
     const [productId, setProductId] = useState([]);
@@ -59,9 +60,24 @@ export default function EditProduct() {
     const [stockStatuses, setStockStatuses] = useState([]);
     const [selectedStockItems, setSelectedStockItems] = useState(new Set());
     const [applyingChanges, setApplyingChanges] = useState(false);
-    const [applyFields, setApplyFields] = useState({ name: true, selling_price: true, offer_price: true, status: false });
+    const [applyFields, setApplyFields] = useState({ name: true, sku: false, cost_price: false, selling_price: true, offer_price: true, status: false });
     const [applyStatus, setApplyStatus] = useState('');
+
+    // Branch assignment — moves selected items into a destination branch.
+    // Used by the "Assign" sub-tab; mirrors the global stock-items page's
+    // sendStockToBranch() but scoped to this product's items.
+    const [branches, setBranches] = useState([]);
+    const [assignBranch, setAssignBranch] = useState('');
+    const [assigning, setAssigning] = useState(false);
     const [stockItemsTotal, setStockItemsTotal] = useState(0);
+
+    // Statuses where the item is still in our possession and editable by an
+    // Apply action. Items that have left our hands (Sold, Lost, Transferred,
+    // Returned to supplier, etc.) or are finalised (Damaged, Expired, Reduced)
+    // must not have their pricing/SKU silently rewritten — the historical
+    // record on the sale/return needs to stay intact.
+    const APPLYABLE_STATUSES = new Set(['Received', 'InStock', 'Reserved']);
+    const isApplyable = (item) => APPLYABLE_STATUSES.has(item?.status);
     const [showStockSection, setShowStockSection] = useState(false);
     const [showAddSection, setShowAddSection] = useState(false);
 
@@ -113,18 +129,20 @@ export default function EditProduct() {
             try {
                 setLoading(true);
 
-                // Fetch categories, brands, suppliers, and stock statuses
-                const [categoriesRes, brandsRes, suppliersRes, statusRes] = await Promise.all([
+                // Fetch categories, brands, suppliers, stock statuses, and branches
+                const [categoriesRes, brandsRes, suppliersRes, statusRes, branchesRes] = await Promise.all([
                     fetchAllRecords(p => CategoriesEndpoints.list({ page: p, pageSize: 100 })),
                     fetchAllRecords(p => BrandsEndpoints.list({ page: p, pageSize: 100 })),
                     fetchAllRecords(p => SuppliersEndpoints.list({ page: p, pageSize: 100 })),
-                    StockHelpersEndpoints.getStockStatus()
+                    StockHelpersEndpoints.getStockStatus(),
+                    BranchesEndpoints.list(),
                 ]);
 
                 setCategories(categoriesRes || []);
                 setBrands(brandsRes || []);
                 setSuppliers(suppliersRes || []);
                 setStockStatuses(statusRes.statuses || []);
+                setBranches(branchesRes?.data ?? branchesRes ?? []);
 
                 if (documentId && documentId !== 'new') {
                     const productData = await loadProduct(documentId);
@@ -189,13 +207,21 @@ export default function EditProduct() {
         }
     }, [showStockSection, stockStatusFilter]);
 
+    // Pricing tab also needs the stock items list so the user can apply
+    // pricing fields onto specific items without leaving this tab.
+    useEffect(() => {
+        if (isPricingView && documentId && documentId !== 'new') {
+            fetchStockItems(stockStatusFilter);
+        }
+    }, [isPricingView, stockStatusFilter, documentId]);
+
     // Auto-expand the section that matches the active stock sub-tab. The
     // accordion toggle states (showStockSection / showAddSection /
     // showMultiScanSection) pre-date the sub-tab IA — we still drive the
     // bodies through them, but now the sub-tab is the source of truth.
     useEffect(() => {
         if (isPricingView) return;
-        setShowStockSection(stockSubTab === 'list' || stockSubTab === 'reduce');
+        setShowStockSection(stockSubTab === 'list' || stockSubTab === 'reduce' || stockSubTab === 'assign');
         setShowAddSection(stockSubTab === 'generate');
         setShowMultiScanSection(stockSubTab === 'scan');
         // Reduce mode pre-configures the Apply-Changes panel for status-only updates.
@@ -215,11 +241,18 @@ export default function EditProduct() {
         });
     };
 
+    // On the Pricing tab, "select all" only ticks items still in possession.
+    // On the Stock tab (Reduce / Assign workflows) we may legitimately need to
+    // touch non-in-possession items (e.g. flip Lost → Reduced), so the broader
+    // select-all stays available there.
     const handleStockSelectAll = () => {
-        if (selectedStockItems.size === stockItems.length) {
+        const eligible = isPricingView ? stockItems.filter(isApplyable) : stockItems;
+        const eligibleIds = eligible.map(item => item.documentId || item.id);
+        const allSelected = eligibleIds.length > 0 && eligibleIds.every(id => selectedStockItems.has(id));
+        if (allSelected) {
             setSelectedStockItems(new Set());
         } else {
-            setSelectedStockItems(new Set(stockItems.map(item => item.documentId || item.id)));
+            setSelectedStockItems(new Set(eligibleIds));
         }
     };
 
@@ -229,6 +262,8 @@ export default function EditProduct() {
         try {
             const updates = {};
             if (applyFields.name) updates.name = product.name;
+            if (applyFields.sku) updates.sku = product.sku || '';
+            if (applyFields.cost_price) updates.cost_price = parseFloat(product.cost_price) || 0;
             if (applyFields.selling_price) updates.selling_price = parseFloat(product.selling_price) || 0;
             if (applyFields.offer_price) updates.offer_price = parseFloat(product.offer_price) || 0;
             if (applyFields.status && applyStatus) updates.status = applyStatus;
@@ -239,12 +274,39 @@ export default function EditProduct() {
                 return;
             }
 
-            const ids = Array.from(selectedStockItems);
-            for (const id of ids) {
+            // Pricing/identity rewrites must skip items that have left our
+            // possession (Sold, Lost, Transferred, …). When the only update is
+            // a status change (Reduce / Assign workflows on the Stock tab) we
+            // intentionally allow the broader set.
+            const isStatusOnly = applyFields.status && !applyFields.name && !applyFields.sku
+                && !applyFields.cost_price && !applyFields.selling_price && !applyFields.offer_price;
+
+            const itemsById = new Map(stockItems.map(it => [(it.documentId || it.id), it]));
+            const allIds = Array.from(selectedStockItems);
+            const eligibleIds = isStatusOnly
+                ? allIds
+                : allIds.filter(id => isApplyable(itemsById.get(id)));
+            const skipped = allIds.length - eligibleIds.length;
+
+            if (eligibleIds.length === 0) {
+                setError(
+                    skipped > 0
+                        ? `Cannot apply pricing/SKU updates: all ${skipped} selected item(s) are no longer in possession (Sold, Lost, Transferred, etc.).`
+                        : 'No eligible stock items selected.'
+                );
+                setApplyingChanges(false);
+                return;
+            }
+
+            for (const id of eligibleIds) {
                 await StockItemsEndpoints.update(id, updates);
             }
 
-            setSuccess(`Applied changes to ${ids.length} stock item(s)`);
+            setSuccess(
+                skipped > 0
+                    ? `Applied changes to ${eligibleIds.length} stock item(s). Skipped ${skipped} not in possession (Sold, Lost, Transferred, etc.).`
+                    : `Applied changes to ${eligibleIds.length} stock item(s)`
+            );
             fetchStockItems(stockStatusFilter);
         } catch (err) {
             setError('Failed to apply changes to stock items');
@@ -392,6 +454,34 @@ export default function EditProduct() {
         }
     };
 
+    // --- Assign selected stock items to a destination branch ---
+    // Sets branch + flips status to 'InStock' (intent: "this stock is now at
+    // the destination, available for sale"). Mirrors the bulk action on the
+    // global /stock-items page so the per-product flow is consistent.
+    const handleAssignToBranch = async () => {
+        if (selectedStockItems.size === 0) return setError('Tick at least one stock item to assign');
+        if (!assignBranch) return setError('Pick a destination branch');
+        const branch = branches.find(b => (b.documentId || b.id) === assignBranch);
+        const branchName = branch?.name || assignBranch;
+        if (!confirm(`Assign ${selectedStockItems.size} stock item(s) to "${branchName}"?\n\nThis sets their branch and marks them InStock.`)) return;
+        setAssigning(true);
+        setError('');
+        try {
+            const ids = Array.from(selectedStockItems);
+            for (const id of ids) {
+                await StockItemsEndpoints.update(id, { status: 'InStock', branch: assignBranch });
+            }
+            setSuccess(`Assigned ${ids.length} stock item(s) to ${branchName}`);
+            setSelectedStockItems(new Set());
+            fetchStockItems(stockStatusFilter);
+        } catch (err) {
+            console.error('Failed to assign to branch', err);
+            setError('Failed to assign stock items');
+        } finally {
+            setAssigning(false);
+        }
+    };
+
     // --- Attach product barcode directly to selected stock items ---
     const handleAttachProductBarcode = async () => {
         if (selectedStockItems.size === 0 || !product.barcode) return;
@@ -493,6 +583,7 @@ export default function EditProduct() {
             // taxonomy, content and media are owned by the Details page — sending
             // them here would risk overwriting concurrent edits from CMS.
             const payload = {
+                sku: product.sku ?? null,
                 cost_price: product.cost_price ?? null,
                 selling_price: product.selling_price ?? null,
                 offer_price: product.offer_price ?? null,
@@ -566,13 +657,19 @@ export default function EditProduct() {
                         </div>
                         <div className="card-body">
                             <div className="row g-3">
-                                <div className="col-md-6">
+                                <div className="col-md-4">
+                                    <label className="form-label fw-bold">SKU</label>
+                                    <input type="text" name="sku"
+                                        value={product.sku ?? ''} onChange={handleChange}
+                                        className="form-control" placeholder="SKU" />
+                                </div>
+                                <div className="col-md-4">
                                     <label className="form-label fw-bold">Barcode</label>
                                     <input type="text" name="barcode"
                                         value={product.barcode ?? ''} onChange={handleChange}
                                         className="form-control" placeholder="Barcode" />
                                 </div>
-                                <div className="col-md-6">
+                                <div className="col-md-4">
                                     <label className="form-label fw-bold">Supplier Code</label>
                                     <input type="text" name="supplierCode"
                                         value={product.supplierCode ?? ''} onChange={handleChange}
@@ -634,6 +731,146 @@ export default function EditProduct() {
                     </form>
                     )}
 
+                    {/* Apply pricing fields onto stock items — sister panel on the Pricing tab.
+                        Mirrors the apply flow on the Stock tab but is focused on pricing fields
+                        (SKU, cost/selling/offer prices). Reads values directly from the in-memory
+                        product state, so the user does NOT need to save the product first. */}
+                    {isPricingView && documentId && documentId !== 'new' && (
+                        <div className="card mb-3">
+                            <div className="card-header py-2 d-flex align-items-center justify-content-between">
+                                <h6 className="mb-0"><i className="fas fa-cubes me-2" />Apply to Stock Items</h6>
+                                <span className="text-muted small">Writes the ticked fields onto selected stock items — no need to save the product first.</span>
+                            </div>
+                            <div className="card-body">
+                                <div className="d-flex flex-wrap gap-3 align-items-end mb-3">
+                                    <div>
+                                        <label className="form-label small fw-bold mb-1 d-block">Filter by Status</label>
+                                        <select
+                                            value={stockStatusFilter}
+                                            onChange={(e) => setStockStatusFilter(e.target.value)}
+                                            className="form-select form-select-sm"
+                                            style={{ minWidth: 160 }}
+                                        >
+                                            <option value="">All Statuses</option>
+                                            {stockStatuses.map(s => (
+                                                <option key={s} value={s}>{s}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    <div className="d-flex flex-wrap gap-3 align-items-center">
+                                        <span className="small fw-bold">Fields to apply:</span>
+                                        <label className="small d-inline-flex align-items-center gap-1 mb-0">
+                                            <input type="checkbox" checked={applyFields.sku} onChange={(e) => setApplyFields(f => ({ ...f, sku: e.target.checked }))} />
+                                            SKU
+                                        </label>
+                                        <label className="small d-inline-flex align-items-center gap-1 mb-0">
+                                            <input type="checkbox" checked={applyFields.cost_price} onChange={(e) => setApplyFields(f => ({ ...f, cost_price: e.target.checked }))} />
+                                            Cost Price
+                                        </label>
+                                        <label className="small d-inline-flex align-items-center gap-1 mb-0">
+                                            <input type="checkbox" checked={applyFields.selling_price} onChange={(e) => setApplyFields(f => ({ ...f, selling_price: e.target.checked }))} />
+                                            Selling Price
+                                        </label>
+                                        <label className="small d-inline-flex align-items-center gap-1 mb-0">
+                                            <input type="checkbox" checked={applyFields.offer_price} onChange={(e) => setApplyFields(f => ({ ...f, offer_price: e.target.checked }))} />
+                                            Offer Price
+                                        </label>
+                                        <label className="small d-inline-flex align-items-center gap-1 mb-0">
+                                            <input type="checkbox" checked={applyFields.name} onChange={(e) => setApplyFields(f => ({ ...f, name: e.target.checked }))} />
+                                            Name
+                                        </label>
+                                    </div>
+
+                                    <button
+                                        type="button"
+                                        onClick={handleApplyToStockItems}
+                                        disabled={applyingChanges || selectedStockItems.size === 0}
+                                        className="btn btn-sm btn-success"
+                                        title={selectedStockItems.size === 0
+                                            ? 'Tick at least one stock item below'
+                                            : `Write the ticked field values onto ${selectedStockItems.size} item(s)`}
+                                    >
+                                        {applyingChanges
+                                            ? (<><span className="spinner-border spinner-border-sm me-1" />Updating…</>)
+                                            : (<><i className="fas fa-check me-1" />Apply to {selectedStockItems.size} item{selectedStockItems.size === 1 ? '' : 's'}</>)}
+                                    </button>
+                                </div>
+
+                                <div className="alert alert-light border py-2 mb-3 small">
+                                    <strong>Values that will be written:</strong>
+                                    {applyFields.sku && <span className="ms-3">SKU: <em>{product.sku || '—'}</em></span>}
+                                    {applyFields.cost_price && <span className="ms-3">Cost: <em>{currency}{parseFloat(product.cost_price || 0).toFixed(2)}</em></span>}
+                                    {applyFields.selling_price && <span className="ms-3">Selling: <em>{currency}{parseFloat(product.selling_price || 0).toFixed(2)}</em></span>}
+                                    {applyFields.offer_price && <span className="ms-3">Offer: <em>{currency}{parseFloat(product.offer_price || 0).toFixed(2)}</em></span>}
+                                    {applyFields.name && <span className="ms-3">Name: <em>{product.name || '—'}</em></span>}
+                                </div>
+
+                                <div style={{ overflowX: 'auto' }}>
+                                    <table className="table table-sm table-hover mb-0">
+                                        <thead className="table-light">
+                                            <tr>
+                                                <th style={{ width: 40 }}>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={selectedStockItems.size === stockItems.length && stockItems.length > 0}
+                                                        onChange={handleStockSelectAll}
+                                                    />
+                                                </th>
+                                                <th>SKU</th>
+                                                <th>Barcode</th>
+                                                <th>Name</th>
+                                                <th>Cost</th>
+                                                <th>Selling</th>
+                                                <th>Offer</th>
+                                                <th>Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {stockItemsLoading ? (
+                                                <tr><td colSpan={8} className="text-center text-muted py-3">Loading stock items…</td></tr>
+                                            ) : stockItems.length === 0 ? (
+                                                <tr><td colSpan={8} className="text-center text-muted py-3">No stock items found for this product.</td></tr>
+                                            ) : (
+                                                stockItems.map((item) => {
+                                                    const itemId = item.documentId || item.id;
+                                                    const isSelected = selectedStockItems.has(itemId);
+                                                    const eligible = isApplyable(item);
+                                                    const rowClass = isSelected ? 'table-success' : (!eligible ? 'text-muted' : '');
+                                                    return (
+                                                        <tr key={itemId} className={rowClass} style={!eligible ? { opacity: 0.55 } : undefined}>
+                                                            <td>
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={isSelected}
+                                                                    disabled={!eligible}
+                                                                    onChange={() => handleStockSelectItem(itemId)}
+                                                                    title={eligible ? '' : `Cannot edit — status "${item.status}" means this item is no longer in possession.`}
+                                                                />
+                                                            </td>
+                                                            <td>{item.sku || '—'}</td>
+                                                            <td style={{ fontFamily: 'monospace' }}>{item.barcode || '—'}</td>
+                                                            <td>{item.name || '—'}</td>
+                                                            <td>{currency}{parseFloat(item.cost_price || 0).toFixed(2)}</td>
+                                                            <td>{currency}{parseFloat(item.selling_price || 0).toFixed(2)}</td>
+                                                            <td>{currency}{parseFloat(item.offer_price || 0).toFixed(2)}</td>
+                                                            <td><span className="badge bg-secondary">{item.status}</span></td>
+                                                        </tr>
+                                                    );
+                                                })
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                {stockItems.length > 0 && (
+                                    <div className="small text-muted mt-2">
+                                        Showing {stockItems.length} of {stockItemsTotal} stock items
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
                     {/* Stock sub-tab strip — three modes for entering/managing stock items.
                         Apply Changes (below) is transverse and stays visible across all modes. */}
                     {!isPricingView && documentId && documentId !== 'new' && (
@@ -673,13 +910,21 @@ export default function EditProduct() {
                                     <i className="fas fa-minus-circle me-1" /> Reduce
                                 </a>
                             </li>
+                            <li className="nav-item">
+                                <a
+                                    href={`/${documentId}/product-stock-items?sub=assign`}
+                                    className={`nav-link ${stockSubTab === 'assign' ? 'active' : ''}`}
+                                >
+                                    <i className="fas fa-store me-1" /> Assign
+                                </a>
+                            </li>
                         </ul>
                     )}
 
                     {/* Stock List / Apply Changes — visible on the "list" and "reduce" sub-tabs.
                         The same table powers both: list-mode prints barcodes & applies pricing;
                         reduce-mode lets you select items and change their status to remove them. */}
-                    {!isPricingView && (stockSubTab === 'list' || stockSubTab === 'reduce') && documentId && documentId !== 'new' && (
+                    {!isPricingView && (stockSubTab === 'list' || stockSubTab === 'reduce' || stockSubTab === 'assign') && documentId && documentId !== 'new' && (
                         <div style={{ marginTop: '30px' }}>
                             {stockSubTab === 'reduce' && (
                                 <div className="alert alert-warning py-2 mb-3 d-flex align-items-center gap-2">
@@ -691,17 +936,68 @@ export default function EditProduct() {
                                     </div>
                                 </div>
                             )}
+                            {stockSubTab === 'assign' && (
+                                <div className="alert alert-primary py-2 mb-3">
+                                    <div className="d-flex align-items-center gap-2 mb-2">
+                                        <i className="fas fa-store" />
+                                        <strong>Assign to Branch</strong>
+                                        <span className="text-muted small">
+                                            — picks a destination branch, sets status to InStock, and moves
+                                            the selected items there.
+                                        </span>
+                                    </div>
+                                    <div className="d-flex flex-wrap gap-2 align-items-end">
+                                        <div>
+                                            <label className="form-label small fw-bold mb-1 d-block">Destination branch</label>
+                                            <select
+                                                value={assignBranch}
+                                                onChange={(e) => setAssignBranch(e.target.value)}
+                                                className="form-select form-select-sm"
+                                                style={{ minWidth: 220 }}
+                                            >
+                                                <option value="">— pick a branch —</option>
+                                                {branches.map(b => (
+                                                    <option key={b.id || b.documentId} value={b.documentId || b.id}>{b.name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={handleAssignToBranch}
+                                            disabled={assigning || selectedStockItems.size === 0 || !assignBranch}
+                                            className="btn btn-primary btn-sm"
+                                            title={
+                                                selectedStockItems.size === 0
+                                                    ? 'Tick at least one stock item below'
+                                                    : !assignBranch
+                                                        ? 'Pick a destination branch'
+                                                        : `Move ${selectedStockItems.size} item(s) to the selected branch`
+                                            }
+                                        >
+                                            {assigning ? (
+                                                <><span className="spinner-border spinner-border-sm me-1" />Assigning…</>
+                                            ) : (
+                                                <><i className="fas fa-arrow-right me-1" />Assign {selectedStockItems.size} item{selectedStockItems.size === 1 ? '' : 's'}</>
+                                            )}
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
                             <div className="d-flex justify-content-between align-items-center mb-2">
                                 <h6 className="mb-0">
-                                    <i className={`fas ${stockSubTab === 'reduce' ? 'fa-minus-circle' : 'fa-list'} me-2`} />
+                                    <i className={`fas ${stockSubTab === 'reduce' ? 'fa-minus-circle' : stockSubTab === 'assign' ? 'fa-store' : 'fa-list'} me-2`} />
                                     {stockSubTab === 'reduce'
                                         ? `Reduce — Stock Items (${stockItemsTotal})`
-                                        : `Stock Items (${stockItemsTotal})`}
+                                        : stockSubTab === 'assign'
+                                            ? `Assign — Stock Items (${stockItemsTotal})`
+                                            : `Stock Items (${stockItemsTotal})`}
                                 </h6>
                                 <span className="text-muted small">
                                     {stockSubTab === 'reduce'
                                         ? 'Select items, set the new status, then confirm.'
-                                        : 'Select items to update prices, status, or print barcodes.'}
+                                        : stockSubTab === 'assign'
+                                            ? 'Select items, pick the destination branch above, then Assign.'
+                                            : 'Select items to update prices, status, or print barcodes.'}
                                 </span>
                             </div>
                             {true && (
