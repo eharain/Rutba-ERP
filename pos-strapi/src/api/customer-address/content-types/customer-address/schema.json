@@ -1,0 +1,58 @@
+{
+  "kind": "collectionType",
+  "collectionName": "customer_addresses",
+  "info": {
+    "singularName": "customer-address",
+    "pluralName": "customer-addresses",
+    "displayName": "Customer Address",
+    "description": "Saved shipping addresses owned by web/app users"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "label": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "line1": {
+      "type": "string"
+    },
+    "line2": {
+      "type": "string"
+    },
+    "city": {
+      "type": "string"
+    },
+    "state": {
+      "type": "string"
+    },
+    "country": {
+      "type": "string"
+    },
+    "zip_code": {
+      "type": "string"
+    },
+    "is_default": {
+      "type": "boolean",
+      "default": false
+    },
+    "archived_at": {
+      "type": "datetime"
+    },
+    "owners": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

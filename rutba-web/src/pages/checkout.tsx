@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, ShieldCheck, Truck, MessageCircle, ChevronDown } from "lucide-react";
 import useErrorHandler from "@/hooks/useErrorHandler";
 import { createWebCheckoutService } from "@/services/";
+import { createMeAddressesService } from "@/services/me-addresses";
 import { BASE_URL } from "@/static/const";
 import Link from "next/link";
 import { useSiteSettings } from "@/hooks/use-site-settings";
@@ -53,13 +54,45 @@ export default function CheckoutPage() {
   const savedCustomer = useSavedCustomer((s) => s.customer);
   const persistCustomer = useSavedCustomer((s) => s.save);
   const sessionUser = session.data?.user;
+  const jwt = session.data?.jwt as string | undefined;
+
+  // Server-side address book: when logged in, the user's default address
+  // takes priority over the localStorage record for the "Shipping to" hint
+  // and form pre-fills.
+  const meAddressesService = useState(() => createMeAddressesService())[0];
+  const { data: serverAddresses } = useQuery({
+    queryKey: ["me-addresses-checkout"],
+    queryFn: () => meAddressesService.list(jwt),
+    enabled: !!jwt,
+  });
+  const defaultServerAddress =
+    (serverAddresses?.find((a) => a.is_default) || serverAddresses?.[0]) ?? null;
+
+  // Server-side address book uses the future-aligned shape (phone, line1, line2).
+  // Translate it back to the legacy SavedCustomer shape (phone_number, address)
+  // that the express form, shipping store, and customer_contact component still
+  // speak — those rename in the contact-entity-unification cutover, not now.
+  const effectiveAddress = defaultServerAddress
+    ? {
+        name: defaultServerAddress.name || sessionUser?.name || "",
+        email: defaultServerAddress.email || sessionUser?.email || "",
+        phone_number: defaultServerAddress.phone || "",
+        address: [defaultServerAddress.line1, defaultServerAddress.line2]
+          .filter(Boolean)
+          .join(", "),
+        city: defaultServerAddress.city,
+        state: defaultServerAddress.state,
+        country: defaultServerAddress.country,
+        zip_code: defaultServerAddress.zip_code,
+      }
+    : savedCustomer;
   const customerDefaults = {
-    name: savedCustomer.name || sessionUser?.name || "",
-    email: savedCustomer.email || sessionUser?.email || "",
-    phone_number: savedCustomer.phone_number || "",
+    name: effectiveAddress.name || sessionUser?.name || "",
+    email: effectiveAddress.email || sessionUser?.email || "",
+    phone_number: effectiveAddress.phone_number || "",
   };
-  const knownAddressLine = hasShippingAddress(savedCustomer)
-    ? formatAddressLine(savedCustomer)
+  const knownAddressLine = hasShippingAddress(effectiveAddress)
+    ? formatAddressLine(effectiveAddress)
     : "";
 
   // Bounce visitors with an empty cart — no point being here.
@@ -78,14 +111,14 @@ export default function CheckoutPage() {
     const cur = useStoreCheckout.getState().formShippingInformation;
     setFormShippingInformation({
       ...cur,
-      name: savedCustomer.name || sessionUser?.name || cur.name,
-      email: savedCustomer.email || sessionUser?.email || cur.email,
-      phone_number: savedCustomer.phone_number || cur.phone_number,
-      address: savedCustomer.address || cur.address,
-      country: savedCustomer.country || cur.country,
-      state: savedCustomer.state || cur.state,
-      city: savedCustomer.city || cur.city,
-      zip_code: savedCustomer.zip_code || cur.zip_code,
+      name: effectiveAddress.name || sessionUser?.name || cur.name,
+      email: effectiveAddress.email || sessionUser?.email || cur.email,
+      phone_number: effectiveAddress.phone_number || cur.phone_number,
+      address: effectiveAddress.address || cur.address,
+      country: effectiveAddress.country || cur.country,
+      state: effectiveAddress.state || cur.state,
+      city: effectiveAddress.city || cur.city,
+      zip_code: effectiveAddress.zip_code || cur.zip_code,
     });
     // Open this once per "expand" — don't fight the user typing fresh values.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -368,11 +401,11 @@ export default function CheckoutPage() {
             </Button>
 
             <p className="eyebrow mb-2">
-              {savedCustomer.name ? "Welcome back" : "Express checkout"}
+              {effectiveAddress.name ? "Welcome back" : "Express checkout"}
             </p>
             <h1 className="font-display text-3xl md:text-4xl font-bold tracking-tight">
-              {savedCustomer.name
-                ? `Confirm and we'll ship it, ${savedCustomer.name.split(" ")[0]}`
+              {effectiveAddress.name
+                ? `Confirm and we'll ship it, ${effectiveAddress.name.split(" ")[0]}`
                 : "Just your name, phone & email"}
             </h1>
             <p className="mt-3 text-muted-foreground text-sm md:text-base max-w-md">

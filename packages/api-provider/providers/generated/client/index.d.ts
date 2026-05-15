@@ -26,6 +26,7 @@ export * from './hr-departments';
 export * from './hr-employees';
 export * from './hr-leave-requests';
 export * from './hr-teams';
+export * from './me-addresses';
 export * from './media-library';
 export * from './media-utils';
 export * from './notification-templates';

@@ -26,6 +26,7 @@ export * from './hr-departments.js';
 export * from './hr-employees.js';
 export * from './hr-leave-requests.js';
 export * from './hr-teams.js';
+export * from './me-addresses.js';
 export * from './media-library.js';
 export * from './media-utils.js';
 export * from './notification-templates.js';
