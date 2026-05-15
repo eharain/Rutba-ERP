@@ -104,6 +104,32 @@ function emitSessionExpired() {
     _sessionExpiredListeners.forEach(fn => { try { fn(); } catch (_) {} });
 }
 
+// Tracks whether the user has ever been authenticated in this tab/session.
+// The "no tokens → suspend for recovery" short-circuit in authCall must NOT
+// fire during the brief window where a fresh login is in progress (AuthCallback
+// is calling loginWithToken but hasn't yet persisted the JWT), nor for users
+// who have never logged in. We flip this to true on a successful auth apply
+// and on module load if storage already has credentials from a prior session.
+let _hasAuthEverBeenReady = false;
+try {
+    if (typeof window !== 'undefined') {
+        const has =
+            (typeof sessionStorage !== 'undefined' && (sessionStorage.getItem('jwt') || sessionStorage.getItem('refreshToken'))) ||
+            (typeof localStorage !== 'undefined' && (localStorage.getItem('jwt') || localStorage.getItem('refreshToken')));
+        if (has) _hasAuthEverBeenReady = true;
+    }
+} catch (_) {}
+
+/** Called by AuthContext once a session has been successfully established. */
+export function markAuthReady() {
+    _hasAuthEverBeenReady = true;
+}
+
+/** Called by AuthContext on explicit logout so the dialog doesn't pop after sign-out. */
+export function markAuthCleared() {
+    _hasAuthEverBeenReady = false;
+}
+
 // -- Token Refresh --
 //
 // `refreshAccessToken` returns `{ jwt, reason }`:
@@ -399,7 +425,17 @@ async function authCall(fn, ...args) {
                 throw stripLibFrames(err);
             }
         }
-        return suspendForSessionRecovery();
+        // Only treat missing tokens as a dead session if the user was
+        // previously authenticated in this tab. During the fresh-login window
+        // (AuthCallback → loginWithToken in flight) tokens haven't landed in
+        // storage yet — surfacing the dialog there is a false positive. We
+        // also skip the dialog for never-authenticated users.
+        if (_hasAuthEverBeenReady) {
+            return suspendForSessionRecovery();
+        }
+        const err = new Error('No active session');
+        err.response = { status: 401 };
+        throw stripLibFrames(err);
     }
 
     try {

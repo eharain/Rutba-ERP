@@ -1,5 +1,5 @@
 import Link from "next/link";
-import StrapiImage from "../StrapiImage";
+import { MediaUtilsEndpoints } from "@rutba/api-provider/endpoints";
 
 /**
  * Unified shell for every per-product page across pos-stock and rutba-cms.
@@ -48,8 +48,16 @@ export default function ProductPageShell({
 
             <div className="d-flex align-items-center gap-3 mb-3 pb-3 border-bottom">
                 <div className="flex-shrink-0">
+                    {/* Mirrors the products-list logo rendering — plain <img> with the
+                        strapiImageUrl helper. The previous StrapiImage component leaned on
+                        next/image + format picking, which failed silently when the chosen
+                        format was missing (NaN width/height → no render). */}
                     {logo?.url ? (
-                        <StrapiImage media={logo} format="thumbnail" maxWidth={56} maxHeight={56} />
+                        <img
+                            src={MediaUtilsEndpoints.strapiImageUrl(logo)}
+                            alt={name}
+                            style={{ width: 56, height: 56, objectFit: "cover", borderRadius: 6 }}
+                        />
                     ) : (
                         <div
                             className="d-flex align-items-center justify-content-center text-muted bg-light"

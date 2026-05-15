@@ -1,7 +1,7 @@
 ﻿'use client'
 import { createContext, useContext, useState, useEffect, useMemo, useCallback } from "react";
 import { storage } from "@rutba/api-provider/lib/storage";
-import { api, getAppName, getActiveRole, setActiveRole as setActiveRoleHeader, refreshAccessToken, onSessionExpired, API_URL } from "@rutba/api-provider/lib/api";
+import { api, getAppName, getActiveRole, setActiveRole as setActiveRoleHeader, refreshAccessToken, onSessionExpired, markAuthReady, markAuthCleared, API_URL } from "@rutba/api-provider/lib/api";
 import axios from "axios";
 
 const AuthContext = createContext();
@@ -141,15 +141,26 @@ async function fetchPermissions(jwt) {
     return null;
 }
 
-/** Fetch the authenticated user profile from Strapi. */
+/**
+ * Fetch the authenticated user profile from Strapi.
+ *
+ * Returns `{ user, reason }`:
+ *   reason === 'ok'        → user is the fresh profile
+ *   reason === 'expired'   → server rejected the JWT (401/403) — try refresh
+ *   reason === 'transient' → network/5xx — keep the cached session, do not log out
+ */
 async function fetchMe(jwt) {
     try {
         const res = await axios.get(`${API_URL}/users/me`, {
             headers: { Authorization: `Bearer ${jwt}` }
         });
-        return res.data;
+        return { user: res.data, reason: 'ok' };
     } catch (err) {
-        return null;
+        const status = err?.response?.status;
+        if (status === 401 || status === 403) {
+            return { user: null, reason: 'expired' };
+        }
+        return { user: null, reason: 'transient' };
     }
 }
 
@@ -234,6 +245,11 @@ export function AuthProvider({ children }) {
         const chosen = pickActiveRole(rolesByApp, appName, getActiveRole());
         setActiveRoleKey(chosen);
         setActiveRoleHeader(chosen || '');
+
+        // Tell the api layer the session is established. This unlocks the
+        // "no tokens → session expired" short-circuit in authCall, which is
+        // gated off until we know the user was previously authenticated.
+        markAuthReady();
     }, []);
 
     /** Reset all React auth state. */
@@ -288,21 +304,46 @@ export function AuthProvider({ children }) {
 
             // Revalidate: check if the JWT is still valid
             let validJwt = jwt;
-            let freshUser = await fetchMe(jwt);
+            let { user: freshUser, reason: meReason } = await fetchMe(jwt);
 
-            if (!freshUser) {
-                // JWT expired — try refreshing
-                const { jwt: newJwt } = await refreshAccessToken();
+            if (!freshUser && meReason === 'expired') {
+                // JWT actively rejected by server — try refreshing
+                const { jwt: newJwt, reason: refreshReason } = await refreshAccessToken();
                 if (newJwt) {
                     validJwt = newJwt;
-                    freshUser = await fetchMe(newJwt);
+                    const r = await fetchMe(newJwt);
+                    freshUser = r.user;
+                    meReason = r.reason;
+                } else if (refreshReason === 'no-token' || refreshReason === 'rejected') {
+                    // Definitively dead session — clear and show dialog.
+                    clearAuth();
+                    setJwt(null);
+                    setSessionExpired(true);
+                    setLoading(false);
+                    return;
+                } else {
+                    // Transient refresh failure (network/5xx) — keep the
+                    // cached session in React state and try again next reload.
+                    // The user can continue working with the stale JWT; any
+                    // 401 from individual API calls will drive recovery.
+                    markAuthReady();
+                    setLoading(false);
+                    return;
                 }
             }
 
+            if (!freshUser && meReason === 'transient') {
+                // Network glitch on /users/me — DO NOT clear the session.
+                // Leave the cached React state in place; individual API calls
+                // will drive recovery if the server actually rejects tokens.
+                markAuthReady();
+                setLoading(false);
+                return;
+            }
+
             if (!freshUser) {
-                // Both JWT and refresh token are invalid.
-                // Clear storage tokens but keep stale user in React state
-                // so the page stays visible and a re-login dialog can appear.
+                // Refresh succeeded earlier but second fetchMe still failed
+                // (or any other unexpected path). Treat as dead session.
                 clearAuth();
                 setJwt(null);
                 setSessionExpired(true);
@@ -374,7 +415,7 @@ export function AuthProvider({ children }) {
         let effectiveJwt = toScalar(token);
         let effectiveRefreshToken = toScalar(refreshToken) || storage.getItem('refreshToken') || null;
 
-        let user = await fetchMe(effectiveJwt);
+        let { user } = await fetchMe(effectiveJwt);
 
         // If callback token is expired/invalid but a refresh token exists,
         // try one refresh cycle before failing the login callback.
@@ -389,7 +430,7 @@ export function AuthProvider({ children }) {
                 if (nextJwt) {
                     effectiveJwt = nextJwt;
                     if (nextRefresh) effectiveRefreshToken = nextRefresh;
-                    user = await fetchMe(effectiveJwt);
+                    ({ user } = await fetchMe(effectiveJwt));
                 }
             } catch {
                 // fall through to invalid token error
@@ -438,6 +479,9 @@ export function AuthProvider({ children }) {
 
         clearAuth();
         resetState();
+        // After explicit logout, missing tokens should not pop the
+        // session-expired dialog — ProtectedRoute redirects to the auth app.
+        markAuthCleared();
     }, []);
 
     const contextValue = useMemo(() => ({
