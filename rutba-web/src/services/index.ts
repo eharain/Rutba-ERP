@@ -8,6 +8,8 @@ export { createWebCheckoutService } from './checkout';
 export { createWebCmsPagesService, getCmsPagesSSR, getCmsPagesByTypeSSR, getCmsPageBySlugSSR } from './cms-pages';
 export { createWebDeliveryService } from './delivery';
 export { createWebLeadsService } from './leads';
+export { createMeAddressesService } from './me-addresses';
+export type { CustomerAddress, AddressInput } from './me-addresses';
 export { createWebOrdersService } from './orders';
 export { createWebProductGroupsService } from './product-groups';
 export { createWebProductsService, getProductDetailSSR } from './products';

@@ -1673,6 +1673,51 @@ export interface ApiCurrencyCurrency extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiCustomerAddressCustomerAddress
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'customer_addresses';
+  info: {
+    description: 'Saved shipping addresses owned by web/app users';
+    displayName: 'Customer Address';
+    pluralName: 'customer-addresses';
+    singularName: 'customer-address';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    archived_at: Schema.Attribute.DateTime;
+    city: Schema.Attribute.String;
+    country: Schema.Attribute.String;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    email: Schema.Attribute.String;
+    is_default: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    label: Schema.Attribute.String;
+    line1: Schema.Attribute.String;
+    line2: Schema.Attribute.String;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::customer-address.customer-address'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String;
+    owners: Schema.Attribute.Relation<
+      'manyToMany',
+      'plugin::users-permissions.user'
+    >;
+    phone: Schema.Attribute.String;
+    publishedAt: Schema.Attribute.DateTime;
+    state: Schema.Attribute.String;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    zip_code: Schema.Attribute.String;
+  };
+}
+
 export interface ApiCustomerCustomer extends Struct.CollectionTypeSchema {
   collectionName: 'customers';
   info: {
@@ -4997,6 +5042,7 @@ declare module '@strapi/strapi' {
       'api::crm-contact.crm-contact': ApiCrmContactCrmContact;
       'api::crm-lead.crm-lead': ApiCrmLeadCrmLead;
       'api::currency.currency': ApiCurrencyCurrency;
+      'api::customer-address.customer-address': ApiCustomerAddressCustomerAddress;
       'api::customer.customer': ApiCustomerCustomer;
       'api::delivery-method.delivery-method': ApiDeliveryMethodDeliveryMethod;
       'api::delivery-offer.delivery-offer': ApiDeliveryOfferDeliveryOffer;
