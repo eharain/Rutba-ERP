@@ -44,7 +44,7 @@ export default function SaleOrdersPage() {
             const res = await SaleOrdersEndpoints.list({
                 sort: ["createdAt:desc"],
                 pagination: { page, pageSize: 25 },
-                populate: ["customer_contact", "delivery_method", "assigned_rider", "delivery_zone"],
+                populate: ["customer_person", "delivery_address", "delivery_method", "assigned_rider", "delivery_zone"],
             });
             setOrders(res.data || []);
             setPageCount(res.meta?.pagination?.pageCount ?? 1);
@@ -109,7 +109,7 @@ export default function SaleOrdersPage() {
                                                 <code>{o.order_id}</code>
                                             </Link>
                                         </td>
-                                        <td>{o.customer_contact?.name || o.user_id || "—"}</td>
+                                        <td>{o.delivery_snapshot?.name || o.customer_person?.name || o.user_id || "—"}</td>
                                         <td>
                                             <div className="small">
                                                 <div>{o.delivery_method?.name || "—"}</div>

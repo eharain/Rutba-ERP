@@ -259,23 +259,39 @@ export default function SaleOrderDetailPage() {
                         </div>
 
                         <div className="col-md-4">
-                            {/* Customer Info */}
-                            {order.customer_contact && (
-                                <div className="card mb-3">
-                                    <div className="card-header"><strong>Customer</strong></div>
-                                    <div className="card-body">
-                                        <p className="fw-bold">{order.customer_contact.name}</p>
-                                        <p className="small">{order.customer_contact.phone_number}</p>
-                                        <p className="small">{order.customer_contact.email}</p>
-                                        <hr />
-                                        <p className="small mb-0">
-                                            {order.customer_contact.address}<br />
-                                            {order.customer_contact.city}, {order.customer_contact.state}<br />
-                                            {order.customer_contact.country} {order.customer_contact.zip_code}
-                                        </p>
+                            {/* Customer Info (snapshot at order time, falls back to live person/address) */}
+                            {(() => {
+                                const snap = order.delivery_snapshot || {};
+                                const person = order.customer_person || {};
+                                const addr = order.delivery_address || {};
+                                const name = snap.name || person.name;
+                                const phone = snap.phone || person.phone;
+                                const email = snap.email || person.email;
+                                const line = [snap.line1 || addr.line1, snap.line2 || addr.line2].filter(Boolean).join(', ');
+                                const city = snap.city || addr.city;
+                                const state = snap.state || addr.state;
+                                const country = snap.country || addr.country;
+                                const zip = snap.zip_code || addr.zip_code;
+                                if (!name && !phone && !email && !line) return null;
+                                return (
+                                    <div className="card mb-3">
+                                        <div className="card-header"><strong>Customer</strong></div>
+                                        <div className="card-body">
+                                            {name && <p className="fw-bold">{name}</p>}
+                                            {phone && <p className="small">{phone}</p>}
+                                            {email && <p className="small">{email}</p>}
+                                            {(line || city || country) && <hr />}
+                                            {(line || city || country) && (
+                                                <p className="small mb-0">
+                                                    {line}<br />
+                                                    {city}{state ? `, ${state}` : ''}<br />
+                                                    {country} {zip}
+                                                </p>
+                                            )}
+                                        </div>
                                     </div>
-                                </div>
-                            )}
+                                );
+                            })()}
 
                             <div className="card">
                                 <div className="card-header"><strong>Actions</strong></div>

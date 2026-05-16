@@ -31,7 +31,7 @@ export default function Cart(props: propsInterface) {
   // data when there are new variant and product in the cart
   // We exclude the quantity, because when we are change the quantity in cart
   // It will refetch the api which is useless
-  const { data: cart } = useQuery({
+  const { data: cart, isLoading: isCartLoading, isFetching: isCartFetching } = useQuery({
     queryKey: [
       "cart-item",
       cartItem.map((item) => {
@@ -45,6 +45,10 @@ export default function Cart(props: propsInterface) {
     queryFn: async () => {
       return await getCart();
     },
+    // Don't fire when there's nothing in the local cart — getCart() doesn't
+    // do anything useful with an empty cartItem and we'd rather show the
+    // genuine empty state immediately.
+    enabled: cartItem.length > 0,
   });
 
   const [isMounted, setMounted] = useState(false);
@@ -98,8 +102,13 @@ export default function Cart(props: propsInterface) {
   };
 
   const savings = (countOriginalTotal() ?? 0) - (countSubTotal() ?? 0);
-  const itemCount = cart?.length ?? 0;
-  const isEmpty = !cart || cart.length === 0;
+  // The localStorage cart (cartItem) is the immediate source of truth for
+  // "does the user have items in their bag". The server-resolved `cart`
+  // query just enriches each row with product data — until it lands we
+  // shouldn't pretend the cart is empty.
+  const isResolving = cartItem.length > 0 && (isCartLoading || isCartFetching || !cart);
+  const itemCount = cart?.length ?? cartItem.length;
+  const isEmpty = cartItem.length === 0;
 
   if (!isMounted) {
     return null;
@@ -121,12 +130,18 @@ export default function Cart(props: propsInterface) {
             )}
           </div>
           <SheetTitle className="font-display text-2xl tracking-tight">
-            {isEmpty ? "Your cart is empty" : "Cart"}
+            {isEmpty ? "Your cart is empty" : isResolving ? "Loading your bag…" : "Cart"}
           </SheetTitle>
         </SheetHeader>
 
-        {/* Empty state */}
-        {isEmpty ? (
+        {/* Loading state — has items in local cart but server-resolved data
+            hasn't landed yet. Shown briefly on first open / after refresh. */}
+        {isResolving ? (
+          <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
+            <div className="h-16 w-16 rounded-full bg-secondary animate-pulse mb-4" />
+            <p className="text-sm text-muted-foreground">Loading…</p>
+          </div>
+        ) : isEmpty ? (
           <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
             <div className="h-16 w-16 rounded-full bg-secondary flex items-center justify-center mb-4">
               <ShoppingBasket className="h-7 w-7 text-muted-foreground" />

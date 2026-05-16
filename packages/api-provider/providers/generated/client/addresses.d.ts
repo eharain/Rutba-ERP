@@ -1,5 +1,5 @@
 // AUTO-GENERATED — do not edit. Source: scaffold-endpoint-providers.mjs
-export interface MeAddressesEndpointsType {
+export interface AddressesEndpointsType {
     list(): Promise<any>;
     create(data: any): Promise<any>;
     update(documentId: any, data: any): Promise<any>;
@@ -8,6 +8,6 @@ export interface MeAddressesEndpointsType {
     meta: any;
 }
 
-export const MeAddressesEndpoints: MeAddressesEndpointsType;
-declare const _default: MeAddressesEndpointsType;
+export const AddressesEndpoints: AddressesEndpointsType;
+declare const _default: AddressesEndpointsType;
 export default _default;

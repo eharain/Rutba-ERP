@@ -112,13 +112,39 @@ module.exports = (plugin) => {
   plugin.controllers = plugin.controllers || {};
   plugin.controllers.me = meController;
 
+  const promotePersonForRegisteredUser = async (userId) => {
+    if (!userId) return;
+    try {
+      const user = await strapi
+        .query('plugin::users-permissions.user')
+        .findOne({ where: { id: userId }, select: ['id', 'email', 'username'] });
+      if (!user) return;
+      await strapi.service('api::person.person').ensureForUser(user);
+    } catch (err) {
+      strapi.log.warn(`[users-permissions] person promotion failed: ${err.message}`);
+    }
+  };
+
   const authController = plugin.controllers.auth;
   if (authController && typeof authController.register === 'function') {
     const originalRegister = authController.register.bind(authController);
     authController.register = async (ctx) => {
       await ensureUsersPermissionsDefaultRole();
       await originalRegister(ctx);
-      await ensureWebUserAppRole(ctx?.body?.user?.id);
+      const userId = ctx?.body?.user?.id;
+      await ensureWebUserAppRole(userId);
+      await promotePersonForRegisteredUser(userId);
+      return ctx;
+    };
+  }
+
+  // OAuth signups land in `callback`, not `register`. Wrap it the same way so
+  // social signups also promote any matching provisional person.
+  if (authController && typeof authController.callback === 'function') {
+    const originalCallback = authController.callback.bind(authController);
+    authController.callback = async (ctx) => {
+      await originalCallback(ctx);
+      await promotePersonForRegisteredUser(ctx?.body?.user?.id);
       return ctx;
     };
   }

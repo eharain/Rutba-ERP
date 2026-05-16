@@ -78,10 +78,20 @@ export default function DeliveryDetailPage() {
             <div className="card mb-3">
               <div className="card-header"><strong>Order #{delivery.order_id}</strong></div>
               <div className="card-body">
-                <p className="mb-1"><strong>Status:</strong> {delivery.order_status}</p>
-                <p className="mb-1"><strong>Customer:</strong> {delivery.customer_contact?.name || '—'}</p>
-                <p className="mb-1"><strong>Phone:</strong> {delivery.customer_contact?.phone_number || '—'}</p>
-                <p className="mb-0"><strong>Address:</strong> {delivery.customer_contact?.address || '—'}, {delivery.customer_contact?.city || ''}</p>
+                {(() => {
+                  const snap = delivery.delivery_snapshot || {};
+                  const person = delivery.customer_person || {};
+                  const addr = delivery.delivery_address || {};
+                  const line = [snap.line1 || addr.line1, snap.line2 || addr.line2].filter(Boolean).join(', ');
+                  return (
+                    <>
+                      <p className="mb-1"><strong>Status:</strong> {delivery.order_status}</p>
+                      <p className="mb-1"><strong>Customer:</strong> {snap.name || person.name || '—'}</p>
+                      <p className="mb-1"><strong>Phone:</strong> {snap.phone || person.phone || '—'}</p>
+                      <p className="mb-0"><strong>Address:</strong> {line || '—'}{(snap.city || addr.city) ? `, ${snap.city || addr.city}` : ''}</p>
+                    </>
+                  );
+                })()}
               </div>
             </div>
 

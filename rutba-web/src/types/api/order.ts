@@ -20,16 +20,41 @@ export interface OrderInterface {
     createdAt: string;
     id: number;
     url: string;
-    customer_contact: {
-        id: number;
-        name: string;
-        phone_number: string;
-        email: string;
-        address: string;
-        state: string;
-        city: string;
-        zip_code: string;
-        country: string;
+    /**
+     * Snapshot of the contact + shipping info as it was at order create time.
+     * Frozen — never updated by later edits to person/address rows. Use this
+     * for receipts / tracking / anywhere historical accuracy matters.
+     */
+    delivery_snapshot?: {
+        name?: string;
+        email?: string;
+        phone?: string;
+        line1?: string;
+        line2?: string;
+        city?: string;
+        state?: string;
+        country?: string;
+        zip_code?: string;
+        note?: string;
+    };
+    /** Live person record. Renames here propagate to all live UI but never the snapshot. */
+    customer_person?: {
+        id?: number;
+        documentId?: string;
+        name?: string;
+        email?: string;
+        phone?: string;
+    };
+    /** Linked address row (saved in user's address book). Null for guests / express path. */
+    delivery_address?: {
+        id?: number;
+        documentId?: string;
+        line1?: string;
+        line2?: string;
+        city?: string;
+        state?: string;
+        country?: string;
+        zip_code?: string;
     };
     products: {
         id: number;
@@ -75,16 +100,23 @@ export interface CheckoutPayload {
     total: number;
     original_subtotal?: number;
     savings?: number;
-    customer_contact: {
+    /** Flat customer-info payload — server translates to person + snapshot. */
+    customer: {
         name: string;
-        phone_number: string;
+        phone: string;
         email: string;
-        address: string;
-        state: string;
-        city: string;
-        zip_code: string;
-        country: string;
+        line1?: string;
+        line2?: string;
+        state?: string;
+        city?: string;
+        zip_code?: string;
+        country?: string;
+        note?: string;
     };
+    /** If true and `line1` is set, the server persists the address into the user's book (dedup'd). */
+    save_address?: boolean;
+    /** Pre-existing saved address chosen by the user (skips creating a new one). */
+    delivery_address_documentId?: string;
     payment_status: string;
     user_id: string;
     delivery_method_id?: string;

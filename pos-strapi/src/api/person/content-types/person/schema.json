@@ -1,0 +1,53 @@
+{
+  "kind": "collectionType",
+  "collectionName": "persons",
+  "info": {
+    "singularName": "person",
+    "pluralName": "persons",
+    "displayName": "Person",
+    "description": "Canonical contact identity. One row per real human. Role profiles (customer, crm-contact, hr-employee, rider) attach to this via FK."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "email": {
+      "type": "string"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "picture": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": ["images"]
+    },
+    "notes": {
+      "type": "text"
+    },
+    "provisional_at": {
+      "type": "datetime"
+    },
+    "merged_into": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::person.person"
+    },
+    "user": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "addresses": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::address.address",
+      "mappedBy": "person"
+    }
+  }
+}

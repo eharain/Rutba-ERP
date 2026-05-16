@@ -35,7 +35,17 @@ export default function DeliveryOfferDetailPage() {
   );
 
   const order = offer?.order || {};
-  const customer = order?.customer_contact || {};
+  // Snapshot is the source of truth at offer/delivery time; fall back to the
+  // live person row if a future migration ever produces orders without one.
+  const snap = order?.delivery_snapshot || {};
+  const person = order?.customer_person || {};
+  const addr = order?.delivery_address || {};
+  const customer = {
+    name: snap.name || person.name,
+    phone: snap.phone || person.phone,
+    line: [snap.line1 || addr.line1, snap.line2 || addr.line2].filter(Boolean).join(', '),
+    city: snap.city || addr.city,
+  };
   const products = order?.products?.items || [];
 
   const acceptOffer = async () => {
@@ -91,8 +101,8 @@ export default function DeliveryOfferDetailPage() {
               <div className="card-body">
                 <p className="mb-1"><strong>Order:</strong> #{order.order_id || order.documentId || order.id}</p>
                 <p className="mb-1"><strong>Customer:</strong> {customer.name || '—'}</p>
-                <p className="mb-1"><strong>Phone:</strong> {customer.phone_number || '—'}</p>
-                <p className="mb-1"><strong>Address:</strong> {customer.address || '—'}, {customer.city || ''}</p>
+                <p className="mb-1"><strong>Phone:</strong> {customer.phone || '—'}</p>
+                <p className="mb-1"><strong>Address:</strong> {customer.line || '—'}{customer.city ? `, ${customer.city}` : ''}</p>
                 <p className="mb-1"><strong>Delivery Fee:</strong> Rs. {Number(offer.delivery_fee || 0).toFixed(0)}</p>
                 <p className="mb-0"><strong>Status:</strong> {offer.status || 'pending'}</p>
               </div>

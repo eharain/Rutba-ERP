@@ -2,7 +2,9 @@ import Link from "next/link";
 
 export default function DeliveryOfferCard({ offer }) {
   const order = offer?.order || {};
-  const customer = order?.customer_contact || {};
+  // Prefer the immutable order-time snapshot; fall back to the live person
+  // record if older orders predate the snapshot field.
+  const customer = order?.delivery_snapshot || order?.customer_person || {};
 
   return (
     <div className="card mb-2">

@@ -3,19 +3,19 @@
 const { factories } = require('@strapi/strapi');
 const { ensureUser } = require('../../../utils/ensure-user');
 
-const UID = 'api::customer-address.customer-address';
+const UID = 'api::address.address';
+const PERSON_UID = 'api::person.person';
 
 const ADDRESS_FIELDS = [
   'label',
-  'name',
-  'email',
-  'phone',
   'line1',
   'line2',
   'city',
   'state',
   'country',
   'zip_code',
+  'recipient_name',
+  'recipient_phone',
 ];
 
 function pickAddressFields(input = {}) {
@@ -30,14 +30,14 @@ function pickAddressFields(input = {}) {
 
 function sanitizeOut(row) {
   if (!row) return row;
-  const { owners, ...rest } = row;
+  const { person, ...rest } = row;
   return rest;
 }
 
-async function clearDefaultsForUser(strapi, userId, exceptDocumentId) {
+async function clearDefaultsForPerson(strapi, personId, exceptDocumentId) {
   const others = await strapi.documents(UID).findMany({
     filters: {
-      owners: { id: { $eq: userId } },
+      person: { id: { $eq: personId } },
       is_default: { $eq: true },
       ...(exceptDocumentId ? { documentId: { $ne: exceptDocumentId } } : {}),
       archived_at: { $null: true },
@@ -55,11 +55,10 @@ async function clearDefaultsForUser(strapi, userId, exceptDocumentId) {
 async function findOwnedAddress(strapi, documentId, userId) {
   const row = await strapi.documents(UID).findOne({
     documentId,
-    populate: { owners: { fields: ['id'] } },
+    populate: { person: { populate: { user: { fields: ['id'] } } } },
   });
   if (!row) return null;
-  const isOwner = Array.isArray(row.owners) && row.owners.some((o) => o.id === userId);
-  if (!isOwner) return null;
+  if (row.person?.user?.id !== userId) return null;
   if (row.archived_at) return null;
   return row;
 }
@@ -73,7 +72,7 @@ module.exports = factories.createCoreController(UID, ({ strapi }) => ({
 
     const rows = await strapi.documents(UID).findMany({
       filters: {
-        owners: { id: { $eq: user.id } },
+        person: { user: { id: { $eq: user.id } } },
         archived_at: { $null: true },
       },
       sort: ['is_default:desc', 'createdAt:asc'],
@@ -90,13 +89,18 @@ module.exports = factories.createCoreController(UID, ({ strapi }) => ({
     const body = ctx.request.body?.data || ctx.request.body || {};
     const data = pickAddressFields(body);
 
-    if (!data.phone) {
-      return ctx.badRequest('phone is required');
+    if (!data.line1) {
+      return ctx.badRequest('line1 is required');
     }
+
+    const person = await strapi
+      .service(PERSON_UID)
+      .ensureForUser(user);
+    if (!person) return ctx.internalServerError('Could not resolve person');
 
     const existing = await strapi.documents(UID).findMany({
       filters: {
-        owners: { id: { $eq: user.id } },
+        person: { id: { $eq: person.id } },
         archived_at: { $null: true },
       },
       fields: ['documentId'],
@@ -109,12 +113,12 @@ module.exports = factories.createCoreController(UID, ({ strapi }) => ({
       data: {
         ...data,
         is_default: makeDefault,
-        owners: [{ id: user.id }],
+        person: { id: person.id },
       },
     });
 
     if (makeDefault) {
-      await clearDefaultsForUser(strapi, user.id, created.documentId);
+      await clearDefaultsForPerson(strapi, person.id, created.documentId);
     }
 
     ctx.send({ data: sanitizeOut(created) });
@@ -131,7 +135,6 @@ module.exports = factories.createCoreController(UID, ({ strapi }) => ({
 
     const body = ctx.request.body?.data || ctx.request.body || {};
     const data = pickAddressFields(body);
-
     const wantDefault = body.is_default === true;
 
     const updated = await strapi.documents(UID).update({
@@ -143,13 +146,13 @@ module.exports = factories.createCoreController(UID, ({ strapi }) => ({
     });
 
     if (wantDefault) {
-      await clearDefaultsForUser(strapi, user.id, documentId);
+      await clearDefaultsForPerson(strapi, owned.person.id, documentId);
     }
 
     ctx.send({ data: sanitizeOut(updated) });
   },
 
-  // DELETE /me/addresses/:documentId   — soft delete
+  // DELETE /me/addresses/:documentId — soft delete
   async deleteForMe(ctx) {
     const user = await ensureUser(ctx, strapi);
     if (!user) return;
@@ -169,7 +172,7 @@ module.exports = factories.createCoreController(UID, ({ strapi }) => ({
     if (owned.is_default) {
       const next = await strapi.documents(UID).findMany({
         filters: {
-          owners: { id: { $eq: user.id } },
+          person: { id: { $eq: owned.person.id } },
           archived_at: { $null: true },
           documentId: { $ne: documentId },
         },
@@ -201,7 +204,7 @@ module.exports = factories.createCoreController(UID, ({ strapi }) => ({
       documentId,
       data: { is_default: true },
     });
-    await clearDefaultsForUser(strapi, user.id, documentId);
+    await clearDefaultsForPerson(strapi, owned.person.id, documentId);
 
     ctx.send({ data: sanitizeOut(updated) });
   },

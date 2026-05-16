@@ -53,16 +53,20 @@ export default function Transaction() {
               price: item.price ?? 0,
             };
           }) as [],
-          customer: {
-            name: dataTransaction?.customer_contact?.name ?? "",
-            phone_number: dataTransaction?.customer_contact?.phone_number ?? "",
-            email: dataTransaction?.customer_contact?.email ?? "",
-            address: dataTransaction?.customer_contact?.address ?? "",
-            state: dataTransaction?.customer_contact?.state ?? "",
-            city: dataTransaction?.customer_contact?.city ?? "",
-            country: dataTransaction?.customer_contact?.country ?? "",
-            zip_code: dataTransaction?.customer_contact?.zip_code ?? "",
-          },
+          customer: (() => {
+            const snap = dataTransaction?.delivery_snapshot ?? {};
+            const person = dataTransaction?.customer_person ?? {};
+            return {
+              name: snap.name ?? person.name ?? "",
+              phone_number: snap.phone ?? person.phone ?? "",
+              email: snap.email ?? person.email ?? "",
+              address: [snap.line1, snap.line2].filter(Boolean).join(", ") || "",
+              state: snap.state ?? "",
+              city: snap.city ?? "",
+              country: snap.country ?? "",
+              zip_code: snap.zip_code ?? "",
+            };
+          })(),
           shipping: {
             url: dataTransaction?.tracking_url ?? null,
             name: dataTransaction?.shipping_name ?? "",

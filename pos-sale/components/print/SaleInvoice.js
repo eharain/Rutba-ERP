@@ -336,7 +336,7 @@ const SaleInvoice = ({ sale, items, totals, printerSettings, branchPrintOverride
                 scan to look up the sale later. Tabular-nums on the
                 invoice number for thermal-friendly alignment. */}
             <div className="invoice-footer mt-3 pt-2" style={{ borderTop: '1px solid #000', textAlign: 'center' }}>
-                <BarcodeDisplay barcode={invoiceNo} fontSize={fontSize} />
+                <BarcodeDisplay barcode={invoiceNo} fontSize={fontSize} showBarcode={false} />
                 <div style={{
                     marginTop: '4px',
                     fontFamily: 'monospace',
