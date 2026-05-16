@@ -92,7 +92,7 @@ export const PaymentsEndpoints = {
         scope: ROLE_SCOPES,
         params: byIdParams(
             { populate, fields },
-            { populate: { sales: true, customer: true, cash_register: true } },
+            { populate: { sale: true, sale_return: true, cash_register: true } },
         ),
     }),
     fetchById: (documentId, { populate } = {}) => ({
@@ -103,7 +103,7 @@ export const PaymentsEndpoints = {
         approle: ['admin', 'manager', 'staff'],
         scope: ROLE_SCOPES,
         params: {
-            populate: populate ?? { sales: true, customer: true, cash_register: true },
+            populate: populate ?? { sale: true, sale_return: true, cash_register: true },
         },
     }),
 
