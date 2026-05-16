@@ -1,24 +1,5 @@
 import type { Schema, Struct } from '@strapi/strapi';
 
-export interface OrderOrderContact extends Struct.ComponentSchema {
-  collectionName: 'components_order_order_contacts';
-  info: {
-    description: '';
-    displayName: 'Order Contact';
-    icon: 'book';
-  };
-  attributes: {
-    address: Schema.Attribute.String & Schema.Attribute.Required;
-    city: Schema.Attribute.String & Schema.Attribute.Required;
-    country: Schema.Attribute.String & Schema.Attribute.Required;
-    email: Schema.Attribute.Email & Schema.Attribute.Required;
-    name: Schema.Attribute.String & Schema.Attribute.Required;
-    phone_number: Schema.Attribute.String & Schema.Attribute.Required;
-    state: Schema.Attribute.String & Schema.Attribute.Required;
-    zip_code: Schema.Attribute.String & Schema.Attribute.Required;
-  };
-}
-
 export interface OrderOrderProductItem extends Struct.ComponentSchema {
   collectionName: 'components_order_order_product_items';
   info: {
@@ -136,7 +117,6 @@ export interface ProductVariantInformation extends Struct.ComponentSchema {
 declare module '@strapi/strapi' {
   export module Public {
     export interface ComponentSchemas {
-      'order.order-contact': OrderOrderContact;
       'order.order-product-item': OrderOrderProductItem;
       'order.order-products': OrderOrderProducts;
       'pos.sales-desks': PosSalesDesks;

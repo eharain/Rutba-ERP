@@ -1,0 +1,51 @@
+{
+  "kind": "collectionType",
+  "collectionName": "person_dedup_audits",
+  "info": {
+    "singularName": "person-dedup-audit",
+    "pluralName": "person-dedup-audits",
+    "displayName": "Person Dedup Audit",
+    "description": "Audit pile for ambiguous person-match cases the contact-unification backfill and dedup tooling won't auto-resolve."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "source_uid": {
+      "type": "string",
+      "required": true
+    },
+    "source_document_id": {
+      "type": "string",
+      "required": true
+    },
+    "match_kind": {
+      "type": "enumeration",
+      "enum": [
+        "multi_match",
+        "user_collision",
+        "name_only",
+        "manual_hold"
+      ],
+      "required": true
+    },
+    "candidate_person_ids": {
+      "type": "json"
+    },
+    "proposed_action": {
+      "type": "enumeration",
+      "enum": ["link", "create_new", "skip"]
+    },
+    "resolved_at": {
+      "type": "datetime"
+    },
+    "resolution": {
+      "type": "enumeration",
+      "enum": ["linked", "new", "merged", "dismissed"]
+    },
+    "notes": {
+      "type": "text"
+    }
+  }
+}

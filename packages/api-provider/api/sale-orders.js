@@ -27,7 +27,7 @@ export const SaleOrdersEndpoints = {
             {
                 sort: ['createdAt:desc'],
                 pageSize: 25,
-                populate: ['customer_contact', 'delivery_method', 'assigned_rider', 'delivery_zone'],
+                populate: ['customer_person', 'delivery_address', 'delivery_method', 'assigned_rider', 'delivery_zone'],
             },
         ),
     }),

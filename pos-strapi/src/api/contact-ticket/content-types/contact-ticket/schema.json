@@ -32,6 +32,11 @@
       "relation": "manyToOne",
       "target": "plugin::users-permissions.user"
     },
+    "person": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::person.person"
+    },
     "assigned_to": {
       "type": "relation",
       "relation": "manyToOne",

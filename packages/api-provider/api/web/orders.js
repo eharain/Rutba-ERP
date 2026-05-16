@@ -4,7 +4,8 @@ export const WebOrdersEndpoints = {
     method: 'get',
     params: {
       populate: {
-        customer_contact: true,
+        customer_person: true,
+        delivery_address: true,
         products: {
           populate: {
             items: {
@@ -23,7 +24,8 @@ export const WebOrdersEndpoints = {
     method: 'get',
     params: {
       populate: {
-        customer_contact: true,
+        customer_person: true,
+        delivery_address: true,
         products: { populate: { items: { populate: { image: true } } } },
       },
     },

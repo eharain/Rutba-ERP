@@ -4,7 +4,7 @@ import axios from "axios";
 // through the api-provider lib, which uses its own storage JWT (not the
 // next-auth session). We want the raw descriptor so we can axios + Bearer
 // ourselves.
-import { MeAddressesEndpoints } from "@rutba/api-provider/api/me-addresses.js";
+import { AddressesEndpoints } from "@rutba/api-provider/api/addresses.js";
 import { BASE_URL } from "@/static/const";
 
 export interface CustomerAddress {
@@ -58,7 +58,7 @@ function authHeaders(jwt?: string | null) {
 /**
  * Server-side address book client.
  *
- * The generated MeAddressesEndpoints proxy authenticates via the api-provider
+ * The generated proxy authenticates via the api-provider
  * `storage` JWT — which rutba-web does not populate (auth lives in the
  * next-auth session). So we use the descriptors for paths/methods only and
  * make the HTTP call with axios + the session JWT, the same pattern
@@ -67,13 +67,13 @@ function authHeaders(jwt?: string | null) {
 export function createMeAddressesService() {
   const list = async (jwt?: string | null): Promise<CustomerAddress[]> => {
     if (!jwt) return [];
-    const ep = MeAddressesEndpoints.list();
+    const ep = AddressesEndpoints.list();
     const res = await axios.get(`${BASE_URL}${ep.path}`, { headers: authHeaders(jwt) });
     return (res.data?.data ?? []) as CustomerAddress[];
   };
 
   const create = async (data: AddressInput, jwt: string): Promise<CustomerAddress> => {
-    const ep = MeAddressesEndpoints.create(data);
+    const ep = AddressesEndpoints.create(data);
     const res = await axios.post(
       `${BASE_URL}${ep.path}`,
       { data: ep.data },
@@ -83,7 +83,7 @@ export function createMeAddressesService() {
   };
 
   const update = async (documentId: string, data: AddressInput, jwt: string): Promise<CustomerAddress> => {
-    const ep = MeAddressesEndpoints.update(documentId, data);
+    const ep = AddressesEndpoints.update(documentId, data);
     const res = await axios.put(
       `${BASE_URL}${ep.path}`,
       { data: ep.data },
@@ -93,12 +93,12 @@ export function createMeAddressesService() {
   };
 
   const remove = async (documentId: string, jwt: string): Promise<void> => {
-    const ep = MeAddressesEndpoints.del(documentId);
+    const ep = AddressesEndpoints.del(documentId);
     await axios.delete(`${BASE_URL}${ep.path}`, { headers: authHeaders(jwt) });
   };
 
   const makeDefault = async (documentId: string, jwt: string): Promise<CustomerAddress> => {
-    const ep = MeAddressesEndpoints.makeDefault(documentId);
+    const ep = AddressesEndpoints.makeDefault(documentId);
     const res = await axios.post(
       `${BASE_URL}${ep.path}`,
       { data: {} },
@@ -107,5 +107,5 @@ export function createMeAddressesService() {
     return res.data?.data as CustomerAddress;
   };
 
-  return { endpoints: MeAddressesEndpoints, list, create, update, remove, makeDefault };
+  return { endpoints: AddressesEndpoints, list, create, update, remove, makeDefault };
 }

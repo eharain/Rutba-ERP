@@ -79,7 +79,7 @@ export default function SaleOrderDetailPage() {
         }
 
         const res = await SaleOrdersEndpoints.byId(documentId, {
-          populate: ["customer_contact", "products", "assigned_rider"],
+          populate: ["customer_person", "delivery_address", "products", "assigned_rider"],
         });
         const o = res.data || res;
         const loadedItems = (o.products?.items || []).map((item) => ({
@@ -89,15 +89,21 @@ export default function SaleOrderDetailPage() {
           price: String(item.price ?? 0),
         }));
 
+        // Read precedence: snapshot (frozen, accurate at order time) → live person
+        // → live address. The form lets staff edit the form fields without
+        // touching the snapshot — saves go back as a flat `customer` payload.
+        const snap = o.delivery_snapshot || {};
+        const person = o.customer_person || {};
+        const addr = o.delivery_address || {};
         setOrderId(o.order_id || "");
-        setCustomerName(o.customer_contact?.name || "");
-        setPhoneNumber(o.customer_contact?.phone_number || "");
-        setEmail(o.customer_contact?.email || "");
-        setAddress(o.customer_contact?.address || "");
-        setState(o.customer_contact?.state || "");
-        setCity(o.customer_contact?.city || "");
-        setZipCode(o.customer_contact?.zip_code || "");
-        setCountry(o.customer_contact?.country || "PK");
+        setCustomerName(snap.name || person.name || "");
+        setPhoneNumber(snap.phone || person.phone || "");
+        setEmail(snap.email || person.email || "");
+        setAddress(snap.line1 || addr.line1 || "");
+        setState(snap.state || addr.state || "");
+        setCity(snap.city || addr.city || "");
+        setZipCode(snap.zip_code || addr.zip_code || "");
+        setCountry(snap.country || addr.country || "PK");
         setOrderItems(loadedItems.length > 0 ? loadedItems : [{ productDocumentId: "", productName: "", quantity: "1", price: "0" }]);
         setPaymentStatus(o.payment_status || "COD");
         setTrackingCode(o.tracking_code || "");
@@ -163,11 +169,13 @@ export default function SaleOrderDetailPage() {
 
       const payload = {
         data: {
-          customer_contact: {
+          // Flat customer payload (unification Phase 1A) — server resolves
+          // person + snapshot, optionally persists into the user's address book.
+          customer: {
             name: customerName.trim(),
-            phone_number: phoneNumber.trim(),
+            phone: phoneNumber.trim(),
             email: email.trim(),
-            address: address.trim(),
+            line1: address.trim(),
             state: state.trim(),
             city: city.trim(),
             zip_code: zipCode.trim(),

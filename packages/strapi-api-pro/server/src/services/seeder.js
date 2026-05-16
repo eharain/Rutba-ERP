@@ -83,7 +83,7 @@ function inferAction(method, endpointPath, methodName) {
 function isDescriptorMethodName(methodName) {
   const name = String(methodName || '').toLowerCase();
   if (!name || name === 'meta') return false;
-  return /^(list|by|get|find|search|create|update|del|delete|remove|publish|unpublish|archive|unarchive|assign|process|open|close|transfer|validate|shipping|tracking|messages|send)/.test(name);
+  return /^(list|by|get|find|search|create|update|del|delete|remove|publish|unpublish|archive|unarchive|assign|process|open|close|transfer|validate|shipping|tracking|messages|send|make|set|toggle|reset|approve|reject|accept|cancel|reorder|merge|resolve)/.test(name);
 }
 
 function createInvocationArgs(fn) {

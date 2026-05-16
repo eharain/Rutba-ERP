@@ -66,7 +66,7 @@ module.exports = factories.createCoreController('api::rider.rider', ({ strapi })
         const offers = await strapi.documents('api::delivery-offer.delivery-offer').findMany({
             filters: { rider: { id: { $eq: rider.id } }, status: { $eq: 'pending' }, expires_at: { $gt: now } },
             sort: 'offered_at:desc',
-            populate: { order: { populate: ['customer_contact', 'products', 'delivery_zone', 'delivery_method'], fields: ['id', 'documentId', 'order_id', 'subtotal', 'total', 'order_status'] } },
+            populate: { order: { populate: ['customer_person', 'delivery_address', 'products', 'delivery_zone', 'delivery_method'], fields: ['id', 'documentId', 'order_id', 'subtotal', 'total', 'order_status', 'delivery_snapshot'] } },
         });
         ctx.send({ data: offers });
     },
@@ -121,7 +121,7 @@ module.exports = factories.createCoreController('api::rider.rider', ({ strapi })
         const orders = await strapi.documents('api::sale-order.sale-order').findMany({
             filters: { assigned_rider: { id: { $eq: rider.id } }, order_status: { $in: filterStatuses } },
             sort: 'updatedAt:desc',
-            populate: ['customer_contact', 'products', 'delivery_method', 'delivery_zone'],
+            populate: ['customer_person', 'delivery_address', 'products', 'delivery_method', 'delivery_zone'],
         });
         ctx.send({ data: orders });
     },

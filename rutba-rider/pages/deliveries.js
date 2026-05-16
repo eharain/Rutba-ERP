@@ -42,7 +42,7 @@ export default function DeliveriesPage() {
                 {deliveries.map((order) => (
                   <tr key={order.id}>
                     <td>{order.order_id || order.documentId}</td>
-                    <td>{order.customer_contact?.name || '—'}</td>
+                    <td>{order.delivery_snapshot?.name || order.customer_person?.name || '—'}</td>
                     <td><span className="badge bg-primary">{order.order_status}</span></td>
                     <td>Rs. {Number(order.total || 0).toFixed(0)}</td>
                     <td>

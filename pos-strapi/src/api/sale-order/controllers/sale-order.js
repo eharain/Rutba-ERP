@@ -59,14 +59,33 @@ module.exports = factories.createCoreController(
             const data = ctx.request.body.data;
             if (!data) return ctx.badRequest('Request body data is missing');
             if (!data.products?.items) return ctx.badRequest('products.items is required');
-            if (!data.customer_contact) return ctx.badRequest('customer_contact is required');
+            // Storefront sends a flat `customer` object since the contact-entity
+            // unification (Phase 1A). Tolerate the legacy `customer_contact`
+            // shape with phone_number/address until the storefront cuts over.
+            const inboundCustomer = data.customer || data.customer_contact;
+            if (!inboundCustomer) return ctx.badRequest('customer is required');
 
             const {
-                products, customer_contact, order_id, subtotal, total,
+                products, order_id, subtotal, total,
                 original_subtotal, savings, payment_status, user_id,
                 delivery_method_id, delivery_zone_id, delivery_cost, delivery_cost_breakdown,
-                easypost_rate_id,
+                easypost_rate_id, save_address, delivery_address_documentId,
             } = data;
+
+            // Normalize legacy field names so the rest of the handler can speak
+            // the new vocabulary regardless of who called it.
+            const customer = {
+                name: inboundCustomer.name,
+                email: inboundCustomer.email,
+                phone: inboundCustomer.phone || inboundCustomer.phone_number,
+                line1: inboundCustomer.line1 || inboundCustomer.address,
+                line2: inboundCustomer.line2,
+                city: inboundCustomer.city,
+                state: inboundCustomer.state,
+                country: inboundCustomer.country,
+                zip_code: inboundCustomer.zip_code,
+                note: inboundCustomer.note,
+            };
 
             let selectedDeliveryMethod = null;
             let selectedDeliveryZone = null;
@@ -98,11 +117,97 @@ module.exports = factories.createCoreController(
             const normalizedPaymentStatus = String(payment_status || 'Ordered').toUpperCase();
             const isImmediatelyConfirmed = ['ORDERED', 'COD', 'SUCCEEDED', 'PAID'].includes(normalizedPaymentStatus);
 
+            // Resolve customer_person — find by UP user when authenticated,
+            // otherwise create a provisional row. The dedup job promotes
+            // provisionals to canonical on UP signup with a matching email.
+            const personService = strapi.service('api::person.person');
+            let customerPerson = null;
+            if (ctx.state.user?.id) {
+                customerPerson = await personService.ensureForUser(ctx.state.user);
+                // Backfill missing contact bits from this order so the person
+                // record gets populated even if the user has never edited
+                // their profile.
+                const personPatch = {};
+                if (!customerPerson.phone && customer.phone) personPatch.phone = customer.phone;
+                if (!customerPerson.email && customer.email) personPatch.email = customer.email;
+                if (Object.keys(personPatch).length) {
+                    customerPerson = await strapi.documents('api::person.person').update({
+                        documentId: customerPerson.documentId,
+                        data: personPatch,
+                    });
+                }
+            } else {
+                customerPerson = await personService.createProvisional(customer);
+            }
+
+            // Resolve delivery_address — either an explicitly-chosen saved
+            // address (verified to belong to this person) or, if the caller
+            // asked us to save the inline address, a brand-new row. Express
+            // checkout (no line1) skips this entirely.
+            let deliveryAddress = null;
+            if (delivery_address_documentId) {
+                const candidate = await strapi.documents('api::address.address').findOne({
+                    documentId: delivery_address_documentId,
+                    populate: { person: { fields: ['id'] } },
+                });
+                if (candidate?.person?.id === customerPerson.id && !candidate.archived_at) {
+                    deliveryAddress = candidate;
+                }
+            } else if (save_address && customer.line1) {
+                // Dedup before insert — if the user already has a non-archived
+                // address with the same line1+city+zip+country, reuse it instead
+                // of creating a duplicate. Storefront sends `save_address: true`
+                // on every full-address checkout (it can't tell whether the
+                // prefill came from the user's default or fresh form input), so
+                // without this the address book fills up with copies of the
+                // user's home address after a few orders.
+                const existing = await strapi.documents('api::address.address').findFirst({
+                    filters: {
+                        person: { id: { $eq: customerPerson.id } },
+                        archived_at: { $null: true },
+                        line1: { $eqi: customer.line1 || '' },
+                        city: { $eqi: customer.city || '' },
+                        zip_code: { $eqi: customer.zip_code || '' },
+                        country: { $eqi: customer.country || '' },
+                    },
+                });
+                deliveryAddress = existing
+                    ? existing
+                    : await strapi.documents('api::address.address').create({
+                        data: {
+                            line1: customer.line1,
+                            line2: customer.line2,
+                            city: customer.city,
+                            state: customer.state,
+                            country: customer.country,
+                            zip_code: customer.zip_code,
+                            person: { id: customerPerson.id },
+                        },
+                    });
+            }
+
+            // Snapshot for audit / receipt regeneration. Frozen at order time
+            // so later edits to person / address never rewrite history.
+            const deliverySnapshot = {
+                name: customer.name,
+                email: customer.email,
+                phone: customer.phone,
+                line1: customer.line1,
+                line2: customer.line2,
+                city: customer.city,
+                state: customer.state,
+                country: customer.country,
+                zip_code: customer.zip_code,
+                note: customer.note,
+            };
+
             const orderData = {
                 order_id: order_id || `ORD-${Date.now()}`,
                 order_secret: (Math.floor(Math.random() * 900000) + 100000).toString(),
                 products,
-                customer_contact,
+                customer_person: { id: customerPerson.id },
+                delivery_address: deliveryAddress ? { id: deliveryAddress.id } : undefined,
+                delivery_snapshot: deliverySnapshot,
                 subtotal: parseFloat(subtotal) || 0,
                 total: parseFloat(total) || 0,
                 original_subtotal: original_subtotal ? parseFloat(original_subtotal) : undefined,
@@ -132,7 +237,7 @@ module.exports = factories.createCoreController(
             try {
                 createdOrder = await strapi.documents('api::sale-order.sale-order').create({
                     data: orderData,
-                    populate: ['customer_contact', 'products', 'delivery_method', 'delivery_zone', 'assigned_rider'],
+                    populate: ['customer_person', 'delivery_address', 'products', 'delivery_method', 'delivery_zone', 'assigned_rider'],
                 });
             } catch (err) {
                 strapi.log.error('[order] create error:', err.message);
@@ -153,13 +258,13 @@ module.exports = factories.createCoreController(
 
                     const shipment = await easypostService.getRates(
                         {
-                            name: customer_contact?.name,
-                            address: customer_contact?.address,
-                            city: customer_contact?.city,
-                            state: customer_contact?.state,
-                            zip_code: customer_contact?.zip_code,
-                            country: customer_contact?.country,
-                            phone_number: customer_contact?.phone_number,
+                            name: customer.name,
+                            address: [customer.line1, customer.line2].filter(Boolean).join(', '),
+                            city: customer.city,
+                            state: customer.state,
+                            zip_code: customer.zip_code,
+                            country: customer.country,
+                            phone_number: customer.phone,
                         },
                         fromAddress,
                         {
@@ -182,7 +287,7 @@ module.exports = factories.createCoreController(
                             shipping_label: label.raw || null,
                             label_image: label.labelUrl || null,
                         },
-                        populate: ['customer_contact', 'products', 'delivery_method', 'delivery_zone', 'assigned_rider'],
+                        populate: ['customer_person', 'delivery_address', 'products', 'delivery_method', 'delivery_zone', 'assigned_rider'],
                     });
                 } catch (err) {
                     strapi.log.warn(`[order] EasyPost label purchase failed: ${err.message}`);
@@ -191,7 +296,7 @@ module.exports = factories.createCoreController(
                         data: {
                             rider_notes: `${createdOrder.rider_notes || ''}\nEasyPost pending: ${err.message}`.trim(),
                         },
-                        populate: ['customer_contact', 'products', 'delivery_method', 'delivery_zone', 'assigned_rider'],
+                        populate: ['customer_person', 'delivery_address', 'products', 'delivery_method', 'delivery_zone', 'assigned_rider'],
                     });
                 }
             }
@@ -237,7 +342,7 @@ module.exports = factories.createCoreController(
             if (paymentStatus === 'SUCCEEDED') {
                 const updatedOrder = await strapi.documents('api::sale-order.sale-order').findOne({
                     documentId: order.documentId,
-                    populate: ['delivery_method', 'delivery_zone', 'customer_contact', 'products'],
+                    populate: ['delivery_method', 'delivery_zone', 'customer_person', 'delivery_address', 'products'],
                 });
                 notificationService.send('payment_confirmed', order.documentId).catch(() => {});
                 if (updatedOrder?.delivery_method?.service_provider === 'own_rider') {
@@ -271,7 +376,7 @@ module.exports = factories.createCoreController(
             const { documentId } = ctx.params;
             const { secret } = ctx.query;
             const order = await strapi.documents('api::sale-order.sale-order').findOne({
-                documentId, populate: ['customer_contact', 'assigned_rider', 'delivery_method', 'products'],
+                documentId, populate: ['customer_person', 'assigned_rider', 'delivery_method', 'products'],
             });
             if (!order) return ctx.notFound('Order not found');
             if (order.order_secret && order.order_secret !== secret) return ctx.forbidden('Invalid order secret');
@@ -292,7 +397,10 @@ module.exports = factories.createCoreController(
                 actual_delivery_time: order.actual_delivery_time,
                 subtotal: order.subtotal, delivery_cost: order.delivery_cost, total: order.total,
                 createdAt: order.createdAt,
-                customer_contact: { name: order.customer_contact?.name, city: order.customer_contact?.city },
+                customer_contact: {
+                    name: order.delivery_snapshot?.name || order.customer_person?.name,
+                    city: order.delivery_snapshot?.city,
+                },
                 products: order.products,
             }});
         },
@@ -385,7 +493,7 @@ module.exports = factories.createCoreController(
             const orders = await strapi.documents('api::sale-order.sale-order').findMany({
                 filters: mergedFilters,
                 sort: ctx.query.sort || 'createdAt:desc',
-                populate: ['products', 'customer_contact', 'delivery_method'],
+                populate: ['products', 'customer_person', 'delivery_address', 'delivery_method'],
             });
             ctx.send({ data: orders });
         },
@@ -398,7 +506,7 @@ module.exports = factories.createCoreController(
             if (!accessUser) return;
             const { documentId } = ctx.params;
             const order = await strapi.documents('api::sale-order.sale-order').findOne({
-                documentId, populate: ['products', 'customer_contact', 'owners', 'delivery_method', 'assigned_rider'],
+                documentId, populate: ['products', 'customer_person', 'delivery_address', 'owners', 'delivery_method', 'assigned_rider'],
             });
             if (!order) return ctx.notFound('Order not found');
             if (accessUser.role?.type === 'rutba_web_user' || accessUser.role?.type === 'authenticated') {

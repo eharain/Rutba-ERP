@@ -17,12 +17,24 @@ module.exports = factories.createCoreController('api::contact-ticket.contact-tic
         if (!subject) return ctx.badRequest('subject is required');
         if (!message) return ctx.badRequest('message is required');
 
+        // Resolve the canonical person identity for this user so tickets
+        // are reachable via the contact-unification graph (helps CRM
+        // correlate "who is this human" across orders, leads, etc.).
+        let personId = null;
+        try {
+            const person = await strapi.service('api::person.person').ensureForUser(user);
+            personId = person?.id || null;
+        } catch (err) {
+            strapi.log.warn(`[contact-ticket] person resolve failed: ${err.message}`);
+        }
+
         const ticket = await strapi.documents('api::contact-ticket.contact-ticket').create({
             data: {
                 subject,
                 message,
                 status: 'open',
                 user: { id: user.id },
+                ...(personId ? { person: { id: personId } } : {}),
                 last_reply_by: 'user',
                 last_reply_at: new Date(),
                 sla_due_at: new Date(Date.now() + slaHours * 60 * 60 * 1000),

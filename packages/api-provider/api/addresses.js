@@ -1,17 +1,17 @@
 /**
- * MeAddressesEndpoints
+ * AddressesEndpoints — /me/addresses
  *
- * Server-side address book — multi-address per logged-in customer with one
- * default. Backs the Saved Address UI in the profile and the address picker
- * at checkout.
+ * Server-side address book for the logged-in customer. Multiple addresses per
+ * person with one default; soft-delete via `archived_at`.
  *
  * Authenticated under the calling user's JWT (top-level api/ descriptor
- * defaults to `authApi`).
+ * defaults to `authApi`). The Strapi controller scopes every operation by
+ * resolving `ctx.state.user → person → addresses`.
  */
-export const MeAddressesEndpoints = {
+export const AddressesEndpoints = {
 
     meta: {
-        uid: 'api::customer-address.customer-address',
+        uid: 'api::address.address',
         domains: ['web', 'web-user'],
         roles: ['user'],
     },
@@ -25,7 +25,7 @@ export const MeAddressesEndpoints = {
         approle: ['user'],
     }),
 
-    /** POST /me/addresses — create a new address. Body is the raw address fields. */
+    /** POST /me/addresses — create a new address. */
     create: (data) => ({
         path: '/me/addresses',
         action: 'create',

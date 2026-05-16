@@ -27,7 +27,7 @@ import {
   hasShippingAddress,
   formatAddressLine,
 } from "@/store/store-customer";
-import { MapPin, Pencil } from "lucide-react";
+import { MapPin, Pencil, LogIn } from "lucide-react";
 
 const FALLBACK_WHATSAPP = "+923245303530";
 
@@ -68,10 +68,10 @@ export default function CheckoutPage() {
   const defaultServerAddress =
     (serverAddresses?.find((a) => a.is_default) || serverAddresses?.[0]) ?? null;
 
-  // Server-side address book uses the future-aligned shape (phone, line1, line2).
+  // Server-side address book uses the unified shape (phone, line1, line2).
   // Translate it back to the legacy SavedCustomer shape (phone_number, address)
-  // that the express form, shipping store, and customer_contact component still
-  // speak — those rename in the contact-entity-unification cutover, not now.
+  // that the express form + checkout shipping store still speak — those are
+  // form-state structures and can rename independently in a future PR.
   const effectiveAddress = defaultServerAddress
     ? {
         name: defaultServerAddress.name || sessionUser?.name || "",
@@ -184,7 +184,10 @@ export default function CheckoutPage() {
         (settings as { whatsapp_number?: string }).whatsapp_number ||
         FALLBACK_WHATSAPP;
       const orderId = response?.order_id || "N/A";
-      const customerName = response?.customer_contact?.name || "";
+      const customerName =
+        response?.delivery_snapshot?.name ||
+        response?.customer_person?.name ||
+        "";
       const total = response?.total || response?.subtotal || 0;
 
       const items = response?.products?.items ?? [];
@@ -242,10 +245,22 @@ export default function CheckoutPage() {
     contact,
     note,
     includeDelivery,
+    saveAddress,
   }: {
-    contact: { name: string; email: string; phone_number: string };
+    contact: {
+      name: string;
+      email: string;
+      phone: string;
+      line1?: string;
+      line2?: string;
+      city?: string;
+      state?: string;
+      country?: string;
+      zip_code?: string;
+    };
     note?: string;
     includeDelivery: boolean;
+    saveAddress?: boolean;
   }) => {
     const safeCart = cart ?? [];
     const subtotal = safeCart.reduce((acc, item) => {
@@ -287,7 +302,8 @@ export default function CheckoutPage() {
 
     return {
       products: { items: formattedItems },
-      customer_contact: { ...contact, note },
+      customer: { ...contact, note },
+      save_address: !!saveAddress,
       payment_status: "Ordered",
       // Prefer the email from the form; fall back to logged-in user if any.
       user_id: contact.email || session?.data?.user?.email,
@@ -323,7 +339,7 @@ export default function CheckoutPage() {
         contact: {
           name: values.name,
           email: values.email,
-          phone_number: values.phone_number,
+          phone: values.phone_number,
         },
         note: values.note,
         includeDelivery: false,
@@ -352,9 +368,18 @@ export default function CheckoutPage() {
         contact: {
           name: formShippingInformation.name,
           email: formShippingInformation.email,
-          phone_number: formShippingInformation.phone_number,
+          phone: formShippingInformation.phone_number,
+          line1: formShippingInformation.address,
+          city: formShippingInformation.city,
+          state: formShippingInformation.state,
+          country: formShippingInformation.country,
+          zip_code: formShippingInformation.zip_code,
         },
         includeDelivery: true,
+        // Logged-in customers persist their full-address checkout into their
+        // server address book; anonymous shoppers still get the
+        // localStorage record via persistCustomer above.
+        saveAddress: !!jwt,
       })
     );
   };
@@ -412,6 +437,33 @@ export default function CheckoutPage() {
               We'll confirm your order on WhatsApp — share delivery details and
               payment when it suits you.
             </p>
+
+            {/* Sign-in nudge for anonymous shoppers — lets returning customers
+                skip the form by signing in to pull their saved address. Guest
+                checkout is always still available right below; the nudge is a
+                shortcut, not a gate. */}
+            {!jwt && (
+              <div className="mt-6 rounded-2xl border border-border bg-secondary/30 p-4 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-start gap-3 min-w-0">
+                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-brand/15 text-brand shrink-0">
+                    <LogIn className="h-4 w-4" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold">Have an account?</p>
+                    <p className="text-xs text-muted-foreground">
+                      Sign in to pull your saved details and skip the form.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button asChild variant="outline" size="sm" className="rounded-full">
+                    <Link href={`/login?redirect=${encodeURIComponent("/checkout")}`}>
+                      Sign in
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+            )}
 
             {/* Saved-shipping hint — shown when we already have an address
                 from a previous order. Visitor can either keep it (default)

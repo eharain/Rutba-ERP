@@ -1,11 +1,11 @@
 {
   "kind": "collectionType",
-  "collectionName": "customer_addresses",
+  "collectionName": "addresses",
   "info": {
-    "singularName": "customer-address",
-    "pluralName": "customer-addresses",
-    "displayName": "Customer Address",
-    "description": "Saved shipping addresses owned by web/app users"
+    "singularName": "address",
+    "pluralName": "addresses",
+    "displayName": "Address",
+    "description": "Shipping / billing address tied to a person. Multi-row per person with one default. Optional recipient overrides for gift orders."
   },
   "options": {
     "draftAndPublish": false
@@ -13,15 +13,6 @@
   "pluginOptions": {},
   "attributes": {
     "label": {
-      "type": "string"
-    },
-    "name": {
-      "type": "string"
-    },
-    "email": {
-      "type": "string"
-    },
-    "phone": {
       "type": "string"
     },
     "line1": {
@@ -49,10 +40,17 @@
     "archived_at": {
       "type": "datetime"
     },
-    "owners": {
+    "recipient_name": {
+      "type": "string"
+    },
+    "recipient_phone": {
+      "type": "string"
+    },
+    "person": {
       "type": "relation",
-      "relation": "manyToMany",
-      "target": "plugin::users-permissions.user"
+      "relation": "manyToOne",
+      "target": "api::person.person",
+      "inversedBy": "addresses"
     }
   }
 }

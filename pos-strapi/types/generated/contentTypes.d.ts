@@ -982,6 +982,46 @@ export interface ApiAccTaxRateAccTaxRate extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiAddressAddress extends Struct.CollectionTypeSchema {
+  collectionName: 'addresses';
+  info: {
+    description: 'Shipping / billing address tied to a person. Multi-row per person with one default. Optional recipient overrides for gift orders.';
+    displayName: 'Address';
+    pluralName: 'addresses';
+    singularName: 'address';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    archived_at: Schema.Attribute.DateTime;
+    city: Schema.Attribute.String;
+    country: Schema.Attribute.String;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    is_default: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    label: Schema.Attribute.String;
+    line1: Schema.Attribute.String;
+    line2: Schema.Attribute.String;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::address.address'
+    > &
+      Schema.Attribute.Private;
+    person: Schema.Attribute.Relation<'manyToOne', 'api::person.person'>;
+    publishedAt: Schema.Attribute.DateTime;
+    recipient_name: Schema.Attribute.String;
+    recipient_phone: Schema.Attribute.String;
+    state: Schema.Attribute.String;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    zip_code: Schema.Attribute.String;
+  };
+}
+
 export interface ApiBranchBranch extends Struct.CollectionTypeSchema {
   collectionName: 'branches';
   info: {
@@ -1475,6 +1515,7 @@ export interface ApiContactTicketContactTicket
       Schema.Attribute.Private;
     message: Schema.Attribute.Text & Schema.Attribute.Required;
     metadata: Schema.Attribute.JSON;
+    person: Schema.Attribute.Relation<'manyToOne', 'api::person.person'>;
     publishedAt: Schema.Attribute.DateTime;
     resolved_at: Schema.Attribute.DateTime;
     sla_due_at: Schema.Attribute.DateTime;
@@ -1670,51 +1711,6 @@ export interface ApiCurrencyCurrency extends Struct.CollectionTypeSchema {
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
-  };
-}
-
-export interface ApiCustomerAddressCustomerAddress
-  extends Struct.CollectionTypeSchema {
-  collectionName: 'customer_addresses';
-  info: {
-    description: 'Saved shipping addresses owned by web/app users';
-    displayName: 'Customer Address';
-    pluralName: 'customer-addresses';
-    singularName: 'customer-address';
-  };
-  options: {
-    draftAndPublish: false;
-  };
-  attributes: {
-    archived_at: Schema.Attribute.DateTime;
-    city: Schema.Attribute.String;
-    country: Schema.Attribute.String;
-    createdAt: Schema.Attribute.DateTime;
-    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
-      Schema.Attribute.Private;
-    email: Schema.Attribute.String;
-    is_default: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
-    label: Schema.Attribute.String;
-    line1: Schema.Attribute.String;
-    line2: Schema.Attribute.String;
-    locale: Schema.Attribute.String & Schema.Attribute.Private;
-    localizations: Schema.Attribute.Relation<
-      'oneToMany',
-      'api::customer-address.customer-address'
-    > &
-      Schema.Attribute.Private;
-    name: Schema.Attribute.String;
-    owners: Schema.Attribute.Relation<
-      'manyToMany',
-      'plugin::users-permissions.user'
-    >;
-    phone: Schema.Attribute.String;
-    publishedAt: Schema.Attribute.DateTime;
-    state: Schema.Attribute.String;
-    updatedAt: Schema.Attribute.DateTime;
-    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
-      Schema.Attribute.Private;
-    zip_code: Schema.Attribute.String;
   };
 }
 
@@ -2672,6 +2668,90 @@ export interface ApiPaymentPayment extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiPersonDedupAuditPersonDedupAudit
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'person_dedup_audits';
+  info: {
+    description: "Audit pile for ambiguous person-match cases the contact-unification backfill and dedup tooling won't auto-resolve.";
+    displayName: 'Person Dedup Audit';
+    pluralName: 'person-dedup-audits';
+    singularName: 'person-dedup-audit';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    candidate_person_ids: Schema.Attribute.JSON;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::person-dedup-audit.person-dedup-audit'
+    > &
+      Schema.Attribute.Private;
+    match_kind: Schema.Attribute.Enumeration<
+      ['multi_match', 'user_collision', 'name_only', 'manual_hold']
+    > &
+      Schema.Attribute.Required;
+    notes: Schema.Attribute.Text;
+    proposed_action: Schema.Attribute.Enumeration<
+      ['link', 'create_new', 'skip']
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    resolution: Schema.Attribute.Enumeration<
+      ['linked', 'new', 'merged', 'dismissed']
+    >;
+    resolved_at: Schema.Attribute.DateTime;
+    source_document_id: Schema.Attribute.String & Schema.Attribute.Required;
+    source_uid: Schema.Attribute.String & Schema.Attribute.Required;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiPersonPerson extends Struct.CollectionTypeSchema {
+  collectionName: 'persons';
+  info: {
+    description: 'Canonical contact identity. One row per real human. Role profiles (customer, crm-contact, hr-employee, rider) attach to this via FK.';
+    displayName: 'Person';
+    pluralName: 'persons';
+    singularName: 'person';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    addresses: Schema.Attribute.Relation<'oneToMany', 'api::address.address'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    email: Schema.Attribute.String;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::person.person'
+    > &
+      Schema.Attribute.Private;
+    merged_into: Schema.Attribute.Relation<'manyToOne', 'api::person.person'>;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    notes: Schema.Attribute.Text;
+    phone: Schema.Attribute.String;
+    picture: Schema.Attribute.Media<'images'>;
+    provisional_at: Schema.Attribute.DateTime;
+    publishedAt: Schema.Attribute.DateTime;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    user: Schema.Attribute.Relation<
+      'oneToOne',
+      'plugin::users-permissions.user'
+    >;
+  };
+}
+
 export interface ApiProductGroupProductGroup
   extends Struct.CollectionTypeSchema {
   collectionName: 'product_groups';
@@ -3228,7 +3308,14 @@ export interface ApiSaleOrderSaleOrder extends Struct.CollectionTypeSchema {
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
-    customer_contact: Schema.Attribute.Component<'order.order-contact', false>;
+    customer_person: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::person.person'
+    >;
+    delivery_address: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::address.address'
+    >;
     delivery_cost: Schema.Attribute.Decimal;
     delivery_cost_breakdown: Schema.Attribute.JSON;
     delivery_method: Schema.Attribute.Relation<
@@ -3239,6 +3326,7 @@ export interface ApiSaleOrderSaleOrder extends Struct.CollectionTypeSchema {
       'oneToMany',
       'api::delivery-offer.delivery-offer'
     >;
+    delivery_snapshot: Schema.Attribute.JSON;
     delivery_zone: Schema.Attribute.Relation<
       'manyToOne',
       'api::delivery-zone.delivery-zone'
@@ -5028,6 +5116,7 @@ declare module '@strapi/strapi' {
       'api::acc-journal-entry.acc-journal-entry': ApiAccJournalEntryAccJournalEntry;
       'api::acc-journal-line.acc-journal-line': ApiAccJournalLineAccJournalLine;
       'api::acc-tax-rate.acc-tax-rate': ApiAccTaxRateAccTaxRate;
+      'api::address.address': ApiAddressAddress;
       'api::branch.branch': ApiBranchBranch;
       'api::brand-group.brand-group': ApiBrandGroupBrandGroup;
       'api::brand.brand': ApiBrandBrand;
@@ -5042,7 +5131,6 @@ declare module '@strapi/strapi' {
       'api::crm-contact.crm-contact': ApiCrmContactCrmContact;
       'api::crm-lead.crm-lead': ApiCrmLeadCrmLead;
       'api::currency.currency': ApiCurrencyCurrency;
-      'api::customer-address.customer-address': ApiCustomerAddressCustomerAddress;
       'api::customer.customer': ApiCustomerCustomer;
       'api::delivery-method.delivery-method': ApiDeliveryMethodDeliveryMethod;
       'api::delivery-offer.delivery-offer': ApiDeliveryOfferDeliveryOffer;
@@ -5063,6 +5151,8 @@ declare module '@strapi/strapi' {
       'api::pay-payslip.pay-payslip': ApiPayPayslipPayPayslip;
       'api::pay-salary-structure.pay-salary-structure': ApiPaySalaryStructurePaySalaryStructure;
       'api::payment.payment': ApiPaymentPayment;
+      'api::person-dedup-audit.person-dedup-audit': ApiPersonDedupAuditPersonDedupAudit;
+      'api::person.person': ApiPersonPerson;
       'api::product-group.product-group': ApiProductGroupProductGroup;
       'api::product.product': ApiProductProduct;
       'api::purchase-item.purchase-item': ApiPurchaseItemPurchaseItem;

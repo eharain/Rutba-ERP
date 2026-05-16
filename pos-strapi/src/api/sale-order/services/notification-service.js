@@ -26,15 +26,18 @@ function renderTemplate(template, vars) {
  * @returns {object}
  */
 function buildVars(order, extraVars = {}) {
-    const contact = order.customer_contact || {};
+    // Snapshot wins over the live person record so notification templates
+    // reflect the values the customer entered at order time.
+    const snap = order.delivery_snapshot || {};
+    const person = order.customer_person || {};
     const rider = order.assigned_rider || {};
     const method = order.delivery_method || {};
     const frontendUrl = process.env.FRONTEND_URL || 'https://rutba.pk';
 
     return {
-        customer_name:      contact.name || '',
-        customer_email:     contact.email || '',
-        customer_phone:     contact.phone_number || '',
+        customer_name:      snap.name || person.name || '',
+        customer_email:     snap.email || person.email || '',
+        customer_phone:     snap.phone || person.phone || '',
         order_id:           order.order_id || '',
         order_status:       order.order_status || '',
         tracking_url:       `${frontendUrl}/order-tracking/${order.documentId}?secret=${order.order_secret || ''}`,
@@ -74,15 +77,17 @@ module.exports = {
             // Load populated order
             const order = await strapi.documents('api::sale-order.sale-order').findOne({
                 documentId: orderDocumentId,
-                populate: ['customer_contact', 'assigned_rider', 'delivery_method', 'products'],
+                populate: ['customer_person', 'assigned_rider', 'delivery_method', 'products'],
             });
 
             if (!order) return;
 
             const vars = buildVars(order, extraVars);
+            const customerEmail = () =>
+                order.delivery_snapshot?.email || order.customer_person?.email || '';
 
             const resolveRecipientEmail = async (template) => {
-                if (template.send_to === 'customer') return order.customer_contact?.email || '';
+                if (template.send_to === 'customer') return customerEmail();
 
                 if (template.send_to === 'rider') {
                     const riderUser = order.assigned_rider?.user;
@@ -103,7 +108,7 @@ module.exports = {
                     return process.env.ORDER_ALERT_EMAIL || fallback;
                 }
 
-                return order.customer_contact?.email || '';
+                return customerEmail();
             };
 
             for (const template of templates) {
