@@ -60,7 +60,6 @@
     "styled-components": "^npm 6.0.0"
   },
   "peerDependenciesMeta": {
-    "@strapi/strapi": { "optional": true },
     "@strapi/design-system": { "optional": true },
     "@strapi/icons": { "optional": true },
     "react-router-dom": { "optional": true },
