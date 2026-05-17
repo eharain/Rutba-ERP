@@ -43,14 +43,29 @@ module.exports = (config) => {
         resolve: {
             alias: {
                 '@': '/src',
+                // Keep the alias for source-code imports — this is what the
+                // admin used before and what every source file (including
+                // built-in Strapi plugins and our own admin pages) depends on.
+                // The plugin below covers the additional case where alias
+                // cannot reach: strapi-api-pro's prebuilt dist/_chunks/ that
+                // bypass Vite's normal alias pipeline when their package
+                // declares @strapi/strapi as an optional peer.
+                '@strapi/strapi/admin': STRAPI_ADMIN_MJS,
             },
         },
         plugins: [
             {
                 name: 'rutba:resolve-strapi-admin',
                 enforce: 'pre',
-                resolveId(source) {
-                    if (source === '@strapi/strapi/admin') {
+                resolveId(source, importer) {
+                    // Only intercept imports coming from inside prebuilt
+                    // plugin chunks. Source-code imports continue through
+                    // resolve.alias above, preserving the working behavior.
+                    if (
+                        source === '@strapi/strapi/admin' &&
+                        importer &&
+                        /[\\/]packages[\\/]strapi-api-pro[\\/]dist[\\/]/.test(importer)
+                    ) {
                         return STRAPI_ADMIN_MJS;
                     }
                     return null;
