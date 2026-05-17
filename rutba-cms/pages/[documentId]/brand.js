@@ -32,11 +32,11 @@ export default function BrandDetail() {
         Promise.all([
             BrandsEndpoints.byIdDraft(documentId, { populate: ["logo", "gallery"] }),
             BrandsEndpoints.byIdPublished(documentId, { fields: ["documentId"] }).catch(() => ({ data: null })),
-            ProductsEndpoints.list({
+            ProductsEndpoints.list(1, 1000, {
                 status: "draft",
-                filters: { brands: { documentId: { $in: [documentId] } }, parent: { documentId: { $null: true } } },
+                brands: [documentId],
+                parentOnly: true,
                 sort: ["name:asc"],
-                pagination: { page: 1, pageSize: 1000 },
             }),
         ])
             .then(([brandRes, pubRes, productsRes]) => {
