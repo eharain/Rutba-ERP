@@ -53,10 +53,16 @@ export default function ProductCard({
   const isNew =
     !!createdAt && Date.now() - new Date(createdAt).getTime() < FOURTEEN_DAYS;
 
-  const productHref =
-    offerId && sourceGroupId
-      ? `/product/${slug}?offerId=${offerId}&groupId=${sourceGroupId}`
-      : `/product/${slug}`;
+  // groupId alone is enough — the server resolves the offer for this product
+  // within that group. offerId is kept for explicit offer attribution when a
+  // caller has one (e.g. an offer-pinned card), but it's no longer required.
+  const productHref = (() => {
+    if (!sourceGroupId) return `/product/${slug}`;
+    const qs = new URLSearchParams();
+    qs.set("groupId", sourceGroupId);
+    if (offerId) qs.set("offerId", offerId);
+    return `/product/${slug}?${qs.toString()}`;
+  })();
 
   return (
     <Link

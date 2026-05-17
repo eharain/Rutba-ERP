@@ -42,9 +42,12 @@ export default function FeaturedSneakers() {
     return <ErrorCard message={(error as Error).message}></ErrorCard>;
   }
 
+  const sourceGroupId = products?.group?.documentId;
+  const items = products?.products ?? [];
+
   return (
     <div className="grid grid-cols-12 gap-[10px] lg:gap-[10px]">
-      {products.map((item) => {
+      {items.map((item) => {
         const variantPrice = item.variants.length > 0 ? item.variants.map(
           (item) => item.selling_price
         ) : [item.selling_price];
@@ -62,6 +65,7 @@ export default function FeaturedSneakers() {
               slug={item.documentId}
               variantPrice={variantPrice}
               variantTermSummary={getVariantTermSummary(item)}
+              sourceGroupId={sourceGroupId}
             ></ProductCard>
           </div>
         );

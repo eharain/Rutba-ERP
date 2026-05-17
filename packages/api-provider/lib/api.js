@@ -8,7 +8,7 @@ import qs from 'qs';
 
 import { initApiConfig } from './api-url-resolver.js';
 
-await initApiConfig({
+initApiConfig({
   testPath: '/../admin',
 });
 

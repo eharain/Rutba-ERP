@@ -1,6 +1,6 @@
 // AUTO-GENERATED — do not edit. Source: scaffold-endpoint-providers.mjs
 export interface StockItemsEndpointsType {
-    list(page?: any, pageSize?: any, { statusFilter, branchDocId, productDocId, showArchived, sort }?: any): Promise<any>;
+    list(page?: any, pageSize?: any, { statusFilter, branchDocId, productDocId, showArchived, sort, searchTerm }?: any): Promise<any>;
     listByProduct(productDocId: any, { statusFilter, page = 1, pageSize = 200, populate, fields, sort }?: any): Promise<any>;
     listByBarcode(barcode: any, { productDocId }?: any): Promise<any>;
     checkBarcode(barcode: any): Promise<any>;

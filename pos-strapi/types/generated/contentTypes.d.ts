@@ -3271,7 +3271,13 @@ export interface ApiSaleOfferSaleOffer extends Struct.CollectionTypeSchema {
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     description: Schema.Attribute.RichText;
+    discount_mode: Schema.Attribute.Enumeration<
+      ['none', 'percent_off', 'fixed_off', 'use_product_offer_price']
+    > &
+      Schema.Attribute.DefaultTo<'use_product_offer_price'>;
+    discount_value: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
     end_date: Schema.Attribute.DateTime;
+    free_shipping: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
@@ -3279,6 +3285,7 @@ export interface ApiSaleOfferSaleOffer extends Struct.CollectionTypeSchema {
     > &
       Schema.Attribute.Private;
     name: Schema.Attribute.String & Schema.Attribute.Required;
+    priority: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
     product_groups: Schema.Attribute.Relation<
       'manyToMany',
       'api::product-group.product-group'

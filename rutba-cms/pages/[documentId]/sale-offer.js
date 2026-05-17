@@ -81,6 +81,13 @@ export default function OfferDetail() {
     const [startDate, setStartDate] = useState("");
     const [endDate, setEndDate] = useState("");
     const [description, setDescription] = useState("");
+    // Discount model — see api/sale-offer/services/sale-offer.js for resolution.
+    // `use_product_offer_price` is the legacy default; switch to percent/fixed
+    // for new-style offers. `none` means banner-only (no price change).
+    const [discountMode, setDiscountMode] = useState("use_product_offer_price");
+    const [discountValue, setDiscountValue] = useState("");
+    const [freeShipping, setFreeShipping] = useState(false);
+    const [priority, setPriority] = useState("0");
     const [selectedGroupIds, setSelectedGroupIds] = useState([]);
     const [selectedPageIds, setSelectedPageIds] = useState([]);
     const [selectedCategoryIds, setSelectedCategoryIds] = useState([]);
@@ -119,6 +126,10 @@ export default function OfferDetail() {
             setStartDate(o.start_date ? o.start_date.slice(0, 16) : "");
             setEndDate(o.end_date ? o.end_date.slice(0, 16) : "");
             setDescription(o.description || "");
+            setDiscountMode(o.discount_mode || "use_product_offer_price");
+            setDiscountValue(o.discount_value != null ? String(o.discount_value) : "");
+            setFreeShipping(o.free_shipping === true);
+            setPriority(o.priority != null ? String(o.priority) : "0");
             setSelectedGroupIds((o.product_groups || []).map(g => g.documentId));
             setSelectedPageIds((o.cms_pages || []).map(p => p.documentId));
             setSelectedCategoryIds((o.categories || []).map(c => c.documentId));
@@ -138,6 +149,15 @@ export default function OfferDetail() {
             start_date: startDate || null,
             end_date: endDate || null,
             description: description || null,
+            discount_mode: discountMode,
+            // Only meaningful for percent_off / fixed_off; null otherwise so
+            // we don't keep stale numbers attached to "banner-only" offers.
+            discount_value:
+                discountMode === "percent_off" || discountMode === "fixed_off"
+                    ? (Number(discountValue) || 0)
+                    : null,
+            free_shipping: freeShipping,
+            priority: Number(priority) || 0,
             product_groups: { set: selectedGroupIds },
             cms_pages: { set: selectedPageIds },
             categories: { set: selectedCategoryIds },
@@ -262,6 +282,66 @@ export default function OfferDetail() {
                                             <label className="form-label">End Date</label>
                                             <input type="datetime-local" className="form-control" value={endDate} onChange={e => setEndDate(e.target.value)} />
                                             <small className="text-muted">Empty = indefinite</small>
+                                        </div>
+                                    </div>
+                                    <div className="border rounded p-3 mb-3 bg-light">
+                                        <div className="fw-semibold mb-2"><i className="fas fa-tags me-1"></i>Discount</div>
+                                        <div className="row g-3">
+                                            <div className="col-md-6">
+                                                <label className="form-label small mb-1">Discount Type</label>
+                                                <select
+                                                    className="form-select"
+                                                    value={discountMode}
+                                                    onChange={e => setDiscountMode(e.target.value)}
+                                                >
+                                                    <option value="none">None (banner only)</option>
+                                                    <option value="percent_off">% off the selling price</option>
+                                                    <option value="fixed_off">Fixed amount off (Rs)</option>
+                                                    <option value="use_product_offer_price">Use the product's own offer price (legacy)</option>
+                                                </select>
+                                                <small className="text-muted d-block mt-1">
+                                                    {discountMode === "none" && "No price change — purely promotional."}
+                                                    {discountMode === "percent_off" && "Discounts every product in the group by a %."}
+                                                    {discountMode === "fixed_off" && "Subtracts a flat Rs amount from each product."}
+                                                    {discountMode === "use_product_offer_price" && "Honors the per-product offer_price set in PoS."}
+                                                </small>
+                                            </div>
+                                            <div className="col-md-3">
+                                                <label className="form-label small mb-1">
+                                                    {discountMode === "percent_off" ? "Percent off (0–100)" : "Rs off"}
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    className="form-control"
+                                                    value={discountValue}
+                                                    onChange={e => setDiscountValue(e.target.value)}
+                                                    min="0"
+                                                    max={discountMode === "percent_off" ? 100 : undefined}
+                                                    step={discountMode === "percent_off" ? "0.1" : "1"}
+                                                    disabled={discountMode !== "percent_off" && discountMode !== "fixed_off"}
+                                                    placeholder={discountMode === "percent_off" ? "e.g. 20" : "e.g. 250"}
+                                                />
+                                            </div>
+                                            <div className="col-md-3">
+                                                <label className="form-label small mb-1" title="Higher priority wins when several offers attach to the same group">
+                                                    Priority
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    className="form-control"
+                                                    value={priority}
+                                                    onChange={e => setPriority(e.target.value)}
+                                                    step="1"
+                                                />
+                                                <small className="text-muted">Higher wins</small>
+                                            </div>
+                                        </div>
+                                        <div className="form-check mt-3">
+                                            <input className="form-check-input" type="checkbox" id="offerFreeShipping" checked={freeShipping} onChange={e => setFreeShipping(e.target.checked)} />
+                                            <label className="form-check-label" htmlFor="offerFreeShipping">
+                                                <i className="fas fa-truck me-1"></i>Free shipping
+                                                <span className="text-muted ms-2 small">Can combine with any discount type above.</span>
+                                            </label>
                                         </div>
                                     </div>
                                     <div className="mb-3">

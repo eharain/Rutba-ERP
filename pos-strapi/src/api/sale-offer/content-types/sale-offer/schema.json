@@ -34,6 +34,28 @@
       "multiple": false,
       "allowedTypes": ["images"]
     },
+    "discount_mode": {
+      "type": "enumeration",
+      "enum": [
+        "none",
+        "percent_off",
+        "fixed_off",
+        "use_product_offer_price"
+      ],
+      "default": "use_product_offer_price"
+    },
+    "discount_value": {
+      "type": "decimal",
+      "default": 0
+    },
+    "free_shipping": {
+      "type": "boolean",
+      "default": false
+    },
+    "priority": {
+      "type": "integer",
+      "default": 0
+    },
     "product_groups": {
       "type": "relation",
       "relation": "manyToMany",

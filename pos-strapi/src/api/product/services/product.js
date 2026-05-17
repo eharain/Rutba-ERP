@@ -54,6 +54,27 @@ function buildListSort(filter = {}) {
 }
 
 module.exports = createCoreService('api::product.product', ({ strapi }) => ({
+  // The storefront only sees products that are pinned by at least one
+  // *published* product-group. This is the editorial gate that decides what
+  // goes on the web — keeping it out of buildListFilters and in its own helper
+  // because the relation is uni-directional (product has no inverse
+  // product_groups field), so it can't ride along as a normal Strapi filter.
+  async _pinnedProductIds() {
+    const groups = await strapi.documents('api::product-group.product-group').findMany({
+      status: 'published',
+      fields: ['id'],
+      populate: { products: { fields: ['id'] } },
+      pagination: { pageSize: 1000 },
+    });
+    const ids = new Set();
+    for (const g of groups ?? []) {
+      for (const p of g.products ?? []) {
+        if (p?.id) ids.add(p.id);
+      }
+    }
+    return Array.from(ids);
+  },
+
   async findPublicDetail(documentId) {
     if (!documentId) return null;
     return strapi.documents('api::product.product').findOne({
@@ -81,9 +102,11 @@ module.exports = createCoreService('api::product.product', ({ strapi }) => ({
   async findPublicSearch(query, pageSize = 5) {
     const q = (query ?? '').trim();
     if (q.length === 0) return [];
+    const pinned = await this._pinnedProductIds();
+    if (pinned.length === 0) return [];
     return strapi.documents('api::product.product').findMany({
       status: 'published',
-      filters: { name: { $containsi: q } },
+      filters: { $and: [{ name: { $containsi: q } }, { id: { $in: pinned } }] },
       fields: DETAIL_FIELDS,
       populate: PUBLIC_POPULATE,
       pagination: { pageSize },
@@ -91,8 +114,11 @@ module.exports = createCoreService('api::product.product', ({ strapi }) => ({
   },
 
   async findPublicHighestPrice() {
+    const pinned = await this._pinnedProductIds();
+    if (pinned.length === 0) return null;
     const results = await strapi.documents('api::product.product').findMany({
       status: 'published',
+      filters: { id: { $in: pinned } },
       sort: ['selling_price:DESC', 'id:ASC'],
       fields: DETAIL_FIELDS,
       populate: PUBLIC_POPULATE,
@@ -102,8 +128,16 @@ module.exports = createCoreService('api::product.product', ({ strapi }) => ({
   },
 
   async findPublicList({ filter = {}, page = 1, pageSize = 24 } = {}) {
-    const filters = buildListFilters(filter);
+    const baseFilters = buildListFilters(filter);
     const sort = buildListSort(filter);
+    const pinned = await this._pinnedProductIds();
+    if (pinned.length === 0) {
+      return { data: [], meta: { pagination: { page, pageSize, pageCount: 1, total: 0 } } };
+    }
+    const pinnedClause = { id: { $in: pinned } };
+    const filters = baseFilters.$and
+      ? { $and: [...baseFilters.$and, pinnedClause] }
+      : { $and: [pinnedClause, ...(Object.keys(baseFilters).length ? [baseFilters] : [])] };
 
     const [data, total] = await Promise.all([
       strapi.documents('api::product.product').findMany({

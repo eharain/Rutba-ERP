@@ -7,8 +7,8 @@ async function list(filter = {}, page = '1') {
     return api.fetch(ep.path, ep.params);
 }
 
-async function detail(slug) {
-    const ep = WebProductsEndpointsApi.detail(slug);
+async function detail(slug, groupId) {
+    const ep = WebProductsEndpointsApi.detail(slug, groupId);
     return api.fetch(ep.path, ep.params);
 }
 

@@ -18,33 +18,48 @@ export const StockItemsEndpoints = {
      *
      * @param {number} page   1-based
      * @param {number} pageSize
-     * @param {{ statusFilter?, branchDocId?, productDocId?, showArchived?, sort? }} opts
+     * @param {{ statusFilter?, branchDocId?, productDocId?, showArchived?, sort?, searchTerm? }} opts
      */
-    list: (page = 1, pageSize = 20, { statusFilter, branchDocId, productDocId, showArchived, sort } = {}) => ({
-        path: '/me/stock-items-search',
-        action: 'find',
-        method: 'get',
-        apps: ['stock'],
-        approle: ['admin', 'manager', 'staff'],
-        params: {
-            // Populate product.logo + product.gallery so the sale-editor
-            // search dropdown can render a thumbnail per row. Keeping these
-            // to `fields: [...]` (or just allowing the whole relation)
-            // shaves the payload — the consumer only reads url/formats.
-            populate: {
-                product: { populate: { logo: true, gallery: true, brands: true } },
-                purchase_item: { populate: { purchase: true } },
+    list: (page = 1, pageSize = 20, { statusFilter, branchDocId, productDocId, showArchived, sort, searchTerm } = {}) => {
+        const term = typeof searchTerm === 'string' ? searchTerm.trim() : '';
+        const searchFilter = term
+            ? {
+                  $or: [
+                      { name: { $containsi: term } },
+                      { barcode: { $containsi: term } },
+                      { sku: { $containsi: term } },
+                      { product: { name: { $containsi: term } } },
+                      { product: { sku: { $containsi: term } } },
+                  ],
+              }
+            : null;
+        return {
+            path: '/me/stock-items-search',
+            action: 'find',
+            method: 'get',
+            apps: ['stock'],
+            approle: ['admin', 'manager', 'staff'],
+            params: {
+                // Populate product.logo + product.gallery so the sale-editor
+                // search dropdown can render a thumbnail per row. Keeping these
+                // to `fields: [...]` (or just allowing the whole relation)
+                // shaves the payload — the consumer only reads url/formats.
+                populate: {
+                    product: { populate: { logo: true, gallery: true, brands: true } },
+                    purchase_item: { populate: { purchase: true } },
+                },
+                filters: {
+                    ...(statusFilter ? { status: statusFilter } : {}),
+                    ...(branchDocId ? { branch: { documentId: branchDocId } } : {}),
+                    ...(productDocId ? { product: { documentId: productDocId } } : {}),
+                    ...(showArchived ? { archived: true } : {}),
+                    ...(searchFilter ? searchFilter : {}),
+                },
+                pagination: { page, pageSize },
+                sort: sort ?? ['createdAt:desc'],
             },
-            filters: {
-                ...(statusFilter ? { status: statusFilter } : {}),
-                ...(branchDocId ? { branch: { documentId: branchDocId } } : {}),
-                ...(productDocId ? { product: { documentId: productDocId } } : {}),
-                ...(showArchived ? { archived: true } : {}),
-            },
-            pagination: { page, pageSize },
-            sort: sort ?? ['createdAt:desc'],
-        },
-    }),
+        };
+    },
 
     /**
      * List stock items that belong to a specific product.
