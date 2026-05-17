@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { StraipImageUrl, isImage, relationConnects } from "@rutba/api-provider/lib/api";
-import { ProductsEndpoints, UploadEndpoints, TermTypesEndpoints } from '@rutba/api-provider/endpoints/index.js';
+import { ProductsEndpoints, UploadEndpoints, TermTypesEndpoints, StockItemsEndpoints, PurchaseItemsEndpoints } from '@rutba/api-provider/endpoints/index.js';
 import { createVariant } from '../lib/variants';
 import StrapiMediaLibrary from './StrapiMediaLibrary';
 import TermTypeTermDialog from './TermTypeTermDialog';
@@ -61,7 +61,18 @@ export default function ProductGalleryManager({ productId, onUpdate }) {
         if (!productId) return;
         setLoading(true);
         try {
-            const res = await ProductsEndpoints.byId(productId);
+            // byIdDraft + explicit variants populate: byId() defaults to
+            // status=published and its default populate omits `variants`, so
+            // we'd see zero variants when only drafts exist (and we wouldn't
+            // see their gallery/terms even after publish).
+            const res = await ProductsEndpoints.byIdDraft(productId, {
+                populate: {
+                    logo: true,
+                    gallery: true,
+                    terms: true,
+                    variants: { populate: { logo: true, gallery: true, terms: true } },
+                },
+            });
             const prod = res.data || res;
             setProduct(prod);
             const loadedVariants = prod.variants || [];
@@ -145,6 +156,56 @@ export default function ProductGalleryManager({ productId, onUpdate }) {
                 [field]: value,
             },
         }));
+    }
+
+    // --- Merge a variant back into the parent ---
+    // Mirrors the ProductMergeTool's "Merge Variants Into Parent" flow, but
+    // exposed inline on the variant list so users don't have to switch tabs.
+    // Always transfers stock items + purchase items, then deletes the variant.
+    async function mergeVariantIntoParent(variant) {
+        const vId = getEntryId(variant);
+        const parentDocId = getEntryId(product);
+        if (!confirm(`Merge variant "${variant.name}" into "${product.name}"?\n\nStock items and purchase items will move to the parent, and this variant will be removed.`)) return;
+        setLoading(true);
+        try {
+            // Transfer stock items
+            let page = 1, totalPages = 1, stockCount = 0;
+            do {
+                const res = await StockItemsEndpoints.byProduct(vId, { page, pageSize: 100 });
+                const items = res?.data ?? res ?? [];
+                totalPages = res?.meta?.pagination?.pageCount || 1;
+                for (const item of items) {
+                    await StockItemsEndpoints.update(getEntryId(item), {
+                        product: { connect: [parentDocId], disconnect: [vId] }, name: product.name
+                    });
+                    stockCount++;
+                }
+                page++;
+            } while (page <= totalPages);
+            // Transfer purchase items
+            page = 1; totalPages = 1; let purchaseCount = 0;
+            do {
+                const res = await PurchaseItemsEndpoints.byProduct(vId, { page, pageSize: 100 });
+                const items = res?.data ?? res ?? [];
+                totalPages = res?.meta?.pagination?.pageCount || 1;
+                for (const item of items) {
+                    await PurchaseItemsEndpoints.update(getEntryId(item), {
+                        product: { connect: [parentDocId], disconnect: [vId] },
+                    });
+                    purchaseCount++;
+                }
+                page++;
+            } while (page <= totalPages);
+            await ProductsEndpoints.del(vId);
+            await loadData();
+            if (onUpdate) onUpdate();
+            setSuccess(`Merged "${variant.name}" into parent (${stockCount} stock + ${purchaseCount} purchase item(s) moved)`);
+        } catch (err) {
+            console.error('Failed to merge variant into parent', err);
+            setError('Failed to merge variant into parent');
+        } finally {
+            setLoading(false);
+        }
     }
 
     async function saveVariantEdit(variantDocId, variant) {
@@ -757,6 +818,315 @@ export default function ProductGalleryManager({ productId, onUpdate }) {
                 </div>
             )}
 
+            {/* =============== VARIANTS LIST (compact) =============== */}
+            {variants.length > 0 && (
+                <div className="card mb-3">
+                    <div className="card-header py-2">
+                        <h6 className="mb-0">
+                            <i className="fas fa-list me-2" />
+                            Variants ({variants.length})
+                        </h6>
+                    </div>
+                    <div className="card-body p-0">
+                        <div className="table-responsive">
+                            <table className="table table-sm table-hover align-middle mb-0">
+                                <thead className="table-light">
+                                    <tr>
+                                        <th style={{ width: 48 }}></th>
+                                        <th>Name</th>
+                                        <th>Terms</th>
+                                        <th>SKU</th>
+                                        <th>Barcode</th>
+                                        <th className="text-end">Selling</th>
+                                        <th className="text-end">Offer</th>
+                                        <th className="text-center">Images</th>
+                                        <th className="text-center">Status</th>
+                                        <th style={{ width: '90px' }}></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {variants.map(v => {
+                                        const vId = getEntryId(v);
+                                        const termNames = (v.terms || []).map(t => t.name).join(', ');
+                                        const imgCount = (v.gallery || []).length;
+                                        const thumbSrc = v.logo
+                                            ? StraipImageUrl(v.logo)
+                                            : (v.gallery && v.gallery[0] ? StraipImageUrl(v.gallery[0]) : null);
+                                        return (
+                                            <tr key={vId}>
+                                                <td>
+                                                    {thumbSrc ? (
+                                                        <img
+                                                            src={thumbSrc}
+                                                            alt={v.name || ''}
+                                                            style={{ width: 36, height: 36, objectFit: 'cover', borderRadius: 4 }}
+                                                        />
+                                                    ) : (
+                                                        <div
+                                                            className="d-flex align-items-center justify-content-center text-muted bg-light"
+                                                            style={{ width: 36, height: 36, borderRadius: 4 }}
+                                                            title="No image"
+                                                        >
+                                                            <i className="fas fa-image" style={{ fontSize: '0.85em' }} />
+                                                        </div>
+                                                    )}
+                                                </td>
+                                                <td><strong>{v.name}</strong></td>
+                                                <td>
+                                                    {termNames ? termNames.split(', ').map((tn, i) => (
+                                                        <span key={i} className="badge bg-light text-dark border me-1">{tn}</span>
+                                                    )) : <span className="text-muted">—</span>}
+                                                </td>
+                                                <td><span className="small">{v.sku || '—'}</span></td>
+                                                <td><span className="small">{v.barcode || '—'}</span></td>
+                                                <td className="text-end">{v.selling_price ?? '—'}</td>
+                                                <td className="text-end">{v.offer_price ?? '—'}</td>
+                                                <td className="text-center">
+                                                    <span className={`badge ${imgCount > 0 ? 'bg-success' : 'bg-secondary'}`}>{imgCount}</span>
+                                                </td>
+                                                <td className="text-center">
+                                                    {v.is_active !== false
+                                                        ? <span className="badge bg-success">Active</span>
+                                                        : <span className="badge bg-warning text-dark">Inactive</span>}
+                                                </td>
+                                                <td>
+                                                    <div className="btn-group btn-group-sm">
+                                                        <button
+                                                            className="btn btn-outline-primary"
+                                                            type="button"
+                                                            title="Scroll to variant gallery panel"
+                                                            onClick={() => {
+                                                                setExpandedVariants(prev => new Set(prev).add(vId));
+                                                                const el = document.getElementById(`variant-panel-${vId}`);
+                                                                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                                            }}
+                                                        >
+                                                            <i className="fas fa-edit" />
+                                                        </button>
+                                                        <button
+                                                            className="btn btn-outline-warning"
+                                                            type="button"
+                                                            title="Merge into parent (move stock + purchase items, remove variant)"
+                                                            onClick={() => mergeVariantIntoParent(v)}
+                                                            disabled={loading}
+                                                        >
+                                                            <i className="fas fa-compress" />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* =============== VARIANT GALLERIES =============== */}
+            {variants.length > 0 && (
+                <div className="card mb-3">
+                    <div className="card-header py-2">
+                        <h6 className="mb-0">
+                            <i className="fas fa-layer-group me-2" />
+                            Variant Galleries ({variants.length} variant{variants.length > 1 ? 's' : ''})
+                        </h6>
+                    </div>
+                    <div className="card-body p-2">
+                        {variants.map(variant => {
+                            const vId = getEntryId(variant);
+                            const vGallery = variant.gallery || [];
+                            const vSelected = selectedVariantImages[vId] || new Set();
+                            const hasSelected = vSelected.size > 0;
+                            const isExpanded = expandedVariants.has(vId);
+                            const termNames = (variant.terms || []).map(t => t.name).join(', ');
+                            const moveTarget = variantMoveTargets[vId] || '';
+                            const edits = getVariantEdit(vId, variant);
+                            const isEdited = !!variantEdits[vId];
+                            const isSaving = !!savingVariant[vId];
+
+                            return (
+                                <div key={vId} id={`variant-panel-${vId}`} className="card mb-2">
+                                    <div
+                                        className="card-header py-2 d-flex justify-content-between align-items-center"
+                                        style={{ cursor: 'pointer' }}
+                                        onClick={() => toggleExpandVariant(vId)}
+                                    >
+                                        <span className="fw-bold small">
+                                            <i className={`fas fa-chevron-${isExpanded ? 'down' : 'right'} me-2`} />
+                                            {variant.name}
+                                            <span className="badge bg-secondary ms-2">{vGallery.length} image(s)</span>
+                                            {termNames && (
+                                                <span className="badge bg-light text-dark border ms-1">{termNames}</span>
+                                            )}
+                                            {hasSelected && (
+                                                <span className="badge bg-primary ms-1">{vSelected.size} selected</span>
+                                            )}
+                                        </span>
+                                    </div>
+
+                                    {isExpanded && (
+                                        <div className="card-body py-2">
+                                            {/* --- Inline editable fields --- */}
+                                            <div className="row g-2 mb-3">
+                                                <div className="col-12 col-md-4">
+                                                    <label className="form-label small fw-bold mb-1">Name</label>
+                                                    <input
+                                                        className="form-control form-control-sm"
+                                                        value={edits.name}
+                                                        onClick={e => e.stopPropagation()}
+                                                        onChange={e => updateVariantEdit(vId, 'name', e.target.value)}
+                                                    />
+                                                </div>
+                                                <div className="col-6 col-md-3">
+                                                    <label className="form-label small fw-bold mb-1">Selling Price</label>
+                                                    <input
+                                                        type="number"
+                                                        className="form-control form-control-sm"
+                                                        value={edits.selling_price}
+                                                        onClick={e => e.stopPropagation()}
+                                                        onChange={e => updateVariantEdit(vId, 'selling_price', e.target.value)}
+                                                    />
+                                                </div>
+                                                <div className="col-6 col-md-3">
+                                                    <label className="form-label small fw-bold mb-1">Offer Price</label>
+                                                    <input
+                                                        type="number"
+                                                        className="form-control form-control-sm"
+                                                        value={edits.offer_price}
+                                                        onClick={e => e.stopPropagation()}
+                                                        onChange={e => updateVariantEdit(vId, 'offer_price', e.target.value)}
+                                                    />
+                                                </div>
+                                                <div className="col-12 col-md-2 d-flex align-items-end">
+                                                    <button
+                                                        className="btn btn-sm btn-primary w-100"
+                                                        type="button"
+                                                        disabled={!isEdited || isSaving}
+                                                        onClick={e => { e.stopPropagation(); saveVariantEdit(vId, variant); }}
+                                                    >
+                                                        {isSaving ? <><i className="fas fa-spinner fa-spin me-1" />Saving</> : <><i className="fas fa-save me-1" />Save</>}
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            <div className="d-flex justify-content-end mb-2 gap-2">
+                                                <button
+                                                    className="btn btn-sm btn-outline-warning"
+                                                    type="button"
+                                                    onClick={(e) => { e.stopPropagation(); mergeVariantIntoParent(variant); }}
+                                                    disabled={loading}
+                                                    title="Move this variant's stock + purchase items to the parent and remove the variant"
+                                                >
+                                                    <i className="fas fa-compress me-1" />Merge to Parent
+                                                </button>
+                                                <button
+                                                    className="btn btn-sm btn-outline-secondary"
+                                                    type="button"
+                                                    onClick={(e) => { e.stopPropagation(); openMediaLibrary(vId); }}
+                                                >
+                                                    <i className="fas fa-photo-video me-1" />Media Library
+                                                </button>
+                                            </div>
+
+                                            {vGallery.length === 0 ? (
+                                                <div className="text-muted text-center py-2 small">No images assigned to this variant</div>
+                                            ) : (
+                                                <>
+                                                    <div className="d-flex justify-content-end mb-2">
+                                                        <button
+                                                            className="btn btn-sm btn-outline-secondary"
+                                                            type="button"
+                                                            onClick={(e) => { e.stopPropagation(); selectAllVariantImages(vId, vGallery); }}
+                                                        >
+                                                            {vSelected.size === vGallery.length ? 'Deselect All' : 'Select All'}
+                                                        </button>
+                                                    </div>
+                                                    <div className="d-flex flex-wrap gap-2">
+                                                        {vGallery.map(img =>
+                                                            renderImageThumbnail(
+                                                                img,
+                                                                vSelected.has(img.id),
+                                                                () => toggleVariantImage(vId, img.id)
+                                                            )
+                                                        )}
+                                                    </div>
+                                                </>
+                                            )}
+
+                                            {/* Variant action bar */}
+                                            {hasSelected && (
+                                                <div className="mt-2 p-2 bg-light rounded border d-flex flex-wrap gap-2 align-items-center">
+                                                    <span className="small fw-bold">{vSelected.size} selected:</span>
+
+                                                    <button
+                                                        className="btn btn-sm btn-outline-primary"
+                                                        type="button"
+                                                        disabled={loading}
+                                                        onClick={() => moveToParent(vId)}
+                                                        title="Move selected images back to parent (removes from variant)"
+                                                    >
+                                                        <i className="fas fa-arrow-up me-1" />Move to Parent
+                                                    </button>
+                                                    <button
+                                                        className="btn btn-sm btn-outline-secondary"
+                                                        type="button"
+                                                        disabled={loading}
+                                                        onClick={() => copyToParent(vId)}
+                                                        title="Copy selected images to parent (keeps in variant)"
+                                                    >
+                                                        <i className="fas fa-copy me-1" />Copy to Parent
+                                                    </button>
+
+                                                    {variants.length > 1 && (
+                                                        <>
+                                                            <span className="mx-1 text-muted">|</span>
+                                                            <select
+                                                                className="form-select form-select-sm"
+                                                                style={{ maxWidth: 200 }}
+                                                                value={moveTarget}
+                                                                onChange={e => setVariantMoveTargets(prev => ({ ...prev, [vId]: e.target.value }))}
+                                                                onClick={e => e.stopPropagation()}
+                                                            >
+                                                                <option value="">Choose variant...</option>
+                                                                {variants.filter(v => getEntryId(v) !== vId).map(v => (
+                                                                    <option key={getEntryId(v)} value={getEntryId(v)}>
+                                                                        {v.name} ({(v.gallery || []).length} imgs)
+                                                                    </option>
+                                                                ))}
+                                                            </select>
+                                                            <button
+                                                                className="btn btn-sm btn-primary"
+                                                                type="button"
+                                                                disabled={!moveTarget || loading}
+                                                                onClick={() => moveBetweenVariants(vId, moveTarget)}
+                                                                title="Move to variant (removes from this variant)"
+                                                            >
+                                                                <i className="fas fa-exchange-alt me-1" />Move
+                                                            </button>
+                                                            <button
+                                                                className="btn btn-sm btn-outline-primary"
+                                                                type="button"
+                                                                disabled={!moveTarget || loading}
+                                                                onClick={() => copyBetweenVariants(vId, moveTarget)}
+                                                                title="Copy to variant (keeps in this variant)"
+                                                            >
+                                                                <i className="fas fa-copy me-1" />Copy
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
+
             {/* =============== PARENT GALLERY =============== */}
             <div className="card mb-3">
                 <div className="card-header d-flex justify-content-between align-items-center py-2">
@@ -918,200 +1288,6 @@ export default function ProductGalleryManager({ productId, onUpdate }) {
                     )}
                 </div>
             </div>
-
-            {/* =============== VARIANT GALLERIES =============== */}
-            {variants.length > 0 && (
-                <div className="card mb-3">
-                    <div className="card-header py-2">
-                        <h6 className="mb-0">
-                            <i className="fas fa-layer-group me-2" />
-                            Variant Galleries ({variants.length} variant{variants.length > 1 ? 's' : ''})
-                        </h6>
-                    </div>
-                    <div className="card-body p-2">
-                        {variants.map(variant => {
-                            const vId = getEntryId(variant);
-                            const vGallery = variant.gallery || [];
-                            const vSelected = selectedVariantImages[vId] || new Set();
-                            const hasSelected = vSelected.size > 0;
-                            const isExpanded = expandedVariants.has(vId);
-                            const termNames = (variant.terms || []).map(t => t.name).join(', ');
-                            const moveTarget = variantMoveTargets[vId] || '';
-                            const edits = getVariantEdit(vId, variant);
-                            const isEdited = !!variantEdits[vId];
-                            const isSaving = !!savingVariant[vId];
-
-                            return (
-                                <div key={vId} className="card mb-2">
-                                    <div
-                                        className="card-header py-2 d-flex justify-content-between align-items-center"
-                                        style={{ cursor: 'pointer' }}
-                                        onClick={() => toggleExpandVariant(vId)}
-                                    >
-                                        <span className="fw-bold small">
-                                            <i className={`fas fa-chevron-${isExpanded ? 'down' : 'right'} me-2`} />
-                                            {variant.name}
-                                            <span className="badge bg-secondary ms-2">{vGallery.length} image(s)</span>
-                                            {termNames && (
-                                                <span className="badge bg-light text-dark border ms-1">{termNames}</span>
-                                            )}
-                                            {hasSelected && (
-                                                <span className="badge bg-primary ms-1">{vSelected.size} selected</span>
-                                            )}
-                                        </span>
-                                    </div>
-
-                                    {isExpanded && (
-                                        <div className="card-body py-2">
-                                            {/* --- Inline editable fields --- */}
-                                            <div className="row g-2 mb-3">
-                                                <div className="col-12 col-md-4">
-                                                    <label className="form-label small fw-bold mb-1">Name</label>
-                                                    <input
-                                                        className="form-control form-control-sm"
-                                                        value={edits.name}
-                                                        onClick={e => e.stopPropagation()}
-                                                        onChange={e => updateVariantEdit(vId, 'name', e.target.value)}
-                                                    />
-                                                </div>
-                                                <div className="col-6 col-md-3">
-                                                    <label className="form-label small fw-bold mb-1">Selling Price</label>
-                                                    <input
-                                                        type="number"
-                                                        className="form-control form-control-sm"
-                                                        value={edits.selling_price}
-                                                        onClick={e => e.stopPropagation()}
-                                                        onChange={e => updateVariantEdit(vId, 'selling_price', e.target.value)}
-                                                    />
-                                                </div>
-                                                <div className="col-6 col-md-3">
-                                                    <label className="form-label small fw-bold mb-1">Offer Price</label>
-                                                    <input
-                                                        type="number"
-                                                        className="form-control form-control-sm"
-                                                        value={edits.offer_price}
-                                                        onClick={e => e.stopPropagation()}
-                                                        onChange={e => updateVariantEdit(vId, 'offer_price', e.target.value)}
-                                                    />
-                                                </div>
-                                                <div className="col-12 col-md-2 d-flex align-items-end">
-                                                    <button
-                                                        className="btn btn-sm btn-primary w-100"
-                                                        type="button"
-                                                        disabled={!isEdited || isSaving}
-                                                        onClick={e => { e.stopPropagation(); saveVariantEdit(vId, variant); }}
-                                                    >
-                                                        {isSaving ? <><i className="fas fa-spinner fa-spin me-1" />Saving</> : <><i className="fas fa-save me-1" />Save</>}
-                                                    </button>
-                                                </div>
-                                            </div>
-
-                                            <div className="d-flex justify-content-end mb-2">
-                                                <button
-                                                    className="btn btn-sm btn-outline-secondary"
-                                                    type="button"
-                                                    onClick={(e) => { e.stopPropagation(); openMediaLibrary(vId); }}
-                                                >
-                                                    <i className="fas fa-photo-video me-1" />Media Library
-                                                </button>
-                                            </div>
-
-                                            {vGallery.length === 0 ? (
-                                                <div className="text-muted text-center py-2 small">No images assigned to this variant</div>
-                                            ) : (
-                                                <>
-                                                    <div className="d-flex justify-content-end mb-2">
-                                                        <button
-                                                            className="btn btn-sm btn-outline-secondary"
-                                                            type="button"
-                                                            onClick={(e) => { e.stopPropagation(); selectAllVariantImages(vId, vGallery); }}
-                                                        >
-                                                            {vSelected.size === vGallery.length ? 'Deselect All' : 'Select All'}
-                                                        </button>
-                                                    </div>
-                                                    <div className="d-flex flex-wrap gap-2">
-                                                        {vGallery.map(img =>
-                                                            renderImageThumbnail(
-                                                                img,
-                                                                vSelected.has(img.id),
-                                                                () => toggleVariantImage(vId, img.id)
-                                                            )
-                                                        )}
-                                                    </div>
-                                                </>
-                                            )}
-
-                                            {/* Variant action bar */}
-                                            {hasSelected && (
-                                                <div className="mt-2 p-2 bg-light rounded border d-flex flex-wrap gap-2 align-items-center">
-                                                    <span className="small fw-bold">{vSelected.size} selected:</span>
-
-                                                    <button
-                                                        className="btn btn-sm btn-outline-primary"
-                                                        type="button"
-                                                        disabled={loading}
-                                                        onClick={() => moveToParent(vId)}
-                                                        title="Move selected images back to parent (removes from variant)"
-                                                    >
-                                                        <i className="fas fa-arrow-up me-1" />Move to Parent
-                                                    </button>
-                                                    <button
-                                                        className="btn btn-sm btn-outline-secondary"
-                                                        type="button"
-                                                        disabled={loading}
-                                                        onClick={() => copyToParent(vId)}
-                                                        title="Copy selected images to parent (keeps in variant)"
-                                                    >
-                                                        <i className="fas fa-copy me-1" />Copy to Parent
-                                                    </button>
-
-                                                    {variants.length > 1 && (
-                                                        <>
-                                                            <span className="mx-1 text-muted">|</span>
-                                                            <select
-                                                                className="form-select form-select-sm"
-                                                                style={{ maxWidth: 200 }}
-                                                                value={moveTarget}
-                                                                onChange={e => setVariantMoveTargets(prev => ({ ...prev, [vId]: e.target.value }))}
-                                                                onClick={e => e.stopPropagation()}
-                                                            >
-                                                                <option value="">Choose variant...</option>
-                                                                {variants.filter(v => getEntryId(v) !== vId).map(v => (
-                                                                    <option key={getEntryId(v)} value={getEntryId(v)}>
-                                                                        {v.name} ({(v.gallery || []).length} imgs)
-                                                                    </option>
-                                                                ))}
-                                                            </select>
-                                                            <button
-                                                                className="btn btn-sm btn-primary"
-                                                                type="button"
-                                                                disabled={!moveTarget || loading}
-                                                                onClick={() => moveBetweenVariants(vId, moveTarget)}
-                                                                title="Move to variant (removes from this variant)"
-                                                            >
-                                                                <i className="fas fa-exchange-alt me-1" />Move
-                                                            </button>
-                                                            <button
-                                                                className="btn btn-sm btn-outline-primary"
-                                                                type="button"
-                                                                disabled={!moveTarget || loading}
-                                                                onClick={() => copyBetweenVariants(vId, moveTarget)}
-                                                                title="Copy to variant (keeps in this variant)"
-                                                            >
-                                                                <i className="fas fa-copy me-1" />Copy
-                                                            </button>
-                                                        </>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-                            );
-                        })}
-                    </div>
-                </div>
-            )}
 
             {/* =============== CREATE VARIANTS BY TERM TYPE =============== */}
             <div className="card mb-3">

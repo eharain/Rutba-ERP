@@ -300,8 +300,9 @@ export default function Products() {
                                         </th>
                                         <th style={{ width: 30 }}></th>
                                         <SortableTh label="id" field="id" sortField={sortField} sortDir={sortOrder} onSort={handleSort} />
-                                        <SortableTh label="Product Name" field="name" sortField={sortField} sortDir={sortOrder} onSort={handleSort} />
                                         <th>Logo</th>
+                                        <SortableTh label="Product Name" field="name" sortField={sortField} sortDir={sortOrder} onSort={handleSort} />
+                                        <SortableTh label="Modified" field="updatedAt" sortField={sortField} sortDir={sortOrder} onSort={handleSort} />
                                         <SortableTh label="Barcode" field="barcode" sortField={sortField} sortDir={sortOrder} onSort={handleSort} />
                                         <SortableTh label="SKU" field="sku" sortField={sortField} sortDir={sortOrder} onSort={handleSort} />
                                         <th>Suppliers</th>
@@ -316,7 +317,7 @@ export default function Products() {
                                 <tbody>
                                     {products.length === 0 ? (
                                         <tr>
-                                            <td colSpan={14} className="text-center text-muted py-4">
+                                            <td colSpan={15} className="text-center text-muted py-4">
                                                 No products found.
                                             </td>
                                         </tr>
@@ -338,9 +339,6 @@ export default function Products() {
                                                     </td>
                                                     <td title={product.documentId}>{product.id}</td>
                                                     <td>
-                                                        <Link href={`/${product.documentId ?? product.id}/product-edit`}><strong>{product.name}</strong></Link>
-                                                    </td>
-                                                    <td>
                                                         {product.logo?.url ? (
                                                             <img
                                                                 src={MediaUtilsEndpoints.strapiImageUrl(product.logo)}
@@ -350,6 +348,12 @@ export default function Products() {
                                                         ) : (
                                                             <span style={{ color: '#999' }}><i className="fas fa-image"></i></span>
                                                         )}
+                                                    </td>
+                                                    <td>
+                                                        <Link href={`/${product.documentId ?? product.id}/product-edit`}><strong>{product.name}</strong></Link>
+                                                    </td>
+                                                    <td className="text-nowrap small text-muted" title={product.updatedAt}>
+                                                        {product.updatedAt ? new Date(product.updatedAt).toLocaleDateString() : '—'}
                                                     </td>
                                                     <td>{product.barcode}</td>
                                                     <td>{product.sku}</td>
@@ -364,20 +368,17 @@ export default function Products() {
                                                     <td className="text-end">{product.stock_quantity}</td>
                                                     <td>{product.status}</td>
                                                     <td>
-                                                        <div className="list-actions">
-                                                            <Link href={`/${product.documentId ?? product.id}/product-edit`} className="btn btn-sm btn-outline-primary" title="Edit">
+                                                        <div className="list-actions btn-group btn-group-sm">
+                                                            <Link href={`/${product.documentId ?? product.id}/product-edit`} className="btn btn-outline-primary" title="Edit product details">
                                                                 <i className="fas fa-edit"></i>
                                                             </Link>
-                                                            <Link href={`/${product.documentId ?? product.id}/product-stock-items`} className="btn btn-sm btn-outline-info" title="Stock Control">
+                                                            <Link href={`/${product.documentId ?? product.id}/product-stock-items`} className="btn btn-outline-info" title="Stock">
                                                                 <i className="fas fa-boxes"></i>
                                                             </Link>
-                                                            <Link href={`/${product.documentId ?? product.id}/product-variants`} className="btn btn-sm btn-outline-warning" title="Variants">
+                                                            <Link href={`/${product.documentId ?? product.id}/product-variants`} className="btn btn-outline-warning" title="Variants">
                                                                 <i className="fas fa-layer-group"></i>
                                                             </Link>
-                                                            <Link href={`/stock-items?product=${product.documentId ?? product.id}`} className="btn btn-sm btn-outline-dark" title="Stock Items">
-                                                                <i className="fas fa-barcode"></i>
-                                                            </Link>
-                                                            <Link href={`/${product.documentId ?? product.id}/product-relations`} className="btn btn-sm btn-outline-danger" title="Relations & Merge">
+                                                            <Link href={`/${product.documentId ?? product.id}/product-relations`} className="btn btn-outline-secondary" title="Merge & relations">
                                                                 <i className="fas fa-compress-arrows-alt"></i>
                                                             </Link>
                                                         </div>
@@ -386,13 +387,13 @@ export default function Products() {
                                                 {expandedProducts[product.documentId] && (
                                                     loadingVariants[product.documentId] ? (
                                                         <tr>
-                                                            <td colSpan={14} className="text-center">
+                                                            <td colSpan={15} className="text-center">
                                                                 <CircularProgress size={16} /> Loading variants...
                                                             </td>
                                                         </tr>
                                                     ) : (variantsMap[product.documentId] || []).length === 0 ? (
                                                         <tr>
-                                                            <td colSpan={14} className="text-center" style={{ color: '#999', fontStyle: 'italic' }}>
+                                                            <td colSpan={15} className="text-center" style={{ color: '#999', fontStyle: 'italic' }}>
                                                                 No variants
                                                             </td>
                                                         </tr>
@@ -403,12 +404,6 @@ export default function Products() {
                                                                 <td></td>
                                                                 <td title={v.documentId}>{v.id}</td>
                                                                 <td>
-                                                                    <span style={{ paddingLeft: 16 }}>
-                                                                        <i className="fas fa-level-up-alt fa-rotate-90" style={{ fontSize: '0.8em', marginRight: 4, color: '#999' }}></i>
-                                                                        <Link href={`/${v.documentId ?? v.id}/product-edit`}>{v.name}</Link>
-                                                                    </span>
-                                                                </td>
-                                                                <td>
                                                                     {v.logo?.url ? (
                                                                         <img
                                                                             src={MediaUtilsEndpoints.strapiImageUrl(v.logo)}
@@ -418,6 +413,15 @@ export default function Products() {
                                                                     ) : (
                                                                         <span style={{ color: '#999' }}><i className="fas fa-image" style={{ fontSize: '0.8em' }}></i></span>
                                                                     )}
+                                                                </td>
+                                                                <td>
+                                                                    <span style={{ paddingLeft: 16 }}>
+                                                                        <i className="fas fa-level-up-alt fa-rotate-90" style={{ fontSize: '0.8em', marginRight: 4, color: '#999' }}></i>
+                                                                        <Link href={`/${v.documentId ?? v.id}/product-edit`}>{v.name}</Link>
+                                                                    </span>
+                                                                </td>
+                                                                <td className="text-nowrap small text-muted" title={v.updatedAt}>
+                                                                    {v.updatedAt ? new Date(v.updatedAt).toLocaleDateString() : '—'}
                                                                 </td>
                                                                 <td>{v.barcode}</td>
                                                                 <td>{v.sku}</td>
@@ -432,15 +436,12 @@ export default function Products() {
                                                                 <td className="text-end">{v.stock_quantity}</td>
                                                                 <td>{v.status}</td>
                                                                 <td>
-                                                                    <div className="list-actions">
-                                                                        <Link href={`/${v.documentId ?? v.id}/product-edit`} className="btn btn-sm btn-outline-primary" title="Edit">
+                                                                    <div className="list-actions btn-group btn-group-sm">
+                                                                        <Link href={`/${v.documentId ?? v.id}/product-edit`} className="btn btn-outline-primary" title="Edit variant details">
                                                                             <i className="fas fa-edit"></i>
                                                                         </Link>
-                                                                        <Link href={`/${v.documentId ?? v.id}/product-stock-items`} className="btn btn-sm btn-outline-info" title="Stock Control">
+                                                                        <Link href={`/${v.documentId ?? v.id}/product-stock-items`} className="btn btn-outline-info" title="Stock">
                                                                             <i className="fas fa-boxes"></i>
-                                                                        </Link>
-                                                                        <Link href={`/stock-items?product=${v.documentId ?? v.id}`} className="btn btn-sm btn-outline-dark" title="Stock Items">
-                                                                            <i className="fas fa-barcode"></i>
                                                                         </Link>
                                                                     </div>
                                                                 </td>

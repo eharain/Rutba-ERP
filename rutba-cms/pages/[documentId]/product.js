@@ -349,7 +349,7 @@ export default function ProductDetail() {
     // pos-stock Variants page does, just with CMS-friendly gallery affordances.
     const tabs = product && !isNew ? [
         { key: "details", label: "Product Details", icon: "fa-edit", onClick: () => { setActiveTab("details"); return true; } },
-        { key: "variants", label: "Variants", icon: "fa-layer-group", onClick: () => { setActiveTab("variants"); return true; }, badge: (galleryCount + variantCount) || undefined },
+        { key: "variants", label: "Variants", icon: "fa-layer-group", onClick: () => { setActiveTab("variants"); return true; }, badge: variantCount || undefined },
         { key: "merge", label: "Merge", icon: "fa-compress-arrows-alt", onClick: () => { setActiveTab("merge"); return true; } },
     ] : [];
 

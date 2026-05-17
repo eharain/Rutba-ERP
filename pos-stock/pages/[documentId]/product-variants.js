@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import Layout from '../../components/Layout';
 import ProtectedRoute from '@rutba/pos-shared/components/ProtectedRoute';
-import { TermTypesEndpoints, StockItemsEndpoints, ProductsEndpoints, fetchProducts } from '@rutba/api-provider/endpoints';
+import { TermTypesEndpoints, StockItemsEndpoints, ProductsEndpoints, MediaUtilsEndpoints, fetchProducts } from '@rutba/api-provider/endpoints';
 import ProductGalleryManager from '@rutba/pos-shared/components/ProductGalleryManager';
 import ProductVariantManager from '@rutba/pos-shared/components/ProductVariantManager';
 import TermTypeTermDialog from '@rutba/pos-shared/components/TermTypeTermDialog';
@@ -56,7 +56,22 @@ export default function ProductVariantsPage() {
     async function loadProductDetails(id) {
         setLoading(true);
         try {
-            const res = await ProductsEndpoints.byId(id);
+            // byIdDraft + explicit variants populate: byId() defaults to
+            // status=published and its default populate omits `variants`, so the
+            // tab was silently showing zero variants even when the CMS (which uses
+            // byIdDraft with explicit populate) showed many. Match the CMS.
+            const res = await ProductsEndpoints.byIdDraft(id, {
+                populate: {
+                    categories: true,
+                    brands: true,
+                    suppliers: true,
+                    logo: true,
+                    gallery: true,
+                    terms: true,
+                    parent: true,
+                    variants: { populate: { logo: true, gallery: true, terms: true } },
+                },
+            });
             const prod = res.data || res;
             setSelectedProduct(prod);
             const loadedVariants = prod.variants || [];
@@ -251,6 +266,81 @@ export default function ProductVariantsPage() {
         }
     }
 
+    async function handleMergeVariantToParent(variant) {
+        const vId = getEntryId(variant);
+        const count = variantStockCounts[vId] || 0;
+        const msg = count > 0
+            ? `Merge "${variant.name}" into the parent?\n\n${count} stock item(s) will be moved to the parent product and this variant will be removed.`
+            : `Merge "${variant.name}" into the parent?\n\nThis variant has no stock items and will simply be removed.`;
+        if (!confirm(msg)) return;
+        setLoading(true);
+        try {
+            const parentDocumentId = getEntryId(selectedProduct);
+            if (count > 0) {
+                let page = 1;
+                let totalPages = 1;
+                do {
+                    const res = await StockItemsEndpoints.byProduct(vId, { page, pageSize: 100 });
+                    const items = res?.data ?? res ?? [];
+                    totalPages = res?.meta?.pagination?.pageCount || 1;
+                    for (const item of items) {
+                        await StockItemsEndpoints.update(getEntryId(item), {
+                            product: { connect: [parentDocumentId], disconnect: [vId] }, name: selectedProduct.name
+                        });
+                    }
+                    page++;
+                } while (page <= totalPages);
+            }
+            await ProductsEndpoints.del(vId);
+            await loadProductDetails(parentDocumentId);
+            setSuccess(`Merged "${variant.name}" into parent${count > 0 ? ` (${count} item(s) moved)` : ''}`);
+        } catch (err) {
+            console.error('Failed to merge variant into parent', err);
+            setError('Failed to merge variant into parent');
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    async function handleBulkMergeVariantsToParent() {
+        if (selectedVariants.size === 0) return setError('Select variants to merge');
+        const toMerge = variants.filter(v => selectedVariants.has(getEntryId(v)));
+        const totalStock = toMerge.reduce((sum, v) => sum + (variantStockCounts[getEntryId(v)] || 0), 0);
+        if (!confirm(`Merge ${toMerge.length} variant(s) into the parent?\n\n${totalStock} stock item(s) will be moved to the parent and the selected variants will be removed.`)) return;
+        setLoading(true);
+        try {
+            const parentDocumentId = getEntryId(selectedProduct);
+            for (const variant of toMerge) {
+                const vId = getEntryId(variant);
+                const count = variantStockCounts[vId] || 0;
+                if (count > 0) {
+                    let page = 1;
+                    let totalPages = 1;
+                    do {
+                        const res = await StockItemsEndpoints.byProduct(vId, { page, pageSize: 100 });
+                        const items = res?.data ?? res ?? [];
+                        totalPages = res?.meta?.pagination?.pageCount || 1;
+                        for (const item of items) {
+                            await StockItemsEndpoints.update(getEntryId(item), {
+                                product: { connect: [parentDocumentId], disconnect: [vId] }, name: selectedProduct.name
+                            });
+                        }
+                        page++;
+                    } while (page <= totalPages);
+                }
+                await ProductsEndpoints.del(vId);
+            }
+            setSelectedVariants(new Set());
+            await loadProductDetails(parentDocumentId);
+            setSuccess(`Merged ${toMerge.length} variant(s) into parent${totalStock > 0 ? ` (${totalStock} item(s) moved)` : ''}`);
+        } catch (err) {
+            console.error('Bulk merge failed', err);
+            setError('Failed to merge variants into parent');
+        } finally {
+            setLoading(false);
+        }
+    }
+
     async function handleBulkDeleteVariants() {
         if (selectedVariants.size === 0) return setError('Select variants to delete');
         const toDelete = variants.filter(v => selectedVariants.has(getEntryId(v)));
@@ -416,9 +506,14 @@ export default function ProductVariantsPage() {
                                         {selectedVariants.size === variants.length ? 'Unselect All' : 'Select All'}
                                     </button>
                                     {selectedVariants.size > 0 && (
-                                        <button className="btn btn-outline-danger btn-sm" type="button" onClick={handleBulkDeleteVariants} disabled={loading}>
-                                            <i className="fas fa-trash me-1" />Delete Selected ({selectedVariants.size})
-                                        </button>
+                                        <>
+                                            <button className="btn btn-outline-warning btn-sm" type="button" onClick={handleBulkMergeVariantsToParent} disabled={loading} title="Move stock items back to the parent and remove the selected variants">
+                                                <i className="fas fa-code-merge me-1" />Merge to Parent ({selectedVariants.size})
+                                            </button>
+                                            <button className="btn btn-outline-danger btn-sm" type="button" onClick={handleBulkDeleteVariants} disabled={loading}>
+                                                <i className="fas fa-trash me-1" />Delete Selected ({selectedVariants.size})
+                                            </button>
+                                        </>
                                     )}
                                 </div>
                             )}
@@ -432,6 +527,7 @@ export default function ProductVariantsPage() {
                                         <thead className="table-light">
                                             <tr>
                                                 <th style={{ width: '30px' }}></th>
+                                                <th style={{ width: '48px' }}></th>
                                                 <th>Name</th>
                                                 <th>Terms</th>
                                                 <th>SKU</th>
@@ -448,6 +544,8 @@ export default function ProductVariantsPage() {
                                                 const vId = getEntryId(v);
                                                 const stockCount = variantStockCounts[vId] ?? '...';
                                                 const termNames = (v.terms || []).map(t => t.name).join(', ');
+                                                const thumbImg = v.logo || (v.gallery && v.gallery[0]) || null;
+                                                const thumbSrc = thumbImg ? MediaUtilsEndpoints.strapiImageUrl(thumbImg) : null;
                                                 return (
                                                     <tr key={vId}>
                                                         <td>
@@ -457,6 +555,23 @@ export default function ProductVariantsPage() {
                                                                 checked={selectedVariants.has(vId)}
                                                                 onChange={() => toggleSelectVariant(vId)}
                                                             />
+                                                        </td>
+                                                        <td>
+                                                            {thumbSrc ? (
+                                                                <img
+                                                                    src={thumbSrc}
+                                                                    alt={v.name || ''}
+                                                                    style={{ width: 36, height: 36, objectFit: 'cover', borderRadius: 4 }}
+                                                                />
+                                                            ) : (
+                                                                <div
+                                                                    className="d-flex align-items-center justify-content-center text-muted bg-light"
+                                                                    style={{ width: 36, height: 36, borderRadius: 4 }}
+                                                                    title="No image"
+                                                                >
+                                                                    <i className="fas fa-image" style={{ fontSize: '0.85em' }} />
+                                                                </div>
+                                                            )}
                                                         </td>
                                                         <td><strong>{v.name}</strong></td>
                                                         <td>
@@ -484,6 +599,9 @@ export default function ProductVariantsPage() {
                                                                 <Link href={`/stock-items?product=${vId}`} className="btn btn-outline-info" title="View stock items">
                                                                     <i className="fas fa-barcode" />
                                                                 </Link>
+                                                                <button className="btn btn-outline-warning" type="button" title="Merge into parent (move stock to parent, then remove)" onClick={() => handleMergeVariantToParent(v)} disabled={loading}>
+                                                                    <i className="fas fa-code-merge" />
+                                                                </button>
                                                                 <button className="btn btn-outline-danger" type="button" title="Delete variant" onClick={() => handleDeleteVariant(v)} disabled={loading}>
                                                                     <i className="fas fa-trash" />
                                                                 </button>
@@ -496,32 +614,6 @@ export default function ProductVariantsPage() {
                                     </table>
                                 </div>
                             )}
-                        </div>
-                    </div>
-
-                    {/* Product & Variant Terms */}
-                    <div className="card mb-3">
-                        <div className="card-header py-2">
-                            <h6 className="mb-0"><i className="fas fa-tags me-2" />Product &amp; Variant Terms</h6>
-                        </div>
-                        <div className="card-body">
-                            <ProductVariantManager
-                                productId={documentId}
-                                onUpdate={() => loadProductDetails(documentId)}
-                            />
-                        </div>
-                    </div>
-
-                    {/* Gallery & Variant Images */}
-                    <div className="card mb-3">
-                        <div className="card-header py-2">
-                            <h6 className="mb-0"><i className="fas fa-images me-2" />Gallery &amp; Variant Images</h6>
-                        </div>
-                        <div className="card-body">
-                            <ProductGalleryManager
-                                productId={documentId}
-                                onUpdate={() => loadProductDetails(documentId)}
-                            />
                         </div>
                     </div>
 
@@ -709,6 +801,32 @@ export default function ProductVariantsPage() {
                                     <i className="fas fa-info-circle me-2" />Choose a term type above to see available terms for creating variants
                                 </div>
                             )}
+                        </div>
+                    </div>
+
+                    {/* Product & Variant Terms */}
+                    <div className="card mb-3">
+                        <div className="card-header py-2">
+                            <h6 className="mb-0"><i className="fas fa-tags me-2" />Product &amp; Variant Terms</h6>
+                        </div>
+                        <div className="card-body">
+                            <ProductVariantManager
+                                productId={documentId}
+                                onUpdate={() => loadProductDetails(documentId)}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Gallery & Variant Images */}
+                    <div className="card mb-3">
+                        <div className="card-header py-2">
+                            <h6 className="mb-0"><i className="fas fa-images me-2" />Gallery &amp; Variant Images</h6>
+                        </div>
+                        <div className="card-body">
+                            <ProductGalleryManager
+                                productId={documentId}
+                                onUpdate={() => loadProductDetails(documentId)}
+                            />
                         </div>
                     </div>
 
