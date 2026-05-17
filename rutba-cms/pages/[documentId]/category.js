@@ -34,11 +34,11 @@ export default function CategoryDetail() {
         Promise.all([
             CategoriesEndpoints.byIdDraft(documentId, { populate: ["logo", "gallery", "parent"] }),
             CategoriesEndpoints.byIdPublished(documentId, { fields: ["documentId"] }).catch(() => ({ data: null })),
-            ProductsEndpoints.list({
+            ProductsEndpoints.list(1, 1000, {
                 status: "draft",
-                filters: { categories: { documentId: { $in: [documentId] } }, parent: { documentId: { $null: true } } },
+                categories: [documentId],
+                parentOnly: true,
                 sort: ["name:asc"],
-                pagination: { page: 1, pageSize: 1000 },
             }),
         ])
             .then(([catRes, pubRes, productsRes]) => {
