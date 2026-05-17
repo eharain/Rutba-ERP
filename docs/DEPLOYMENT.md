@@ -334,7 +334,7 @@ sudo bash scripts/rutba_deploy.sh
 
 The script will:
 
-1. Ask which branch to deploy (`main` for stable, `dev` for testing)
+1. Ask which branch to deploy (`main` for stable, `dev` for testing, `release` for release candidates)
 2. Compare your running commit against the remote — skip if already up-to-date
 3. Clone the repo into `~/rutba_builds/build_<YYYYMMDD>_<HHMMSS>_<branch>/`
 4. On first run: create `~/rutba_builds/.env` and `~/rutba_builds/.env.production` from the sample template, then pause for you to edit them
@@ -661,7 +661,7 @@ The deploy script is non-interactive when a branch choice is piped in. It will s
 */10 * * * * bash /home/rutba-nvr/rutba_active/scripts/rutba_deploy.sh <<< "1" >> /var/log/rutba_deploy.log 2>&1
 ```
 
-`<<< "1"` selects branch `main`. Use `<<< "2"` for `dev`.
+`<<< "1"` selects branch `main`. Use `<<< "2"` for `dev` or `<<< "3"` for `release`.
 
 ### GitHub Actions / CI
 
