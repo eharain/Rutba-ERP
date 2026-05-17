@@ -9,6 +9,7 @@ const domains = require('./domains');
 const policies = require('./policies');
 const adminTools = require('./admin-tools');
 const play = require('./play');
+const templates = require('./templates');
 
 module.exports = {
   health,
@@ -20,4 +21,5 @@ module.exports = {
   policies,
   'admin-tools': adminTools,
   play,
+  templates,
 };

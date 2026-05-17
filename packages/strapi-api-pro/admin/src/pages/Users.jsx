@@ -17,16 +17,22 @@ import { useFetchClient } from '@strapi/strapi/admin';
 // user with an empty state when none is picked.
 
 const PAGE_SIZE = 15;
+const NO_UP_ROLE = '__none__';
 
 const UsersPage = () => {
-  const { get, put } = useFetchClient();
+  const { get, put, post, del } = useFetchClient();
   const [users, setUsers] = useState([]);
   const [roleOptions, setRoleOptions] = useState([]);
+  const [templates, setTemplates] = useState([]);
   const [selectedUserId, setSelectedUserId] = useState('');
   const [selectedRoleIds, setSelectedRoleIds] = useState([]);
   const [userSearch, setUserSearch] = useState('');
   const [filterAppRole, setFilterAppRole] = useState('');
+  const [filterUpRole, setFilterUpRole] = useState('');
   const [assignedRoleFilter, setAssignedRoleFilter] = useState('');
+  const [copyFromUserId, setCopyFromUserId] = useState('');
+  const [applyTemplateId, setApplyTemplateId] = useState('');
+  const [newTemplateName, setNewTemplateName] = useState('');
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
@@ -36,13 +42,15 @@ const UsersPage = () => {
   const load = React.useCallback(async () => {
     setLoading(true);
     try {
-      const [u, r] = await Promise.all([
+      const [u, r, t] = await Promise.all([
         get(api('/users')),
         get(api('/users/role-options')),
+        get(api('/templates')),
       ]);
       const userData = u?.data?.data || [];
       setUsers(userData);
       setRoleOptions(r?.data?.data || []);
+      setTemplates(t?.data?.data || []);
 
       if (selectedUserId) {
         const selected = userData.find((x) => String(x.id) === String(selectedUserId));
@@ -88,6 +96,23 @@ const UsersPage = () => {
     () => users.find((u) => String(u.id) === String(selectedUserId)) || null,
     [users, selectedUserId]
   );
+
+  // Distinct users-permissions roles derived from loaded users — used in the
+  // filter dropdown beside the App Role filter.
+  const upRoleOptions = useMemo(() => {
+    const map = new Map();
+    users.forEach((u) => {
+      if (!u.role) {
+        map.set(NO_UP_ROLE, { id: NO_UP_ROLE, name: 'No Role', type: 'none' });
+        return;
+      }
+      const id = String(u.role.id);
+      if (!map.has(id)) {
+        map.set(id, { id, name: u.role.name || u.role.type || `Role #${u.role.id}`, type: u.role.type || '' });
+      }
+    });
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [users]);
 
   const visibleRolesByDomain = useMemo(() => {
     const q = assignedRoleFilter.trim().toLowerCase();
@@ -142,9 +167,13 @@ const UsersPage = () => {
         const hasRole = (u.app_roles || []).some((r) => String(r.id) === filterAppRole);
         if (!hasRole) return false;
       }
+      if (filterUpRole) {
+        const uid = u.role ? String(u.role.id) : NO_UP_ROLE;
+        if (uid !== filterUpRole) return false;
+      }
       return true;
     });
-  }, [users, userSearch, filterAppRole]);
+  }, [users, userSearch, filterAppRole, filterUpRole]);
 
   const totalPages = Math.max(1, Math.ceil(filteredUsers.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
@@ -160,6 +189,34 @@ const UsersPage = () => {
     setSelectedUserId(id);
     const selected = users.find((u) => String(u.id) === String(id));
     setSelectedRoleIds((selected?.app_roles || []).map((r) => String(r.id)));
+    setCopyFromUserId('');
+    setApplyTemplateId('');
+  };
+
+  // Copy: pulls another user's currently-saved app_roles into the editor
+  // selection without persisting. The admin still has to click Save to apply.
+  const copyFromUser = (sourceId) => {
+    setCopyFromUserId(sourceId);
+    if (!sourceId) return;
+    const source = users.find((u) => String(u.id) === String(sourceId));
+    if (!source) return;
+    const ids = (source.app_roles || []).map((r) => String(r.id));
+    setSelectedRoleIds(ids);
+    setMessage(
+      `Copied ${ids.length} role${ids.length === 1 ? '' : 's'} from ${source.displayName || source.username || source.email}. Click Save Assignment to apply.`
+    );
+  };
+
+  const applyTemplate = (templateId) => {
+    setApplyTemplateId(templateId);
+    if (!templateId) return;
+    const tpl = templates.find((t) => String(t.id) === String(templateId));
+    if (!tpl) return;
+    const ids = (tpl.appRoles || []).map((r) => String(r.id));
+    setSelectedRoleIds(ids);
+    setMessage(
+      `Loaded template "${tpl.name}" (${ids.length} role${ids.length === 1 ? '' : 's'}). Click Save Assignment to apply.`
+    );
   };
 
   const save = async () => {
@@ -172,6 +229,46 @@ const UsersPage = () => {
       await load();
     } catch {
       setMessage('Failed to save app role assignment.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const saveAsTemplate = async () => {
+    if (typeof window === 'undefined') return;
+    const name = window.prompt('Save current selection as template — enter a name:');
+    if (!name || !name.trim()) return;
+    setLoading(true);
+    setMessage('');
+    try {
+      await post(api('/templates'), {
+        name: name.trim(),
+        roleIds: selectedRoleIds.map(Number),
+      });
+      setMessage(`Template "${name.trim()}" saved.`);
+      const t = await get(api('/templates'));
+      setTemplates(t?.data?.data || []);
+    } catch {
+      setMessage('Failed to save template.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deleteTemplate = async (templateId) => {
+    const tpl = templates.find((t) => String(t.id) === String(templateId));
+    if (!tpl) return;
+    if (typeof window !== 'undefined' && !window.confirm(`Delete template "${tpl.name}"?`)) return;
+    setLoading(true);
+    setMessage('');
+    try {
+      await del(api(`/templates/${templateId}`));
+      if (String(applyTemplateId) === String(templateId)) setApplyTemplateId('');
+      const t = await get(api('/templates'));
+      setTemplates(t?.data?.data || []);
+      setMessage(`Template "${tpl.name}" deleted.`);
+    } catch {
+      setMessage('Failed to delete template.');
     } finally {
       setLoading(false);
     }
@@ -206,6 +303,78 @@ const UsersPage = () => {
                   <Typography variant="pi" textColor="neutral500">{selectedUser.email}</Typography>
                 </Box>
               )}
+              {selectedUser.role && (
+                <Box paddingTop={1}>
+                  <Typography variant="pi" textColor="neutral500">
+                    Users-permissions role: {selectedUser.role.name || selectedUser.role.type}
+                  </Typography>
+                </Box>
+              )}
+
+              <Box paddingTop={4} style={{ border: '1px solid #e8e8f0', borderRadius: 8, padding: 10 }}>
+                <Typography variant="sigma">Copy permissions</Typography>
+                <Box paddingTop={2}>
+                  <SingleSelect
+                    label="Copy from user"
+                    placeholder="Select a user to copy from"
+                    value={copyFromUserId}
+                    onChange={(v) => copyFromUser(v || '')}
+                  >
+                    {users
+                      .filter((u) => String(u.id) !== String(selectedUserId))
+                      .map((u) => (
+                        <SingleSelectOption key={u.id} value={String(u.id)}>
+                          {(u.displayName || u.username || u.email)} ({(u.app_roles || []).length})
+                        </SingleSelectOption>
+                      ))}
+                  </SingleSelect>
+                </Box>
+
+                <Box paddingTop={3}>
+                  <SingleSelect
+                    label="Apply template"
+                    placeholder={templates.length === 0 ? 'No templates yet' : 'Select a template'}
+                    value={applyTemplateId}
+                    onChange={(v) => applyTemplate(v || '')}
+                    disabled={templates.length === 0}
+                  >
+                    {templates.map((t) => (
+                      <SingleSelectOption key={t.id} value={String(t.id)}>
+                        {t.name} ({(t.appRoles || []).length})
+                      </SingleSelectOption>
+                    ))}
+                  </SingleSelect>
+                  {applyTemplateId && (
+                    <Box paddingTop={2}>
+                      <Button
+                        variant="danger-light"
+                        size="S"
+                        onClick={() => deleteTemplate(applyTemplateId)}
+                      >
+                        Delete selected template
+                      </Button>
+                    </Box>
+                  )}
+                </Box>
+
+                <Box paddingTop={3}>
+                  <TextInput
+                    label="Save current selection as template"
+                    placeholder="Template name (e.g. cashier-default)"
+                    value={newTemplateName}
+                    onChange={(e) => setNewTemplateName(e.target.value)}
+                  />
+                  <Box paddingTop={2}>
+                    <Button
+                      variant="secondary"
+                      onClick={saveAsTemplate}
+                      disabled={!newTemplateName.trim()}
+                    >
+                      Save as new template ({selectedRoleIds.length})
+                    </Button>
+                  </Box>
+                </Box>
+              </Box>
 
               <Box paddingTop={4}>
                 <Flex justifyContent="space-between" alignItems="center">
@@ -299,6 +468,28 @@ const UsersPage = () => {
                 ))}
               </SingleSelect>
             </Box>
+            <Box style={{ flex: '1 1 180px' }}>
+              <SingleSelect label="Filter by UP Role" placeholder="All UP roles" value={filterUpRole} onChange={(v) => { setFilterUpRole(v || ''); setPage(1); }}>
+                {upRoleOptions.map((r) => (
+                  <SingleSelectOption key={r.id} value={String(r.id)}>{r.name}</SingleSelectOption>
+                ))}
+              </SingleSelect>
+            </Box>
+            {(filterAppRole || filterUpRole || userSearch) && (
+              <Box>
+                <Button
+                  variant="tertiary"
+                  onClick={() => {
+                    setFilterAppRole('');
+                    setFilterUpRole('');
+                    setUserSearch('');
+                    setPage(1);
+                  }}
+                >
+                  Clear filters
+                </Button>
+              </Box>
+            )}
           </Flex>
 
           <Typography variant="pi" textColor="neutral500" paddingBottom={2}>
@@ -319,6 +510,11 @@ const UsersPage = () => {
               <Box>
                 <Typography variant="sigma">{u.displayName || u.username}</Typography>
                 <Typography variant="pi" textColor="neutral500">{u.email}</Typography>
+                {u.role && (
+                  <Typography variant="pi" textColor="neutral400" style={{ fontSize: 10 }}>
+                    {u.role.name || u.role.type}
+                  </Typography>
+                )}
               </Box>
               <Box style={{ background: (u.app_roles || []).length > 0 ? '#e8f5e9' : '#f5f5f5', padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 600 }}>
                 {(u.app_roles || []).length} app role{(u.app_roles || []).length !== 1 ? 's' : ''}

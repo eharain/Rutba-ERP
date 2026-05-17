@@ -15,6 +15,7 @@ const policies = require('./policies');
 const scaffold = require('./scaffold');
 const seeder = require('./seeder');
 const play = require('./play');
+const templates = require('./templates');
 
 module.exports = {
   context,
@@ -32,4 +33,5 @@ module.exports = {
   scaffold,
   seeder,
   play,
+  templates,
 };

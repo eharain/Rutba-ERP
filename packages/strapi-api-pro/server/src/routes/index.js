@@ -62,6 +62,12 @@ module.exports = {
       adminRead('GET', '/users/role-options', 'users.roleOptions'),
       adminWrite('PUT', '/users/:id/roles', 'users.assignRoles'),
 
+      // ── Permission Templates ─────────────────────────────────────────
+      adminRead('GET', '/templates', 'templates.list'),
+      adminWrite('POST', '/templates', 'templates.create'),
+      adminWrite('PUT', '/templates/:id', 'templates.update'),
+      adminWrite('DELETE', '/templates/:id', 'templates.remove'),
+
       // ── Recordings ───────────────────────────────────────────────────
       adminWrite('POST', '/recordings/start', 'recordings.start'),
       adminWrite('POST', '/recordings/stop', 'recordings.stop'),

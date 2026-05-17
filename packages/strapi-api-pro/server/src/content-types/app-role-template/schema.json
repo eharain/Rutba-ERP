@@ -1,0 +1,41 @@
+{
+  "kind": "collectionType",
+  "collectionName": "api_pro_app_role_templates",
+  "info": {
+    "singularName": "app-role-template",
+    "pluralName": "app-role-templates",
+    "displayName": "App Role Template",
+    "description": "Reusable named set of app roles for quickly assigning permissions to users"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {
+    "content-manager": {
+      "visible": false
+    },
+    "content-type-builder": {
+      "visible": false
+    }
+  },
+  "attributes": {
+    "key": {
+      "type": "string",
+      "required": true,
+      "unique": true,
+      "regex": "^[a-z][a-z0-9_-]*$"
+    },
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "description": {
+      "type": "text"
+    },
+    "appRoles": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::api-pro.app-role"
+    }
+  }
+}

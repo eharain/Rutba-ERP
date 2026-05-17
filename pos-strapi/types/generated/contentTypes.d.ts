@@ -4278,6 +4278,52 @@ export interface PluginApiProAppRole extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface PluginApiProAppRoleTemplate
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'api_pro_app_role_templates';
+  info: {
+    description: 'Reusable named set of app roles for quickly assigning permissions to users';
+    displayName: 'App Role Template';
+    pluralName: 'app-role-templates';
+    singularName: 'app-role-template';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  pluginOptions: {
+    'content-manager': {
+      visible: false;
+    };
+    'content-type-builder': {
+      visible: false;
+    };
+  };
+  attributes: {
+    appRoles: Schema.Attribute.Relation<
+      'manyToMany',
+      'plugin::api-pro.app-role'
+    >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    description: Schema.Attribute.Text;
+    key: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.Unique;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'plugin::api-pro.app-role-template'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    publishedAt: Schema.Attribute.DateTime;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface PluginApiProRecordingEntry
   extends Struct.CollectionTypeSchema {
   collectionName: 'api_pro_recording_entries';
@@ -5188,6 +5234,7 @@ declare module '@strapi/strapi' {
       'plugin::api-pro.api-method-policy': PluginApiProApiMethodPolicy;
       'plugin::api-pro.app-domain': PluginApiProAppDomain;
       'plugin::api-pro.app-role': PluginApiProAppRole;
+      'plugin::api-pro.app-role-template': PluginApiProAppRoleTemplate;
       'plugin::api-pro.recording-entry': PluginApiProRecordingEntry;
       'plugin::api-pro.recording-session': PluginApiProRecordingSession;
       'plugin::content-releases.release': PluginContentReleasesRelease;
