@@ -201,22 +201,56 @@ module.exports = factories.createCoreController(
                 note: customer.note,
             };
 
+            // ── Re-validate offer pricing before persisting ────────────────
+            //
+            // Customers carry a snapshot of the offer they saw at add-to-cart
+            // time. By the time they hit "Place order" that offer may have
+            // expired, been unpublished, or had its dates moved. We never
+            // trust the client-submitted price/total — for every line we
+            // look up the product fresh and ask the offer resolver what's
+            // valid right now, then rebuild totals from that.
+            //
+            // If any line was relying on an offer that's no longer live, we
+            // reject the request so the customer reviews the new total
+            // before committing. Free shipping is OR'd across all live
+            // offers and wipes the delivery cost when granted.
+            const pricing = await strapi
+                .service('api::sale-order.sale-order')
+                .validateOrderPricing(products?.items || []);
+
+            if (pricing.expired.length > 0) {
+                return ctx.conflict('One or more offers in your cart are no longer valid. Please review the updated prices.', {
+                    expired: pricing.expired,
+                    revalidated: {
+                        subtotal: pricing.subtotal,
+                        savings: pricing.savings,
+                        originalSubtotal: pricing.originalSubtotal,
+                    },
+                });
+            }
+
+            const validatedProducts = { ...(products || {}), items: pricing.items };
+            const effectiveDeliveryCost = pricing.freeShipping ? 0 : (delivery_cost ? parseFloat(delivery_cost) : 0);
+            const effectiveTotal = pricing.subtotal + effectiveDeliveryCost;
+
             const orderData = {
                 order_id: order_id || `ORD-${Date.now()}`,
                 order_secret: (Math.floor(Math.random() * 900000) + 100000).toString(),
-                products,
+                products: validatedProducts,
                 customer_person: { id: customerPerson.id },
                 delivery_address: deliveryAddress ? { id: deliveryAddress.id } : undefined,
                 delivery_snapshot: deliverySnapshot,
-                subtotal: parseFloat(subtotal) || 0,
-                total: parseFloat(total) || 0,
-                original_subtotal: original_subtotal ? parseFloat(original_subtotal) : undefined,
-                savings: savings ? parseFloat(savings) : undefined,
+                subtotal: pricing.subtotal,
+                total: effectiveTotal,
+                original_subtotal: pricing.savings > 0 ? pricing.originalSubtotal : undefined,
+                savings: pricing.savings > 0 ? pricing.savings : undefined,
                 payment_status: payment_status || 'Ordered',
                 user_id: user_id || null,
                 order_status: isImmediatelyConfirmed ? 'PAYMENT_CONFIRMED' : 'PENDING_PAYMENT',
-                delivery_cost: delivery_cost ? parseFloat(delivery_cost) : 0,
-                delivery_cost_breakdown: delivery_cost_breakdown || null,
+                delivery_cost: effectiveDeliveryCost,
+                delivery_cost_breakdown: pricing.freeShipping
+                    ? { ...(delivery_cost_breakdown || {}), free_shipping_applied: true }
+                    : (delivery_cost_breakdown || null),
             };
 
             if (selectedDeliveryMethod?.service_provider === 'easypost') {
