@@ -30,9 +30,7 @@ const UsersPage = () => {
   const [filterAppRole, setFilterAppRole] = useState('');
   const [filterUpRole, setFilterUpRole] = useState('');
   const [assignedRoleFilter, setAssignedRoleFilter] = useState('');
-  const [copyFromUserId, setCopyFromUserId] = useState('');
   const [applyTemplateId, setApplyTemplateId] = useState('');
-  const [newTemplateName, setNewTemplateName] = useState('');
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
@@ -189,22 +187,7 @@ const UsersPage = () => {
     setSelectedUserId(id);
     const selected = users.find((u) => String(u.id) === String(id));
     setSelectedRoleIds((selected?.app_roles || []).map((r) => String(r.id)));
-    setCopyFromUserId('');
     setApplyTemplateId('');
-  };
-
-  // Copy: pulls another user's currently-saved app_roles into the editor
-  // selection without persisting. The admin still has to click Save to apply.
-  const copyFromUser = (sourceId) => {
-    setCopyFromUserId(sourceId);
-    if (!sourceId) return;
-    const source = users.find((u) => String(u.id) === String(sourceId));
-    if (!source) return;
-    const ids = (source.app_roles || []).map((r) => String(r.id));
-    setSelectedRoleIds(ids);
-    setMessage(
-      `Copied ${ids.length} role${ids.length === 1 ? '' : 's'} from ${source.displayName || source.username || source.email}. Click Save Assignment to apply.`
-    );
   };
 
   const applyTemplate = (templateId) => {
@@ -311,71 +294,6 @@ const UsersPage = () => {
                 </Box>
               )}
 
-              <Box paddingTop={4} style={{ border: '1px solid #e8e8f0', borderRadius: 8, padding: 10 }}>
-                <Typography variant="sigma">Copy permissions</Typography>
-                <Box paddingTop={2}>
-                  <SingleSelect
-                    label="Copy from user"
-                    placeholder="Select a user to copy from"
-                    value={copyFromUserId}
-                    onChange={(v) => copyFromUser(v || '')}
-                  >
-                    {users
-                      .filter((u) => String(u.id) !== String(selectedUserId))
-                      .map((u) => (
-                        <SingleSelectOption key={u.id} value={String(u.id)}>
-                          {(u.displayName || u.username || u.email)} ({(u.app_roles || []).length})
-                        </SingleSelectOption>
-                      ))}
-                  </SingleSelect>
-                </Box>
-
-                <Box paddingTop={3}>
-                  <SingleSelect
-                    label="Apply template"
-                    placeholder={templates.length === 0 ? 'No templates yet' : 'Select a template'}
-                    value={applyTemplateId}
-                    onChange={(v) => applyTemplate(v || '')}
-                    disabled={templates.length === 0}
-                  >
-                    {templates.map((t) => (
-                      <SingleSelectOption key={t.id} value={String(t.id)}>
-                        {t.name} ({(t.appRoles || []).length})
-                      </SingleSelectOption>
-                    ))}
-                  </SingleSelect>
-                  {applyTemplateId && (
-                    <Box paddingTop={2}>
-                      <Button
-                        variant="danger-light"
-                        size="S"
-                        onClick={() => deleteTemplate(applyTemplateId)}
-                      >
-                        Delete selected template
-                      </Button>
-                    </Box>
-                  )}
-                </Box>
-
-                <Box paddingTop={3}>
-                  <TextInput
-                    label="Save current selection as template"
-                    placeholder="Template name (e.g. cashier-default)"
-                    value={newTemplateName}
-                    onChange={(e) => setNewTemplateName(e.target.value)}
-                  />
-                  <Box paddingTop={2}>
-                    <Button
-                      variant="secondary"
-                      onClick={saveAsTemplate}
-                      disabled={!newTemplateName.trim()}
-                    >
-                      Save as new template ({selectedRoleIds.length})
-                    </Button>
-                  </Box>
-                </Box>
-              </Box>
-
               <Box paddingTop={4}>
                 <Flex justifyContent="space-between" alignItems="center">
                   <Typography variant="sigma">Assigned App Roles</Typography>
@@ -383,6 +301,39 @@ const UsersPage = () => {
                     {selectedRoleIds.length} selected
                   </Typography>
                 </Flex>
+
+                <Flex gap={2} paddingTop={2} alignItems="flex-end" wrap="wrap">
+                  <Box style={{ flex: '1 1 180px', minWidth: 160 }}>
+                    <SingleSelect
+                      label="Templates"
+                      placeholder={templates.length === 0 ? 'No templates yet' : 'Select template'}
+                      value={applyTemplateId}
+                      onChange={(v) => setApplyTemplateId(v || '')}
+                      disabled={templates.length === 0}
+                    >
+                      {templates.map((t) => (
+                        <SingleSelectOption key={t.id} value={String(t.id)}>
+                          {t.name} ({(t.appRoles || []).length})
+                        </SingleSelectOption>
+                      ))}
+                    </SingleSelect>
+                  </Box>
+                  <Button
+                    variant="secondary"
+                    disabled={!applyTemplateId}
+                    onClick={() => applyTemplate(applyTemplateId)}
+                  >
+                    Apply
+                  </Button>
+                  <Button
+                    variant="danger-light"
+                    disabled={!applyTemplateId}
+                    onClick={() => deleteTemplate(applyTemplateId)}
+                  >
+                    Delete
+                  </Button>
+                </Flex>
+
 
               <Box paddingTop={2}>
                 <TextInput
@@ -450,7 +401,12 @@ const UsersPage = () => {
                   </Box>
                 ))}
               </Box>
-              <Button onClick={save} loading={loading} style={{ marginTop: 16 }}>Save Assignment</Button>
+              <Flex gap={2} paddingTop={4} wrap="wrap">
+                <Button onClick={save} loading={loading}>Save Assignment</Button>
+                <Button variant="secondary" onClick={saveAsTemplate} disabled={selectedRoleIds.length === 0}>
+                  Save as Template
+                </Button>
+              </Flex>
               </Box>
             </Box>
           )}

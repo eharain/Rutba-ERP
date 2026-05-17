@@ -46,7 +46,16 @@ export default function ProductVariantManager({ productId, onUpdate }) {
         if (!productId) return;
         setLoading(true);
         try {
-            const res = await ProductsEndpoints.byId(productId);
+            // byIdDraft + explicit variants populate: byId() defaults to
+            // status=published and its default populate omits `variants`, so
+            // hosts that have already published the parent would see zero
+            // variants here even when many existed as drafts.
+            const res = await ProductsEndpoints.byIdDraft(productId, {
+                populate: {
+                    terms: true,
+                    variants: { populate: { terms: true } },
+                },
+            });
             const prod = res.data || res;
             setProduct(prod);
             setVariants(prod.variants || []);
