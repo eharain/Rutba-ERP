@@ -4,7 +4,6 @@ import Link from 'next/link';
 import Layout from '../../components/Layout';
 import ProtectedRoute from '@rutba/pos-shared/components/ProtectedRoute';
 import { TermTypesEndpoints, StockItemsEndpoints, ProductsEndpoints, MediaUtilsEndpoints, fetchProducts } from '@rutba/api-provider/endpoints';
-import ProductGalleryManager from '@rutba/pos-shared/components/ProductGalleryManager';
 import ProductVariantManager from '@rutba/pos-shared/components/ProductVariantManager';
 import TermTypeTermDialog from '@rutba/pos-shared/components/TermTypeTermDialog';
 import ProductPageShell, { buildStockProductTabs } from '@rutba/pos-shared/components/product/ProductPageShell';
@@ -32,6 +31,8 @@ export default function ProductVariantsPage() {
     const [bulkCreating, setBulkCreating] = useState(false);
     const [moveTargetVariantId, setMoveTargetVariantId] = useState('');
     const [selectedVariants, setSelectedVariants] = useState(new Set());
+    const [rowEdits, setRowEdits] = useState({});
+    const [rowSaving, setRowSaving] = useState({});
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
     const [showTermTypeDialog, setShowTermTypeDialog] = useState(false);
@@ -266,6 +267,53 @@ export default function ProductVariantsPage() {
         }
     }
 
+    async function copyParentImagesToVariant(v) {
+        const vId = getEntryId(v);
+        const variantGallery = v.gallery || [];
+        const parentGalleryItems = selectedProduct?.gallery || [];
+        if (parentGalleryItems.length === 0) return setError('Parent has no images to copy');
+        const existing = new Set(variantGallery.map(g => g.id));
+        const newIds = parentGalleryItems.map(g => g.id).filter(id => !existing.has(id));
+        if (newIds.length === 0) return setError(`"${v.name}" already has all parent images`);
+        if (!confirm(`Copy ${newIds.length} image(s) from parent to "${v.name}"?`)) return;
+        setLoading(true);
+        try {
+            await ProductsEndpoints.update(vId, {
+                gallery: [...variantGallery.map(g => g.id), ...newIds],
+            });
+            await loadProductDetails(getEntryId(selectedProduct));
+            setSuccess(`Copied ${newIds.length} image(s) from parent to "${v.name}"`);
+        } catch (err) {
+            console.error('Copy from parent failed', err);
+            setError('Failed to copy images from parent');
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    async function copyVariantImagesToParent(v) {
+        const variantGallery = v.gallery || [];
+        const parentGalleryItems = selectedProduct?.gallery || [];
+        if (variantGallery.length === 0) return setError(`"${v.name}" has no images to copy`);
+        const existing = new Set(parentGalleryItems.map(g => g.id));
+        const newIds = variantGallery.map(g => g.id).filter(id => !existing.has(id));
+        if (newIds.length === 0) return setError("Parent already has all of this variant's images");
+        if (!confirm(`Copy ${newIds.length} image(s) from "${v.name}" up to the parent?`)) return;
+        setLoading(true);
+        try {
+            await ProductsEndpoints.update(getEntryId(selectedProduct), {
+                gallery: [...parentGalleryItems.map(g => g.id), ...newIds],
+            });
+            await loadProductDetails(getEntryId(selectedProduct));
+            setSuccess(`Copied ${newIds.length} image(s) from "${v.name}" to parent`);
+        } catch (err) {
+            console.error('Copy to parent failed', err);
+            setError('Failed to copy images to parent');
+        } finally {
+            setLoading(false);
+        }
+    }
+
     async function handleMergeVariantToParent(variant) {
         const vId = getEntryId(variant);
         const count = variantStockCounts[vId] || 0;
@@ -338,6 +386,63 @@ export default function ProductVariantsPage() {
             setError('Failed to merge variants into parent');
         } finally {
             setLoading(false);
+        }
+    }
+
+    // --- Per-row inline editing ---
+    function getRowValue(v, field) {
+        const vId = getEntryId(v);
+        const edit = rowEdits[vId];
+        if (edit && Object.prototype.hasOwnProperty.call(edit, field)) return edit[field];
+        const raw = v[field];
+        return raw == null ? '' : raw;
+    }
+
+    function setRowValue(vId, field, value) {
+        setRowEdits(prev => ({
+            ...prev,
+            [vId]: { ...prev[vId], [field]: value },
+        }));
+    }
+
+    function isRowDirty(v) {
+        const vId = getEntryId(v);
+        const edit = rowEdits[vId];
+        if (!edit) return false;
+        for (const k of Object.keys(edit)) {
+            const original = v[k] == null ? '' : v[k];
+            if (edit[k] !== original) return true;
+        }
+        return false;
+    }
+
+    function cancelRowEdit(vId) {
+        setRowEdits(prev => { const n = { ...prev }; delete n[vId]; return n; });
+    }
+
+    async function saveRowEdit(v) {
+        const vId = getEntryId(v);
+        const edit = rowEdits[vId];
+        if (!edit) return;
+        const patch = {};
+        for (const [k, val] of Object.entries(edit)) {
+            if (k === 'selling_price' || k === 'offer_price') {
+                patch[k] = val === '' || val == null ? null : parseFloat(val);
+            } else {
+                patch[k] = val;
+            }
+        }
+        setRowSaving(prev => ({ ...prev, [vId]: true }));
+        try {
+            await ProductsEndpoints.update(vId, patch);
+            await loadProductDetails(getEntryId(selectedProduct));
+            setRowEdits(prev => { const n = { ...prev }; delete n[vId]; return n; });
+            setSuccess(`Variant "${edit.name ?? v.name}" updated`);
+        } catch (err) {
+            console.error('Row save failed', err);
+            setError('Failed to save variant');
+        } finally {
+            setRowSaving(prev => ({ ...prev, [vId]: false }));
         }
     }
 
@@ -499,7 +604,7 @@ export default function ProductVariantsPage() {
                     {/* Existing Variants */}
                     <div className="card mb-3">
                         <div className="card-header d-flex justify-content-between align-items-center py-2">
-                            <h6 className="mb-0"><i className="fas fa-list me-2" />Existing Variants ({variants.length})</h6>
+                            <h6 className="mb-0"><i className="fas fa-list me-2" />Variants ({variants.length})</h6>
                             {variants.length > 0 && (
                                 <div className="d-flex gap-2">
                                     <button className="btn btn-outline-primary btn-sm" type="button" onClick={selectAllVariants}>
@@ -535,8 +640,8 @@ export default function ProductVariantsPage() {
                                                 <th className="text-end">Selling</th>
                                                 <th className="text-end">Offer</th>
                                                 <th className="text-center">Stock</th>
-                                                <th className="text-center">Status</th>
-                                                <th style={{ width: '120px' }}></th>
+                                                <th className="text-center">Active</th>
+                                                <th style={{ width: '240px' }}></th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -546,8 +651,11 @@ export default function ProductVariantsPage() {
                                                 const termNames = (v.terms || []).map(t => t.name).join(', ');
                                                 const thumbImg = v.logo || (v.gallery && v.gallery[0]) || null;
                                                 const thumbSrc = thumbImg ? MediaUtilsEndpoints.strapiImageUrl(thumbImg) : null;
+                                                const dirty = isRowDirty(v);
+                                                const saving = !!rowSaving[vId];
+                                                const activeChecked = getRowValue(v, 'is_active') !== false;
                                                 return (
-                                                    <tr key={vId}>
+                                                    <tr key={vId} className={dirty ? 'table-warning' : ''}>
                                                         <td>
                                                             <input
                                                                 type="checkbox"
@@ -573,38 +681,106 @@ export default function ProductVariantsPage() {
                                                                 </div>
                                                             )}
                                                         </td>
-                                                        <td><strong>{v.name}</strong></td>
+                                                        <td>
+                                                            <input
+                                                                className="form-control form-control-sm"
+                                                                value={getRowValue(v, 'name')}
+                                                                onChange={e => setRowValue(vId, 'name', e.target.value)}
+                                                            />
+                                                        </td>
                                                         <td>
                                                             {termNames ? termNames.split(', ').map((tn, i) => (
                                                                 <span key={i} className="badge bg-light text-dark border me-1">{tn}</span>
                                                             )) : <span className="text-muted">—</span>}
                                                         </td>
-                                                        <td><span className="small">{v.sku || '—'}</span></td>
-                                                        <td><span className="small">{v.barcode || '—'}</span></td>
-                                                        <td className="text-end">{v.selling_price ?? '—'}</td>
-                                                        <td className="text-end">{v.offer_price ?? '—'}</td>
+                                                        <td>
+                                                            <input
+                                                                className="form-control form-control-sm"
+                                                                value={getRowValue(v, 'sku')}
+                                                                onChange={e => setRowValue(vId, 'sku', e.target.value)}
+                                                            />
+                                                        </td>
+                                                        <td>
+                                                            <input
+                                                                className="form-control form-control-sm"
+                                                                value={getRowValue(v, 'barcode')}
+                                                                onChange={e => setRowValue(vId, 'barcode', e.target.value)}
+                                                            />
+                                                        </td>
+                                                        <td>
+                                                            <input
+                                                                type="number"
+                                                                step="0.01"
+                                                                className="form-control form-control-sm text-end"
+                                                                value={getRowValue(v, 'selling_price')}
+                                                                onChange={e => setRowValue(vId, 'selling_price', e.target.value)}
+                                                            />
+                                                        </td>
+                                                        <td>
+                                                            <input
+                                                                type="number"
+                                                                step="0.01"
+                                                                className="form-control form-control-sm text-end"
+                                                                value={getRowValue(v, 'offer_price')}
+                                                                onChange={e => setRowValue(vId, 'offer_price', e.target.value)}
+                                                            />
+                                                        </td>
                                                         <td className="text-center">
                                                             <span className={`badge ${stockCount > 0 ? 'bg-success' : 'bg-secondary'}`}>{stockCount}</span>
                                                         </td>
                                                         <td className="text-center">
-                                                            {v.is_active !== false
-                                                                ? <span className="badge bg-success">Active</span>
-                                                                : <span className="badge bg-warning text-dark">Inactive</span>}
+                                                            <input
+                                                                type="checkbox"
+                                                                className="form-check-input"
+                                                                checked={activeChecked}
+                                                                onChange={e => setRowValue(vId, 'is_active', e.target.checked)}
+                                                            />
                                                         </td>
                                                         <td>
                                                             <div className="btn-group btn-group-sm">
+                                                                {dirty ? (
+                                                                    <>
+                                                                        <button className="btn btn-primary" type="button" title="Save changes" disabled={saving} onClick={() => saveRowEdit(v)}>
+                                                                            {saving ? <i className="fas fa-spinner fa-spin" /> : <i className="fas fa-save" />}
+                                                                        </button>
+                                                                        <button className="btn btn-outline-secondary" type="button" title="Discard changes" disabled={saving} onClick={() => cancelRowEdit(vId)}>
+                                                                            <i className="fas fa-times" />
+                                                                        </button>
+                                                                    </>
+                                                                ) : (
+                                                                    <>
                                                                 <Link href={`/${vId}/product-edit`} className="btn btn-outline-primary" title="Edit variant">
                                                                     <i className="fas fa-edit" />
                                                                 </Link>
                                                                 <Link href={`/stock-items?product=${vId}`} className="btn btn-outline-info" title="View stock items">
                                                                     <i className="fas fa-barcode" />
                                                                 </Link>
+                                                                <button
+                                                                    className="btn btn-outline-info"
+                                                                    type="button"
+                                                                    title="Copy parent's images into this variant's gallery"
+                                                                    onClick={() => copyParentImagesToVariant(v)}
+                                                                    disabled={loading || (selectedProduct?.gallery || []).length === 0}
+                                                                >
+                                                                    <i className="fas fa-cloud-download-alt" />
+                                                                </button>
+                                                                <button
+                                                                    className="btn btn-outline-info"
+                                                                    type="button"
+                                                                    title="Copy this variant's images up to the parent's gallery"
+                                                                    onClick={() => copyVariantImagesToParent(v)}
+                                                                    disabled={loading || (v.gallery || []).length === 0}
+                                                                >
+                                                                    <i className="fas fa-cloud-upload-alt" />
+                                                                </button>
                                                                 <button className="btn btn-outline-warning" type="button" title="Merge into parent (move stock to parent, then remove)" onClick={() => handleMergeVariantToParent(v)} disabled={loading}>
                                                                     <i className="fas fa-code-merge" />
                                                                 </button>
                                                                 <button className="btn btn-outline-danger" type="button" title="Delete variant" onClick={() => handleDeleteVariant(v)} disabled={loading}>
                                                                     <i className="fas fa-trash" />
                                                                 </button>
+                                                                    </>
+                                                                )}
                                                             </div>
                                                         </td>
                                                     </tr>
@@ -811,19 +987,6 @@ export default function ProductVariantsPage() {
                         </div>
                         <div className="card-body">
                             <ProductVariantManager
-                                productId={documentId}
-                                onUpdate={() => loadProductDetails(documentId)}
-                            />
-                        </div>
-                    </div>
-
-                    {/* Gallery & Variant Images */}
-                    <div className="card mb-3">
-                        <div className="card-header py-2">
-                            <h6 className="mb-0"><i className="fas fa-images me-2" />Gallery &amp; Variant Images</h6>
-                        </div>
-                        <div className="card-body">
-                            <ProductGalleryManager
                                 productId={documentId}
                                 onUpdate={() => loadProductDetails(documentId)}
                             />
