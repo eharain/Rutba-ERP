@@ -2,6 +2,7 @@
 
 const { createCoreController } = require('@strapi/strapi').factories;
 const { ensureUser } = require('../../../utils/ensure-user');
+const { requireApp } = require('../../../utils/require-app');
 
 function clampInt(value, fallback, min, max) {
   const n = Number.parseInt(value, 10);
@@ -13,6 +14,7 @@ function clampInt(value, fallback, min, max) {
 
 module.exports = createCoreController('api::product.product', ({ strapi }) => ({
   async publicDetail(ctx) {
+    if (!requireApp(ctx, 'web')) return;
     const documentId = ctx.params?.documentId;
     if (!documentId) return ctx.badRequest('documentId is required');
 
@@ -20,10 +22,23 @@ module.exports = createCoreController('api::product.product', ({ strapi }) => ({
       .service('api::product.product')
       .findPublicDetail(documentId);
 
-    return ctx.send({ data: data ?? null });
+    // Group context is optional. When present, ask the offer service for the
+    // effective price/free-shipping for this (product, group) pair. The
+    // storefront uses this to render the right price without re-deriving the
+    // rules client-side.
+    let offerContext = null;
+    const groupId = typeof ctx.query?.groupId === 'string' ? ctx.query.groupId.trim() : '';
+    if (data?.id && groupId) {
+      offerContext = await strapi
+        .service('api::sale-offer.sale-offer')
+        .resolveOfferForProductInGroup(data.id, groupId);
+    }
+
+    return ctx.send({ data: data ?? null, meta: { offerContext } });
   },
 
   async publicByIds(ctx) {
+    if (!requireApp(ctx, 'web')) return;
     const raw = ctx.query?.ids;
     const ids = Array.isArray(raw)
       ? raw
@@ -35,6 +50,7 @@ module.exports = createCoreController('api::product.product', ({ strapi }) => ({
   },
 
   async publicSearch(ctx) {
+    if (!requireApp(ctx, 'web')) return;
     const q = ctx.query?.q ?? '';
     const pageSize = clampInt(ctx.query?.pageSize, 5, 1, 50);
     const data = await strapi
@@ -44,6 +60,7 @@ module.exports = createCoreController('api::product.product', ({ strapi }) => ({
   },
 
   async publicHighestPrice(ctx) {
+    if (!requireApp(ctx, 'web')) return;
     const data = await strapi
       .service('api::product.product')
       .findPublicHighestPrice();
@@ -51,6 +68,7 @@ module.exports = createCoreController('api::product.product', ({ strapi }) => ({
   },
 
   async publicList(ctx) {
+    if (!requireApp(ctx, 'web')) return;
     const q = ctx.query ?? {};
     const filter = {
       collection: q.collection || undefined,

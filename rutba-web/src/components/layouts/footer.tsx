@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { CmsFooterInterface } from "@/types/api/cms-page";
 import {
   getPageUrl,
@@ -18,6 +19,8 @@ interface FooterProps {
 
 export default function Footer({ footer: pageFooter }: FooterProps) {
   const settings = useSiteSettings();
+  const session = useSession();
+  const isAuthenticated = session.status === "authenticated";
   // Fallback chain: page-level footer → site_settings.default_footer.
   // Tracking codes (GA / Pixel / GTM) ride on the resolved footer so
   // site-wide analytics fire even on pages that don't pick a footer.
@@ -129,18 +132,25 @@ export default function Footer({ footer: pageFooter }: FooterProps) {
               Account
             </p>
             <ul className="mt-5 space-y-3 text-sm">
-              <li>
-                <FooterLink href="/login">Login</FooterLink>
-              </li>
-              <li>
-                <FooterLink href="/register">Register</FooterLink>
-              </li>
-              <li>
-                <FooterLink href="/profile">My Profile</FooterLink>
-              </li>
-              <li>
-                <FooterLink href="/profile/orders">Orders</FooterLink>
-              </li>
+              {isAuthenticated ? (
+                <>
+                  <li>
+                    <FooterLink href="/profile">My Profile</FooterLink>
+                  </li>
+                  <li>
+                    <FooterLink href="/profile/orders">Orders</FooterLink>
+                  </li>
+                </>
+              ) : (
+                <>
+                  <li>
+                    <FooterLink href="/login">Login</FooterLink>
+                  </li>
+                  <li>
+                    <FooterLink href="/register">Register</FooterLink>
+                  </li>
+                </>
+              )}
             </ul>
           </div>
 

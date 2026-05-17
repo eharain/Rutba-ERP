@@ -536,8 +536,14 @@ export default function SalePage() {
                         {/* ── Bottom section: full-width stack ── */}
                         {saleModel.items.length > 0 && (() => {
                             const amountDue = Math.max(0, saleModel.total - saleModel.exchangeReturnTotal);
-                            const totalPaid = (saleModel.payments || []).reduce((s, p) => s + Number(p.amount || 0), 0);
-                            const change = Math.max(0, totalPaid - saleModel.total);
+                            // "Paid" means actual money taken from the customer. Exchange-return
+                            // tenders are credit applied (already shown as Exchange Credit above)
+                            // — they must not double-count here.
+                            const isExchangeTender = (p) => !!p?.sale_return || p?.payment_method === 'Exchange Return';
+                            const totalPaid = (saleModel.payments || [])
+                                .filter(p => !isExchangeTender(p))
+                                .reduce((s, p) => s + Number(p.amount || 0), 0);
+                            const change = Math.max(0, totalPaid - amountDue);
                             const registerDocId = saleModel.cash_register?.documentId;
                             return (
                                 <div className="mt-3">
@@ -552,7 +558,7 @@ export default function SalePage() {
                                         // For paid sales with no exchange credit, don't even show the toggle.
                                         if (!saleModel.isEditable && savedCount === 0) return null;
                                         return (
-                                            <div className="mb-2">
+                                            <div className={`mb-2 ${!showExchange ? 'd-flex justify-content-end' : ''}`}>
                                                 {!showExchange ? (
                                                     <button
                                                         type="button"
@@ -601,116 +607,102 @@ export default function SalePage() {
                                         );
                                     })()}
 
-                                    {/* Compact chip-row: Returns from this sale (if any) */}
-                                    {saleModel.saleReturns?.length > 0 && (
-                                        <div className="d-flex flex-wrap align-items-center gap-2 small mt-2 mb-2 text-muted">
-                                            <span><i className="fas fa-undo me-1"></i>{'Returns from this sale:'}</span>
-                                            {saleModel.saleReturns.map((sr, i) => {
+                                    {/* ── Unified summary: single vertical receipt-style column ── */}
+                                    <div className="card mt-2 ms-auto" style={{ maxWidth: 480, fontVariantNumeric: 'tabular-nums' }}>
+                                        <div className="card-body py-3 px-3">
+                                            <SummaryRow label="Subtotal" value={`${currency}${saleModel.subtotal.toFixed(2)}`} />
+                                            {saleModel.discountTotal > 0 && (
+                                                <SummaryRow label="Discount" value={`−${currency}${saleModel.discountTotal.toFixed(2)}`} valueClass="text-danger" />
+                                            )}
+                                            {saleModel.tax > 0 && (
+                                                <SummaryRow label="Tax" value={`${currency}${saleModel.tax.toFixed(2)}`} />
+                                            )}
+                                            {(saleModel.discountTotal > 0 || saleModel.tax > 0) && (
+                                                <SummaryRow label="Sale Total" value={`${currency}${saleModel.total.toFixed(2)}`} divider bold />
+                                            )}
+                                            {saleModel.exchangeReturnTotal > 0 && (
+                                                <SummaryRow label="Exchange Credit" value={`−${currency}${saleModel.exchangeReturnTotal.toFixed(2)}`} valueClass="text-warning" />
+                                            )}
+                                            {saleModel.saleReturns?.length > 0 && saleModel.saleReturns.map((sr, i) => {
                                                 const srDocId = sr.documentId || sr.id;
-                                                const exDocId = sr.exchangeSale?.documentId || sr.exchangeSale?.id;
-                                                return (
-                                                    <span key={i} className="d-inline-flex align-items-center gap-1 border rounded-pill px-2 py-1 bg-warning bg-opacity-10">
+                                                const labelNode = (
+                                                    <span className="d-inline-flex align-items-center gap-1">
+                                                        <i className="fas fa-undo text-muted small"></i>
                                                         {srDocId ? (
-                                                            <Link href={`/${srDocId}/sale-return`} className="text-decoration-none fw-semibold">
+                                                            <Link href={`/${srDocId}/sale-return`} className="text-decoration-none">
                                                                 {sr.returnNo || 'Return'}
                                                             </Link>
                                                         ) : (sr.returnNo || 'Return')}
-                                                        <span className={`badge ${sr.type === 'Exchange' ? 'bg-info' : 'bg-secondary'}`}>{sr.type || 'Return'}</span>
-                                                        {sr.type === 'Exchange' && sr.exchangeSale?.invoice_no && (exDocId ? (
-                                                            <Link href={`/${exDocId}/sale`} className="badge bg-success text-decoration-none">
-                                                                <i className="fas fa-receipt me-1"></i>{sr.exchangeSale.invoice_no}
-                                                            </Link>
-                                                        ) : (
-                                                            <span className="badge bg-success">{sr.exchangeSale.invoice_no}</span>
-                                                        ))}
-                                                        <span className="text-danger fw-semibold">−{currency}{Number(sr.totalRefund || 0).toFixed(2)}</span>
+                                                        <span className="text-muted small">({sr.type || 'Return'})</span>
                                                     </span>
                                                 );
+                                                return (
+                                                    <SummaryRow
+                                                        key={`sr-${i}`}
+                                                        label={labelNode}
+                                                        value={`−${currency}${Number(sr.totalRefund || 0).toFixed(2)}`}
+                                                        valueClass="text-danger"
+                                                    />
+                                                );
                                             })}
-                                        </div>
-                                    )}
+                                            <SummaryRow
+                                                label={saleModel.exchangeReturnTotal > 0 ? 'Amount Due' : 'Total'}
+                                                value={`${currency}${amountDue.toFixed(2)}`}
+                                                divider
+                                                bold
+                                                size="lg"
+                                            />
 
-                                    {/* Compact chip-row: Payments (shown after checkout/saved payments) */}
-                                    {(saleModel.payments || []).length > 0 && (
-                                        <div className="d-flex flex-wrap align-items-center gap-2 small mt-1 mb-2">
-                                            <span className="text-muted"><i className="fas fa-check-circle me-1"></i>{'Payments:'}</span>
-                                            {saleModel.payments.map((p, i) => {
-                                                const pDocId = p.documentId;
-                                                const returnDocId = p.sale_return?.documentId;
-                                                const inner = (
-                                                    <span className="d-inline-flex align-items-center gap-1 border rounded-pill px-2 py-1 bg-light">
-                                                        <span className="fw-semibold">{p.payment_method || 'Payment'}</span>
-                                                        <span>{currency}{Number(p.amount || 0).toFixed(2)}</span>
-                                                        {p.transaction_no && <span className="text-muted">({p.transaction_no})</span>}
-                                                        {returnDocId && (
-                                                            <Link href={`/${returnDocId}/sale-return`} className="badge bg-warning text-dark text-decoration-none" onClick={(e) => e.stopPropagation()}>
-                                                                <i className="fas fa-undo me-1"></i>{p.sale_return?.return_no || 'Return'}
+                                            {/* Payments — same column, same alignment */}
+                                            {(saleModel.payments || []).length > 0 && (
+                                                <>
+                                                    <div className="text-muted text-uppercase mt-3 mb-1" style={{ fontSize: 11, letterSpacing: 0.5 }}>
+                                                        Payments
+                                                    </div>
+                                                    {saleModel.payments.map((p, i) => {
+                                                        const pDocId = p.documentId;
+                                                        const returnDocId = p.sale_return?.documentId;
+                                                        const labelNode = (
+                                                            <span className="d-inline-flex align-items-center gap-1">
+                                                                {pDocId ? (
+                                                                    <Link href={`/${pDocId}/payment`} className="text-decoration-none">
+                                                                        {p.payment_method || 'Payment'}
+                                                                    </Link>
+                                                                ) : (
+                                                                    <span>{p.payment_method || 'Payment'}</span>
+                                                                )}
+                                                                {p.transaction_no && <span className="text-muted small">({p.transaction_no})</span>}
+                                                                {returnDocId && (
+                                                                    <Link href={`/${returnDocId}/sale-return`} className="badge bg-warning text-dark text-decoration-none">
+                                                                        <i className="fas fa-undo me-1"></i>{p.sale_return?.return_no || 'Return'}
+                                                                    </Link>
+                                                                )}
+                                                            </span>
+                                                        );
+                                                        return (
+                                                            <SummaryRow
+                                                                key={`p-${i}`}
+                                                                label={labelNode}
+                                                                value={`${currency}${Number(p.amount || 0).toFixed(2)}`}
+                                                            />
+                                                        );
+                                                    })}
+                                                    <SummaryRow label="Paid" value={`${currency}${totalPaid.toFixed(2)}`} divider bold />
+                                                    {change > 0 && (
+                                                        <SummaryRow label="Change" value={`${currency}${change.toFixed(2)}`} valueClass="text-info" />
+                                                    )}
+                                                    {registerDocId && (
+                                                        <div className="mt-2 text-end">
+                                                            <Link href={`/${registerDocId}/cash-register-detail`} className="badge bg-primary text-decoration-none">
+                                                                <i className="fas fa-cash-register me-1"></i>Register
                                                             </Link>
-                                                        )}
-                                                    </span>
-                                                );
-                                                return pDocId
-                                                    ? <Link key={i} href={`/${pDocId}/payment`} className="text-decoration-none" style={{ color: 'inherit' }}>{inner}</Link>
-                                                    : <span key={i}>{inner}</span>;
-                                            })}
-                                            <span className="ms-auto fw-semibold">
-                                                {'Paid '}{currency}{totalPaid.toFixed(2)}
-                                                {change > 0 && <span className="text-info ms-2">{'· change '}{currency}{change.toFixed(2)}</span>}
-                                            </span>
-                                            {registerDocId && (
-                                                <Link href={`/${registerDocId}/cash-register-detail`} className="badge bg-primary text-decoration-none">
-                                                    <i className="fas fa-cash-register me-1"></i>{'Register'}
-                                                </Link>
+                                                        </div>
+                                                    )}
+                                                </>
                                             )}
-                                        </div>
-                                    )}
 
-                                    {/* ── Totals strip: breakdown above, big total + actions below ── */}
-                                    <div className="card mt-2">
-                                        {/* Top: breakdown of line totals laid out as small chips */}
-                                        <div className="card-body py-2 px-3 bg-light border-bottom">
-                                            <div className="d-flex flex-wrap align-items-center gap-3 small">
-                                                <span>
-                                                    <span className="text-muted me-1">{'Subtotal'}</span>
-                                                    <span className="fw-semibold">{currency}{saleModel.subtotal.toFixed(2)}</span>
-                                                </span>
-                                                {saleModel.discountTotal > 0 && (
-                                                    <span>
-                                                        <span className="text-muted me-1">{'Discount'}</span>
-                                                        <span className="fw-semibold text-danger">−{currency}{saleModel.discountTotal.toFixed(2)}</span>
-                                                    </span>
-                                                )}
-                                                {saleModel.tax > 0 && (
-                                                    <span>
-                                                        <span className="text-muted me-1">{'Tax'}</span>
-                                                        <span className="fw-semibold">{currency}{saleModel.tax.toFixed(2)}</span>
-                                                    </span>
-                                                )}
-                                                {saleModel.exchangeReturnTotal > 0 && (
-                                                    <>
-                                                        <span>
-                                                            <span className="text-muted me-1">{'Sale total'}</span>
-                                                            <span className="fw-semibold">{currency}{saleModel.total.toFixed(2)}</span>
-                                                        </span>
-                                                        <span>
-                                                            <span className="text-muted me-1">{'Exchange credit'}</span>
-                                                            <span className="fw-semibold text-warning">−{currency}{saleModel.exchangeReturnTotal.toFixed(2)}</span>
-                                                        </span>
-                                                    </>
-                                                )}
-                                            </div>
-                                        </div>
-                                        {/* Bottom: big Amount Due/Total on the left, action buttons on the right */}
-                                        <div className="card-body py-3 px-3 d-flex flex-wrap align-items-center gap-3">
-                                            <div className="flex-grow-1">
-                                                <div className="text-muted small text-uppercase" style={{ letterSpacing: 0.5 }}>
-                                                    {saleModel.exchangeReturnTotal > 0 ? 'Amount Due' : 'Total'}
-                                                </div>
-                                                <div className="fw-bold" style={{ fontSize: '2rem', lineHeight: 1.1 }}>
-                                                    {currency}{amountDue.toFixed(2)}
-                                                </div>
-                                            </div>
-                                            <div className="flex-shrink-0">
+                                            {/* Action buttons sit at the end of the natural flow */}
+                                            <div className="mt-3 pt-3 border-top d-flex justify-content-end">
                                                 <SaleButtons
                                                     saleModel={saleModel}
                                                     handlePrint={handlePrint}
@@ -843,6 +835,28 @@ export default function SalePage() {
 }
 
 
+
+function SummaryRow({ label, value, valueClass = '', bold = false, divider = false, size }) {
+    const isLg = size === 'lg';
+    const labelClass = [
+        'me-3',
+        bold ? 'fw-semibold' : 'text-muted',
+        isLg ? 'text-uppercase' : '',
+    ].filter(Boolean).join(' ');
+    const valueCls = [
+        bold ? 'fw-bold' : 'fw-normal',
+        valueClass,
+    ].filter(Boolean).join(' ');
+    return (
+        <div
+            className={`d-flex justify-content-between align-items-baseline ${divider ? 'border-top pt-2 mt-2' : ''}`}
+            style={isLg ? { letterSpacing: 0.3 } : undefined}
+        >
+            <span className={labelClass} style={isLg ? { fontSize: 13 } : undefined}>{label}</span>
+            <span className={valueCls} style={isLg ? { fontSize: '1.5rem', lineHeight: 1.1 } : undefined}>{value}</span>
+        </div>
+    );
+}
 
 function SaleButtons({ handlePrint, handleSave, saleModel, setShowCheckout, isDirty }) {
     const itemsCount = saleModel.items.length;

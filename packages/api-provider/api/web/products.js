@@ -34,10 +34,14 @@ export const WebProductsEndpoints = {
 
   // `slug` here is the documentId — the storefront builds product links from
   // documentId, not a separate slug field on the product schema.
-  detail: (slug) => ({
+  //
+  // Optional `groupId` (the source group the user clicked from) is forwarded
+  // to the controller so the server can resolve the right group-level offer
+  // and return its effective price under `meta.offerContext`.
+  detail: (slug, groupId) => ({
     path: `/products/public/by-id/${encodeURIComponent(slug)}`,
     method: 'get',
-    params: {},
+    params: groupId ? { groupId } : {},
   }),
 
   // /product-groups is a different content type; keep its existing shape.

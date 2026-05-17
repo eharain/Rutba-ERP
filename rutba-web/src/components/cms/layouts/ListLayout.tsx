@@ -42,9 +42,16 @@ function ListRow({ product, showBrand, showCategory, offerActive, offerId, sourc
   const brand = showBrand !== false ? product.brands?.[0] : undefined;
   const category = showCategory !== false ? product.categories?.[0] : undefined;
 
-  const productHref = offerActive && offerId && sourceGroupId
-    ? `/product/${product.documentId}?offerId=${offerId}&groupId=${sourceGroupId}`
-    : `/product/${product.documentId}`;
+  // Forward the source groupId whenever we have it — the detail page asks
+  // the server to resolve the offer for (product, group). offerId is only
+  // attached when there's an explicit pinned offer.
+  const productHref = (() => {
+    if (!sourceGroupId) return `/product/${product.documentId}`;
+    const qs = new URLSearchParams();
+    qs.set("groupId", sourceGroupId);
+    if (offerActive && offerId) qs.set("offerId", offerId);
+    return `/product/${product.documentId}?${qs.toString()}`;
+  })();
 
   return (
     <Link

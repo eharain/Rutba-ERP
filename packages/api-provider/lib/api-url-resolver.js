@@ -47,9 +47,7 @@ export function getImageUrl() {
 // INIT (CALL ON APP START)
 // ================================
 
-// Note: kept `async` purely for backward compatibility with the existing
-// `await initApiConfig(...)` call sites. The body is sync — no awaits inside.
-export async function initApiConfig(_options = {}) {
+export function initApiConfig(_options = {}) {
   if (initialized) return { API_URL, IMAGE_URL };
 
   try {

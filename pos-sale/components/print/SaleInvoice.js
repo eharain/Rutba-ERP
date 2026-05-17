@@ -48,10 +48,15 @@ const SaleInvoice = ({ sale, items, totals, printerSettings, branchPrintOverride
 
     const remaining = Math.max(0, safeTotals.total - paid);
 
-    // Include all payment lines on the receipt — Exchange Return tenders count toward Paid
+    // Show every payment line on the receipt, but "Paid" = actual money taken
+    // from the customer. Exchange-return tenders are credit applied (the
+    // Exchange Returns section already accounts for them) and must not double
+    // up in the Paid total.
+    const isExchangeTender = (p) => !!p?.sale_return || p?.payment_method === 'Exchange Return';
     const actualPayments = payments;
-    const actualPaid = actualPayments.reduce((s, p) => s + (Number(p.amount) || 0), 0);
-    const actualChange = actualPayments.reduce((s, p) => s + (Number(p.change) || 0), 0);
+    const cashLikePayments = actualPayments.filter(p => !isExchangeTender(p));
+    const actualPaid = cashLikePayments.reduce((s, p) => s + (Number(p.amount) || 0), 0);
+    const actualChange = cashLikePayments.reduce((s, p) => s + (Number(p.change) || 0), 0);
 
     // Use override props when provided (live editing), otherwise fall back to context.
     const effectivePrinter = printerSettings || invoicePrintSettings;

@@ -32,8 +32,8 @@ import { marked } from "marked";
 import { markedVideoEmbed } from "@/lib/marked-video-embed";
 import { IMAGE_URL, BASE_URL } from "@/static/const";
 import { CartTermInfo } from "@/types/api/cart";
-import axios from "axios";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import Head from "next/head";
 
 marked.use({ breaks: true, gfm: true });
 marked.use(markedVideoEmbed({ imageBaseUrl: IMAGE_URL }));
@@ -41,20 +41,31 @@ marked.use(markedVideoEmbed({ imageBaseUrl: IMAGE_URL }));
 export const getServerSideProps: GetServerSideProps<{
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   initialProduct: any | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  initialOfferContext: any | null;
   slug: string;
 }> = async (context) => {
   const slug = context.params?.slug as string;
+  const groupId = typeof context.query?.groupId === 'string' ? context.query.groupId : undefined;
   try {
-    const product = await getProductDetailSSR(slug);
+    const res = await getProductDetailSSR(slug, groupId);
+    const product = res?.data ?? null;
     if (!product) return { notFound: true };
-    return { props: { initialProduct: product, slug } };
+    return {
+      props: {
+        initialProduct: product,
+        initialOfferContext: res?.meta?.offerContext ?? null,
+        slug,
+      },
+    };
   } catch {
-    return { props: { initialProduct: null, slug } };
+    return { props: { initialProduct: null, initialOfferContext: null, slug } };
   }
 };
 
 export default function ProductDetail({
   initialProduct,
+  initialOfferContext,
   slug: ssrSlug,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const cartStore = useStoreCart();
@@ -62,46 +73,34 @@ export default function ProductDetail({
   const productsService = createWebProductsService({ baseURL: BASE_URL });
 
   const slug = (router.query.slug as string) ?? ssrSlug;
-  const offerId = router.query.offerId as string | undefined;
   const sourceGroupId = router.query.groupId as string | undefined;
 
   const { addToCart } = useCartService();
 
+  // Single source of truth: the server resolves offer context based on
+  // (product, group). The detail page used to validate an `offerId` client-
+  // side, but with the group-driven offer model the editor controls which
+  // offer applies — the storefront just renders what the server returns.
   const {
-    data: product,
+    data: detail,
     isLoading,
     isError,
     error,
   } = useQuery({
-    queryKey: ["products", slug],
+    queryKey: ["products", slug, sourceGroupId ?? null],
     queryFn: async () => {
-      return productsService.getProductDetail(slug as string);
+      return productsService.getProductDetail(slug as string, sourceGroupId);
     },
     enabled: !!slug,
-    initialData: initialProduct ?? undefined,
+    initialData:
+      initialProduct
+        ? { data: initialProduct, offerContext: initialOfferContext ?? null }
+        : undefined,
     staleTime: 60_000,
   });
-
-  // Validate offer is still active
-  const { data: offerActive } = useQuery({
-    queryKey: ["offer-validate", offerId],
-    queryFn: async () => {
-      if (!offerId) return false;
-      try {
-        const res = await axios.get(`${BASE_URL}offers/${offerId}`, { params: { fields: ["active", "start_date", "end_date"] } });
-        const offer = res.data?.data ?? res.data;
-        if (!offer?.active) return false;
-        const now = Date.now();
-        if (offer.start_date && new Date(offer.start_date).getTime() > now) return false;
-        if (offer.end_date && new Date(offer.end_date).getTime() < now) return false;
-        return true;
-      } catch {
-        return false;
-      }
-    },
-    enabled: !!offerId,
-    staleTime: 60_000,
-  });
+  const product = detail?.data;
+  const offerContext = detail?.offerContext ?? null;
+  const offerActive = !!offerContext?.offer;
 
   // Extract variant term types (is_variant: true) used across all variants
   const variantTermTypes = useMemo(() => {
@@ -242,26 +241,58 @@ export default function ProductDetail({
     return product?.selling_price;
   }, [resolvedVariant, hasTermVariants, matchedVariants, product]);
 
-  // Offer price display
+  // Apply the server-resolved offer to a (selling_price, offer_price) pair.
+  // Mirrors the resolver in sale-offer service so per-variant prices line up
+  // with the per-product price the server already computed.
+  const applyOffer = (selling: number, productOfferPrice?: number): number | null => {
+    if (!offerContext?.offer || !offerActive) return null;
+    const base = Number(selling) || 0;
+    const mode = offerContext.offer.discount_mode;
+    const value = Number(offerContext.offer.discount_value) || 0;
+    if (mode === "percent_off") {
+      const pct = Math.max(0, Math.min(100, value));
+      const next = Math.max(0, base * (1 - pct / 100));
+      return next < base ? next : null;
+    }
+    if (mode === "fixed_off") {
+      const off = Math.max(0, value);
+      const next = Math.max(0, base - off);
+      return next < base ? next : null;
+    }
+    if (mode === "use_product_offer_price") {
+      const op = Number(productOfferPrice) || 0;
+      return op > 0 && op < base ? op : null;
+    }
+    return null;
+  };
+
+  // Offer price display — derived from the server-resolved offerContext,
+  // applied per variant so ranged products keep their min/max math.
   const getOfferPrice = useMemo(() => {
     if (!offerActive) return null;
-    if (resolvedVariant) return resolvedVariant.offer_price > 0 ? resolvedVariant.offer_price : null;
+    if (resolvedVariant) return applyOffer(resolvedVariant.selling_price, resolvedVariant.offer_price);
     if (hasTermVariants && matchedVariants.length > 1) {
-      const prices = matchedVariants.map((v) => v.offer_price).filter((p) => p > 0);
+      const prices = matchedVariants
+        .map((v) => applyOffer(v.selling_price, v.offer_price))
+        .filter((p): p is number => p != null);
       if (prices.length === 0) return null;
       const min = Math.min(...prices);
       const max = Math.max(...prices);
       return min === max ? min : null;
     }
-    return product?.offer_price && product.offer_price > 0 ? product.offer_price : null;
-  }, [offerActive, resolvedVariant, hasTermVariants, matchedVariants, product]);
+    return product ? applyOffer(product.selling_price, product.offer_price) : null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [offerActive, offerContext, resolvedVariant, hasTermVariants, matchedVariants, product]);
 
   const offerPriceRange = useMemo(() => {
     if (!offerActive || !hasTermVariants || matchedVariants.length <= 1) return null;
-    const prices = matchedVariants.map((v) => v.offer_price).filter((p) => p > 0);
+    const prices = matchedVariants
+      .map((v) => applyOffer(v.selling_price, v.offer_price))
+      .filter((p): p is number => p != null);
     if (prices.length === 0) return null;
     return { min: Math.min(...prices), max: Math.max(...prices) };
-  }, [offerActive, hasTermVariants, matchedVariants]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [offerActive, offerContext, hasTermVariants, matchedVariants]);
 
   const priceRange = useMemo(() => {
     if (hasTermVariants && matchedVariants.length > 1) {
@@ -363,11 +394,12 @@ export default function ProductDetail({
   const handleAddToCart = () => {
     if (!canAddToCart) return;
     const variantId = resolvedVariant?.id ?? selectVariant;
-    const resolvedOfferPrice =
+    // The price honored at checkout reflects the group offer in play right
+    // now. We pass the resolved final price (when present) so the server-side
+    // cart record matches what the customer saw on the page.
+    const resolvedFinalPrice =
       offerActive && resolvedVariant
-        ? resolvedVariant.offer_price > 0
-          ? resolvedVariant.offer_price
-          : undefined
+        ? applyOffer(resolvedVariant.selling_price, resolvedVariant.offer_price) ?? undefined
         : undefined;
     addToCart(
       product?.id ?? null,
@@ -375,8 +407,8 @@ export default function ProductDetail({
       1,
       selectedTermsForCart,
       selectedImageUrl,
-      resolvedOfferPrice,
-      offerActive ? offerId : undefined,
+      resolvedFinalPrice,
+      offerActive ? (offerContext?.offer?.documentId ?? offerContext?.offer?.id) : undefined,
       offerActive ? sourceGroupId : undefined
     );
     cartStore.setIsCartOpen(true);
@@ -402,6 +434,14 @@ export default function ProductDetail({
 
   return (
     <LayoutMain>
+      {/* Canonical URL strips any group/offer query params so search engines
+          see one URL per product even though clicks from different groups
+          may surface different prices. */}
+      {product?.documentId && (
+        <Head>
+          <link rel="canonical" href={`/product/${product.documentId}`} />
+        </Head>
+      )}
       <Seo
         title={product?.name}
         description={seoDescription}
@@ -521,6 +561,25 @@ export default function ProductDetail({
               <p className="mt-1 text-xs text-muted-foreground">
                 Inclusive of all taxes
               </p>
+
+              {/* Group-level promos surfaced as badges. Free shipping is
+                  resolved server-side from the group's offer set so it can
+                  ride alongside a price discount (e.g. "20% off + free
+                  shipping" expressed as two offers on the same group). */}
+              {(offerContext?.freeShipping || offerContext?.offer?.name) && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {offerContext?.offer?.name && (
+                    <span className="inline-flex items-center rounded-full border border-brand/30 bg-brand/10 text-brand text-[11px] font-bold tracking-wide px-2.5 py-1">
+                      {offerContext.offer.name}
+                    </span>
+                  )}
+                  {offerContext?.freeShipping && (
+                    <span className="inline-flex items-center gap-1 rounded-full border border-foreground/15 bg-secondary text-foreground text-[11px] font-bold tracking-wide px-2.5 py-1">
+                      <Truck className="h-3 w-3" /> Free shipping
+                    </span>
+                  )}
+                </div>
+              )}
 
               <div className="h-px bg-border my-6" />
 

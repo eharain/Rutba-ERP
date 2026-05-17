@@ -53,7 +53,11 @@ export function getProductCardProps(item: ProductInterface, options?: { showBran
     variantOfferPrice: offerActive && variantOfferPrice.length > 0 ? variantOfferPrice : undefined,
     variantTermSummary: getVariantTermSummary(item),
     offerId: offerActive ? options?.offerId : undefined,
-    sourceGroupId: offerActive ? options?.sourceGroupId : undefined,
+    // Source attribution is independent of whether an offer is currently
+    // active — the detail page uses the groupId to ask the server which
+    // offer (if any) applies right now. Always forward the group context
+    // when we have it.
+    sourceGroupId: options?.sourceGroupId,
     createdAt: item.createdAt,
   };
 }
