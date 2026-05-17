@@ -29,9 +29,9 @@ function testDescriptorVerbs() {
   assert(resolveHttpVerb('providerCallback', provider.method) === 'GET', 'providerCallback should resolve to GET.');
 
   const search = WebProductsApiEndpoints.search('nike');
-  assert(search.path === '/products', 'Products search path mismatch.');
+  assert(search.path === '/products/public/search', 'Products search path mismatch.');
   assert(resolveHttpVerb('search', search.method) === 'GET', 'Products search should resolve to GET.');
-  assert(search.params?.filters?.name?.$contains === 'nike', 'Products search params mismatch.');
+  assert(search.params?.q === 'nike', 'Products search params mismatch.');
 
   const createOrder = WebOrdersApiEndpoints.create({ order_id: 'ORD-1' });
   assert(createOrder.path === '/orders', 'Orders create path mismatch.');

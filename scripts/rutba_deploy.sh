@@ -261,15 +261,17 @@ echo "============================================"
 echo ""
 echo "  Which branch do you want to deploy?"
 echo ""
-echo "    1) main    (stable / production)"
-echo "    2) dev     (development / testing)"
+echo "    1) main     (stable / production)"
+echo "    2) dev      (development / testing)"
+echo "    3) release  (release candidate)"
 echo ""
 
-read -rp "  Enter choice [1/2] (default: 1): " branch_choice
+read -rp "  Enter choice [1/2/3] (default: 1): " branch_choice
 
 case "${branch_choice}" in
-    2|dev)  BRANCH="dev"  ;;
-    *)      BRANCH="main" ;;
+    2|dev)      BRANCH="dev"     ;;
+    3|release)  BRANCH="release" ;;
+    *)          BRANCH="main"    ;;
 esac
 
 log "Selected branch: ${BRANCH}"
