@@ -13,7 +13,7 @@ import PagePickerTabs from "../../components/PagePickerTabs";
 import RelationPickerTabs from "../../components/RelationPickerTabs";
 import EnumSelect from "../../components/EnumSelect";
 import InlineSeoPanel from "../../components/InlineSeoPanel";
-import SectionOrderList from "../../components/SectionOrderList";
+import PageLayoutEditor from "../../components/PageLayoutEditor";
 import { persistSeoMeta } from "../../components/SeoMetaFields";
 import { toOrderedRelation } from "../../components/orderedRelation";
 
@@ -427,6 +427,36 @@ export default function CmsPageDetail() {
                                 </div>
                             </div>
 
+                            {/* Page Layout — unified drag-sort over sections + connected product groups */}
+                            <div className="card mb-3">
+                                <div className="card-header d-flex align-items-center">
+                                    <i className="fas fa-sort me-2"></i>
+                                    <strong>Page Layout</strong>
+                                    <span className="text-muted small ms-2">drag to reorder — top renders first on the page</span>
+                                </div>
+                                <div className="card-body">
+                                    <PageLayoutEditor
+                                        sections={sectionOrder.map(key => ({
+                                            key,
+                                            label: SECTION_LABELS[key] || key,
+                                            present: key === "featured_image" ? !!featuredImageId
+                                                : key === "excerpt" ? !!excerpt
+                                                : key === "content" ? !!content
+                                                : key === "product_groups" ? selectedGroupIds.length > 0
+                                                : key === "gallery" ? galleryIds.length > 0
+                                                : key === "related_pages" ? selectedRelatedIds.length > 0
+                                                : true,
+                                        }))}
+                                        onReorderSections={setSectionOrder}
+                                        connectedGroups={selectedGroupIds
+                                            .map(id => allGroups.find(g => g.documentId === id))
+                                            .filter(Boolean)}
+                                        onReorderGroups={setSelectedGroupIds}
+                                        onRemoveGroup={toggleGroup}
+                                    />
+                                </div>
+                            </div>
+
                             {/* Category Groups — hidden for shop pages (use product groups with layouts instead) */}
                             {pageType !== "shop" && (
                                 <RelationPickerTabs
@@ -442,7 +472,7 @@ export default function CmsPageDetail() {
                                 />
                             )}
 
-                            {/* Product Groups */}
+                            {/* Product Groups — Browse to connect; ordering lives in Page Layout above */}
                             <GroupPickerTabs
                                 allGroups={allGroups}
                                 selectedGroupIds={selectedGroupIds}
@@ -498,25 +528,6 @@ export default function CmsPageDetail() {
                                         </select>
                                         <div className="form-text">Useful for contact-us pages and support landing pages.</div>
                                     </div>
-                                    <hr />
-                                    <p className="text-muted small mb-2">
-                                        <i className="fas fa-sort me-1"></i>Section Order
-                                        <span className="text-muted ms-1">(drag to reorder — top renders first on the page)</span>
-                                    </p>
-                                    <SectionOrderList
-                                        sections={sectionOrder.map(key => ({
-                                            key,
-                                            label: SECTION_LABELS[key] || key,
-                                            present: key === "featured_image" ? !!featuredImageId
-                                                : key === "excerpt" ? !!excerpt
-                                                : key === "content" ? !!content
-                                                : key === "product_groups" ? selectedGroupIds.length > 0
-                                                : key === "gallery" ? galleryIds.length > 0
-                                                : key === "related_pages" ? selectedRelatedIds.length > 0
-                                                : true,
-                                        }))}
-                                        onReorder={setSectionOrder}
-                                    />
                                     {!isNew && page?.slug && (
                                         <div className="mb-3">
                                             <label className="form-label">Slug</label>
