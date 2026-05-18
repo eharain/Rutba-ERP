@@ -2828,7 +2828,7 @@ export interface ApiProductGroupProductGroup
 export interface ApiProductProduct extends Struct.CollectionTypeSchema {
   collectionName: 'products';
   info: {
-    description: 'Items sold in the POS';
+    description: 'Items sold in the POS and online is a product and product variants';
     displayName: 'Product';
     pluralName: 'products';
     singularName: 'product';
