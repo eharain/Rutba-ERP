@@ -80,9 +80,9 @@ export default function SalePage() {
     =============================== */
 
     useEffect(() => {
-        if (!documentId) return;
-        // If creating a new sale (route uses 'new'), initialize an empty model instead of fetching
-        if (documentId === 'new') {
+        if (!router.isReady) return;
+        // If creating a new sale (route uses 'new' or the static /new/sale shim), initialize an empty model instead of fetching
+        if (!documentId || documentId === 'new') {
             const model = new SaleModel({ id: 'new' });
 
             model.documentId = null;
@@ -92,7 +92,7 @@ export default function SalePage() {
             loadSale();
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [documentId]);
+    }, [router.isReady, documentId]);
 
     // Append newly-recorded audit entries to the panel in real time so the
     // admin sees actions land as the teller performs them. We accept any

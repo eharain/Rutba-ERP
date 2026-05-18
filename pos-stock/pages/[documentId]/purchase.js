@@ -21,9 +21,9 @@ export default function PurchasePage() {
     const {currency} = useUtil();
 
     useEffect(() => {
-        if (!documentId) return;
+        if (!router.isReady) return;
 
-        if (documentId === 'new') {
+        if (!documentId || documentId === 'new') {
             const newPurchase = {
                 orderId: generateNextPONumber(),
                 order_date: new Date().toISOString(),
@@ -63,7 +63,7 @@ export default function PurchasePage() {
         };
 
         loadData();
-    }, [documentId]);
+    }, [router.isReady, documentId]);
 
     const handleEdit = (documentId) => {
         setEditingDocumentId(documentId);
