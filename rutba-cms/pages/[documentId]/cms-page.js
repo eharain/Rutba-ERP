@@ -10,11 +10,57 @@ import Link from "next/link";
 import { useToast } from "../../components/Toast";
 import GroupPickerTabs from "../../components/GroupPickerTabs";
 import PagePickerTabs from "../../components/PagePickerTabs";
+import RelationPickerTabs from "../../components/RelationPickerTabs";
 import EnumSelect from "../../components/EnumSelect";
 import InlineSeoPanel from "../../components/InlineSeoPanel";
-import OrderableRelationList from "../../components/OrderableRelationList";
+import SectionOrderList from "../../components/SectionOrderList";
 import { persistSeoMeta } from "../../components/SeoMetaFields";
 import { toOrderedRelation } from "../../components/orderedRelation";
+
+// Sections in their default top-to-bottom order. The numeric priority
+// stored on the cms-page record is just the index of the key in this
+// (post-reorder) array, so the public renderer can sort by priority.
+const DEFAULT_SECTION_ORDER = [
+    "featured_image",
+    "excerpt",
+    "content",
+    "product_groups",
+    "gallery",
+    "related_pages",
+];
+
+const SECTION_LABELS = {
+    featured_image: "Featured Image",
+    excerpt: "Excerpt",
+    content: "Content",
+    product_groups: "Product Groups",
+    gallery: "Gallery",
+    related_pages: "Related Pages",
+};
+
+// Read the stored priority fields off the loaded page and produce the
+// section keys in ascending-priority order. Missing priorities fall back
+// to the position in DEFAULT_SECTION_ORDER.
+function deriveSectionOrder(page) {
+    if (!page) return DEFAULT_SECTION_ORDER.slice();
+    const rank = (key, fallback) => {
+        const field = `${key}_priority`;
+        const v = page[field];
+        return typeof v === "number" ? v : fallback;
+    };
+    return DEFAULT_SECTION_ORDER
+        .map((key, idx) => ({ key, rank: rank(key, idx) }))
+        .sort((a, b) => a.rank - b.rank)
+        .map(s => s.key);
+}
+
+// Inverse of deriveSectionOrder: map an ordered section-key array back to
+// the individual *_priority fields the schema stores.
+function sectionOrderToPriorities(order) {
+    const out = {};
+    order.forEach((key, idx) => { out[`${key}_priority`] = idx; });
+    return out;
+}
 
 export default function CmsPageDetail() {
     const router = useRouter();
@@ -42,11 +88,7 @@ export default function CmsPageDetail() {
     const [selectedRelatedIds, setSelectedRelatedIds] = useState([]);
     const [footerId, setFooterId] = useState("");
 
-    const [excerptPriority, setExcerptPriority] = useState(2);
-    const [featuredImagePriority, setFeaturedImagePriority] = useState(0);
-    const [contentPriority, setContentPriority] = useState(98);
-    const [galleryPriority, setGalleryPriority] = useState(100);
-    const [relatedPagesPriority, setRelatedPagesPriority] = useState(102);
+    const [sectionOrder, setSectionOrder] = useState(DEFAULT_SECTION_ORDER);
 
     const [featuredImageId, setFeaturedImageId] = useState(null);
     const [backgroundImageId, setBackgroundImageId] = useState(null);
@@ -90,11 +132,7 @@ export default function CmsPageDetail() {
                 setSelectedGroupIds((p.product_groups || []).map(g => g.documentId));
                 setSelectedRelatedIds((p.related_pages || []).map(rp => rp.documentId));
                 setFooterId(p.footer?.documentId || "");
-                setExcerptPriority(p.excerpt_priority ?? 2);
-                setFeaturedImagePriority(p.featured_image_priority ?? 0);
-                setContentPriority(p.content_priority ?? 98);
-                setGalleryPriority(p.gallery_priority ?? 100);
-                setRelatedPagesPriority(p.related_pages_priority ?? 102);
+                setSectionOrder(deriveSectionOrder(p));
                 setFeaturedImageId(p.featured_image?.id || null);
                 setBackgroundImageId(p.background_image?.id || null);
                 setSeoMeta(p.seo_meta || null);
@@ -175,11 +213,7 @@ export default function CmsPageDetail() {
                     product_groups: toOrderedRelation(selectedGroupIds),
                     related_pages: toOrderedRelation(selectedRelatedIds),
                     footer: footerId || null,
-                    excerpt_priority: excerptPriority,
-                    featured_image_priority: featuredImagePriority,
-                    content_priority: contentPriority,
-                    gallery_priority: galleryPriority,
-                    related_pages_priority: relatedPagesPriority,
+                    ...sectionOrderToPriorities(sectionOrder),
                 },
             };
             // Only include media when adding/keeping; omit when null to avoid affecting published
@@ -223,11 +257,7 @@ export default function CmsPageDetail() {
                     product_groups: toOrderedRelation(selectedGroupIds),
                     related_pages: toOrderedRelation(selectedRelatedIds),
                     footer: footerId || null,
-                    excerpt_priority: excerptPriority,
-                    featured_image_priority: featuredImagePriority,
-                    content_priority: contentPriority,
-                    gallery_priority: galleryPriority,
-                    related_pages_priority: relatedPagesPriority,
+                    ...sectionOrderToPriorities(sectionOrder),
                     featured_image: featuredImageId || null,
                     background_image: backgroundImageId || null,
                     gallery: galleryIds.length > 0 ? galleryIds : null,
@@ -298,11 +328,7 @@ export default function CmsPageDetail() {
             setSelectedGroupIds((p.product_groups || []).map(g => g.documentId));
             setSelectedRelatedIds((p.related_pages || []).map(rp => rp.documentId));
             setFooterId(p.footer?.documentId || "");
-            setExcerptPriority(p.excerpt_priority ?? 2);
-            setFeaturedImagePriority(p.featured_image_priority ?? 0);
-            setContentPriority(p.content_priority ?? 98);
-            setGalleryPriority(p.gallery_priority ?? 100);
-            setRelatedPagesPriority(p.related_pages_priority ?? 102);
+            setSectionOrder(deriveSectionOrder(p));
             setFeaturedImageId(p.featured_image?.id || null);
             setBackgroundImageId(p.background_image?.id || null);
             setGalleryIds((p.gallery || []).map(g => g.id));
@@ -401,72 +427,19 @@ export default function CmsPageDetail() {
                                 </div>
                             </div>
 
-                            {/* Brand Groups
-                            {pageType !== 'shop' && (
-                            <div className="card mb-3">
-                                <div className="card-header d-flex align-items-center">
-                                    <i className="fas fa-tags me-2"></i>
-                                    <strong>Brand Groups</strong>
-                                    <span className="badge bg-primary ms-2">{selectedBrandGroupIds.length}</span>
-                                </div>
-                                <div className="card-body">
-                                    <p className="text-muted small mb-2">Select brand groups to display. Each group renders as a section using the group name as the heading.</p>
-                                    {allBrandGroups.length === 0 ? (
-                                        <p className="text-muted small">No brand groups available. <Link href="/new/brand-group">Create one</Link>.</p>
-                                    ) : (
-                                        <div className="d-flex flex-wrap gap-2">
-                                            {allBrandGroups.map(bg => {
-                                                const selected = selectedBrandGroupIds.includes(bg.documentId);
-                                                return (
-                                                    <button key={bg.documentId} type="button" className={`btn btn-sm ${selected ? "btn-warning" : "btn-outline-secondary"}`} onClick={() => toggleBrandGroup(bg.documentId)}>
-                                                        {selected && <i className="fas fa-check me-1"></i>}{bg.name}
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                            )}
-
-                            {/* Category Groups (hidden for shop pages — use product groups with layouts instead) */}
-                            {pageType !== 'shop' && (
-                            <div className="card mb-3">
-                                <div className="card-header d-flex align-items-center">
-                                    <i className="fas fa-folder me-2"></i>
-                                    <strong>Category Groups</strong>
-                                    <span className="badge bg-primary ms-2">{selectedCategoryGroupIds.length}</span>
-                                </div>
-                                <div className="card-body">
-                                    <p className="text-muted small mb-2">Select category groups to display. Each group renders as a section using the group name as the heading. Drag connected groups to reorder.</p>
-                                    {selectedCategoryGroupIds.length > 0 && (
-                                        <div className="mb-3">
-                                            <OrderableRelationList
-                                                selectedIds={selectedCategoryGroupIds}
-                                                optionsById={Object.fromEntries(allCategoryGroups.map(cg => [cg.documentId, cg]))}
-                                                onReorder={setSelectedCategoryGroupIds}
-                                                onRemove={toggleCategoryGroup}
-                                                renderItem={(cg) => <span>{cg.name}</span>}
-                                                emptyText="No category groups connected."
-                                            />
-                                        </div>
-                                    )}
-                                    {allCategoryGroups.length === 0 ? (
-                                        <p className="text-muted small">No category groups available. <Link href="/new/category-group">Create one</Link>.</p>
-                                    ) : (
-                                        <div className="d-flex flex-wrap gap-2">
-                                            {allCategoryGroups.map(cg => {
-                                                const selected = selectedCategoryGroupIds.includes(cg.documentId);
-                                                return (
-                                                    <button key={cg.documentId} type="button" className={`btn btn-sm ${selected ? "btn-primary" : "btn-outline-secondary"}`} onClick={() => toggleCategoryGroup(cg.documentId)}>
-                                                        {selected && <i className="fas fa-check me-1"></i>}{cg.name}
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
+                            {/* Category Groups — hidden for shop pages (use product groups with layouts instead) */}
+                            {pageType !== "shop" && (
+                                <RelationPickerTabs
+                                    title="Category Groups"
+                                    icon="fas fa-folder"
+                                    description="Each group renders as a section using the group name as the heading."
+                                    selectedIds={selectedCategoryGroupIds}
+                                    allItems={allCategoryGroups}
+                                    onToggle={toggleCategoryGroup}
+                                    onReorder={setSelectedCategoryGroupIds}
+                                    onRemoveAll={() => setSelectedCategoryGroupIds([])}
+                                    getEditHref={(cg) => `/${cg.documentId}/category-group`}
+                                />
                             )}
 
                             {/* Product Groups */}
@@ -526,27 +499,24 @@ export default function CmsPageDetail() {
                                         <div className="form-text">Useful for contact-us pages and support landing pages.</div>
                                     </div>
                                     <hr />
-                                    <p className="text-muted small mb-2"><i className="fas fa-sort-numeric-down me-1"></i>Section Priorities <span className="text-muted">(lower = higher on page)</span></p>
-                                    <div className="row g-2 mb-2">
-                                        <div className="col-8"><small>Featured Image</small></div>
-                                        <div className="col-4"><input type="number" className="form-control form-control-sm" value={featuredImagePriority} onChange={e => setFeaturedImagePriority(parseInt(e.target.value) || 0)} /></div>
-                                    </div>
-                                    <div className="row g-2 mb-2">
-                                        <div className="col-8"><small>Excerpt</small></div>
-                                        <div className="col-4"><input type="number" className="form-control form-control-sm" value={excerptPriority} onChange={e => setExcerptPriority(parseInt(e.target.value) || 0)} /></div>
-                                    </div>
-                                    <div className="row g-2 mb-2">
-                                        <div className="col-8"><small>Content</small></div>
-                                        <div className="col-4"><input type="number" className="form-control form-control-sm" value={contentPriority} onChange={e => setContentPriority(parseInt(e.target.value) || 0)} /></div>
-                                    </div>
-                                    <div className="row g-2 mb-2">
-                                        <div className="col-8"><small>Gallery</small></div>
-                                        <div className="col-4"><input type="number" className="form-control form-control-sm" value={galleryPriority} onChange={e => setGalleryPriority(parseInt(e.target.value) || 0)} /></div>
-                                    </div>
-                                    <div className="row g-2 mb-2">
-                                        <div className="col-8"><small>Related Pages</small></div>
-                                        <div className="col-4"><input type="number" className="form-control form-control-sm" value={relatedPagesPriority} onChange={e => setRelatedPagesPriority(parseInt(e.target.value) || 0)} /></div>
-                                    </div>
+                                    <p className="text-muted small mb-2">
+                                        <i className="fas fa-sort me-1"></i>Section Order
+                                        <span className="text-muted ms-1">(drag to reorder — top renders first on the page)</span>
+                                    </p>
+                                    <SectionOrderList
+                                        sections={sectionOrder.map(key => ({
+                                            key,
+                                            label: SECTION_LABELS[key] || key,
+                                            present: key === "featured_image" ? !!featuredImageId
+                                                : key === "excerpt" ? !!excerpt
+                                                : key === "content" ? !!content
+                                                : key === "product_groups" ? selectedGroupIds.length > 0
+                                                : key === "gallery" ? galleryIds.length > 0
+                                                : key === "related_pages" ? selectedRelatedIds.length > 0
+                                                : true,
+                                        }))}
+                                        onReorder={setSectionOrder}
+                                    />
                                     {!isNew && page?.slug && (
                                         <div className="mb-3">
                                             <label className="form-label">Slug</label>
