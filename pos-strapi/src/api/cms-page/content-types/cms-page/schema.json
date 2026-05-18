@@ -117,7 +117,7 @@
     },
     "excerpt_priority": {
       "type": "integer",
-      "default": 2
+      "default": 1
     },
     "featured_image_priority": {
       "type": "integer",
@@ -125,15 +125,19 @@
     },
     "content_priority": {
       "type": "integer",
-      "default": 98
+      "default": 2
+    },
+    "product_groups_priority": {
+      "type": "integer",
+      "default": 3
     },
     "gallery_priority": {
       "type": "integer",
-      "default": 100
+      "default": 4
     },
     "related_pages_priority": {
       "type": "integer",
-      "default": 102
+      "default": 5
     },
     "seo_meta": {
       "type": "relation",

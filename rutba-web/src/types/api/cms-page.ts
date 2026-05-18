@@ -117,6 +117,7 @@ export interface CmsPageDetailInterface extends CmsPageInterface {
   excerpt_priority?: number;
   featured_image_priority?: number;
   content_priority?: number;
+  product_groups_priority?: number;
   gallery_priority?: number;
   related_pages_priority?: number;
 }

@@ -1427,7 +1427,7 @@ export interface ApiCmsPageCmsPage extends Struct.CollectionTypeSchema {
       'api::category-group.category-group'
     >;
     content: Schema.Attribute.RichText;
-    content_priority: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<98>;
+    content_priority: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<2>;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -1438,7 +1438,7 @@ export interface ApiCmsPageCmsPage extends Struct.CollectionTypeSchema {
     enable_contact_form: Schema.Attribute.Boolean &
       Schema.Attribute.DefaultTo<false>;
     excerpt: Schema.Attribute.RichText;
-    excerpt_priority: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<2>;
+    excerpt_priority: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<1>;
     featured_image: Schema.Attribute.Media<'images'>;
     featured_image_priority: Schema.Attribute.Integer &
       Schema.Attribute.DefaultTo<0>;
@@ -1447,8 +1447,7 @@ export interface ApiCmsPageCmsPage extends Struct.CollectionTypeSchema {
       'api::cms-footer.cms-footer'
     >;
     gallery: Schema.Attribute.Media<'images' | 'videos', true>;
-    gallery_priority: Schema.Attribute.Integer &
-      Schema.Attribute.DefaultTo<100>;
+    gallery_priority: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<4>;
     hero_product_groups: Schema.Attribute.Relation<
       'manyToMany',
       'api::product-group.product-group'
@@ -1475,13 +1474,15 @@ export interface ApiCmsPageCmsPage extends Struct.CollectionTypeSchema {
       'manyToMany',
       'api::product-group.product-group'
     >;
+    product_groups_priority: Schema.Attribute.Integer &
+      Schema.Attribute.DefaultTo<3>;
     publishedAt: Schema.Attribute.DateTime;
     related_pages: Schema.Attribute.Relation<
       'manyToMany',
       'api::cms-page.cms-page'
     >;
     related_pages_priority: Schema.Attribute.Integer &
-      Schema.Attribute.DefaultTo<102>;
+      Schema.Attribute.DefaultTo<5>;
     seo_meta: Schema.Attribute.Relation<'oneToOne', 'api::seo-meta.seo-meta'>;
     slug: Schema.Attribute.UID<'title'> & Schema.Attribute.Required;
     sort_order: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
