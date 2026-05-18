@@ -2,7 +2,7 @@
 export interface BrandsEndpointsType {
     listPaged(page?: any, pageSize?: any, { sort, populate }?: any): Promise<any>;
     listAll({ sort, populate, pageSize = 100 }?: any): Promise<any>;
-    list({ sort, populate, search }?: any): Promise<any>;
+    list({ sort, populate, search, page = 1, pageSize = 500 }?: any): Promise<any>;
     listDraft({ search, sort, populate, pageSize = 100 }?: any): Promise<any>;
     listPublished({ pageSize = 500 }?: any): Promise<any>;
     create(data: any): Promise<any>;
