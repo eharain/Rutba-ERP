@@ -1438,7 +1438,7 @@ export interface ApiCmsPageCmsPage extends Struct.CollectionTypeSchema {
     enable_contact_form: Schema.Attribute.Boolean &
       Schema.Attribute.DefaultTo<false>;
     excerpt: Schema.Attribute.RichText;
-    excerpt_priority: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<1>;
+    excerpt_priority: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<10>;
     featured_image: Schema.Attribute.Media<'images'>;
     featured_image_priority: Schema.Attribute.Integer &
       Schema.Attribute.DefaultTo<0>;

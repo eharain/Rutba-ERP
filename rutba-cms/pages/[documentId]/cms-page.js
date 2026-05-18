@@ -29,37 +29,91 @@ const DEFAULT_SECTION_ORDER = [
     "related_pages",
 ];
 
+const FIXED_SECTIONS = ["featured_image", "excerpt", "content", "gallery", "related_pages"];
+
 const SECTION_LABELS = {
     featured_image: "Featured Image",
     excerpt: "Excerpt",
     content: "Content",
-    product_groups: "Product Groups",
     gallery: "Gallery",
     related_pages: "Related Pages",
 };
 
-// Read the stored priority fields off the loaded page and produce the
-// section keys in ascending-priority order. Missing priorities fall back
-// to the position in DEFAULT_SECTION_ORDER.
-function deriveSectionOrder(page) {
-    if (!page) return DEFAULT_SECTION_ORDER.slice();
-    const rank = (key, fallback) => {
-        const field = `${key}_priority`;
-        const v = page[field];
-        return typeof v === "number" ? v : fallback;
-    };
-    return DEFAULT_SECTION_ORDER
-        .map((key, idx) => ({ key, rank: rank(key, idx) }))
-        .sort((a, b) => a.rank - b.rank)
-        .map(s => s.key);
+const DEFAULT_PRIORITIES = {
+    featured_image: 0,
+    excerpt: 10,
+    content: 20,
+    product_groups: 30,
+    gallery: 40,
+    related_pages: 50,
+};
+
+// Reconstruct the visual flat layout from the stored *_priority fields
+// and the connected product groups. Sections sit on their priority
+// slot; group rows fill the integer indices >= product_groups_priority
+// that no section has claimed, in relation _ord order. Matches the
+// public renderer in rutba-web exactly so the editor preview never lies.
+function buildLayoutRows(priorities, groupIds, groupsByDocId) {
+    const slots = FIXED_SECTIONS.map(key => ({
+        kind: "section",
+        key,
+        priority: priorities[key] ?? DEFAULT_PRIORITIES[key],
+    })).sort((a, b) => a.priority - b.priority);
+
+    const groupsStart = priorities.product_groups ?? DEFAULT_PRIORITIES.product_groups;
+    const queue = (groupIds || []).map((id) => ({
+        kind: "group",
+        documentId: id,
+        data: groupsByDocId?.[id],
+    }));
+
+    const sectionAt = new Map(slots.map(s => [s.priority, s]));
+    const maxSectionPriority = slots.length > 0 ? slots[slots.length - 1].priority : -1;
+    const upper = Math.max(maxSectionPriority, groupsStart + queue.length - 1);
+
+    const rows = [];
+    for (let i = 0; i <= upper; i++) {
+        const sec = sectionAt.get(i);
+        if (sec) { rows.push(sec); continue; }
+        if (i >= groupsStart && queue.length > 0) rows.push(queue.shift());
+    }
+    rows.push(...queue);
+    return rows;
 }
 
-// Inverse of deriveSectionOrder: map an ordered section-key array back to
-// the individual *_priority fields the schema stores.
-function sectionOrderToPriorities(order) {
-    const out = {};
-    order.forEach((key, idx) => { out[`${key}_priority`] = idx; });
-    return out;
+// Inverse of buildLayoutRows: walk the flat rows the editor produced
+// and project each row's index onto the stored fields. Sections get
+// *_priority = their index in the row list; the product_groups_priority
+// becomes the index of the FIRST group row so the renderer recovers
+// the same interleaving from the priorities + relation _ord alone.
+function projectRowsToFields(rows) {
+    const priorities = {};
+    const groupOrder = [];
+    let firstGroupAt = -1;
+    rows.forEach((row, idx) => {
+        if (row.kind === "group") {
+            if (firstGroupAt === -1) firstGroupAt = idx;
+            groupOrder.push(row.documentId);
+            return;
+        }
+        priorities[`${row.key}_priority`] = idx;
+    });
+    priorities.product_groups_priority = firstGroupAt === -1 ? rows.length : firstGroupAt;
+    return { priorities, groupOrder };
+}
+
+// Read the stored priorities off a loaded page into the editor's
+// in-memory `priorities` shape (section key → integer, plus a
+// `product_groups` entry for the group block's start index).
+function readPriorities(page) {
+    return {
+        featured_image: typeof page?.featured_image_priority === "number" ? page.featured_image_priority : DEFAULT_PRIORITIES.featured_image,
+        excerpt: typeof page?.excerpt_priority === "number" ? page.excerpt_priority : DEFAULT_PRIORITIES.excerpt,
+        content: typeof page?.content_priority === "number" ? page.content_priority : DEFAULT_PRIORITIES.content,
+        product_groups: typeof page?.product_groups_priority === "number" ? page.product_groups_priority : DEFAULT_PRIORITIES.product_groups,
+        gallery: typeof page?.gallery_priority === "number" ? page.gallery_priority : DEFAULT_PRIORITIES.gallery,
+        related_pages: typeof page?.related_pages_priority === "number" ? page.related_pages_priority : DEFAULT_PRIORITIES.related_pages,
+    };
 }
 
 export default function CmsPageDetail() {
@@ -88,7 +142,7 @@ export default function CmsPageDetail() {
     const [selectedRelatedIds, setSelectedRelatedIds] = useState([]);
     const [footerId, setFooterId] = useState("");
 
-    const [sectionOrder, setSectionOrder] = useState(DEFAULT_SECTION_ORDER);
+    const [priorities, setPriorities] = useState(() => ({ ...DEFAULT_PRIORITIES }));
 
     const [featuredImageId, setFeaturedImageId] = useState(null);
     const [backgroundImageId, setBackgroundImageId] = useState(null);
@@ -132,7 +186,7 @@ export default function CmsPageDetail() {
                 setSelectedGroupIds((p.product_groups || []).map(g => g.documentId));
                 setSelectedRelatedIds((p.related_pages || []).map(rp => rp.documentId));
                 setFooterId(p.footer?.documentId || "");
-                setSectionOrder(deriveSectionOrder(p));
+                setPriorities(readPriorities(p));
                 setFeaturedImageId(p.featured_image?.id || null);
                 setBackgroundImageId(p.background_image?.id || null);
                 setSeoMeta(p.seo_meta || null);
@@ -213,7 +267,12 @@ export default function CmsPageDetail() {
                     product_groups: toOrderedRelation(selectedGroupIds),
                     related_pages: toOrderedRelation(selectedRelatedIds),
                     footer: footerId || null,
-                    ...sectionOrderToPriorities(sectionOrder),
+                    featured_image_priority: priorities.featured_image,
+                    excerpt_priority: priorities.excerpt,
+                    content_priority: priorities.content,
+                    product_groups_priority: priorities.product_groups,
+                    gallery_priority: priorities.gallery,
+                    related_pages_priority: priorities.related_pages,
                 },
             };
             // Only include media when adding/keeping; omit when null to avoid affecting published
@@ -257,7 +316,12 @@ export default function CmsPageDetail() {
                     product_groups: toOrderedRelation(selectedGroupIds),
                     related_pages: toOrderedRelation(selectedRelatedIds),
                     footer: footerId || null,
-                    ...sectionOrderToPriorities(sectionOrder),
+                    featured_image_priority: priorities.featured_image,
+                    excerpt_priority: priorities.excerpt,
+                    content_priority: priorities.content,
+                    product_groups_priority: priorities.product_groups,
+                    gallery_priority: priorities.gallery,
+                    related_pages_priority: priorities.related_pages,
                     featured_image: featuredImageId || null,
                     background_image: backgroundImageId || null,
                     gallery: galleryIds.length > 0 ? galleryIds : null,
@@ -328,7 +392,7 @@ export default function CmsPageDetail() {
             setSelectedGroupIds((p.product_groups || []).map(g => g.documentId));
             setSelectedRelatedIds((p.related_pages || []).map(rp => rp.documentId));
             setFooterId(p.footer?.documentId || "");
-            setSectionOrder(deriveSectionOrder(p));
+            setPriorities(readPriorities(p));
             setFeaturedImageId(p.featured_image?.id || null);
             setBackgroundImageId(p.background_image?.id || null);
             setGalleryIds((p.gallery || []).map(g => g.id));
@@ -427,7 +491,7 @@ export default function CmsPageDetail() {
                                 </div>
                             </div>
 
-                            {/* Page Layout — unified drag-sort over sections + connected product groups */}
+                            {/* Page Layout — flat drag-sort over sections + each connected product group */}
                             <div className="card mb-3">
                                 <div className="card-header d-flex align-items-center">
                                     <i className="fas fa-sort me-2"></i>
@@ -436,22 +500,31 @@ export default function CmsPageDetail() {
                                 </div>
                                 <div className="card-body">
                                     <PageLayoutEditor
-                                        sections={sectionOrder.map(key => ({
-                                            key,
-                                            label: SECTION_LABELS[key] || key,
-                                            present: key === "featured_image" ? !!featuredImageId
-                                                : key === "excerpt" ? !!excerpt
-                                                : key === "content" ? !!content
-                                                : key === "product_groups" ? selectedGroupIds.length > 0
-                                                : key === "gallery" ? galleryIds.length > 0
-                                                : key === "related_pages" ? selectedRelatedIds.length > 0
-                                                : true,
-                                        }))}
-                                        onReorderSections={setSectionOrder}
-                                        connectedGroups={selectedGroupIds
-                                            .map(id => allGroups.find(g => g.documentId === id))
-                                            .filter(Boolean)}
-                                        onReorderGroups={setSelectedGroupIds}
+                                        rows={buildLayoutRows(
+                                            priorities,
+                                            selectedGroupIds,
+                                            Object.fromEntries(allGroups.map(g => [g.documentId, g])),
+                                        )}
+                                        onReorder={(newRows) => {
+                                            const { priorities: newP, groupOrder } = projectRowsToFields(newRows);
+                                            setPriorities({
+                                                featured_image: newP.featured_image_priority ?? priorities.featured_image,
+                                                excerpt: newP.excerpt_priority ?? priorities.excerpt,
+                                                content: newP.content_priority ?? priorities.content,
+                                                product_groups: newP.product_groups_priority,
+                                                gallery: newP.gallery_priority ?? priorities.gallery,
+                                                related_pages: newP.related_pages_priority ?? priorities.related_pages,
+                                            });
+                                            setSelectedGroupIds(groupOrder);
+                                        }}
+                                        sectionLabels={SECTION_LABELS}
+                                        sectionPresence={{
+                                            featured_image: !!featuredImageId,
+                                            excerpt: !!excerpt,
+                                            content: !!content,
+                                            gallery: galleryIds.length > 0,
+                                            related_pages: selectedRelatedIds.length > 0,
+                                        }}
                                         onRemoveGroup={toggleGroup}
                                     />
                                 </div>

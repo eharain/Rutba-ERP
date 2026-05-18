@@ -114,6 +114,11 @@ export interface CmsPageDetailInterface extends CmsPageInterface {
   product_groups?: CmsProductGroupInterface[];
   related_pages?: CmsPageInterface[];
   footer?: CmsFooterInterface;
+  // Each section attribute carries an integer index. The renderer
+  // sorts sections by index and fills the integer gaps with connected
+  // product groups in their relation _ord — so an attribute index
+  // landing between two consecutive group slots injects that section
+  // in the middle of the group block.
   excerpt_priority?: number;
   featured_image_priority?: number;
   content_priority?: number;

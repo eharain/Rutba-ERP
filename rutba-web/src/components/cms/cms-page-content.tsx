@@ -33,63 +33,69 @@ export default function CmsPageContent({
     : null;
 
   type Section =
-    | { type: "product-groups"; priority: number; key: string }
-    | { type: "featured-image"; priority: number; key: string }
-    | { type: "excerpt"; priority: number; key: string }
-    | { type: "content"; priority: number; key: string }
-    | { type: "gallery"; priority: number; key: string }
-    | { type: "related-pages"; priority: number; key: string };
+    | { type: "product-group"; group: CmsProductGroupInterface; key: string }
+    | { type: "featured-image"; key: string }
+    | { type: "excerpt"; key: string }
+    | { type: "content"; key: string }
+    | { type: "gallery"; key: string }
+    | { type: "related-pages"; key: string };
 
-  // The CMS Section Priorities list assigns each visible section a small
-  // integer (0..N). Sort sections by that and render; product groups render
-  // as a single block at their slot (groups themselves keep their _ord order
-  // from the editor's drag-sortable connected list).
+  // Each section attribute (featured_image, excerpt, content, gallery,
+  // related_pages, plus product_groups itself) has an integer
+  // *_priority. The render order is: sort sections by priority, then
+  // walk the integer line from min..max — when a slot index matches a
+  // section's priority emit that section; otherwise consume the next
+  // product group from the relation. Groups stay in their relation
+  // _ord, attributes get injected wherever the user dropped them.
+  type Slot = { key: string; priority: number };
+  const slots: Slot[] = [];
+  if (page.featured_image?.url) slots.push({ key: "featured_image", priority: page.featured_image_priority ?? 0 });
+  if (page.excerpt) slots.push({ key: "excerpt", priority: page.excerpt_priority ?? 10 });
+  if (page.content) slots.push({ key: "content", priority: page.content_priority ?? 20 });
+  if (page.gallery && page.gallery.length > 0) slots.push({ key: "gallery", priority: page.gallery_priority ?? 40 });
+  if (page.related_pages && page.related_pages.length > 0) slots.push({ key: "related-pages", priority: page.related_pages_priority ?? 50 });
+  slots.sort((a, b) => a.priority - b.priority);
+
+  const sectionFor = (key: string): Section | null => {
+    if (key === "featured_image") return { type: "featured-image", key: "featured-image" };
+    if (key === "excerpt") return { type: "excerpt", key: "excerpt" };
+    if (key === "content") return { type: "content", key: "content" };
+    if (key === "gallery") return { type: "gallery", key: "gallery" };
+    if (key === "related-pages") return { type: "related-pages", key: "related-pages" };
+    return null;
+  };
+
+  const groupsQueue = [...productGroups];
+  const groupsStart = page.product_groups_priority ?? 30;
   const sections: Section[] = [];
 
-  if (page.featured_image?.url) {
-    sections.push({
-      type: "featured-image",
-      priority: page.featured_image_priority ?? 0,
-      key: "featured-image",
-    });
-  }
-  if (page.excerpt) {
-    sections.push({
-      type: "excerpt",
-      priority: page.excerpt_priority ?? 1,
-      key: "excerpt",
-    });
-  }
-  if (page.content) {
-    sections.push({
-      type: "content",
-      priority: page.content_priority ?? 2,
-      key: "content",
-    });
-  }
-  if (productGroups.length > 0) {
-    sections.push({
-      type: "product-groups",
-      priority: page.product_groups_priority ?? 3,
-      key: "product-groups",
-    });
-  }
-  if (page.gallery && page.gallery.length > 0) {
-    sections.push({
-      type: "gallery",
-      priority: page.gallery_priority ?? 4,
-      key: "gallery",
-    });
-  }
-  if (page.related_pages && page.related_pages.length > 0) {
-    sections.push({
-      type: "related-pages",
-      priority: page.related_pages_priority ?? 5,
-      key: "related-pages",
-    });
-  }
+  // Walk priorities slot by slot; emit a section when its priority
+  // lands on the current slot, otherwise emit the next group from the
+  // queue once we've reached the groups' start index. Sections whose
+  // priority falls between two group positions inject themselves into
+  // the middle of the group block.
+  const sectionByPriority = new Map<number, Slot>();
+  for (const s of slots) sectionByPriority.set(s.priority, s);
+  const maxSectionPriority = slots.length > 0 ? slots[slots.length - 1].priority : -1;
+  const upper = Math.max(maxSectionPriority, groupsStart + groupsQueue.length - 1);
 
-  sections.sort((a, b) => a.priority - b.priority);
+  for (let i = 0; i <= upper; i++) {
+    const slot = sectionByPriority.get(i);
+    if (slot) {
+      const sec = sectionFor(slot.key);
+      if (sec) sections.push(sec);
+      continue;
+    }
+    if (i >= groupsStart && groupsQueue.length > 0) {
+      const g = groupsQueue.shift()!;
+      sections.push({ type: "product-group", group: g, key: "pg-" + g.documentId });
+    }
+  }
+  // Any leftover groups (e.g. when sections sit beyond all group slots)
+  // append at the end so newly-connected groups never disappear silently.
+  for (const g of groupsQueue) {
+    sections.push({ type: "product-group", group: g, key: "pg-" + g.documentId });
+  }
 
   // SEO type inference: blog/news → article, otherwise website
   const seoType: "website" | "article" =
@@ -124,21 +130,22 @@ export default function CmsPageContent({
             : undefined
         }
       >
-        {sections.map((section) => {
-          switch (section.type) {
-            case "product-groups":
-              return (
-                <div key={section.key}>
-                  {productGroups.map((g, idx) => (
-                    <ProductGroupRenderer
-                      key={g.documentId}
-                      group={g}
-                      even={idx % 2 === 1}
-                    />
-                  ))}
-                </div>
-              );
-            case "featured-image":
+        {(() => {
+          let groupIdx = 0;
+          return sections.map((section) => {
+            switch (section.type) {
+              case "product-group": {
+                const even = groupIdx % 2 === 1;
+                groupIdx++;
+                return (
+                  <ProductGroupRenderer
+                    key={section.key}
+                    group={section.group}
+                    even={even}
+                  />
+                );
+              }
+              case "featured-image":
               return (
                 <section
                   key={section.key}
@@ -267,10 +274,11 @@ export default function CmsPageContent({
                   </div>
                 </section>
               );
-            default:
-              return null;
-          }
-        })}
+              default:
+                return null;
+            }
+          });
+        })()}
 
         {page.enable_contact_form && <CmsContactFormSection title={page.title} />}
       </div>
