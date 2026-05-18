@@ -961,7 +961,7 @@ function NewSaleReturn() {
 export default function SaleReturnDetailPage() {
     const router = useRouter();
     const { documentId } = router.query;
-    const isNew = documentId === "new";
+    const isNew = !documentId || documentId === "new";
 
     return (
         <ProtectedRoute>

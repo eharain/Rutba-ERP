@@ -100,8 +100,8 @@ export default function ProductEditPage() {
                 setLoading(false);
             }
         };
-        if (documentId) fetchData();
-    }, [documentId]);
+        if (router.isReady) fetchData();
+    }, [router.isReady, documentId]);
 
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
@@ -170,7 +170,7 @@ export default function ProductEditPage() {
             const response = await saveProduct(documentId, payload);
             if (response.data?.documentId) {
                 setSuccess('Product saved successfully!');
-                if (documentId === 'new') {
+                if (!isEdit) {
                     setTimeout(() => router.push(`/${response.data.documentId}/product-edit`), 1500);
                 }
             } else {
@@ -216,7 +216,7 @@ export default function ProductEditPage() {
             if (response.data?.documentId) {
                 setSuccess('Product saved successfully!');
                 setDirty(false);
-                if (documentId === 'new') {
+                if (!isEdit) {
                     setTimeout(() => router.push(`/${response.data.documentId}/product-edit`), 1500);
                 }
                 return true;

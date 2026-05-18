@@ -22,7 +22,7 @@ export default function ProductDetail() {
     const { documentId } = router.query;
     const { jwt } = useAuth();
     const { currency } = useUtil();
-    const isNew = documentId === "new";
+    const isNew = !documentId || documentId === "new";
     const [product, setProduct] = useState(null);
     const [isPublished, setIsPublished] = useState(false);
     const [loading, setLoading] = useState(true);
@@ -49,7 +49,7 @@ export default function ProductDetail() {
     const [seoMeta, setSeoMeta] = useState(null);
 
     const loadProduct = useCallback(async () => {
-        if (!jwt || !documentId) return;
+        if (!jwt) return;
         if (isNew) {
             setProduct({});
             setLoading(false);
