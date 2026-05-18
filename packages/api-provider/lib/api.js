@@ -316,8 +316,8 @@ async function deleteFile(fileId, jwt) {
     return res.status === 204;
 }
 export function StraipImageUrl(file) {
-    const url = file.url ?? file;
-    return (url ?? "").startsWith('/') ? IMAGE_URL + url : url;
+    const url = file?.url ?? file ?? '';
+    return typeof url === 'string' && url.startsWith('/') ? IMAGE_URL + url : url;
 }
 
 export function isImage(file) {
