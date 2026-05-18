@@ -33,7 +33,8 @@ module.exports = {
     },
 
     async createFolder(ctx) {
-        const { name, parent } = ctx.request.body;
+        const body = ctx.request.body?.data ?? ctx.request.body ?? {};
+        const { name, parent } = body;
         if (!name || !name.trim()) {
             return ctx.badRequest('Folder name is required');
         }
@@ -46,7 +47,8 @@ module.exports = {
 
     async renameFolder(ctx) {
         const { id } = ctx.params;
-        const { name } = ctx.request.body;
+        const body = ctx.request.body?.data ?? ctx.request.body ?? {};
+        const { name } = body;
         if (!name || !name.trim()) {
             return ctx.badRequest('Folder name is required');
         }
@@ -98,7 +100,8 @@ module.exports = {
     },
 
     async moveFiles(ctx) {
-        const { fileIds, targetFolderId } = ctx.request.body;
+        const body = ctx.request.body?.data ?? ctx.request.body ?? {};
+        const { fileIds, targetFolderId } = body;
         if (!Array.isArray(fileIds) || fileIds.length === 0) {
             return ctx.badRequest('fileIds array is required');
         }
@@ -111,7 +114,8 @@ module.exports = {
 
     async updateFileInfo(ctx) {
         const { id } = ctx.params;
-        const { name, alternativeText, caption } = ctx.request.body;
+        const body = ctx.request.body?.data ?? ctx.request.body ?? {};
+        const { name, alternativeText, caption } = body;
         const file = await strapi.service('api::media-library.media-library').updateFileInfo(
             Number(id),
             { name, alternativeText, caption }
