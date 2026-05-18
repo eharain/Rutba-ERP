@@ -7,6 +7,7 @@ import { CmsFootersEndpoints, CmsPagesEndpoints } from "@rutba/api-provider/endp
 import Link from "next/link";
 import { useToast } from "../../components/Toast";
 import PagePickerTabs from "../../components/PagePickerTabs";
+import { toOrderedRelation } from "../../components/orderedRelation";
 
 const DEFAULT_HOURS = [
     { day: "Monday", hours: "11am - 9pm" },
@@ -170,7 +171,7 @@ export default function CmsFooterDetail() {
                     copyright_text: copyrightText,
                     opening_hours: openingHours,
                     social_links: socialLinks.filter(s => s.platform && s.url),
-                    pinned_pages: { set: selectedPageIds },
+                    pinned_pages: toOrderedRelation(selectedPageIds),
                     ga_measurement_id: gaMeasurementId.trim() || null,
                     meta_pixel_id: metaPixelId.trim() || null,
                     gtm_container_id: gtmContainerId.trim() || null,
@@ -207,7 +208,7 @@ export default function CmsFooterDetail() {
                     copyright_text: copyrightText,
                     opening_hours: openingHours,
                     social_links: socialLinks.filter(s => s.platform && s.url),
-                    pinned_pages: { set: selectedPageIds },
+                    pinned_pages: toOrderedRelation(selectedPageIds),
                     ga_measurement_id: gaMeasurementId.trim() || null,
                     meta_pixel_id: metaPixelId.trim() || null,
                     gtm_container_id: gtmContainerId.trim() || null,
@@ -250,7 +251,7 @@ export default function CmsFooterDetail() {
                 copyright_text: copyrightText,
                 opening_hours: openingHours,
                 social_links: socialLinks.filter(s => s.platform && s.url),
-                pinned_pages: { set: selectedPageIds },
+                pinned_pages: toOrderedRelation(selectedPageIds),
                 ga_measurement_id: gaMeasurementId.trim() || null,
                 meta_pixel_id: metaPixelId.trim() || null,
                 gtm_container_id: gtmContainerId.trim() || null,
@@ -518,6 +519,7 @@ export default function CmsFooterDetail() {
                                 allPages={allPages}
                                 selectedPageIds={selectedPageIds}
                                 onToggle={togglePage}
+                                onReorder={setSelectedPageIds}
                                 onRemoveAll={removeAllPinnedPages}
                                 title="Pinned Pages"
                                 icon="fas fa-thumbtack"

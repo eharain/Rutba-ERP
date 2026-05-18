@@ -5,31 +5,65 @@ import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { SaleOffersEndpoints } from "@rutba/api-provider/endpoints";
 import Link from "next/link";
 import ListPageLayout, { AddButton } from "@rutba/pos-shared/components/ListPageLayout";
+import ListPagination from "@rutba/pos-shared/components/ListPagination";
+import ExcelIO from "../components/ExcelIO";
+
+const SALE_OFFER_EXCEL_COLUMNS = [
+    { key: "name", isLabel: true, width: 36 },
+    { key: "description", width: 80 },
+];
+
+const DEFAULT_PAGE_SIZE = 25;
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100, 200];
 
 export default function Offers() {
     const { jwt } = useAuth();
     const [offers, setOffers] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+    const [total, setTotal] = useState(0);
 
     const load = useCallback(async () => {
         if (!jwt) return;
         setLoading(true);
         try {
             const [draftRes, pubRes] = await Promise.all([
-                SaleOffersEndpoints.listDraft({ sort: ["createdAt:desc"], populate: ["product_groups", "cms_pages", "categories"], pagination: { pageSize: 50 } }),
+                SaleOffersEndpoints.listDraft({ sort: ["createdAt:desc"], populate: ["product_groups", "cms_pages", "categories"], page, pageSize }),
                 SaleOffersEndpoints.listPublished({ pageSize: 200 }),
             ]);
             const pubIds = new Set((pubRes.data || []).map(o => o.documentId));
             const mapped = (draftRes.data || []).map(o => ({ ...o, _isPublished: pubIds.has(o.documentId) }));
             setOffers(mapped);
+            setTotal(draftRes.meta?.pagination?.total ?? 0);
         } catch (err) {
             console.error("Failed to load sale offers", err);
         } finally {
             setLoading(false);
         }
-    }, [jwt]);
+    }, [jwt, page, pageSize]);
 
     useEffect(() => { load(); }, [load]);
+
+    const fetchAllOffers = useCallback(async () => {
+        const out = [];
+        let p = 1;
+        const PAGE = 100;
+        while (true) {
+            const res = await SaleOffersEndpoints.listDraft({
+                sort: ["createdAt:desc"],
+                populate: ["product_groups", "cms_pages", "categories"],
+                page: p,
+                pageSize: PAGE,
+            });
+            const arr = res.data || [];
+            out.push(...arr);
+            if (arr.length < PAGE) break;
+            p += 1;
+            if (p > 500) break;
+        }
+        return out;
+    }, []);
 
     const formatDate = (iso) => {
         if (!iso) return "—";
@@ -50,8 +84,40 @@ export default function Offers() {
                 <ListPageLayout
                     title="Sale Offers"
                     subtitle="Sale offers can be linked to product groups, CMS pages, and categories to display promotions uniformly across the site."
-                    headerActions={<AddButton label="New Sale Offer" href="/new/sale-offer" />}
+                    headerActions={
+                        <>
+                            <ExcelIO
+                                entityLabel="Sale Offers"
+                                contentType="api::sale-offer.sale-offer"
+                                columns={SALE_OFFER_EXCEL_COLUMNS}
+                                rows={offers}
+                                total={total}
+                                fetchAll={fetchAllOffers}
+                                findExisting={async (row) => {
+                                    if (!row.name) return null;
+                                    try {
+                                        const res = await SaleOffersEndpoints.listDraft({ pagination: { pageSize: 1 }, filters: { name: { $eq: row.name } } });
+                                        return res.data?.[0] || null;
+                                    } catch { return null; }
+                                }}
+                                create={(data) => SaleOffersEndpoints.create(data)}
+                                update={(documentId, data) => SaleOffersEndpoints.updateDraft(documentId, data)}
+                                onAfterImport={load}
+                            />
+                            <AddButton label="New Sale Offer" href="/new/sale-offer" />
+                        </>
+                    }
                     loading={loading}
+                    pagination={
+                        <ListPagination
+                            page={page}
+                            pageSize={pageSize}
+                            total={total}
+                            onPage={setPage}
+                            onPageSize={(s) => { setPageSize(s); setPage(1); }}
+                            pageSizeOptions={PAGE_SIZE_OPTIONS}
+                        />
+                    }
                     emptyState={<div>No sale offers found.</div>}
                 >
                     {offers.length > 0 && (

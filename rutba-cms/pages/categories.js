@@ -6,12 +6,29 @@ import { CategoriesEndpoints, MediaUtilsEndpoints } from "@rutba/api-provider/en
 import Link from "next/link";
 import { useToast } from "../components/Toast";
 import ListPageLayout, { AddButton } from "@rutba/pos-shared/components/ListPageLayout";
+import ListPagination from "@rutba/pos-shared/components/ListPagination";
+import ExcelIO from "../components/ExcelIO";
+import { SEO_EXCEL_COLUMNS, SEO_POPULATE, makeSeoUpsert } from "../components/seoExcel";
+
+const CATEGORY_EXCEL_COLUMNS = [
+    { key: "name", isLabel: true, width: 32 },
+    { key: "slug", width: 22 },
+    { key: "summary", width: 60 },
+    { key: "description", width: 90 },
+    ...SEO_EXCEL_COLUMNS,
+];
+
+const DEFAULT_PAGE_SIZE = 25;
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100, 200];
 
 export default function Categories() {
     const { jwt } = useAuth();
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+    const [total, setTotal] = useState(0);
     const { toast, ToastContainer } = useToast();
     const [selectedIds, setSelectedIds] = useState(new Set());
     const [publishing, setPublishing] = useState({});
@@ -96,35 +113,48 @@ export default function Categories() {
         if (!jwt) return;
         setLoading(true);
         try {
-            const params = {
-                status: 'draft',
-                sort: ["name:asc"],
-                populate: ["logo", "parent"],
-                pagination: { pageSize: 100 },
-            };
-            if (search.trim()) {
-                params.filters = { name: { $containsi: search.trim() } };
-            }
             const [draftRes, pubRes] = await Promise.all([
                 CategoriesEndpoints.list({
                     sort: ["name:asc"],
-                    populate: ["logo", "parent"],
-                    page: 1,
-                    pageSize: 100,
+                    populate: { logo: true, parent: true, ...SEO_POPULATE },
+                    page,
+                    pageSize,
                     ...(search.trim() ? { search: search.trim() } : {}),
                 }),
                 CategoriesEndpoints.listPublished({ pageSize: 500 }),
             ]);
             const pubIds = new Set((pubRes.data || []).map(c => c.documentId));
             setCategories((draftRes.data || []).map(c => ({ ...c, _isPublished: pubIds.has(c.documentId) })));
+            setTotal(draftRes.meta?.pagination?.total ?? 0);
         } catch (err) {
             console.error("Failed to load categories", err);
         } finally {
             setLoading(false);
         }
-    }, [jwt, search]);
+    }, [jwt, search, page, pageSize]);
 
     useEffect(() => { load(); }, [load]);
+
+    const fetchAllCategories = useCallback(async () => {
+        const out = [];
+        let p = 1;
+        const PAGE = 100;
+        while (true) {
+            const res = await CategoriesEndpoints.list({
+                sort: ["name:asc"],
+                populate: { logo: true, parent: true, ...SEO_POPULATE },
+                page: p,
+                pageSize: PAGE,
+                ...(search.trim() ? { search: search.trim() } : {}),
+            });
+            const arr = res.data || [];
+            out.push(...arr);
+            if (arr.length < PAGE) break;
+            p += 1;
+            if (p > 500) break;
+        }
+        return out;
+    }, [search]);
 
     return (
         <ProtectedRoute>
@@ -132,7 +162,31 @@ export default function Categories() {
                 <ToastContainer />
                 <ListPageLayout
                     title="Categories"
-                    headerActions={<AddButton label="New Category" href="/new/category" />}
+                    headerActions={
+                        <>
+                            <ExcelIO
+                                entityLabel="Categories"
+                                contentType="api::category.category"
+                                columns={CATEGORY_EXCEL_COLUMNS}
+                                rows={categories}
+                                selectedIds={selectedIds}
+                                total={total}
+                                fetchAll={fetchAllCategories}
+                                findExisting={async (row) => {
+                                    if (!row.slug) return null;
+                                    try {
+                                        const res = await CategoriesEndpoints.listDraft({ pagination: { pageSize: 1 }, filters: { slug: { $eq: row.slug } }, populate: SEO_POPULATE });
+                                        return res.data?.[0] || null;
+                                    } catch { return null; }
+                                }}
+                                create={(data) => CategoriesEndpoints.create(data)}
+                                update={(documentId, data) => CategoriesEndpoints.updateDraft(documentId, data)}
+                                onSecondary={makeSeoUpsert("category", "category")}
+                                onAfterImport={load}
+                            />
+                            <AddButton label="New Category" href="/new/category" />
+                        </>
+                    }
                     filters={[
                         <input
                             key="search"
@@ -140,7 +194,7 @@ export default function Categories() {
                             className="form-control form-control-sm"
                             placeholder="Search categories…"
                             value={search}
-                            onChange={e => setSearch(e.target.value)}
+                            onChange={e => { setSearch(e.target.value); setPage(1); }}
                         />,
                     ]}
                     bulkActions={
@@ -155,6 +209,16 @@ export default function Categories() {
                     }
                     selectedCount={selectedIds.size}
                     loading={loading}
+                    pagination={
+                        <ListPagination
+                            page={page}
+                            pageSize={pageSize}
+                            total={total}
+                            onPage={setPage}
+                            onPageSize={(s) => { setPageSize(s); setPage(1); }}
+                            pageSizeOptions={PAGE_SIZE_OPTIONS}
+                        />
+                    }
                     emptyState={<div>No categories found.</div>}
                 >
                     {categories.length > 0 && (

@@ -6,6 +6,7 @@ import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { CategoriesEndpoints, CmsPagesEndpoints, DeliveryMethodsEndpoints, ProductGroupsEndpoints } from "@rutba/api-provider/endpoints";
 import Link from "next/link";
 import { useToast } from "../../components/Toast";
+import { toOrderedRelation } from "../../components/orderedRelation";
 
 const PROVIDERS = ["own_rider", "easypost", "custom"];
 
@@ -172,9 +173,9 @@ export default function DeliveryMethodDetail() {
             is_active: isActive,
             offer_timeout_minutes: Number(offerTimeoutMinutes || 5),
             max_riders_to_offer: Number(maxRidersToOffer || 10),
-            product_groups: { set: selectedGroupIds },
-            cms_pages: { set: selectedPageIds },
-            categories: { set: selectedCategoryIds },
+            product_groups: toOrderedRelation(selectedGroupIds),
+            cms_pages: toOrderedRelation(selectedPageIds),
+            categories: toOrderedRelation(selectedCategoryIds),
         },
     });
 

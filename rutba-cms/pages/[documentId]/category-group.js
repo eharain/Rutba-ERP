@@ -6,6 +6,11 @@ import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { CategoriesEndpoints, CategoryGroupsEndpoints } from "@rutba/api-provider/endpoints";
 import Link from "next/link";
 import { useToast } from "../../components/Toast";
+import InlineSeoPanel from "../../components/InlineSeoPanel";
+import OrderableRelationList from "../../components/OrderableRelationList";
+import { persistSeoMeta } from "../../components/SeoMetaFields";
+import { toOrderedRelation } from "../../components/orderedRelation";
+import MarkdownEditor from "@rutba/pos-shared/components/MarkdownEditor";
 
 export default function CategoryGroupDetail() {
     const router = useRouter();
@@ -21,14 +26,22 @@ export default function CategoryGroupDetail() {
 
     const [name, setName] = useState("");
     const [slug, setSlug] = useState("");
+    const [summary, setSummary] = useState("");
+    const [description, setDescription] = useState("");
     const [sortOrder, setSortOrder] = useState(0);
     const [selectedCategoryIds, setSelectedCategoryIds] = useState([]);
     const [allCategories, setAllCategories] = useState([]);
+    const [seoMeta, setSeoMeta] = useState(null);
 
     useEffect(() => {
         if (!jwt || !documentId || isNew) { setLoading(false); return; }
         Promise.all([
-            CategoryGroupsEndpoints.byIdDraft(documentId, { populate: ["categories"] }),
+            CategoryGroupsEndpoints.byIdDraft(documentId, {
+                populate: {
+                    categories: true,
+                    seo_meta: { populate: { og_image: true } },
+                },
+            }),
             CategoryGroupsEndpoints.byIdPublished(documentId, { fields: ["documentId"] }).catch(() => ({ data: null })),
         ])
             .then(([draftRes, pubRes]) => {
@@ -37,8 +50,11 @@ export default function CategoryGroupDetail() {
                 setIsPublished(!!(pubRes.data));
                 setName(g.name || "");
                 setSlug(g.slug || "");
+                setSummary(g.summary || "");
+                setDescription(g.description || "");
                 setSortOrder(g.sort_order ?? 0);
                 setSelectedCategoryIds((g.categories || []).map(c => c.documentId));
+                setSeoMeta(g.seo_meta || null);
             })
             .catch(err => console.error("Failed to load category group", err))
             .finally(() => setLoading(false));
@@ -62,14 +78,25 @@ export default function CategoryGroupDetail() {
         );
     };
 
+    const saveSeoMeta = (entityDocumentId) =>
+        persistSeoMeta({
+            seoMeta,
+            setSeoMeta,
+            entityType: "category-group",
+            entityDocumentId,
+            onError: () => toast("Group saved, but SEO meta failed.", "warning"),
+        });
+
     const handleSave = async () => {
         setSaving(true);
         try {
             const payload = {
                 data: {
                     name,
+                    summary,
+                    description,
                     sort_order: sortOrder,
-                    categories: { set: selectedCategoryIds },
+                    categories: toOrderedRelation(selectedCategoryIds),
                 },
             };
             if (isNew) {
@@ -79,6 +106,7 @@ export default function CategoryGroupDetail() {
                 router.push(`/${created.documentId}/category-group`);
             } else {
                 await CategoryGroupsEndpoints.updateDraft(documentId, payload.data);
+                await saveSeoMeta(documentId);
                 toast("Draft saved!", "success");
             }
         } catch (err) {
@@ -95,11 +123,14 @@ export default function CategoryGroupDetail() {
             const payload = {
                 data: {
                     name,
+                    summary,
+                    description,
                     sort_order: sortOrder,
-                    categories: { set: selectedCategoryIds },
+                    categories: toOrderedRelation(selectedCategoryIds),
                 },
             };
             await CategoryGroupsEndpoints.updateDraft(documentId, payload.data);
+            await saveSeoMeta(documentId);
             await CategoryGroupsEndpoints.publish(documentId);
             setIsPublished(true);
             toast("Category group saved & published!", "success");
@@ -129,12 +160,14 @@ export default function CategoryGroupDetail() {
         if (!confirm("Save current draft and load the published version into the editor?")) return;
         setSaving(true);
         try {
-            await CategoryGroupsEndpoints.updateDraft(documentId, { name, sort_order: sortOrder, categories: { set: selectedCategoryIds } });
+            await CategoryGroupsEndpoints.updateDraft(documentId, { name, summary, description, sort_order: sortOrder, categories: toOrderedRelation(selectedCategoryIds) });
             const res = await CategoryGroupsEndpoints.byIdPublished(documentId, { populate: ["categories"] });
             const g = res.data || res;
             if (!g) { toast("No published version found.", "warning"); return; }
             setName(g.name || "");
             setSlug(g.slug || "");
+            setSummary(g.summary || "");
+            setDescription(g.description || "");
             setSortOrder(g.sort_order ?? 0);
             setSelectedCategoryIds((g.categories || []).map(c => c.documentId));
             toast("Draft saved. Showing published version — click Save Draft to overwrite.", "success");
@@ -215,6 +248,14 @@ export default function CategoryGroupDetail() {
                                         </div>
                                     )}
                                     <div className="mb-3">
+                                        <label className="form-label">Summary</label>
+                                        <MarkdownEditor value={summary} onChange={e => setSummary(e.target.value)} name="summary" rows={3} placeholder="Short summary..." />
+                                    </div>
+                                    <div className="mb-3">
+                                        <label className="form-label">Description</label>
+                                        <MarkdownEditor value={description} onChange={e => setDescription(e.target.value)} name="description" rows={6} />
+                                    </div>
+                                    <div className="mb-3">
                                         <label className="form-label">Sort Order</label>
                                         <input type="number" className="form-control" value={sortOrder} onChange={e => setSortOrder(parseInt(e.target.value) || 0)} />
                                     </div>
@@ -228,7 +269,19 @@ export default function CategoryGroupDetail() {
                                     <span className="badge bg-primary ms-2">{selectedCategoryIds.length}</span>
                                 </div>
                                 <div className="card-body">
-                                    <p className="text-muted small mb-2">Select categories to include in this group.</p>
+                                    <p className="text-muted small mb-2">Select categories to include in this group. Drag connected categories to reorder.</p>
+                                    {selectedCategoryIds.length > 0 && (
+                                        <div className="mb-3">
+                                            <OrderableRelationList
+                                                selectedIds={selectedCategoryIds}
+                                                optionsById={Object.fromEntries(allCategories.map(c => [c.documentId, c]))}
+                                                onReorder={setSelectedCategoryIds}
+                                                onRemove={toggleCategory}
+                                                renderItem={(c) => <span>{c.name}</span>}
+                                                emptyText="No categories connected."
+                                            />
+                                        </div>
+                                    )}
                                     {allCategories.length === 0 ? (
                                         <p className="text-muted small">No categories available.</p>
                                     ) : (
@@ -248,6 +301,12 @@ export default function CategoryGroupDetail() {
                         </div>
 
                         <div className="col-md-4">
+                            <InlineSeoPanel
+                                seoMeta={seoMeta}
+                                onChange={(patch) => setSeoMeta((prev) => ({ ...(prev || {}), ...patch }))}
+                                parentTitle={name}
+                                parentIsNew={isNew}
+                            />
                             <div className="card mb-3">
                                 <div className="card-header">Info</div>
                                 <div className="card-body">

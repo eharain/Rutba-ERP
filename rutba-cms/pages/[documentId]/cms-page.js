@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import Layout from "../../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { BrandGroupsEndpoints, CategoryGroupsEndpoints, CmsFootersEndpoints, CmsPagesEndpoints, MediaUtilsEndpoints, ProductGroupsEndpoints } from "@rutba/api-provider/endpoints";
+import { BrandGroupsEndpoints, CategoryGroupsEndpoints, CmsFootersEndpoints, CmsPagesEndpoints, MediaUtilsEndpoints, ProductGroupsEndpoints, SeoMetasEndpoints } from "@rutba/api-provider/endpoints";
 import MarkdownEditor from "@rutba/pos-shared/components/MarkdownEditor";
 import FileView from "@rutba/pos-shared/components/FileView";
 import Link from "next/link";
@@ -11,6 +11,10 @@ import { useToast } from "../../components/Toast";
 import GroupPickerTabs from "../../components/GroupPickerTabs";
 import PagePickerTabs from "../../components/PagePickerTabs";
 import EnumSelect from "../../components/EnumSelect";
+import InlineSeoPanel from "../../components/InlineSeoPanel";
+import OrderableRelationList from "../../components/OrderableRelationList";
+import { persistSeoMeta } from "../../components/SeoMetaFields";
+import { toOrderedRelation } from "../../components/orderedRelation";
 
 export default function CmsPageDetail() {
     const router = useRouter();
@@ -48,13 +52,8 @@ export default function CmsPageDetail() {
     const [backgroundImageId, setBackgroundImageId] = useState(null);
     const [galleryIds, setGalleryIds] = useState([]);
 
-    // SEO
-    const [metaTitle, setMetaTitle] = useState("");
-    const [metaDescription, setMetaDescription] = useState("");
-    const [metaKeywords, setMetaKeywords] = useState("");
-    const [noindex, setNoindex] = useState(false);
-    const [ogImageId, setOgImageId] = useState(null);
-    const [seoOpen, setSeoOpen] = useState(false);
+    // SEO — lives in the related seo-meta record (cms-page has only the relation now)
+    const [seoMeta, setSeoMeta] = useState(null);
 
     const [allGroups, setAllGroups] = useState([]);
     const [allBrandGroups, setAllBrandGroups] = useState([]);
@@ -66,7 +65,12 @@ export default function CmsPageDetail() {
         if (!jwt || !documentId || isNew) { setLoading(false); return; }
         Promise.all([
             CmsPagesEndpoints.byIdDraft(documentId, {
-                populate: ["featured_image", "gallery", "background_image", "hero_product_groups", "brand_groups", "category_groups", "product_groups", "related_pages", "footer", "og_image"],
+                populate: {
+                    featured_image: true, gallery: true, background_image: true,
+                    hero_product_groups: true, brand_groups: true, category_groups: true,
+                    product_groups: true, related_pages: true, footer: true,
+                    seo_meta: { populate: { og_image: true } },
+                },
             }),
             CmsPagesEndpoints.byIdPublished(documentId, { fields: ["documentId"] }).catch(() => ({ data: null })),
         ])
@@ -93,11 +97,7 @@ export default function CmsPageDetail() {
                 setRelatedPagesPriority(p.related_pages_priority ?? 102);
                 setFeaturedImageId(p.featured_image?.id || null);
                 setBackgroundImageId(p.background_image?.id || null);
-                setMetaTitle(p.meta_title || "");
-                setMetaDescription(p.meta_description || "");
-                setMetaKeywords(p.meta_keywords || "");
-                setNoindex(!!p.noindex);
-                setOgImageId(p.og_image?.id || null);
+                setSeoMeta(p.seo_meta || null);
                 setGalleryIds((p.gallery || []).map(g => g.id));
             })
             .catch(err => console.error("Failed to load page", err))
@@ -150,6 +150,15 @@ export default function CmsPageDetail() {
         );
     };
 
+    const saveSeoMeta = (entityDocumentId) =>
+        persistSeoMeta({
+            seoMeta,
+            setSeoMeta,
+            entityType: "cms-page",
+            entityDocumentId,
+            onError: () => toast("Page saved, but SEO meta failed.", "warning"),
+        });
+
     const handleSave = async () => {
         setSaving(true);
         try {
@@ -161,34 +170,32 @@ export default function CmsPageDetail() {
                     page_type: pageType,
                     sort_order: sortOrder,
                     enable_contact_form: !!enableContactForm,
-                    brand_groups: { set: selectedBrandGroupIds },
-                    category_groups: { set: selectedCategoryGroupIds },
-                    product_groups: { set: selectedGroupIds },
-                    related_pages: { set: selectedRelatedIds },
+                    brand_groups: toOrderedRelation(selectedBrandGroupIds),
+                    category_groups: toOrderedRelation(selectedCategoryGroupIds),
+                    product_groups: toOrderedRelation(selectedGroupIds),
+                    related_pages: toOrderedRelation(selectedRelatedIds),
                     footer: footerId || null,
                     excerpt_priority: excerptPriority,
                     featured_image_priority: featuredImagePriority,
                     content_priority: contentPriority,
                     gallery_priority: galleryPriority,
                     related_pages_priority: relatedPagesPriority,
-                    meta_title: metaTitle,
-                    meta_description: metaDescription,
-                    meta_keywords: metaKeywords,
-                    noindex,
                 },
             };
             // Only include media when adding/keeping; omit when null to avoid affecting published
             if (featuredImageId) payload.data.featured_image = featuredImageId;
             if (backgroundImageId) payload.data.background_image = backgroundImageId;
             if (galleryIds.length > 0) payload.data.gallery = galleryIds;
-            if (ogImageId) payload.data.og_image = ogImageId;
             if (isNew) {
                 payload.data.slug = slug || title.toLowerCase().replace(/\s+/g, "-");
                 const res = await CmsPagesEndpoints.create(payload.data);
                 const created = res.data || res;
+                // afterCreate lifecycle creates the seo-meta sidecar; redirect, the edit
+                // screen will then pick up + persist any in-form seo edits separately.
                 router.push(`/${created.documentId}/cms-page`);
             } else {
                 await CmsPagesEndpoints.updateDraft(documentId, payload.data);
+                await saveSeoMeta(documentId);
                 toast("Draft saved!", "success");
             }
         } catch (err) {
@@ -211,10 +218,10 @@ export default function CmsPageDetail() {
                     page_type: pageType,
                     sort_order: sortOrder,
                     enable_contact_form: !!enableContactForm,
-                    brand_groups: { set: selectedBrandGroupIds },
-                    category_groups: { set: selectedCategoryGroupIds },
-                    product_groups: { set: selectedGroupIds },
-                    related_pages: { set: selectedRelatedIds },
+                    brand_groups: toOrderedRelation(selectedBrandGroupIds),
+                    category_groups: toOrderedRelation(selectedCategoryGroupIds),
+                    product_groups: toOrderedRelation(selectedGroupIds),
+                    related_pages: toOrderedRelation(selectedRelatedIds),
                     footer: footerId || null,
                     excerpt_priority: excerptPriority,
                     featured_image_priority: featuredImagePriority,
@@ -224,14 +231,10 @@ export default function CmsPageDetail() {
                     featured_image: featuredImageId || null,
                     background_image: backgroundImageId || null,
                     gallery: galleryIds.length > 0 ? galleryIds : null,
-                    meta_title: metaTitle,
-                    meta_description: metaDescription,
-                    meta_keywords: metaKeywords,
-                    noindex,
-                    og_image: ogImageId || null,
                 },
             };
             await CmsPagesEndpoints.updateDraft(documentId, payload.data);
+            await saveSeoMeta(documentId);
             await CmsPagesEndpoints.publish(documentId);
             setIsPublished(true);
             toast("Page saved & published!", "success");
@@ -267,10 +270,10 @@ export default function CmsPageDetail() {
                     title, content, excerpt,
                     page_type: pageType, sort_order: sortOrder,
                     enable_contact_form: !!enableContactForm,
-                    brand_groups: { set: selectedBrandGroupIds },
-                    category_groups: { set: selectedCategoryGroupIds },
-                    product_groups: { set: selectedGroupIds },
-                    related_pages: { set: selectedRelatedIds },
+                    brand_groups: toOrderedRelation(selectedBrandGroupIds),
+                    category_groups: toOrderedRelation(selectedCategoryGroupIds),
+                    product_groups: toOrderedRelation(selectedGroupIds),
+                    related_pages: toOrderedRelation(selectedRelatedIds),
                     footer: footerId || null,
                 },
             };
@@ -435,7 +438,19 @@ export default function CmsPageDetail() {
                                     <span className="badge bg-primary ms-2">{selectedCategoryGroupIds.length}</span>
                                 </div>
                                 <div className="card-body">
-                                    <p className="text-muted small mb-2">Select category groups to display. Each group renders as a section using the group name as the heading.</p>
+                                    <p className="text-muted small mb-2">Select category groups to display. Each group renders as a section using the group name as the heading. Drag connected groups to reorder.</p>
+                                    {selectedCategoryGroupIds.length > 0 && (
+                                        <div className="mb-3">
+                                            <OrderableRelationList
+                                                selectedIds={selectedCategoryGroupIds}
+                                                optionsById={Object.fromEntries(allCategoryGroups.map(cg => [cg.documentId, cg]))}
+                                                onReorder={setSelectedCategoryGroupIds}
+                                                onRemove={toggleCategoryGroup}
+                                                renderItem={(cg) => <span>{cg.name}</span>}
+                                                emptyText="No category groups connected."
+                                            />
+                                        </div>
+                                    )}
                                     {allCategoryGroups.length === 0 ? (
                                         <p className="text-muted small">No category groups available. <Link href="/new/category-group">Create one</Link>.</p>
                                     ) : (
@@ -459,6 +474,7 @@ export default function CmsPageDetail() {
                                 allGroups={allGroups}
                                 selectedGroupIds={selectedGroupIds}
                                 onToggle={toggleGroup}
+                                onReorder={setSelectedGroupIds}
                                 onRemoveAll={() => setSelectedGroupIds([])}
                             />
 
@@ -467,99 +483,18 @@ export default function CmsPageDetail() {
                                 allPages={allPages}
                                 selectedPageIds={selectedRelatedIds}
                                 onToggle={toggleRelated}
+                                onReorder={setSelectedRelatedIds}
                                 onRemoveAll={() => setSelectedRelatedIds([])}
                             />
                         </div>
 
                         <div className="col-md-4">
-                            {/* SEO — collapsed by default, expand to override defaults from Site Settings */}
-                            <div className="card mb-3">
-                                <div
-                                    className="card-header d-flex align-items-center justify-content-between"
-                                    style={{ cursor: "pointer" }}
-                                    onClick={() => setSeoOpen(v => !v)}
-                                >
-                                    <span>
-                                        <i className={`fas fa-chevron-${seoOpen ? "down" : "right"} me-2`}></i>
-                                        SEO &amp; Social
-                                    </span>
-                                    {(metaTitle || metaDescription || metaKeywords || ogImageId || noindex) && (
-                                        <span className="badge bg-success">customised</span>
-                                    )}
-                                </div>
-                                {seoOpen && (
-                                    <div className="card-body">
-                                        <div className="mb-3">
-                                            <label className="form-label">Meta Title <span className="text-muted small">(optional)</span></label>
-                                            <input
-                                                type="text"
-                                                className="form-control"
-                                                value={metaTitle}
-                                                onChange={e => setMetaTitle(e.target.value)}
-                                                placeholder="Falls back to page title"
-                                                maxLength={70}
-                                            />
-                                            <small className="text-muted">{metaTitle.length}/70 — keep under 60 for best display in Google.</small>
-                                        </div>
-
-                                        <div className="mb-3">
-                                            <label className="form-label">Meta Description <span className="text-muted small">(optional)</span></label>
-                                            <textarea
-                                                className="form-control"
-                                                rows={3}
-                                                value={metaDescription}
-                                                onChange={e => setMetaDescription(e.target.value)}
-                                                placeholder="Falls back to excerpt → site description"
-                                                maxLength={200}
-                                            />
-                                            <small className="text-muted">{metaDescription.length}/200 — Google typically shows ~155.</small>
-                                        </div>
-
-                                        <div className="mb-3">
-                                            <label className="form-label">Keywords <span className="text-muted small">(comma-separated)</span></label>
-                                            <input
-                                                type="text"
-                                                className="form-control"
-                                                value={metaKeywords}
-                                                onChange={e => setMetaKeywords(e.target.value)}
-                                                placeholder="e.g. summer collection, linen shirts, sustainable"
-                                            />
-                                            <small className="text-muted">Merged with site-wide default keywords (deduped).</small>
-                                        </div>
-
-                                        {!isNew && page && (
-                                            <div className="mb-3">
-                                                <label className="form-label">Social Share Image (OG)</label>
-                                                <FileView
-                                                    single={page.og_image}
-                                                    refName="cms-page"
-                                                    refId={page.id}
-                                                    refDocumentId={documentId}
-                                                    refDraft
-                                                    field="og_image"
-                                                    name={title}
-                                                    onFileChange={(_field, value) => setOgImageId(value?.id || null)}
-                                                />
-                                                <small className="text-muted d-block mt-1">Falls back to featured image → site default OG image. Recommended 1200×630.</small>
-                                            </div>
-                                        )}
-
-                                        <div className="form-check">
-                                            <input
-                                                type="checkbox"
-                                                className="form-check-input"
-                                                id="noindex"
-                                                checked={noindex}
-                                                onChange={e => setNoindex(e.target.checked)}
-                                            />
-                                            <label className="form-check-label" htmlFor="noindex">
-                                                Hide from search engines (noindex)
-                                            </label>
-                                            <div className="form-text">Page will be excluded from sitemap and tagged <code>noindex,nofollow</code>.</div>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
+                            <InlineSeoPanel
+                                seoMeta={seoMeta}
+                                onChange={(patch) => setSeoMeta((prev) => ({ ...(prev || {}), ...patch }))}
+                                parentTitle={title}
+                                parentIsNew={isNew}
+                            />
 
                             <div className="card mb-3">
                                 <div className="card-header">Settings</div>

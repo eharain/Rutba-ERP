@@ -1,5 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
-import * as XLSX from "xlsx";
+import { useState, useEffect, useCallback } from "react";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
@@ -7,69 +6,36 @@ import { CmsFootersEndpoints } from "@rutba/api-provider/endpoints";
 import Link from "next/link";
 import { useToast } from "../components/Toast";
 import ListPageLayout, { AddButton } from "@rutba/pos-shared/components/ListPageLayout";
+import ListPagination from "@rutba/pos-shared/components/ListPagination";
+import ExcelIO from "../components/ExcelIO";
 
-const FOOTER_EXPORT_COLUMNS = ["slug", "name", "phone", "email", "address", "opening_hours", "social_links", "copyright_text"];
+const DEFAULT_PAGE_SIZE = 25;
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100, 200];
 
-function exportFootersToExcel(footers) {
-    const rows = footers.map(f => ({
-        slug: f.slug || "",
-        name: f.name || "",
-        phone: f.phone || "",
-        email: f.email || "",
-        address: f.address || "",
-        opening_hours: f.opening_hours ? JSON.stringify(f.opening_hours) : "",
-        social_links: f.social_links ? JSON.stringify(f.social_links) : "",
-        copyright_text: f.copyright_text || "",
-    }));
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.json_to_sheet(rows, { header: FOOTER_EXPORT_COLUMNS });
-    ws["!cols"] = [
-        { wch: 18 }, { wch: 28 }, { wch: 20 }, { wch: 22 },
-        { wch: 60 }, { wch: 60 }, { wch: 60 }, { wch: 45 },
-    ];
-    XLSX.utils.book_append_sheet(wb, ws, "CMS Footers");
-    XLSX.writeFile(wb, `cms-footers-${new Date().toISOString().slice(0, 10)}.xlsx`);
-}
-
-function tryParseJSON(val) {
-    if (!val || typeof val !== "string") return val;
+const tryParseJSON = (val) => {
+    if (val === null || val === undefined || val === "") return undefined;
+    if (typeof val !== "string") return val;
     try { return JSON.parse(val); } catch { return val; }
-}
+};
 
-function parseFooterExcel(file) {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            try {
-                const wb = XLSX.read(e.target.result, { type: "array" });
-                const ws = wb.Sheets[wb.SheetNames[0]];
-                const jsonRows = XLSX.utils.sheet_to_json(ws, { defval: "" });
-                if (!jsonRows || jsonRows.length === 0) return resolve([]);
-                const mapped = jsonRows.map((row) => ({
-                    slug: String(row.slug || row.Slug || "").trim(),
-                    name: String(row.name || row.Name || "").trim(),
-                    phone: String(row.phone || row.Phone || "").trim(),
-                    email: String(row.email || row.Email || "").trim(),
-                    address: String(row.address || row.Address || "").trim(),
-                    opening_hours: tryParseJSON(row.opening_hours || row["Opening Hours"] || ""),
-                    social_links: tryParseJSON(row.social_links || row["Social Links"] || ""),
-                    copyright_text: String(row.copyright_text || row["Copyright Text"] || "").trim(),
-                })).filter(r => r.slug && r.name);
-                resolve(mapped);
-            } catch (err) { reject(err); }
-        };
-        reader.onerror = () => reject(new Error("Failed to read file"));
-        reader.readAsArrayBuffer(file);
-    });
-}
+const FOOTER_EXCEL_COLUMNS = [
+    { key: "slug", isLabel: true, width: 18 },
+    { key: "name", width: 28 },
+    { key: "phone", width: 20 },
+    { key: "email", width: 22 },
+    { key: "address", width: 60 },
+    { key: "opening_hours", width: 60, format: (r) => r.opening_hours ? JSON.stringify(r.opening_hours) : "", parse: tryParseJSON },
+    { key: "social_links", width: 60, format: (r) => r.social_links ? JSON.stringify(r.social_links) : "", parse: tryParseJSON },
+    { key: "copyright_text", width: 45 },
+];
 
 export default function Footers() {
     const { jwt } = useAuth();
     const [footers, setFooters] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [importing, setImporting] = useState(false);
-    const [importLog, setImportLog] = useState([]);
-    const importRef = useRef(null);
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+    const [total, setTotal] = useState(0);
     const { toast, ToastContainer } = useToast();
     const [selectedIds, setSelectedIds] = useState(new Set());
     const [publishing, setPublishing] = useState({});
@@ -155,59 +121,46 @@ export default function Footers() {
         setLoading(true);
         try {
             const [draftRes, pubRes] = await Promise.all([
-                CmsFootersEndpoints.listDraft({ sort: ["createdAt:desc"], pagination: { pageSize: 50 } }),
+                CmsFootersEndpoints.listDraft({ sort: ["createdAt:desc"], page, pageSize }),
                 CmsFootersEndpoints.listPublished({ pageSize: 200 }),
             ]);
             const pubIds = new Set((pubRes.data || []).map(f => f.documentId));
             setFooters((draftRes.data || []).map(f => ({ ...f, _isPublished: pubIds.has(f.documentId) })));
+            setTotal(draftRes.meta?.pagination?.total ?? 0);
         } catch (err) {
             console.error("Failed to load footers", err);
         } finally {
             setLoading(false);
         }
-    }, [jwt]);
+    }, [jwt, page, pageSize]);
 
     useEffect(() => { load(); }, [load]);
 
-    async function handleImport(e) {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        setImporting(true);
-        setImportLog([]);
-        try {
-            const rows = await parseFooterExcel(file);
-            if (rows.length === 0) {
-                setImportLog([{ type: "warning", text: "No valid rows found. Ensure columns: slug, name" }]);
-                return;
-            }
-            const log = [];
-            for (const row of rows) {
-                try {
-                    const existing = await CmsFootersEndpoints.listDraft({
-                        pagination: { pageSize: 1 },
-                        filters: { slug: { $eq: row.slug } },
-                    });
-                    const doc = existing.data?.[0];
-                    if (doc) {
-                        await CmsFootersEndpoints.updateDraft(doc.documentId, row);
-                        log.push({ type: "success", text: `Updated: ${row.slug}` });
-                    } else {
-                        await CmsFootersEndpoints.create(row);
-                        log.push({ type: "success", text: `Created: ${row.slug}` });
-                    }
-                } catch (err) {
-                    log.push({ type: "danger", text: `Failed: ${row.slug} – ${err.message || "Unknown error"}` });
-                }
-            }
-            setImportLog(log);
-            await load();
-        } catch (err) {
-            setImportLog([{ type: "danger", text: "Failed to parse file: " + (err.message || "Unknown error") }]);
-        } finally {
-            setImporting(false);
-            if (importRef.current) importRef.current.value = "";
+    const fetchAllFooters = useCallback(async () => {
+        const out = [];
+        let p = 1;
+        const PAGE = 100;
+        while (true) {
+            const res = await CmsFootersEndpoints.listDraft({ sort: ["createdAt:desc"], page: p, pageSize: PAGE });
+            const arr = res.data || [];
+            out.push(...arr);
+            if (arr.length < PAGE) break;
+            p += 1;
+            if (p > 500) break;
         }
-    }
+        return out;
+    }, []);
+
+    const findExistingFooter = useCallback(async (row) => {
+        if (!row.slug) return null;
+        try {
+            const res = await CmsFootersEndpoints.listDraft({
+                pagination: { pageSize: 1 },
+                filters: { slug: { $eq: row.slug } },
+            });
+            return res.data?.[0] || null;
+        } catch { return null; }
+    }, []);
 
     return (
         <ProtectedRoute>
@@ -218,24 +171,19 @@ export default function Footers() {
                     subtitle="Footer configurations contain contact info, opening hours, social links and pinned page links. Attach a footer to a CMS page to display it on the website."
                     headerActions={
                         <>
-                            <button
-                                className="btn btn-outline-success btn-sm"
-                                disabled={footers.length === 0}
-                                onClick={() => exportFootersToExcel(footers)}
-                            >
-                                <i className="fas fa-file-excel me-1"></i>Export Excel
-                            </button>
-                            <label className={`btn btn-outline-info btn-sm mb-0${importing ? " disabled" : ""}`}>
-                                <i className="fas fa-upload me-1"></i>{importing ? "Importing…" : "Import Excel"}
-                                <input
-                                    ref={importRef}
-                                    type="file"
-                                    accept=".xlsx,.xls,.csv"
-                                    className="d-none"
-                                    disabled={importing}
-                                    onChange={handleImport}
-                                />
-                            </label>
+                            <ExcelIO
+                                entityLabel="CMS Footers"
+                                contentType="api::cms-footer.cms-footer"
+                                columns={FOOTER_EXCEL_COLUMNS}
+                                rows={footers}
+                                selectedIds={selectedIds}
+                                total={total}
+                                fetchAll={fetchAllFooters}
+                                findExisting={findExistingFooter}
+                                create={(data) => CmsFootersEndpoints.create(data)}
+                                update={(documentId, data) => CmsFootersEndpoints.updateDraft(documentId, data)}
+                                onAfterImport={load}
+                            />
                             <AddButton label="New Footer" href="/new/cms-footer" />
                         </>
                     }
@@ -251,15 +199,18 @@ export default function Footers() {
                     }
                     selectedCount={selectedIds.size}
                     loading={loading}
+                    pagination={
+                        <ListPagination
+                            page={page}
+                            pageSize={pageSize}
+                            total={total}
+                            onPage={setPage}
+                            onPageSize={(s) => { setPageSize(s); setPage(1); }}
+                            pageSizeOptions={PAGE_SIZE_OPTIONS}
+                        />
+                    }
                     emptyState={<div>No footers found.</div>}
                 >
-                    {importLog.length > 0 && (
-                        <div className="p-3 border-bottom">
-                            {importLog.map((l, i) => (
-                                <div key={i} className={`alert alert-${l.type} py-1 px-2 mb-1 small`}>{l.text}</div>
-                            ))}
-                        </div>
-                    )}
                     {footers.length > 0 && (
                     <div className="table-responsive">
                         <table className="table table-hover list-table">

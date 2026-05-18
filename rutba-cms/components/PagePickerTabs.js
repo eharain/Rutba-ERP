@@ -1,7 +1,8 @@
 import { useState, useMemo } from "react";
 import Link from "next/link";
+import OrderableRelationList from "./OrderableRelationList";
 
-export default function PagePickerTabs({ allPages, selectedPageIds, onToggle, onRemoveAll, title = "Related Pages", icon = "fas fa-link", description }) {
+export default function PagePickerTabs({ allPages, selectedPageIds, onToggle, onReorder, onRemoveAll, title = "Related Pages", icon = "fas fa-link", description }) {
     const [activeTab, setActiveTab] = useState("connected");
     const [searchText, setSearchText] = useState("");
     const [filterPageType, setFilterPageType] = useState("");
@@ -11,10 +12,11 @@ export default function PagePickerTabs({ allPages, selectedPageIds, onToggle, on
         return [...types].sort();
     }, [allPages]);
 
-    const connectedPages = useMemo(
-        () => allPages.filter(p => selectedPageIds.includes(p.documentId)),
-        [allPages, selectedPageIds]
-    );
+    const pagesById = useMemo(() => {
+        const map = {};
+        for (const p of allPages) map[p.documentId] = p;
+        return map;
+    }, [allPages]);
 
     const filteredPages = useMemo(() => {
         let result = allPages;
@@ -52,6 +54,23 @@ export default function PagePickerTabs({ allPages, selectedPageIds, onToggle, on
         );
     };
 
+    const renderOrderedPage = (p) => (
+        <div className="d-flex align-items-center gap-2">
+            <span className="flex-grow-1">
+                {p.title}
+                {p.page_type && <span className="badge bg-light text-dark ms-2" style={{ fontSize: "0.65em" }}>{p.page_type}</span>}
+            </span>
+            <Link
+                href={`/${p.documentId}/cms-page`}
+                className="btn btn-sm btn-outline-primary"
+                title="Open page"
+                onClick={(e) => e.stopPropagation()}
+            >
+                <i className="fas fa-external-link-alt"></i>
+            </Link>
+        </div>
+    );
+
     return (
         <div className="card mb-3">
             <div className="card-header d-flex align-items-center">
@@ -85,20 +104,21 @@ export default function PagePickerTabs({ allPages, selectedPageIds, onToggle, on
                 {activeTab === "connected" && (
                     <>
                         <div className="d-flex align-items-center justify-content-between mb-2">
-                            <small className="text-muted">{selectedPageIds.length} page{selectedPageIds.length !== 1 ? "s" : ""} selected</small>
+                            <small className="text-muted">{selectedPageIds.length} page{selectedPageIds.length !== 1 ? "s" : ""} selected · drag to reorder</small>
                             {selectedPageIds.length > 0 && onRemoveAll && (
                                 <button className="btn btn-sm btn-outline-danger" onClick={onRemoveAll}>
                                     <i className="fas fa-times me-1"></i>Clear All
                                 </button>
                             )}
                         </div>
-                        {connectedPages.length === 0 ? (
-                            <p className="text-muted small">No related pages connected. Use the "All Pages" tab to add some.</p>
-                        ) : (
-                            <div className="d-flex flex-wrap gap-2">
-                                {connectedPages.map(renderPageItem)}
-                            </div>
-                        )}
+                        <OrderableRelationList
+                            selectedIds={selectedPageIds}
+                            optionsById={pagesById}
+                            onReorder={onReorder}
+                            onRemove={onToggle}
+                            renderItem={renderOrderedPage}
+                            emptyText='No related pages connected. Use the "All Pages" tab to add some.'
+                        />
                     </>
                 )}
 

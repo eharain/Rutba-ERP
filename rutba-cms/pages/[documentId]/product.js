@@ -13,6 +13,9 @@ import ProductPageShell from "@rutba/pos-shared/components/product/ProductPageSh
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
 import Link from "next/link";
 import { useToast } from "../../components/Toast";
+import InlineSeoPanel from "../../components/InlineSeoPanel";
+import { persistSeoMeta } from "../../components/SeoMetaFields";
+import { toOrderedRelation } from "../../components/orderedRelation";
 
 export default function ProductDetail() {
     const router = useRouter();
@@ -43,6 +46,7 @@ export default function ProductDetail() {
     const [creatingGroup, setCreatingGroup] = useState(false);
     const [newGroupName, setNewGroupName] = useState("");
     const [newGroupTitle, setNewGroupTitle] = useState("");
+    const [seoMeta, setSeoMeta] = useState(null);
 
     const loadProduct = useCallback(async () => {
         if (!jwt || !documentId) return;
@@ -61,6 +65,7 @@ export default function ProductDetail() {
                         categories: true,
                         brands: true,
                         variants: { populate: { gallery: true, logo: true, terms: true } },
+                        seo_meta: { populate: { og_image: true } },
                     },
                 }),
                 ProductsEndpoints.byIdPublished(documentId, { fields: ["documentId"] }).catch(() => ({ data: null })),
@@ -76,6 +81,7 @@ export default function ProductDetail() {
             setIsActive(p.is_active ?? true);
             setLogoFile(p.logo || null);
             setGalleryFiles(Array.isArray(p.gallery) ? p.gallery : []);
+            setSeoMeta(p.seo_meta || null);
         } catch (err) {
             console.error("Failed to load product", err);
         } finally {
@@ -130,6 +136,15 @@ export default function ProductDetail() {
 
     useEffect(() => { loadProductGroups(); }, [loadProductGroups]);
 
+    const saveSeoMeta = (entityDocumentId) =>
+        persistSeoMeta({
+            seoMeta,
+            setSeoMeta,
+            entityType: "product",
+            entityDocumentId,
+            onError: () => toast("Product saved, but SEO meta failed.", "warning"),
+        });
+
     const handleSave = async () => {
         setSaving(true);
         try {
@@ -149,6 +164,7 @@ export default function ProductDetail() {
                 router.push(`/${created.documentId}/product`);
             } else {
                 await ProductsEndpoints.updateDraft(documentId, payload);
+                await saveSeoMeta(documentId);
                 toast("Draft saved!", "success");
             }
         } catch (err) {
@@ -179,6 +195,7 @@ export default function ProductDetail() {
                 router.push(`/${created.documentId}/product`);
             } else {
                 await ProductsEndpoints.updateDraft(documentId, data);
+                await saveSeoMeta(documentId);
                 await ProductsEndpoints.publish(documentId);
                 setIsPublished(true);
                 toast("Product saved & published!", "success");
@@ -258,7 +275,7 @@ export default function ProductDetail() {
 
         setGroupBusyId(groupDocId);
         try {
-            await ProductGroupsEndpoints.updateDraft(groupDocId, { products: { set: nextIds } });
+            await ProductGroupsEndpoints.updateDraft(groupDocId, { products: toOrderedRelation(nextIds) });
             setAllGroups(prev => prev.map(g =>
                 g.documentId === groupDocId
                     ? {
@@ -295,7 +312,7 @@ export default function ProductDetail() {
                 name: trimmedName,
                 title: newGroupTitle.trim() || undefined,
                 slug: generatedSlug,
-                products: { set: [documentId] },
+                products: toOrderedRelation([documentId]),
             });
             setNewGroupName("");
             setNewGroupTitle("");
@@ -422,6 +439,12 @@ export default function ProductDetail() {
                                         </div>
                                     ) : (
                                     <>
+                                    <InlineSeoPanel
+                                        seoMeta={seoMeta}
+                                        onChange={(patch) => setSeoMeta((prev) => ({ ...(prev || {}), ...patch }))}
+                                        parentTitle={name}
+                                        parentIsNew={isNew}
+                                    />
                                     <div className="card mb-3">
                                         <div className="card-header">Logo</div>
                                         <div className="card-body">

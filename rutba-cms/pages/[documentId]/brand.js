@@ -5,9 +5,12 @@ import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import FileView from "@rutba/pos-shared/components/FileView";
 import { BrandsEndpoints, ProductsEndpoints } from "@rutba/api-provider/endpoints";
+import MarkdownEditor from "@rutba/pos-shared/components/MarkdownEditor";
 import Link from "next/link";
 import { useToast } from "../../components/Toast";
 import ProductPickerTabs from "../../components/ProductPickerTabs";
+import InlineSeoPanel from "../../components/InlineSeoPanel";
+import { persistSeoMeta } from "../../components/SeoMetaFields";
 
 export default function BrandDetail() {
     const router = useRouter();
@@ -16,21 +19,34 @@ export default function BrandDetail() {
     const [brand, setBrand] = useState(null);
     const [isPublished, setIsPublished] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState(null);
     const [saving, setSaving] = useState(false);
     const { toast, ToastContainer } = useToast();
     const isNew = documentId === "new";
 
     const [name, setName] = useState("");
     const [slug, setSlug] = useState("");
+    const [summary, setSummary] = useState("");
+    const [description, setDescription] = useState("");
+    const [seoMeta, setSeoMeta] = useState(null);
 
     const [selectedProductIds, setSelectedProductIds] = useState([]);
     const [connectedProducts, setConnectedProducts] = useState([]);
     const initialProductIdsRef = useRef([]);
 
     useEffect(() => {
-        if (!jwt || !documentId || isNew) { setLoading(false); return; }
+        if (!documentId || isNew) { setLoading(false); return; }
+        if (!jwt) return;
+        setLoading(true);
+        setLoadError(null);
         Promise.all([
-            BrandsEndpoints.byIdDraft(documentId, { populate: ["logo", "gallery"] }),
+            BrandsEndpoints.byIdDraft(documentId, {
+                populate: {
+                    logo: true,
+                    gallery: true,
+                    seo_meta: { populate: { og_image: true } },
+                },
+            }),
             BrandsEndpoints.byIdPublished(documentId, { fields: ["documentId"] }).catch(() => ({ data: null })),
             ProductsEndpoints.list(1, 1000, {
                 status: "draft",
@@ -41,10 +57,14 @@ export default function BrandDetail() {
         ])
             .then(([brandRes, pubRes, productsRes]) => {
                 const b = brandRes.data || brandRes;
+                if (!b) { setLoadError("Brand not found."); return; }
                 setBrand(b);
                 setIsPublished(!!(pubRes.data));
                 setName(b.name || "");
                 setSlug(b.slug || "");
+                setSummary(b.summary || "");
+                setDescription(b.description || "");
+                setSeoMeta(b.seo_meta || null);
 
                 const products = productsRes.data || [];
                 setConnectedProducts(products);
@@ -52,7 +72,10 @@ export default function BrandDetail() {
                 setSelectedProductIds(ids);
                 initialProductIdsRef.current = ids;
             })
-            .catch(err => console.error("Failed to load brand", err))
+            .catch(err => {
+                console.error("Failed to load brand", err);
+                setLoadError(err?.response?.data?.error?.message || err?.message || "Failed to load brand.");
+            })
             .finally(() => setLoading(false));
     }, [jwt, documentId, isNew]);
 
@@ -62,15 +85,30 @@ export default function BrandDetail() {
         );
     };
 
+    const saveSeoMeta = (entityDocumentId) =>
+        persistSeoMeta({
+            seoMeta,
+            setSeoMeta,
+            entityType: "brand",
+            entityDocumentId,
+            onError: () => toast("Brand saved, but SEO meta failed.", "warning"),
+        });
+
     const handleSave = async () => {
         setSaving(true);
         try {
             if (isNew) {
-                const res = await BrandsEndpoints.create({ name, slug: slug || name.toLowerCase().replace(/\s+/g, "-") });
+                const res = await BrandsEndpoints.create({
+                    name,
+                    slug: slug || name.toLowerCase().replace(/\s+/g, "-"),
+                    summary,
+                    description,
+                });
                 const created = res.data || res;
                 router.push(`/${created.documentId}/brand`);
             } else {
-                await BrandsEndpoints.updateDraft(documentId, { name });
+                await BrandsEndpoints.updateDraft(documentId, { name, summary, description });
+                await saveSeoMeta(documentId);
 
                 const initialIds = new Set(initialProductIdsRef.current);
                 const currentIds = new Set(selectedProductIds);
@@ -100,7 +138,8 @@ export default function BrandDetail() {
     const handlePublish = async () => {
         setSaving(true);
         try {
-            await BrandsEndpoints.updateDraft(documentId, { name });
+            await BrandsEndpoints.updateDraft(documentId, { name, summary, description });
+            await saveSeoMeta(documentId);
             await BrandsEndpoints.publish(documentId);
             setIsPublished(true);
             toast("Brand saved & published!", "success");
@@ -130,12 +169,14 @@ export default function BrandDetail() {
         if (!confirm("Save current draft and load the published version into the editor?")) return;
         setSaving(true);
         try {
-            await BrandsEndpoints.updateDraft(documentId, { name });
+            await BrandsEndpoints.updateDraft(documentId, { name, summary, description });
             const res = await BrandsEndpoints.byIdPublished(documentId, { populate: ["logo", "gallery"] });
             const b = res.data || res;
             if (!b) { toast("No published version found.", "warning"); return; }
             setName(b.name || "");
             setSlug(b.slug || "");
+            setSummary(b.summary || "");
+            setDescription(b.description || "");
             setBrand(b);
             toast("Draft saved. Showing published version \u2014 click Save Draft to overwrite.", "success");
         } catch (err) {
@@ -174,7 +215,7 @@ export default function BrandDetail() {
                 {loading && <p>Loading...</p>}
 
                 {!loading && !isNew && !brand && (
-                    <div className="alert alert-warning">Brand not found.</div>
+                    <div className="alert alert-warning">{loadError || "Brand not found."}</div>
                 )}
 
                 {!loading && (isNew || brand) && (
@@ -192,6 +233,14 @@ export default function BrandDetail() {
                                             <input type="text" className="form-control" value={slug} onChange={e => setSlug(e.target.value)} placeholder="auto-generated from name" />
                                         </div>
                                     )}
+                                    <div className="mb-3">
+                                        <label className="form-label">Summary (Markdown)</label>
+                                        <MarkdownEditor value={summary} onChange={e => setSummary(e.target.value)} name="summary" rows={3} placeholder="Short summary..." />
+                                    </div>
+                                    <div className="mb-3">
+                                        <label className="form-label">Description (Markdown)</label>
+                                        <MarkdownEditor value={description} onChange={e => setDescription(e.target.value)} name="description" rows={6} />
+                                    </div>
                                     <div className="d-flex gap-2">
                                         <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
                                             {saving ? "Saving…" : isNew ? "Create Brand" : "Save Draft"}
@@ -215,6 +264,12 @@ export default function BrandDetail() {
                         </div>
                         {!isNew && brand && (
                             <div className="col-md-4">
+                                <InlineSeoPanel
+                                    seoMeta={seoMeta}
+                                    onChange={(patch) => setSeoMeta((prev) => ({ ...(prev || {}), ...patch }))}
+                                    parentTitle={name}
+                                    parentIsNew={isNew}
+                                />
                                 <div className="card mb-3">
                                     <div className="card-header">Logo</div>
                                     <div className="card-body">
