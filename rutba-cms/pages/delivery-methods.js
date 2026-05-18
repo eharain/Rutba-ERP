@@ -5,11 +5,24 @@ import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { DeliveryMethodsEndpoints } from "@rutba/api-provider/endpoints";
 import Link from "next/link";
 import ListPageLayout, { AddButton } from "@rutba/pos-shared/components/ListPageLayout";
+import ListPagination from "@rutba/pos-shared/components/ListPagination";
+import ExcelIO from "../components/ExcelIO";
+
+const DELIVERY_METHOD_EXCEL_COLUMNS = [
+    { key: "name", isLabel: true, width: 28 },
+    { key: "description", width: 60 },
+];
+
+const DEFAULT_PAGE_SIZE = 25;
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100, 200];
 
 export default function DeliveryMethods() {
     const { jwt } = useAuth();
     const [methods, setMethods] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+    const [total, setTotal] = useState(0);
 
     const load = useCallback(async () => {
         if (!jwt) return;
@@ -18,17 +31,39 @@ export default function DeliveryMethods() {
             const res = await DeliveryMethodsEndpoints.list({
                 sort: ["priority:asc", "createdAt:desc"],
                 populate: ["product_groups", "cms_pages", "categories", "delivery_zones"],
-                pagination: { pageSize: 200 },
+                page,
+                pageSize,
             });
             setMethods(res.data || []);
+            setTotal(res.meta?.pagination?.total ?? 0);
         } catch (err) {
             console.error("Failed to load delivery methods", err);
         } finally {
             setLoading(false);
         }
-    }, [jwt]);
+    }, [jwt, page, pageSize]);
 
     useEffect(() => { load(); }, [load]);
+
+    const fetchAllMethods = useCallback(async () => {
+        const out = [];
+        let p = 1;
+        const PAGE = 100;
+        while (true) {
+            const res = await DeliveryMethodsEndpoints.list({
+                sort: ["priority:asc", "createdAt:desc"],
+                populate: ["product_groups", "cms_pages", "categories", "delivery_zones"],
+                page: p,
+                pageSize: PAGE,
+            });
+            const arr = res.data || [];
+            out.push(...arr);
+            if (arr.length < PAGE) break;
+            p += 1;
+            if (p > 500) break;
+        }
+        return out;
+    }, []);
 
     return (
         <ProtectedRoute>
@@ -36,8 +71,40 @@ export default function DeliveryMethods() {
                 <ListPageLayout
                     title="Delivery Methods"
                     subtitle="Manage delivery methods and link them to product groups, CMS pages, and categories."
-                    headerActions={<AddButton label="New Delivery Method" href="/new/delivery-method" />}
+                    headerActions={
+                        <>
+                            <ExcelIO
+                                entityLabel="Delivery Methods"
+                                contentType="api::delivery-method.delivery-method"
+                                columns={DELIVERY_METHOD_EXCEL_COLUMNS}
+                                rows={methods}
+                                total={total}
+                                fetchAll={fetchAllMethods}
+                                findExisting={async (row) => {
+                                    if (!row.name) return null;
+                                    try {
+                                        const res = await DeliveryMethodsEndpoints.list({ pagination: { pageSize: 1 }, filters: { name: { $eq: row.name } } });
+                                        return res.data?.[0] || null;
+                                    } catch { return null; }
+                                }}
+                                create={(data) => DeliveryMethodsEndpoints.create(data)}
+                                update={(documentId, data) => DeliveryMethodsEndpoints.updateDraft(documentId, data)}
+                                onAfterImport={load}
+                            />
+                            <AddButton label="New Delivery Method" href="/new/delivery-method" />
+                        </>
+                    }
                     loading={loading}
+                    pagination={
+                        <ListPagination
+                            page={page}
+                            pageSize={pageSize}
+                            total={total}
+                            onPage={setPage}
+                            onPageSize={(s) => { setPageSize(s); setPage(1); }}
+                            pageSizeOptions={PAGE_SIZE_OPTIONS}
+                        />
+                    }
                     emptyState={<div>No delivery methods found.</div>}
                 >
                     {methods.length > 0 && (

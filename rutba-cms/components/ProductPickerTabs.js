@@ -1,13 +1,14 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { BrandsEndpoints, CategoriesEndpoints, MediaUtilsEndpoints, PurchasesEndpoints, SuppliersEndpoints, TermTypesEndpoints, fetchProducts } from "@rutba/api-provider/endpoints";
 import { ProductFilter } from "@rutba/pos-shared/components/filter/product-filter";
 import Link from "next/link";
+import OrderableRelationList from "./OrderableRelationList";
 
 const DEFAULT_PAGE_SIZE = 25;
 const PAGE_SIZE_OPTIONS = [5, 10, 25, 50, 100, 150, 200];
 
-export default function ProductPickerTabs({ selectedProductIds, connectedProducts, onToggle, onBulkAdd, onRemoveAll }) {
+export default function ProductPickerTabs({ selectedProductIds, connectedProducts, onToggle, onReorder, onBulkAdd, onRemoveAll }) {
     const [activeTab, setActiveTab] = useState("connected");
     const { jwt } = useAuth();
     const [bulkLoading, setBulkLoading] = useState(false);
@@ -237,6 +238,31 @@ export default function ProductPickerTabs({ selectedProductIds, connectedProduct
     const connectedFrom = (connectedPage - 1) * CONNECTED_PAGE_SIZE;
     const connectedSlice = displayConnected.slice(connectedFrom, connectedFrom + CONNECTED_PAGE_SIZE);
 
+    const renderOrderedProduct = (p) => (
+        <div className="d-flex align-items-center gap-2">
+            {p.logo?.url ? (
+                <img
+                    src={MediaUtilsEndpoints.strapiImageUrl(p.logo)}
+                    alt={p.name}
+                    style={{ width: 32, height: 32, objectFit: "cover", borderRadius: 4 }}
+                />
+            ) : (
+                <span className="text-muted" style={{ width: 32, height: 32, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+                    <i className="fas fa-image"></i>
+                </span>
+            )}
+            <span className="flex-grow-1">{p.name}</span>
+            <Link
+                href={`/${p.documentId}/product`}
+                className="btn btn-sm btn-outline-primary"
+                title="Open product"
+                onClick={(e) => e.stopPropagation()}
+            >
+                <i className="fas fa-external-link-alt"></i>
+            </Link>
+        </div>
+    );
+
     const renderProductButton = (p) => {        const selected = selectedProductIds.includes(p.documentId);
         return (
             <div key={p.documentId} className="d-inline-flex align-items-center gap-1">
@@ -311,29 +337,21 @@ export default function ProductPickerTabs({ selectedProductIds, connectedProduct
                 {activeTab === "connected" && (
                     <>
                         <div className="d-flex align-items-center justify-content-between mb-2">
-                            <small className="text-muted">{selectedProductIds.length} product{selectedProductIds.length !== 1 ? "s" : ""} selected</small>
+                            <small className="text-muted">{selectedProductIds.length} product{selectedProductIds.length !== 1 ? "s" : ""} selected · drag to reorder</small>
                             {selectedProductIds.length > 0 && onRemoveAll && (
                                 <button className="btn btn-sm btn-outline-danger" onClick={onRemoveAll}>
                                     <i className="fas fa-times me-1"></i>Clear All
                                 </button>
                             )}
                         </div>
-                        {displayConnected.length === 0 ? (
-                            <p className="text-muted small">No products connected yet. Use the "All Products" tab to search and add products.</p>
-                        ) : (
-                            <>
-                                <div className="d-flex flex-wrap gap-2">
-                                    {connectedSlice.map(p => renderProductButton(p))}
-                                </div>
-                                {connectedPageCount > 1 && (
-                                    <nav className="mt-3 d-flex align-items-center gap-2">
-                                        <button className="btn btn-sm btn-outline-secondary" disabled={connectedPage <= 1} onClick={() => setConnectedPage(p => p - 1)}>&laquo; Prev</button>
-                                        <small className="text-muted">Page {connectedPage} of {connectedPageCount} ({displayConnected.length} products)</small>
-                                        <button className="btn btn-sm btn-outline-secondary" disabled={connectedPage >= connectedPageCount} onClick={() => setConnectedPage(p => p + 1)}>Next &raquo;</button>
-                                    </nav>
-                                )}
-                            </>
-                        )}
+                        <OrderableRelationList
+                            selectedIds={selectedProductIds}
+                            optionsById={productCache}
+                            onReorder={onReorder}
+                            onRemove={onToggle}
+                            renderItem={renderOrderedProduct}
+                            emptyText='No products connected yet. Use the "All Products" tab to search and add products.'
+                        />
                     </>
                 )}
 

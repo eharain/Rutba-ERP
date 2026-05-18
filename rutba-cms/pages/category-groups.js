@@ -6,11 +6,28 @@ import { CategoryGroupsEndpoints } from "@rutba/api-provider/endpoints";
 import Link from "next/link";
 import { useToast } from "../components/Toast";
 import ListPageLayout, { AddButton } from "@rutba/pos-shared/components/ListPageLayout";
+import ListPagination from "@rutba/pos-shared/components/ListPagination";
+import ExcelIO from "../components/ExcelIO";
+import { SEO_EXCEL_COLUMNS, SEO_POPULATE, makeSeoUpsert } from "../components/seoExcel";
+
+const CATEGORY_GROUP_EXCEL_COLUMNS = [
+    { key: "name", isLabel: true, width: 32 },
+    { key: "slug", width: 22 },
+    { key: "summary", width: 60 },
+    { key: "description", width: 90 },
+    ...SEO_EXCEL_COLUMNS,
+];
+
+const DEFAULT_PAGE_SIZE = 25;
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100, 200];
 
 export default function CategoryGroups() {
     const { jwt } = useAuth();
     const [groups, setGroups] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+    const [total, setTotal] = useState(0);
     const { toast, ToastContainer } = useToast();
     const [selectedIds, setSelectedIds] = useState(new Set());
     const [publishing, setPublishing] = useState({});
@@ -96,19 +113,40 @@ export default function CategoryGroups() {
         setLoading(true);
         try {
             const [draftRes, pubRes] = await Promise.all([
-                CategoryGroupsEndpoints.listDraft({ sort: ["sort_order:asc", "createdAt:desc"], populate: ["categories"], pagination: { pageSize: 50 } }),
+                CategoryGroupsEndpoints.listDraft({ sort: ["sort_order:asc", "createdAt:desc"], populate: { categories: true, ...SEO_POPULATE }, page, pageSize }),
                 CategoryGroupsEndpoints.listPublished({ pageSize: 200 }),
             ]);
             const pubIds = new Set((pubRes.data || []).map(g => g.documentId));
             setGroups((draftRes.data || []).map(g => ({ ...g, _isPublished: pubIds.has(g.documentId) })));
+            setTotal(draftRes.meta?.pagination?.total ?? 0);
         } catch (err) {
             console.error("Failed to load category groups", err);
         } finally {
             setLoading(false);
         }
-    }, [jwt]);
+    }, [jwt, page, pageSize]);
 
     useEffect(() => { load(); }, [load]);
+
+    const fetchAllGroups = useCallback(async () => {
+        const out = [];
+        let p = 1;
+        const PAGE = 100;
+        while (true) {
+            const res = await CategoryGroupsEndpoints.listDraft({
+                sort: ["sort_order:asc", "createdAt:desc"],
+                populate: { categories: true, ...SEO_POPULATE },
+                page: p,
+                pageSize: PAGE,
+            });
+            const arr = res.data || [];
+            out.push(...arr);
+            if (arr.length < PAGE) break;
+            p += 1;
+            if (p > 500) break;
+        }
+        return out;
+    }, []);
 
     return (
         <ProtectedRoute>
@@ -117,7 +155,31 @@ export default function CategoryGroups() {
                 <ListPageLayout
                     title="Category Groups"
                     subtitle="Category groups let you curate which categories appear on each CMS page."
-                    headerActions={<AddButton label="New Category Group" href="/new/category-group" />}
+                    headerActions={
+                        <>
+                            <ExcelIO
+                                entityLabel="Category Groups"
+                                contentType="api::category-group.category-group"
+                                columns={CATEGORY_GROUP_EXCEL_COLUMNS}
+                                rows={groups}
+                                selectedIds={selectedIds}
+                                total={total}
+                                fetchAll={fetchAllGroups}
+                                findExisting={async (row) => {
+                                    if (!row.slug) return null;
+                                    try {
+                                        const res = await CategoryGroupsEndpoints.listDraft({ pagination: { pageSize: 1 }, filters: { slug: { $eq: row.slug } }, populate: SEO_POPULATE });
+                                        return res.data?.[0] || null;
+                                    } catch { return null; }
+                                }}
+                                create={(data) => CategoryGroupsEndpoints.create(data)}
+                                update={(documentId, data) => CategoryGroupsEndpoints.updateDraft(documentId, data)}
+                                onSecondary={makeSeoUpsert("category_group", "category-group")}
+                                onAfterImport={load}
+                            />
+                            <AddButton label="New Category Group" href="/new/category-group" />
+                        </>
+                    }
                     bulkActions={
                         <>
                             <button className="btn btn-sm btn-success" onClick={bulkPublish}>
@@ -130,6 +192,16 @@ export default function CategoryGroups() {
                     }
                     selectedCount={selectedIds.size}
                     loading={loading}
+                    pagination={
+                        <ListPagination
+                            page={page}
+                            pageSize={pageSize}
+                            total={total}
+                            onPage={setPage}
+                            onPageSize={(s) => { setPageSize(s); setPage(1); }}
+                            pageSizeOptions={PAGE_SIZE_OPTIONS}
+                        />
+                    }
                     emptyState={<div>No category groups found.</div>}
                 >
                     {groups.length > 0 && (

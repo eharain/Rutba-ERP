@@ -7,6 +7,7 @@ import { CategoriesEndpoints, CmsPagesEndpoints, ProductGroupsEndpoints, SaleOff
 import MarkdownEditor from "@rutba/pos-shared/components/MarkdownEditor";
 import Link from "next/link";
 import { useToast } from "../../components/Toast";
+import { toOrderedRelation } from "../../components/orderedRelation";
 
 function EntityPicker({ title, allEntities, selectedIds, onToggle, onRemoveAll, labelFn }) {
     const [tab, setTab] = useState("connected");
@@ -158,9 +159,9 @@ export default function OfferDetail() {
                     : null,
             free_shipping: freeShipping,
             priority: Number(priority) || 0,
-            product_groups: { set: selectedGroupIds },
-            cms_pages: { set: selectedPageIds },
-            categories: { set: selectedCategoryIds },
+            product_groups: toOrderedRelation(selectedGroupIds),
+            cms_pages: toOrderedRelation(selectedPageIds),
+            categories: toOrderedRelation(selectedCategoryIds),
         },
     });
 

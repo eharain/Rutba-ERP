@@ -1,5 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
-import * as XLSX from "xlsx";
+import { useState, useEffect, useCallback } from "react";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
@@ -8,51 +7,21 @@ import Link from "next/link";
 import { useToast } from "../components/Toast";
 import EnumSelect from "../components/EnumSelect";
 import ListPageLayout, { AddButton } from "@rutba/pos-shared/components/ListPageLayout";
+import ListPagination from "@rutba/pos-shared/components/ListPagination";
+import ExcelIO from "../components/ExcelIO";
+import { SEO_EXCEL_COLUMNS, SEO_POPULATE, makeSeoUpsert } from "../components/seoExcel";
 
-const PAGE_EXPORT_COLUMNS = ["slug", "title", "excerpt", "content", "page_type", "sort_order"];
+const DEFAULT_PAGE_SIZE = 25;
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100, 200];
 
-function exportPagesToExcel(pages) {
-    const rows = pages.map(p => ({
-        slug: p.slug || "",
-        title: p.title || "",
-        excerpt: p.excerpt || "",
-        content: p.content || "",
-        page_type: p.page_type || "shop",
-        sort_order: p.sort_order ?? 0,
-    }));
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.json_to_sheet(rows, { header: PAGE_EXPORT_COLUMNS });
-    ws["!cols"] = [
-        { wch: 22 }, { wch: 45 }, { wch: 80 }, { wch: 120 }, { wch: 14 }, { wch: 12 },
-    ];
-    XLSX.utils.book_append_sheet(wb, ws, "CMS Pages");
-    XLSX.writeFile(wb, `cms-pages-${new Date().toISOString().slice(0, 10)}.xlsx`);
-}
-
-function parsePageExcel(file) {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            try {
-                const wb = XLSX.read(e.target.result, { type: "array" });
-                const ws = wb.Sheets[wb.SheetNames[0]];
-                const jsonRows = XLSX.utils.sheet_to_json(ws, { defval: "" });
-                if (!jsonRows || jsonRows.length === 0) return resolve([]);
-                const mapped = jsonRows.map((row) => ({
-                    slug: String(row.slug || row.Slug || "").trim(),
-                    title: String(row.title || row.Title || "").trim(),
-                    excerpt: String(row.excerpt || row.Excerpt || "").trim(),
-                    content: String(row.content || row.Content || "").trim(),
-                    page_type: String(row.page_type || row["Page Type"] || "shop").trim(),
-                    sort_order: parseInt(row.sort_order ?? row["Sort Order"] ?? 0, 10) || 0,
-                })).filter(r => r.slug && r.title);
-                resolve(mapped);
-            } catch (err) { reject(err); }
-        };
-        reader.onerror = () => reject(new Error("Failed to read file"));
-        reader.readAsArrayBuffer(file);
-    });
-}
+const PAGE_EXCEL_COLUMNS = [
+    { key: "slug", isLabel: true, width: 22 },
+    { key: "title", width: 45 },
+    { key: "excerpt", width: 80 },
+    { key: "content", width: 120 },
+    { key: "page_type", width: 14, parse: (v) => String(v || "shop").trim() },
+    ...SEO_EXCEL_COLUMNS,
+];
 
 function getTypeBadgeClass(type) {
     switch (type) {
@@ -80,10 +49,10 @@ export default function Pages() {
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
     const [typeFilter, setTypeFilter] = useState("");
-    const [importing, setImporting] = useState(false);
-    const [importLog, setImportLog] = useState([]);
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+    const [total, setTotal] = useState(0);
     const [error, setError] = useState("");
-    const importRef = useRef(null);
     const { toast, ToastContainer } = useToast();
     const [selectedIds, setSelectedIds] = useState(new Set());
     const [publishing, setPublishing] = useState({});
@@ -180,14 +149,13 @@ export default function Pages() {
         setError("");
         try {
             //todo : bad pattern to have to make 2 calls to determine publication state, should we add a /pages-with-publish-state endpoint in the api that returns all pages with a boolean is_published field to avoid this?
-            const draftEp = CmsPagesEndpoints.listDraft({ search: search.trim() || undefined, typeFilter: typeFilter || undefined, pageSize: 50 });
-            const pubEp = CmsPagesEndpoints.listPublished({ pageSize: 200 });
             const [draftRes, pubRes] = await Promise.all([
-                CmsPagesEndpoints.listDraft({ search: search.trim() || undefined, typeFilter: typeFilter || undefined, pageSize: 50 }),
+                CmsPagesEndpoints.listDraft({ search: search.trim() || undefined, typeFilter: typeFilter || undefined, page, pageSize, populate: { featured_image: true, ...SEO_POPULATE } }),
                 CmsPagesEndpoints.listPublished({ pageSize: 200 }),
             ]);
             const pubIds = new Set((pubRes.data || []).map(p => p.documentId));
             setPages((draftRes.data || []).map(p => ({ ...p, _isPublished: pubIds.has(p.documentId) })));
+            setTotal(draftRes.meta?.pagination?.total ?? 0);
         } catch (err) {
             console.error("Failed to load pages", err);
             const serverMsg = err?.response?.data?.error?.message;
@@ -200,49 +168,42 @@ export default function Pages() {
         } finally {
             setLoading(false);
         }
-    }, [jwt, search, typeFilter]);
+    }, [jwt, search, typeFilter, page, pageSize]);
 
     useEffect(() => { load(); }, [load]);
 
-    async function handleImport(e) {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        setImporting(true);
-        setImportLog([]);
-        try {
-            const rows = await parsePageExcel(file);
-            if (rows.length === 0) {
-                setImportLog([{ type: "warning", text: "No valid rows found. Ensure columns: slug, title" }]);
-                return;
-            }
-            const log = [];
-            for (const row of rows) {
-                try {
-                    //todo: bad pattern why not the msPagesEndpoints.bySlugCheck should return the existing docId if found and then we can just call update without a separate fetch?
-                    const existing = await CmsPagesEndpoints.bySlugCheck(row.slug);
-                    const doc = existing.data?.[0];
-                    if (doc) {
-                        await CmsPagesEndpoints.update(doc.documentId, row);
-                        log.push({ type: "success", text: `Updated: ${row.slug}` });
-                    } else {
-                        //todo: bad pattern why not to await CmsPagesEndpoints.create({ data: row });
-                        await CmsPagesEndpoints.create(row);
-                        log.push({ type: "success", text: `Created: ${row.slug}` });
-                    }
-                } catch (err) {
-                    const detail = err?.response?.data?.error?.message || err.message || "Unknown error";
-                    log.push({ type: "danger", text: `Failed: ${row.slug} – ${detail}` });
-                }
-            }
-            setImportLog(log);
-            await load();
-        } catch (err) {
-            setImportLog([{ type: "danger", text: "Failed to parse file: " + (err.message || "Unknown error") }]);
-        } finally {
-            setImporting(false);
-            if (importRef.current) importRef.current.value = "";
+    const fetchAllPages = useCallback(async () => {
+        const out = [];
+        let p = 1;
+        const PAGE = 100;
+        while (true) {
+            const res = await CmsPagesEndpoints.listDraft({
+                search: search.trim() || undefined,
+                typeFilter: typeFilter || undefined,
+                page: p,
+                pageSize: PAGE,
+                populate: { featured_image: true, ...SEO_POPULATE },
+            });
+            const arr = res.data || [];
+            out.push(...arr);
+            if (arr.length < PAGE) break;
+            p += 1;
+            if (p > 500) break;
         }
-    }
+        return out;
+    }, [search, typeFilter]);
+
+    const findExistingPage = useCallback(async (row) => {
+        if (!row.slug) return null;
+        try {
+            const res = await CmsPagesEndpoints.listDraft({
+                pageSize: 1,
+                filters: { slug: { $eq: row.slug } },
+                populate: SEO_POPULATE,
+            });
+            return res.data?.[0] || null;
+        } catch { return null; }
+    }, []);
 
     return (
         <ProtectedRoute>
@@ -252,24 +213,20 @@ export default function Pages() {
                     title="Pages"
                     headerActions={
                         <>
-                            <button
-                                className="btn btn-outline-success btn-sm"
-                                disabled={pages.length === 0}
-                                onClick={() => exportPagesToExcel(pages)}
-                            >
-                                <i className="fas fa-file-excel me-1"></i>Export Excel
-                            </button>
-                            <label className={`btn btn-outline-info btn-sm mb-0${importing ? " disabled" : ""}`}>
-                                <i className="fas fa-upload me-1"></i>{importing ? "Importing…" : "Import Excel"}
-                                <input
-                                    ref={importRef}
-                                    type="file"
-                                    accept=".xlsx,.xls,.csv"
-                                    className="d-none"
-                                    disabled={importing}
-                                    onChange={handleImport}
-                                />
-                            </label>
+                            <ExcelIO
+                                entityLabel="CMS Pages"
+                                contentType="api::cms-page.cms-page"
+                                columns={PAGE_EXCEL_COLUMNS}
+                                rows={pages}
+                                selectedIds={selectedIds}
+                                total={total}
+                                fetchAll={fetchAllPages}
+                                findExisting={findExistingPage}
+                                create={(data) => CmsPagesEndpoints.create(data)}
+                                update={(documentId, data) => CmsPagesEndpoints.update(documentId, data)}
+                                onSecondary={makeSeoUpsert("cms_page", "cms-page")}
+                                onAfterImport={load}
+                            />
                             <AddButton label="New Page" href="/new/cms-page" />
                         </>
                     }
@@ -280,7 +237,7 @@ export default function Pages() {
                             className="form-control form-control-sm"
                             placeholder="Search pages…"
                             value={search}
-                            onChange={e => setSearch(e.target.value)}
+                            onChange={e => { setSearch(e.target.value); setPage(1); }}
                         />,
                         <EnumSelect
                             key="type"
@@ -288,7 +245,7 @@ export default function Pages() {
                             field="page_type"
                             className="form-select form-select-sm"
                             value={typeFilter}
-                            onChange={e => setTypeFilter(e.target.value)}
+                            onChange={e => { setTypeFilter(e.target.value); setPage(1); }}
                             includeBlank="All types"
                         />,
                     ]}
@@ -304,15 +261,18 @@ export default function Pages() {
                     }
                     selectedCount={selectedIds.size}
                     loading={loading}
+                    pagination={
+                        <ListPagination
+                            page={page}
+                            pageSize={pageSize}
+                            total={total}
+                            onPage={setPage}
+                            onPageSize={(s) => { setPageSize(s); setPage(1); }}
+                            pageSizeOptions={PAGE_SIZE_OPTIONS}
+                        />
+                    }
                     emptyState={<div>{error ? error : "No pages found. Create your first page!"}</div>}
                 >
-                    {importLog.length > 0 && (
-                        <div className="p-3 border-bottom">
-                            {importLog.map((l, i) => (
-                                <div key={i} className={`alert alert-${l.type} py-1 px-2 mb-1 small`}>{l.text}</div>
-                            ))}
-                        </div>
-                    )}
                     {error && (
                         <div className="p-3"><div className="alert alert-danger mb-0"><i className="fas fa-exclamation-triangle me-2"></i>{error}</div></div>
                     )}

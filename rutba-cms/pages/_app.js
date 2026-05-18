@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { PrimeReactProvider } from "primereact/api";
 import { AuthProvider } from "@rutba/pos-shared/context/AuthContext";
 import { UtilProvider } from "@rutba/pos-shared/context/UtilContext";
 import { AppContextEndpoints } from "@rutba/api-provider/endpoints";
@@ -31,11 +32,13 @@ export default function App({ Component, pageProps }) {
 
     return (
         <div className={`${geistSans.variable} ${geistMono.variable} h-100`}>
-            <AuthProvider>
-                <UtilProvider>
-                    <Component {...pageProps} />
-                </UtilProvider>
-            </AuthProvider>
+            <PrimeReactProvider>
+                <AuthProvider>
+                    <UtilProvider>
+                        <Component {...pageProps} />
+                    </UtilProvider>
+                </AuthProvider>
+            </PrimeReactProvider>
         </div>
     );
 }

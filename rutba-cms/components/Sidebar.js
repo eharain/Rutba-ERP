@@ -26,6 +26,14 @@ const SECTIONS = [
             { href: "/delivery-methods", label: "Delivery",       icon: "fa-truck" },
         ],
     },
+    {
+        key: "seo",
+        label: "SEO",
+        icon: "fa-magnifying-glass",
+        children: [
+            { href: "/seo-metas",    label: "SEO Meta",     icon: "fa-tag" },
+        ],
+    },
     { divider: true },
     { href: APP_URLS['order-management'], external: true, label: "Orders", icon: "fa-shopping-bag" },
     { href: "/media",                  label: "Media",         icon: "fa-photo-film" },

@@ -5,9 +5,12 @@ import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import FileView from "@rutba/pos-shared/components/FileView";
 import { CategoriesEndpoints, ProductsEndpoints } from "@rutba/api-provider/endpoints";
+import MarkdownEditor from "@rutba/pos-shared/components/MarkdownEditor";
 import Link from "next/link";
 import { useToast } from "../../components/Toast";
 import ProductPickerTabs from "../../components/ProductPickerTabs";
+import InlineSeoPanel from "../../components/InlineSeoPanel";
+import { persistSeoMeta } from "../../components/SeoMetaFields";
 
 export default function CategoryDetail() {
     const router = useRouter();
@@ -16,6 +19,7 @@ export default function CategoryDetail() {
     const [category, setCategory] = useState(null);
     const [isPublished, setIsPublished] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState(null);
     const [saving, setSaving] = useState(false);
     const { toast, ToastContainer } = useToast();
     const isNew = documentId === "new";
@@ -24,15 +28,29 @@ export default function CategoryDetail() {
     const [slug, setSlug] = useState("");
     const [summary, setSummary] = useState("");
     const [description, setDescription] = useState("");
+    const [seoMeta, setSeoMeta] = useState(null);
 
     const [selectedProductIds, setSelectedProductIds] = useState([]);
     const [connectedProducts, setConnectedProducts] = useState([]);
     const initialProductIdsRef = useRef([]);
 
     useEffect(() => {
-        if (!jwt || !documentId || isNew) { setLoading(false); return; }
+        // Wait for documentId from the router, and for the auth context to hydrate
+        // (jwt arrives a tick after first render). Without the jwt guard the page
+        // would briefly flash "not found".
+        if (!documentId || isNew) { setLoading(false); return; }
+        if (!jwt) return;
+        setLoading(true);
+        setLoadError(null);
         Promise.all([
-            CategoriesEndpoints.byIdDraft(documentId, { populate: ["logo", "gallery", "parent"] }),
+            CategoriesEndpoints.byIdDraft(documentId, {
+                populate: {
+                    logo: true,
+                    gallery: true,
+                    parent: true,
+                    seo_meta: { populate: { og_image: true } },
+                },
+            }),
             CategoriesEndpoints.byIdPublished(documentId, { fields: ["documentId"] }).catch(() => ({ data: null })),
             ProductsEndpoints.list(1, 1000, {
                 status: "draft",
@@ -43,12 +61,14 @@ export default function CategoryDetail() {
         ])
             .then(([catRes, pubRes, productsRes]) => {
                 const c = catRes.data || catRes;
+                if (!c) { setLoadError("Category not found."); return; }
                 setCategory(c);
                 setIsPublished(!!(pubRes.data));
                 setName(c.name || "");
                 setSlug(c.slug || "");
                 setSummary(c.summary || "");
                 setDescription(c.description || "");
+                setSeoMeta(c.seo_meta || null);
 
                 const products = productsRes.data || [];
                 setConnectedProducts(products);
@@ -56,7 +76,10 @@ export default function CategoryDetail() {
                 setSelectedProductIds(ids);
                 initialProductIdsRef.current = ids;
             })
-            .catch(err => console.error("Failed to load category", err))
+            .catch(err => {
+                console.error("Failed to load category", err);
+                setLoadError(err?.response?.data?.error?.message || err?.message || "Failed to load category.");
+            })
             .finally(() => setLoading(false));
     }, [jwt, documentId, isNew]);
 
@@ -65,6 +88,15 @@ export default function CategoryDetail() {
             prev.includes(docId) ? prev.filter(id => id !== docId) : [...prev, docId]
         );
     };
+
+    const saveSeoMeta = (entityDocumentId) =>
+        persistSeoMeta({
+            seoMeta,
+            setSeoMeta,
+            entityType: "category",
+            entityDocumentId,
+            onError: () => toast("Category saved, but SEO meta failed.", "warning"),
+        });
 
     const handleSave = async () => {
         setSaving(true);
@@ -75,6 +107,7 @@ export default function CategoryDetail() {
                 router.push(`/${created.documentId}/category`);
             } else {
                 await CategoriesEndpoints.updateDraft(documentId, { name, summary, description });
+                await saveSeoMeta(documentId);
 
                 const initialIds = new Set(initialProductIdsRef.current);
                 const currentIds = new Set(selectedProductIds);
@@ -105,6 +138,7 @@ export default function CategoryDetail() {
         setSaving(true);
         try {
             await CategoriesEndpoints.updateDraft(documentId, { name, summary, description });
+            await saveSeoMeta(documentId);
             await CategoriesEndpoints.publish(documentId);
             setIsPublished(true);
             toast("Category saved & published!", "success");
@@ -180,7 +214,7 @@ export default function CategoryDetail() {
                 {loading && <p>Loading...</p>}
 
                 {!loading && !isNew && !category && (
-                    <div className="alert alert-warning">Category not found.</div>
+                    <div className="alert alert-warning">{loadError || "Category not found."}</div>
                 )}
 
                 {!loading && (isNew || category) && (
@@ -199,12 +233,12 @@ export default function CategoryDetail() {
                                         </div>
                                     )}
                                     <div className="mb-3">
-                                        <label className="form-label">Summary</label>
-                                        <textarea className="form-control" rows={2} value={summary} onChange={e => setSummary(e.target.value)} />
+                                        <label className="form-label">Summary (Markdown)</label>
+                                        <MarkdownEditor value={summary} onChange={e => setSummary(e.target.value)} name="summary" rows={3} placeholder="Short summary..." />
                                     </div>
                                     <div className="mb-3">
-                                        <label className="form-label">Description</label>
-                                        <textarea className="form-control" rows={4} value={description} onChange={e => setDescription(e.target.value)} />
+                                        <label className="form-label">Description (Markdown)</label>
+                                        <MarkdownEditor value={description} onChange={e => setDescription(e.target.value)} name="description" rows={6} />
                                     </div>
                                     <div className="d-flex gap-2">
                                         <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
@@ -229,6 +263,12 @@ export default function CategoryDetail() {
                         </div>
                         {!isNew && category && (
                             <div className="col-md-4">
+                                <InlineSeoPanel
+                                    seoMeta={seoMeta}
+                                    onChange={(patch) => setSeoMeta((prev) => ({ ...(prev || {}), ...patch }))}
+                                    parentTitle={name}
+                                    parentIsNew={isNew}
+                                />
                                 <div className="card mb-3">
                                     <div className="card-header">Logo</div>
                                     <div className="card-body">

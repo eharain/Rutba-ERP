@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, Fragment } from "react";
+import { useState, useEffect, useCallback, useMemo, Fragment } from "react";
 import { useRouter } from "next/router";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
@@ -13,6 +13,34 @@ import BulkProductActions from "@rutba/pos-shared/components/BulkProductActions"
 import ListPageLayout, { AddButton } from "@rutba/pos-shared/components/ListPageLayout";
 import ListPagination from "@rutba/pos-shared/components/ListPagination";
 import { SortableTh } from "@rutba/pos-shared/components/Table";
+import ExcelIO from "../components/ExcelIO";
+import { SEO_EXCEL_COLUMNS, SEO_POPULATE, makeSeoUpsert } from "../components/seoExcel";
+
+const PRODUCT_EXCEL_COLUMNS = [
+    { key: "name", isLabel: true, width: 40 },
+    { key: "sku", width: 22 },
+    { key: "barcode", width: 22 },
+    {
+        // Read-only display column: shows the variant's parent so reviewers
+        // can group rows by parent in Excel. Import ignores this column —
+        // parent linkage is not changed via spreadsheet.
+        key: "parent",
+        header: "parent",
+        width: 40,
+        readOnly: true,
+        format: (r) => {
+            const p = r?.parent;
+            if (!p) return "";
+            const id = p.documentId || "";
+            const name = p.name || "";
+            if (id && name) return `${id} | ${name}`;
+            return id || name || "";
+        },
+    },
+    { key: "summary", width: 60 },
+    { key: "description", width: 90 },
+    ...SEO_EXCEL_COLUMNS,
+];
 
 const DEFAULT_PAGE_SIZE = 25;
 const PAGE_SIZE_OPTIONS = [5, 10, 25, 50, 100, 150, 200];
@@ -180,7 +208,7 @@ export default function Products() {
     useEffect(() => {
         if (!router.isReady || !jwt) return;
 
-        const filters = { parentOnly: true, status: "draft", searchText };
+        const filters = { parentOnly: true, status: "draft", searchText, populate: SEO_POPULATE };
         if (selectedBrand) filters.brands = [selectedBrand];
         if (selectedCategory) filters.categories = [selectedCategory];
         if (selectedSupplier) filters.suppliers = [selectedSupplier];
@@ -227,6 +255,66 @@ export default function Products() {
     const setPage = (p) => updateQuery({ page: p > 1 ? p : undefined });
     const setPageSize = (s) => updateQuery({ pageSize: s, page: undefined });
 
+    // Rows passed to ExcelIO. Includes any expanded variants (with parent
+    // synthesised from the parent product on this page) so "current page" and
+    // "selected" exports carry the variant rows the user has loaded.
+    const productsForExport = useMemo(() => {
+        const out = [];
+        for (const p of products) {
+            out.push(p);
+            const variants = variantsMap[p.documentId];
+            if (Array.isArray(variants) && variants.length > 0) {
+                const parentRef = { documentId: p.documentId, name: p.name };
+                for (const v of variants) out.push({ ...v, parent: v.parent || parentRef });
+            }
+        }
+        return out;
+    }, [products, variantsMap]);
+
+    const findExistingProduct = useCallback(async (row) => {
+        if (!row.sku) return null;
+        try {
+            const res = await ProductsEndpoints.list(1, 1, {
+                status: "draft",
+                filters: { sku: { $eq: row.sku } },
+                populate: SEO_POPULATE,
+            });
+            return res.data?.[0] || null;
+        } catch { return null; }
+    }, []);
+
+    const fetchAllProducts = useCallback(async () => {
+        // "All" mode includes variants — drop parentOnly so they're emitted.
+        // The `parent` column on each row identifies which parent product a
+        // variant belongs to.
+        const filters = {
+            status: "draft",
+            searchText,
+            populate: { parent: { fields: ["documentId", "name"] }, ...SEO_POPULATE },
+        };
+        if (selectedBrand) filters.brands = [selectedBrand];
+        if (selectedCategory) filters.categories = [selectedCategory];
+        if (selectedSupplier) filters.suppliers = [selectedSupplier];
+        if (selectedTerm) filters.terms = [selectedTerm];
+        if (selectedPurchase) filters.purchases = [selectedPurchase];
+        // Strapi caps pageSize at 100, so a PAGE > 100 quietly returns 100
+        // and the loop's `arr.length < PAGE` check breaks early — that was
+        // capping "All" exports at 100 rows. Use 100 to match the server max
+        // and only stop when a page comes back short (or empty).
+        const out = [];
+        let p = 1;
+        const PAGE = 100;
+        while (true) {
+            const res = await fetchProducts(filters, p, PAGE, `${sortField}:${sortDir}`);
+            const arr = res.data || [];
+            out.push(...arr);
+            if (arr.length < PAGE) break;
+            p += 1;
+            if (p > 500) break; // safety stop ~50k rows
+        }
+        return out;
+    }, [searchText, selectedBrand, selectedCategory, selectedSupplier, selectedTerm, selectedPurchase, sortField, sortDir]);
+
     const toggleVariants = async (product) => {
         const docId = product.documentId;
         if (expandedProducts[docId]) {
@@ -270,7 +358,25 @@ export default function Products() {
                 <ListPageLayout
                     title="Products"
                     subtitle={`${total} products found`}
-                    headerActions={<AddButton label="New Product" href="/new/product" />}
+                    headerActions={
+                        <>
+                            <ExcelIO
+                                entityLabel="Products"
+                                contentType="api::product.product"
+                                columns={PRODUCT_EXCEL_COLUMNS}
+                                rows={productsForExport}
+                                selectedIds={selectedIds}
+                                total={total}
+                                fetchAll={fetchAllProducts}
+                                findExisting={findExistingProduct}
+                                create={(data) => ProductsEndpoints.create(data)}
+                                update={(documentId, data) => ProductsEndpoints.update(documentId, data)}
+                                onSecondary={makeSeoUpsert("product", "product")}
+                                onAfterImport={() => updateQuery({ page: undefined })}
+                            />
+                            <AddButton label="New Product" href="/new/product" />
+                        </>
+                    }
                     filters={
                         <ProductFilter
                             brands={brands}

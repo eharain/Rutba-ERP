@@ -1,29 +1,31 @@
 import { useState, useMemo } from "react";
 import Link from "next/link";
+import OrderableRelationList from "./OrderableRelationList";
 
-export default function GroupPickerTabs({ allGroups, selectedGroupIds, onToggle, onRemoveAll }) {
+const LAYOUT_LABELS = {
+    "hero-slider": "Hero Slider",
+    "grid-4": "Grid 4",
+    "grid-6": "Grid 6",
+    "carousel": "Carousel",
+    "banner-single": "Banner",
+    "list": "List",
+};
+
+export default function GroupPickerTabs({ allGroups, selectedGroupIds, onToggle, onReorder, onRemoveAll }) {
     const [activeTab, setActiveTab] = useState("connected");
     const [searchText, setSearchText] = useState("");
 
-    const connectedGroups = useMemo(
-        () => allGroups.filter(g => selectedGroupIds.includes(g.documentId)),
-        [allGroups, selectedGroupIds]
-    );
+    const groupsById = useMemo(() => {
+        const map = {};
+        for (const g of allGroups) map[g.documentId] = g;
+        return map;
+    }, [allGroups]);
 
     const filteredGroups = useMemo(() => {
         if (!searchText.trim()) return allGroups;
         const q = searchText.toLowerCase();
         return allGroups.filter(g => g.name?.toLowerCase().includes(q));
     }, [allGroups, searchText]);
-
-    const LAYOUT_LABELS = {
-        "hero-slider": "Hero Slider",
-        "grid-4": "Grid 4",
-        "grid-6": "Grid 6",
-        "carousel": "Carousel",
-        "banner-single": "Banner",
-        "list": "List",
-    };
 
     const renderGroupItem = (g) => {
         const selected = selectedGroupIds.includes(g.documentId);
@@ -49,6 +51,24 @@ export default function GroupPickerTabs({ allGroups, selectedGroupIds, onToggle,
             </div>
         );
     };
+
+    const renderOrderedGroup = (g) => (
+        <div className="d-flex align-items-center gap-2">
+            <span className="flex-grow-1">
+                {g.name}
+                {g.layout && <span className="badge bg-light text-dark ms-2" style={{ fontSize: "0.65em" }}>{LAYOUT_LABELS[g.layout] || g.layout}</span>}
+                {g.priority != null && <span className="badge bg-secondary ms-1" style={{ fontSize: "0.65em" }}>P{g.priority}</span>}
+            </span>
+            <Link
+                href={`/${g.documentId}/product-group`}
+                className="btn btn-sm btn-outline-primary"
+                title="Open product group"
+                onClick={(e) => e.stopPropagation()}
+            >
+                <i className="fas fa-external-link-alt"></i>
+            </Link>
+        </div>
+    );
 
     return (
         <div className="card mb-3">
@@ -82,20 +102,21 @@ export default function GroupPickerTabs({ allGroups, selectedGroupIds, onToggle,
                 {activeTab === "connected" && (
                     <>
                         <div className="d-flex align-items-center justify-content-between mb-2">
-                            <small className="text-muted">{selectedGroupIds.length} group{selectedGroupIds.length !== 1 ? "s" : ""} selected</small>
+                            <small className="text-muted">{selectedGroupIds.length} group{selectedGroupIds.length !== 1 ? "s" : ""} selected · drag to reorder</small>
                             {selectedGroupIds.length > 0 && onRemoveAll && (
                                 <button className="btn btn-sm btn-outline-danger" onClick={onRemoveAll}>
                                     <i className="fas fa-times me-1"></i>Clear All
                                 </button>
                             )}
                         </div>
-                        {connectedGroups.length === 0 ? (
-                            <p className="text-muted small">No product groups connected. Use the "All Groups" tab to add some.</p>
-                        ) : (
-                            <div className="d-flex flex-wrap gap-2">
-                                {connectedGroups.map(renderGroupItem)}
-                            </div>
-                        )}
+                        <OrderableRelationList
+                            selectedIds={selectedGroupIds}
+                            optionsById={groupsById}
+                            onReorder={onReorder}
+                            onRemove={onToggle}
+                            renderItem={renderOrderedGroup}
+                            emptyText='No product groups connected. Use the "All Groups" tab to add some.'
+                        />
                     </>
                 )}
 

@@ -6,6 +6,11 @@ import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { BrandGroupsEndpoints, BrandsEndpoints, MediaUtilsEndpoints } from "@rutba/api-provider/endpoints";
 import Link from "next/link";
 import { useToast } from "../../components/Toast";
+import InlineSeoPanel from "../../components/InlineSeoPanel";
+import OrderableRelationList from "../../components/OrderableRelationList";
+import { persistSeoMeta } from "../../components/SeoMetaFields";
+import { toOrderedRelation } from "../../components/orderedRelation";
+import MarkdownEditor from "@rutba/pos-shared/components/MarkdownEditor";
 
 export default function BrandGroupDetail() {
     const router = useRouter();
@@ -21,14 +26,22 @@ export default function BrandGroupDetail() {
 
     const [name, setName] = useState("");
     const [slug, setSlug] = useState("");
+    const [summary, setSummary] = useState("");
+    const [description, setDescription] = useState("");
     const [sortOrder, setSortOrder] = useState(0);
     const [selectedBrandIds, setSelectedBrandIds] = useState([]);
     const [allBrands, setAllBrands] = useState([]);
+    const [seoMeta, setSeoMeta] = useState(null);
 
     useEffect(() => {
         if (!jwt || !documentId || isNew) { setLoading(false); return; }
         Promise.all([
-            BrandGroupsEndpoints.byIdDraft(documentId, { populate: ["brands.logo"] }),
+            BrandGroupsEndpoints.byIdDraft(documentId, {
+                populate: {
+                    brands: { populate: { logo: true } },
+                    seo_meta: { populate: { og_image: true } },
+                },
+            }),
             BrandGroupsEndpoints.byIdPublished(documentId, { fields: ["documentId"] }).catch(() => ({ data: null })),
         ])
             .then(([draftRes, pubRes]) => {
@@ -37,8 +50,11 @@ export default function BrandGroupDetail() {
                 setIsPublished(!!(pubRes.data));
                 setName(g.name || "");
                 setSlug(g.slug || "");
+                setSummary(g.summary || "");
+                setDescription(g.description || "");
                 setSortOrder(g.sort_order ?? 0);
                 setSelectedBrandIds((g.brands || []).map(b => b.documentId));
+                setSeoMeta(g.seo_meta || null);
             })
             .catch(err => console.error("Failed to load brand group", err))
             .finally(() => setLoading(false));
@@ -62,14 +78,25 @@ export default function BrandGroupDetail() {
         );
     };
 
+    const saveSeoMeta = (entityDocumentId) =>
+        persistSeoMeta({
+            seoMeta,
+            setSeoMeta,
+            entityType: "brand-group",
+            entityDocumentId,
+            onError: () => toast("Group saved, but SEO meta failed.", "warning"),
+        });
+
     const handleSave = async () => {
         setSaving(true);
         try {
             const payload = {
                 data: {
                     name,
+                    summary,
+                    description,
                     sort_order: sortOrder,
-                    brands: { set: selectedBrandIds },
+                    brands: toOrderedRelation(selectedBrandIds),
                 },
             };
             if (isNew) {
@@ -79,6 +106,7 @@ export default function BrandGroupDetail() {
                 router.push(`/${created.documentId}/brand-group`);
             } else {
                 await BrandGroupsEndpoints.updateDraft(documentId, payload.data);
+                await saveSeoMeta(documentId);
                 toast("Draft saved!", "success");
             }
         } catch (err) {
@@ -95,11 +123,14 @@ export default function BrandGroupDetail() {
             const payload = {
                 data: {
                     name,
+                    summary,
+                    description,
                     sort_order: sortOrder,
-                    brands: { set: selectedBrandIds },
+                    brands: toOrderedRelation(selectedBrandIds),
                 },
             };
             await BrandGroupsEndpoints.updateDraft(documentId, payload.data);
+            await saveSeoMeta(documentId);
             await BrandGroupsEndpoints.publish(documentId);
             setIsPublished(true);
             toast("Brand group saved & published!", "success");
@@ -129,12 +160,14 @@ export default function BrandGroupDetail() {
         if (!confirm("Save current draft and load the published version into the editor?")) return;
         setSaving(true);
         try {
-            await BrandGroupsEndpoints.updateDraft(documentId, { name, sort_order: sortOrder, brands: { set: selectedBrandIds } });
+            await BrandGroupsEndpoints.updateDraft(documentId, { name, summary, description, sort_order: sortOrder, brands: toOrderedRelation(selectedBrandIds) });
             const res = await BrandGroupsEndpoints.byIdPublished(documentId, { populate: ["brands.logo"] });
             const g = res.data || res;
             if (!g) { toast("No published version found.", "warning"); return; }
             setName(g.name || "");
             setSlug(g.slug || "");
+            setSummary(g.summary || "");
+            setDescription(g.description || "");
             setSortOrder(g.sort_order ?? 0);
             setSelectedBrandIds((g.brands || []).map(b => b.documentId));
             toast("Draft saved. Showing published version — click Save Draft to overwrite.", "success");
@@ -218,6 +251,14 @@ export default function BrandGroupDetail() {
                                         </div>
                                     )}
                                     <div className="mb-3">
+                                        <label className="form-label">Summary</label>
+                                        <MarkdownEditor value={summary} onChange={e => setSummary(e.target.value)} name="summary" rows={3} placeholder="Short summary..." />
+                                    </div>
+                                    <div className="mb-3">
+                                        <label className="form-label">Description</label>
+                                        <MarkdownEditor value={description} onChange={e => setDescription(e.target.value)} name="description" rows={6} />
+                                    </div>
+                                    <div className="mb-3">
                                         <label className="form-label">Sort Order</label>
                                         <input type="number" className="form-control" value={sortOrder} onChange={e => setSortOrder(parseInt(e.target.value) || 0)} />
                                     </div>
@@ -231,7 +272,30 @@ export default function BrandGroupDetail() {
                                     <span className="badge bg-primary ms-2">{selectedBrandIds.length}</span>
                                 </div>
                                 <div className="card-body">
-                                    <p className="text-muted small mb-2">Select brands to include in this group.</p>
+                                    <p className="text-muted small mb-2">Select brands to include in this group. Drag connected brands to reorder.</p>
+                                    {selectedBrandIds.length > 0 && (
+                                        <div className="mb-3">
+                                            <OrderableRelationList
+                                                selectedIds={selectedBrandIds}
+                                                optionsById={Object.fromEntries(allBrands.map(b => [b.documentId, b]))}
+                                                onReorder={setSelectedBrandIds}
+                                                onRemove={toggleBrand}
+                                                renderItem={(b) => (
+                                                    <div className="d-flex align-items-center gap-2">
+                                                        {b.logo?.url && (
+                                                            <img
+                                                                src={MediaUtilsEndpoints.strapiImageUrl(b.logo)}
+                                                                alt={b.name}
+                                                                style={{ width: 32, height: 32, objectFit: "cover", borderRadius: 4 }}
+                                                            />
+                                                        )}
+                                                        <span>{b.name}</span>
+                                                    </div>
+                                                )}
+                                                emptyText="No brands connected."
+                                            />
+                                        </div>
+                                    )}
                                     {allBrands.length === 0 ? (
                                         <p className="text-muted small">No brands available.</p>
                                     ) : (
@@ -241,7 +305,6 @@ export default function BrandGroupDetail() {
                                                 return (
                                                     <button key={b.documentId} type="button" className={`btn btn-sm ${selected ? "btn-warning" : "btn-outline-secondary"}`} onClick={() => toggleBrand(b.documentId)}>
                                                         {selected && <i className="fas fa-check me-1"></i>}
-                                                        src={MediaUtilsEndpoints.strapiImageUrl(b.logo)}
                                                         {b.name}
                                                     </button>
                                                 );
@@ -253,6 +316,12 @@ export default function BrandGroupDetail() {
                         </div>
 
                         <div className="col-md-4">
+                            <InlineSeoPanel
+                                seoMeta={seoMeta}
+                                onChange={(patch) => setSeoMeta((prev) => ({ ...(prev || {}), ...patch }))}
+                                parentTitle={name}
+                                parentIsNew={isNew}
+                            />
                             <div className="card mb-3">
                                 <div className="card-header">Info</div>
                                 <div className="card-body">

@@ -6,12 +6,29 @@ import { BrandsEndpoints, MediaUtilsEndpoints } from "@rutba/api-provider/endpoi
 import Link from "next/link";
 import { useToast } from "../components/Toast";
 import ListPageLayout, { AddButton } from "@rutba/pos-shared/components/ListPageLayout";
+import ListPagination from "@rutba/pos-shared/components/ListPagination";
+import ExcelIO from "../components/ExcelIO";
+import { SEO_EXCEL_COLUMNS, SEO_POPULATE, makeSeoUpsert } from "../components/seoExcel";
+
+const BRAND_EXCEL_COLUMNS = [
+    { key: "name", isLabel: true, width: 32 },
+    { key: "slug", width: 22 },
+    { key: "summary", width: 60 },
+    { key: "description", width: 90 },
+    ...SEO_EXCEL_COLUMNS,
+];
+
+const DEFAULT_PAGE_SIZE = 25;
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100, 200];
 
 export default function Brands() {
     const { jwt } = useAuth();
     const [brands, setBrands] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+    const [total, setTotal] = useState(0);
     const { toast, ToastContainer } = useToast();
     const [selectedIds, setSelectedIds] = useState(new Set());
     const [publishing, setPublishing] = useState({});
@@ -96,22 +113,41 @@ export default function Brands() {
         if (!jwt) return;
         setLoading(true);
         try {
-            const draftEp = BrandsEndpoints.listDraft(search.trim() ? { search: search.trim() } : {});
-            const pubEp = BrandsEndpoints.listPublished();
             const [draftRes, pubRes] = await Promise.all([
-                BrandsEndpoints.list({ search: search.trim() || undefined }),
+                BrandsEndpoints.list({ search: search.trim() || undefined, populate: { logo: true, ...SEO_POPULATE }, page, pageSize }),
                 BrandsEndpoints.listPublished(),
             ]);
             const pubIds = new Set((pubRes.data || []).map(b => b.documentId));
             setBrands((draftRes.data || []).map(b => ({ ...b, _isPublished: pubIds.has(b.documentId) })));
+            setTotal(draftRes.meta?.pagination?.total ?? 0);
         } catch (err) {
             console.error("Failed to load brands", err);
         } finally {
             setLoading(false);
         }
-    }, [jwt, search]);
+    }, [jwt, search, page, pageSize]);
 
     useEffect(() => { load(); }, [load]);
+
+    const fetchAllBrands = useCallback(async () => {
+        const out = [];
+        let p = 1;
+        const PAGE = 100;
+        while (true) {
+            const res = await BrandsEndpoints.list({
+                search: search.trim() || undefined,
+                populate: { logo: true, ...SEO_POPULATE },
+                page: p,
+                pageSize: PAGE,
+            });
+            const arr = res.data || [];
+            out.push(...arr);
+            if (arr.length < PAGE) break;
+            p += 1;
+            if (p > 500) break;
+        }
+        return out;
+    }, [search]);
 
     return (
         <ProtectedRoute>
@@ -119,7 +155,31 @@ export default function Brands() {
                 <ToastContainer />
                 <ListPageLayout
                     title="Brands"
-                    headerActions={<AddButton label="New Brand" href="/new/brand" />}
+                    headerActions={
+                        <>
+                            <ExcelIO
+                                entityLabel="Brands"
+                                contentType="api::brand.brand"
+                                columns={BRAND_EXCEL_COLUMNS}
+                                rows={brands}
+                                selectedIds={selectedIds}
+                                total={total}
+                                fetchAll={fetchAllBrands}
+                                findExisting={async (row) => {
+                                    if (!row.slug) return null;
+                                    try {
+                                        const res = await BrandsEndpoints.listDraft({ pagination: { pageSize: 1 }, filters: { slug: { $eq: row.slug } }, populate: SEO_POPULATE });
+                                        return res.data?.[0] || null;
+                                    } catch { return null; }
+                                }}
+                                create={(data) => BrandsEndpoints.create(data)}
+                                update={(documentId, data) => BrandsEndpoints.updateDraft(documentId, data)}
+                                onSecondary={makeSeoUpsert("brand", "brand")}
+                                onAfterImport={load}
+                            />
+                            <AddButton label="New Brand" href="/new/brand" />
+                        </>
+                    }
                     filters={[
                         <input
                             key="search"
@@ -127,7 +187,7 @@ export default function Brands() {
                             className="form-control form-control-sm"
                             placeholder="Search brands…"
                             value={search}
-                            onChange={e => setSearch(e.target.value)}
+                            onChange={e => { setSearch(e.target.value); setPage(1); }}
                         />,
                     ]}
                     bulkActions={
@@ -142,6 +202,16 @@ export default function Brands() {
                     }
                     selectedCount={selectedIds.size}
                     loading={loading}
+                    pagination={
+                        <ListPagination
+                            page={page}
+                            pageSize={pageSize}
+                            total={total}
+                            onPage={setPage}
+                            onPageSize={(s) => { setPageSize(s); setPage(1); }}
+                            pageSizeOptions={PAGE_SIZE_OPTIONS}
+                        />
+                    }
                     emptyState={<div>No brands found.</div>}
                 >
                     {brands.length > 0 && (
