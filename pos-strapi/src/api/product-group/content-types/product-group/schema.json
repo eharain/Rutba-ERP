@@ -113,6 +113,12 @@
       "relation": "manyToMany",
       "target": "api::delivery-method.delivery-method",
       "inversedBy": "product_groups"
+    },
+    "seo_meta": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::seo-meta.seo-meta",
+      "mappedBy": "product_group"
     }
   }
 }

@@ -18,6 +18,12 @@
       "targetField": "name",
       "required": true
     },
+    "summary": {
+      "type": "richtext"
+    },
+    "description": {
+      "type": "richtext"
+    },
     "logo": {
       "type": "media",
       "multiple": false,
@@ -40,6 +46,12 @@
     },
     "keywords": {
       "type": "json"
+    },
+    "seo_meta": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::seo-meta.seo-meta",
+      "mappedBy": "brand"
     }
   }
 }

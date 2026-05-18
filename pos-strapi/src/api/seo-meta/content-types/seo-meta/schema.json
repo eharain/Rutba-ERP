@@ -1,0 +1,95 @@
+{
+  "kind": "collectionType",
+  "collectionName": "seo_metas",
+  "info": {
+    "singularName": "seo-meta",
+    "pluralName": "seo-metas",
+    "displayName": "SEO Meta",
+    "description": "SEO and social-share metadata attached to a CMS entity."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "entity_title": {
+      "type": "string",
+      "description": "Denormalised title of the linked entity — populated on save so list/export rows can show the parent without an extra join."
+    },
+    "entity_type": {
+      "type": "enumeration",
+      "enum": [
+        "cms-page",
+        "product",
+        "category",
+        "brand",
+        "product-group",
+        "brand-group",
+        "category-group"
+      ],
+      "default": "cms-page"
+    },
+    "meta_title": {
+      "type": "string"
+    },
+    "meta_description": {
+      "type": "text"
+    },
+    "noindex": {
+      "type": "boolean",
+      "default": false
+    },
+    "og_image": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "keywords": {
+      "type": "text"
+    },
+    "cms_page": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::cms-page.cms-page",
+      "inversedBy": "seo_meta"
+    },
+    "product": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::product.product",
+      "inversedBy": "seo_meta"
+    },
+    "category": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::category.category",
+      "inversedBy": "seo_meta"
+    },
+    "brand": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::brand.brand",
+      "inversedBy": "seo_meta"
+    },
+    "product_group": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::product-group.product-group",
+      "inversedBy": "seo_meta"
+    },
+    "brand_group": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::brand-group.brand-group",
+      "inversedBy": "seo_meta"
+    },
+    "category_group": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::category-group.category-group",
+      "inversedBy": "seo_meta"
+    }
+  }
+}

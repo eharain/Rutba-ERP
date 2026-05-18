@@ -1101,6 +1101,7 @@ export interface ApiBrandGroupBrandGroup extends Struct.CollectionTypeSchema {
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    description: Schema.Attribute.RichText;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
@@ -1109,8 +1110,10 @@ export interface ApiBrandGroupBrandGroup extends Struct.CollectionTypeSchema {
       Schema.Attribute.Private;
     name: Schema.Attribute.String & Schema.Attribute.Required;
     publishedAt: Schema.Attribute.DateTime;
+    seo_meta: Schema.Attribute.Relation<'oneToOne', 'api::seo-meta.seo-meta'>;
     slug: Schema.Attribute.UID<'name'> & Schema.Attribute.Required;
     sort_order: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    summary: Schema.Attribute.RichText;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -1131,6 +1134,7 @@ export interface ApiBrandBrand extends Struct.CollectionTypeSchema {
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    description: Schema.Attribute.RichText;
     gallery: Schema.Attribute.Media<
       'images' | 'files' | 'videos' | 'audios',
       true
@@ -1142,7 +1146,9 @@ export interface ApiBrandBrand extends Struct.CollectionTypeSchema {
     logo: Schema.Attribute.Media<'images' | 'files' | 'videos' | 'audios'>;
     name: Schema.Attribute.String & Schema.Attribute.Required;
     publishedAt: Schema.Attribute.DateTime;
+    seo_meta: Schema.Attribute.Relation<'oneToOne', 'api::seo-meta.seo-meta'>;
     slug: Schema.Attribute.UID<'name'> & Schema.Attribute.Required;
+    summary: Schema.Attribute.RichText;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -1286,6 +1292,7 @@ export interface ApiCategoryGroupCategoryGroup
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    description: Schema.Attribute.RichText;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
@@ -1294,8 +1301,10 @@ export interface ApiCategoryGroupCategoryGroup
       Schema.Attribute.Private;
     name: Schema.Attribute.String & Schema.Attribute.Required;
     publishedAt: Schema.Attribute.DateTime;
+    seo_meta: Schema.Attribute.Relation<'oneToOne', 'api::seo-meta.seo-meta'>;
     slug: Schema.Attribute.UID<'name'> & Schema.Attribute.Required;
     sort_order: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    summary: Schema.Attribute.RichText;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -1321,7 +1330,7 @@ export interface ApiCategoryCategory extends Struct.CollectionTypeSchema {
       'manyToMany',
       'api::delivery-method.delivery-method'
     >;
-    description: Schema.Attribute.Text;
+    description: Schema.Attribute.RichText;
     gallery: Schema.Attribute.Media<
       'images' | 'files' | 'videos' | 'audios',
       true
@@ -1341,8 +1350,9 @@ export interface ApiCategoryCategory extends Struct.CollectionTypeSchema {
     >;
     parent: Schema.Attribute.Relation<'manyToOne', 'api::category.category'>;
     publishedAt: Schema.Attribute.DateTime;
+    seo_meta: Schema.Attribute.Relation<'oneToOne', 'api::seo-meta.seo-meta'>;
     slug: Schema.Attribute.UID<'name'> & Schema.Attribute.Required;
-    summary: Schema.Attribute.Text;
+    summary: Schema.Attribute.RichText;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -1449,15 +1459,10 @@ export interface ApiCmsPageCmsPage extends Struct.CollectionTypeSchema {
       'api::cms-page.cms-page'
     > &
       Schema.Attribute.Private;
-    meta_description: Schema.Attribute.Text;
-    meta_keywords: Schema.Attribute.String;
-    meta_title: Schema.Attribute.String;
-    noindex: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     offers: Schema.Attribute.Relation<
       'manyToMany',
       'api::sale-offer.sale-offer'
     >;
-    og_image: Schema.Attribute.Media<'images'>;
     owners: Schema.Attribute.Relation<
       'manyToMany',
       'plugin::users-permissions.user'
@@ -1477,6 +1482,7 @@ export interface ApiCmsPageCmsPage extends Struct.CollectionTypeSchema {
     >;
     related_pages_priority: Schema.Attribute.Integer &
       Schema.Attribute.DefaultTo<102>;
+    seo_meta: Schema.Attribute.Relation<'oneToOne', 'api::seo-meta.seo-meta'>;
     slug: Schema.Attribute.UID<'title'> & Schema.Attribute.Required;
     sort_order: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
     title: Schema.Attribute.String & Schema.Attribute.Required;
@@ -2808,6 +2814,7 @@ export interface ApiProductGroupProductGroup
     priority: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
     products: Schema.Attribute.Relation<'manyToMany', 'api::product.product'>;
     publishedAt: Schema.Attribute.DateTime;
+    seo_meta: Schema.Attribute.Relation<'oneToOne', 'api::seo-meta.seo-meta'>;
     show_brand: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
     show_category: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
     slug: Schema.Attribute.UID<'name'> & Schema.Attribute.Required;
@@ -2872,6 +2879,7 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
     >;
     reorder_level: Schema.Attribute.Integer;
     selling_price: Schema.Attribute.Decimal;
+    seo_meta: Schema.Attribute.Relation<'oneToOne', 'api::seo-meta.seo-meta'>;
     sku: Schema.Attribute.String;
     stock_quantity: Schema.Attribute.Integer;
     summary: Schema.Attribute.RichText;
@@ -3566,6 +3574,68 @@ export interface ApiSaleSale extends Struct.CollectionTypeSchema {
     subtotal: Schema.Attribute.Decimal;
     tax: Schema.Attribute.Decimal;
     total: Schema.Attribute.Decimal & Schema.Attribute.Required;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiSeoMetaSeoMeta extends Struct.CollectionTypeSchema {
+  collectionName: 'seo_metas';
+  info: {
+    description: 'SEO and social-share metadata attached to a CMS entity.';
+    displayName: 'SEO Meta';
+    pluralName: 'seo-metas';
+    singularName: 'seo-meta';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    brand: Schema.Attribute.Relation<'oneToOne', 'api::brand.brand'>;
+    brand_group: Schema.Attribute.Relation<
+      'oneToOne',
+      'api::brand-group.brand-group'
+    >;
+    category: Schema.Attribute.Relation<'oneToOne', 'api::category.category'>;
+    category_group: Schema.Attribute.Relation<
+      'oneToOne',
+      'api::category-group.category-group'
+    >;
+    cms_page: Schema.Attribute.Relation<'oneToOne', 'api::cms-page.cms-page'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    entity_title: Schema.Attribute.String;
+    entity_type: Schema.Attribute.Enumeration<
+      [
+        'cms-page',
+        'product',
+        'category',
+        'brand',
+        'product-group',
+        'brand-group',
+        'category-group',
+      ]
+    > &
+      Schema.Attribute.DefaultTo<'cms-page'>;
+    keywords: Schema.Attribute.Text;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::seo-meta.seo-meta'
+    > &
+      Schema.Attribute.Private;
+    meta_description: Schema.Attribute.Text;
+    meta_title: Schema.Attribute.String;
+    noindex: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    og_image: Schema.Attribute.Media<'images'>;
+    product: Schema.Attribute.Relation<'oneToOne', 'api::product.product'>;
+    product_group: Schema.Attribute.Relation<
+      'oneToOne',
+      'api::product-group.product-group'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -5220,6 +5290,7 @@ declare module '@strapi/strapi' {
       'api::sale-return-item.sale-return-item': ApiSaleReturnItemSaleReturnItem;
       'api::sale-return.sale-return': ApiSaleReturnSaleReturn;
       'api::sale.sale': ApiSaleSale;
+      'api::seo-meta.seo-meta': ApiSeoMetaSeoMeta;
       'api::site-setting.site-setting': ApiSiteSettingSiteSetting;
       'api::social-account.social-account': ApiSocialAccountSocialAccount;
       'api::social-post.social-post': ApiSocialPostSocialPost;

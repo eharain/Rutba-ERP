@@ -64,6 +64,7 @@ const FIXED_BYPASS_PATHS = [
     '/api/cash-registers/active',
     '/api/cash-registers/open',
     '/api/cash-registers',
+    '/api/cms-bulk',
     '/uploads',
     '/users-permissions',
 ];
