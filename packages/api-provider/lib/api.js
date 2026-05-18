@@ -251,7 +251,7 @@ async function del(path, jwt) {
 }
 
 
-async function uploadFile(files, ref, field, refId, { name, alt, caption }, jwt) {
+async function uploadFile(files, ref, field, refId, { name, alt, caption } = {}, jwt) {
     const form = new FormData();
     if (Array.isArray(files)) {
         for (const file of files) {
