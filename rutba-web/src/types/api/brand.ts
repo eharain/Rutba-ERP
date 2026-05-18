@@ -10,4 +10,7 @@ export interface BrandInterface {
   gallery?: ImageInterface[];
   keywords?: string[];
   documentId?: string;
+  summary?: string;
+  description?: string;
+  seo_meta?: import("./cms-page").SeoMetaInterface;
 }

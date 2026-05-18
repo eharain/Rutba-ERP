@@ -20,9 +20,16 @@ export default function CmsPageContent({
 }: {
   page: CmsPageDetailInterface;
 }) {
-  const groupMap = new Map<string, CmsProductGroupInterface>();
-  for (const g of page.product_groups ?? []) {
-    groupMap.set(g.documentId, g);
+  // Strapi returns relations in _ord order; preserve that, drop accidental dupes.
+  const productGroups: CmsProductGroupInterface[] = [];
+  {
+    const seen = new Set<string>();
+    for (const g of page.product_groups ?? []) {
+      if (!seen.has(g.documentId)) {
+        seen.add(g.documentId);
+        productGroups.push(g);
+      }
+    }
   }
 
   const bgUrl = page.background_image?.url
@@ -38,26 +45,61 @@ export default function CmsPageContent({
     | { type: "related-pages"; priority: number; key: string };
 
   const sections: Section[] = [];
-
-  for (const g of groupMap.values()) {
-    sections.push({ type: "product-group", priority: g.priority ?? 50, group: g, key: "pg-" + g.documentId });
-  }
+  const fixedPriorities: number[] = [];
 
   if (page.featured_image?.url) {
-    sections.push({ type: "featured-image", priority: page.featured_image_priority ?? 0, key: "featured-image" });
+    const p = page.featured_image_priority ?? 0;
+    sections.push({ type: "featured-image", priority: p, key: "featured-image" });
+    fixedPriorities.push(p);
   }
   if (page.excerpt) {
-    sections.push({ type: "excerpt", priority: page.excerpt_priority ?? 2, key: "excerpt" });
+    const p = page.excerpt_priority ?? 2;
+    sections.push({ type: "excerpt", priority: p, key: "excerpt" });
+    fixedPriorities.push(p);
   }
   if (page.content) {
-    sections.push({ type: "content", priority: page.content_priority ?? 98, key: "content" });
+    const p = page.content_priority ?? 98;
+    sections.push({ type: "content", priority: p, key: "content" });
+    fixedPriorities.push(p);
   }
   if (page.gallery && page.gallery.length > 0) {
-    sections.push({ type: "gallery", priority: page.gallery_priority ?? 100, key: "gallery" });
+    const p = page.gallery_priority ?? 100;
+    sections.push({ type: "gallery", priority: p, key: "gallery" });
+    fixedPriorities.push(p);
   }
   if (page.related_pages && page.related_pages.length > 0) {
-    sections.push({ type: "related-pages", priority: page.related_pages_priority ?? 102, key: "related-pages" });
+    const p = page.related_pages_priority ?? 102;
+    sections.push({ type: "related-pages", priority: p, key: "related-pages" });
+    fixedPriorities.push(p);
   }
+
+  // Slot product groups into the largest gap between fixed sections so the
+  // CMS-defined _ord (drag order in the editor) determines their relative
+  // position on the page. With no fixed sections, fall back to 0..100.
+  let gapStart = 0;
+  let gapEnd = 100;
+  if (fixedPriorities.length >= 2) {
+    const sortedFixed = [...fixedPriorities].sort((a, b) => a - b);
+    let largest = -Infinity;
+    for (let i = 1; i < sortedFixed.length; i++) {
+      const size = sortedFixed[i] - sortedFixed[i - 1];
+      if (size > largest) {
+        largest = size;
+        gapStart = sortedFixed[i - 1];
+        gapEnd = sortedFixed[i];
+      }
+    }
+  } else if (fixedPriorities.length === 1) {
+    gapStart = fixedPriorities[0];
+    gapEnd = gapStart + 100;
+  }
+
+  const N = productGroups.length;
+  productGroups.forEach((g, idx) => {
+    const frac = (idx + 1) / (N + 1);
+    const groupPriority = gapStart + frac * (gapEnd - gapStart);
+    sections.push({ type: "product-group", priority: groupPriority, group: g, key: "pg-" + g.documentId });
+  });
 
   sections.sort((a, b) => a.priority - b.priority);
 
@@ -70,17 +112,17 @@ export default function CmsPageContent({
   return (
     <>
       <Seo
-        title={page.meta_title || page.title}
+        title={page.seo_meta?.meta_title || page.title}
         description={
-          page.meta_description ||
+          page.seo_meta?.meta_description ||
           (page.excerpt
             ? page.excerpt.replace(/[#*_~`>\[\]()!|-]/g, "").trim()
             : undefined)
         }
-        keywords={page.meta_keywords}
-        image={page.og_image?.url || page.featured_image?.url}
+        keywords={(page.seo_meta?.keywords || []).map((k) => k.keyword)}
+        image={page.seo_meta?.og_image?.url || page.featured_image?.url}
         type={seoType}
-        noindex={!!page.noindex}
+        noindex={!!page.seo_meta?.noindex}
       />
 
       <div

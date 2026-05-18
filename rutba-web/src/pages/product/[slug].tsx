@@ -443,10 +443,21 @@ export default function ProductDetail({
         </Head>
       )}
       <Seo
-        title={product?.name}
-        description={seoDescription}
-        keywords={seoKeywords}
-        image={product?.gallery?.[0]?.url || product?.logo?.url}
+        title={product?.seo_meta?.meta_title || product?.name}
+        description={product?.seo_meta?.meta_description || seoDescription}
+        keywords={(() => {
+          const raw = product?.seo_meta?.keywords;
+          if (typeof raw === "string" && raw.trim()) {
+            return raw.split(",").map((k) => k.trim()).filter(Boolean);
+          }
+          return seoKeywords;
+        })()}
+        image={
+          product?.seo_meta?.og_image?.url ||
+          product?.gallery?.[0]?.url ||
+          product?.logo?.url
+        }
+        noindex={!!product?.seo_meta?.noindex}
         type="product"
       />
       {product?.name && (

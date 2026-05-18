@@ -1,4 +1,5 @@
 import "@/styles/globals.scss";
+import { useState } from "react";
 import type { AppProps } from "next/app";
 import { SessionProvider } from "next-auth/react";
 import { Toaster } from "@/components/ui/toaster";
@@ -14,12 +15,16 @@ import SiteJsonLd from "@/components/seo/site-json-ld";
 // calls to web_user (server-side fallback or explicit X-Rutba-App-Role).
 AppContextEndpoints.setAppName('web');
 
-const queryClient = new QueryClient();
-
 export default function App({
   Component,
   pageProps: { session, ...pageProps },
 }: AppProps) {
+  // Per-render QueryClient — a module-level singleton is shared across
+  // requests on the Node SSR process, so a cached entry from request A
+  // leaks into request B's render and `initialData` from getServerSideProps
+  // gets ignored. That mismatch then trips hydration on the client.
+  const [queryClient] = useState(() => new QueryClient());
+
   return (
     <SessionProvider session={session}>
       <QueryClientProvider client={queryClient}>
