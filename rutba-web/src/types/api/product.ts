@@ -48,6 +48,7 @@ export interface ProductInterface {
   brands?: BrandInterface[];
   categories?: CategoryInterface[];
   terms?: TermInterface[];
+  seo_meta?: import("./cms-page").SeoMetaInterface;
 }
 
 export interface FilterProductInterface {

@@ -17,11 +17,20 @@ export interface CmsPageInterface {
   publishedAt: string;
   featured_image?: ImageInterface;
   background_image?: ImageInterface;
+  seo_meta?: SeoMetaInterface;
+}
+
+export interface SeoMetaInterface {
+  id: number;
+  documentId: string;
+  entity_type?: string;
+  entity_title?: string;
   meta_title?: string;
   meta_description?: string;
-  meta_keywords?: string;
-  og_image?: ImageInterface;
   noindex?: boolean;
+  og_image?: ImageInterface;
+  /** Comma-separated free-form keyword list. */
+  keywords?: string;
 }
 
 export interface OfferInterface {
@@ -53,6 +62,7 @@ export interface CmsProductGroupInterface {
   show_brand?: boolean;
   show_category?: boolean;
   offers?: OfferInterface[];
+  seo_meta?: SeoMetaInterface;
 }
 
 export interface CmsBrandGroupInterface {
@@ -62,6 +72,7 @@ export interface CmsBrandGroupInterface {
   slug: string;
   sort_order: number;
   brands?: BrandInterface[];
+  seo_meta?: SeoMetaInterface;
 }
 
 export interface CmsCategoryGroupInterface {
@@ -71,6 +82,7 @@ export interface CmsCategoryGroupInterface {
   slug: string;
   sort_order: number;
   categories?: CategoryInterface[];
+  seo_meta?: SeoMetaInterface;
 }
 
 export interface CmsFooterInterface {

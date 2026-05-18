@@ -143,13 +143,16 @@ export default function ProductGroupPage({
   return (
     <>
       <Seo
-        title={group.title || group.name}
+        title={group.seo_meta?.meta_title || group.title || group.name}
         description={
-          group.excerpt
+          group.seo_meta?.meta_description ||
+          (group.excerpt
             ? group.excerpt.replace(/[#*_~`>\[\]()!|-]/g, "").trim()
-            : undefined
+            : undefined)
         }
-        image={group.cover_image?.url}
+        keywords={(group.seo_meta?.keywords || []).map((k) => k.keyword)}
+        image={group.seo_meta?.og_image?.url || group.cover_image?.url}
+        noindex={!!group.seo_meta?.noindex}
       />
     <LayoutMain>
       <div>

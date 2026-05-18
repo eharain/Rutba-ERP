@@ -28,17 +28,17 @@ export default function CmsNewsPageContent({
   return (
     <>
       <Seo
-        title={page.meta_title || page.title}
+        title={page.seo_meta?.meta_title || page.title}
         description={
-          page.meta_description ||
+          page.seo_meta?.meta_description ||
           (page.excerpt
             ? page.excerpt.replace(/[#*_~`>\[\]()!|-]/g, "").trim()
             : undefined)
         }
-        keywords={page.meta_keywords}
-        image={page.og_image?.url || page.featured_image?.url}
+        keywords={(page.seo_meta?.keywords || []).map((k) => k.keyword)}
+        image={page.seo_meta?.og_image?.url || page.featured_image?.url}
         type="article"
-        noindex={!!page.noindex}
+        noindex={!!page.seo_meta?.noindex}
       />
 
       <div className="container-fluid my-16">

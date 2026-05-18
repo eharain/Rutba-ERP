@@ -8,4 +8,8 @@ export interface CategoryInterface {
   createdAt: string;
   updatedAt: string;
   logo?: ImageInterface;
+  documentId?: string;
+  summary?: string;
+  description?: string;
+  seo_meta?: import("./cms-page").SeoMetaInterface;
 }

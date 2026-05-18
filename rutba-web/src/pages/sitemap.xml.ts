@@ -69,7 +69,7 @@ export const getServerSideProps: GetServerSideProps = async ({ res }) => {
   try {
     const cmsPages = (await getCmsPagesSSR()) as CmsPageInterface[];
     for (const p of cmsPages) {
-      if (p.noindex) continue;
+      if (p.seo_meta?.noindex) continue;
       entries.push({
         loc: getPageUrl(p),
         lastmod: p.updatedAt?.split("T")[0],
