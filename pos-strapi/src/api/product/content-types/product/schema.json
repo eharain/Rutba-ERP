@@ -5,7 +5,7 @@
     "singularName": "product",
     "pluralName": "products",
     "displayName": "Product",
-    "description": "Items sold in the POS"
+    "description": "Items sold in the POS and online is a product and product variants"
   },
   "options": {
     "draftAndPublish": true
