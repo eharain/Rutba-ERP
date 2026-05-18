@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from "react"
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { MediaLibraryEndpoints, MediaUtilsEndpoints } from "@rutba/api-provider/endpoints";
+import { MediaLibraryEndpoints, MediaUtilsEndpoints, UploadEndpoints } from "@rutba/api-provider/endpoints";
 import { useToast } from "../components/Toast";
 
 const PAGE_SIZE = 30;
@@ -165,7 +165,7 @@ export default function MediaPage() {
         try {
             const folderId = (currentFolderId && currentFolderId !== 'all' && currentFolderId !== 'root')
                 ? currentFolderId : null;
-            const uploaded = await MediaLibraryEndpoints.uploadFile(newFiles, { name: null, alt: null, caption: null }, null, null, null);
+            const uploaded = await UploadEndpoints.uploadFiles(newFiles);
             if (folderId && uploaded) {
                 const ids = (Array.isArray(uploaded) ? uploaded : [uploaded]).map(f => f.id);
                 await MediaLibraryEndpoints.moveFiles({
@@ -273,7 +273,7 @@ export default function MediaPage() {
         try {
             const folderId = (currentFolderId && currentFolderId !== 'all' && currentFolderId !== 'root')
                 ? currentFolderId : null;
-            const uploaded = await MediaLibraryEndpoints.uploadFile(imageFiles, { name: null, alt: null, caption: null }, null, null, null);
+            const uploaded = await UploadEndpoints.uploadFiles(imageFiles);
             if (folderId && uploaded) {
                 const ids = (Array.isArray(uploaded) ? uploaded : [uploaded]).map(f => f.id);
                 await MediaLibraryEndpoints.moveFiles({
