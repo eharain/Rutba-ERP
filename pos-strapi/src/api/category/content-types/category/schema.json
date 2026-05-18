@@ -19,10 +19,10 @@
       "required": true
     },
     "summary": {
-      "type": "text"
+      "type": "richtext"
     },
     "description": {
-      "type": "text"
+      "type": "richtext"
     },
     "parent": {
       "type": "relation",
@@ -70,6 +70,12 @@
       "relation": "manyToMany",
       "target": "api::delivery-method.delivery-method",
       "mappedBy": "categories"
+    },
+    "seo_meta": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::seo-meta.seo-meta",
+      "mappedBy": "category"
     }
   }
 }

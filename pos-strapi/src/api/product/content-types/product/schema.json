@@ -143,6 +143,12 @@
     "is_exchangeable": {
       "type": "boolean",
       "default": true
+    },
+    "seo_meta": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::seo-meta.seo-meta",
+      "mappedBy": "product"
     }
   }
 }

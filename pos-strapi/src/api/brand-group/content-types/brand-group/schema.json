@@ -21,6 +21,12 @@
       "targetField": "name",
       "required": true
     },
+    "summary": {
+      "type": "richtext"
+    },
+    "description": {
+      "type": "richtext"
+    },
     "brands": {
       "type": "relation",
       "relation": "manyToMany",
@@ -29,6 +35,12 @@
     "sort_order": {
       "type": "integer",
       "default": 0
+    },
+    "seo_meta": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::seo-meta.seo-meta",
+      "mappedBy": "brand_group"
     }
   }
 }

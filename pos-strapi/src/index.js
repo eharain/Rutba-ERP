@@ -4,6 +4,7 @@ const seedApiProvider = require('./seed/api-provider-seed');
 const seedAccounting = require('./seed/accounting-seed');
 const runJsonSeeds = require('./seed/json-seed-runner');
 const seedUpPermissions = require('./seed/up-permissions-seed');
+const ensureSeoMetaPerEntity = require('./seed/seo-meta-backfill');
 const { resolveHrRolesForUser } = require('./utils/hr-role-provider');
 
 // Ensures the site-setting singleType has a published row so consumers
@@ -145,6 +146,13 @@ async function runBackgroundSeeds(strapi) {
         await runJsonSeeds(strapi);
     } catch (err) {
         strapi.log.error('[bootstrap] JSON seed failed: ' + err.message);
+        strapi.log.error(err.stack);
+    }
+
+    try {
+        await ensureSeoMetaPerEntity(strapi);
+    } catch (err) {
+        strapi.log.error('[bootstrap] seo-meta backfill failed: ' + err.message);
         strapi.log.error(err.stack);
     }
 
