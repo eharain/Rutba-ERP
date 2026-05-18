@@ -1,16 +1,12 @@
 import NextImage from "@/components/next-image";
 import Link from "next/link";
-import { marked } from "marked";
-import { markedVideoEmbed } from "@/lib/marked-video-embed";
+import { renderMarkdown } from "@/lib/render-markdown";
 
-import { IMAGE_URL } from "@/static/const";
+import { resolveMediaUrl } from "@/lib/media-url";
 import { CmsPageDetailInterface } from "@/types/api/cms-page";
 import { getPageUrl } from "@/lib/cms-page-types";
 import CmsContactFormSection from "./cms-contact-form-section";
 import Seo from "@/components/seo/seo";
-
-marked.use({ breaks: true, gfm: true });
-marked.use(markedVideoEmbed({ imageBaseUrl: IMAGE_URL }));
 
 export default function CmsInfoPageContent({
   page,
@@ -56,7 +52,7 @@ export default function CmsInfoPageContent({
         {page.featured_image?.url && (
           <div className="relative w-full aspect-video rounded-lg overflow-hidden mb-10">
             <NextImage
-              src={IMAGE_URL + page.featured_image.url}
+              src={resolveMediaUrl(page.featured_image.url)}
               fill
               className="object-cover"
               alt={page.title}
@@ -70,7 +66,7 @@ export default function CmsInfoPageContent({
           <div
             className="prose prose-lg prose-slate max-w-none mb-10 text-slate-600 border-l-4 border-slate-200 pl-4"
             dangerouslySetInnerHTML={{
-              __html: marked.parse(page.excerpt) as string,
+              __html: renderMarkdown(page.excerpt),
             }}
           />
         )}
@@ -80,7 +76,7 @@ export default function CmsInfoPageContent({
           <div
             className="prose prose-slate max-w-none prose-img:rounded-lg prose-a:text-blue-600"
             dangerouslySetInnerHTML={{
-              __html: marked.parse(page.content) as string,
+              __html: renderMarkdown(page.content),
             }}
           />
         )}
@@ -96,7 +92,7 @@ export default function CmsInfoPageContent({
                   className="relative aspect-square rounded-lg overflow-hidden"
                 >
                   <NextImage
-                    src={IMAGE_URL + img.url}
+                    src={resolveMediaUrl(img.url)}
                     fill
                     className="object-cover"
                     alt={img.alternativeText || page.title}
@@ -123,7 +119,7 @@ export default function CmsInfoPageContent({
                       {rp.featured_image?.url ? (
                         <div className="relative w-full h-40">
                           <NextImage
-                            src={IMAGE_URL + rp.featured_image.url}
+                            src={resolveMediaUrl(rp.featured_image.url)}
                             fill
                             className="object-cover"
                             alt={rp.title}
@@ -143,7 +139,7 @@ export default function CmsInfoPageContent({
                           <div
                             className="text-sm text-slate-500 mt-1 line-clamp-2 prose prose-sm"
                             dangerouslySetInnerHTML={{
-                              __html: marked.parse(rp.excerpt) as string,
+                              __html: renderMarkdown(rp.excerpt),
                             }}
                           />
                         )}

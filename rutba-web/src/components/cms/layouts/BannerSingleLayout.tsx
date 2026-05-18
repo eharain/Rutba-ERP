@@ -3,7 +3,7 @@ import NextImage from "@/components/next-image";
 import { IMAGE_URL } from "@/static/const";
 import { CmsProductGroupInterface } from "@/types/api/cms-page";
 import { currencyFormat } from "@/lib/use-currency";
-import { marked } from "marked";
+import { renderMarkdown } from "@/lib/render-markdown";
 import { ArrowRight } from "lucide-react";
 
 interface BannerSingleLayoutProps {
@@ -54,7 +54,7 @@ export default function BannerSingleLayout({ group }: BannerSingleLayoutProps) {
               <div
                 className="mt-3 text-white/85 text-sm md:text-base line-clamp-2 max-w-2xl prose prose-invert prose-sm md:prose-base"
                 dangerouslySetInnerHTML={{
-                  __html: marked.parse(group.excerpt) as string,
+                  __html: renderMarkdown(group.excerpt),
                 }}
               />
             )}

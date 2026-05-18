@@ -8,6 +8,24 @@ import StrapiMediaLibrary from './StrapiMediaLibrary';
 marked.setOptions({ breaks: true, gfm: true });
 marked.use(markedVideoEmbed({ imageBaseUrl: IMAGE_URL }));
 
+// Repair markdown that landed on a single line (common in AI-generated CSV/
+// xlsx imports). Mid-line `### Heading` and ` - **Label:**` patterns get a
+// newline injected so marked picks them up as block-level. Kept identical to
+// rutba-web/src/lib/render-markdown.ts — duplicated because pos-shared can't
+// import from a sibling app.
+function normalizeMarkdown(input) {
+    if (input == null) return '';
+    let out = String(input);
+    if (!out) return '';
+    out = out.replace(/([^\n])(#{1,6} )/g, '$1\n\n$2');
+    out = out.replace(/([^\n])\s-\s(\*\*[^*]+:\*\*)/g, '$1\n- $2');
+    // ::video[url]{attrs} block directive — needs its own line for the
+    // tokenizer to fire.
+    out = out.replace(/([^\n])(::video\[)/g, '$1\n\n$2');
+    out = out.replace(/(::video\[[^\]]+\](?:\{[^}]*\})?)([^\n])/g, '$1\n\n$2');
+    return out;
+}
+
 const TOOLBAR = [
     { icon: 'fa-heading', label: 'H1', md: (s) => `# ${s || 'Heading'}`, wrap: false },
     { icon: 'fa-heading', label: 'H2', md: (s) => `## ${s || 'Heading'}`, wrap: false, small: true },
@@ -83,7 +101,7 @@ export default function MarkdownEditor({ value = '', onChange, name, rows = 12, 
 
     const getPreviewHtml = useCallback(() => {
         try {
-            return marked.parse(value || '');
+            return marked.parse(normalizeMarkdown(value || ''));
         } catch {
             return '';
         }
