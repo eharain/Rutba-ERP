@@ -54,9 +54,9 @@ export const BrandsEndpoints = {
 
     /**
      * Simple list for selectors / small dropdowns.
-     * @param {{ sort?, populate?, search? }} opts
+     * @param {{ sort?, populate?, search?, page?, pageSize? }} opts
      */
-    list: ({ sort, populate, search } = {}) => ({
+    list: ({ sort, populate, search, page = 1, pageSize = 500 } = {}) => ({
         path: '/brands',
         action: 'find',
         method: 'get',
@@ -65,7 +65,7 @@ export const BrandsEndpoints = {
         params: {
             sort: sort ?? ['name:asc'],
             populate: populate ?? { logo: true },
-            pagination: { page: 1, pageSize: 500 },
+            pagination: { page, pageSize },
             ...(search ? { filters: { name: { $containsi: search } } } : {}),
         },
     }),

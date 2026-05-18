@@ -80,6 +80,7 @@ export async function fetchProducts(filters, page, rowsPerPage, sort) {
         purchases: filters.purchases,
         parentOnly: filters.parentOnly,
         status: filters.status,
+        populate: filters.populate,
         sort,
     });
 }

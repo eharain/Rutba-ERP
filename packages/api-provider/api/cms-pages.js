@@ -29,7 +29,11 @@ export const CmsPagesEndpoints = {
             {
                 sort: ['sort_order:asc', 'createdAt:desc'],
                 fields: ['title', 'slug', 'excerpt', 'page_type', 'sort_order', 'enable_contact_form', 'createdAt', 'updatedAt', 'publishedAt'],
-                populate: ['featured_image', 'background_image'],
+                populate: {
+                    featured_image: true,
+                    background_image: true,
+                    seo_meta: { fields: ['noindex', 'meta_title', 'meta_description'] },
+                },
                 pageSize: 50,
                 ...(pageType ? { filters: { page_type: { $eq: pageType } } } : {}),
             },
@@ -101,7 +105,8 @@ export const CmsPagesEndpoints = {
                 category_groups: { populate: { categories: { populate: { logo: true } } } },
                 product_groups: { populate: { cover_image: true, offers: true, products: { populate: { gallery: true, logo: true, brands: true, categories: true, variants: { populate: { terms: { populate: { term_types: true } } } } } } } },
                 related_pages: { populate: { featured_image: true } },
-                footer: { populate: { pinned_pages: true } }
+                footer: { populate: { pinned_pages: true } },
+                seo_meta: { populate: { og_image: true } }
             }
         }
     }),

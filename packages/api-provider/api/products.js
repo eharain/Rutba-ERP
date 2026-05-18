@@ -77,7 +77,7 @@ export const ProductsEndpoints = {
      * }} filters
      */
     list: (page = 1, pageSize = 100, filters = {}) => {
-        const { brands, categories, suppliers, purchases, parentOnly, status, sort, fields } = filters;
+        const { brands, categories, suppliers, purchases, parentOnly, status, sort, fields, populate: extraPopulate } = filters;
 
         const filterObj = {};
 
@@ -106,6 +106,7 @@ export const ProductsEndpoints = {
                 gallery: true,
                 items: true,
                 purchase_items: { populate: { purchase: true } },
+                ...(extraPopulate && typeof extraPopulate === 'object' ? extraPopulate : {}),
             },
             pagination: { page, pageSize },
             filters: Object.keys(filterObj).length > 0 ? filterObj : undefined,
@@ -186,6 +187,7 @@ export const ProductsEndpoints = {
                 gallery: true,
                 terms: true,
                 parent: true,
+                seo_meta: { populate: { og_image: true } },
             },
         },
     }),
