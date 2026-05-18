@@ -28,15 +28,11 @@ import ProductJsonLd from "@/components/seo/product-json-ld";
 // import useReviewsService from "@/services/reviews";
 import { createWebProductsService, getProductDetailSSR } from "@/services";
 import { currencyFormat } from "@/lib/use-currency";
-import { marked } from "marked";
-import { markedVideoEmbed } from "@/lib/marked-video-embed";
+import { renderMarkdown } from "@/lib/render-markdown";
 import { IMAGE_URL, BASE_URL } from "@/static/const";
 import { CartTermInfo } from "@/types/api/cart";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Head from "next/head";
-
-marked.use({ breaks: true, gfm: true });
-marked.use(markedVideoEmbed({ imageBaseUrl: IMAGE_URL }));
 
 export const getServerSideProps: GetServerSideProps<{
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -598,7 +594,7 @@ export default function ProductDetail({
               {displaySummary && (
                 <div
                   className="prose prose-sm max-w-none text-muted-foreground prose-p:leading-relaxed"
-                  dangerouslySetInnerHTML={{ __html: marked.parse(displaySummary) as string }}
+                  dangerouslySetInnerHTML={{ __html: renderMarkdown(displaySummary) }}
                 />
               )}
 
@@ -764,7 +760,7 @@ export default function ProductDetail({
                       <div
                         className="prose prose-sm max-w-none prose-p:leading-relaxed"
                         dangerouslySetInnerHTML={{
-                          __html: marked.parse(displayDescription) as string,
+                          __html: renderMarkdown(displayDescription),
                         }}
                       />
                     </AccordionContent>

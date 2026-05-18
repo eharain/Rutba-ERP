@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useRouter } from "next/router";
 import Seo from "@/components/seo/seo";
 import Link from "next/link";
-import { marked } from "marked";
+import { renderMarkdown } from "@/lib/render-markdown";
 import { useQuery } from "@tanstack/react-query";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 
@@ -183,7 +183,7 @@ export default function ProductGroupPage({
         {group.excerpt && (
           <div
             className="prose prose-slate max-w-none prose-sm mb-6"
-            dangerouslySetInnerHTML={{ __html: marked.parse(group.excerpt) as string }}
+            dangerouslySetInnerHTML={{ __html: renderMarkdown(group.excerpt) }}
           />
         )}
 
@@ -320,7 +320,7 @@ export default function ProductGroupPage({
         {group.content && (
           <div
             className="mt-8 prose prose-slate max-w-none prose-img:rounded-lg prose-a:text-blue-600"
-            dangerouslySetInnerHTML={{ __html: marked.parse(group.content) as string }}
+            dangerouslySetInnerHTML={{ __html: renderMarkdown(group.content) }}
           />
         )}
       </div>

@@ -1,19 +1,15 @@
 import NextImage from "@/components/next-image";
 import Link from "next/link";
-import { marked } from "marked";
-import { markedVideoEmbed } from "@/lib/marked-video-embed";
 import { ArrowRight } from "lucide-react";
 
-import { IMAGE_URL } from "@/static/const";
 import { CmsPageDetailInterface, CmsProductGroupInterface } from "@/types/api/cms-page";
 import { getPageUrl } from "@/lib/cms-page-types";
 import ProductGroupRenderer from "./ProductGroupRenderer";
 import CmsContactFormSection from "./cms-contact-form-section";
 import Seo from "@/components/seo/seo";
 import { cn } from "@/lib/utils";
-
-marked.use({ breaks: true, gfm: true });
-marked.use(markedVideoEmbed({ imageBaseUrl: IMAGE_URL }));
+import { renderMarkdown } from "@/lib/render-markdown";
+import { resolveMediaUrl } from "@/lib/media-url";
 
 export default function CmsPageContent({
   page,
@@ -33,7 +29,7 @@ export default function CmsPageContent({
   }
 
   const bgUrl = page.background_image?.url
-    ? IMAGE_URL + page.background_image.url
+    ? resolveMediaUrl(page.background_image.url)
     : null;
 
   type Section =
@@ -158,7 +154,7 @@ export default function CmsPageContent({
                   className="relative w-full overflow-hidden h-[60vh] md:h-[72vh] lg:h-[80vh] bg-secondary"
                 >
                   <img
-                    src={IMAGE_URL + page.featured_image!.url}
+                    src={resolveMediaUrl(page.featured_image!.url)}
                     className="absolute inset-0 w-full h-full object-cover"
                     alt={page.title}
                   />
@@ -176,7 +172,7 @@ export default function CmsPageContent({
                     {page.excerpt && (
                       <div
                         className="mt-4 max-w-2xl text-white/85 text-base md:text-lg prose prose-invert prose-sm md:prose-base"
-                        dangerouslySetInnerHTML={{ __html: marked.parse(page.excerpt) as string }}
+                        dangerouslySetInnerHTML={{ __html: renderMarkdown(page.excerpt) }}
                       />
                     )}
                   </div>
@@ -188,7 +184,7 @@ export default function CmsPageContent({
                   <div className="container-fluid">
                     <div
                       className="max-w-3xl mx-auto text-center prose prose-lg max-w-none prose-headings:font-display prose-headings:tracking-tight prose-img:rounded-xl prose-a:text-brand hover:prose-a:text-foreground"
-                      dangerouslySetInnerHTML={{ __html: marked.parse(page.excerpt!) as string }}
+                      dangerouslySetInnerHTML={{ __html: renderMarkdown(page.excerpt) }}
                     />
                   </div>
                 </section>
@@ -199,7 +195,7 @@ export default function CmsPageContent({
                   <div className="container-fluid">
                     <div
                       className="max-w-3xl mx-auto prose prose-lg max-w-none prose-headings:font-display prose-headings:tracking-tight prose-img:rounded-xl prose-a:text-brand hover:prose-a:text-foreground"
-                      dangerouslySetInnerHTML={{ __html: marked.parse(page.content!) as string }}
+                      dangerouslySetInnerHTML={{ __html: renderMarkdown(page.content) }}
                     />
                   </div>
                 </section>
@@ -238,7 +234,7 @@ export default function CmsPageContent({
                               <div className="relative w-full aspect-[16/10] bg-secondary overflow-hidden">
                                 {rp.featured_image?.url ? (
                                   <NextImage
-                                    src={IMAGE_URL + rp.featured_image.url}
+                                    src={resolveMediaUrl(rp.featured_image.url)}
                                     fill
                                     className="object-cover transition-transform duration-700 ease-smooth group-hover:scale-105"
                                     alt={rp.title}
@@ -264,7 +260,7 @@ export default function CmsPageContent({
                                 {rp.excerpt && (
                                   <div
                                     className="text-sm text-muted-foreground mt-2 line-clamp-2 prose prose-sm max-w-none"
-                                    dangerouslySetInnerHTML={{ __html: marked.parse(rp.excerpt) as string }}
+                                    dangerouslySetInnerHTML={{ __html: renderMarkdown(rp.excerpt) }}
                                   />
                                 )}
                                 <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-foreground group-hover:text-brand transition-colors">
@@ -327,7 +323,7 @@ function MosaicGallery({
                 )}
               >
                 <NextImage
-                  src={IMAGE_URL + img.url}
+                  src={resolveMediaUrl(img.url)}
                   fill
                   className="object-cover transition-transform duration-700 ease-smooth group-hover:scale-105"
                   alt={img.alternativeText || alt}

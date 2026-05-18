@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { marked } from "marked";
+import { renderMarkdown } from "@/lib/render-markdown";
 import Link from "next/link";
 import { ArrowRight, LayoutGrid, List } from "lucide-react";
 
@@ -61,7 +61,7 @@ export default function GroupHeader({
         {excerpt && (
           <div
             className="text-sm text-muted-foreground mt-2 line-clamp-2 max-w-2xl prose prose-sm max-w-none"
-            dangerouslySetInnerHTML={{ __html: marked.parse(excerpt) as string }}
+            dangerouslySetInnerHTML={{ __html: renderMarkdown(excerpt) }}
           />
         )}
       </div>

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { marked } from "marked";
+import { renderMarkdown } from "@/lib/render-markdown";
 import { cn } from "@/lib/utils";
 import { CmsProductGroupInterface } from "@/types/api/cms-page";
 import GroupHeader, { type SortOption, type ViewMode } from "./layouts/GroupHeader";
@@ -145,7 +145,7 @@ export default function ProductGroupRenderer({
               "mt-10 max-w-3xl mx-auto prose prose-lg max-w-none prose-headings:font-display prose-headings:tracking-tight prose-img:rounded-xl prose-a:text-brand hover:prose-a:text-foreground",
               isFullWidth ? "container-fluid" : ""
             )}
-            dangerouslySetInnerHTML={{ __html: marked.parse(group.content) as string }}
+            dangerouslySetInnerHTML={{ __html: renderMarkdown(group.content) }}
           />
         )}
       </div>
