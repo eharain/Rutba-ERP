@@ -75,7 +75,7 @@ export default function OfferDetail() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const { toast, ToastContainer } = useToast();
-    const isNew = documentId === "new";
+    const isNew = !documentId || documentId === "new";
 
     const [name, setName] = useState("");
     const [active, setActive] = useState(false);

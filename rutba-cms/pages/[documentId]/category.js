@@ -22,7 +22,7 @@ export default function CategoryDetail() {
     const [loadError, setLoadError] = useState(null);
     const [saving, setSaving] = useState(false);
     const { toast, ToastContainer } = useToast();
-    const isNew = documentId === "new";
+    const isNew = !documentId || documentId === "new";
 
     const [name, setName] = useState("");
     const [slug, setSlug] = useState("");

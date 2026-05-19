@@ -40,7 +40,7 @@ export default function ProductGroupDetail() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const { toast, ToastContainer } = useToast();
-    const isNew = documentId === "new";
+    const isNew = !documentId || documentId === "new";
 
     const [name, setName] = useState("");
     const [title, setTitle] = useState("");

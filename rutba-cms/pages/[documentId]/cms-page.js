@@ -120,7 +120,7 @@ export default function CmsPageDetail() {
     const router = useRouter();
     const { documentId } = router.query;
     const { jwt } = useAuth();
-    const isNew = documentId === "new";
+    const isNew = !documentId || documentId === "new";
 
     const [page, setPage] = useState(null);
     const [isPublished, setIsPublished] = useState(false);
