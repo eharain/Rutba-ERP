@@ -9,6 +9,7 @@ import { useUtil } from '@rutba/pos-shared/context/UtilContext';
 import FileView from '@rutba/pos-shared/components/FileView';
 import MarkdownEditor from '@rutba/pos-shared/components/MarkdownEditor';
 import { MultiSelect } from 'primereact/multiselect';
+import { getBranch } from '@rutba/pos-shared/lib/utils';
 
 export default function ProductEditPage() {
     const router = useRouter();
@@ -17,6 +18,12 @@ export default function ProductEditPage() {
 
     const [productId, setProductId] = useState(null);
     const [product, setProduct] = useState({});
+    // Starting quantity is only collected on creation. After the product is
+    // saved we mint that many stock-items in status 'InStock' so the product's
+    // stock_quantity cache (owned by the stock-item lifecycle) reflects the
+    // opening balance immediately.
+    const [startingQty, setStartingQty] = useState(0);
+    const [seedingStock, setSeedingStock] = useState(false);
     const [categories, setCategories] = useState([]);
     const [brands, setBrands] = useState([]);
     const [suppliers, setSuppliers] = useState([]);
@@ -137,6 +144,45 @@ export default function ProductEditPage() {
         setProduct({ ...product });
     };
 
+    // Mint `qty` stock-items in InStock for a newly-created product so its
+    // opening balance shows up immediately. The stock-item lifecycle keeps
+    // product.stock_quantity in sync — we never write the cache directly.
+    const seedStartingStock = async (newDocId, qty) => {
+        const n = Math.max(0, Math.floor(Number(qty) || 0));
+        if (!newDocId || n < 1) return 0;
+        setSeedingStock(true);
+        try {
+            const baseSku = product.sku || newDocId?.toString().toUpperCase() || 'SKU';
+            const baseBarcode = product.barcode || '';
+            const branch = getBranch();
+            let created = 0;
+            for (let i = 0; i < n; i++) {
+                const seq = (i + 1).toString().padStart(4, '0');
+                const data = {
+                    name: product.name,
+                    sku: `${baseSku}-${Date.now().toString(36)}-${seq}`,
+                    barcode: baseBarcode ? `${baseBarcode}-${seq}` : undefined,
+                    status: 'InStock',
+                    cost_price: parseFloat(product.cost_price) || 0,
+                    selling_price: parseFloat(product.selling_price) || 0,
+                    offer_price: parseFloat(product.offer_price) || 0,
+                    sellable_units: 1,
+                    product: newDocId,
+                    branch: branch?.documentId || branch?.id || undefined,
+                };
+                try {
+                    await StockItemsEndpoints.create(data);
+                    created += 1;
+                } catch (err) {
+                    console.warn('[product-edit] seedStartingStock item failed:', err?.message || err);
+                }
+            }
+            return created;
+        } finally {
+            setSeedingStock(false);
+        }
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setSubmitting(true);
@@ -169,9 +215,17 @@ export default function ProductEditPage() {
 
             const response = await saveProduct(documentId, payload);
             if (response.data?.documentId) {
-                setSuccess('Product saved successfully!');
+                const newDocId = response.data.documentId;
+                // Mint opening stock on create only. The lifecycle recomputes
+                // product.stock_quantity from the new rows.
+                if (!isEdit && startingQty > 0) {
+                    const made = await seedStartingStock(newDocId, startingQty);
+                    setSuccess(`Product created with ${made} starting stock item(s).`);
+                } else {
+                    setSuccess('Product saved successfully!');
+                }
                 if (!isEdit) {
-                    setTimeout(() => router.push(`/${response.data.documentId}/product-edit`), 1500);
+                    setTimeout(() => router.push(`/${newDocId}/product-edit`), 1500);
                 }
             } else {
                 setError('Failed to save product');
@@ -214,10 +268,16 @@ export default function ProductEditPage() {
 
             const response = await saveProduct(documentId, payload);
             if (response.data?.documentId) {
-                setSuccess('Product saved successfully!');
+                const newDocId = response.data.documentId;
+                if (!isEdit && startingQty > 0) {
+                    const made = await seedStartingStock(newDocId, startingQty);
+                    setSuccess(`Product created with ${made} starting stock item(s).`);
+                } else {
+                    setSuccess('Product saved successfully!');
+                }
                 setDirty(false);
                 if (!isEdit) {
-                    setTimeout(() => router.push(`/${response.data.documentId}/product-edit`), 1500);
+                    setTimeout(() => router.push(`/${newDocId}/product-edit`), 1500);
                 }
                 return true;
             } else {
@@ -273,9 +333,12 @@ export default function ProductEditPage() {
             <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => router.push('/products')}>
                 Cancel
             </button>
-            <button type="submit" form="product-edit-form" className="btn btn-primary btn-sm" disabled={submitting}>
-                {submitting ? (
-                    <><span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true" />Saving…</>
+            <button type="submit" form="product-edit-form" className="btn btn-primary btn-sm" disabled={submitting || seedingStock}>
+                {submitting || seedingStock ? (
+                    <>
+                        <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true" />
+                        {seedingStock ? 'Seeding stock…' : 'Saving…'}
+                    </>
                 ) : (
                     <><i className="fas fa-save me-1" />{isEdit ? 'Save' : 'Create'}</>
                 )}
@@ -340,6 +403,31 @@ export default function ProductEditPage() {
                                                 placeholder="SKU"
                                             />
                                         </div>
+                                        {!isEdit && (
+                                            <div className="col-12">
+                                                <label className="form-label fw-bold">
+                                                    <i className="fas fa-boxes me-1 text-muted" />
+                                                    Starting Stock Quantity
+                                                </label>
+                                                <div className="input-group" style={{ maxWidth: 320 }}>
+                                                    <input
+                                                        type="number"
+                                                        min="0"
+                                                        step="1"
+                                                        value={startingQty}
+                                                        onChange={(e) => setStartingQty(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                                                        className="form-control"
+                                                        placeholder="0"
+                                                    />
+                                                    <span className="input-group-text">units</span>
+                                                </div>
+                                                <div className="form-text">
+                                                    {startingQty > 0
+                                                        ? `On save, ${startingQty} stock item(s) will be minted as InStock at your current branch.`
+                                                        : 'Leave 0 to create the product without any opening stock — you can add stock later from the Stock tab.'}
+                                                </div>
+                                            </div>
+                                        )}
                                         <div className="col-12">
                                             <label className="form-label fw-bold">Keywords</label>
                                             <input

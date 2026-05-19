@@ -12,7 +12,7 @@ export interface StockItemsEndpointsType {
     byId(id: any, { populate, fields }?: any): Promise<any>;
     update(documentId: any, data: any): Promise<any>;
     byProduct(productDocId: any, { page = 1, pageSize = 100, populate, sort }?: any): Promise<any>;
-    transfer(): Promise<any>;
+    transfer(payload?: any): Promise<any>;
     meta: any;
 }
 

@@ -212,9 +212,21 @@ export const StockItemsEndpoints = {
     }),
 
     /**
-     * Transfer stock items to another branch — custom Strapi route.
-     * Body: { items: [documentId, ...], toBranch: branchDocId }
+     * Bulk-move stock items to another branch in a single round-trip.
+     * Each item is set to branch=toBranch + status='InStock', and a
+     * `Transferred` entry is appended to its status_history so the move
+     * shows up on the audit trail. The server route lives at
+     * pos-strapi/src/api/stock-item/controllers/transfer.js.
+     *
+     * @param {{ items: Array<string|number>, toBranch: string|number, reason?: string }} payload
      */
-    transfer: () => ({ path: '/stock-items/transfer' }),
+    transfer: (payload = {}) => ({
+        path: '/stock-items/transfer',
+        action: 'create',
+        method: 'post',
+        apps: ['stock'],
+        approle: ['admin', 'manager'],
+        data: payload,
+    }),
 };
 
