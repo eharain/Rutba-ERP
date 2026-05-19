@@ -123,14 +123,22 @@ export default function StockItemsPage() {
         setLoading(true);
         const documentIdsToUpdate = Array.from(selectedItems);
         try {
-            for (const id of documentIdsToUpdate) {
-                await StockItemsEndpoints.update(id, { status: 'InStock', branch: destinationBranch });
-            }
-            alert(`Stock sent to ${destinationBranch} successfully for ${documentIdsToUpdate.length} items`);
+            const res = await StockItemsEndpoints.transfer({
+                items: documentIdsToUpdate,
+                toBranch: destinationBranch,
+            });
+            const moved = res?.transferred ?? documentIdsToUpdate.length;
+            const failedCount = Array.isArray(res?.failed) ? res.failed.length : 0;
+            alert(
+                failedCount > 0
+                    ? `Transferred ${moved} item(s); ${failedCount} failed (see console)`
+                    : `Stock sent to ${res?.to?.name || destinationBranch} for ${moved} item(s)`
+            );
+            if (failedCount > 0) console.warn('[transfer] failures:', res.failed);
             loadStockItems();
         }
         catch (error) {
-            console.error('Error updating stock in stock status:', error);
+            console.error('Error transferring stock:', error);
         } finally {
             setSelectedItems(new Set());
             setSelectedDestinationBranch(null);

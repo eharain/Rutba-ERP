@@ -3,7 +3,9 @@ import { useRouter } from "next/router";
 import Layout from "../../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { MediaUtilsEndpoints, ProductGroupsEndpoints, ProductsEndpoints } from "@rutba/api-provider/endpoints";
+import { isActiveAdminRole, isAppAdmin } from "@rutba/pos-shared/lib/roles";
+import { getBranch } from "@rutba/pos-shared/lib/utils";
+import { MediaUtilsEndpoints, ProductGroupsEndpoints, ProductsEndpoints, StockItemsEndpoints } from "@rutba/api-provider/endpoints";
 import FileView from "@rutba/pos-shared/components/FileView";
 import ProductGalleryManager from "@rutba/pos-shared/components/ProductGalleryManager";
 import ProductVariantManager from "@rutba/pos-shared/components/ProductVariantManager";
@@ -21,9 +23,16 @@ import { buildProductWebUrl } from "../../lib/cmsPageWebUrl";
 export default function ProductDetail() {
     const router = useRouter();
     const { documentId } = router.query;
-    const { jwt } = useAuth();
+    const { jwt, activeRoleKey, adminAppAccess } = useAuth();
     const { currency } = useUtil();
     const isNew = !documentId || documentId === "new";
+
+    // Cost price is admin-only across the ERP (mirror of pos-stock's Pricing
+    // tab). We default to "admin in the current CMS app" as the fallback when
+    // activeRoleKey isn't set yet — the gate matches PermissionCheck's logic.
+    const isAdmin = activeRoleKey
+        ? isActiveAdminRole(activeRoleKey)
+        : isAppAdmin(adminAppAccess, "cms");
     const [product, setProduct] = useState(null);
     const [isPublished, setIsPublished] = useState(false);
     const [loading, setLoading] = useState(true);
@@ -38,7 +47,15 @@ export default function ProductDetail() {
     const [description, setDescription] = useState("");
     const [sellingPrice, setSellingPrice] = useState("");
     const [offerPrice, setOfferPrice] = useState("");
+    const [costPrice, setCostPrice] = useState("");
+    const [showCostPrice, setShowCostPrice] = useState(false);
     const [isActive, setIsActive] = useState(true);
+    // Starting quantity is only collected on creation. After the product is
+    // saved we mint that many stock-items in status 'InStock' so the
+    // stock-item-lifecycle-owned product.stock_quantity cache reflects the
+    // opening balance immediately. Mirrors the pos-stock new-product flow.
+    const [startingQty, setStartingQty] = useState(0);
+    const [seedingStock, setSeedingStock] = useState(false);
     const [logoFile, setLogoFile] = useState(null);
     const [galleryFiles, setGalleryFiles] = useState([]);
     const [allGroups, setAllGroups] = useState([]);
@@ -81,6 +98,7 @@ export default function ProductDetail() {
             setDescription(p.description || "");
             setSellingPrice(p.selling_price ?? "");
             setOfferPrice(p.offer_price ?? "");
+            setCostPrice(p.cost_price ?? "");
             setIsActive(p.is_active ?? true);
             setLogoFile(p.logo || null);
             setGalleryFiles(Array.isArray(p.gallery) ? p.gallery : []);
@@ -114,6 +132,53 @@ export default function ProductDetail() {
         logo: logoFile?.id ?? null,
         gallery: galleryFiles.map(f => f?.id).filter(Boolean),
     });
+
+    // Cost price is admin-only. Non-admins never see the field and we
+    // deliberately omit cost_price from their save/publish payloads so they
+    // can't null-overwrite a value they couldn't read.
+    const costPricePayload = () => (isAdmin
+        ? { cost_price: costPrice === "" ? null : parseFloat(costPrice) }
+        : {});
+
+    // Mint `qty` stock-items in InStock for a newly-created product so its
+    // opening balance shows up immediately. The stock-item lifecycle keeps
+    // product.stock_quantity in sync — we never write the cache directly.
+    // Mirrors pos-stock/pages/[documentId]/product-edit.js#seedStartingStock.
+    const seedStartingStock = async (newDocId, qty) => {
+        const n = Math.max(0, Math.floor(Number(qty) || 0));
+        if (!newDocId || n < 1) return 0;
+        setSeedingStock(true);
+        try {
+            const baseSku = (newDocId || "SKU").toString().toUpperCase();
+            const branch = getBranch();
+            const cost = parseFloat(costPrice) || 0;
+            const sell = parseFloat(sellingPrice) || 0;
+            const offer = parseFloat(offerPrice) || 0;
+            let created = 0;
+            for (let i = 0; i < n; i++) {
+                const seq = (i + 1).toString().padStart(4, "0");
+                try {
+                    await StockItemsEndpoints.create({
+                        name,
+                        sku: `${baseSku}-${Date.now().toString(36)}-${seq}`,
+                        status: "InStock",
+                        cost_price: cost,
+                        selling_price: sell,
+                        offer_price: offer,
+                        sellable_units: 1,
+                        product: newDocId,
+                        branch: branch?.documentId || branch?.id || undefined,
+                    });
+                    created += 1;
+                } catch (err) {
+                    console.warn("[cms/product] seedStartingStock item failed:", err?.message || err);
+                }
+            }
+            return created;
+        } finally {
+            setSeedingStock(false);
+        }
+    };
 
     const loadProductGroups = useCallback(async () => {
         if (!jwt || !documentId || isNew) return;
@@ -161,13 +226,19 @@ export default function ProductDetail() {
                 description,
                 selling_price: parseFloat(sellingPrice) || 0,
                 offer_price: offerPrice ? parseFloat(offerPrice) : null,
+                ...costPricePayload(),
                 is_active: isActive,
                 ...(isNew ? {} : fileFieldsPayload()),
             };
             if (isNew) {
                 const res = await ProductsEndpoints.create({ ...payload, status: "draft" });
                 const created = res.data || res;
-                toast("Product created!", "success");
+                if (startingQty > 0) {
+                    const made = await seedStartingStock(created.documentId, startingQty);
+                    toast(`Product created with ${made} starting stock item(s).`, "success");
+                } else {
+                    toast("Product created!", "success");
+                }
                 router.push(`/${created.documentId}/product`);
             } else {
                 await ProductsEndpoints.updateDraft(documentId, payload);
@@ -193,6 +264,7 @@ export default function ProductDetail() {
                 description,
                 selling_price: parseFloat(sellingPrice) || 0,
                 offer_price: offerPrice ? parseFloat(offerPrice) : null,
+                ...costPricePayload(),
                 is_active: isActive,
                 ...(isNew ? {} : fileFieldsPayload()),
             };
@@ -200,7 +272,12 @@ export default function ProductDetail() {
                 const res = await ProductsEndpoints.create(data);
                 const created = res.data || res;
                 await ProductsEndpoints.publish(created.documentId);
-                toast("Product created & published!", "success");
+                if (startingQty > 0) {
+                    const made = await seedStartingStock(created.documentId, startingQty);
+                    toast(`Product created & published with ${made} starting stock item(s).`, "success");
+                } else {
+                    toast("Product created & published!", "success");
+                }
                 router.push(`/${created.documentId}/product`);
             } else {
                 await ProductsEndpoints.updateDraft(documentId, data);
@@ -243,6 +320,7 @@ export default function ProductDetail() {
                 description,
                 selling_price: parseFloat(sellingPrice) || 0,
                 offer_price: offerPrice ? parseFloat(offerPrice) : null,
+                ...costPricePayload(),
                 is_active: isActive,
             });
             const res = await ProductsEndpoints.byIdPublished(documentId, {
@@ -262,6 +340,7 @@ export default function ProductDetail() {
             setDescription(p.description || "");
             setSellingPrice(p.selling_price ?? "");
             setOfferPrice(p.offer_price ?? "");
+            setCostPrice(p.cost_price ?? "");
             setIsActive(p.is_active ?? true);
             setLogoFile(p.logo || null);
             setGalleryFiles(Array.isArray(p.gallery) ? p.gallery : []);
@@ -371,12 +450,13 @@ export default function ProductDetail() {
                 </a>
             )}
             {activeTab === "details" && (
-                <button className="btn btn-sm btn-primary" onClick={handleSave} disabled={saving}>
-                    {saving ? "Saving…" : isNew ? "Create Draft" : "Save Draft"}
+                <button className="btn btn-sm btn-primary" onClick={handleSave} disabled={saving || seedingStock}>
+                    {seedingStock ? "Seeding stock…" : saving ? "Saving…" : isNew ? "Create Draft" : "Save Draft"}
                 </button>
             )}
-            <button className="btn btn-sm btn-success" onClick={handlePublish} disabled={saving}>
-                <i className="fas fa-upload me-1"></i>{saving ? "Publishing…" : isNew ? "Create & Publish" : "Save & Publish"}
+            <button className="btn btn-sm btn-success" onClick={handlePublish} disabled={saving || seedingStock}>
+                <i className="fas fa-upload me-1"></i>
+                {seedingStock ? "Seeding stock…" : saving ? "Publishing…" : isNew ? "Create & Publish" : "Save & Publish"}
             </button>
         </>
     );
@@ -447,20 +527,88 @@ export default function ProductDetail() {
                                                 <MarkdownEditor value={description} onChange={e => setDescription(e.target.value)} name="description" rows={8} placeholder="Write a product description..." />
                                             </div>
                                             <div className="row">
-                                                <div className="col-md-4 mb-3">
+                                                <div className="col-md-3 mb-3">
                                                     <label className="form-label">Selling Price ({currency})</label>
                                                     <input type="number" className="form-control" value={sellingPrice} onChange={e => setSellingPrice(e.target.value)} />
                                                 </div>
-                                                <div className="col-md-4 mb-3">
+                                                <div className="col-md-3 mb-3">
                                                     <label className="form-label">Offer Price ({currency})</label>
                                                     <input type="number" className="form-control" value={offerPrice} onChange={e => setOfferPrice(e.target.value)} placeholder="Optional" />
                                                 </div>
-                                                <div className="col-md-4 mb-3 d-flex align-items-end">
+                                                <div className="col-md-3 mb-3">
+                                                    <label className="form-label d-flex align-items-center gap-2">
+                                                        Cost Price ({currency})
+                                                        {isAdmin
+                                                            ? <span className="badge bg-secondary" title="Admins only">admin</span>
+                                                            : <i className="fas fa-lock text-muted" title="Hidden — admin only" />}
+                                                    </label>
+                                                    {isAdmin ? (
+                                                        <div className="input-group">
+                                                            <input
+                                                                type={showCostPrice ? "number" : "password"}
+                                                                step="0.01"
+                                                                min="0"
+                                                                className="form-control"
+                                                                value={costPrice}
+                                                                onChange={e => setCostPrice(e.target.value)}
+                                                                placeholder="0.00"
+                                                                autoComplete="off"
+                                                            />
+                                                            <button
+                                                                type="button"
+                                                                className="btn btn-outline-secondary"
+                                                                onClick={() => setShowCostPrice(v => !v)}
+                                                                title={showCostPrice ? "Hide cost price" : "Show cost price"}
+                                                                aria-label={showCostPrice ? "Hide cost price" : "Show cost price"}
+                                                            >
+                                                                <i className={`fas ${showCostPrice ? "fa-eye-slash" : "fa-eye"}`} />
+                                                            </button>
+                                                        </div>
+                                                    ) : (
+                                                        <>
+                                                            <input
+                                                                type="password"
+                                                                value="••••••"
+                                                                readOnly
+                                                                disabled
+                                                                className="form-control"
+                                                                aria-label="Cost price (hidden — admin only)"
+                                                            />
+                                                            <div className="form-text">Hidden — admin only.</div>
+                                                        </>
+                                                    )}
+                                                </div>
+                                                <div className="col-md-3 mb-3 d-flex align-items-end">
                                                     <div className="form-check">
                                                         <input type="checkbox" className="form-check-input" id="isActive" checked={isActive} onChange={e => setIsActive(e.target.checked)} />
                                                         <label className="form-check-label" htmlFor="isActive">Active</label>
                                                     </div>
                                                 </div>
+                                                {isNew && (
+                                                    <div className="col-12 mb-3">
+                                                        <label className="form-label">
+                                                            <i className="fas fa-boxes me-1 text-muted" />
+                                                            Starting Stock Quantity
+                                                        </label>
+                                                        <div className="input-group" style={{ maxWidth: 320 }}>
+                                                            <input
+                                                                type="number"
+                                                                min="0"
+                                                                step="1"
+                                                                className="form-control"
+                                                                value={startingQty}
+                                                                onChange={e => setStartingQty(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                                                                placeholder="0"
+                                                            />
+                                                            <span className="input-group-text">units</span>
+                                                        </div>
+                                                        <div className="form-text">
+                                                            {startingQty > 0
+                                                                ? `On save, ${startingQty} stock item(s) will be minted as InStock at your current branch.`
+                                                                : "Leave 0 to create the product without any opening stock — you can add stock later from the Stock app."}
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     </div>

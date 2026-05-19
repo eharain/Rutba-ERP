@@ -161,25 +161,20 @@ module.exports = createCoreController('api::stock-input.stock-input', ({ strapi 
               cost_price: si.costPrice || undefined,
               offer_price: si.offerPrice || undefined,
               selling_price: si.sellingPrice || undefined,
-              stock_quantity: si.quantity || 0,
               is_active: true,
               ...connects,
             },
             status: 'published',
           });
           cache.products.push(productObj);
-        } else {
-          // Increment stock_quantity and connect new relations
-          const addQty = Number(si.quantity) || 0;
-          const currentQty = Number(productObj.stock_quantity) || 0;
+        } else if (Object.keys(connects).length > 0) {
+          // Connect any new relations (brand/category/supplier). stock_quantity
+          // is intentionally NOT written here — the stock-item lifecycle owns
+          // that field and recomputes it from the count of InStock rows.
           productObj = await strapi.documents('api::product.product').update({
             documentId: productObj.documentId,
-            data: {
-              stock_quantity: currentQty + addQty,
-              ...connects,
-            },
+            data: { ...connects },
           });
-          // Update cache with fresh data
           const idx = cache.products.findIndex((p) => p.documentId === productObj.documentId);
           if (idx >= 0) cache.products[idx] = productObj;
         }

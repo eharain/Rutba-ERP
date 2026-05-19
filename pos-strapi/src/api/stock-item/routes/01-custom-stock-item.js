@@ -18,5 +18,21 @@ module.exports = {
         policies: [],
       },
     },
+    {
+      method: 'POST',
+      path: '/stock-items/recompute-product-stock',
+      handler: 'recompute-product-stock.run',
+      config: {
+        auth: false,
+      },
+    },
+    {
+      method: 'POST',
+      path: '/stock-items/transfer',
+      handler: 'transfer.run',
+      config: {
+        auth: false,
+      },
+    },
   ],
 };

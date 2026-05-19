@@ -62,9 +62,9 @@ async function byProduct(productDocId, arg2 = {}) {
     return authApi.fetch(ep.path, ep.params);
 }
 
-async function transfer() {
-    const ep = StockItemsEndpointsApi.transfer();
-    return authApi.fetch(ep.path, ep.params);
+async function transfer(payload = {}) {
+    const ep = StockItemsEndpointsApi.transfer(payload);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
 const endpoints = strictEndpointGuard(
