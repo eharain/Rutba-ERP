@@ -61,7 +61,11 @@ export default function ProductGroupRenderer({
 
   const offerActive = !!activeOffer;
   const activeOfferId = activeOffer?.documentId;
-  const groupDocId = group.documentId;
+  // sourceGroupId carries the source-group context to the product detail page
+  // so the server can resolve the right group offer. Slug is the canonical key;
+  // documentId is the backward-compat fallback. The server's offer resolver
+  // accepts either form.
+  const groupDocId = group.slug || group.documentId;
 
   const totalProducts = allProducts.length;
   const hasMore = effectiveMax > 0 && totalProducts > effectiveMax;

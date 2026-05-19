@@ -57,18 +57,29 @@ module.exports = createCoreService('api::sale-offer.sale-offer', ({ strapi }) =>
    *     freeShipping: bool, OR'd across all live offers on the group
    *   }
    */
-  async resolveOfferForProductInGroup(productId, groupDocId) {
-    if (!productId || !groupDocId) return null;
+  async resolveOfferForProductInGroup(productId, groupSlugOrDocId) {
+    if (!productId || !groupSlugOrDocId) return null;
 
-    const group = await strapi.documents('api::product-group.product-group').findOne({
-      documentId: groupDocId,
+    // Slug is the canonical key from the storefront; documentId is the
+    // backward-compat fallback for any cached/legacy traffic.
+    const groupPopulate = {
+      products: { fields: ['id', 'selling_price', 'offer_price'] },
+      offers: { fields: ['name', 'active', 'start_date', 'end_date', 'discount_mode', 'discount_value', 'free_shipping', 'priority'] },
+    };
+    let group = await strapi.documents('api::product-group.product-group').findFirst({
       status: 'published',
+      filters: { slug: { $eq: groupSlugOrDocId } },
       fields: ['id'],
-      populate: {
-        products: { fields: ['id', 'selling_price', 'offer_price'] },
-        offers: { fields: ['name', 'active', 'start_date', 'end_date', 'discount_mode', 'discount_value', 'free_shipping', 'priority'] },
-      },
+      populate: groupPopulate,
     });
+    if (!group) {
+      group = await strapi.documents('api::product-group.product-group').findOne({
+        documentId: groupSlugOrDocId,
+        status: 'published',
+        fields: ['id'],
+        populate: groupPopulate,
+      });
+    }
     if (!group) return null;
 
     // Product must belong to this group — otherwise the click context is bogus.

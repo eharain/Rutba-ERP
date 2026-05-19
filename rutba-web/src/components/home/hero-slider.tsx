@@ -54,7 +54,7 @@ export default function HeroSlider() {
       >
         {banner.products.map((item, idx) => (
           <SwiperSlide key={"banner-home-" + item.id}>
-            <Link href={`/product/${item.documentId}`} className="block group">
+            <Link href={`/product/${encodeURIComponent(item.slug || item.documentId)}`} className="block group">
               <div className="relative w-full h-[60vh] md:h-[70vh] lg:h-[82vh] overflow-hidden bg-secondary">
                 {item.logo?.url && (
                   <NextImage

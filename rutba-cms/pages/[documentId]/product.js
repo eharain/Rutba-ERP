@@ -16,6 +16,7 @@ import { useToast } from "../../components/Toast";
 import InlineSeoPanel from "../../components/InlineSeoPanel";
 import { persistSeoMeta } from "../../components/SeoMetaFields";
 import { toOrderedRelation } from "../../components/orderedRelation";
+import { buildProductWebUrl } from "../../lib/cmsPageWebUrl";
 
 export default function ProductDetail() {
     const router = useRouter();
@@ -32,6 +33,7 @@ export default function ProductDetail() {
 
     // Editable fields
     const [name, setName] = useState("");
+    const [slug, setSlug] = useState("");
     const [summary, setSummary] = useState("");
     const [description, setDescription] = useState("");
     const [sellingPrice, setSellingPrice] = useState("");
@@ -74,6 +76,7 @@ export default function ProductDetail() {
             setProduct(p);
             setIsPublished(!!(pubRes.data));
             setName(p.name || "");
+            setSlug(p.slug || "");
             setSummary(p.summary || "");
             setDescription(p.description || "");
             setSellingPrice(p.selling_price ?? "");
@@ -148,8 +151,12 @@ export default function ProductDetail() {
     const handleSave = async () => {
         setSaving(true);
         try {
+            const trimmedSlug = (slug || "").trim();
             const payload = {
                 name,
+                // Send slug only when the editor populated it. Empty means
+                // "let the server derive it from name" (lifecycle handles it).
+                ...(trimmedSlug ? { slug: trimmedSlug } : {}),
                 summary,
                 description,
                 selling_price: parseFloat(sellingPrice) || 0,
@@ -178,8 +185,10 @@ export default function ProductDetail() {
     const handlePublish = async () => {
         setSaving(true);
         try {
+            const trimmedSlug = (slug || "").trim();
             const data = {
                 name,
+                ...(trimmedSlug ? { slug: trimmedSlug } : {}),
                 summary,
                 description,
                 selling_price: parseFloat(sellingPrice) || 0,
@@ -226,8 +235,10 @@ export default function ProductDetail() {
         if (!confirm("Save current draft and load the published version into the editor?")) return;
         setSaving(true);
         try {
+            const trimmedSlug = (slug || "").trim();
             await ProductsEndpoints.updateDraft(documentId, {
                 name,
+                ...(trimmedSlug ? { slug: trimmedSlug } : {}),
                 summary,
                 description,
                 selling_price: parseFloat(sellingPrice) || 0,
@@ -246,6 +257,7 @@ export default function ProductDetail() {
             const p = res.data || res;
             if (!p) { toast("No published version found.", "warning"); return; }
             setName(p.name || "");
+            setSlug(p.slug || "");
             setSummary(p.summary || "");
             setDescription(p.description || "");
             setSellingPrice(p.selling_price ?? "");
@@ -347,6 +359,17 @@ export default function ProductDetail() {
                     <i className="fas fa-undo me-1"></i>Load Published
                 </button>
             )}
+            {!isNew && product?.documentId && buildProductWebUrl(product) && (
+                <a
+                    className="btn btn-sm btn-outline-info"
+                    href={buildProductWebUrl(product)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title="Open on the storefront"
+                >
+                    <i className="fas fa-eye me-1"></i>View
+                </a>
+            )}
             {activeTab === "details" && (
                 <button className="btn btn-sm btn-primary" onClick={handleSave} disabled={saving}>
                     {saving ? "Saving…" : isNew ? "Create Draft" : "Save Draft"}
@@ -401,6 +424,19 @@ export default function ProductDetail() {
                                             <div className="mb-3">
                                                 <label className="form-label">Name</label>
                                                 <input type="text" className="form-control" value={name} onChange={e => setName(e.target.value)} />
+                                            </div>
+                                            <div className="mb-3">
+                                                <label className="form-label">Slug</label>
+                                                <input
+                                                    type="text"
+                                                    className="form-control"
+                                                    value={slug}
+                                                    onChange={e => setSlug(e.target.value)}
+                                                    placeholder="auto-generated from name"
+                                                />
+                                                <div className="form-text small">
+                                                    Used in the public URL (<code>/product/{slug || "auto-generated"}</code>). Leave blank to auto-generate from the name.
+                                                </div>
                                             </div>
                                             <div className="mb-3">
                                                 <label className="form-label">Summary (Markdown)</label>

@@ -15,9 +15,11 @@ import ListPagination from "@rutba/pos-shared/components/ListPagination";
 import { SortableTh } from "@rutba/pos-shared/components/Table";
 import ExcelIO from "../components/ExcelIO";
 import { SEO_EXCEL_COLUMNS, SEO_POPULATE, makeSeoUpsert } from "../components/seoExcel";
+import { buildProductWebUrl } from "../lib/cmsPageWebUrl";
 
 const PRODUCT_EXCEL_COLUMNS = [
     { key: "name", isLabel: true, width: 40 },
+    { key: "slug", width: 30 },
     { key: "sku", width: 22 },
     { key: "barcode", width: 22 },
     {
@@ -272,15 +274,23 @@ export default function Products() {
     }, [products, variantsMap]);
 
     const findExistingProduct = useCallback(async (row) => {
-        if (!row.sku) return null;
-        try {
-            const res = await ProductsEndpoints.list(1, 1, {
-                status: "draft",
-                filters: { sku: { $eq: row.sku } },
-                populate: SEO_POPULATE,
-            });
-            return res.data?.[0] || null;
-        } catch { return null; }
+        // Slug is the canonical natural key now (public URLs depend on it);
+        // SKU stays as a fallback for legacy sheets that don't carry slug yet.
+        const lookups = [];
+        if (row.slug) lookups.push({ slug: { $eq: row.slug } });
+        if (row.sku) lookups.push({ sku: { $eq: row.sku } });
+        if (lookups.length === 0) return null;
+        for (const filters of lookups) {
+            try {
+                const res = await ProductsEndpoints.list(1, 1, {
+                    status: "draft",
+                    filters,
+                    populate: SEO_POPULATE,
+                });
+                if (res.data?.[0]) return res.data[0];
+            } catch { /* try next lookup */ }
+        }
+        return null;
     }, []);
 
     const fetchAllProducts = useCallback(async () => {
@@ -497,6 +507,17 @@ export default function Products() {
                                                     <Link className="btn btn-outline-primary" href={`/${p.documentId}/product`}>
                                                         Edit
                                                     </Link>
+                                                    {buildProductWebUrl(p) && (
+                                                        <a
+                                                            className="btn btn-outline-secondary"
+                                                            href={buildProductWebUrl(p)}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            title="Open on the storefront"
+                                                        >
+                                                            <i className="fas fa-eye me-1"></i>View
+                                                        </a>
+                                                    )}
                                                 </div>
                                             </td>
                                         </tr>
@@ -555,6 +576,17 @@ export default function Products() {
                                                                 <Link className="btn btn-outline-primary" href={`/${v.documentId}/product`}>
                                                                     Edit
                                                                 </Link>
+                                                                {buildProductWebUrl(v) && (
+                                                                    <a
+                                                                        className="btn btn-outline-secondary"
+                                                                        href={buildProductWebUrl(v)}
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        title="Open on the storefront"
+                                                                    >
+                                                                        <i className="fas fa-eye me-1"></i>View
+                                                                    </a>
+                                                                )}
                                                             </div>
                                                         </td>
                                                     </tr>

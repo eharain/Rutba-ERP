@@ -34,7 +34,7 @@ export default function HeroSliderLayout({ group }: HeroSliderLayoutProps) {
         return (
           <Link
             key={"hero-" + item.id}
-            href={`/product/${item.documentId}`}
+            href={`/product/${encodeURIComponent(item.slug || item.documentId)}`}
             className="block group relative"
           >
             <div className="relative w-full h-[60vh] md:h-[72vh] lg:h-[82vh] overflow-hidden bg-secondary">

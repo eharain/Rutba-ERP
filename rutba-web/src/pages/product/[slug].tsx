@@ -334,7 +334,7 @@ export default function ProductDetail({
     if (!product?.documentId || !product?.name) return;
     pushRecentlyViewed({
       documentId: product.documentId,
-      slug: product.documentId,
+      slug: product.slug || product.documentId,
       name: product.name,
       thumbnail: product.gallery?.[0]?.url ?? product.logo?.url ?? null,
       secondaryThumbnail: product.gallery?.[1]?.url ?? null,
@@ -433,9 +433,9 @@ export default function ProductDetail({
       {/* Canonical URL strips any group/offer query params so search engines
           see one URL per product even though clicks from different groups
           may surface different prices. */}
-      {product?.documentId && (
+      {(product?.slug || product?.documentId) && (
         <Head>
-          <link rel="canonical" href={`/product/${product.documentId}`} />
+          <link rel="canonical" href={`/product/${encodeURIComponent(product.slug || product.documentId)}`} />
         </Head>
       )}
       <Seo
@@ -460,7 +460,7 @@ export default function ProductDetail({
         <ProductJsonLd
           name={product.name}
           description={seoDescription}
-          slug={product.documentId}
+          slug={product.slug || product.documentId}
           images={product.gallery ?? (product.logo ? [{ url: product.logo.url }] : [])}
           brand={brand?.name}
           category={category?.name}

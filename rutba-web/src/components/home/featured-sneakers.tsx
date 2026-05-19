@@ -42,7 +42,7 @@ export default function FeaturedSneakers() {
     return <ErrorCard message={(error as Error).message}></ErrorCard>;
   }
 
-  const sourceGroupId = products?.group?.documentId;
+  const sourceGroupId = products?.group?.slug || products?.group?.documentId;
   const items = products?.products ?? [];
 
   return (
@@ -62,7 +62,7 @@ export default function FeaturedSneakers() {
               category={item.categories?.[0]}
               brand={item.brands?.[0]}
               thumbnail={item.logo?.url ?? item.gallery?.[0]?.url ?? null}
-              slug={item.documentId}
+              slug={item.slug || item.documentId}
               variantPrice={variantPrice}
               variantTermSummary={getVariantTermSummary(item)}
               sourceGroupId={sourceGroupId}

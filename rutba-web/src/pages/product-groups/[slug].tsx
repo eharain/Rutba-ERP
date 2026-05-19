@@ -260,7 +260,7 @@ export default function ProductGroupPage({
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
             {products.map((item) => (
-              <ProductCard key={"pg-" + item.id} {...getProductCardProps(item, { offerActive, offerId: activeOffer?.documentId, sourceGroupId: group.documentId })} />
+              <ProductCard key={"pg-" + item.id} {...getProductCardProps(item, { offerActive, offerId: activeOffer?.documentId, sourceGroupId: group.slug || group.documentId })} />
             ))}
           </div>
         )}
