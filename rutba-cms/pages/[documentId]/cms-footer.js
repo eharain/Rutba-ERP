@@ -30,7 +30,7 @@ export default function CmsFooterDetail() {
     const router = useRouter();
     const { documentId } = router.query;
     const { jwt } = useAuth();
-    const isNew = documentId === "new";
+    const isNew = !documentId || documentId === "new";
 
     const [footer, setFooter] = useState(null);
     const [isPublished, setIsPublished] = useState(false);

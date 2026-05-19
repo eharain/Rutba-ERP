@@ -80,7 +80,7 @@ export default function DeliveryMethodDetail() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const { toast, ToastContainer } = useToast();
-    const isNew = documentId === "new";
+    const isNew = !documentId || documentId === "new";
 
     const [name, setName] = useState("");
     const [description, setDescription] = useState("");

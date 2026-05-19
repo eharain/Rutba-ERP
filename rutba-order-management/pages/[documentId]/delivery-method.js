@@ -15,7 +15,7 @@ export default function DeliveryMethodDetailPage() {
   const { jwt } = useAuth();
   const { toast, ToastContainer } = useToast();
 
-  const isNew = documentId === "new";
+  const isNew = !documentId || documentId === "new";
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
