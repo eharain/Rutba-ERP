@@ -85,10 +85,11 @@ export const getServerSideProps: GetServerSideProps = async ({ res }) => {
   // For >5k products move to a sitemap index.
   try {
     const list = await WebProductsEndpoints.list({}, "1");
-    const products = (list?.data ?? []) as Array<{ documentId: string; updatedAt?: string }>;
+    const products = (list?.data ?? []) as Array<{ slug?: string; documentId: string; updatedAt?: string }>;
     for (const p of products.slice(0, 5000)) {
+      const key = p.slug || p.documentId;
       entries.push({
-        loc: `/product/${p.documentId}`,
+        loc: `/product/${encodeURIComponent(key)}`,
         lastmod: p.updatedAt?.split("T")[0],
         changefreq: "weekly",
         priority: 0.8,

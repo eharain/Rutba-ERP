@@ -27,6 +27,7 @@ export interface VariantTermSummary {
 export interface ProductInterface {
   id: number;
   documentId: string;
+  slug?: string;
   name: string;
   sku: string;
   barcode: string;

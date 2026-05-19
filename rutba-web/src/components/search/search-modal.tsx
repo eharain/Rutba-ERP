@@ -73,7 +73,7 @@ export default function SearchModal(props: propsInterface) {
                 <li key={"product-search-" + item.id}>
                   <Link
                     onClick={() => setOpenModal(false)}
-                    href={"/product/" + item.documentId}
+                    href={"/product/" + encodeURIComponent(item.slug || item.documentId)}
                     className="flex items-center hover:bg-slate-100 rounded-md overflow-hidden px-2 py-2"
                   >
                     <NextImage

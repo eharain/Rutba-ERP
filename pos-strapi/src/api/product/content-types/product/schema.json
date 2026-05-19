@@ -16,6 +16,10 @@
       "type": "string",
       "required": false
     },
+    "slug": {
+      "type": "uid",
+      "targetField": "name"
+    },
     "summary": {
       "type": "richtext"
     },

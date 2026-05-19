@@ -32,8 +32,10 @@ export const WebProductsEndpoints = {
     params: buildListQuery(filter, page),
   }),
 
-  // `slug` here is the documentId — the storefront builds product links from
-  // documentId, not a separate slug field on the product schema.
+  // The storefront identifies products by their `slug` (URL-safe, editable).
+  // The /by-id route name is kept for backward compat — the controller now
+  // looks up by slug first and falls back to documentId so cached/legacy
+  // links keep resolving.
   //
   // Optional `groupId` (the source group the user clicked from) is forwarded
   // to the controller so the server can resolve the right group-level offer

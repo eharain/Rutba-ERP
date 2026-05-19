@@ -103,7 +103,7 @@ export default function ProductListItem() {
                 category={item.categories?.[0]}
                 brand={item.brands?.[0]}
                 thumbnail={item.logo?.url ?? item.gallery?.[0]?.url ?? null}
-                slug={item.documentId}
+                slug={item.slug || item.documentId}
                 variantPrice={variantPrice}
                 variantTermSummary={getVariantTermSummary(item)}
               ></ProductCard>

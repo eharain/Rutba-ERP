@@ -15,12 +15,15 @@ function clampInt(value, fallback, min, max) {
 module.exports = createCoreController('api::product.product', ({ strapi }) => ({
   async publicDetail(ctx) {
     if (!requireApp(ctx, 'web')) return;
-    const documentId = ctx.params?.documentId;
-    if (!documentId) return ctx.badRequest('documentId is required');
+    // The route param is named `documentId` for backward compat; in practice
+    // it carries a product slug (the canonical identifier) and the service
+    // transparently falls back to documentId lookup for legacy URLs.
+    const slugOrDocumentId = ctx.params?.documentId;
+    if (!slugOrDocumentId) return ctx.badRequest('slug is required');
 
     const data = await strapi
       .service('api::product.product')
-      .findPublicDetail(documentId);
+      .findPublicDetail(slugOrDocumentId);
 
     // Group context is optional. When present, ask the offer service for the
     // effective price/free-shipping for this (product, group) pair. The

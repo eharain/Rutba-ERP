@@ -7,12 +7,12 @@ const { createCoreService } = require('@strapi/strapi').factories;
 const PUBLISHED_FILTER = { filters: { publishedAt: { $notNull: true } } };
 
 const DETAIL_FIELDS = [
-  'name', 'sku', 'barcode', 'selling_price', 'cost_price', 'offer_price',
+  'name', 'slug', 'sku', 'barcode', 'selling_price', 'cost_price', 'offer_price',
   'stock_quantity', 'summary', 'description', 'is_variant', 'is_active', 'keywords',
 ];
 
 const VARIANT_FIELDS = [
-  'name', 'sku', 'barcode', 'selling_price', 'cost_price', 'offer_price',
+  'name', 'slug', 'sku', 'barcode', 'selling_price', 'cost_price', 'offer_price',
   'stock_quantity', 'summary', 'description', 'is_variant',
 ];
 
@@ -75,10 +75,20 @@ module.exports = createCoreService('api::product.product', ({ strapi }) => ({
     return Array.from(ids);
   },
 
-  async findPublicDetail(documentId) {
-    if (!documentId) return null;
+  // Accepts either a slug or a documentId. We try slug first because that is
+  // the canonical lookup going forward; falling back to documentId keeps any
+  // pre-slug URLs (cached links, sitemaps, recently-viewed entries) working.
+  async findPublicDetail(slugOrDocumentId) {
+    if (!slugOrDocumentId) return null;
+    const bySlug = await strapi.documents('api::product.product').findFirst({
+      status: 'published',
+      filters: { slug: { $eq: slugOrDocumentId } },
+      fields: DETAIL_FIELDS,
+      populate: PUBLIC_POPULATE,
+    });
+    if (bySlug) return bySlug;
     return strapi.documents('api::product.product').findOne({
-      documentId,
+      documentId: slugOrDocumentId,
       status: 'published',
       fields: DETAIL_FIELDS,
       populate: PUBLIC_POPULATE,

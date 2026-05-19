@@ -23,7 +23,7 @@ export default function BannerSingleLayout({ group }: BannerSingleLayoutProps) {
 
   return (
     <Link
-      href={`/product/${product.documentId}`}
+      href={`/product/${encodeURIComponent(product.slug || product.documentId)}`}
       className="block group/banner"
     >
       <div className="container-fluid">

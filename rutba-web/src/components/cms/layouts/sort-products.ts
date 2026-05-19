@@ -48,7 +48,7 @@ export function getProductCardProps(item: ProductInterface, options?: { showBran
     brand: (options?.showBrand !== false) ? item.brands?.[0] : undefined,
     thumbnail: item.gallery?.[0]?.url ?? null,
     secondaryThumbnail: item.gallery?.[1]?.url ?? null,
-    slug: item.documentId,
+    slug: item.slug || item.documentId,
     variantPrice,
     variantOfferPrice: offerActive && variantOfferPrice.length > 0 ? variantOfferPrice : undefined,
     variantTermSummary: getVariantTermSummary(item),

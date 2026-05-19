@@ -378,7 +378,7 @@ export default function PostDetailPage() {
                                                         <button type="button" className={`btn btn-sm ${selected ? "btn-success" : "btn-outline-secondary"}`} onClick={() => toggleProduct(p.documentId)}>
                                                             {selected && <i className="fas fa-check me-1"></i>}{p.name}
                                                         </button>
-                                                        <a href={`${WEB_URL}/product/${p.documentId}`} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-outline-primary" title="View on website">
+                                                        <a href={`${WEB_URL}/product/${encodeURIComponent(p.slug || p.documentId)}`} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-outline-primary" title="View on website">
                                                             <i className="fas fa-external-link-alt"></i>
                                                         </a>
                                                     </div>
