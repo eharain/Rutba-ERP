@@ -1427,7 +1427,7 @@ export interface ApiCmsPageCmsPage extends Struct.CollectionTypeSchema {
       'api::category-group.category-group'
     >;
     content: Schema.Attribute.RichText;
-    content_priority: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<2>;
+    content_priority: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<20>;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -1447,7 +1447,7 @@ export interface ApiCmsPageCmsPage extends Struct.CollectionTypeSchema {
       'api::cms-footer.cms-footer'
     >;
     gallery: Schema.Attribute.Media<'images' | 'videos', true>;
-    gallery_priority: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<4>;
+    gallery_priority: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<40>;
     hero_product_groups: Schema.Attribute.Relation<
       'manyToMany',
       'api::product-group.product-group'
@@ -1475,14 +1475,14 @@ export interface ApiCmsPageCmsPage extends Struct.CollectionTypeSchema {
       'api::product-group.product-group'
     >;
     product_groups_priority: Schema.Attribute.Integer &
-      Schema.Attribute.DefaultTo<3>;
+      Schema.Attribute.DefaultTo<30>;
     publishedAt: Schema.Attribute.DateTime;
     related_pages: Schema.Attribute.Relation<
       'manyToMany',
       'api::cms-page.cms-page'
     >;
     related_pages_priority: Schema.Attribute.Integer &
-      Schema.Attribute.DefaultTo<5>;
+      Schema.Attribute.DefaultTo<50>;
     seo_meta: Schema.Attribute.Relation<'oneToOne', 'api::seo-meta.seo-meta'>;
     slug: Schema.Attribute.UID<'title'> & Schema.Attribute.Required;
     sort_order: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
@@ -2882,6 +2882,7 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
     selling_price: Schema.Attribute.Decimal;
     seo_meta: Schema.Attribute.Relation<'oneToOne', 'api::seo-meta.seo-meta'>;
     sku: Schema.Attribute.String;
+    slug: Schema.Attribute.UID<'name'>;
     stock_quantity: Schema.Attribute.Integer;
     summary: Schema.Attribute.RichText;
     supplierCode: Schema.Attribute.String;
