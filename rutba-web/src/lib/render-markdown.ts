@@ -35,11 +35,12 @@ export function normalizeMarkdown(input: string | null | undefined): string {
     out = out.replace(/([^\n])(#{1,6} )/g, "$1\n\n$2");
     // Mid-line bullet-with-bold-label: `prose - **Label:**` → `prose\n- **Label:**`
     out = out.replace(/([^\n])\s-\s(\*\*[^*]+:\*\*)/g, "$1\n- $2");
-    // Video directive `::video[url]{attrs}` — the tokenizer is anchored to
-    // ^...$ so it only fires when the directive sits on its own line. Insert
-    // blank lines around any inline occurrence so the embed renders.
-    out = out.replace(/([^\n])(::video\[)/g, "$1\n\n$2");
-    out = out.replace(/(::video\[[^\]]+\](?:\{[^}]*\})?)([^\n])/g, "$1\n\n$2");
+    // Video directive `::video[url]{attrs}` — the tokenizer needs a BLANK
+    // line above and below. Single-newline neighbours leave the directive
+    // inside a paragraph, which lets GFM autolink the URL while the
+    // `::video[…]{attrs}` syntax around it shows up as literal text.
+    out = out.replace(/([^\n])\n?(::video\[)/g, "$1\n\n$2");
+    out = out.replace(/(::video\[[^\]]+\](?:\{[^}]*\})?)\n?([^\n])/g, "$1\n\n$2");
     // Collapsible fence `:::details` / `:::collapse` — opener must be at
     // column 0; nudge it onto its own line when authors paste it mid-paragraph.
     out = out.replace(
