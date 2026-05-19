@@ -44,9 +44,12 @@ export default function VideoInsertDialog({ isOpen, onInsert, onClose, imageBase
         const attrs = [];
         if (size !== 'full') attrs.push(`size="${size}"`);
         if (overlayUrl.trim()) attrs.push(`overlay="${overlayUrl.trim()}"`);
+        // Wrap in blank lines so the block-level tokenizer fires. Without
+        // these the directive lands inside the surrounding paragraph and the
+        // `{attrs}` end up rendered as literal text next to the embed.
         const directive = attrs.length > 0
-            ? `\n::video[${videoUrl.trim()}]{${attrs.join(' ')}}\n`
-            : `\n${videoUrl.trim()}\n`;
+            ? `\n\n::video[${videoUrl.trim()}]{${attrs.join(' ')}}\n\n`
+            : `\n\n${videoUrl.trim()}\n\n`;
         onInsert(directive);
     }, [videoUrl, size, overlayUrl, onInsert]);
 

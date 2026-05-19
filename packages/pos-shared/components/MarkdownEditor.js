@@ -21,10 +21,12 @@ function normalizeMarkdown(input) {
     if (!out) return '';
     out = out.replace(/([^\n])(#{1,6} )/g, '$1\n\n$2');
     out = out.replace(/([^\n])\s-\s(\*\*[^*]+:\*\*)/g, '$1\n- $2');
-    // ::video[url]{attrs} block directive — needs its own line for the
-    // tokenizer to fire.
-    out = out.replace(/([^\n])(::video\[)/g, '$1\n\n$2');
-    out = out.replace(/(::video\[[^\]]+\](?:\{[^}]*\})?)([^\n])/g, '$1\n\n$2');
+    // ::video[url]{attrs} block directive — needs a BLANK line above and
+    // below for the tokenizer to fire. Single-newline neighbours land it
+    // inside a paragraph, which lets GFM autolink the URL while leaving the
+    // surrounding `::video[…]{attrs}` text visible.
+    out = out.replace(/([^\n])\n?(::video\[)/g, '$1\n\n$2');
+    out = out.replace(/(::video\[[^\]]+\](?:\{[^}]*\})?)\n?([^\n])/g, '$1\n\n$2');
     // Collapsible fence `:::details` / `:::collapse` — opener must be at col 0.
     out = out.replace(
         /([^\n])(:::(?:details|collapse)(?:\+)?(?:\{[^}]*\})?(?:[ \t]|$))/g,
