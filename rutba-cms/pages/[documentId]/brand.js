@@ -11,6 +11,7 @@ import { useToast } from "../../components/Toast";
 import ProductPickerTabs from "../../components/ProductPickerTabs";
 import InlineSeoPanel from "../../components/InlineSeoPanel";
 import { persistSeoMeta } from "../../components/SeoMetaFields";
+import { buildBrandWebUrl } from "../../lib/cmsPageWebUrl";
 
 export default function BrandDetail() {
     const router = useRouter();
@@ -208,6 +209,17 @@ export default function BrandDetail() {
                             <button className="btn btn-sm btn-outline-warning" onClick={handleDiscardDraft} disabled={saving}>
                                 <i className="fas fa-undo me-1"></i>Load Published
                             </button>
+                        )}
+                        {!isNew && brand?.slug && buildBrandWebUrl(brand) && (
+                            <a
+                                className="btn btn-sm btn-outline-info"
+                                href={buildBrandWebUrl(brand)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title="Open brand filter on the storefront"
+                            >
+                                <i className="fas fa-eye me-1"></i>View
+                            </a>
                         )}
                     </div>
                 </div>

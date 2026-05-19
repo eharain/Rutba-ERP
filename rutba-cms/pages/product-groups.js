@@ -8,6 +8,7 @@ import ListPageLayout, { AddButton } from "@rutba/pos-shared/components/ListPage
 import ListPagination from "@rutba/pos-shared/components/ListPagination";
 import ExcelIO from "../components/ExcelIO";
 import { SEO_EXCEL_COLUMNS, SEO_POPULATE, makeSeoUpsert } from "../components/seoExcel";
+import { buildProductGroupWebUrl } from "../lib/cmsPageWebUrl";
 
 const DEFAULT_PAGE_SIZE = 25;
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100, 200];
@@ -157,6 +158,17 @@ export default function ProductGroups() {
                                                 <Link className="btn btn-outline-primary" href={`/${g.documentId}/product-group`}>
                                                     Edit
                                                 </Link>
+                                                {buildProductGroupWebUrl(g) && (
+                                                    <a
+                                                        className="btn btn-outline-secondary"
+                                                        href={buildProductGroupWebUrl(g)}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        title="Open on the storefront"
+                                                    >
+                                                        <i className="fas fa-eye me-1"></i>View
+                                                    </a>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>

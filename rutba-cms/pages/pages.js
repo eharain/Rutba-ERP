@@ -10,6 +10,7 @@ import ListPageLayout, { AddButton } from "@rutba/pos-shared/components/ListPage
 import ListPagination from "@rutba/pos-shared/components/ListPagination";
 import ExcelIO from "../components/ExcelIO";
 import { SEO_EXCEL_COLUMNS, SEO_POPULATE, makeSeoUpsert } from "../components/seoExcel";
+import { buildCmsPageWebUrl } from "../lib/cmsPageWebUrl";
 
 const DEFAULT_PAGE_SIZE = 25;
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100, 200];
@@ -317,6 +318,17 @@ export default function Pages() {
                                                 <Link className="btn btn-outline-primary" href={`/${p.documentId}/cms-page`}>
                                                     Edit
                                                 </Link>
+                                                {buildCmsPageWebUrl(p, { draft: true }) && (
+                                                    <a
+                                                        className="btn btn-outline-secondary"
+                                                        href={buildCmsPageWebUrl(p, { draft: true })}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        title="Open draft preview on the storefront"
+                                                    >
+                                                        <i className="fas fa-eye me-1"></i>View Draft
+                                                    </a>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>
