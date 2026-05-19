@@ -9,6 +9,7 @@ import ListPageLayout, { AddButton } from "@rutba/pos-shared/components/ListPage
 import ListPagination from "@rutba/pos-shared/components/ListPagination";
 import ExcelIO from "../components/ExcelIO";
 import { SEO_EXCEL_COLUMNS, SEO_POPULATE, makeSeoUpsert } from "../components/seoExcel";
+import { buildBrandWebUrl } from "../lib/cmsPageWebUrl";
 
 const BRAND_EXCEL_COLUMNS = [
     { key: "name", isLabel: true, width: 32 },
@@ -259,6 +260,17 @@ export default function Brands() {
                                                 <Link className="btn btn-outline-primary" href={`/${b.documentId}/brand`}>
                                                     Edit
                                                 </Link>
+                                                {buildBrandWebUrl(b) && (
+                                                    <a
+                                                        className="btn btn-outline-secondary"
+                                                        href={buildBrandWebUrl(b)}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        title="Open brand filter on the storefront"
+                                                    >
+                                                        <i className="fas fa-eye me-1"></i>View
+                                                    </a>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>

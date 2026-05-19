@@ -9,6 +9,7 @@ import ListPageLayout, { AddButton } from "@rutba/pos-shared/components/ListPage
 import ListPagination from "@rutba/pos-shared/components/ListPagination";
 import ExcelIO from "../components/ExcelIO";
 import { SEO_EXCEL_COLUMNS, SEO_POPULATE, makeSeoUpsert } from "../components/seoExcel";
+import { buildCategoryWebUrl } from "../lib/cmsPageWebUrl";
 
 const CATEGORY_EXCEL_COLUMNS = [
     { key: "name", isLabel: true, width: 32 },
@@ -268,6 +269,17 @@ export default function Categories() {
                                                 <Link className="btn btn-outline-primary" href={`/${c.documentId}/category`}>
                                                     Edit
                                                 </Link>
+                                                {buildCategoryWebUrl(c) && (
+                                                    <a
+                                                        className="btn btn-outline-secondary"
+                                                        href={buildCategoryWebUrl(c)}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        title="Open category filter on the storefront"
+                                                    >
+                                                        <i className="fas fa-eye me-1"></i>View
+                                                    </a>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>

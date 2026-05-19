@@ -14,6 +14,7 @@ import EnumSelect from "../../components/EnumSelect";
 import InlineSeoPanel from "../../components/InlineSeoPanel";
 import { persistSeoMeta } from "../../components/SeoMetaFields";
 import { toOrderedRelation } from "../../components/orderedRelation";
+import { buildProductGroupWebUrl } from "../../lib/cmsPageWebUrl";
 
 const LAYOUT_LABELS = {
     "grid-4": "Grid 4 Columns",
@@ -294,6 +295,17 @@ export default function ProductGroupDetail() {
                             <button className="btn btn-sm btn-outline-warning" onClick={handleDiscardDraft} disabled={saving}>
                                 <i className="fas fa-undo me-1"></i>Load Published
                             </button>
+                        )}
+                        {!isNew && group?.slug && buildProductGroupWebUrl(group) && (
+                            <a
+                                className="btn btn-sm btn-outline-info"
+                                href={buildProductGroupWebUrl(group)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title="Open on the storefront"
+                            >
+                                <i className="fas fa-eye me-1"></i>View
+                            </a>
                         )}
                         <button className="btn btn-sm btn-primary" onClick={handleSave} disabled={saving}>
                             {saving ? "Saving…" : isNew ? "Create Group" : "Save Draft"}

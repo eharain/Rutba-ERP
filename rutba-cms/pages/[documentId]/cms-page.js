@@ -16,6 +16,7 @@ import InlineSeoPanel from "../../components/InlineSeoPanel";
 import PageLayoutEditor from "../../components/PageLayoutEditor";
 import { persistSeoMeta } from "../../components/SeoMetaFields";
 import { toOrderedRelation } from "../../components/orderedRelation";
+import { buildCmsPageWebUrl } from "../../lib/cmsPageWebUrl";
 
 // Sections in their default top-to-bottom order. The numeric priority
 // stored on the cms-page record is just the index of the key in this
@@ -443,6 +444,17 @@ export default function CmsPageDetail() {
                             <button className="btn btn-sm btn-outline-warning" onClick={handleDiscardDraft} disabled={saving}>
                                 <i className="fas fa-undo me-1"></i>Load Published
                             </button>
+                        )}
+                        {!isNew && page?.slug && buildCmsPageWebUrl(page, { draft: true }) && (
+                            <a
+                                className="btn btn-sm btn-outline-info"
+                                href={buildCmsPageWebUrl(page, { draft: true })}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title="Open draft preview on the storefront"
+                            >
+                                <i className="fas fa-eye me-1"></i>View Draft
+                            </a>
                         )}
                         <button className="btn btn-sm btn-primary" onClick={handleSave} disabled={saving}>
                             {saving ? "Saving..." : isNew ? "Create Page" : "Save Draft"}

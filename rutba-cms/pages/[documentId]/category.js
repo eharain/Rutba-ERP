@@ -11,6 +11,7 @@ import { useToast } from "../../components/Toast";
 import ProductPickerTabs from "../../components/ProductPickerTabs";
 import InlineSeoPanel from "../../components/InlineSeoPanel";
 import { persistSeoMeta } from "../../components/SeoMetaFields";
+import { buildCategoryWebUrl } from "../../lib/cmsPageWebUrl";
 
 export default function CategoryDetail() {
     const router = useRouter();
@@ -207,6 +208,17 @@ export default function CategoryDetail() {
                             <button className="btn btn-sm btn-outline-warning" onClick={handleDiscardDraft} disabled={saving}>
                                 <i className="fas fa-undo me-1"></i>Load Published
                             </button>
+                        )}
+                        {!isNew && category?.slug && buildCategoryWebUrl(category) && (
+                            <a
+                                className="btn btn-sm btn-outline-info"
+                                href={buildCategoryWebUrl(category)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title="Open category filter on the storefront"
+                            >
+                                <i className="fas fa-eye me-1"></i>View
+                            </a>
                         )}
                     </div>
                 </div>
