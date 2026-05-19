@@ -1,12 +1,14 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { marked } from '../lib/marked.esm.js';
 import { markedVideoEmbed } from '../lib/marked-video-embed.js';
+import { markedCollapse } from '../lib/marked-collapse.js';
 import { IMAGE_URL } from '@rutba/api-provider/lib/api';
 import VideoInsertDialog from './VideoInsertDialog';
 import StrapiMediaLibrary from './StrapiMediaLibrary';
 
 marked.setOptions({ breaks: true, gfm: true });
 marked.use(markedVideoEmbed({ imageBaseUrl: IMAGE_URL }));
+marked.use(markedCollapse());
 
 // Repair markdown that landed on a single line (common in AI-generated CSV/
 // xlsx imports). Mid-line `### Heading` and ` - **Label:**` patterns get a
@@ -23,6 +25,11 @@ function normalizeMarkdown(input) {
     // tokenizer to fire.
     out = out.replace(/([^\n])(::video\[)/g, '$1\n\n$2');
     out = out.replace(/(::video\[[^\]]+\](?:\{[^}]*\})?)([^\n])/g, '$1\n\n$2');
+    // Collapsible fence `:::details` / `:::collapse` — opener must be at col 0.
+    out = out.replace(
+        /([^\n])(:::(?:details|collapse)(?:\+)?(?:\{[^}]*\})?(?:[ \t]|$))/g,
+        '$1\n\n$2',
+    );
     return out;
 }
 
@@ -49,6 +56,16 @@ const TOOLBAR = [
         icon: 'fa-circle-question',
         label: 'FAQ Q&A',
         md: (s) => `### Q: ${s || 'Your question here?'}\n\nA: Your answer here.\n`,
+        wrap: false,
+    },
+    {
+        icon: 'fa-chevron-down',
+        label: 'Collapsible Section',
+        // Pure-markdown callout (Obsidian/GitHub-alert style). The `[!details]`
+        // marker on the first line is the summary cue; every subsequent line
+        // prefixed with `> ` becomes part of the hidden body.
+        md: (s) =>
+            `> [!details] ${s || 'Click to expand'}\n> Hidden details go here.\n> More body lines stay inside the block as long as they keep the \`> \` prefix.\n`,
         wrap: false,
     },
 ];

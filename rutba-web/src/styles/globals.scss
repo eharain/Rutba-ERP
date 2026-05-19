@@ -183,3 +183,81 @@
   background: white;
   width: 36px;
 }
+
+/* Markdown collapsible sections — both the :::collapse fence and the
+   GitHub-standard <details>/<summary> HTML render consistently. The .prose
+   selectors catch raw <details> typed by content authors inside any
+   prose-wrapped markdown render. */
+.md-collapse,
+.prose details {
+  margin: 1rem 0;
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.5rem;
+  background: hsl(var(--card));
+  overflow: hidden;
+}
+.md-collapse[open],
+.prose details[open] {
+  box-shadow: var(--shadow-card);
+}
+.md-collapse-summary,
+.prose details > summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 0.75rem 1rem 0.75rem 2.25rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  background: hsl(var(--muted));
+  position: relative;
+  -webkit-user-select: none;
+  user-select: none;
+  transition: background 0.15s;
+}
+.md-collapse-summary::-webkit-details-marker,
+.prose details > summary::-webkit-details-marker {
+  display: none;
+}
+.md-collapse-summary::before,
+.prose details > summary::before {
+  content: "";
+  position: absolute;
+  left: 0.85rem;
+  top: 50%;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-right: 2px solid hsl(var(--brand));
+  border-bottom: 2px solid hsl(var(--brand));
+  transform: translateY(-65%) rotate(-45deg);
+  transition: transform 0.2s ease;
+}
+.md-collapse[open] > .md-collapse-summary::before,
+.prose details[open] > summary::before {
+  transform: translateY(-35%) rotate(45deg);
+}
+.md-collapse-summary:hover,
+.prose details > summary:hover {
+  background: hsl(var(--accent));
+}
+.md-collapse-body {
+  padding: 1rem;
+  border-top: 1px solid hsl(var(--border));
+}
+.md-collapse-body > *:first-child {
+  margin-top: 0;
+}
+.md-collapse-body > *:last-child {
+  margin-bottom: 0;
+}
+/* Raw <details> from authored HTML — give the body equivalent padding via
+   spacing on direct children other than the summary. */
+.prose details > :not(summary) {
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+.prose details > :not(summary):first-of-type {
+  padding-top: 1rem;
+  border-top: 1px solid hsl(var(--border));
+}
+.prose details > :not(summary):last-child {
+  padding-bottom: 1rem;
+}

@@ -1,9 +1,11 @@
 import { marked } from "marked";
 import { markedVideoEmbed } from "@/lib/marked-video-embed";
+import { markedCollapse } from "@/lib/marked-collapse";
 import { IMAGE_URL } from "@/static/const";
 
 marked.use({ breaks: true, gfm: true });
 marked.use(markedVideoEmbed({ imageBaseUrl: IMAGE_URL }));
+marked.use(markedCollapse());
 
 /**
  * Repair markdown that's been flattened onto a single line.
@@ -38,6 +40,12 @@ export function normalizeMarkdown(input: string | null | undefined): string {
     // blank lines around any inline occurrence so the embed renders.
     out = out.replace(/([^\n])(::video\[)/g, "$1\n\n$2");
     out = out.replace(/(::video\[[^\]]+\](?:\{[^}]*\})?)([^\n])/g, "$1\n\n$2");
+    // Collapsible fence `:::details` / `:::collapse` — opener must be at
+    // column 0; nudge it onto its own line when authors paste it mid-paragraph.
+    out = out.replace(
+        /([^\n])(:::(?:details|collapse)(?:\+)?(?:\{[^}]*\})?(?:[ \t]|$))/g,
+        "$1\n\n$2",
+    );
     return out;
 }
 
