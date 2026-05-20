@@ -8,9 +8,24 @@ import ListPageLayout, { AddButton } from "@rutba/pos-shared/components/ListPage
 import ListPagination from "@rutba/pos-shared/components/ListPagination";
 import ExcelIO from "../components/ExcelIO";
 
+// Server-side coerceForSchema (cms-bulk controller) converts string cells
+// back to the schema's declared type on import — booleans accept
+// true/1/yes, numbers accept any numeric string, enums pass through as
+// strings. So scalar columns here just need a key + width; the format on
+// booleans is for human readability on export.
 const DELIVERY_METHOD_EXCEL_COLUMNS = [
     { key: "name", isLabel: true, width: 28 },
     { key: "description", width: 60 },
+    { key: "service_provider", width: 16 },
+    { key: "base_cost", width: 12 },
+    { key: "per_kg_rate", width: 12 },
+    { key: "free_shipping_threshold", width: 16 },
+    { key: "estimated_days_min", width: 10 },
+    { key: "estimated_days_max", width: 10 },
+    { key: "priority", width: 10 },
+    { key: "is_active", width: 10, format: (r) => (r.is_active ? "true" : "false") },
+    { key: "offer_timeout_minutes", width: 14 },
+    { key: "max_riders_to_offer", width: 14 },
 ];
 
 const DEFAULT_PAGE_SIZE = 25;
