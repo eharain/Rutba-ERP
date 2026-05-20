@@ -3,22 +3,23 @@
 > **Status (May 2026):** Drafted after the storefront launch + COD payment
 > collection landed. Phases A-G below are forward work; the "already wired"
 > recap reflects what shipped in the cart / checkout / order-management /
-> stock-item-attach work this cycle. Sister docs:
+> stock-item-attach work this cycle. Stock-item state-machine integration
+> (E.1 + B.0) landed 2026-05-21 — see recap. Sister docs:
 > [rutba-web-launch-backlog.md](./rutba-web-launch-backlog.md),
 > [contact-entity-unification.md](./contact-entity-unification.md).
 
 ## TL;DR
 
 The current order lifecycle covers happy-path COD with internal-rider
-delivery and storefront WhatsApp confirmation. It does **not** yet have:
+delivery and storefront WhatsApp confirmation, with the stock-item state
+machine now closed on CANCELLED + DELIVERED transitions. It does **not**
+yet have:
 
 - Payment-gateway abstraction beyond a Stripe stub.
 - Packer assignment / multi-parcel / packing slip docs.
 - A clean delivery-provider strategy interface (TCS, Leopards, PostEx,
   DHL/FedEx/Aramex etc. would each be bespoke today).
 - SMS comms (Pakistan-essential; email-only today).
-- Auto-restock on CANCELLED or auto-mark-Sold on DELIVERED — the
-  stock-item state machine on the order side is still manual.
 - Refund flow (entity, gateway-driven workflow).
 - Returns (the whole RMA surface — entity, customer UI, staff inspection,
   reverse logistics, restock decision).
@@ -44,6 +45,16 @@ This doc is the staged plan for adding all of the above.
   unit InStock → Reserved, lifecycle hooks recompute product.stock_quantity
   per the [stock model invariant](../../C:/Users/EjazArain/.claude/projects/D--Rutba-ERP/memory/project_stock_model_invariant.md).
   Order-management detail page has a per-line picker UI.
+- **Stock-item state machine closed on the order side** (E.1 + B.0,
+  2026-05-21) — `sale-order-state-machine.executeTransition` walks
+  `order.products.items` and:
+  - on CANCELLED: Reserved → InStock (restock)
+  - on DELIVERED: Reserved → Sold (finalise)
+  FAILED_DELIVERY leaves units Reserved until staff retries or cancels.
+  Shared helper `transitionAttachedStockItems(orderDocumentId, from, to)`
+  lives on the state-machine service; every caller of `executeTransition`
+  picks up the side effect automatically. Best-effort: a stock-item
+  failure logs a warning but doesn't unwind the order transition.
 - **Delivery-method** has `service_provider` enum-like field
   (`own_rider`, `easypost`, `manual_contact`) and a `delivery-zone`
   relation. Rider assignment + state machine work.
@@ -252,15 +263,13 @@ for shortfalls. Depends on A.0 being shipped first.
 **What's missing**: no concept of "this order has been physically packed";
 no auditable trail of who packed it / how heavy or large.
 
-### B.0 — Stock-item state-machine on order DELIVERED / FAILED_DELIVERY
+### B.0 — Stock-item state-machine on order DELIVERED / FAILED_DELIVERY  ✅ shipped 2026-05-21
 
-Symmetric with Phase E.1 (auto-restock on CANCELLED). On state transition
-to DELIVERED, walk `order.products.items` and transition each attached
-`stock_item` from Reserved → **Sold**. On FAILED_DELIVERY, keep Reserved
-until staff decides (retry or cancel-then-restock).
-
-Single helper `transitionAttachedStockItems(orderDocId, fromStatus, toStatus)`
-shared with E.1. Bundle the two changes.
+Symmetric with Phase E.1. Landed together — see "Already wired" recap.
+Implemented as `transitionAttachedStockItems` on the state-machine
+service, driven by the `STOCK_TRANSITIONS_ON_ORDER_STATUS` map in
+`executeTransition`. FAILED_DELIVERY intentionally not mapped — units
+stay Reserved until staff retries or cancels.
 
 ### B.1 — Packer assignment + packed timestamp (generic)
 
@@ -430,11 +439,21 @@ Touchpoints to add SMS to existing notification templates:
 Today's `/order-tracking/:documentId?secret=…` returns a JSON blob.
 Build a real page on `rutba-web`:
 
-- Visual timeline (received → packed → out for delivery → delivered)
-- Estimated delivery window
-- Rider/carrier name + tracking number with deep link to carrier site
-- "Need help?" → WhatsApp deep link with order ref pre-filled
-- For COD: payment amount due on delivery, clearly stated
+- Visual timeline driven by the **G.1 buyer-visible event feed** — each
+  row renders as `{customer_message}` with `{customer_icon}` glyph and
+  `{occurred_at}` timestamp. No hardcoded "received → packed → …"
+  ladder — the timeline reflects what actually happened, including
+  exceptions (FAILED_DELIVERY, CANCELLED, refund-in-progress).
+- Estimated delivery window (from `delivery_method.estimated_days_*`).
+- Rider/carrier name + tracking number with deep link to carrier site.
+- "Need help?" → WhatsApp deep link with order ref pre-filled.
+- For COD: payment amount due on delivery, clearly stated.
+
+Same component renders on `/profile/orders/:id` for logged-in buyers
+(reads from the authenticated `events` endpoint instead of the
+secret-keyed public one). G.1 is therefore a hard prerequisite for the
+timeline portion of this page — without it the storefront has no event
+stream to render and the page falls back to the today's flat JSON.
 
 ### D.3 — App push (deferred)
 
@@ -448,18 +467,19 @@ strategy. Out of current scope until the mobile app exists.
 **What's missing**: cancel works but leaves stock allocated and doesn't
 refund.
 
-### E.1 — Auto-restock on CANCELLED (generic)
+### E.1 — Auto-restock on CANCELLED (generic)  ✅ shipped 2026-05-21 (stock leg only)
 
-State-machine transition `* → CANCELLED` should iterate
-`order.products.items` and:
+Stock-item leg landed alongside B.0 — `transitionAttachedStockItems`
+walks `order.products.items` and moves Reserved → InStock on the
+CANCELLED transition. Customer notification already fires from
+`cancelOrder` controller (`notificationService.send('cancelled', …)`).
 
-- For each `stock_item` attached: transition Reserved → InStock.
-- For each `order-parcel` already created: cancel via the provider's
-  `cancelShipment`.
-- Push CANCELLED notification to customer.
-
-Single helper `restoreStockForOrder(orderDocId)` called from the existing
-cancel transition. Shares the per-line walker with B.0.
+**Still TODO** (deferred to their owning phases):
+- Per-line `order-parcel.cancelShipment` call — depends on Phase C.1
+  provider strategy and B.2 parcel sub-entity.
+- Restock from FAILED_DELIVERY → CANCELLED path is already covered
+  (FAILED_DELIVERY leaves units Reserved; subsequent CANCELLED triggers
+  the same walker).
 
 ### E.2 — Refund flow (generic)
 
@@ -592,22 +612,87 @@ layer category/brand/product overrides.
 
 # Phase G — Cross-cutting
 
-### G.1 — Order audit log (generic)
+### G.1 — Order audit log + buyer-facing timeline (generic) — **flagged priority 2026-05-21**
+
+Two-layer design:
+
+1. **Internal audit trail** — every controller that mutates an order
+   writes one `order-event` row. Full fidelity, never edited, never
+   deleted, no pagination cap. Powers staff dispute resolution, the
+   order-management detail-page timeline, and compliance.
+2. **Buyer-visible timeline** — a filtered, plain-language subset of
+   the same rows surfaced on the storefront tracking page (D.2) and
+   `/profile/orders/:id`. Customers see "Your order is being prepared"
+   not `status_changed: PAYMENT_CONFIRMED → PREPARING`.
 
 ```
 content-type: order-event
-  sale_order   relation manyToOne
-  event_type   string         (status_changed, payment_recorded, stock_attached, parcel_created, refund_issued, return_received, …)
-  actor_user   relation → user
-  actor_role   string         (customer, staff, system, webhook:tcs, …)
-  before       json
-  after        json
-  occurred_at  datetime
+  sale_order        relation manyToOne
+  event_type        string        (status_changed, payment_recorded, payment_verified, stock_attached, parcel_created, parcel_picked_up, rider_assigned, refund_issued, return_received, message_sent, …)
+  actor_user        relation → user            (null for system/webhook events)
+  actor_role        string        (customer, staff, rider, system, webhook:tcs, webhook:stripe, …)
+  before            json
+  after             json
+  occurred_at       datetime
+
+  # Buyer-visibility layer
+  customer_visible  boolean       default false   — whether this row appears on /order-tracking and /profile/orders/:id
+  customer_message  string        — plain-language summary shown to the buyer (e.g. "Your order is on its way", "Payment received"). Localisable per tenant. Generated at write time from a template keyed off event_type + new status.
+  customer_icon     string        — optional UI hint (`check`, `truck`, `package`, `alert`) so the storefront renders the right glyph without re-mapping event_type.
 ```
 
-Every controller writes to this on state mutation. Powers the timeline
-on customer tracking page AND the staff order detail page. Also feeds
-compliance / dispute resolution.
+**Default `customer_visible` policy** (codified in a `order-event-visibility.js`
+map, NOT a free-form decision per call site):
+
+| event_type / status                     | customer_visible | Why |
+| --- | --- | --- |
+| `status_changed → PAYMENT_CONFIRMED`    | ✓ | "Payment received" |
+| `status_changed → PREPARING`            | ✓ | "Your order is being prepared" |
+| `status_changed → AWAITING_PICKUP`      | ✗ | Internal handoff — confusing to buyer |
+| `status_changed → OUT_FOR_DELIVERY`     | ✓ | "Your order is out for delivery" + rider name |
+| `status_changed → DELIVERED`            | ✓ | "Delivered" + timestamp |
+| `status_changed → FAILED_DELIVERY`      | ✓ | "Delivery attempted, we'll try again" (with reason) |
+| `status_changed → CANCELLED`            | ✓ | "Your order was cancelled" (with reason if available) |
+| `status_changed → REFUND_INITIATED`     | ✓ | "Refund in progress" |
+| `status_changed → REFUNDED`             | ✓ | "Refund complete" |
+| `payment_recorded` (COD by rider)       | ✗ | Internal — buyer just paid, they know |
+| `payment_verified`                      | ✗ | Internal accounts hygiene |
+| `stock_attached` / `parcel_created`     | ✗ | Warehouse plumbing |
+| `parcel_picked_up`                      | ✓ | "Picked up by courier" + tracking link |
+| `rider_assigned`                        | ✓ if `OUT_FOR_DELIVERY` reached | Buyer wants rider name + phone |
+| `refund_issued`                         | ✓ | "Refund issued to <method>" |
+| `return_received` / `return_inspected`  | ✓ | Buyer wants RMA progress visibility |
+| `message_sent`                          | ✓ if sender=staff | Already surfaced via order-message; one timeline line per conversation |
+
+**Endpoints:**
+
+- `GET /sale-orders/:documentId/events` (staff) → full timeline, all rows.
+  Gated by `requireOrderAccessUser` + staff-or-owner check.
+- `GET /orders/tracking/:documentId/events?secret=…` (public) → only
+  rows where `customer_visible = true`. Same secret-keyed gate as the
+  existing tracking endpoint.
+- `GET /orders/my-orders/:documentId/events` (authenticated buyer) →
+  same filter as the tracking endpoint, ownership-gated.
+
+**Writer pattern:** a single `recordOrderEvent({order, event_type,
+actor, before, after})` service. Called from `executeTransition` (so
+every order status change auto-emits, just like the stock-item side
+effects from E.1/B.0 do today), and from each controller for non-status
+events (`recordPayment`, `verifyPayment`, `attachStockItem`, `cancelOrder`
+reason, refund/return endpoints when they exist).
+
+**Backfill:** ship the migration with a one-time backfill that
+synthesizes `status_changed` events from each order's current state +
+its `createdAt` / `actual_delivery_time` so existing orders have at
+least a sparse history when the timeline UI goes live. Don't try to
+reconstruct anything not already in the row.
+
+**Retention:** none initially. Volume is bounded (~10-30 events per
+order; even 100K orders is < 5M rows). Revisit when it hurts.
+
+Powers, in order of value: the storefront tracking-page timeline (D.2),
+the staff order detail page timeline, dispute resolution, compliance,
+and eventually the analytics in G.2.
 
 ### G.2 — Analytics primitives (generic)
 
@@ -655,28 +740,40 @@ return_completed, …) added at the same time.
 
 | # | Phase | Why now | Blocks |
 | --- | --- | --- | --- |
-| 1 | **E.1** Auto-restock on CANCELLED | Closes active stock-leak. 1-day fix. | Analytics |
-| 2 | **B.0** Stock-item state-machine on DELIVERED | Symmetric with E.1; same helper. Ship together. | — |
-| 3 | **A.0** Tighten verifyPayment to accountant | Tiny security fix; do before A.6. | A.6 |
-| 4 | **A.4** Pre-dispatch confirmation queue | Biggest COD economics win. | — |
-| 5 | **B.1** Packer assignment + PACKED state | Auditable trail before anything ships. | C |
-| 6 | **A.5** Rider cash-collect modal | Mobile-friendly close of COD loop. | — |
-| 7 | **A.6** Accounts cash-drops inbox | Counterpart to A.5; weekly settlement workload. | — |
-| 8 | **C.1** Provider strategy interface | Unblocks C, F. | C.2*, F.4 |
-| 9 | **D.1** SMS channel | Pakistan-essential customer-perception lift. | — |
-| 10 | **A.1+A.3** Payment-method + intent entities | Unlocks non-COD payments cleanly. | A.2 |
-| 11 | **A.2** Stripe + manual gateway providers | First non-COD path. | — |
-| 12 | **C.2b** TCS / Leopards / PostEx (tenant) | Removes manual courier handoff. | — |
-| 13 | **F** Returns workflow | Big surface; do once core is solid. | — |
-| 14 | **B.2** Multi-parcel (incl. qty > 1 split) | Only when split shipments are actually needed. | — |
-| 15 | **G** Cross-cutting (audit log, exceptions, reconciliation, idempotency) | Operational maturity. | — |
+| ~~1~~ | ~~**E.1** Auto-restock on CANCELLED~~ ✅ 2026-05-21 | Closed | — |
+| ~~2~~ | ~~**B.0** Stock-item state-machine on DELIVERED~~ ✅ 2026-05-21 | Closed | — |
+| 1 | **A.0** Tighten verifyPayment to accountant | Tiny security fix; do before A.6. | A.6 |
+| 2 | **A.4** Pre-dispatch confirmation queue | Biggest COD economics win. | — |
+| 3 | **B.1** Packer assignment + PACKED state | Auditable trail before anything ships. | C |
+| 4 | **A.5** Rider cash-collect modal | Mobile-friendly close of COD loop. | — |
+| 5 | **A.6** Accounts cash-drops inbox | Counterpart to A.5; weekly settlement workload. | — |
+| 6 | **C.1** Provider strategy interface | Unblocks C, F. | C.2*, F.4 |
+| 7 | **D.1** SMS channel | Pakistan-essential customer-perception lift. | — |
+| 8 | **A.1+A.3** Payment-method + intent entities | Unlocks non-COD payments cleanly. | A.2 |
+| 9 | **A.2** Stripe + manual gateway providers | First non-COD path. | — |
+| 10 | **C.2b** TCS / Leopards / PostEx (tenant) | Removes manual courier handoff. | — |
+| 11 | **F** Returns workflow | Big surface; do once core is solid. | — |
+| 12 | **B.2** Multi-parcel (incl. qty > 1 split) | Only when split shipments are actually needed. | — |
+| 13 | **G.3 + G.4 + G.5** Exception queues, carrier reconciliation, idempotency | Operational maturity. | — |
+
+**Flagged priority (2026-05-21)**: **G.1 — order audit log + buyer-facing
+timeline.** User-requested — hard prerequisite for D.2's timeline view,
+and the only entity that lets staff answer "what happened on this
+order, when, and who did it" without grepping logs. Suggested slot:
+between #5 (A.6 accounts inbox) and #6 (C.1 provider strategy), since
+the audit log benefits every later phase and is cheaper to build before
+those phases add their own events to emit. ~3-4 days for the entity +
+writer + backfill migration + both endpoints; tracking-page render is
+in D.2 once that ships.
 
 **Deferred**: B.3 (PDF docs), C.5 (label printing UI), D.3 (push), G.2
 (analytics dashboards). Quality-of-life, not lifecycle-blocking.
 
 # Recommended next change
 
-**E.1 + B.0 together** — both walk `order.products.items` and transition
-`stock_item.status`. Build one helper, call it from both transitions.
-~1-2 hours of work. Closes the two open paths in the stock-item state
-machine that were left as TODOs when `attachStockItem` shipped.
+**A.0 — tighten `verifyPayment` to accountant role.** Small (~15-20 min),
+unblocks A.6 (accounts cash-drops inbox), removes a TODO already noted
+inline in `sale-order.js:806-808`. Add a `requireAccountantUser` helper
+(or generic role-set check) and apply it to `verifyPayment`. After that,
+**A.4 (pre-dispatch confirmation queue)** is the biggest single-feature
+COD-economics win and a clean ~half-day scope.

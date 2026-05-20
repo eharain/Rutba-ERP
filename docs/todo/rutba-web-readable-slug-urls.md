@@ -1,5 +1,13 @@
 # rutba-web: replace documentId-based URLs with readable slugs
 
+> **Status (2026-05-19): ✅ shipped** in commit `99500f3` —
+> `feat(pos-strapi,rutba-cms,rutba-web,rutba-social): product slug as canonical URL key`.
+> Product, product-group, CMS page, brand, category storefront links now
+> use slugs; lifecycle hooks generate unique slugs on create + a backfill
+> seeder filled existing rows. Public detail services accept slug-or-documentId
+> so any cached/legacy URLs keep resolving. Out-of-scope items (category
+> trees, locale prefixes) remain future work — keep this doc as the spec.
+
 ## Problem
 
 The storefront currently exposes Strapi `documentId` values directly in user-facing URLs:

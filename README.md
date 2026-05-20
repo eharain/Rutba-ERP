@@ -7,57 +7,55 @@ An open-source, modular business management system built as an **npm workspaces 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                      pos-strapi (Strapi 5)                      │
-│                     Headless API — port 1337                     │
-└───────────┬──────────┬──────────┬──────────┬──────────┬─────────┘
-            │          │          │          │          │
-  ┌─────────┴──┐ ┌─────┴────┐ ┌──┴───┐ ┌───┴──┐ ┌────┴─────┐
-  │ pos-auth   │ │ pos-stock│ │pos-  │ │rutba-│ │rutba-web │
-  │ :3003      │ │ :3001    │ │sale  │ │web-  │ │ :3000    │
-  │ Auth Portal│ │ Stock    │ │:3002 │ │user  │ │ Public   │
-  └────────────┘ └──────────┘ └──────┘ │:3004 │ │ Website  │
-                                       └──────┘ └──────────┘
-             ┌────────────┐
-             │rutba-order-│
-             │management  │
-             │ :3013      │
-             └────────────┘
-             ┌────────────┐
-             │rutba-rider │
-             │ :3012      │
-             │ Rider App  │
-             └────────────┘
-  ┌──────────┐ ┌──────────┐ ┌────────────┐ ┌────────────┐
-  │ rutba-crm│ │ rutba-hr │ │ rutba-     │ │ rutba-     │
-  │ :3005    │ │ :3006    │ │ accounts   │ │ payroll    │
-  │ CRM      │ │ HR       │ │ :3007      │ │ :3008      │
-  └──────────┘ └──────────┘ └────────────┘ └────────────┘
+│                  Headless API — port 4010 (dev)                  │
+└──┬───────┬───────┬───────┬───────┬───────┬───────┬───────┬──────┘
+   │       │       │       │       │       │       │       │
+ pos-    pos-    pos-   rutba-  rutba-  rutba-  rutba-   rutba-
+ auth    stock   sale   web     web-    cms     social   order-
+ :4003   :4001   :4002  :4000   user    :4009   :4011    mgmt
+                                :4004                     :4013
+
+ rutba-  rutba-  rutba-  rutba-  rutba-
+ rider   crm     hr      acct    payroll
+ :4012   :4005   :4006   :4007   :4008
+
+ Shared:  packages/pos-shared  (UI + context)
+          packages/api-provider (descriptor-driven Strapi clients)
+          packages/strapi-api-pro (Strapi plugin: auth + scope enforcement)
 ```
 
 ## Applications
 
 | Directory | App | Port | Description |
 |---|---|---|---|
-| `pos-strapi/` | **Strapi API** | 1337 | Strapi 5.x headless CMS — all content types, REST API |
+| `pos-strapi/` | **Strapi API** | 4010 | Strapi 5.x headless CMS — content types, REST API, lifecycle hooks |
 | `packages/pos-shared/` | **Shared Library** | — | Components, context providers, utilities shared by all apps |
-| `pos-auth/` | **Auth Portal** | 3003 | Login, OAuth flow, user management, app-access admin |
-| `pos-stock/` | **Stock Management** | 3001 | Products, purchases, stock items, suppliers, brands, categories |
-| `pos-sale/` | **Point of Sale** | 3002 | Sales, cart, returns, cash register, reports |
-| `rutba-web/` | **Public Website** | 3000 | Customer-facing store (Next.js 15, TypeScript, Tailwind CSS) |
-| `rutba-web-user/` | **My Orders** | 3004 | Customer order tracking, returns, account management |
-| `rutba-order-management/` | **Order Management** | 3013 | Delivery operations, rider assignment, order status workflows, notification templates |
-| `rutba-rider/` | **Rider App** | 3012 | Rider offers, active deliveries, status updates, buyer messaging |
-| `rutba-crm/` | **CRM** | 3005 | Contacts, leads, activities, customer relationship management |
-| `rutba-hr/` | **Human Resources** | 3006 | Employees, departments, attendance, leave requests |
-| `rutba-accounts/` | **Accounting** | 3007 | Chart of accounts, journal entries, invoices, expenses |
-| `rutba-payroll/` | **Payroll** | 3008 | Salary structures, payroll runs, payslips |
-| `pos-desk/` | Legacy App | 3000 | Original combined app — kept for reference, not actively developed |
+| `packages/api-provider/` | **API descriptors** | — | Single source of truth for every Strapi endpoint; scaffolder emits per-app client + server bindings |
+| `packages/strapi-api-pro/` | **Strapi RBAC plugin** | — | Replaces api-guard-pro: descriptor-driven auth, role scope, claim caching |
+| `pos-auth/` | **Auth Portal** | 4003 | Login, OAuth-style flow, user management, app-access admin |
+| `pos-stock/` | **Stock Management** | 4001 | Products, purchases, stock items, suppliers, brands, categories |
+| `pos-sale/` | **Point of Sale** | 4002 | Sales, cart, returns, cash register, reports |
+| `rutba-web/` | **Public Website** | 4000 | Storefront — Next.js 16, SSR, sale offers, checkout (express + full address), COD |
+| `rutba-web-user/` | **My Orders** | 4004 | Customer order tracking, returns, account management |
+| `rutba-cms/` | **CMS** | 4009 | Page authoring, product groups, CMS sections, SEO defaults, bulk import/export |
+| `rutba-social/` | **Social** | 4011 | Social-account management, post composer with product preview |
+| `rutba-order-management/` | **Order Management** | 4013 | Delivery ops, rider assignment, order status workflow, payment verify, notification templates |
+| `rutba-rider/` | **Rider App** | 4012 | Rider offers, active deliveries, status updates, buyer messaging |
+| `rutba-crm/` | **CRM** | 4005 | Contacts, leads, activities, person browse + dedup audit (planned) |
+| `rutba-hr/` | **Human Resources** | 4006 | Employees, departments, attendance, leave requests |
+| `rutba-accounts/` | **Accounting** | 4007 | Chart of accounts, journal entries, invoices, expenses |
+| `rutba-payroll/` | **Payroll** | 4008 | Salary structures, payroll runs, payslips |
+| `pos-desk/` | Legacy App | — | Original combined app — kept for reference, not actively developed |
+
+> Ports above are the workspace defaults; `process.env.PORT` (set by Hostinger / Passenger / Docker) always overrides. See [.env.example](.env.example) for the `<APP_PREFIX>__PORT=` overrides.
 
 ## Tech Stack
 
-- **Frontend:** Next.js 16, React 19, Bootstrap 5 (POS apps), Tailwind CSS (rutba-web)
-- **Backend:** Strapi 5.x (MySQL)
-- **Auth:** OAuth-like flow via `pos-auth` with JWT, per-app localStorage
-- **Monorepo:** npm workspaces
+- **Frontend:** Next.js 16, React 19, Bootstrap 5 (POS / admin apps), Tailwind CSS (rutba-web storefront)
+- **Backend:** Strapi 5.x (MySQL / MariaDB); custom plugin `packages/strapi-api-pro` for descriptor-driven RBAC
+- **Auth:** OAuth-style flow via `pos-auth` with JWT + per-app `app_access` rows; `X-Rutba-App` / `X-Rutba-App-Role` headers select the active claim
+- **Data API layer:** `packages/api-provider` descriptors are the single source of truth; the scaffolder emits per-app clients and `.d.ts` sidecars
+- **Monorepo:** npm workspaces; env loader at `scripts/js/load-env.js` resolves `<APP_PREFIX>__VAR` overrides into bare env vars per child process
 
 ## Quick Start
 
@@ -71,29 +69,37 @@ An open-source, modular business management system built as an **npm workspaces 
 ```bash
 # 1. Clone the repository
 git clone https://github.com/eharain/Rutba-ERP.git
-cd Rutba-POS
+cd Rutba-ERP
 
 # 2. Install all dependencies (monorepo-wide)
 npm install
 
-# 3. Set up Strapi .env (copy and edit)
-cp pos-strapi/.env.example pos-strapi/.env
+# 3. Set up environment — copy the dev template and edit DB creds at minimum.
+#    Per-app vars use the APP_PREFIX__NAME convention (e.g. POS_STRAPI__PORT=4010).
+#    Workspace .env files (pos-strapi/.env, etc.) are intentionally empty —
+#    do NOT add vars there; the loader strips prefixes from the root .env.<ENV>
+#    See [.env.example](.env.example) for the contract.
+cp .env.example .env.development
 
-# 4. Start Strapi API
-cd pos-strapi && npm run develop
+# 4. Start Strapi via the workspace launcher (NOT `cd pos-strapi`).
+#    The launcher runs load-env.js so POS_STRAPI__* vars become DATABASE_*, etc.
+npm run dev:strapi          # Strapi API      → http://localhost:4010
 
 # 5. In separate terminals, start any app:
-npm run dev:auth       # Auth Portal   → http://localhost:4003
-npm run dev:stock      # Stock Mgmt    → http://localhost:4001
-npm run dev:sale       # Point of Sale → http://localhost:4002
-npm run dev:web        # Public Website→ http://localhost:4000
-npm run dev:web-user   # My Orders     → http://localhost:4004
-npm run dev:order-management # Order Mgmt   → http://localhost:4013
-npm run dev:rider      # Rider App     → http://localhost:4012
-npm run dev:crm        # CRM           → http://localhost:4005
-npm run dev:hr         # HR            → http://localhost:4006
-npm run dev:accounts   # Accounts      → http://localhost:4007
-npm run dev:payroll    # Payroll       → http://localhost:4008
+npm run dev:auth             # Auth Portal     → http://localhost:4003
+npm run dev:stock            # Stock Mgmt      → http://localhost:4001
+npm run dev:sale             # Point of Sale   → http://localhost:4002
+npm run dev:web              # Public Website  → http://localhost:4000
+npm run dev:web-user         # My Orders       → http://localhost:4004
+npm run dev:cms              # CMS authoring   → http://localhost:4009
+npm run dev:social           # Social composer → http://localhost:4011
+npm run dev:order-management # Order Mgmt      → http://localhost:4013
+npm run dev:rider            # Rider App       → http://localhost:4012
+npm run dev:crm              # CRM             → http://localhost:4005
+npm run dev:hr               # HR              → http://localhost:4006
+npm run dev:accounts         # Accounts        → http://localhost:4007
+npm run dev:payroll          # Payroll         → http://localhost:4008
+npm run dev:all              # Strapi + every app (Linux/macOS friendly)
 ```
 
 Or use the convenience batch files:
@@ -131,20 +137,20 @@ docker compose down
 | Service | URL |
 |---|---|
 | MySQL | `localhost:3306` |
-| Strapi API | http://localhost:1337 |
+| Strapi API | http://localhost:4010 |
 | Public Website | http://localhost:4000 |
 | Stock Management | http://localhost:4001 |
 | Point of Sale | http://localhost:4002 |
 | Auth Portal | http://localhost:4003 |
 | My Orders | http://localhost:4004 |
-| Order Management | http://localhost:4013 |
-| Rider App | http://localhost:4012 |
 | CRM | http://localhost:4005 |
 | HR | http://localhost:4006 |
 | Accounts | http://localhost:4007 |
 | Payroll | http://localhost:4008 |
 | CMS | http://localhost:4009 |
 | Social | http://localhost:4011 |
+| Rider App | http://localhost:4012 |
+| Order Management | http://localhost:4013 |
 
 ## Scripts Directory
 
@@ -195,14 +201,57 @@ node scripts/hostinger/restart.js --all              # Restart all apps
 
 ## Strapi Content Types
 
+Browse `pos-strapi/src/api/*/content-types/*/schema.json` for the full list.
+Key domain groupings:
+
 | Domain | Content Types |
 |---|---|
-| **Core** | Product, Category, Brand, Supplier, Purchase, Stock Item, Sale, Sale Item, Return |
-| **Auth** | App Access (linked to users for per-app access control) |
+| **Catalog** | Product (with `slug` as canonical URL key), Variant, Category, Category Group, Brand, Brand Group, Product Group |
+| **Inventory** | Stock Item (state machine: InStock → Reserved → Sold), Purchase, Purchase Item, Supplier |
+| **Sales (POS)** | Sale, Sale Item, Sale Return, Sale Return Item, Cash Register, Cash Register Transaction |
+| **Orders (Web)** | Sale Order (state machine, COD + payment verification, stock-item attach), Sale Offer, Delivery Method, Delivery Zone, Order Message, Order Parcel (planned) |
+| **People** | Person (canonical contact identity), Address, Person Dedup Audit, Customer, Customer Address (legacy), Contact Ticket |
 | **CRM** | CRM Contact, CRM Lead, CRM Activity |
-| **HR** | HR Employee, HR Department, HR Attendance, HR Leave Request |
+| **HR** | HR Employee, HR Department, HR Team, HR Attendance, HR Leave Request |
 | **Payroll** | Salary Structure, Payroll Run, Payslip |
-| **Accounting** | Account (chart of accounts), Journal Entry, Invoice, Expense |
+| **Accounting** | Acc Account (CoA), Acc Account Mapping, Acc Journal Entry, Acc Journal Line, Acc Fiscal Period, Acc Invoice, Acc Bill, Acc Bank Account, Acc Expense, Acc Tax Rate |
+| **Delivery** | Rider, Delivery Offer, Delivery Method, Delivery Zone |
+| **CMS** | CMS Page, CMS Footer, CMS Bulk (sections, layouts, SEO defaults) |
+| **Notifications** | Notification Template, Notification Event, Notification Log, Notification Preference |
+| **Auth / RBAC** | App Access (per-app claims), App Role, Policy (via `strapi-api-pro` plugin) |
+| **Site** | Site Setting, Branch, Currency |
+
+## Documentation
+
+### Operational
+
+- [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — full deployment guide
+- [docs/BUILD-DEPLOYMENT-SETUP-TEMPLATE.md](docs/BUILD-DEPLOYMENT-SETUP-TEMPLATE.md) — per-app build template
+- [docs/pre-deployment-test-plan.md](docs/pre-deployment-test-plan.md) — Tier 1–5 test plan
+- [docs/SHOP-PAGE-REDESIGN-PLAN.md](docs/SHOP-PAGE-REDESIGN-PLAN.md) — storefront redesign reference
+
+### Architecture & design
+
+- [docs/accounting-architecture.md](docs/accounting-architecture.md) — accounting overview (paired with the engine implementation guide below)
+- [docs/rutba-notification-system-design.md](docs/rutba-notification-system-design.md) — template-driven notifications
+
+### Active planning docs (`docs/todo/`)
+
+Forward-looking work, organised by surface. Items marked ✓ have shipped.
+
+- [order-lifecycle-plan.md](docs/todo/order-lifecycle-plan.md) — payment / packaging / delivery / refund / returns / audit-log roadmap. **Next up:** A.0 (tighten `verifyPayment`), then A.4 (pre-dispatch confirmation queue), with G.1 (audit log + buyer timeline) flagged priority.
+- [accounting-engine-implementation.md](docs/todo/accounting-engine-implementation.md) — 19-phase accounting engine spec. Phases 1–6 (account schema, journal posting service, fiscal periods, POS hook, sale-return hook) partly landed; the rest is planned.
+- [contact-entity-unification.md](docs/todo/contact-entity-unification.md) — Phase 1A (person + address + sale-order rewire) and 1C.5 (contact-ticket), 3.3 (UP signup promotion) ✓. Phase 1B (customer backfill) is next.
+- [contact-unification-launch-test-plan.md](docs/todo/contact-unification-launch-test-plan.md) — Tier P0/P1/P2 test plan for the unification work.
+- [rutba-web-launch-backlog.md](docs/todo/rutba-web-launch-backlog.md) — storefront pre/post-launch backlog.
+- [rutba-web-readable-slug-urls.md](docs/todo/rutba-web-readable-slug-urls.md) — ✓ shipped (commit `99500f3`).
+- [address-book-server-side.md](docs/todo/address-book-server-side.md) — multi-address per customer; localStorage shim ships, server-side multi-row planned.
+- [barcode-qr-deep-link.md](docs/todo/barcode-qr-deep-link.md) — storefront-URL QR + POS scanner strip. Blocked on the slug pass (now done).
+- [cms-preview-from-storefront.md](docs/todo/cms-preview-from-storefront.md) — draft-mode preview from CMS to storefront.
+- [site-settings-multi-tenant.md](docs/todo/site-settings-multi-tenant.md) — singleType → collectionType per app, with SEO follow-ups.
+- [project_api_provider_named_policy_architecture.md](docs/todo/project_api_provider_named_policy_architecture.md) — target architecture for descriptor-driven Strapi policies.
+- [project_api_provider_wire_codec.md](docs/todo/project_api_provider_wire_codec.md) — short-name URL codec for public `api/web/*` traffic; closes schema-enumeration vector.
+- [feedback_generated_code_verbosity.md](docs/todo/feedback_generated_code_verbosity.md), [feedback_scaffolder_inline_generation.md](docs/todo/feedback_scaffolder_inline_generation.md), [feedback_strict_rollout_no_warn_phase.md](docs/todo/feedback_strict_rollout_no_warn_phase.md) — design-rule notes used by the scaffolder and validator work.
 
 ## Contributing
 
