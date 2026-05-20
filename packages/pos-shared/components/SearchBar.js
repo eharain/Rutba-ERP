@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 
-export default function SearchBar({ value, onChange, delay = 500 }) {
+export default function SearchBar({ value, onChange, delay = 500, placeholder = "Search or scan barcode..." }) {
     const [internalValue, setInternalValue] = useState(value);
     const onChangeRef = useRef(onChange);
     const lastReportedValue = useRef(value);
@@ -24,7 +24,7 @@ export default function SearchBar({ value, onChange, delay = 500 }) {
     return (
         <input
             type="text"
-            placeholder="Search or scan barcode..."
+            placeholder={placeholder}
             value={internalValue}
             onChange={(e) => setInternalValue(e.target.value)}
             style={{

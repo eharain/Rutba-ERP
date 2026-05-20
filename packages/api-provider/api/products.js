@@ -119,7 +119,13 @@ export const ProductsEndpoints = {
     },
 
     /**
-     * Full-text search across products (name, barcode, sku, suppliers, purchase orderId).
+     * Full-text search across products. Hits, in order:
+     *   - product.name           ($containsi — partial match)
+     *   - product.barcode        ($eq — barcodes are scanned exact)
+     *   - product.sku            ($eq — SKUs are exact)
+     *   - product.supplierCode   ($containsi — the supplier's reference for THIS product)
+     *   - suppliers.name / phone ($containsi)
+     *   - purchase_items.purchase.orderId ($containsi — find every product on PO X)
      *
      * @param {string} searchText
      * @param {number} page
@@ -133,6 +139,7 @@ export const ProductsEndpoints = {
                     { name: { $containsi: searchText } },
                     { barcode: { $eq: searchText } },
                     { sku: { $eq: searchText } },
+                    { supplierCode: { $containsi: searchText } },
                     { suppliers: { $or: [{ name: { $containsi: searchText } }, { phone: { $containsi: searchText } }] } },
                     { purchase_items: { purchase: { orderId: { $containsi: searchText } } } },
                 ],
@@ -164,6 +171,7 @@ export const ProductsEndpoints = {
                     { name: { $containsi: searchText } },
                     { barcode: { $eq: searchText } },
                     { sku: { $eq: searchText } },
+                    { supplierCode: { $containsi: searchText } },
                 ],
             },
             populate: { logo: true, categories: true, brands: true },

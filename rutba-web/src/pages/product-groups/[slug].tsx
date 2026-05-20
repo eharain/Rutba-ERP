@@ -150,7 +150,13 @@ export default function ProductGroupPage({
             ? group.excerpt.replace(/[#*_~`>\[\]()!|-]/g, "").trim()
             : undefined)
         }
-        keywords={(group.seo_meta?.keywords || []).map((k) => k.keyword)}
+        keywords={(() => {
+          const raw = group.seo_meta?.keywords;
+          if (typeof raw === "string" && raw.trim()) {
+            return raw.split(",").map((k) => k.trim()).filter(Boolean);
+          }
+          return [];
+        })()}
         image={group.seo_meta?.og_image?.url || group.cover_image?.url}
         noindex={!!group.seo_meta?.noindex}
       />
