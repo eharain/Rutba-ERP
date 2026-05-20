@@ -8,8 +8,6 @@ import { useUtil } from '@rutba/pos-shared/context/UtilContext';
 import { printStorage } from '@rutba/pos-shared/lib/printStorage';
 import { getBranch } from '@rutba/pos-shared/lib/utils';
 import ProductPageShell, { buildStockProductTabs } from '@rutba/pos-shared/components/product/ProductPageShell';
-import { useAuth } from '@rutba/pos-shared/context/AuthContext';
-import { isActiveAdminRole, isAppAdmin } from '@rutba/pos-shared/lib/roles';
 
 /**
  * Generate a short barcode prefix from a product name.
@@ -45,16 +43,6 @@ export default function EditProduct() {
     const stockSubTab = ['list', 'generate', 'scan', 'reduce', 'assign'].includes(stockSubTabParam) ? stockSubTabParam : 'list';
     const { currency } = useUtil();
 
-    // Cost price is admin-only on the Pricing tab. Non-admins see a masked,
-    // read-only placeholder so they know the field exists without being able
-    // to read the margin. Admins start masked too with a show/hide toggle so
-    // the number isn't visible by default to anyone walking past the screen.
-    const { activeRoleKey, adminAppAccess } = useAuth();
-    const isAdmin = activeRoleKey
-        ? isActiveAdminRole(activeRoleKey)
-        : isAppAdmin(adminAppAccess, 'stock');
-    const [showCostPrice, setShowCostPrice] = useState(false);
-
     const [productId, setProductId] = useState([]);
     const [product, setProduct] = useState({});
     const [categories, setCategories] = useState([]);
@@ -72,7 +60,7 @@ export default function EditProduct() {
     const [stockStatuses, setStockStatuses] = useState([]);
     const [selectedStockItems, setSelectedStockItems] = useState(new Set());
     const [applyingChanges, setApplyingChanges] = useState(false);
-    const [applyFields, setApplyFields] = useState({ name: true, sku: false, cost_price: false, selling_price: true, offer_price: true, status: false });
+    const [applyFields, setApplyFields] = useState({ name: true, sku: false, selling_price: true, offer_price: true, status: false });
     const [applyStatus, setApplyStatus] = useState('');
 
     // Branch assignment — moves selected items into a destination branch.
@@ -275,9 +263,6 @@ export default function EditProduct() {
             const updates = {};
             if (applyFields.name) updates.name = product.name;
             if (applyFields.sku) updates.sku = product.sku || '';
-            // cost_price is admin-only; defence-in-depth in case applyFields was
-            // dirtied before isAdmin loaded.
-            if (isAdmin && applyFields.cost_price) updates.cost_price = parseFloat(product.cost_price) || 0;
             if (applyFields.selling_price) updates.selling_price = parseFloat(product.selling_price) || 0;
             if (applyFields.offer_price) updates.offer_price = parseFloat(product.offer_price) || 0;
             if (applyFields.status && applyStatus) updates.status = applyStatus;
@@ -293,7 +278,7 @@ export default function EditProduct() {
             // a status change (Reduce / Assign workflows on the Stock tab) we
             // intentionally allow the broader set.
             const isStatusOnly = applyFields.status && !applyFields.name && !applyFields.sku
-                && !applyFields.cost_price && !applyFields.selling_price && !applyFields.offer_price;
+                && !applyFields.selling_price && !applyFields.offer_price;
 
             const itemsById = new Map(stockItems.map(it => [(it.documentId || it.id), it]));
             const allIds = Array.from(selectedStockItems);
@@ -369,7 +354,6 @@ export default function EditProduct() {
                     status: 'Received',
                     selling_price: parseFloat(product.selling_price) || 0,
                     offer_price: parseFloat(product.offer_price) || 0,
-                    cost_price: parseFloat(product.cost_price) || 0,
                     product: documentId,
                     branch: branch?.documentId || branch?.id || undefined,
                 };
@@ -412,7 +396,6 @@ export default function EditProduct() {
                 status: 'Received',
                 selling_price: parseFloat(product.selling_price) || 0,
                 offer_price: parseFloat(product.offer_price) || 0,
-                cost_price: parseFloat(product.cost_price) || 0,
                 product: documentId,
                 branch: branch?.documentId || branch?.id || undefined,
             };
@@ -548,7 +531,6 @@ export default function EditProduct() {
                 status: 'Received',
                 selling_price: parseFloat(product.selling_price) || 0,
                 offer_price: parseFloat(product.offer_price) || 0,
-                cost_price: parseFloat(product.cost_price) || 0,
                 product: documentId,
                 branch: branch?.documentId || branch?.id || undefined,
             };
@@ -606,7 +588,6 @@ export default function EditProduct() {
             // them here would risk overwriting concurrent edits from CMS.
             const payload = {
                 sku: product.sku ?? null,
-                cost_price: product.cost_price ?? null,
                 selling_price: product.selling_price ?? null,
                 offer_price: product.offer_price ?? null,
                 tax_rate: product.tax_rate ?? null,
@@ -698,53 +679,6 @@ export default function EditProduct() {
                                         className="form-control" placeholder="Supplier Code" />
                                 </div>
                                 <div className="col-md-3">
-                                    <label className="form-label fw-bold d-flex align-items-center gap-2">
-                                        Cost Price
-                                        {isAdmin
-                                            ? <span className="badge bg-secondary" title="Admins only">admin</span>
-                                            : <i className="fas fa-lock text-muted" title="Hidden — admin only" />}
-                                    </label>
-                                    <div className="input-group">
-                                        <span className="input-group-text">{currency}</span>
-                                        {isAdmin ? (
-                                            <>
-                                                <input
-                                                    type={showCostPrice ? 'number' : 'password'}
-                                                    name="cost_price"
-                                                    step="0.01"
-                                                    min="0"
-                                                    value={product.cost_price ?? ''}
-                                                    onChange={handleChange}
-                                                    className="form-control"
-                                                    placeholder="0.00"
-                                                    autoComplete="off"
-                                                />
-                                                <button
-                                                    type="button"
-                                                    className="btn btn-outline-secondary"
-                                                    onClick={() => setShowCostPrice(v => !v)}
-                                                    title={showCostPrice ? 'Hide cost price' : 'Show cost price'}
-                                                    aria-label={showCostPrice ? 'Hide cost price' : 'Show cost price'}
-                                                >
-                                                    <i className={`fas ${showCostPrice ? 'fa-eye-slash' : 'fa-eye'}`} />
-                                                </button>
-                                            </>
-                                        ) : (
-                                            <input
-                                                type="password"
-                                                value="••••••"
-                                                readOnly
-                                                disabled
-                                                className="form-control"
-                                                aria-label="Cost price (hidden — admin only)"
-                                            />
-                                        )}
-                                    </div>
-                                    {!isAdmin && (
-                                        <div className="form-text">Hidden — admin only.</div>
-                                    )}
-                                </div>
-                                <div className="col-md-3">
                                     <label className="form-label fw-bold">Selling Price *</label>
                                     <div className="input-group">
                                         <span className="input-group-text">{currency}</span>
@@ -781,12 +715,6 @@ export default function EditProduct() {
                                         className="form-control" placeholder="1" />
                                 </div>
                             </div>
-                            {isAdmin && (product.cost_price > 0 && product.selling_price > 0) && (
-                                <div className="alert alert-info mt-3 mb-0 py-2 d-flex gap-4 small">
-                                    <span><strong>Margin:</strong> {currency}{(product.selling_price - product.cost_price).toFixed(2)}</span>
-                                    <span><strong>Markup:</strong> {((product.selling_price - product.cost_price) / product.cost_price * 100).toFixed(1)}%</span>
-                                </div>
-                            )}
                         </div>
                     </form>
                     )}
@@ -824,12 +752,6 @@ export default function EditProduct() {
                                             <input type="checkbox" checked={applyFields.sku} onChange={(e) => setApplyFields(f => ({ ...f, sku: e.target.checked }))} />
                                             SKU
                                         </label>
-                                        {isAdmin && (
-                                            <label className="small d-inline-flex align-items-center gap-1 mb-0">
-                                                <input type="checkbox" checked={applyFields.cost_price} onChange={(e) => setApplyFields(f => ({ ...f, cost_price: e.target.checked }))} />
-                                                Cost Price
-                                            </label>
-                                        )}
                                         <label className="small d-inline-flex align-items-center gap-1 mb-0">
                                             <input type="checkbox" checked={applyFields.selling_price} onChange={(e) => setApplyFields(f => ({ ...f, selling_price: e.target.checked }))} />
                                             Selling Price
@@ -862,7 +784,6 @@ export default function EditProduct() {
                                 <div className="alert alert-light border py-2 mb-3 small">
                                     <strong>Values that will be written:</strong>
                                     {applyFields.sku && <span className="ms-3">SKU: <em>{product.sku || '—'}</em></span>}
-                                    {isAdmin && applyFields.cost_price && <span className="ms-3">Cost: <em>{currency}{parseFloat(product.cost_price || 0).toFixed(2)}</em></span>}
                                     {applyFields.selling_price && <span className="ms-3">Selling: <em>{currency}{parseFloat(product.selling_price || 0).toFixed(2)}</em></span>}
                                     {applyFields.offer_price && <span className="ms-3">Offer: <em>{currency}{parseFloat(product.offer_price || 0).toFixed(2)}</em></span>}
                                     {applyFields.name && <span className="ms-3">Name: <em>{product.name || '—'}</em></span>}
@@ -882,7 +803,6 @@ export default function EditProduct() {
                                                 <th>SKU</th>
                                                 <th>Barcode</th>
                                                 <th>Name</th>
-                                                <th>Cost</th>
                                                 <th>Selling</th>
                                                 <th>Offer</th>
                                                 <th>Status</th>
@@ -890,9 +810,9 @@ export default function EditProduct() {
                                         </thead>
                                         <tbody>
                                             {stockItemsLoading ? (
-                                                <tr><td colSpan={8} className="text-center text-muted py-3">Loading stock items…</td></tr>
+                                                <tr><td colSpan={7} className="text-center text-muted py-3">Loading stock items…</td></tr>
                                             ) : stockItems.length === 0 ? (
-                                                <tr><td colSpan={8} className="text-center text-muted py-3">No stock items found for this product.</td></tr>
+                                                <tr><td colSpan={7} className="text-center text-muted py-3">No stock items found for this product.</td></tr>
                                             ) : (
                                                 stockItems.map((item) => {
                                                     const itemId = item.documentId || item.id;
@@ -913,7 +833,6 @@ export default function EditProduct() {
                                                             <td>{item.sku || '—'}</td>
                                                             <td style={{ fontFamily: 'monospace' }}>{item.barcode || '—'}</td>
                                                             <td>{item.name || '—'}</td>
-                                                            <td>{currency}{parseFloat(item.cost_price || 0).toFixed(2)}</td>
                                                             <td>{currency}{parseFloat(item.selling_price || 0).toFixed(2)}</td>
                                                             <td>{currency}{parseFloat(item.offer_price || 0).toFixed(2)}</td>
                                                             <td><span className="badge bg-secondary">{item.status}</span></td>
@@ -1311,7 +1230,6 @@ export default function EditProduct() {
                                         <span style={{ marginLeft: '12px' }}>Name: <em>{product.name || '—'}</em></span>
                                         <span style={{ marginLeft: '12px' }}>Selling: <em>{currency}{parseFloat(product.selling_price || 0).toFixed(2)}</em></span>
                                         <span style={{ marginLeft: '12px' }}>Offer: <em>{currency}{parseFloat(product.offer_price || 0).toFixed(2)}</em></span>
-                                        <span style={{ marginLeft: '12px' }}>Cost: <em>{currency}{parseFloat(product.cost_price || 0).toFixed(2)}</em></span>
                                     </div>
 
                                     {/* --- Method 1: Bulk add new items --- */}

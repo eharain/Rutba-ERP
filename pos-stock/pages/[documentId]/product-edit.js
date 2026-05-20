@@ -163,7 +163,6 @@ export default function ProductEditPage() {
                     sku: `${baseSku}-${Date.now().toString(36)}-${seq}`,
                     barcode: baseBarcode ? `${baseBarcode}-${seq}` : undefined,
                     status: 'InStock',
-                    cost_price: parseFloat(product.cost_price) || 0,
                     selling_price: parseFloat(product.selling_price) || 0,
                     offer_price: parseFloat(product.offer_price) || 0,
                     sellable_units: 1,

@@ -3,7 +3,6 @@ import { useRouter } from "next/router";
 import Layout from "../../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { isActiveAdminRole, isAppAdmin } from "@rutba/pos-shared/lib/roles";
 import { getBranch } from "@rutba/pos-shared/lib/utils";
 import { MediaUtilsEndpoints, ProductGroupsEndpoints, ProductsEndpoints, StockItemsEndpoints } from "@rutba/api-provider/endpoints";
 import FileView from "@rutba/pos-shared/components/FileView";
@@ -23,16 +22,10 @@ import { buildProductWebUrl } from "../../lib/cmsPageWebUrl";
 export default function ProductDetail() {
     const router = useRouter();
     const { documentId } = router.query;
-    const { jwt, activeRoleKey, adminAppAccess } = useAuth();
+    const { jwt } = useAuth();
     const { currency } = useUtil();
     const isNew = !documentId || documentId === "new";
 
-    // Cost price is admin-only across the ERP (mirror of pos-stock's Pricing
-    // tab). We default to "admin in the current CMS app" as the fallback when
-    // activeRoleKey isn't set yet — the gate matches PermissionCheck's logic.
-    const isAdmin = activeRoleKey
-        ? isActiveAdminRole(activeRoleKey)
-        : isAppAdmin(adminAppAccess, "cms");
     const [product, setProduct] = useState(null);
     const [isPublished, setIsPublished] = useState(false);
     const [loading, setLoading] = useState(true);
@@ -47,8 +40,6 @@ export default function ProductDetail() {
     const [description, setDescription] = useState("");
     const [sellingPrice, setSellingPrice] = useState("");
     const [offerPrice, setOfferPrice] = useState("");
-    const [costPrice, setCostPrice] = useState("");
-    const [showCostPrice, setShowCostPrice] = useState(false);
     const [isActive, setIsActive] = useState(true);
     // Starting quantity is only collected on creation. After the product is
     // saved we mint that many stock-items in status 'InStock' so the
@@ -98,7 +89,6 @@ export default function ProductDetail() {
             setDescription(p.description || "");
             setSellingPrice(p.selling_price ?? "");
             setOfferPrice(p.offer_price ?? "");
-            setCostPrice(p.cost_price ?? "");
             setIsActive(p.is_active ?? true);
             setLogoFile(p.logo || null);
             setGalleryFiles(Array.isArray(p.gallery) ? p.gallery : []);
@@ -133,13 +123,6 @@ export default function ProductDetail() {
         gallery: galleryFiles.map(f => f?.id).filter(Boolean),
     });
 
-    // Cost price is admin-only. Non-admins never see the field and we
-    // deliberately omit cost_price from their save/publish payloads so they
-    // can't null-overwrite a value they couldn't read.
-    const costPricePayload = () => (isAdmin
-        ? { cost_price: costPrice === "" ? null : parseFloat(costPrice) }
-        : {});
-
     // Mint `qty` stock-items in InStock for a newly-created product so its
     // opening balance shows up immediately. The stock-item lifecycle keeps
     // product.stock_quantity in sync — we never write the cache directly.
@@ -151,7 +134,6 @@ export default function ProductDetail() {
         try {
             const baseSku = (newDocId || "SKU").toString().toUpperCase();
             const branch = getBranch();
-            const cost = parseFloat(costPrice) || 0;
             const sell = parseFloat(sellingPrice) || 0;
             const offer = parseFloat(offerPrice) || 0;
             let created = 0;
@@ -162,7 +144,6 @@ export default function ProductDetail() {
                         name,
                         sku: `${baseSku}-${Date.now().toString(36)}-${seq}`,
                         status: "InStock",
-                        cost_price: cost,
                         selling_price: sell,
                         offer_price: offer,
                         sellable_units: 1,
@@ -226,7 +207,6 @@ export default function ProductDetail() {
                 description,
                 selling_price: parseFloat(sellingPrice) || 0,
                 offer_price: offerPrice ? parseFloat(offerPrice) : null,
-                ...costPricePayload(),
                 is_active: isActive,
                 ...(isNew ? {} : fileFieldsPayload()),
             };
@@ -264,7 +244,6 @@ export default function ProductDetail() {
                 description,
                 selling_price: parseFloat(sellingPrice) || 0,
                 offer_price: offerPrice ? parseFloat(offerPrice) : null,
-                ...costPricePayload(),
                 is_active: isActive,
                 ...(isNew ? {} : fileFieldsPayload()),
             };
@@ -320,7 +299,6 @@ export default function ProductDetail() {
                 description,
                 selling_price: parseFloat(sellingPrice) || 0,
                 offer_price: offerPrice ? parseFloat(offerPrice) : null,
-                ...costPricePayload(),
                 is_active: isActive,
             });
             const res = await ProductsEndpoints.byIdPublished(documentId, {
@@ -340,7 +318,6 @@ export default function ProductDetail() {
             setDescription(p.description || "");
             setSellingPrice(p.selling_price ?? "");
             setOfferPrice(p.offer_price ?? "");
-            setCostPrice(p.cost_price ?? "");
             setIsActive(p.is_active ?? true);
             setLogoFile(p.logo || null);
             setGalleryFiles(Array.isArray(p.gallery) ? p.gallery : []);
@@ -534,49 +511,6 @@ export default function ProductDetail() {
                                                 <div className="col-md-3 mb-3">
                                                     <label className="form-label">Offer Price ({currency})</label>
                                                     <input type="number" className="form-control" value={offerPrice} onChange={e => setOfferPrice(e.target.value)} placeholder="Optional" />
-                                                </div>
-                                                <div className="col-md-3 mb-3">
-                                                    <label className="form-label d-flex align-items-center gap-2">
-                                                        Cost Price ({currency})
-                                                        {isAdmin
-                                                            ? <span className="badge bg-secondary" title="Admins only">admin</span>
-                                                            : <i className="fas fa-lock text-muted" title="Hidden — admin only" />}
-                                                    </label>
-                                                    {isAdmin ? (
-                                                        <div className="input-group">
-                                                            <input
-                                                                type={showCostPrice ? "number" : "password"}
-                                                                step="0.01"
-                                                                min="0"
-                                                                className="form-control"
-                                                                value={costPrice}
-                                                                onChange={e => setCostPrice(e.target.value)}
-                                                                placeholder="0.00"
-                                                                autoComplete="off"
-                                                            />
-                                                            <button
-                                                                type="button"
-                                                                className="btn btn-outline-secondary"
-                                                                onClick={() => setShowCostPrice(v => !v)}
-                                                                title={showCostPrice ? "Hide cost price" : "Show cost price"}
-                                                                aria-label={showCostPrice ? "Hide cost price" : "Show cost price"}
-                                                            >
-                                                                <i className={`fas ${showCostPrice ? "fa-eye-slash" : "fa-eye"}`} />
-                                                            </button>
-                                                        </div>
-                                                    ) : (
-                                                        <>
-                                                            <input
-                                                                type="password"
-                                                                value="••••••"
-                                                                readOnly
-                                                                disabled
-                                                                className="form-control"
-                                                                aria-label="Cost price (hidden — admin only)"
-                                                            />
-                                                            <div className="form-text">Hidden — admin only.</div>
-                                                        </>
-                                                    )}
                                                 </div>
                                                 <div className="col-md-3 mb-3 d-flex align-items-end">
                                                     <div className="form-check">
