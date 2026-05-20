@@ -332,7 +332,6 @@ export default function ProductsBulkEdit() {
                         status: stockItemStatus,
                         selling_price: parseFloat(getEditValue(product, 'selling_price')) || parseFloat(product.selling_price) || 0,
                         offer_price: parseFloat(getEditValue(product, 'offer_price')) || parseFloat(product.offer_price) || 0,
-                        cost_price: parseFloat(product.cost_price) || 0,
                         product: docId,
                         branch: branch?.documentId || branch?.id || undefined,
                     });
