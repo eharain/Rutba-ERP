@@ -517,6 +517,42 @@ export default function ProductDetail({
                 if (!hasTermVariants) setSelectedVariant(id);
               }}
               onImageChange={setSelectedImageUrl}
+              lightboxFooter={
+                <div className="flex items-center gap-3 max-w-3xl mx-auto">
+                  <div className="flex-1 min-w-0 text-white">
+                    <p className="text-[11px] uppercase tracking-[0.18em] font-bold text-white/60 truncate">
+                      {[brand?.name, category?.name].filter(Boolean).join(" · ") || product?.name}
+                    </p>
+                    <p className="font-display font-bold text-base md:text-lg leading-tight truncate">
+                      {getOfferPrice != null ? (
+                        <>
+                          <span>{currencyFormat(getOfferPrice)}</span>
+                          {getPrice != null && (
+                            <span className="text-sm text-white/50 line-through ml-2 font-normal">
+                              {currencyFormat(getPrice as number)}
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        currencyFormat(
+                          typeof getPrice === "number"
+                            ? (getPrice as number)
+                            : product?.selling_price ?? 0
+                        )
+                      )}
+                    </p>
+                  </div>
+                  <Button
+                    size="lg"
+                    disabled={!canAddToCart}
+                    onClick={handleAddToCart}
+                    className="h-12 px-6 rounded-full text-sm font-bold tracking-wide shrink-0"
+                  >
+                    <ShoppingBasket className="h-4 w-4 mr-2" />
+                    {canAddToCart ? "Add to Cart" : "Pick options"}
+                  </Button>
+                </div>
+              }
             />
           </div>
 
