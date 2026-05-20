@@ -2579,25 +2579,32 @@ function round2(n) { return Math.round(n * 100) / 100; }
 
 ## Implementation Roadmap
 
-| Phase | Scope | Priority |
-|-------|-------|----------|
-| **1** | Enhanced `acc-account` schema + seed CoA + `acc-account-mapping` | 🔴 Critical |
-| **2** | `acc-journal-line` entity + redesigned `acc-journal-entry` header | 🔴 Critical |
-| **3** | Accounting service (`createAndPost`, `reverse`, `findOpenPeriod`) | 🔴 Critical |
-| **4** | `acc-fiscal-period` entity + period validation | 🔴 Critical |
-| **5** | POS Sale integration (checkout.js hook) | 🔴 Critical |
-| **6** | Sale Return integration (lifecycle hook) | 🔴 Critical |
-| **7** | Cash Register open/close integration | 🟡 High |
-| **8** | Purchase Receipt integration | 🟡 High |
-| **9** | `acc-tax-rate` entity + tax calculation service | 🟡 High |
-| **10** | `acc-bill` entity + purchase payment flow | 🟡 High |
-| **11** | Enhanced `acc-invoice` + payment tracking | 🟡 High |
-| **12** | `acc-bank-account` entity + bank reconciliation | 🟢 Medium |
-| **13** | Web order (Stripe) integration | 🟢 Medium |
-| **14** | Stock valuation layers | 🟢 Medium |
-| **15** | `acc_account_balances` snapshots + period close automation | 🟢 Medium |
-| **16** | Financial reports (Trial Balance, P&L, Balance Sheet) | 🟢 Medium |
-| **17** | Daily summary cron job | 🔵 Low |
-| **18** | Summary tables + performance optimization | 🔵 Low |
-| **19** | Gift card / loyalty point accounting | 🔵 Low |
+> **Status (May 2026):** Phases 1–5 land the core engine and the POS sale +
+> sale-cancel postings. Sale-return, cash-register, purchase, tax, bills,
+> invoices, bank reconciliation, valuation, reports — all still pending.
+> Verify before claiming any later phase by grepping for the relevant
+> content type / service call site:
+>   `grep -rE "createAndPost|api::acc-journal-entry" pos-strapi/src/api/<entity>/`
+
+| Phase | Scope | Priority | Status |
+|-------|-------|----------|--------|
+| **1** | Enhanced `acc-account` schema + seed CoA + `acc-account-mapping` | 🔴 Critical | ✓ schemas in `pos-strapi/src/api/acc-account/`, `acc-account-mapping/` |
+| **2** | `acc-journal-line` entity + redesigned `acc-journal-entry` header | 🔴 Critical | ✓ both content types present |
+| **3** | Accounting service (`createAndPost`, `reverse`, `findOpenPeriod`) | 🔴 Critical | ✓ `pos-strapi/src/api/acc-journal-entry/services/accounting.js` exports all of these plus `generateEntryNumber` and `reverseBySource` |
+| **4** | `acc-fiscal-period` entity + period validation | 🔴 Critical | ✓ content type present; `findOpenPeriod` consulted from the engine |
+| **5** | POS Sale integration (checkout.js hook) | 🔴 Critical | ✓ `pos-strapi/src/api/sale/controllers/checkout.js` + `cancel.js` call `createAndPost` / reversal |
+| **6** | Sale Return integration (lifecycle hook) | 🔴 Critical | ⏳ TODO — no `createAndPost` call in `sale-return/` yet |
+| **7** | Cash Register open/close integration | 🟡 High | ⏳ TODO |
+| **8** | Purchase Receipt integration | 🟡 High | ⏳ TODO |
+| **9** | `acc-tax-rate` entity + tax calculation service | 🟡 High | ⏳ entity present; service partly there (`tax-calculator.js`); end-to-end wiring TODO |
+| **10** | `acc-bill` entity + purchase payment flow | 🟡 High | ⏳ entity present; flow TODO |
+| **11** | Enhanced `acc-invoice` + payment tracking | 🟡 High | ⏳ entity present; payment tracking TODO |
+| **12** | `acc-bank-account` entity + bank reconciliation | 🟢 Medium | ⏳ entity present; reconciliation TODO |
+| **13** | Web order (Stripe) integration | 🟢 Medium | ⏳ TODO — paired with order-lifecycle Phase A.2 |
+| **14** | Stock valuation layers | 🟢 Medium | ⏳ TODO |
+| **15** | `acc_account_balances` snapshots + period close automation | 🟢 Medium | ⏳ TODO |
+| **16** | Financial reports (Trial Balance, P&L, Balance Sheet) | 🟢 Medium | ⏳ TODO |
+| **17** | Daily summary cron job | 🔵 Low | ⏳ TODO |
+| **18** | Summary tables + performance optimization | 🔵 Low | ⏳ TODO |
+| **19** | Gift card / loyalty point accounting | 🔵 Low | ⏳ TODO |
 | **20** | Year-end close automation | 🔵 Low |

@@ -522,8 +522,12 @@ module.exports = factories.createCoreController(
         //
         // Status flow on the stock-item:
         //   InStock  → Reserved  (this endpoint)
-        //   Reserved → Sold      (state machine on order DELIVERED — not yet wired)
-        //   Reserved → InStock   (state machine on order CANCELLED — not yet wired)
+        //   Reserved → Sold      (state machine on order DELIVERED)
+        //   Reserved → InStock   (state machine on order CANCELLED)
+        //
+        // FAILED_DELIVERY deliberately leaves the unit Reserved — staff
+        // either retries delivery (no change) or cancels (which then
+        // restocks via the CANCELLED hook).
         async attachStockItem(ctx) {
             const user = await ensureUser(ctx, strapi);
             if (!user) return;
