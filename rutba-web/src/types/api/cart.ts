@@ -14,6 +14,7 @@ export interface CartInterface {
   offerPrice?: number;
   offerId?: string;
   sourceGroupId?: string;
+  offerFreeShipping?: boolean;
   width: number;
   length: number;
   height: number;

@@ -13,6 +13,7 @@ export interface cartLocalStorage {
   offerPrice?: number;
   offerId?: string;
   sourceGroupId?: string;
+  offerFreeShipping?: boolean;
 }
 
 export const useCartService = () => {
@@ -35,7 +36,8 @@ export const useCartService = () => {
     selectedImage?: string | null,
     offerPrice?: number,
     offerId?: string,
-    sourceGroupId?: string
+    sourceGroupId?: string,
+    offerFreeShipping?: boolean
   ) => {
     const cart = localStorage.getItem("cart");
 
@@ -64,6 +66,7 @@ export const useCartService = () => {
           offerPrice: offerPrice,
           offerId: offerId,
           sourceGroupId: sourceGroupId,
+          offerFreeShipping: offerFreeShipping,
         });
       }
 
@@ -80,6 +83,7 @@ export const useCartService = () => {
           offerPrice: offerPrice,
           offerId: offerId,
           sourceGroupId: sourceGroupId,
+          offerFreeShipping: offerFreeShipping,
         },
       ];
 
@@ -202,6 +206,7 @@ export const useCartService = () => {
           offerPrice: item.offerPrice,
           offerId: item.offerId,
           sourceGroupId: item.sourceGroupId,
+          offerFreeShipping: item.offerFreeShipping,
           documentId: productData?.documentId,
           qty: item.qty,
           variant_terms: apiTerms.length > 0 ? apiTerms : (item.variantTerms || []),

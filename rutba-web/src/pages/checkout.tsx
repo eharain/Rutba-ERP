@@ -172,7 +172,13 @@ export default function CheckoutPage() {
     );
 
   const savings = (countOriginalTotal() ?? 0) - (countSubTotal() ?? 0);
-  const deliveryCost = selectedDeliveryMethod?.cost ?? 0;
+  // Any active offer in the cart that grants free shipping waives the
+  // selected delivery method's cost. The CMS resolver OR's free_shipping
+  // across all live offers on a group, so any single qualifying item
+  // unlocks free shipping for the whole order.
+  const offerWaivesShipping = (cart ?? []).some((item) => !!item.offerFreeShipping);
+  const baseDeliveryCost = selectedDeliveryMethod?.cost ?? 0;
+  const deliveryCost = offerWaivesShipping ? 0 : baseDeliveryCost;
   const countTotal = () => (countSubTotal() ?? 0) + (showFullAddress ? deliveryCost : 0);
 
   // ── Place order mutation ─────────────────────────────────────────────────
@@ -272,8 +278,14 @@ export default function CheckoutPage() {
       0
     );
     const totalSavings = originalSubtotal - subtotal;
+    // Mirror the cart-level check: any item carrying an offer with free
+    // shipping waives the delivery method's cost for the whole order.
+    const itemsWaiveShipping = safeCart.some((item) => !!item.offerFreeShipping);
+    const effectiveDeliveryCost = itemsWaiveShipping
+      ? 0
+      : selectedDeliveryMethod?.cost ?? 0;
     const totalWithDelivery =
-      subtotal + (includeDelivery ? selectedDeliveryMethod?.cost ?? 0 : 0);
+      subtotal + (includeDelivery ? effectiveDeliveryCost : 0);
 
     const formattedItems = safeCart.map((item) => {
       const itemQty = Number(item.qty || 1);
@@ -316,10 +328,16 @@ export default function CheckoutPage() {
         ? {
             delivery_method_id: selectedDeliveryMethod.methodDocumentId,
             delivery_zone_id: selectedDeliveryMethod.zoneDocumentId,
-            delivery_cost: selectedDeliveryMethod.cost,
+            delivery_cost: effectiveDeliveryCost,
             delivery_cost_breakdown: {
               base_cost: selectedDeliveryMethod.cost,
-              is_free_shipping: selectedDeliveryMethod.isFreeShipping,
+              is_free_shipping:
+                selectedDeliveryMethod.isFreeShipping || itemsWaiveShipping,
+              free_shipping_reason: itemsWaiveShipping
+                ? "offer"
+                : selectedDeliveryMethod.isFreeShipping
+                ? "delivery_method"
+                : undefined,
               service_provider:
                 selectedDeliveryMethod.serviceProvider ?? "manual_contact",
             },
@@ -628,10 +646,15 @@ export default function CheckoutPage() {
                   <span className="text-muted-foreground inline-flex items-center gap-1.5">
                     <Truck className="h-3.5 w-3.5" />
                     Shipping
+                    {offerWaivesShipping && (
+                      <span className="text-[10px] uppercase tracking-wide font-bold text-brand">
+                        offer
+                      </span>
+                    )}
                   </span>
                   <span className="font-semibold">
                     {selectedDeliveryMethod
-                      ? selectedDeliveryMethod.isFreeShipping
+                      ? offerWaivesShipping || selectedDeliveryMethod.isFreeShipping
                         ? <span className="text-brand">FREE</span>
                         : currencyFormat(selectedDeliveryMethod.cost)
                       : <span className="text-muted-foreground italic">Pick below</span>}
