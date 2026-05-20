@@ -51,6 +51,8 @@ const APP_VARS = {
     { key: 'DATABASE_SSL',                   severity: 'warn',  default: 'false',   description: 'Database SSL' },
     { key: 'HOST',                           severity: 'warn',  default: '0.0.0.0', description: 'Strapi listen host' },
     { key: 'PORT',                           severity: 'warn',  default: '4010',     description: 'Strapi listen port' },
+    { key: 'PUBLIC_URL',                     severity: 'warn',  description: 'Strapi public origin — used for absolute URLs (uploads, password-reset links). Required when running behind a reverse proxy on a public domain.' },
+    { key: 'IS_PROXIED',                     severity: 'warn',  default: 'false',   description: 'Trust X-Forwarded-* headers from the reverse proxy (nginx/Caddy/Traefik). Set true in production.' },
     { key: 'APP_KEYS',                       severity: 'error', description: 'Strapi app keys (comma-separated)' },
     { key: 'API_TOKEN_SALT',                 severity: 'error', description: 'API token salt' },
     { key: 'ADMIN_JWT_SECRET',               severity: 'error', description: 'Admin JWT secret' },

@@ -76,10 +76,10 @@ export default function FormRegister() {
           <Label htmlFor="name">Name</Label>
           <Input
             {...register("name")}
-            defaultValue={"ejaz"}
             id="name"
             type="text"
             placeholder="eg. John Doe"
+            autoComplete="name"
           />
           {errors.name && (
             <p className="text-xs italic text-red-500 mt-2">
@@ -95,6 +95,7 @@ export default function FormRegister() {
             type="email"
             id="email"
             placeholder="johndoe@example.com"
+            autoComplete="email"
           />
           {errors.email && (
             <p className="text-xs italic text-red-500 mt-2">
@@ -107,10 +108,10 @@ export default function FormRegister() {
           <Label htmlFor="password">Password</Label>
           <Input
             {...register("password")}
-            defaultValue={""}
             type="password"
             id="password"
-            placeholder="Enter min. 6 character"
+            placeholder="At least 6 characters"
+            autoComplete="new-password"
           />
           {errors.password && (
             <p className="text-xs italic text-red-500 mt-2">
@@ -123,10 +124,10 @@ export default function FormRegister() {
           <Label htmlFor="confirm-password">Confirm Password</Label>
           <Input
             {...register("confirmPassword")}
-            defaultValue={""}
             type="password"
             id="confirm-password"
             placeholder="Re-enter your password"
+            autoComplete="new-password"
           />
           {errors.confirmPassword && (
             <p className="text-xs italic text-red-500 mt-2">

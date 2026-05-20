@@ -3,6 +3,8 @@ export interface WebAuthEndpointsType {
     localSignIn(data: any): Promise<any>;
     localRegister(data: any): Promise<any>;
     providerCallback(provider: any, accessToken: any): Promise<any>;
+    forgotPassword(data: any): Promise<any>;
+    resetPassword(data: any): Promise<any>;
     meta: any;
 }
 

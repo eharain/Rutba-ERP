@@ -44,6 +44,11 @@
       "allowedTypes": [
         "images"
       ]
+    },
+    "stock_item": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::stock-item.stock-item"
     }
   }
 }

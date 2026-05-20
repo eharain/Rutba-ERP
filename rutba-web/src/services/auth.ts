@@ -22,11 +22,25 @@ export function createWebAuthService(config = {}) {
         });
     };
 
+    const forgotPassword = async (email: string) => {
+        return WebAuthEndpoints.forgotPassword({ email });
+    };
+
+    const resetPassword = async (data: {
+        code: string;
+        password: string;
+        passwordConfirmation: string;
+    }) => {
+        return WebAuthEndpoints.resetPassword(data);
+    };
+
     return {
         endpoints: WebAuthEndpoints,
         signInWithCredential,
         signInWithProviders,
         signUpWithCredential,
+        forgotPassword,
+        resetPassword,
     };
 }
 

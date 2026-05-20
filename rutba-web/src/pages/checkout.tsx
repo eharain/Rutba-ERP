@@ -9,7 +9,7 @@ import { useStoreCheckout } from "@/store/store-checkout";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ShieldCheck, Truck, MessageCircle, ChevronDown } from "lucide-react";
 import useErrorHandler from "@/hooks/useErrorHandler";
@@ -37,9 +37,41 @@ export default function CheckoutPage() {
   const { showError } = useErrorHandler();
   const checkoutService = createWebCheckoutService({ baseURL: BASE_URL });
   const { getCart, clearCart } = useCartService();
-  const { cartItem } = useStoreCart();
+  const { cartItem, setCartItem } = useStoreCart();
   const { selectedDeliveryMethod } = useStoreCheckout();
   const settings = useSiteSettings();
+
+  // After a successful order placement we deliberately want the cart to be
+  // empty. Without this flag, the empty-cart redirect below races the
+  // router.push("/order/confirmation") in the mutation's onSuccess: clearCart
+  // flips cartItem.length to 0 first, the effect runs and calls
+  // router.replace("/"), and the user lands on the home page with no idea
+  // their order succeeded. A ref (not state) so flipping it doesn't trigger
+  // another render that could re-fire the effect.
+  const orderPlacedRef = useRef(false);
+
+  // Hydrate the zustand cart store from localStorage on mount. The cart drawer
+  // does the same thing in its own useEffect, but if the user reloads /checkout
+  // directly (or lands on it from a deep link) the drawer never mounts, the
+  // store starts empty, and getQuantity returns 0 for every line. getCart()
+  // below also calls setCartItem, but it runs as the useQuery's queryFn — i.e.
+  // *after* the first paint — so without this effect the first render shows
+  // qty 0 for every line and the totals collapse.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (cartItem.length > 0) return; // already hydrated (came from drawer)
+    const raw = localStorage.getItem("cart");
+    if (!raw) return;
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) setCartItem(parsed);
+    } catch {
+      // Malformed localStorage — leave the empty-cart redirect to kick in.
+    }
+    // Mount-only — we deliberately don't depend on cartItem here, otherwise
+    // a later setCartItem from getCart would re-fire and clobber edits.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Full-address path is opt-in; quick path is the default.
   const [showFullAddress, setShowFullAddress] = useState(false);
@@ -95,11 +127,28 @@ export default function CheckoutPage() {
     ? formatAddressLine(effectiveAddress)
     : "";
 
-  // Bounce visitors with an empty cart — no point being here.
+  // Bounce visitors with an empty cart — no point being here. Wait until
+  // after the localStorage hydration effect above has had a chance to run,
+  // otherwise a fresh tab on /checkout (cartItem still []) would redirect
+  // before we've read the cart back from storage. Two heuristics: an empty
+  // localStorage cart confirms the user really has nothing, OR the router
+  // hasn't even finished mounting (don't push during hydration).
+  //
+  // Critical third guard: if we just successfully placed an order, the cart
+  // is *supposed* to be empty and the success handler is mid-navigating to
+  // /order/confirmation. Don't redirect — we'd clobber the confirmation push.
   useEffect(() => {
-    if (cartItem.length === 0) {
-      router.replace("/");
+    if (orderPlacedRef.current) return;
+    if (!router.isReady) return;
+    if (cartItem.length > 0) return;
+    if (typeof window !== "undefined") {
+      const raw = localStorage.getItem("cart");
+      try {
+        const parsed = raw ? JSON.parse(raw) : null;
+        if (Array.isArray(parsed) && parsed.length > 0) return; // hydration pending
+      } catch { /* fall through to redirect */ }
     }
+    router.replace("/");
   }, [cartItem.length, router]);
 
   // When the visitor opens the full-address path, seed the shipping store
@@ -137,25 +186,35 @@ export default function CheckoutPage() {
   });
 
   const getQuantity = (
-    productId?: number,
-    variantId?: number,
+    productId?: number | null,
+    variantId?: number | null,
     selectedImage?: string | null
   ) => {
+    // Defensive nullish-normalisation on every field. cartItem (the zustand
+    // store) records `variantId: null` for single-SKU products, while the
+    // hydrated `cart` from getCart() returned `variant_id: undefined` for
+    // those same items before this was fixed — strict `===` between the two
+    // returned false, getQuantity returned 0, and the whole order total
+    // collapsed. Normalising on both sides survives either shape.
     const data = cartItem.find(
       (item) =>
-        item.productId === productId &&
-        item.variantId === variantId &&
+        (item.productId ?? null) === (productId ?? null) &&
+        (item.variantId ?? null) === (variantId ?? null) &&
         (item.selectedImage ?? null) === (selectedImage ?? null)
     );
     return data?.qty ?? 0;
   };
 
+  // Belt-and-braces coercion: anything that lands in `item.price` should
+  // already be a number after cart.ts normalises it, but Strapi `decimal`
+  // columns and offer rounding can still produce strings if a future call
+  // path skips that pipeline. Number() + zero-fallback keeps the totals
+  // robust regardless of what shape the upstream sends.
   const countSubTotal = () =>
     cart?.reduce((total, item) => {
-      const unitPrice =
-        item?.offerPrice && item.offerPrice > 0
-          ? item.offerPrice
-          : item?.price ?? 0;
+      const offer = Number(item?.offerPrice) || 0;
+      const list = Number(item?.price) || 0;
+      const unitPrice = offer > 0 ? offer : list;
       return (
         total +
         unitPrice * getQuantity(item.id, item.variant_id, item.selectedImage)
@@ -166,7 +225,7 @@ export default function CheckoutPage() {
     cart?.reduce(
       (total, item) =>
         total +
-        (item?.price ?? 0) *
+        (Number(item?.price) || 0) *
           getQuantity(item.id, item.variant_id, item.selectedImage),
       0
     );
@@ -182,8 +241,12 @@ export default function CheckoutPage() {
   const countTotal = () => (countSubTotal() ?? 0) + (showFullAddress ? deliveryCost : 0);
 
   // ── Place order mutation ─────────────────────────────────────────────────
+  // Forward the NextAuth session JWT (when present) to checkoutItem so the
+  // Strapi create controller can resolve the user and stamp `owners`.
+  // Without this, even logged-in customers placed orders as guests and the
+  // order never appeared in their /profile/orders list.
   const { mutate: placeOrder, isPending: isPlacingOrder } = useMutation({
-    mutationFn: checkoutService.checkoutItem,
+    mutationFn: (payload) => checkoutService.checkoutItem(payload, jwt),
     onSuccess: (response) => {
       const phoneNumber =
         settings.default_footer?.phone ||
@@ -225,9 +288,15 @@ export default function CheckoutPage() {
         message
       )}`;
 
-      clearCart();
-      // Land on the confirmation page; pop a WhatsApp tab from there so
-      // popup blockers don't eat it.
+      // Mark "order is in flight to the confirmation page" so the
+      // empty-cart redirect effect above doesn't fire and clobber the push
+      // when clearCart() flips cartItem.length to 0.
+      orderPlacedRef.current = true;
+
+      // Navigate FIRST, then clear the cart. The router.push starts the
+      // route transition; clearing the cart after means even if the effect
+      // somehow runs before unmount, the ref guard catches it. Belt-and-
+      // braces: route change kicks off + state mutation only afterwards.
       router.push({
         pathname: "/order/confirmation",
         query: {
@@ -235,6 +304,7 @@ export default function CheckoutPage() {
           wa: encodeURIComponent(whatsappUrl),
         },
       });
+      clearCart();
     },
     onError: (err) => {
       showError(
@@ -269,12 +339,16 @@ export default function CheckoutPage() {
     saveAddress?: boolean;
   }) => {
     const safeCart = cart ?? [];
+    // `Number(item.offerPrice) || 0` — handles undefined, null, string "0"
+    // and numeric 0 uniformly, then we fall back to the list price.
     const subtotal = safeCart.reduce((acc, item) => {
-      const unit = item.offerPrice && item.offerPrice > 0 ? item.offerPrice : Number(item.price);
+      const offer = Number(item.offerPrice) || 0;
+      const list = Number(item.price) || 0;
+      const unit = offer > 0 ? offer : list;
       return acc + unit * Number(item.qty || 1);
     }, 0);
     const originalSubtotal = safeCart.reduce(
-      (acc, item) => acc + Number(item.price) * Number(item.qty || 1),
+      (acc, item) => acc + (Number(item.price) || 0) * Number(item.qty || 1),
       0
     );
     const totalSavings = originalSubtotal - subtotal;
@@ -289,17 +363,14 @@ export default function CheckoutPage() {
 
     const formattedItems = safeCart.map((item) => {
       const itemQty = Number(item.qty || 1);
-      const unitPrice =
-        item.offerPrice && item.offerPrice > 0
-          ? item.offerPrice
-          : Number(item.price || 0);
-      const originalPrice = Number(item.price || 0);
+      const offer = Number(item.offerPrice) || 0;
+      const originalPrice = Number(item.price) || 0;
+      const unitPrice = offer > 0 ? offer : originalPrice;
       return {
         quantity: itemQty,
         price: unitPrice,
         original_price: originalPrice,
-        offer_price:
-          item.offerPrice && item.offerPrice > 0 ? item.offerPrice : undefined,
+        offer_price: offer > 0 ? offer : undefined,
         total: unitPrice * itemQty,
         product_name: item.name,
         product: item.documentId,

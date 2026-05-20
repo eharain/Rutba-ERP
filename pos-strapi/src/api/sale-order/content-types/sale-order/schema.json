@@ -140,6 +140,51 @@
       "relation": "oneToMany",
       "target": "api::order-message.order-message",
       "mappedBy": "order"
+    },
+    "payment_method": {
+      "type": "enumeration",
+      "enum": [
+        "cod",
+        "card",
+        "bank_transfer",
+        "mobile_wallet",
+        "online_gateway"
+      ],
+      "default": "cod"
+    },
+    "paid_amount": {
+      "type": "decimal"
+    },
+    "payment_collected_at": {
+      "type": "datetime"
+    },
+    "payment_collected_by_rider": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::rider.rider"
+    },
+    "payment_collected_by_note": {
+      "type": "string"
+    },
+    "payment_verification_status": {
+      "type": "enumeration",
+      "enum": [
+        "unverified",
+        "verified",
+        "disputed"
+      ],
+      "default": "unverified"
+    },
+    "payment_verified_at": {
+      "type": "datetime"
+    },
+    "payment_verified_by": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "payment_verification_notes": {
+      "type": "text"
     }
   }
 }

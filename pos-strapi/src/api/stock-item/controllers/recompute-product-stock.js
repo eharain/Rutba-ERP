@@ -40,22 +40,21 @@ async function isAdminUser(userId, strapi) {
     where: { id: userId },
     populate: {
       role: { select: ['type'] },
-      permission_roles: {
-        select: ['level'],
-        populate: { domain: { select: ['key'] } },
-      },
+      app_roles: { select: ['key'] },
     },
   });
 
+  // Strapi super-admin always passes.
   if (user?.role?.type === 'admin') return true;
 
-  const adminKeys = (user?.permission_roles || [])
-    .filter((r) => r?.level === 'admin')
-    .map((r) => r?.domain?.key)
-    .filter(Boolean);
-  // Either a product or stock-item domain admin can trigger the job — it
-  // mutates the product table but the work belongs to stock ownership.
-  return adminKeys.includes('product') || adminKeys.includes('stock-item');
+  // api-pro role naming convention: `{domain}_admin` / `{domain}_manager` /
+  // `{domain}_staff` — admin level is encoded as the `_admin` suffix on the
+  // role key (mirror of pos-shared/lib/roles.js#isActiveAdminRole). The
+  // api-provider descriptor already gates by apps:['stock','cms'] +
+  // approle:['admin'], so by the time we reach this controller api-pro has
+  // already confirmed the user holds an admin role in one of those apps.
+  const appRoleKeys = (user?.app_roles || []).map((r) => r?.key).filter(Boolean);
+  return appRoleKeys.some((k) => /(?:^|_)admin$/.test(String(k)));
 }
 
 module.exports = {

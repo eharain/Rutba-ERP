@@ -3,7 +3,8 @@ import { useRouter } from "next/router";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { MediaUtilsEndpoints, ProductsEndpoints, fetchProducts } from "@rutba/api-provider/endpoints";
+import { MediaUtilsEndpoints, ProductsEndpoints, StockItemsEndpoints, fetchProducts } from "@rutba/api-provider/endpoints";
+import PermissionCheck from "@rutba/pos-shared/components/PermissionCheck";
 import { useProductLookups } from "@rutba/pos-shared/hooks/useProductLookups";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
 import { ProductFilter } from "@rutba/pos-shared/components/filter/product-filter";
@@ -75,6 +76,31 @@ export default function Products() {
     // --- selection & bulk operations ---
     const [selectedIds, setSelectedIds] = useState(new Set());
     const [publishing, setPublishing] = useState({});
+    const [syncingStock, setSyncingStock] = useState(false);
+
+    // Triggers the recompute-product-stock admin job. The stock-item lifecycle
+    // keeps product.stock_quantity in sync during normal operation — this is
+    // the manual reconcile path for post-migration / suspected drift cases.
+    const handleSyncStock = async () => {
+        if (syncingStock) return;
+        if (!confirm("Rebuild product.stock_quantity for every product from the live InStock count? Safe to run anytime — idempotent.")) return;
+        setSyncingStock(true);
+        try {
+            const res = await StockItemsEndpoints.recomputeProductStock();
+            const r = res?.data ?? res ?? {};
+            toast(
+                `Synced stock — processed ${r.processed ?? 0}, corrected ${r.corrected ?? 0} in ${r.durationMs ?? "?"}ms`,
+                "success"
+            );
+            // Bump the page state so the products list refetches with fresh counts.
+            updateQuery({ page: undefined });
+        } catch (err) {
+            console.error("Sync stock failed", err);
+            toast(err?.response?.data?.error?.message || err?.message || "Sync stock failed", "danger");
+        } finally {
+            setSyncingStock(false);
+        }
+    };
 
     const toggleSelected = (docId) => {
         setSelectedIds(prev => {
@@ -370,6 +396,21 @@ export default function Products() {
                     subtitle={`${total} products found`}
                     headerActions={
                         <>
+                            <PermissionCheck showIf="admin">
+                                <button
+                                    type="button"
+                                    className="btn btn-outline-secondary btn-sm"
+                                    onClick={handleSyncStock}
+                                    disabled={syncingStock}
+                                    title="Rebuild product.stock_quantity from the live InStock count (admin only, idempotent)"
+                                >
+                                    {syncingStock ? (
+                                        <><span className="spinner-border spinner-border-sm me-1" />Syncing…</>
+                                    ) : (
+                                        <><i className="fas fa-sync-alt me-1" /> Sync Stock</>
+                                    )}
+                                </button>
+                            </PermissionCheck>
                             <ExcelIO
                                 entityLabel="Products"
                                 contentType="api::product.product"
