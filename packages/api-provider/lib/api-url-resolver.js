@@ -75,7 +75,16 @@ const LOCAL_NAMES = new Set(['localhost', '127.0.0.1', '0.0.0.0', '::1']);
 
 function resolveApiUrl(apiUrl) {
   if (!apiUrl) return apiUrl;
-  if (typeof window === 'undefined') return apiUrl; // SSR / Node
+
+  // SSR / Node: rewrite `localhost` → `127.0.0.1` so the call never gets
+  // bitten by Node 17+'s default DNS-verbatim mode preferring `::1` on
+  // Windows. Strapi binds to `0.0.0.0` (IPv4 wildcard) and refuses IPv6
+  // connections, which silently produces an ECONNREFUSED with no log on
+  // either side — exactly the symptom of an SSR fetch that never reaches
+  // Strapi. The browser handles `localhost` correctly on its own.
+  if (typeof window === 'undefined') {
+    return apiUrl.replace(/\/\/localhost(?=[:/])/i, '//127.0.0.1');
+  }
 
   const browserHost = window.location.hostname;
   if (!browserHost || LOCAL_NAMES.has(browserHost)) return apiUrl;

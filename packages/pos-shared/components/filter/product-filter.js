@@ -118,7 +118,11 @@ export function ProductFilter({
         <div className="row g-2">
             {!hidden("search") && (
                 <div className="col-12">
-                    <SearchBar value={searchText} onChange={onSearchTextChange} />
+                    <SearchBar
+                        value={searchText}
+                        onChange={onSearchTextChange}
+                        placeholder="Search by name, SKU, barcode, supplier code, supplier name, or PO number…"
+                    />
                 </div>
             )}
             {!hidden("brand") && (

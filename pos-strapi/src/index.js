@@ -15,8 +15,22 @@ const { resolveHrRolesForUser } = require('./utils/hr-role-provider');
 async function ensureSiteSettingSingleton(strapi) {
     try {
         const uid = 'api::site-setting.site-setting';
-        const existing = await strapi.db.query(uid).findOne({ where: {} });
-        if (existing) return;
+
+        // What the public GET /site-setting needs is a *published* row. The old
+        // check used strapi.db.query().findOne which returns either status, so
+        // a draft-only record made bootstrap short-circuit without publishing —
+        // leaving the storefront seeing 404 forever. Check published explicitly,
+        // promote a draft if that's all we have, and create from scratch only
+        // when nothing exists.
+        const published = await strapi.documents(uid).findFirst({ status: 'published' });
+        if (published) return;
+
+        const draft = await strapi.documents(uid).findFirst({ status: 'draft' });
+        if (draft) {
+            await strapi.documents(uid).publish({ documentId: draft.documentId });
+            strapi.log.info('[bootstrap] Published existing site-setting draft');
+            return;
+        }
 
         await strapi.documents(uid).create({
             data: { site_name: 'Rutba.pk' },
