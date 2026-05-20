@@ -76,6 +76,18 @@ export const SaleOrdersEndpoints = {
         scope: ROLE_SCOPES,
         data,
     }),
+    // Fulfillment — bind a specific InStock stock-item to an order line.
+    // Body shape: { item_index, stock_item_document_id }
+    // Server transitions stock-item.status InStock → Reserved on success.
+    attachStockItem: (documentId, data) => ({
+        path: `/sale-orders/${documentId}/attach-stock-item`,
+        action: 'attachStockItem',
+        method: 'post',
+        apps: ['order-management', 'sale', 'delivery'],
+        approle: ['admin', 'manager', 'staff'],
+        scope: ROLE_SCOPES,
+        data,
+    }),
     // todo: speculative stub — added so rutba-rider/pages/deliveries/[id].js
     // call site resolves at the descriptor level. Verify route path against
     // pos-strapi (order-message content type) and confirm controller action
@@ -95,6 +107,35 @@ export const SaleOrdersEndpoints = {
         method: 'post',
         apps: ['order-management', 'sale', 'delivery'],
         approle: ['admin', 'manager', 'staff'],
+        scope: ROLE_SCOPES,
+        data,
+    }),
+
+    // Record a payment collection event (typically COD). Used by:
+    //   - rutba-order-management when staff/courier hands over cash
+    //   - rutba-rider when the rider collects at the door
+    // Body shape: { payment_method, paid_amount,
+    //               collected_by_rider_document_id?, collected_by_note?,
+    //               collected_at? }
+    recordPayment: (documentId, data) => ({
+        path: `/sale-orders/${documentId}/record-payment`,
+        action: 'recordPayment',
+        method: 'post',
+        apps: ['order-management', 'sale', 'delivery', 'accounts'],
+        approle: ['admin', 'manager', 'staff'],
+        scope: ROLE_SCOPES,
+        data,
+    }),
+
+    // Verify (or dispute) a previously-recorded payment. Used by
+    // rutba-accounts as the cash-drop reconciliation action.
+    // Body shape: { status: 'verified' | 'disputed' | 'unverified', notes? }
+    verifyPayment: (documentId, data) => ({
+        path: `/sale-orders/${documentId}/verify-payment`,
+        action: 'verifyPayment',
+        method: 'post',
+        apps: ['order-management', 'accounts'],
+        approle: ['admin', 'manager'],
         scope: ROLE_SCOPES,
         data,
     }),

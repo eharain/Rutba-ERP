@@ -212,6 +212,24 @@ export const StockItemsEndpoints = {
     }),
 
     /**
+     * Admin-triggered job that walks every product and rebuilds
+     * `product.stock_quantity` from the live count of InStock stock-items.
+     * Idempotent — safe to invoke after migrations, suspected drift, or as
+     * part of an ad-hoc reconciliation. The server route lives at
+     * pos-strapi/src/api/stock-item/controllers/recompute-product-stock.js.
+     *
+     * Returns { processed, corrected, errors, durationMs }.
+     */
+    recomputeProductStock: () => ({
+        path: '/stock-items/recompute-product-stock',
+        action: 'create',
+        method: 'post',
+        apps: ['stock', 'cms'],
+        approle: ['admin'],
+        data: {},
+    }),
+
+    /**
      * Bulk-move stock items to another branch in a single round-trip.
      * Each item is set to branch=toBranch + status='InStock', and a
      * `Transferred` entry is appended to its status_history so the move

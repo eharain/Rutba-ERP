@@ -17,15 +17,27 @@ async function providerCallback(provider, accessToken) {
     return api.fetch(ep.path, ep.params);
 }
 
+async function forgotPassword(data) {
+    const ep = WebAuthEndpointsApi.forgotPassword(data);
+    return api.post(withQuery(ep.path, ep.params), ep.data);
+}
+
+async function resetPassword(data) {
+    const ep = WebAuthEndpointsApi.resetPassword(data);
+    return api.post(withQuery(ep.path, ep.params), ep.data);
+}
+
 const endpoints = strictEndpointGuard(
     'WebAuthEndpoints',
     {
         localSignIn,
         localRegister,
         providerCallback,
+        forgotPassword,
+        resetPassword,
         meta: WebAuthEndpointsApi.meta,
     },
-    ["localSignIn","localRegister","providerCallback","meta"],
+    ["localSignIn","localRegister","providerCallback","forgotPassword","resetPassword","meta"],
 );
 
 export default endpoints;

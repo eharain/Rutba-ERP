@@ -3382,7 +3382,28 @@ export interface ApiSaleOrderSaleOrder extends Struct.CollectionTypeSchema {
       'manyToMany',
       'plugin::users-permissions.user'
     >;
+    paid_amount: Schema.Attribute.Decimal;
+    payment_collected_at: Schema.Attribute.DateTime;
+    payment_collected_by_note: Schema.Attribute.String;
+    payment_collected_by_rider: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::rider.rider'
+    >;
+    payment_method: Schema.Attribute.Enumeration<
+      ['cod', 'card', 'bank_transfer', 'mobile_wallet', 'online_gateway']
+    > &
+      Schema.Attribute.DefaultTo<'cod'>;
     payment_status: Schema.Attribute.String & Schema.Attribute.Required;
+    payment_verification_notes: Schema.Attribute.Text;
+    payment_verification_status: Schema.Attribute.Enumeration<
+      ['unverified', 'verified', 'disputed']
+    > &
+      Schema.Attribute.DefaultTo<'unverified'>;
+    payment_verified_at: Schema.Attribute.DateTime;
+    payment_verified_by: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
     products: Schema.Attribute.Component<'order.order-products', false>;
     publishedAt: Schema.Attribute.DateTime;
     rate_id: Schema.Attribute.String;

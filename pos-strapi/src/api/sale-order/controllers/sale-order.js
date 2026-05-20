@@ -30,6 +30,31 @@ async function requireOrderAccessUser(ctx, strapi, user) {
     return fullUser;
 }
 
+/**
+ * Verify the caller is a staff user (rutba_app_user or the generic
+ * authenticated role used by admin tooling). Web-user role is NOT enough
+ * — customers can't push orders through the fulfillment state machine or
+ * assign riders on someone else's order. Returns the full user or null
+ * after sending 403.
+ *
+ * Used by updateOrderStatus / assignRider — both routes are declared
+ * `auth: false` so Strapi skips its scope check, and the gate lives here
+ * in the controller next to the code that actually mutates state.
+ */
+async function requireStaffUser(ctx, strapi, user) {
+    const fullUser = await strapi.query('plugin::users-permissions.user').findOne({
+        where: { id: user.id },
+        populate: { role: { select: ['type'] } },
+    });
+    const roleType = fullUser?.role?.type;
+    const allowed = roleType === 'rutba_app_user' || roleType === 'authenticated';
+    if (!fullUser || !allowed) {
+        ctx.forbidden('Only staff users can manage order fulfillment.');
+        return null;
+    }
+    return fullUser;
+}
+
 module.exports = factories.createCoreController(
     "api::sale-order.sale-order",
     ({ strapi }) => ({
@@ -59,6 +84,25 @@ module.exports = factories.createCoreController(
             const data = ctx.request.body.data;
             if (!data) return ctx.badRequest('Request body data is missing');
             if (!data.products?.items) return ctx.badRequest('products.items is required');
+
+            // The route is declared `auth: false` because guest checkout must
+            // work — Strapi therefore skips its own JWT parsing and leaves
+            // ctx.state.user unset even when the storefront sends a valid
+            // Bearer token. Without this manual parse, logged-in customers
+            // were silently checking out as anonymous, owners[] never got
+            // populated, and their orders never appeared in /profile/orders.
+            // ensureUser writes ctx.state.user when a token IS present and
+            // simply does not 401 here (the rest of the handler is guest-safe).
+            try {
+                const token = await strapi.plugin('users-permissions').service('jwt').getToken(ctx);
+                if (token?.id) {
+                    const u = await strapi.plugin('users-permissions').service('user').fetchAuthenticatedUser(token.id);
+                    if (u && !u.blocked) ctx.state.user = u;
+                }
+            } catch (_) {
+                // Missing / invalid token is fine — proceed as guest.
+            }
+
             // Storefront sends a flat `customer` object since the contact-entity
             // unification (Phase 1A). Tolerate the legacy `customer_contact`
             // shape with phone_number/address until the storefront cuts over.
@@ -441,6 +485,10 @@ module.exports = factories.createCoreController(
 
         // ── POST /orders/:documentId/update-status  (CMS) ──────────────────
         async updateOrderStatus(ctx) {
+            const user = await ensureUser(ctx, strapi);
+            if (!user) return;
+            const staff = await requireStaffUser(ctx, strapi, user);
+            if (!staff) return;
             const { documentId } = ctx.params;
             const { status, rider_notes, estimated_delivery_time } = ctx.request.body;
             if (!status) return ctx.badRequest('status is required');
@@ -460,8 +508,183 @@ module.exports = factories.createCoreController(
             } catch (err) { return ctx.badRequest(err.message); }
         },
 
+        // ── POST /sale-orders/:documentId/attach-stock-item ─────────────────
+        //
+        // Fulfillment: bind a specific physical stock-item (one inventory unit)
+        // to one line of the order. Called per line by the order-management UI
+        // before/at AWAITING_PICKUP. The stock-item lifecycle hooks then
+        // recompute product.stock_quantity automatically — we don't touch the
+        // cached count directly here.
+        //
+        // Body: { item_index: number, stock_item_document_id: string }
+        //   item_index — position of the line in order.products.items[]
+        //   stock_item_document_id — the InStock unit to allocate
+        //
+        // Status flow on the stock-item:
+        //   InStock  → Reserved  (this endpoint)
+        //   Reserved → Sold      (state machine on order DELIVERED — not yet wired)
+        //   Reserved → InStock   (state machine on order CANCELLED — not yet wired)
+        async attachStockItem(ctx) {
+            const user = await ensureUser(ctx, strapi);
+            if (!user) return;
+            const staff = await requireStaffUser(ctx, strapi, user);
+            if (!staff) return;
+
+            const { documentId } = ctx.params;
+            const { item_index, stock_item_document_id } = ctx.request.body || {};
+
+            if (typeof item_index !== 'number' || item_index < 0) {
+                return ctx.badRequest('item_index (non-negative number) is required');
+            }
+            if (!stock_item_document_id) {
+                return ctx.badRequest('stock_item_document_id is required');
+            }
+
+            // Load the order with enough populate to mutate the matching line.
+            // We need the full items array because Strapi components are
+            // replaced wholesale on update — we can't just patch one element.
+            const order = await strapi.documents('api::sale-order.sale-order').findOne({
+                documentId,
+                populate: {
+                    products: {
+                        populate: {
+                            items: {
+                                populate: {
+                                    product: { fields: ['id', 'documentId'] },
+                                    stock_item: { fields: ['id', 'documentId'] },
+                                },
+                            },
+                        },
+                    },
+                },
+            });
+            if (!order) return ctx.notFound('Order not found');
+
+            const items = order.products?.items || [];
+            if (item_index >= items.length) {
+                return ctx.badRequest(`item_index ${item_index} out of range (order has ${items.length} line(s))`);
+            }
+            const targetLine = items[item_index];
+
+            // Resolve the stock-item, sanity-check status + product binding.
+            const stockItem = await strapi.documents('api::stock-item.stock-item').findOne({
+                documentId: stock_item_document_id,
+                populate: { product: { fields: ['id', 'documentId'] } },
+            });
+            if (!stockItem) return ctx.notFound('Stock item not found');
+
+            // Status must be InStock — Reserved/Sold units can't be re-allocated.
+            // The picker UI already filters to InStock, but enforce server-side
+            // because a stale picker tab + a fast warehouse hand could otherwise
+            // double-allocate the same unit.
+            if (stockItem.status !== 'InStock') {
+                return ctx.conflict(
+                    `Stock item is ${stockItem.status}, not InStock — pick another unit`,
+                    { current_status: stockItem.status },
+                );
+            }
+
+            // Product binding must match. Compare on documentId since that's
+            // the identifier the line stores when it's a relation.
+            const lineProductDocId = targetLine.product?.documentId;
+            const stockProductDocId = stockItem.product?.documentId;
+            if (lineProductDocId && stockProductDocId && lineProductDocId !== stockProductDocId) {
+                return ctx.badRequest(
+                    'Stock item is for a different product than this order line',
+                    { line_product: lineProductDocId, stock_product: stockProductDocId },
+                );
+            }
+
+            // Build the replacement items array — copy every line, then patch
+            // the target with the new stock_item relation. Other fields stay
+            // intact (variant, image, prices etc.).
+            const nextItems = items.map((line, idx) => {
+                // Strapi component re-write: include each field we want
+                // preserved by id-key (so it patches the existing component
+                // row instead of inserting a duplicate).
+                const base = {
+                    id: line.id,
+                    product: line.product?.documentId ? { documentId: line.product.documentId } : line.product,
+                    quantity: line.quantity,
+                    price: line.price,
+                    total: line.total,
+                    variant: line.variant,
+                    product_name: line.product_name,
+                    variant_name: line.variant_name,
+                    variant_terms: line.variant_terms,
+                    image: line.image?.id ?? line.image ?? undefined,
+                    stock_item: line.stock_item?.documentId
+                        ? { documentId: line.stock_item.documentId }
+                        : line.stock_item,
+                };
+                if (idx === item_index) {
+                    base.stock_item = { documentId: stock_item_document_id };
+                }
+                return base;
+            });
+
+            // Persist the order, then transition the stock-item to Reserved.
+            // Order both ways — if either side fails we leak a half-state, so
+            // wrap the stock-item update in a try/rollback on the order.
+            const updatedOrder = await strapi.documents('api::sale-order.sale-order').update({
+                documentId,
+                data: { products: { items: nextItems } },
+                populate: {
+                    products: {
+                        populate: {
+                            items: {
+                                populate: {
+                                    image: true,
+                                    product: { fields: ['documentId', 'name'] },
+                                    stock_item: true,
+                                },
+                            },
+                        },
+                    },
+                },
+            });
+
+            try {
+                await strapi.documents('api::stock-item.stock-item').update({
+                    documentId: stock_item_document_id,
+                    data: { status: 'Reserved' },
+                });
+            } catch (err) {
+                // Roll the order's line back to its previous stock_item value
+                // so the warehouse doesn't think this unit is allocated when
+                // its status row says otherwise.
+                strapi.log.error(`[attachStockItem] stock-item status update failed (${err.message}); rolling order back`);
+                const rollbackItems = items.map((line) => ({
+                    id: line.id,
+                    product: line.product?.documentId ? { documentId: line.product.documentId } : line.product,
+                    quantity: line.quantity,
+                    price: line.price,
+                    total: line.total,
+                    variant: line.variant,
+                    product_name: line.product_name,
+                    variant_name: line.variant_name,
+                    variant_terms: line.variant_terms,
+                    image: line.image?.id ?? line.image ?? undefined,
+                    stock_item: line.stock_item?.documentId
+                        ? { documentId: line.stock_item.documentId }
+                        : undefined,
+                }));
+                await strapi.documents('api::sale-order.sale-order').update({
+                    documentId,
+                    data: { products: { items: rollbackItems } },
+                });
+                return ctx.internalServerError('Could not reserve stock item; order line restored to previous state');
+            }
+
+            return ctx.send({ data: updatedOrder });
+        },
+
         // ── POST /orders/:documentId/assign-rider  (CMS) ───────────────────
         async assignRider(ctx) {
+            const user = await ensureUser(ctx, strapi);
+            if (!user) return;
+            const staff = await requireStaffUser(ctx, strapi, user);
+            if (!staff) return;
             const { documentId } = ctx.params;
             const { rider_document_id } = ctx.request.body;
             if (!rider_document_id) return ctx.badRequest('rider_document_id is required');
@@ -472,6 +695,148 @@ module.exports = factories.createCoreController(
             });
             await strapi.documents('api::rider.rider').update({ documentId: rider_document_id, data: { status: 'on_delivery' } });
             notificationService.send('offer_accepted', documentId).catch(() => {});
+            return ctx.send({ data: updated });
+        },
+
+        // ── POST /sale-orders/:documentId/record-payment ─────────────────────
+        // Records a payment collection event against an order. Used by:
+        //   - Staff in rutba-order-management when a courier hands over cash
+        //   - Riders in rutba-rider when they collect COD at the door
+        //
+        // Always sets payment_verification_status = 'unverified' so the
+        // accounts team has a clear inbox of cash-drops to reconcile. A
+        // separate verifyPayment endpoint flips the status to 'verified'.
+        //
+        // Side effects: when the recorded amount matches the order total
+        // (within a small epsilon) and the order is still PENDING_PAYMENT, we
+        // also transition to PAYMENT_CONFIRMED via the state machine — same
+        // logic as the Stripe webhook, just driven manually for COD.
+        async recordPayment(ctx) {
+            const user = await ensureUser(ctx, strapi);
+            if (!user) return;
+            const staff = await requireStaffUser(ctx, strapi, user);
+            if (!staff) return;
+            const { documentId } = ctx.params;
+            const {
+                payment_method,
+                paid_amount,
+                collected_by_rider_document_id,
+                collected_by_note,
+                collected_at,
+            } = ctx.request.body || {};
+
+            const ALLOWED_METHODS = ['cod', 'card', 'bank_transfer', 'mobile_wallet', 'online_gateway'];
+            if (!payment_method || !ALLOWED_METHODS.includes(payment_method)) {
+                return ctx.badRequest(`payment_method must be one of: ${ALLOWED_METHODS.join(', ')}`);
+            }
+            const amount = Number(paid_amount);
+            if (!Number.isFinite(amount) || amount < 0) {
+                return ctx.badRequest('paid_amount must be a non-negative number');
+            }
+
+            const order = await strapi.documents('api::sale-order.sale-order').findOne({
+                documentId,
+                fields: ['id', 'order_status', 'total'],
+            });
+            if (!order) return ctx.notFound('Order not found');
+
+            // Resolve the collecting rider (optional). If a documentId is
+            // supplied, verify it exists so we don't dangle the relation.
+            let riderRel = undefined;
+            if (collected_by_rider_document_id) {
+                const rider = await strapi.documents('api::rider.rider').findOne({
+                    documentId: collected_by_rider_document_id,
+                    fields: ['id'],
+                });
+                if (!rider) return ctx.badRequest('collected_by_rider_document_id does not match any rider');
+                riderRel = { documentId: collected_by_rider_document_id };
+            }
+
+            const updateData = {
+                payment_method,
+                paid_amount: amount,
+                payment_collected_at: collected_at ? new Date(collected_at) : new Date(),
+                payment_collected_by_note: collected_by_note || null,
+                payment_verification_status: 'unverified',
+                payment_verified_at: null,
+                payment_verified_by: null,
+            };
+            if (riderRel !== undefined) updateData.payment_collected_by_rider = riderRel;
+
+            // Mirror the payment_status convention used by the rest of the
+            // codebase. PAID when fully collected, PARTIAL otherwise. The
+            // freeform string column lives on for backward compat — we just
+            // write a canonical value into it so reports stay consistent.
+            const total = Number(order.total) || 0;
+            const PRICE_EPSILON = 0.01;
+            const fullyPaid = total > 0 && amount + PRICE_EPSILON >= total;
+            updateData.payment_status = fullyPaid ? 'PAID' : 'PARTIAL';
+
+            const updated = await strapi.documents('api::sale-order.sale-order').update({
+                documentId,
+                data: updateData,
+                populate: ['payment_collected_by_rider', 'payment_verified_by'],
+            });
+
+            // Auto-advance the order state if a full COD/cash payment is
+            // recorded against an unpaid order. We only push PENDING_PAYMENT
+            // forward — every other status stays as-is so we don't
+            // accidentally unwind a manual fulfillment step.
+            if (fullyPaid && order.order_status === 'PENDING_PAYMENT') {
+                try {
+                    await stateMachine.executeTransition(documentId, 'PAYMENT_CONFIRMED', {});
+                    notificationService.send('payment_confirmed', documentId).catch(() => {});
+                } catch (err) {
+                    strapi.log.warn(`[order] recordPayment auto-transition failed: ${err.message}`);
+                }
+            }
+
+            return ctx.send({ data: updated });
+        },
+
+        // ── POST /sale-orders/:documentId/verify-payment ─────────────────────
+        // Used by the accounts team to confirm that a recorded COD payment
+        // has actually arrived (cash dropped at the desk / bank deposit
+        // cleared / wallet transaction matched). Sets the verifier + the
+        // timestamp; does NOT touch the order_status state machine — by
+        // verification time the order is typically already DELIVERED.
+        async verifyPayment(ctx) {
+            const user = await ensureUser(ctx, strapi);
+            if (!user) return;
+            // TODO: tighten to a dedicated 'rutba_accountant_user' role once
+            // that exists. For now any staff user can verify — the audit log
+            // (payment_verified_by + payment_verified_at) is the safety net.
+            const staff = await requireStaffUser(ctx, strapi, user);
+            if (!staff) return;
+            const { documentId } = ctx.params;
+            const { status, notes } = ctx.request.body || {};
+
+            const ALLOWED = ['verified', 'disputed', 'unverified'];
+            if (!status || !ALLOWED.includes(status)) {
+                return ctx.badRequest(`status must be one of: ${ALLOWED.join(', ')}`);
+            }
+
+            const order = await strapi.documents('api::sale-order.sale-order').findOne({
+                documentId,
+                fields: ['id', 'paid_amount'],
+            });
+            if (!order) return ctx.notFound('Order not found');
+            if (status === 'verified' && (Number(order.paid_amount) || 0) <= 0) {
+                return ctx.badRequest('Cannot verify a payment with paid_amount = 0 — record the payment first.');
+            }
+
+            const updated = await strapi.documents('api::sale-order.sale-order').update({
+                documentId,
+                data: {
+                    payment_verification_status: status,
+                    payment_verification_notes: notes || null,
+                    // 'verified' / 'disputed' both stamp who acted; 'unverified'
+                    // (rolling back a previous verification) clears the audit.
+                    payment_verified_at: status === 'unverified' ? null : new Date(),
+                    payment_verified_by: status === 'unverified' ? null : { id: user.id },
+                },
+                populate: ['payment_collected_by_rider', 'payment_verified_by'],
+            });
             return ctx.send({ data: updated });
         },
 
@@ -524,10 +889,29 @@ module.exports = factories.createCoreController(
                 ? { $and: [queryFilters, webUserFilter] }
                 : (queryFilters || webUserFilter || undefined);
 
+            // Deep-populate items + their first image so the storefront's
+            // /profile/orders list can render a thumbnail per card. Also keeps
+            // the order-management list page consistent with the detail page.
             const orders = await strapi.documents('api::sale-order.sale-order').findMany({
                 filters: mergedFilters,
                 sort: ctx.query.sort || 'createdAt:desc',
-                populate: ['products', 'customer_person', 'delivery_address', 'delivery_method'],
+                populate: {
+                    customer_person: true,
+                    delivery_address: true,
+                    delivery_method: true,
+                    assigned_rider: true,
+                    delivery_zone: true,
+                    products: {
+                        populate: {
+                            items: {
+                                populate: {
+                                    image: true,
+                                    product: { fields: ['documentId', 'name'] },
+                                },
+                            },
+                        },
+                    },
+                },
             });
             ctx.send({ data: orders });
         },
@@ -539,10 +923,50 @@ module.exports = factories.createCoreController(
             const accessUser = await requireOrderAccessUser(ctx, strapi, user);
             if (!accessUser) return;
             const { documentId } = ctx.params;
+            // Deep-populate the line items + their image + product fields.
+            // The previous shallow `['products']` populate only filled the
+            // parent component — `products.items` came back undefined, so the
+            // order-management detail page rendered an empty placeholder row
+            // even though the order had line items in the DB. Also populate
+            // payment_collected_by_rider for the Payment card on that page.
             const order = await strapi.documents('api::sale-order.sale-order').findOne({
-                documentId, populate: ['products', 'customer_person', 'delivery_address', 'owners', 'delivery_method', 'assigned_rider'],
+                documentId,
+                populate: {
+                    customer_person: true,
+                    delivery_address: true,
+                    owners: true,
+                    delivery_method: true,
+                    delivery_zone: true,
+                    assigned_rider: true,
+                    payment_collected_by_rider: true,
+                    products: {
+                        populate: {
+                            items: {
+                                populate: {
+                                    image: true,
+                                    product: { fields: ['documentId', 'name'] },
+                                    // Attached stock-unit for fulfillment. Fields
+                                    // listed explicitly so we don't accidentally
+                                    // leak cost_price etc. to non-staff callers
+                                    // — order-management uses sku/barcode/name
+                                    // to identify the unit + status to show
+                                    // whether it's still Reserved or already
+                                    // moved on.
+                                    stock_item: {
+                                        fields: ['documentId', 'sku', 'barcode', 'name', 'status'],
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
             });
             if (!order) return ctx.notFound('Order not found');
+            // Ownership check only for storefront users — staff (rutba_app_user)
+            // can view any order, that's the whole point of order-management.
+            // `authenticated` is the default role assigned by users-permissions
+            // for fresh signups before they're upgraded to rutba_web_user, so
+            // those still get the ownership filter applied for safety.
             if (accessUser.role?.type === 'rutba_web_user' || accessUser.role?.type === 'authenticated') {
                 const isOwner = (order.owners || []).some((o) => o.id === user.id);
                 if (!isOwner) return ctx.forbidden('You can only view your own orders.');

@@ -8,6 +8,8 @@ export interface SaleOrdersEndpointsType {
     assignRider(documentId: any, data: any): Promise<any>;
     messages(documentId: any): Promise<any>;
     sendMessage(documentId: any, data: any): Promise<any>;
+    recordPayment(documentId: any, data: any): Promise<any>;
+    verifyPayment(documentId: any, data: any): Promise<any>;
     meta: any;
 }
 

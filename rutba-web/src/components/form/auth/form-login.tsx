@@ -73,6 +73,8 @@ export default function FormLogin() {
             type="text"
             id="email"
             placeholder="johndoe@example.com"
+            autoComplete="email"
+            autoFocus
           />
           {errors.email && (
             <p className="text-xs italic text-red-500 mt-2">
@@ -88,6 +90,7 @@ export default function FormLogin() {
             type="password"
             id="password"
             placeholder="Enter your password"
+            autoComplete="current-password"
           />
           {errors.password && (
             <p className="text-xs italic text-red-500 mt-2">
@@ -96,8 +99,13 @@ export default function FormLogin() {
           )}
         </div>
 
-        <div className="flex text-sm">
-          <Link href={"/forgot-password"}>Forgot Password? Click Here</Link>
+        <div className="flex justify-end text-sm">
+          <Link
+            href="/forgot-password"
+            className="text-brand font-semibold hover:text-foreground transition-colors"
+          >
+            Forgot password?
+          </Link>
         </div>
 
         <Button type="submit" className="w-full my-3" disabled={isLoading}>

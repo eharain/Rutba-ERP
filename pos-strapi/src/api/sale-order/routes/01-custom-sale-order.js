@@ -163,6 +163,21 @@ const config = {
       handler: 'api::sale-order.sale-order.assignRider',
       config: { auth: false },
     },
+    // Fulfillment — bind a specific stock-item to an order line. auth:false
+    // because the controller's requireStaffUser gate guards this; matches
+    // the convention used by update-status / assign-rider above.
+    {
+      method: 'POST',
+      path: '/orders/:documentId/attach-stock-item',
+      handler: 'api::sale-order.sale-order.attachStockItem',
+      config: { auth: false },
+    },
+    {
+      method: 'POST',
+      path: '/sale-orders/:documentId/attach-stock-item',
+      handler: 'api::sale-order.sale-order.attachStockItem',
+      config: { auth: false },
+    },
     {
       method: 'POST',
       path: '/orders/:documentId/cancel',
@@ -173,6 +188,35 @@ const config = {
       method: 'POST',
       path: '/sale-orders/:documentId/cancel',
       handler: 'api::sale-order.sale-order.cancelOrder',
+      config: { auth: false },
+    },
+
+    // ── Payment collection + verification (CMS / rider / accounts) ───
+    // `auth: false` keeps the route past Strapi's scope check; the handler
+    // runs ensureUser + requireStaffUser internally. Same pattern as
+    // update-status and assign-rider.
+    {
+      method: 'POST',
+      path: '/orders/:documentId/record-payment',
+      handler: 'api::sale-order.sale-order.recordPayment',
+      config: { auth: false },
+    },
+    {
+      method: 'POST',
+      path: '/sale-orders/:documentId/record-payment',
+      handler: 'api::sale-order.sale-order.recordPayment',
+      config: { auth: false },
+    },
+    {
+      method: 'POST',
+      path: '/orders/:documentId/verify-payment',
+      handler: 'api::sale-order.sale-order.verifyPayment',
+      config: { auth: false },
+    },
+    {
+      method: 'POST',
+      path: '/sale-orders/:documentId/verify-payment',
+      handler: 'api::sale-order.sale-order.verifyPayment',
       config: { auth: false },
     },
   ]

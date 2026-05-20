@@ -195,14 +195,30 @@ export const useCartService = () => {
               .map((tt) => ({ typeName: tt.name, termName: t.name }))
           );
 
+        // Resolve the unit price with a real "positive-or-fall-back" rule
+        // instead of nullish coalescing. Three reasons:
+        //   1. Variants commonly inherit pricing from the parent and are
+        //      stored with selling_price = 0 — `0 ?? parent` evaluates to 0
+        //      and would silently zero out the cart total.
+        //   2. Strapi/MySQL returns `decimal` columns as strings, so the raw
+        //      values are "1000.00" not 1000 — Number() normalizes both.
+        //   3. NaN guard for the rare case both sides are non-numeric.
+        const variantPrice = Number(productVariant?.selling_price) || 0;
+        const productPrice = Number(productData?.selling_price) || 0;
+        const unitPrice = variantPrice > 0 ? variantPrice : productPrice;
+
         return {
           id: productData?.id,
           image: displayImage,
           imageId,
           name: productData?.name,
-          variant_id: productVariant?.id,
+          // Normalize to `null` (not undefined) so the checkout's strict-equality
+          // lookup in getQuantity matches the cart store record, which is set
+          // to `null` when the product has no variant. `null === undefined` is
+          // false — leaving this as undefined silently zeros the line qty.
+          variant_id: productVariant?.id ?? null,
           variant_name: productVariant?.name,
-          price: productVariant?.selling_price ?? productData?.selling_price,
+          price: unitPrice,
           offerPrice: item.offerPrice,
           offerId: item.offerId,
           sourceGroupId: item.sourceGroupId,

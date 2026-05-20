@@ -13,6 +13,10 @@ export interface OrderOrderProductItem extends Struct.ComponentSchema {
     product: Schema.Attribute.Relation<'oneToOne', 'api::product.product'>;
     product_name: Schema.Attribute.String;
     quantity: Schema.Attribute.Integer & Schema.Attribute.Required;
+    stock_item: Schema.Attribute.Relation<
+      'oneToOne',
+      'api::stock-item.stock-item'
+    >;
     total: Schema.Attribute.Decimal & Schema.Attribute.Required;
     variant: Schema.Attribute.String;
     variant_name: Schema.Attribute.String;

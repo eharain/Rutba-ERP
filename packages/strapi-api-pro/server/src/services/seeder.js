@@ -33,7 +33,7 @@ const POLICY_UID = 'plugin::api-pro.api-method-policy';
 // deployment to reseed even if descriptor contents are unchanged. A mismatch
 // between this constant and the value stored in the checkpoint forces a
 // reseed regardless of file hashes.
-const SEEDER_VERSION = 2;
+const SEEDER_VERSION = 3;
 
 // â”€â”€â”€ api-provider resolution â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // api-provider's package.json doesn't export './package.json', so we can't
@@ -83,7 +83,7 @@ function inferAction(method, endpointPath, methodName) {
 function isDescriptorMethodName(methodName) {
   const name = String(methodName || '').toLowerCase();
   if (!name || name === 'meta') return false;
-  return /^(list|by|get|find|search|create|update|del|delete|remove|publish|unpublish|archive|unarchive|assign|process|open|close|transfer|validate|shipping|tracking|messages|send|make|set|toggle|reset|approve|reject|accept|cancel|reorder|merge|resolve)/.test(name);
+  return /^(list|by|get|find|search|create|update|del|delete|remove|publish|unpublish|archive|unarchive|assign|process|open|close|transfer|validate|shipping|tracking|messages|send|make|set|toggle|reset|approve|reject|accept|cancel|reorder|merge|resolve|recompute|sync|run|rebuild)/.test(name);
 }
 
 function createInvocationArgs(fn) {

@@ -65,8 +65,16 @@ module.exports = createCoreService('api::sale-order.sale-order', ({ strapi }) =>
       const variant = variantId
         ? (product.variants || []).find((v) => Number(v.id) === variantId)
         : null;
-      const sellingPrice = Number((variant || product).selling_price) || 0;
-      const productOfferPrice = Number((variant || product).offer_price) || 0;
+      // Variant prices inherit from the parent when the variant row leaves
+      // selling_price unset (null) or at 0 — common when staff only fill the
+      // parent's price and expect each variant to follow. Without the fallback
+      // we'd compute allowedPrice = 0 and silently zero out the order line.
+      const variantSelling = Number(variant?.selling_price) || 0;
+      const productSelling = Number(product.selling_price) || 0;
+      const sellingPrice = variantSelling > 0 ? variantSelling : productSelling;
+      const variantOffer = Number(variant?.offer_price) || 0;
+      const productOffer = Number(product.offer_price) || 0;
+      const productOfferPrice = variantOffer > 0 ? variantOffer : productOffer;
 
       // Resolve current offer for this (product, group). Returns null when
       // there's no group context or no live offer applies.

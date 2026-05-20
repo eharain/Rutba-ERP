@@ -42,6 +42,16 @@ async function sendMessage(documentId, data) {
     return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
+async function recordPayment(documentId, data) {
+    const ep = SaleOrdersEndpointsApi.recordPayment(documentId, data);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+}
+
+async function verifyPayment(documentId, data) {
+    const ep = SaleOrdersEndpointsApi.verifyPayment(documentId, data);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+}
+
 const endpoints = strictEndpointGuard(
     'SaleOrdersEndpoints',
     {
@@ -53,9 +63,11 @@ const endpoints = strictEndpointGuard(
         assignRider,
         messages,
         sendMessage,
+        recordPayment,
+        verifyPayment,
         meta: SaleOrdersEndpointsApi.meta,
     },
-    ["list","byId","create","update","updateStatus","assignRider","messages","sendMessage","meta"],
+    ["list","byId","create","update","updateStatus","assignRider","messages","sendMessage","recordPayment","verifyPayment","meta"],
 );
 
 export default endpoints;
