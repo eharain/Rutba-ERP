@@ -405,7 +405,8 @@ export default function ProductDetail({
       selectedImageUrl,
       resolvedFinalPrice,
       offerActive ? (offerContext?.offer?.documentId ?? offerContext?.offer?.id) : undefined,
-      offerActive ? sourceGroupId : undefined
+      offerActive ? sourceGroupId : undefined,
+      offerActive ? !!offerContext?.freeShipping : undefined
     );
     cartStore.setIsCartOpen(true);
   };
