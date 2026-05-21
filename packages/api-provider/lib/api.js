@@ -83,10 +83,14 @@ export function getActiveRole() {
 }
 
 // ------------------ Base Helper ------------------
-function authHeaders(jwt) {
+// `appOverride` lets a per-call wrapper (e.g. `webApi`) bake the app name in
+// without depending on `_appName` module state — see the webApi block below
+// for why the public storefront uses this path.
+function authHeaders(jwt, appOverride) {
     const headers = {};
     if (jwt) headers.Authorization = `Bearer ${jwt}`;
-    if (_appName) headers['X-Rutba-App'] = _appName;
+    const appName = appOverride || _appName;
+    if (appName) headers['X-Rutba-App'] = appName;
     if (_activeRole) headers['X-Rutba-App-Role'] = _activeRole;
     return headers;
 }
@@ -174,18 +178,23 @@ export async function refreshAccessToken() {
     return _refreshPromise;
 }
 
-async function get(path, data = {}, jwt) {
+// `ctx` (optional) lets the public-wrapper layer bake per-call header state
+// (currently just `appName`) into the request without mutating module state.
+// Used by `webApi` so storefront SSR fetches always send X-Rutba-App: web
+// even when the singleton `_appName` is unset (HMR reloads, race with
+// _app.tsx, tree-shaken side-effect imports).
+async function get(path, data = {}, jwt, ctx) {
 
     let query = "";// Object.keys(data).length > 0 ? "?" + qs.stringify(data, { encodeValuesOnly: true }) : "";
 
     const res = await axios.get(querify(`${API_URL}${path}${query}`, data), {
         data,
-        headers: { ...authHeaders(jwt) },
+        headers: { ...authHeaders(jwt, ctx?.appName) },
     });
     return res.data; // Strapi returns { data, meta }
 }
 
-async function getAll(path, params = {}, jwt ) {
+async function getAll(path, params = {}, jwt, ctx) {
     let allItems = [];
     let page = 0;
     const pageSize = 50; // Adjust based on your Strapi settings
@@ -195,7 +204,7 @@ async function getAll(path, params = {}, jwt ) {
             pagination: { page, pageSize }
         });
         const res = await axios.get(`${API_URL}${path}?${query}`, {
-            headers: { ...authHeaders(jwt) },
+            headers: { ...authHeaders(jwt, ctx?.appName) },
         });
 
         const data = res.data.data || res.data;
@@ -214,38 +223,38 @@ async function getAll(path, params = {}, jwt ) {
 }
 
 
-async function getWithPagination(path, data = {}, jwt) {
+async function getWithPagination(path, data = {}, jwt, ctx) {
     const res = await axios.get(querify(`${API_URL}${path}`, data), {
         data,
-        headers: { ...authHeaders(jwt) },
+        headers: { ...authHeaders(jwt, ctx?.appName) },
     });
     return { data: res.data.data, meta: res.data.meta };
 }
 
-async function post(path, data, jwt) {
+async function post(path, data, jwt, ctx) {
     const res = await axios.post(`${API_URL}${path}`, data, {
-        headers: { "Content-Type": "application/json", ...authHeaders(jwt) },
+        headers: { "Content-Type": "application/json", ...authHeaders(jwt, ctx?.appName) },
     });
     return res.data;
 }
 
-async function patch(path, data, jwt) {
+async function patch(path, data, jwt, ctx) {
     const res = await axios.patch(`${API_URL}${path}`, data, {
-        headers: { "Content-Type": "application/json", ...authHeaders(jwt) },
+        headers: { "Content-Type": "application/json", ...authHeaders(jwt, ctx?.appName) },
     });
     return res.data;
 }
 
-async function put(path, data, jwt) {
+async function put(path, data, jwt, ctx) {
     const res = await axios.put(`${API_URL}${path}`, data, {
-        headers: { "Content-Type": "application/json", ...authHeaders(jwt) },
+        headers: { "Content-Type": "application/json", ...authHeaders(jwt, ctx?.appName) },
     });
     return res.data;
 }
 
-async function del(path, jwt) {
+async function del(path, jwt, ctx) {
     const res = await axios.delete(`${API_URL}${path}`, {
-        headers: { ...authHeaders(jwt) },
+        headers: { ...authHeaders(jwt, ctx?.appName) },
     });
     return res.data;
 }
@@ -371,6 +380,39 @@ export const api = {
             case 'PUT':    return put(ep.path, body ?? ep.params);
             case 'DELETE': return del(ep.path);
             default:       return get(ep.path, ep.params);
+        }
+    },
+};
+
+// ------------------ Storefront public API (X-Rutba-App: web baked in) ------------------
+// The storefront's public Strapi routes (under /products/public/*, /cms-pages/
+// public/*, etc.) are guarded by `requireApp(ctx, 'web')` and return 404
+// without the X-Rutba-App: web header. Earlier this header rode along on
+// module-level `_appName` set by `setAppName('web')` in _app.tsx. That breaks
+// for SSR (getServerSideProps runs before _app.tsx) and for HMR (Turbopack
+// can replace api.js without re-running the side-effect that mutates state).
+//
+// Generated clients under providers/generated/client/web/ import `webApi`
+// instead of `api` so the app identity is baked into the request itself, not
+// inferred from runtime state. Reliable across SSR / HMR / tree-shaking.
+const WEB_CTX = Object.freeze({ appName: 'web' });
+export const webApi = {
+    fetch: async (path, params) => await get(path, params, null, WEB_CTX),
+    fetchWithPagination: async (path, params) => await getWithPagination(path, params, null, WEB_CTX),
+    get: async (path, params) => await get(path, params, null, WEB_CTX),
+    getAll: async (path, params) => await getAll(path, params, null, WEB_CTX),
+    post: async (path, data) => await post(path, data, null, WEB_CTX),
+    patch: async (path, data) => await patch(path, data, null, WEB_CTX),
+    put: async (path, data) => await put(path, data, null, WEB_CTX),
+    del: async (path) => await del(path, null, WEB_CTX),
+    call: (ep, body) => {
+        const method = (ep.method ?? 'GET').toUpperCase();
+        switch (method) {
+            case 'POST':   return post(ep.path, body ?? ep.params, null, WEB_CTX);
+            case 'PATCH':  return patch(ep.path, body ?? ep.params, null, WEB_CTX);
+            case 'PUT':    return put(ep.path, body ?? ep.params, null, WEB_CTX);
+            case 'DELETE': return del(ep.path, null, WEB_CTX);
+            default:       return get(ep.path, ep.params, null, WEB_CTX);
         }
     },
 };

@@ -1099,15 +1099,18 @@ async function main() {
         // Descriptors under api/web/ describe the public storefront surface
         // and must NOT carry a JWT. Using authApi here breaks SSR (no token
         // → suspendForSessionRecovery hangs the request) AND leaks the
-        // logged-in user's tokens to every CMS / product fetch. Default web
-        // descriptors to the unauthenticated `api`; everything else stays on
-        // authApi as before.
+        // logged-in user's tokens to every CMS / product fetch. We use
+        // `webApi` (not the generic `api`) so the storefront's X-Rutba-App
+        // header is baked into the wrapper itself, not read from mutable
+        // module state set by an import-time side-effect — that side-effect
+        // is fragile under Turbopack HMR and Next.js's getServerSideProps
+        // module-load ordering.
         const isPublicWebDescriptor =
             apiRelative.startsWith('web/') ||
             apiRelative.startsWith(`web${path.sep}`);
 
         const parsed = {
-            clientName: isPublicWebDescriptor ? 'api' : 'authApi',
+            clientName: isPublicWebDescriptor ? 'webApi' : 'authApi',
             apiExportName: exportName,
             apiAliasName: `${exportName}Api`,
             endpointExportName: exportName,
