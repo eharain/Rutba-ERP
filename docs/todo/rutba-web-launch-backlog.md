@@ -9,6 +9,67 @@ Sister doc: [contact-unification-launch-test-plan.md](./contact-unification-laun
 
 ## ✓ Landed this cycle
 
+### Customer return-request flow (2026-05-21)
+- New page: `rutba-web/src/pages/profile/orders/[id]/request-return.tsx`.
+  Customer picks line items + qty, picks per-line reason, uploads photos
+  (`customer_evidence` media), and submits.
+- Server side: `api::return-request` content type with its own state
+  machine (`RECEIVED → COMPLETED` triggers per-line restock-decision
+  walk: Sold → InStock or Sold → ReturnedDamaged).
+- Eligibility checks: `now < delivered_at + return_policy.window_days`
+  (global default 7d via seed migration); per-product opt-out via
+  `product.non_returnable`.
+- Sister docs: [order-lifecycle-plan.md Phase F](./order-lifecycle-plan.md#phase-f--returns-reverse-logistics)
+  for the lifecycle integration; full design + remaining F.4 work
+  (carrier reverse pickup) lives there.
+
+### Forgot / reset password flow (2026-05-21)
+- `rutba-web/src/pages/forgot-password.tsx` + `reset-password.tsx` +
+  `WebAuthEndpoints.forgotPassword` / `resetPassword` descriptors.
+- Toast feedback + Zod validation; login/register/forgot/reset pages
+  got matching UX polish (prominent logo + home link).
+- Strapi side: ops one-time setup is to set the "Reset password"
+  email template URL to `${WEB_URL}/reset-password?code={CODE}`.
+  Documented in order-lifecycle-plan.md prereqs table.
+
+### Checkout — cart-pricing + qty-0 + post-order races (2026-05-21)
+- Variant pricing now uses positive-or-parent fallback through
+  `cart.ts` + `checkout.tsx` (with `Number()` coercion), so a variant
+  with null/0/string-decimal `selling_price` falls back to the
+  parent product price instead of zeroing the cart.
+- Qty=0 normalisation: `variant_id` null vs undefined harmonised across
+  the Zustand store and hydration boundary; direct-load to `/checkout`
+  hydrates from localStorage; empty-cart redirect now guards against
+  the hydration race.
+- Post-order race: `orderPlacedRef` + reorder of push-before-clearCart so
+  the empty-cart effect doesn't clobber `/order/confirmation`.
+- `/order/confirmation` no longer auto-opens WhatsApp; success surface
+  first, copyable order ref, user-initiated WhatsApp CTA.
+
+### Storefront NextAuth JWT plumbing (2026-05-21)
+- NextAuth JWT now flows to checkout + my-orders via raw-descriptor +
+  axios. The generated proxy uses its own storage JWT which rutba-web
+  doesn't populate, so storefront code needs the explicit pass-through.
+- Order-create controller manually parses JWT so logged-in customers'
+  orders get `owners[]` stamped on the guest-checkout route.
+
+### Storefront `X-Rutba-App: web` baked into client (2026-05-21)
+- Replaced the fragile `setAppName('web')` module-level singleton with
+  a `webApi` wrapper that carries `{ appName: 'web' }` baked in via a
+  frozen ctx through the HTTP helpers. SSR pages now reliably send the
+  header that `requireApp(ctx, 'web')` checks for, fixing recurring
+  404 regressions after Turbopack HMR. See
+  [memory: web client baked app header](../../C:/Users/EjazArain/.claude/projects/D--Rutba-ERP/memory/project_web_client_baked_app_header.md).
+
+### SEO meta sibling (2026-05-19)
+- Storefront now consumes `seo_meta` siblings on page/product/group
+  records. Editors fill an inline SEO panel in `rutba-cms` (with a
+  resolved-fallback placeholder hint).
+- xlsx bulk I/O includes the SEO columns so they survive round-trip.
+
+### Product slug as canonical URL key (2026-05-19)
+- Shipped — see [rutba-web-readable-slug-urls.md](./rutba-web-readable-slug-urls.md).
+
 ### POS sale invoice — extra barcode above QR
 - [SaleInvoice.js:339](pos-sale/components/print/SaleInvoice.js#L339)
 - `<BarcodeDisplay>` defaults to rendering both a 1D Code128 strip AND a QR.

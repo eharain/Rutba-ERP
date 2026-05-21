@@ -3,26 +3,47 @@
 > **Status (May 2026):** Drafted after the storefront launch + COD payment
 > collection landed. Phases A-G below are forward work; the "already wired"
 > recap reflects what shipped in the cart / checkout / order-management /
-> stock-item-attach work this cycle. Stock-item state-machine integration
-> (E.1 + B.0) landed 2026-05-21 — see recap. Sister docs:
-> [rutba-web-launch-backlog.md](./rutba-web-launch-backlog.md),
+> stock-item-attach work this cycle.
+>
+> Updates 2026-05-21 (two PRs, same day):
+> - Stock-item state-machine integration (E.1 + B.0) landed — see recap.
+> - **Returns workflow (F.1, F.2, F.3, F.5) landed** with a new
+>   `return-request` content type + its own state machine, customer
+>   self-serve `/profile/orders/:id/request-return` page, staff
+>   `/returns` console, `return-policy` window enforcement, and a
+>   `return-method` registry. State-machine extended with the returnable
+>   detour `DELIVERED → RETURN_REQUESTED → RETURN_IN_TRANSIT → RETURNED
+>   → REFUND_INITIATED → REFUNDED`. See "Already wired" recap and
+>   updates inline below in Phase F.
+> - **Label-provider strategy interface landed** as a focused subset of
+>   Phase C.1 — `sale-order/services/label-providers/{own_rider,custom,easypost}`
+>   dispatching by `delivery_method.service_provider`. Phase C.5 (label
+>   printing UI) shipped alongside it. The fuller C.1 (getRates,
+>   createShipment, cancelShipment, parseWebhook) remains TODO.
+>
+> Sister docs: [rutba-web-launch-backlog.md](./rutba-web-launch-backlog.md),
 > [contact-entity-unification.md](./contact-entity-unification.md).
 
 ## TL;DR
 
 The current order lifecycle covers happy-path COD with internal-rider
 delivery and storefront WhatsApp confirmation, with the stock-item state
-machine now closed on CANCELLED + DELIVERED transitions. It does **not**
-yet have:
+machine closed on CANCELLED + DELIVERED + RETURNED transitions, the
+returns workflow live end-to-end (customer self-serve → staff approve →
+restock decision per line → manual refund), and address-label printing
+dispatched via a provider registry. It does **not** yet have:
 
 - Payment-gateway abstraction beyond a Stripe stub.
 - Packer assignment / multi-parcel / packing slip docs.
-- A clean delivery-provider strategy interface (TCS, Leopards, PostEx,
-  DHL/FedEx/Aramex etc. would each be bespoke today).
+- A clean *shipment* provider strategy interface — labels dispatch by
+  provider today, but `getRates` / `createShipment` / `cancelShipment` /
+  `parseWebhook` are still bespoke per carrier (TCS, Leopards, PostEx,
+  DHL/FedEx/Aramex would each need their own integration).
 - SMS comms (Pakistan-essential; email-only today).
-- Refund flow (entity, gateway-driven workflow).
-- Returns (the whole RMA surface — entity, customer UI, staff inspection,
-  reverse logistics, restock decision).
+- Gateway-driven refund flow (returns currently use a manual `refund_status`
+  with `pending_manual | completed`; no provider refund call yet).
+- Reverse-logistics carrier integration (F.4) — return labels dispatch
+  via the label-provider registry but no live carrier pickup booking.
 - Audit log, exception queues, carrier reconciliation, idempotency.
 
 This doc is the staged plan for adding all of the above.
@@ -32,7 +53,13 @@ This doc is the staged plan for adding all of the above.
 - **State machine** (`pos-strapi/src/api/sale-order/services/sale-order-state-machine.js`):
   PENDING_PAYMENT → PAYMENT_CONFIRMED → PREPARING → AWAITING_PICKUP →
   OUT_FOR_DELIVERY → DELIVERED, with CANCELLED + FAILED_DELIVERY +
-  REFUND_INITIATED → REFUNDED side paths.
+  REFUND_INITIATED → REFUNDED side paths, plus the returns detour
+  DELIVERED → RETURN_REQUESTED → RETURN_IN_TRANSIT → RETURNED →
+  REFUND_INITIATED → REFUNDED (and rewind paths RETURN_REQUESTED/IN_TRANSIT
+  → DELIVERED when staff reject/cancel mid-flight). The order's RETURNED
+  transition is intentionally a metadata flip — the per-line stock walk
+  lives on `return-state-machine.walkRestockDecisions` so the two state
+  machines never race.
 - **COD payment collection** — `payment_method`, `paid_amount`,
   `payment_collected_by_rider`, `payment_collected_at`,
   `payment_verification_status` (`unverified` | `verified` | `disputed`),
@@ -55,6 +82,52 @@ This doc is the staged plan for adding all of the above.
   lives on the state-machine service; every caller of `executeTransition`
   picks up the side effect automatically. Best-effort: a stock-item
   failure logs a warning but doesn't unwind the order transition.
+- **Returns workflow** (F.1 + F.2 + F.3 + F.5, 2026-05-21):
+  - `api::return-request` content type with its own state machine
+    (`return-state-machine.js`): REQUESTED → APPROVED → AWAITING_PICKUP
+    → RECEIVED → COMPLETED, with REJECTED + CANCELLED side paths. Each
+    transition mirrors onto the parent order via the order state machine.
+  - `return-line` component carries the line-level `restock_decision`
+    (`back_to_inventory` | `damaged_writeoff`). On `RECEIVED →
+    COMPLETED` the return state machine walks restock decisions:
+    Sold → InStock or Sold → ReturnedDamaged.
+  - `api::return-policy` with a `(global, 7 days, all)` migration seed
+    (`2026.05.21T00.00.00.return-policy-seed.js`); per-product opt-out
+    via `product.non_returnable`.
+  - `api::return-method` registry (`own_rider_pickup` | `courier_dropoff`
+    | `walk_in`) keyed by `service_provider` to share the label registry.
+  - Storefront: `/profile/orders/[id]/request-return` — customer picks
+    lines + qty + per-line reason + photos.
+  - Order management: `/returns` inbox + `/returns/[documentId]` detail
+    page; `ReturnStage` panel on the sale-order shell drives approve /
+    reject / print label / set-received; `SettledStage` exposes an
+    inline "Request Return" card.
+  - Refund recording is **manual** — `return_request.refund_status` is
+    `pending_manual | completed`; gateway-driven refund (E.2) still TODO.
+- **Label-provider strategy** (subset of C.1, plus C.5, 2026-05-21):
+  - Registry under `sale-order/services/label-providers/` dispatches by
+    `delivery_method.service_provider`:
+    - `own_rider`, `custom` → return JSON descriptors that the client
+      renders as React print pages (OwnRiderLabel | CustomPickSlip with
+      qrcode.react QR + `@page 4x6` CSS, auto `window.print()`).
+    - `easypost` → returns the cached carrier label URL.
+  - Endpoints: `GET /sale-orders/:id/label`, `GET /sale-orders/:id/return-label`,
+    `GET /return-requests/:id/label`. `?reprint=1` restamps the cache
+    timestamp without re-issuing the provider call.
+  - Sale-order schema gains `label_url`, `label_generated_at`,
+    `return_label_url`, `return_label_generated_at`, plus the
+    `return_method` relation.
+  - `rutba-order-management` has a `/print/sale-order-label` page;
+    `PrintAddressLabel` opens it in a new window.
+- **Stage-based order-management refactor** (2026-05-21) — the
+  monolithic `/[documentId]/sale-order.js` (1200 lines) broken into a
+  thin shell + per-stage components under
+  `rutba-order-management/components/sale-order/`:
+  `DraftStage`, `PaymentStage`, `VerificationStage`, `PreparationStage`,
+  `PickupStage`, `DeliveryStage`, `SettledStage`, `ReturnStage`,
+  `CancelledStage`, `FailedStage`, plus `StageStepper`, `ItemsTable`,
+  `CustomerCard`, `StockItemPicker`, `useSaleOrder`. Every stage button
+  funnels through the same state-machine chokepoint.
 - **Delivery-method** has `service_provider` enum-like field
   (`own_rider`, `easypost`, `manual_contact`) and a `delivery-zone`
   relation. Rider assignment + state machine work.
@@ -328,6 +401,11 @@ data binding into a template — no business logic. Lives in
 **What's missing**: clean strategy interface so adding TCS, Leopards,
 PostEx, DHL etc. is a 200-line per-provider module, not a re-architecture.
 
+**Partial progress (2026-05-21):** the *labels* slice of C.1 + the whole
+of C.5 shipped. `sale-order/services/label-providers/{own_rider,custom,easypost}/index.js`
+dispatch by `delivery_method.service_provider`. Use this as the worked
+example when expanding to the full strategy interface below.
+
 ### C.1 — Provider strategy interface (generic) — matches A.2
 
 ```js
@@ -392,11 +470,16 @@ results into a single chooser shown at checkout. Customer picks; their
 pick determines which provider's `createShipment` runs at
 PACKED → AWAITING_PICKUP.
 
-### C.5 — Label printing (generic)
+### C.5 — Label printing (generic)  ✅ shipped 2026-05-21
 
-Each provider returns a PDF/PNG URL. Order-management page shows a
-**Print label** button per parcel that opens the carrier-generated label
-in a new tab.
+Label-provider registry under `sale-order/services/label-providers/` —
+`own_rider` + `custom` return JSON descriptors that the client renders
+as React print pages (OwnRiderLabel | CustomPickSlip with qrcode.react
+QR + `@page 4x6` CSS, auto `window.print()`); `easypost` returns the
+cached carrier URL. Endpoints `GET /sale-orders/:id/label`, `GET
+/sale-orders/:id/return-label`, `GET /return-requests/:id/label` with
+`?reprint=1` to restamp the cache. Order-management exposes `/print/sale-order-label`
+and `PrintAddressLabel` opens it in a new window.
 
 ---
 
@@ -526,9 +609,13 @@ be able to self-cancel in a narrow window:
 
 # Phase F — Returns (Reverse logistics)
 
-**What's missing**: the entire return surface.
+**Status (2026-05-21):** F.1, F.2, F.3, F.5 ✅ shipped. F.4 (reverse
+logistics on delivery providers) is the only remaining piece — return
+labels render today via the label-provider registry but no live carrier
+pickup booking. Refund integration (E.2) still TODO; current refund flow
+is a manual record on the return-request.
 
-### F.1 — Return-request entity (generic)
+### F.1 — Return-request entity (generic)  ✅ shipped 2026-05-21
 
 Needs its own resource — Shopify, BigCommerce, Magento all model it
 separately and they're right to.
@@ -562,14 +649,33 @@ copy) and adds:
 Drives whether the returned stock-item goes back to `InStock` or
 `ReturnedDamaged` — both enum values already exist on stock-item.
 
-### F.2 — Customer return UI on storefront (generic)
+**Shipped shape differences from the spec above:**
+- `status` enum landed as `REQUESTED|APPROVED|REJECTED|AWAITING_PICKUP|RECEIVED|COMPLETED|CANCELLED`
+  (dropped the planned `in_transit` and `inspected` intermediate
+  states — handled via the `received_at` + per-line restock decision
+  instead).
+- `resolution` enum landed as `refund|store_credit` (dropped `exchange`
+  and `repair` — out of scope for v1).
+- `restock_decision` enum landed as `back_to_inventory|damaged_writeoff`
+  only (dropped `returned_to_supplier` — defer until purchase-return is
+  modelled).
+- Refund is recorded *on the return-request* (`refund_amount_paisa`,
+  `refund_method`, `refund_status`, `refund_notes`) instead of a
+  separate `refund` entity — E.2 will turn this into a proper
+  `payment-intent`-linked refund when gateway integration lands.
+- Pickup logistics fields (`pickup_method`, `pickup_scheduled_at`,
+  `pickup_carrier_ref`) live on the return-request directly rather than
+  via the planned `return_parcel` relation — promote to a relation when
+  B.2 multi-parcel ships.
+
+### F.2 — Customer return UI on storefront (generic)  ✅ shipped 2026-05-21
 
 On `/profile/orders/:id` add a **Request return** button (visible only
 when `order.order_status = DELIVERED` AND `now < order.actual_delivery_time + 7 days`).
 Form: pick line items + qty, pick reason per line, upload photos. Submit
 → creates return-request in `requested` state, notifies staff.
 
-### F.3 — Staff return-management page (generic)
+### F.3 — Staff return-management page (generic)  ✅ shipped 2026-05-21
 
 New page in `rutba-order-management` at `/returns`:
 
@@ -594,7 +700,12 @@ PostEx, TCS, DHL, FedEx all support reverse pickup. Providers that don't
 (manual_contact) get a stub that throws, and the UI shows a
 "Manual return — share label by WhatsApp" fallback.
 
-### F.5 — Return window enforcement (generic primitive, tenant config)
+**Partial today** — return *labels* dispatch via the label-provider
+registry (own_rider, custom, easypost); but no provider booking call is
+made, so the customer-side pickup is still arranged manually (rider or
+WhatsApp). Real `createReturnShipment` waits on the fuller C.1.
+
+### F.5 — Return window enforcement (generic primitive, tenant config)  ✅ shipped 2026-05-21
 
 ```
 content-type: return-policy
@@ -740,21 +851,24 @@ return_completed, …) added at the same time.
 
 | # | Phase | Why now | Blocks |
 | --- | --- | --- | --- |
-| ~~1~~ | ~~**E.1** Auto-restock on CANCELLED~~ ✅ 2026-05-21 | Closed | — |
-| ~~2~~ | ~~**B.0** Stock-item state-machine on DELIVERED~~ ✅ 2026-05-21 | Closed | — |
+| ~~–~~ | ~~**E.1** Auto-restock on CANCELLED~~ ✅ 2026-05-21 | Closed | — |
+| ~~–~~ | ~~**B.0** Stock-item state-machine on DELIVERED~~ ✅ 2026-05-21 | Closed | — |
+| ~~–~~ | ~~**F.1 + F.2 + F.3 + F.5** Returns workflow (entity, customer UI, staff console, return-policy)~~ ✅ 2026-05-21 | Closed | — |
+| ~~–~~ | ~~**C.5** Label printing + label-provider registry (subset of C.1)~~ ✅ 2026-05-21 | Closed | — |
 | 1 | **A.0** Tighten verifyPayment to accountant | Tiny security fix; do before A.6. | A.6 |
 | 2 | **A.4** Pre-dispatch confirmation queue | Biggest COD economics win. | — |
 | 3 | **B.1** Packer assignment + PACKED state | Auditable trail before anything ships. | C |
 | 4 | **A.5** Rider cash-collect modal | Mobile-friendly close of COD loop. | — |
 | 5 | **A.6** Accounts cash-drops inbox | Counterpart to A.5; weekly settlement workload. | — |
-| 6 | **C.1** Provider strategy interface | Unblocks C, F. | C.2*, F.4 |
+| 6 | **C.1** Full provider strategy (getRates, createShipment, cancelShipment, parseWebhook) | Labels slice done; rest unblocks C.2, F.4. | C.2*, F.4 |
 | 7 | **D.1** SMS channel | Pakistan-essential customer-perception lift. | — |
 | 8 | **A.1+A.3** Payment-method + intent entities | Unlocks non-COD payments cleanly. | A.2 |
 | 9 | **A.2** Stripe + manual gateway providers | First non-COD path. | — |
-| 10 | **C.2b** TCS / Leopards / PostEx (tenant) | Removes manual courier handoff. | — |
-| 11 | **F** Returns workflow | Big surface; do once core is solid. | — |
-| 12 | **B.2** Multi-parcel (incl. qty > 1 split) | Only when split shipments are actually needed. | — |
-| 13 | **G.3 + G.4 + G.5** Exception queues, carrier reconciliation, idempotency | Operational maturity. | — |
+| 10 | **E.2** Gateway-driven refund flow | Replaces today's `pending_manual` refund record on return-request. | F.4 follow-through |
+| 11 | **C.2b** TCS / Leopards / PostEx (tenant) | Removes manual courier handoff. | — |
+| 12 | **F.4** Reverse-logistics carrier integration | Auto-book return pickup; rides C.1 + C.2b. | — |
+| 13 | **B.2** Multi-parcel (incl. qty > 1 split) | Only when split shipments are actually needed. | — |
+| 14 | **G.3 + G.4 + G.5** Exception queues, carrier reconciliation, idempotency | Operational maturity. | — |
 
 **Flagged priority (2026-05-21)**: **G.1 — order audit log + buyer-facing
 timeline.** User-requested — hard prerequisite for D.2's timeline view,
@@ -766,14 +880,14 @@ those phases add their own events to emit. ~3-4 days for the entity +
 writer + backfill migration + both endpoints; tracking-page render is
 in D.2 once that ships.
 
-**Deferred**: B.3 (PDF docs), C.5 (label printing UI), D.3 (push), G.2
-(analytics dashboards). Quality-of-life, not lifecycle-blocking.
+**Deferred**: B.3 (PDF docs), D.3 (push), G.2 (analytics dashboards).
+Quality-of-life, not lifecycle-blocking.
 
 # Recommended next change
 
 **A.0 — tighten `verifyPayment` to accountant role.** Small (~15-20 min),
 unblocks A.6 (accounts cash-drops inbox), removes a TODO already noted
-inline in `sale-order.js:806-808`. Add a `requireAccountantUser` helper
-(or generic role-set check) and apply it to `verifyPayment`. After that,
+inline in `sale-order.js`. Add a `requireAccountantUser` helper (or
+generic role-set check) and apply it to `verifyPayment`. After that,
 **A.4 (pre-dispatch confirmation queue)** is the biggest single-feature
 COD-economics win and a clean ~half-day scope.

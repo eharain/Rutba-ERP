@@ -39,7 +39,7 @@ An open-source, modular business management system built as an **npm workspaces 
 | `rutba-web-user/` | **My Orders** | 4004 | Customer order tracking, returns, account management |
 | `rutba-cms/` | **CMS** | 4009 | Page authoring, product groups, CMS sections, SEO defaults, bulk import/export |
 | `rutba-social/` | **Social** | 4011 | Social-account management, post composer with product preview |
-| `rutba-order-management/` | **Order Management** | 4013 | Delivery ops, rider assignment, order status workflow, payment verify, notification templates |
+| `rutba-order-management/` | **Order Management** | 4013 | Stage-based order shell (per-status components funnelled through one state-machine chokepoint), returns inbox + detail, label printing, delivery ops, rider assignment, payment verify, notification templates |
 | `rutba-rider/` | **Rider App** | 4012 | Rider offers, active deliveries, status updates, buyer messaging |
 | `rutba-crm/` | **CRM** | 4005 | Contacts, leads, activities, person browse + dedup audit (planned) |
 | `rutba-hr/` | **Human Resources** | 4006 | Employees, departments, attendance, leave requests |
@@ -209,7 +209,8 @@ Key domain groupings:
 | **Catalog** | Product (with `slug` as canonical URL key), Variant, Category, Category Group, Brand, Brand Group, Product Group |
 | **Inventory** | Stock Item (state machine: InStock → Reserved → Sold), Purchase, Purchase Item, Supplier |
 | **Sales (POS)** | Sale, Sale Item, Sale Return, Sale Return Item, Cash Register, Cash Register Transaction |
-| **Orders (Web)** | Sale Order (state machine, COD + payment verification, stock-item attach), Sale Offer, Delivery Method, Delivery Zone, Order Message, Order Parcel (planned) |
+| **Orders (Web)** | Sale Order (state machine with returns detour, COD + payment verification, stock-item attach, label cache), Sale Offer, Delivery Method, Delivery Zone, Order Message, Order Parcel (planned) |
+| **Returns** | Return Request (state machine with restock-decision walk), Return Method (own_rider_pickup / courier_dropoff / walk_in), Return Policy (window + scope), Return Line component |
 | **People** | Person (canonical contact identity), Address, Person Dedup Audit, Customer, Customer Address (legacy), Contact Ticket |
 | **CRM** | CRM Contact, CRM Lead, CRM Activity |
 | **HR** | HR Employee, HR Department, HR Team, HR Attendance, HR Leave Request |
@@ -239,7 +240,7 @@ Key domain groupings:
 
 Forward-looking work, organised by surface. Items marked ✓ have shipped.
 
-- [order-lifecycle-plan.md](docs/todo/order-lifecycle-plan.md) — payment / packaging / delivery / refund / returns / audit-log roadmap. **Next up:** A.0 (tighten `verifyPayment`), then A.4 (pre-dispatch confirmation queue), with G.1 (audit log + buyer timeline) flagged priority.
+- [order-lifecycle-plan.md](docs/todo/order-lifecycle-plan.md) — payment / packaging / delivery / refund / returns / audit-log roadmap. **Recently shipped (2026-05-21):** stock-item state-machine closed on CANCELLED + DELIVERED (E.1/B.0); returns workflow end-to-end (F.1/F.2/F.3/F.5) — customer self-serve, staff console, restock-decision walk, return-policy window; label-provider registry + print pages (C.5). **Next up:** A.0 (tighten `verifyPayment`), then A.4 (pre-dispatch confirmation queue), with G.1 (audit log + buyer timeline) flagged priority.
 - [accounting-engine-implementation.md](docs/todo/accounting-engine-implementation.md) — 19-phase accounting engine spec. Phases 1–6 (account schema, journal posting service, fiscal periods, POS hook, sale-return hook) partly landed; the rest is planned.
 - [contact-entity-unification.md](docs/todo/contact-entity-unification.md) — Phase 1A (person + address + sale-order rewire) and 1C.5 (contact-ticket), 3.3 (UP signup promotion) ✓. Phase 1B (customer backfill) is next.
 - [contact-unification-launch-test-plan.md](docs/todo/contact-unification-launch-test-plan.md) — Tier P0/P1/P2 test plan for the unification work.
