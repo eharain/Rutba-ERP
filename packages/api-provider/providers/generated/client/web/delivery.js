@@ -1,25 +1,25 @@
-import { api } from '../../../../lib/api.js';
+import { webApi } from '../../../../lib/api.js';
 import { withQuery, wrapData, strictEndpointGuard } from '../___core__.js';
 import { WebDeliveryEndpoints as WebDeliveryEndpointsApi } from '../../../../api/web/delivery.js';
 
 async function calculateMethods(data) {
     const ep = WebDeliveryEndpointsApi.calculateMethods(data);
-    return api.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+    return webApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
 async function getMessages(documentId) {
     const ep = WebDeliveryEndpointsApi.getMessages(documentId);
-    return api.fetch(ep.path, ep.params);
+    return webApi.fetch(ep.path, ep.params);
 }
 
 async function sendMessage(documentId, data) {
     const ep = WebDeliveryEndpointsApi.sendMessage(documentId, data);
-    return api.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+    return webApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
 async function tracking(documentId, secret) {
     const ep = WebDeliveryEndpointsApi.tracking(documentId, secret);
-    return api.fetch(ep.path, ep.params);
+    return webApi.fetch(ep.path, ep.params);
 }
 
 const endpoints = strictEndpointGuard(
