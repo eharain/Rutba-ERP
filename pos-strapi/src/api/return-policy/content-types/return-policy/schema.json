@@ -1,0 +1,41 @@
+{
+  "kind": "singleType",
+  "collectionName": "return_policies",
+  "info": {
+    "singularName": "return-policy",
+    "pluralName": "return-policies",
+    "displayName": "Return Policy",
+    "description": "Global return-window configuration. MVP scope: one global policy + per-product non_returnable opt-out (on product schema). Future: per-category / per-channel scope rows."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "window_days": {
+      "type": "integer",
+      "default": 7,
+      "required": true
+    },
+    "restocking_fee_percent": {
+      "type": "decimal",
+      "default": 0
+    },
+    "return_shipping_borne_by": {
+      "type": "enumeration",
+      "enum": ["merchant", "customer"],
+      "default": "merchant"
+    },
+    "exchange_enabled": {
+      "type": "boolean",
+      "default": false
+    },
+    "auto_approve_under_paisa": {
+      "type": "biginteger"
+    },
+    "policy_text": {
+      "type": "richtext",
+      "description": "Customer-visible policy copy rendered on the return-request form."
+    }
+  }
+}

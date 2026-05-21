@@ -36,6 +36,45 @@ export interface OrderOrderProducts extends Struct.ComponentSchema {
   };
 }
 
+export interface OrderReturnLine extends Struct.ComponentSchema {
+  collectionName: 'components_order_return_lines';
+  info: {
+    description: 'One returned line of a sale-order, pinned to the original line by index. Carries the restock decision that drives the stock-item walk on RECEIVED.';
+    displayName: 'Return Line';
+    icon: 'arrowLeft';
+  };
+  attributes: {
+    inspection_notes: Schema.Attribute.Text;
+    order_line_index: Schema.Attribute.Integer & Schema.Attribute.Required;
+    product: Schema.Attribute.Relation<'oneToOne', 'api::product.product'>;
+    product_name: Schema.Attribute.String;
+    quantity: Schema.Attribute.Integer & Schema.Attribute.Required;
+    reason: Schema.Attribute.Enumeration<
+      [
+        'defective',
+        'damaged_in_transit',
+        'wrong_item',
+        'wrong_size',
+        'changed_mind',
+        'late_delivery',
+        'other',
+      ]
+    > &
+      Schema.Attribute.DefaultTo<'other'>;
+    reason_notes: Schema.Attribute.Text;
+    restock_decision: Schema.Attribute.Enumeration<
+      ['back_to_inventory', 'damaged_writeoff']
+    > &
+      Schema.Attribute.DefaultTo<'back_to_inventory'>;
+    stock_item: Schema.Attribute.Relation<
+      'oneToOne',
+      'api::stock-item.stock-item'
+    >;
+    unit_refund_paisa: Schema.Attribute.BigInteger;
+    variant_name: Schema.Attribute.String;
+  };
+}
+
 export interface PosSalesDesks extends Struct.ComponentSchema {
   collectionName: 'components_pos_sales_desks';
   info: {
@@ -123,6 +162,7 @@ declare module '@strapi/strapi' {
     export interface ComponentSchemas {
       'order.order-product-item': OrderOrderProductItem;
       'order.order-products': OrderOrderProducts;
+      'order.return-line': OrderReturnLine;
       'pos.sales-desks': PosSalesDesks;
       'pos.stock-status-history': PosStockStatusHistory;
       'product.variant-information': ProductVariantInformation;

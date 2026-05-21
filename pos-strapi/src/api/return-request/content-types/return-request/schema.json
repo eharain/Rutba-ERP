@@ -1,0 +1,129 @@
+{
+  "kind": "collectionType",
+  "collectionName": "return_requests",
+  "info": {
+    "singularName": "return-request",
+    "pluralName": "return-requests",
+    "displayName": "Return Request",
+    "description": "Customer-initiated return of a sale-order; carries the workflow state, line-level restock decisions, and refund record."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "return_ref": {
+      "type": "uid",
+      "required": true
+    },
+    "sale_order": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::sale-order.sale-order"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "REQUESTED",
+        "APPROVED",
+        "REJECTED",
+        "AWAITING_PICKUP",
+        "RECEIVED",
+        "COMPLETED",
+        "CANCELLED"
+      ],
+      "default": "REQUESTED",
+      "required": true
+    },
+    "reason": {
+      "type": "enumeration",
+      "enum": ["defective", "damaged_in_transit", "wrong_item", "wrong_size", "changed_mind", "late_delivery", "other"],
+      "required": true
+    },
+    "reason_notes": {
+      "type": "text"
+    },
+    "resolution": {
+      "type": "enumeration",
+      "enum": ["refund", "store_credit"],
+      "default": "refund"
+    },
+    "customer_evidence": {
+      "type": "media",
+      "multiple": true,
+      "allowedTypes": ["images"]
+    },
+    "items": {
+      "type": "component",
+      "repeatable": true,
+      "component": "order.return-line"
+    },
+    "pickup_method": {
+      "type": "enumeration",
+      "enum": ["customer_ship", "courier_pickup", "store_dropoff"],
+      "default": "customer_ship"
+    },
+    "return_method": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::return-method.return-method",
+      "inversedBy": "return_requests"
+    },
+    "return_label_url": { "type": "text" },
+    "return_label_generated_at": { "type": "datetime" },
+    "pickup_scheduled_at": {
+      "type": "datetime"
+    },
+    "pickup_carrier_ref": {
+      "type": "string"
+    },
+    "received_at": {
+      "type": "datetime"
+    },
+    "received_by": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "refund_amount_paisa": {
+      "type": "biginteger"
+    },
+    "refund_method": {
+      "type": "enumeration",
+      "enum": ["original_method", "bank_transfer", "manual_cash", "store_credit"],
+      "default": "manual_cash"
+    },
+    "refund_status": {
+      "type": "enumeration",
+      "enum": ["pending_manual", "completed"],
+      "default": "pending_manual"
+    },
+    "refund_notes": {
+      "type": "text"
+    },
+    "approved_by": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "approved_at": {
+      "type": "datetime"
+    },
+    "rejection_reason": {
+      "type": "text"
+    },
+    "cancelled_at": {
+      "type": "datetime"
+    },
+    "owners": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::users-permissions.user"
+    },
+    "branches": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::branch.branch"
+    }
+  }
+}

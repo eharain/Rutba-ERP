@@ -38,6 +38,7 @@ export { ProductGroupsEndpoints } from './product-groups.js';
 export { ProductsEndpoints } from './products.js';
 export { PurchaseItemsEndpoints } from './purchase-items.js';
 export { PurchasesEndpoints } from './purchases.js';
+export { ReturnMethodsEndpoints } from './return-methods.js';
 export { ReturnRequestsEndpoints } from './return-requests.js';
 export { RiderEndpoints } from './rider-endpoints.js';
 export { RidersEndpoints } from './riders.js';

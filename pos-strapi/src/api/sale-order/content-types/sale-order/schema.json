@@ -102,10 +102,22 @@
         "DELIVERED",
         "CANCELLED",
         "FAILED_DELIVERY",
+        "RETURN_REQUESTED",
+        "RETURN_IN_TRANSIT",
+        "RETURNED",
         "REFUND_INITIATED",
         "REFUNDED"
       ],
       "default": "PENDING_PAYMENT"
+    },
+    "label_url": { "type": "text" },
+    "label_generated_at": { "type": "datetime" },
+    "return_label_url": { "type": "text" },
+    "return_label_generated_at": { "type": "datetime" },
+    "return_method": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::return-method.return-method"
     },
     "delivery_method": {
       "type": "relation",

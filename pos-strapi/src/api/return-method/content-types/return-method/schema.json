@@ -1,0 +1,37 @@
+{
+  "kind": "collectionType",
+  "collectionName": "return_methods",
+  "info": {
+    "singularName": "return-method",
+    "pluralName": "return-methods",
+    "displayName": "Return Method",
+    "description": "How a customer can return a delivered order. Drives the return-label provider in the same way delivery-method drives the forward-label provider."
+  },
+  "options": { "draftAndPublish": false },
+  "pluginOptions": {},
+  "attributes": {
+    "name": { "type": "string", "required": true },
+    "description": { "type": "text" },
+    "pickup_type": {
+      "type": "enumeration",
+      "enum": ["own_rider_pickup", "courier_dropoff", "walk_in"],
+      "required": true,
+      "default": "own_rider_pickup"
+    },
+    "service_provider": {
+      "type": "enumeration",
+      "enum": ["own_rider", "easypost", "custom"],
+      "required": true,
+      "default": "own_rider"
+    },
+    "instructions": { "type": "text" },
+    "is_active": { "type": "boolean", "default": true },
+    "priority": { "type": "integer", "default": 0 },
+    "return_requests": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::return-request.return-request",
+      "mappedBy": "return_method"
+    }
+  }
+}

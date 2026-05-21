@@ -140,4 +140,33 @@ export const SaleOrdersEndpoints = {
         data,
     }),
 
+    // Provider-specific shipping label. Server dispatches via the label-
+    // providers registry keyed off delivery_method.service_provider:
+    //   - own_rider → 4×6 thermal PDF (binary stream)
+    //   - easypost  → 302 redirect to carrier-hosted URL
+    //   - custom    → courier-agnostic pick slip PDF (binary stream)
+    // The descriptor exists so the api-pro seeder grants staff the policy;
+    // callers usually open `getLabelUrl()` in a new tab rather than going
+    // through the JSON-oriented client (binary responses don't fit there).
+    getLabel: (documentId, { reprint } = {}) => ({
+        path: `/sale-orders/${documentId}/label${reprint ? '?reprint=1' : ''}`,
+        action: 'getLabel',
+        method: 'get',
+        apps: ['order-management', 'sale', 'delivery'],
+        approle: ['admin', 'manager', 'staff'],
+        scope: ROLE_SCOPES,
+    }),
+
+    // Return-mode label. Same registry, return-mode flag flips ship-to to
+    // the warehouse and stamps the return_ref. Requires an active
+    // return-request on the order.
+    getReturnLabel: (documentId, { reprint } = {}) => ({
+        path: `/sale-orders/${documentId}/return-label${reprint ? '?reprint=1' : ''}`,
+        action: 'getReturnLabel',
+        method: 'get',
+        apps: ['order-management', 'sale', 'delivery'],
+        approle: ['admin', 'manager', 'staff'],
+        scope: ROLE_SCOPES,
+    }),
+
 };

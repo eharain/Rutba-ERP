@@ -6,6 +6,7 @@ import { createWebOrdersService } from "@/services";
 import { useQuery } from "@tanstack/react-query";
 import { ErrorCard } from "@/components/errors/error-card";
 import { BASE_URL } from "@/static/const";
+import Link from "next/link";
 export default function Transaction() {
   const ordersService = createWebOrdersService({ baseURL: BASE_URL });
   const router = useRouter();
@@ -35,9 +36,27 @@ export default function Transaction() {
   if (isError)
     return <ErrorCard message={(error as Error).message}></ErrorCard>;
 
+  // Show the Request-return CTA once the order is delivered. We don't
+  // re-check the policy window here — the request-return page does that
+  // and renders a clear message if the window has expired. Keeping this
+  // gate to a single field (order_status) means a stale browser tab
+  // doesn't silently hide the entry point if delivery just landed.
+  const canRequestReturn = dataTransaction?.order_status === "DELIVERED";
+
   return (
     <ProfileLayout>
       <></>
+      {canRequestReturn && (
+        <div className="mb-3 flex items-center justify-between rounded border bg-gray-50 p-3 text-sm">
+          <span>Something wrong with this order?</span>
+          <Link
+            href={`/profile/orders/${router.query.id}/request-return`}
+            className="rounded border px-3 py-1.5 text-sm hover:bg-white"
+          >
+            Request a return
+          </Link>
+        </div>
+      )}
       <DetailTransactionCard
         refreshGetDataTransaction={() => refetch()}
         dataTransaction={{

@@ -39,6 +39,7 @@ export * from './product-groups.js';
 export * from './products.js';
 export * from './purchase-items.js';
 export * from './purchases.js';
+export * from './return-methods.js';
 export * from './return-requests.js';
 export * from './rider-endpoints.js';
 export * from './riders.js';

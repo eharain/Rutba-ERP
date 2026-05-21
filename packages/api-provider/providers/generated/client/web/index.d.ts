@@ -11,5 +11,7 @@ export * from './leads';
 export * from './orders';
 export * from './product-groups';
 export * from './products';
+export * from './return-policies';
+export * from './return-requests';
 export * from './reviews';
 export * from './site-settings';

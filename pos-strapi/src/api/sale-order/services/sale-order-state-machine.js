@@ -10,6 +10,14 @@
  * FAILED_DELIVERY deliberately leaves units in Reserved — they stay
  * allocated until staff either retries (back to OUT_FOR_DELIVERY) or
  * cancels (which then restocks via the CANCELLED hook).
+ *
+ * Return detour (DELIVERED → … → REFUNDED) is driven by the parallel
+ * return-request state machine, which calls this service to mirror its
+ * own progression onto the order. The order's own RETURNED transition is
+ * intentionally a metadata flip — the per-line restock walk lives on
+ * return-state-machine.walkRestockDecisions (Sold → InStock or
+ * ReturnedDamaged via the return-line's restock_decision). Two stock
+ * walks for the same return would race, so this side stays passive.
  */
 
 const SALE_ORDER_UID = 'api::sale-order.sale-order';
@@ -22,7 +30,10 @@ const TRANSITIONS = {
     AWAITING_PICKUP:    ['OUT_FOR_DELIVERY', 'CANCELLED'],
     OUT_FOR_DELIVERY:   ['DELIVERED', 'FAILED_DELIVERY'],
     FAILED_DELIVERY:    ['OUT_FOR_DELIVERY', 'CANCELLED'],
-    DELIVERED:          [],
+    DELIVERED:          ['RETURN_REQUESTED'],
+    RETURN_REQUESTED:   ['RETURN_IN_TRANSIT', 'DELIVERED'],
+    RETURN_IN_TRANSIT:  ['RETURNED', 'DELIVERED'],
+    RETURNED:           ['REFUND_INITIATED'],
     CANCELLED:          ['REFUND_INITIATED'],
     REFUND_INITIATED:   ['REFUNDED'],
     REFUNDED:           [],

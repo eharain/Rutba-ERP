@@ -13,6 +13,8 @@ export type { CustomerAddress, AddressInput } from './me-addresses';
 export { createWebOrdersService } from './orders';
 export { createWebProductGroupsService } from './product-groups';
 export { createWebProductsService, getProductDetailSSR } from './products';
+export { createWebReturnsService } from './return-requests';
+export type { CreateReturnInput, ReturnLineInput } from './return-requests';
 export { createWebReviewsService } from './reviews';
 export { createWebSiteSettingsService, SITE_SETTINGS_DEFAULTS } from './site-settings';
 
