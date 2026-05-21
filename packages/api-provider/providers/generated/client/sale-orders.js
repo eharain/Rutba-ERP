@@ -57,6 +57,16 @@ async function verifyPayment(documentId, data) {
     return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
+async function requestCostChangeAck(documentId, data) {
+    const ep = SaleOrdersEndpointsApi.requestCostChangeAck(documentId, data);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+}
+
+async function overrideCostChangeAck(documentId, data) {
+    const ep = SaleOrdersEndpointsApi.overrideCostChangeAck(documentId, data);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+}
+
 async function getLabel(documentId, arg2 = {}) {
     const ep = SaleOrdersEndpointsApi.getLabel(documentId, arg2);
     return authApi.fetch(ep.path, ep.params);
@@ -81,11 +91,13 @@ const endpoints = strictEndpointGuard(
         sendMessage,
         recordPayment,
         verifyPayment,
+        requestCostChangeAck,
+        overrideCostChangeAck,
         getLabel,
         getReturnLabel,
         meta: SaleOrdersEndpointsApi.meta,
     },
-    ["list","byId","create","update","updateStatus","assignRider","attachStockItem","messages","sendMessage","recordPayment","verifyPayment","getLabel","getReturnLabel","meta"],
+    ["list","byId","create","update","updateStatus","assignRider","attachStockItem","messages","sendMessage","recordPayment","verifyPayment","requestCostChangeAck","overrideCostChangeAck","getLabel","getReturnLabel","meta"],
 );
 
 export default endpoints;

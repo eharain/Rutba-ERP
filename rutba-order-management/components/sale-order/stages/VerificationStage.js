@@ -2,7 +2,10 @@ import { useState } from "react";
 import { SaleOrdersEndpoints } from "@rutba/api-provider/endpoints/index.js";
 import CustomerCard from "../CustomerCard";
 import ItemsTable from "../ItemsTable";
-import { isCOD, lineFromItem } from "../util";
+import CostChangeBanner from "../CostChangeBanner";
+import CustomerConfirmationCard from "../CustomerConfirmationCard";
+import AdjustOrderCard from "../AdjustOrderCard";
+import { isPaymentDeferred, lineFromItem, serverMessage } from "../util";
 
 // PAYMENT_CONFIRMED. Two flavors:
 //
@@ -12,7 +15,7 @@ import { isCOD, lineFromItem } from "../util";
 //   COD: no cash has been collected yet — the order needs to ship first
 //   before there's anything to verify. Verify/Dispute are deferred to
 //   SettledStage. Start Preparing is ungated.
-export default function VerificationStage({ order, toast, onRefresh }) {
+export default function VerificationStage({ order, productsCatalog, toast, onRefresh }) {
   const items = (order?.products?.items || []).map(lineFromItem);
   const snap = order?.delivery_snapshot || {};
   const customer = {
@@ -26,7 +29,7 @@ export default function VerificationStage({ order, toast, onRefresh }) {
     country: snap.country || order?.delivery_address?.country || "PK",
   };
 
-  const codOrder = isCOD(order);
+  const codOrder = isPaymentDeferred(order);
   const verifStatus = order?.payment_verification_status || "unverified";
   const verifBy = order?.payment_verified_by;
 
@@ -44,7 +47,7 @@ export default function VerificationStage({ order, toast, onRefresh }) {
       await onRefresh?.();
     } catch (err) {
       console.error("Failed to update verification", err);
-      toast?.(`Failed to update verification: ${err?.message || "unknown error"}`, "danger");
+      toast?.(`Failed to update verification: ${serverMessage(err)}`, "danger");
     } finally {
       setProcessing(false);
     }
@@ -58,7 +61,7 @@ export default function VerificationStage({ order, toast, onRefresh }) {
       await onRefresh?.();
     } catch (err) {
       console.error("Failed to advance order", err);
-      toast?.("Could not start preparing.", "danger");
+      toast?.(`Could not start preparing: ${serverMessage(err)}`, "danger");
     } finally {
       setProcessing(false);
     }
@@ -73,7 +76,7 @@ export default function VerificationStage({ order, toast, onRefresh }) {
       await onRefresh?.();
     } catch (err) {
       console.error("Failed to cancel order", err);
-      toast?.("Failed to cancel order.", "danger");
+      toast?.(`Failed to cancel order: ${serverMessage(err)}`, "danger");
     } finally {
       setProcessing(false);
     }
@@ -81,8 +84,16 @@ export default function VerificationStage({ order, toast, onRefresh }) {
 
   // For COD the verify buttons stay locked until the cash actually arrives
   // (SettledStage), so Start Preparing isn't gated on verification. For
-  // prepaid orders we still require accounts to reconcile first.
-  const canAdvanceToPreparing = codOrder || verifStatus === "verified";
+  // prepaid orders we still require accounts to reconcile first. Either way,
+  // a pending cost change blocks progression — the customer hasn't yet
+  // agreed to the new total.
+  const pendingChange = order?.pending_cost_change;
+  const blockedByPending =
+    pendingChange && typeof pendingChange === "object"
+    && pendingChange.ack_required !== false
+    && !pendingChange.acked_at;
+  const canAdvanceToPreparing =
+    !blockedByPending && (codOrder || verifStatus === "verified");
 
   return (
     <>
@@ -101,8 +112,19 @@ export default function VerificationStage({ order, toast, onRefresh }) {
         </div>
       )}
 
+      <CostChangeBanner order={order} toast={toast} onRefresh={onRefresh} />
+
       <CustomerCard value={customer} readOnly orderId={order?.order_id} />
       <ItemsTable items={items} mode="view" />
+
+      <AdjustOrderCard
+        order={order}
+        productsCatalog={productsCatalog}
+        toast={toast}
+        onSaved={onRefresh}
+      />
+
+      <CustomerConfirmationCard order={order} toast={toast} onRefresh={onRefresh} />
 
       <div className="card">
         <div className="card-header bg-light fw-semibold d-flex align-items-center justify-content-between">
@@ -202,12 +224,14 @@ export default function VerificationStage({ order, toast, onRefresh }) {
                 onClick={advance}
                 disabled={processing || !canAdvanceToPreparing}
                 title={
-                  canAdvanceToPreparing
-                    ? "Start preparing the order"
+                  blockedByPending
+                    ? "Awaiting customer ack of the cost change"
+                    : canAdvanceToPreparing
+                    ? "Start packaging the order"
                     : "Verify payment first"
                 }
               >
-                <i className="fas fa-arrow-right me-1" /> Start Preparing
+                <i className="fas fa-arrow-right me-1" /> Start Packaging
               </button>
             </div>
           </div>

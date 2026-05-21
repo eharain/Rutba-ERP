@@ -197,6 +197,24 @@
     },
     "payment_verification_notes": {
       "type": "text"
+    },
+    "pending_cost_change": {
+      "type": "json"
+    },
+    "customer_confirmed_at": {
+      "type": "datetime"
+    },
+    "customer_confirmed_via": {
+      "type": "enumeration",
+      "enum": ["email", "phone", "whatsapp", "in_person"]
+    },
+    "customer_confirmed_by": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "customer_confirmation_notes": {
+      "type": "text"
     }
   }
 }

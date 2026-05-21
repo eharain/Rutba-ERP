@@ -3,10 +3,12 @@ import { STAGE_ORDER } from "./hooks/useSaleOrder";
 // Visual progress through the happy path. Detour states (FAILED_DELIVERY,
 // CANCELLED, REFUND_INITIATED, REFUNDED) are rendered as a single trailing
 // pill rather than inline steps — they're exits, not stages.
+// PREPARING is labelled "Packaging" in the UI per the workflow request —
+// the server-side enum stays PREPARING to avoid a data migration.
 const LABELS = {
   PENDING_PAYMENT:   "Awaiting Payment",
   PAYMENT_CONFIRMED: "Verifying",
-  PREPARING:         "Preparing",
+  PREPARING:         "Packaging",
   AWAITING_PICKUP:   "Awaiting Pickup",
   OUT_FOR_DELIVERY:  "Out for Delivery",
   DELIVERED:         "Delivered",

@@ -3,12 +3,14 @@ import { SaleOrdersEndpoints } from "@rutba/api-provider/endpoints/index.js";
 import CustomerCard from "../CustomerCard";
 import ItemsTable from "../ItemsTable";
 import StockItemPicker from "../StockItemPicker";
+import CostChangeBanner from "../CostChangeBanner";
+import AdjustOrderCard from "../AdjustOrderCard";
 import { lineFromItem } from "../util";
 
 // PREPARING: warehouse picks each line and attaches a physical stock unit.
 // Once every line has an attached unit (or staff decide they're done — some
 // lines may be non-serialised products) advance to AWAITING_PICKUP.
-export default function PreparationStage({ order, toast, onRefresh }) {
+export default function PreparationStage({ order, productsCatalog, toast, onRefresh }) {
   const items = (order?.products?.items || []).map(lineFromItem);
   const snap = order?.delivery_snapshot || {};
   const customer = {
@@ -28,6 +30,15 @@ export default function PreparationStage({ order, toast, onRefresh }) {
 
   const linesAttached = items.filter((it) => it.stockItemInfo).length;
   const allAttached = items.length > 0 && linesAttached === items.length;
+
+  // Block Ready-for-Pickup while a customer cost-change ack is outstanding.
+  // CostChangeBanner is the staff-facing surface for resolving it (resend
+  // email or override-by-phone).
+  const pendingChange = order?.pending_cost_change;
+  const blockedByPending =
+    pendingChange && typeof pendingChange === "object"
+    && pendingChange.ack_required !== false
+    && !pendingChange.acked_at;
 
   const handleAttach = async (stockItem) => {
     if (pickerIndex == null) return;
@@ -81,10 +92,12 @@ export default function PreparationStage({ order, toast, onRefresh }) {
     <>
       <div className="alert alert-secondary small">
         <i className="fas fa-boxes-stacked me-2" />
-        <strong>Preparing.</strong> Attach a stock unit to each line. Lines with
+        <strong>Packaging.</strong> Attach a stock unit to each line. Lines with
         non-serialised products can be left without a unit if that's how you operate;
         you can still advance to pickup.
       </div>
+
+      <CostChangeBanner order={order} toast={toast} onRefresh={onRefresh} />
 
       <CustomerCard value={customer} readOnly orderId={order?.order_id} />
 
@@ -93,6 +106,13 @@ export default function PreparationStage({ order, toast, onRefresh }) {
         mode="fulfill"
         onOpenPicker={setPickerIndex}
         isNewOrder={false}
+      />
+
+      <AdjustOrderCard
+        order={order}
+        productsCatalog={productsCatalog}
+        toast={toast}
+        onSaved={onRefresh}
       />
 
       <div className="card">
@@ -107,9 +127,11 @@ export default function PreparationStage({ order, toast, onRefresh }) {
             <button
               className="btn btn-primary"
               onClick={advance}
-              disabled={processing}
+              disabled={processing || blockedByPending}
               title={
-                allAttached
+                blockedByPending
+                  ? "Awaiting customer ack of the cost change"
+                  : allAttached
                   ? "Ready — move to Awaiting Pickup"
                   : "Some lines have no stock unit; advance anyway if that's expected"
               }

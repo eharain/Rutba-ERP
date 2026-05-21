@@ -41,18 +41,43 @@ export function lineFromItem(item) {
   };
 }
 
-// True when this order is being paid on delivery (cash handed to rider /
-// remitted by courier). COD changes the rest of the flow in two ways:
+// Unwrap an axios / api-provider error to the server's actual message.
+// Strapi returns `{ error: { message, status, … } }` on 4xx, and the
+// generated client rejects with an AxiosError whose `.message` is the
+// useless "Request failed with status code 400". Reach into response.data
+// for the real reason so toasts and console logs are diagnostic.
+export function serverMessage(err, fallback = "unknown error") {
+  const fromStrapi = err?.response?.data?.error?.message;
+  if (fromStrapi) return fromStrapi;
+  if (err?.response?.data?.message) return err.response.data.message;
+  if (err?.message && err.message !== "Request failed with status code 400") {
+    return err.message;
+  }
+  return fallback;
+}
+
+// True when payment is collected after delivery (cash on delivery, or any
+// deferred-payment arrangement). The source of truth is the delivery
+// method's `supports_cod` flag — set on the delivery-method admin page.
+// Fallback to `payment_method === 'cod'` covers legacy orders created
+// before the flag existed, or orders the storefront couldn't attach a
+// method to (rare). When true, two things happen:
 //   1. The "Awaiting Verification" stage cannot really verify anything —
 //      no cash has been collected yet, the order needs to ship first.
 //      So we ungate PREPARING and surface a "deferred verification" banner.
 //   2. After DELIVERED, SettledStage shows a "record + verify cash" card
 //      so accounts can reconcile the rider/courier remittance.
-// Anything non-COD is treated as upfront-paid (card, transfer, gateway):
+// Anything else is treated as upfront-paid (card, transfer, gateway):
 // verification happens before preparation as it does today.
-export function isCOD(order) {
+export function isPaymentDeferred(order) {
+  if (order?.delivery_method?.supports_cod === true) return true;
   return String(order?.payment_method || "").toLowerCase() === "cod";
 }
+
+// Legacy alias — keep until existing callers migrate. New code should
+// reach for isPaymentDeferred so the meaning ("COD or other deferred")
+// is unambiguous.
+export const isCOD = isPaymentDeferred;
 
 export const EMPTY_LINE = {
   productDocumentId: "",

@@ -20,6 +20,10 @@
       "required": true,
       "default": "own_rider"
     },
+    "supports_cod": {
+      "type": "boolean",
+      "default": false
+    },
     "estimated_days_min": { "type": "integer", "default": 1 },
     "estimated_days_max": { "type": "integer", "default": 3 },
     "priority": { "type": "integer", "default": 0 },

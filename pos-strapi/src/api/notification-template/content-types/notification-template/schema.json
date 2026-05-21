@@ -7,7 +7,7 @@
   "attributes": {
     "name": { "type": "string", "required": true },
     "event_name": { "type": "string" },
-    "trigger_event": { "type": "enumeration", "enum": ["order_placed","payment_confirmed","offer_accepted","out_for_delivery","delivered","cancelled","refund_initiated","return_requested","return_approved","return_rejected","return_received","return_completed"], "required": true },
+    "trigger_event": { "type": "enumeration", "enum": ["order_placed","payment_confirmed","offer_accepted","out_for_delivery","delivered","cancelled","refund_initiated","return_requested","return_approved","return_rejected","return_received","return_completed","cost_change_approval"], "required": true },
     "channel": { "type": "enumeration", "enum": ["email","sms","both"], "default": "email" },
     "channels": { "type": "json" },
     "category": {

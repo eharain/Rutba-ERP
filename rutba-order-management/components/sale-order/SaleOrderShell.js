@@ -5,6 +5,7 @@ import { useToast } from "../Toast";
 import { useSaleOrder } from "./hooks/useSaleOrder";
 import StageStepper from "./StageStepper";
 import DraftStage from "./stages/DraftStage";
+import DeliveryMethodStage from "./stages/DeliveryMethodStage";
 import PaymentStage from "./stages/PaymentStage";
 import VerificationStage from "./stages/VerificationStage";
 import PreparationStage from "./stages/PreparationStage";
@@ -15,11 +16,16 @@ import SettledStage from "./stages/SettledStage";
 import CancelledStage from "./stages/CancelledStage";
 import ReturnStage from "./stages/ReturnStage";
 
-// Stage routing rules. The order's `order_status` picks the panel; the only
-// nuance is PENDING_PAYMENT, which splits between Draft (no items yet) and
-// Payment (items captured, ready to take cash). PAYMENT_CONFIRMED similarly
-// splits on payment_verification_status — unverified goes to Verification,
-// verified is the trigger to advance into PREPARING.
+// Stage routing rules. The order's `order_status` picks the panel; there are
+// two early-stage nuances:
+//   - PENDING_PAYMENT with no items   → DRAFT (capture customer + items)
+//   - PENDING_PAYMENT with items but
+//     no delivery method               → DELIVERY_METHOD (gate)
+//   - PENDING_PAYMENT with both        → PAYMENT
+//   - PAYMENT_CONFIRMED                → VERIFICATION (skipped for COD via
+//                                        delivery_method.supports_cod; the
+//                                        stage itself ungates Start Preparing
+//                                        when the order is COD)
 function pickStage(order, isNew) {
   if (isNew || !order) return "DRAFT";
   const status = order.order_status || "PENDING_PAYMENT";
@@ -27,7 +33,9 @@ function pickStage(order, isNew) {
   switch (status) {
     case "PENDING_PAYMENT": {
       const hasItems = (order.products?.items || []).length > 0;
-      return hasItems ? "PAYMENT" : "DRAFT";
+      if (!hasItems) return "DRAFT";
+      if (!order.delivery_method) return "DELIVERY_METHOD";
+      return "PAYMENT";
     }
     case "PAYMENT_CONFIRMED":
       return "VERIFICATION";
@@ -84,12 +92,28 @@ export default function SaleOrderShell() {
             onSaved={refresh}
           />
         );
+      case "DELIVERY_METHOD":
+        return <DeliveryMethodStage order={order} toast={toast} onRefresh={refresh} />;
       case "PAYMENT":
         return <PaymentStage order={order} riders={riders} toast={toast} onAdvanced={refresh} />;
       case "VERIFICATION":
-        return <VerificationStage order={order} toast={toast} onRefresh={refresh} />;
+        return (
+          <VerificationStage
+            order={order}
+            productsCatalog={productsCatalog}
+            toast={toast}
+            onRefresh={refresh}
+          />
+        );
       case "PREPARATION":
-        return <PreparationStage order={order} toast={toast} onRefresh={refresh} />;
+        return (
+          <PreparationStage
+            order={order}
+            productsCatalog={productsCatalog}
+            toast={toast}
+            onRefresh={refresh}
+          />
+        );
       case "PICKUP":
         return <PickupStage order={order} riders={riders} toast={toast} onRefresh={refresh} />;
       case "DELIVERY":

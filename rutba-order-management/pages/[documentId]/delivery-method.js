@@ -29,6 +29,7 @@ export default function DeliveryMethodDetailPage() {
   const [estimatedDaysMax, setEstimatedDaysMax] = useState("3");
   const [priority, setPriority] = useState("0");
   const [isActive, setIsActive] = useState(true);
+  const [supportsCod, setSupportsCod] = useState(false);
   const [offerTimeoutMinutes, setOfferTimeoutMinutes] = useState("5");
   const [maxRidersToOffer, setMaxRidersToOffer] = useState("10");
 
@@ -52,6 +53,7 @@ export default function DeliveryMethodDetailPage() {
         setEstimatedDaysMax(String(m.estimated_days_max ?? 3));
         setPriority(String(m.priority ?? 0));
         setIsActive(m.is_active !== false);
+        setSupportsCod(Boolean(m.supports_cod));
         setOfferTimeoutMinutes(String(m.offer_timeout_minutes ?? 5));
         setMaxRidersToOffer(String(m.max_riders_to_offer ?? 10));
       })
@@ -74,6 +76,7 @@ export default function DeliveryMethodDetailPage() {
       estimated_days_max: Number(estimatedDaysMax || 3),
       priority: Number(priority || 0),
       is_active: isActive,
+      supports_cod: supportsCod,
       offer_timeout_minutes: Number(offerTimeoutMinutes || 5),
       max_riders_to_offer: Number(maxRidersToOffer || 10),
     },
@@ -236,7 +239,7 @@ export default function DeliveryMethodDetailPage() {
                   />
                 </div>
 
-                <div className="col-12">
+                <div className="col-md-6">
                   <div className="form-check">
                     <input
                       id="is-active"
@@ -246,6 +249,30 @@ export default function DeliveryMethodDetailPage() {
                       onChange={(e) => setIsActive(e.target.checked)}
                     />
                     <label className="form-check-label" htmlFor="is-active">Active</label>
+                  </div>
+                </div>
+
+                {/* Whether this method accepts Cash on Delivery (or other
+                    deferred-payment arrangements). When true, the order
+                    workflow skips payment-verification before preparation —
+                    cash is collected on delivery and reconciled afterwards.
+                    Sets the COD flow described in project_cod_payment_collection_model. */}
+                <div className="col-md-6">
+                  <div className="form-check">
+                    <input
+                      id="supports-cod"
+                      className="form-check-input"
+                      type="checkbox"
+                      checked={supportsCod}
+                      onChange={(e) => setSupportsCod(e.target.checked)}
+                    />
+                    <label className="form-check-label" htmlFor="supports-cod">
+                      Accepts Cash on Delivery / Deferred Payment
+                    </label>
+                    <div className="form-text">
+                      When checked, orders using this method ship before payment is verified —
+                      cash is collected on delivery, then reconciled.
+                    </div>
                   </div>
                 </div>
               </div>

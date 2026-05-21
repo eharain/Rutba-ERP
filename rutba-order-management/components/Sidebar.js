@@ -14,7 +14,7 @@ const SECTIONS = [
             { href: "/sale-orders",                                   label: "All Orders",         icon: "fa-list" },
             { href: "/sale-orders?status=PENDING_PAYMENT",            label: "Awaiting Payment",   icon: "fa-money-bill-wave" },
             { href: "/sale-orders?status=PAYMENT_CONFIRMED",          label: "Verifying Payment",  icon: "fa-shield-halved" },
-            { href: "/sale-orders?status=PREPARING",                  label: "Preparing",          icon: "fa-boxes-stacked" },
+            { href: "/sale-orders?status=PREPARING",                  label: "Packaging",          icon: "fa-boxes-stacked" },
             { href: "/sale-orders?status=AWAITING_PICKUP",            label: "Awaiting Pickup",    icon: "fa-person-biking" },
             { href: "/sale-orders?status=OUT_FOR_DELIVERY",           label: "Out for Delivery",   icon: "fa-truck-fast" },
             { href: "/sale-orders?status=FAILED_DELIVERY",            label: "Failed Delivery",    icon: "fa-triangle-exclamation" },

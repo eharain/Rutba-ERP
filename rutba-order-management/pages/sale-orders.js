@@ -38,7 +38,7 @@ function getStatusBadgeClass(status) {
 const STATUS_LABELS = {
     PENDING_PAYMENT:   "Awaiting Payment",
     PAYMENT_CONFIRMED: "Verifying Payment",
-    PREPARING:         "Preparing",
+    PREPARING:         "Packaging",
     AWAITING_PICKUP:   "Awaiting Pickup",
     OUT_FOR_DELIVERY:  "Out for Delivery",
     FAILED_DELIVERY:   "Failed Delivery",

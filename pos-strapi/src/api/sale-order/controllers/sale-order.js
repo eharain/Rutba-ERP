@@ -12,6 +12,31 @@ const deliveryOfferService   = require('../services/delivery-offer-service');
 const easypostService        = require('../services/easypost-service');
 
 /**
+ * Unwrap the Strapi body envelope for action handlers that read flat fields.
+ *
+ * The generated api-provider client wraps every POST/PUT body as
+ * `{ data: ... }` per Strapi's create/update convention (see wrapData in
+ * packages/api-provider/providers/generated/client/___core__.js). The
+ * action handlers below were originally written to read flat bodies
+ * (ctx.request.body.status, ctx.request.body.payment_method, …), so a
+ * generated-client caller silently sends fields the handler can't see and
+ * gets a "status is required" 400. Accept both shapes — wrapped from the
+ * generated client, raw from ad-hoc callers (Stripe webhooks etc.) — so a
+ * single destructure works either way.
+ */
+function readBody(ctx) {
+    const b = ctx.request.body;
+    if (
+        b && typeof b === 'object'
+        && b.data && typeof b.data === 'object'
+        && !Array.isArray(b.data)
+    ) {
+        return b.data;
+    }
+    return b || {};
+}
+
+/**
  * Resolve which provider's label template the client should render. Returns
  * JSON in every case — labels print client-side per
  * feedback_labels_print_client_side_html, so this endpoint never streams
@@ -138,7 +163,7 @@ module.exports = factories.createCoreController(
 
         // ── POST /orders/calculate-delivery ────────────────────────────────
         async calculateDelivery(ctx) {
-            const { destination, productGroupDocumentIds, weightKg, cartTotal } = ctx.request.body;
+            const { destination, productGroupDocumentIds, weightKg, cartTotal } = readBody(ctx);
             if (!destination?.city || !destination?.country) {
                 return ctx.badRequest('destination.city and destination.country are required');
             }
@@ -567,7 +592,7 @@ module.exports = factories.createCoreController(
             const staff = await requireStaffUser(ctx, strapi, user);
             if (!staff) return;
             const { documentId } = ctx.params;
-            const { status, rider_notes, estimated_delivery_time } = ctx.request.body;
+            const { status, rider_notes, estimated_delivery_time } = readBody(ctx);
             if (!status) return ctx.badRequest('status is required');
             try {
                 const meta = {};
@@ -612,7 +637,7 @@ module.exports = factories.createCoreController(
             if (!staff) return;
 
             const { documentId } = ctx.params;
-            const { item_index, stock_item_document_id } = ctx.request.body || {};
+            const { item_index, stock_item_document_id } = readBody(ctx);
 
             if (typeof item_index !== 'number' || item_index < 0) {
                 return ctx.badRequest('item_index (non-negative number) is required');
@@ -767,7 +792,7 @@ module.exports = factories.createCoreController(
             const staff = await requireStaffUser(ctx, strapi, user);
             if (!staff) return;
             const { documentId } = ctx.params;
-            const { rider_document_id } = ctx.request.body;
+            const { rider_document_id } = readBody(ctx);
             if (!rider_document_id) return ctx.badRequest('rider_document_id is required');
             const rider = await strapi.documents('api::rider.rider').findOne({ documentId: rider_document_id });
             if (!rider) return ctx.notFound('Rider not found');
@@ -804,7 +829,7 @@ module.exports = factories.createCoreController(
                 collected_by_rider_document_id,
                 collected_by_note,
                 collected_at,
-            } = ctx.request.body || {};
+            } = readBody(ctx);
 
             const ALLOWED_METHODS = ['cod', 'card', 'bank_transfer', 'mobile_wallet', 'online_gateway'];
             if (!payment_method || !ALLOWED_METHODS.includes(payment_method)) {
@@ -890,7 +915,7 @@ module.exports = factories.createCoreController(
             const staff = await requireStaffUser(ctx, strapi, user);
             if (!staff) return;
             const { documentId } = ctx.params;
-            const { status, notes } = ctx.request.body || {};
+            const { status, notes } = readBody(ctx);
 
             const ALLOWED = ['verified', 'disputed', 'unverified'];
             if (!status || !ALLOWED.includes(status)) {
@@ -921,6 +946,106 @@ module.exports = factories.createCoreController(
             return ctx.send({ data: updated });
         },
 
+        // ── POST /sale-orders/:documentId/request-cost-change-ack ───────────
+        //
+        // Staff has changed items / total on an already-confirmed order;
+        // stamp pending_cost_change + dispatch the customer approval email.
+        // Idempotent on resend: the same {newTotal} keeps the existing token
+        // so any in-flight email links stay valid.
+        //
+        // Body: { old_total, new_total, reason? }
+        async requestCostChangeAck(ctx) {
+            const user = await ensureUser(ctx, strapi);
+            if (!user) return;
+            const staff = await requireStaffUser(ctx, strapi, user);
+            if (!staff) return;
+
+            const { documentId } = ctx.params;
+            const { old_total, new_total, reason } = readBody(ctx);
+
+            if (!Number.isFinite(Number(new_total))) {
+                return ctx.badRequest('new_total (number) is required');
+            }
+
+            const pendingChangeService = require('../services/pending-change-service');
+            try {
+                const out = await pendingChangeService.requestAck({
+                    documentId,
+                    oldTotal: Number(old_total) || 0,
+                    newTotal: Number(new_total),
+                    reason,
+                    requestedBy: staff,
+                });
+                return ctx.send({ data: out });
+            } catch (err) {
+                ctx.status = err.status || 500;
+                ctx.body = { error: { message: err.message } };
+                return;
+            }
+        },
+
+        // ── POST /sale-orders/:documentId/override-cost-change-ack ──────────
+        //
+        // Staff records that the customer agreed out-of-band (phone, in-person,
+        // etc.). Clears pending_cost_change and stamps the audit fields.
+        //
+        // Body: { via, notes? }   via ∈ phone|whatsapp|in_person|email
+        async overrideCostChangeAck(ctx) {
+            const user = await ensureUser(ctx, strapi);
+            if (!user) return;
+            const staff = await requireStaffUser(ctx, strapi, user);
+            if (!staff) return;
+
+            const { documentId } = ctx.params;
+            const { via, notes } = readBody(ctx);
+
+            const pendingChangeService = require('../services/pending-change-service');
+            try {
+                const updated = await pendingChangeService.overrideAck({
+                    documentId,
+                    via,
+                    notes,
+                    actor: staff,
+                });
+                return ctx.send({ data: updated });
+            } catch (err) {
+                ctx.status = err.status || 500;
+                ctx.body = { error: { message: err.message } };
+                return;
+            }
+        },
+
+        // ── POST /sale-orders/confirm-change ───────────────────────────────
+        //
+        // Public, token-authenticated route. The customer's approval email
+        // links here with ?token=<ack_token>. Single-use: consuming a token
+        // burns it so a replayed link can't move the order twice.
+        //
+        // Auth: no JWT required — the token IS the auth. We accept the token
+        // via body OR query so a GET landing page can also confirm with a
+        // single click without prompting (storefront page typically POSTs).
+        async confirmCostChange(ctx) {
+            const tokenFromBody  = readBody(ctx)?.token;
+            const tokenFromQuery = ctx.query?.token;
+            const token = tokenFromBody || tokenFromQuery;
+
+            const pendingChangeService = require('../services/pending-change-service');
+            try {
+                const updated = await pendingChangeService.ackByToken(token);
+                return ctx.send({
+                    data: {
+                        order_id: updated.order_id,
+                        documentId: updated.documentId,
+                        acked: true,
+                    },
+                });
+            } catch (err) {
+                ctx.status = err.status || 500;
+                ctx.body = { error: { message: err.message } };
+                return;
+            }
+        },
+
         // ── GET /orders/:documentId/messages
         async getMessages(ctx) {
             const { documentId } = ctx.params;
@@ -937,7 +1062,7 @@ module.exports = factories.createCoreController(
             const user = await ensureUser(ctx, strapi);
             if (!user) return;
             const { documentId } = ctx.params;
-            const { message } = ctx.request.body;
+            const { message } = readBody(ctx);
             if (!message?.trim()) return ctx.badRequest('message is required');
             const order = await strapi.documents('api::sale-order.sale-order').findOne({ documentId });
             if (!order) return ctx.notFound('Order not found');

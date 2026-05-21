@@ -220,6 +220,41 @@ const config = {
       config: { auth: false },
     },
 
+    // ── Cost-change approval (customer email round-trip) ────────────────
+    //
+    // Public confirm route MUST be declared before the other two because
+    // its path is literal (`/confirm-change`), not param-bound — per
+    // feedback_koa_router_literal_prefix_order. Otherwise the
+    // `/:documentId/...` routes shadow it.
+    //
+    // confirm-change auth:false — the token IS the auth. The other two
+    // run requireStaffUser inside the controller (same pattern as the rest
+    // of this file).
+    {
+      method: 'POST',
+      path: '/sale-orders/confirm-change',
+      handler: 'api::sale-order.sale-order.confirmCostChange',
+      config: { auth: false },
+    },
+    {
+      method: 'GET',
+      path: '/sale-orders/confirm-change',
+      handler: 'api::sale-order.sale-order.confirmCostChange',
+      config: { auth: false },
+    },
+    {
+      method: 'POST',
+      path: '/sale-orders/:documentId/request-cost-change-ack',
+      handler: 'api::sale-order.sale-order.requestCostChangeAck',
+      config: { auth: false },
+    },
+    {
+      method: 'POST',
+      path: '/sale-orders/:documentId/override-cost-change-ack',
+      handler: 'api::sale-order.sale-order.overrideCostChangeAck',
+      config: { auth: false },
+    },
+
     // ── Provider-specific label generation ───────────────────────────────
     // Literal `/label` and `/return-label` segments must register before the
     // core /sale-orders/:documentId router catches them per

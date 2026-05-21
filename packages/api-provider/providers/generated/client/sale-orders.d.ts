@@ -11,6 +11,8 @@ export interface SaleOrdersEndpointsType {
     sendMessage(documentId: any, data: any): Promise<any>;
     recordPayment(documentId: any, data: any): Promise<any>;
     verifyPayment(documentId: any, data: any): Promise<any>;
+    requestCostChangeAck(documentId: any, data: any): Promise<any>;
+    overrideCostChangeAck(documentId: any, data: any): Promise<any>;
     getLabel(documentId: any, { reprint }?: any): Promise<any>;
     getReturnLabel(documentId: any, { reprint }?: any): Promise<any>;
     meta: any;

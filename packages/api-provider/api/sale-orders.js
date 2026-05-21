@@ -140,6 +140,35 @@ export const SaleOrdersEndpoints = {
         data,
     }),
 
+    // Stamp pending_cost_change on an already-confirmed order + dispatch the
+    // customer approval email. Called when staff adjusts items/total after
+    // the customer has placed the order. Idempotent on resend: keeping the
+    // same new_total reuses the existing token so older email links stay
+    // valid (refreshes last_email_sent_at).
+    // Body shape: { old_total, new_total, reason? }
+    requestCostChangeAck: (documentId, data) => ({
+        path: `/sale-orders/${documentId}/request-cost-change-ack`,
+        action: 'requestCostChangeAck',
+        method: 'post',
+        apps: ['order-management', 'sale', 'delivery'],
+        approle: ['admin', 'manager', 'staff'],
+        scope: ROLE_SCOPES,
+        data,
+    }),
+
+    // Staff-side override — the customer agreed out-of-band (phone, walk-in,
+    // WhatsApp). Clears pending_cost_change and stamps the audit fields.
+    // Body shape: { via: 'phone' | 'whatsapp' | 'in_person' | 'email', notes? }
+    overrideCostChangeAck: (documentId, data) => ({
+        path: `/sale-orders/${documentId}/override-cost-change-ack`,
+        action: 'overrideCostChangeAck',
+        method: 'post',
+        apps: ['order-management', 'sale', 'delivery'],
+        approle: ['admin', 'manager', 'staff'],
+        scope: ROLE_SCOPES,
+        data,
+    }),
+
     // Provider-specific shipping label. Server dispatches via the label-
     // providers registry keyed off delivery_method.service_provider:
     //   - own_rider → 4×6 thermal PDF (binary stream)

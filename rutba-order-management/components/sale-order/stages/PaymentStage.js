@@ -2,7 +2,8 @@ import { useState } from "react";
 import { SaleOrdersEndpoints } from "@rutba/api-provider/endpoints/index.js";
 import CustomerCard from "../CustomerCard";
 import ItemsTable from "../ItemsTable";
-import { lineFromItem } from "../util";
+import CostChangeBanner from "../CostChangeBanner";
+import { isPaymentDeferred, lineFromItem } from "../util";
 
 // PENDING_PAYMENT — items locked, action depends on payment method:
 //
@@ -30,10 +31,15 @@ export default function PaymentStage({ order, riders, toast, onAdvanced }) {
     country: snap.country || order?.delivery_address?.country || "PK",
   };
 
-  // Default to COD because that's the dominant flow in PK. Staff can switch
-  // to a prepaid method (card/wallet) by selecting it here; the action
-  // button updates accordingly.
-  const [paymentMethod, setPaymentMethod] = useState(order?.payment_method || "cod");
+  // Default the method based on what the chosen delivery method allows.
+  // - delivery_method.supports_cod === true → default cod (PK's dominant flow)
+  // - delivery_method.supports_cod === false → COD is hidden entirely;
+  //                                            default to card / first prepaid
+  // - no delivery_method (legacy order)     → fall back to whatever was
+  //                                            already on the order, or cod.
+  const codAllowed = order?.delivery_method?.supports_cod !== false;
+  const defaultMethod = order?.payment_method || (codAllowed ? "cod" : "card");
+  const [paymentMethod, setPaymentMethod] = useState(defaultMethod);
   const [paidAmount, setPaidAmount] = useState(
     Number(order?.paid_amount) > 0 ? String(order.paid_amount) : String(total || "")
   );
@@ -122,6 +128,8 @@ export default function PaymentStage({ order, riders, toast, onAdvanced }) {
         )}
       </div>
 
+      <CostChangeBanner order={order} />
+
       <CustomerCard value={customer} readOnly orderId={order?.order_id} />
       <ItemsTable items={items} mode="view" />
 
@@ -143,7 +151,10 @@ export default function PaymentStage({ order, riders, toast, onAdvanced }) {
                 value={paymentMethod}
                 onChange={(e) => setPaymentMethod(e.target.value)}
               >
-                <option value="cod">Cash on Delivery</option>
+                {/* COD only shown when the chosen delivery method allows it.
+                    The picker is the source of truth — see
+                    delivery-method.supports_cod admin checkbox. */}
+                {codAllowed && <option value="cod">Cash on Delivery</option>}
                 <option value="card">Card</option>
                 <option value="bank_transfer">Bank Transfer</option>
                 <option value="mobile_wallet">Mobile Wallet (Jazzcash / Easypaisa)</option>

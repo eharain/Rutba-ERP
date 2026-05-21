@@ -1812,6 +1812,7 @@ export interface ApiDeliveryMethodDeliveryMethod
     > &
       Schema.Attribute.Required &
       Schema.Attribute.DefaultTo<'own_rider'>;
+    supports_cod: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -2407,6 +2408,7 @@ export interface ApiNotificationTemplateNotificationTemplate
         'return_rejected',
         'return_received',
         'return_completed',
+        'cost_change_approval',
       ]
     > &
       Schema.Attribute.Required;
@@ -3524,6 +3526,15 @@ export interface ApiSaleOrderSaleOrder extends Struct.CollectionTypeSchema {
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    customer_confirmation_notes: Schema.Attribute.Text;
+    customer_confirmed_at: Schema.Attribute.DateTime;
+    customer_confirmed_by: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    customer_confirmed_via: Schema.Attribute.Enumeration<
+      ['email', 'phone', 'whatsapp', 'in_person']
+    >;
     customer_person: Schema.Attribute.Relation<
       'manyToOne',
       'api::person.person'
@@ -3608,6 +3619,7 @@ export interface ApiSaleOrderSaleOrder extends Struct.CollectionTypeSchema {
       'manyToOne',
       'plugin::users-permissions.user'
     >;
+    pending_cost_change: Schema.Attribute.JSON;
     products: Schema.Attribute.Component<'order.order-products', false>;
     publishedAt: Schema.Attribute.DateTime;
     rate_id: Schema.Attribute.String;
