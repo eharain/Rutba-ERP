@@ -6,10 +6,13 @@ export interface SaleOrdersEndpointsType {
     update(documentId: any, data: any): Promise<any>;
     updateStatus(documentId: any, data: any): Promise<any>;
     assignRider(documentId: any, data: any): Promise<any>;
+    attachStockItem(documentId: any, data: any): Promise<any>;
     messages(documentId: any): Promise<any>;
     sendMessage(documentId: any, data: any): Promise<any>;
     recordPayment(documentId: any, data: any): Promise<any>;
     verifyPayment(documentId: any, data: any): Promise<any>;
+    getLabel(documentId: any, { reprint }?: any): Promise<any>;
+    getReturnLabel(documentId: any, { reprint }?: any): Promise<any>;
     meta: any;
 }
 

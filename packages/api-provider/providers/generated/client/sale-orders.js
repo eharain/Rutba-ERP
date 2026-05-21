@@ -32,6 +32,11 @@ async function assignRider(documentId, data) {
     return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
+async function attachStockItem(documentId, data) {
+    const ep = SaleOrdersEndpointsApi.attachStockItem(documentId, data);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+}
+
 async function messages(documentId) {
     const ep = SaleOrdersEndpointsApi.messages(documentId);
     return authApi.fetch(ep.path, ep.params);
@@ -52,6 +57,16 @@ async function verifyPayment(documentId, data) {
     return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
+async function getLabel(documentId, arg2 = {}) {
+    const ep = SaleOrdersEndpointsApi.getLabel(documentId, arg2);
+    return authApi.fetch(ep.path, ep.params);
+}
+
+async function getReturnLabel(documentId, arg2 = {}) {
+    const ep = SaleOrdersEndpointsApi.getReturnLabel(documentId, arg2);
+    return authApi.fetch(ep.path, ep.params);
+}
+
 const endpoints = strictEndpointGuard(
     'SaleOrdersEndpoints',
     {
@@ -61,13 +76,16 @@ const endpoints = strictEndpointGuard(
         update,
         updateStatus,
         assignRider,
+        attachStockItem,
         messages,
         sendMessage,
         recordPayment,
         verifyPayment,
+        getLabel,
+        getReturnLabel,
         meta: SaleOrdersEndpointsApi.meta,
     },
-    ["list","byId","create","update","updateStatus","assignRider","messages","sendMessage","recordPayment","verifyPayment","meta"],
+    ["list","byId","create","update","updateStatus","assignRider","attachStockItem","messages","sendMessage","recordPayment","verifyPayment","getLabel","getReturnLabel","meta"],
 );
 
 export default endpoints;

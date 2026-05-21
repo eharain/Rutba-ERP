@@ -10,5 +10,7 @@ export * from './leads.js';
 export * from './orders.js';
 export * from './product-groups.js';
 export * from './products.js';
+export * from './return-policies.js';
+export * from './return-requests.js';
 export * from './reviews.js';
 export * from './site-settings.js';

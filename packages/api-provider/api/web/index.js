@@ -10,5 +10,7 @@ export { WebLeadsEndpoints } from './leads.js';
 export { WebOrdersEndpoints } from './orders.js';
 export { WebProductGroupsEndpoints } from './product-groups.js';
 export { WebProductsEndpoints } from './products.js';
+export { WebReturnPoliciesEndpoints } from './return-policies.js';
+export { WebReturnRequestsEndpoints } from './return-requests.js';
 export { WebReviewsEndpoints } from './reviews.js';
 export { WebSiteSettingsEndpoints } from './site-settings.js';

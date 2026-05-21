@@ -219,6 +219,24 @@ const config = {
       handler: 'api::sale-order.sale-order.verifyPayment',
       config: { auth: false },
     },
+
+    // ── Provider-specific label generation ───────────────────────────────
+    // Literal `/label` and `/return-label` segments must register before the
+    // core /sale-orders/:documentId router catches them per
+    // feedback_koa_router_literal_prefix_order. auth:false because the
+    // controller runs requireStaffUser internally.
+    {
+      method: 'GET',
+      path: '/sale-orders/:documentId/label',
+      handler: 'api::sale-order.sale-order.getLabel',
+      config: { auth: false },
+    },
+    {
+      method: 'GET',
+      path: '/sale-orders/:documentId/return-label',
+      handler: 'api::sale-order.sale-order.getReturnLabel',
+      config: { auth: false },
+    },
   ]
 };
 

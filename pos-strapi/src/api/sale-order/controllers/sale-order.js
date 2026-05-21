@@ -12,6 +12,83 @@ const deliveryOfferService   = require('../services/delivery-offer-service');
 const easypostService        = require('../services/easypost-service');
 
 /**
+ * Resolve which provider's label template the client should render. Returns
+ * JSON in every case — labels print client-side per
+ * feedback_labels_print_client_side_html, so this endpoint never streams
+ * PDF bytes. Carrier-hosted labels (easypost) come back as
+ * `{ kind: 'url', url }` so the client `window.open`s the URL; in-house
+ * templates come back as `{ kind: 'html', provider, return_mode }` so the
+ * client navigates to its own /print page.
+ *
+ * Same handler powers /label and /return-label — only the returnMode flag
+ * differs, plus which cache columns get stamped.
+ */
+async function dispatchLabel(ctx, strapi, { returnMode }) {
+    const { documentId } = ctx.params;
+    const reprint = String(ctx.query.reprint || '') === '1';
+
+    const order = await strapi.documents('api::sale-order.sale-order').findOne({
+        documentId,
+        populate: { delivery_method: true },
+    });
+    if (!order) return ctx.notFound('Order not found');
+
+    let returnRef = null;
+    if (returnMode) {
+        const rets = await strapi.documents('api::return-request.return-request').findMany({
+            filters: {
+                sale_order: { documentId: { $eq: documentId } },
+                status:     { $notIn: ['CANCELLED', 'REJECTED', 'COMPLETED'] },
+            },
+            sort: ['createdAt:desc'],
+            fields: ['return_ref', 'status'],
+            pagination: { pageSize: 1 },
+        });
+        if (!rets.length) {
+            return ctx.badRequest('No active return-request for this order — create one before requesting a return label.');
+        }
+        returnRef = rets[0].return_ref;
+    }
+
+    const labelProviders = require('../services/label-providers');
+    let result;
+    try {
+        result = returnMode
+            ? await labelProviders.generateReturn(order, { returnRef })
+            : await labelProviders.generate(order, {});
+    } catch (err) {
+        strapi.log.warn(`[label] provider failed for order=${documentId}: ${err.message}`);
+        ctx.status = err.status || 500;
+        ctx.body = { error: { message: err.message } };
+        return;
+    }
+
+    // Stamp the cache fields so the order surfaces "last printed at" in the
+    // UI. For URL-mode providers we cache the carrier URL itself; for HTML
+    // templates we cache a sentinel like "html:own_rider" — the timestamp is
+    // the load-bearing bit, the value just records which template was used.
+    const cacheField     = returnMode ? 'return_label_url'         : 'label_url';
+    const cacheTimeField = returnMode ? 'return_label_generated_at' : 'label_generated_at';
+    const cacheValue     = result.kind === 'url'
+        ? result.url
+        : `html:${result.provider}`;
+
+    const shouldCache = reprint || !order[cacheField] || !order[cacheTimeField];
+    if (shouldCache) {
+        try {
+            await strapi.documents('api::sale-order.sale-order').update({
+                documentId,
+                data: { [cacheField]: cacheValue, [cacheTimeField]: new Date() },
+            });
+        } catch (err) {
+            strapi.log.warn(`[label] cache stamp failed for order=${documentId}: ${err.message}`);
+        }
+    }
+
+    ctx.body = { data: { ...result, return_ref: returnRef } };
+}
+
+/**
  * Verify the authenticated user can access customer order views.
  * Allows rutba_web_user and rutba_app_user.
  * Returns the full user record or null (after sending 403).
@@ -977,6 +1054,44 @@ module.exports = factories.createCoreController(
             }
             delete order.owners;
             ctx.send({ data: order });
+        },
+
+        // ── GET /sale-orders/:documentId/label ─────────────────────────────
+        //
+        // Provider-specific shipping label. Dispatches via the label-providers
+        // registry, keyed off delivery_method.service_provider:
+        //   - own_rider → 4×6 thermal PDF (pdfkit, in-house template)
+        //   - easypost  → 302 to carrier's hosted label URL
+        //   - custom    → courier-agnostic pick slip PDF
+        //
+        // Cache: result url stamped on order.label_url + label_generated_at.
+        // For PDF providers we serve fresh bytes on every request (the bytes
+        // aren't stored — only the marker that "a label was issued at T"),
+        // which makes reprints free. ?reprint=1 also restamps the generation
+        // time so audit trails show the reissue.
+        //
+        // Auth: same auth:false + requireStaffUser pattern as update-status.
+        async getLabel(ctx) {
+            const user  = await ensureUser(ctx, strapi);
+            if (!user) return;
+            const staff = await requireStaffUser(ctx, strapi, user);
+            if (!staff) return;
+            return dispatchLabel(ctx, strapi, { returnMode: false });
+        },
+
+        // ── GET /sale-orders/:documentId/return-label ──────────────────────
+        //
+        // Return-mode label. Same registry, same providers, swaps ship-to with
+        // return-to (warehouse) and stamps the return_ref in the header. For
+        // own_rider this is the pickup slip the rider takes to the customer;
+        // for custom this is the internal slip the warehouse uses to identify
+        // a parcel a third-party courier drops without our paperwork.
+        async getReturnLabel(ctx) {
+            const user  = await ensureUser(ctx, strapi);
+            if (!user) return;
+            const staff = await requireStaffUser(ctx, strapi, user);
+            if (!staff) return;
+            return dispatchLabel(ctx, strapi, { returnMode: true });
         },
 
         // ── validateAddress (EasyPost) ─────────────────────────────────────

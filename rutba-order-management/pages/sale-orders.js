@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/router";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
@@ -16,9 +17,12 @@ function getStatusBadgeClass(status) {
         case "paid": return "bg-success";
         case "FAILED":
         case "CANCELLED":
+        case "REFUNDED":
         case "unpaid": return "bg-danger";
         case "PENDING_PAYMENT":
         case "AWAITING_PICKUP":
+        case "FAILED_DELIVERY":
+        case "REFUND_INITIATED":
         case "pending": return "bg-warning text-dark";
         case "OUT_FOR_DELIVERY":
         case "PAYMENT_CONFIRMED":
@@ -28,7 +32,26 @@ function getStatusBadgeClass(status) {
     }
 }
 
+// Labels for the heading + chip when a status filter is active. Mirrors
+// the sidebar's children labels so the chip and the menu item read the
+// same. Keys match the values in the order-state-machine.
+const STATUS_LABELS = {
+    PENDING_PAYMENT:   "Awaiting Payment",
+    PAYMENT_CONFIRMED: "Verifying Payment",
+    PREPARING:         "Preparing",
+    AWAITING_PICKUP:   "Awaiting Pickup",
+    OUT_FOR_DELIVERY:  "Out for Delivery",
+    FAILED_DELIVERY:   "Failed Delivery",
+    DELIVERED:         "Delivered",
+    CANCELLED:         "Cancelled",
+    REFUND_INITIATED:  "Refund Pending",
+    REFUNDED:          "Refunded",
+};
+
+const VALID_STATUSES = new Set(Object.keys(STATUS_LABELS));
+
 export default function SaleOrdersPage() {
+    const router = useRouter();
     const { jwt } = useAuth();
     const { currency } = useUtil();
     const { toast, ToastContainer } = useToast();
@@ -37,14 +60,28 @@ export default function SaleOrdersPage() {
     const [page, setPage] = useState(1);
     const [pageCount, setPageCount] = useState(1);
 
+    // `status` filter from URL. router.isReady gates the load — without it,
+    // the first render sees query={} and we'd fire an unfiltered request,
+    // then immediately re-fire the filtered one (extra roundtrip + flicker).
+    const statusFromUrl = typeof router.query.status === "string" ? router.query.status : "";
+    const activeStatus = VALID_STATUSES.has(statusFromUrl) ? statusFromUrl : "";
+
+    // Whenever the status filter changes, reset back to page 1. Otherwise
+    // selecting "Cancelled" while sitting on page 3 of "All Orders" would
+    // ask for an empty page.
+    useEffect(() => {
+        setPage(1);
+    }, [activeStatus]);
+
     const load = useCallback(async () => {
-        if (!jwt) return;
+        if (!jwt || !router.isReady) return;
         setLoading(true);
         try {
             const res = await SaleOrdersEndpoints.list({
                 sort: ["createdAt:desc"],
                 pagination: { page, pageSize: 25 },
                 populate: ["customer_person", "delivery_address", "delivery_method", "assigned_rider", "delivery_zone"],
+                filters: activeStatus ? { order_status: { $eq: activeStatus } } : undefined,
             });
             setOrders(res.data || []);
             setPageCount(res.meta?.pagination?.pageCount ?? 1);
@@ -54,17 +91,26 @@ export default function SaleOrdersPage() {
         } finally {
             setLoading(false);
         }
-    }, [jwt, page, toast]);
+    }, [jwt, router.isReady, page, activeStatus, toast]);
 
     useEffect(() => { load(); }, [load]);
+
+    const heading = activeStatus
+        ? `Orders · ${STATUS_LABELS[activeStatus]}`
+        : "Web Orders";
 
     return (
         <ProtectedRoute>
             <Layout>
                 <ToastContainer />
                 <div className="d-flex align-items-center justify-content-between mb-3">
-                    <h2 className="mb-0">Web Orders</h2>
+                    <h2 className="mb-0">{heading}</h2>
                     <div className="d-flex gap-2">
+                        {activeStatus && (
+                            <Link className="btn btn-sm btn-outline-secondary" href="/sale-orders">
+                                <i className="fas fa-times me-1" />Clear filter
+                            </Link>
+                        )}
                         <Link className="btn btn-sm btn-primary" href="/new/sale-order">
                             <i className="fas fa-plus me-1" />New Order
                         </Link>
@@ -74,10 +120,21 @@ export default function SaleOrdersPage() {
                     </div>
                 </div>
 
-                <div className="alert alert-info">
-                    <i className="fas fa-circle-info me-2"></i>
-                    <strong>Default flow:</strong> This page shows order list only. Use <em>New Order</em> to create and <em>Edit</em> to update an order in its dedicated page.
-                </div>
+                {activeStatus ? (
+                    <div className="alert alert-light border small d-flex align-items-center gap-2">
+                        <span className={`badge ${getStatusBadgeClass(activeStatus)}`}>
+                            {STATUS_LABELS[activeStatus]}
+                        </span>
+                        <span className="text-muted">
+                            Showing orders currently in <code>{activeStatus}</code>.
+                        </span>
+                    </div>
+                ) : (
+                    <div className="alert alert-info">
+                        <i className="fas fa-circle-info me-2"></i>
+                        <strong>Default flow:</strong> Click an order to step it through its lifecycle. Use the sidebar to filter by stage.
+                    </div>
+                )}
 
                 {loading && <p>Loading orders...</p>}
 
@@ -139,7 +196,7 @@ export default function SaleOrdersPage() {
                                         <td style={{ whiteSpace: "nowrap" }}>{new Date(o.createdAt).toLocaleDateString()}</td>
                                         <td>
                                             <Link href={`/${o.documentId}/sale-order`} className="btn btn-sm btn-outline-primary">
-                                                <i className="fas fa-edit me-1" />Edit
+                                                <i className="fas fa-edit me-1" />Open
                                             </Link>
                                         </td>
                                     </tr>
@@ -164,4 +221,3 @@ export default function SaleOrdersPage() {
         </ProtectedRoute>
     );
 }
-

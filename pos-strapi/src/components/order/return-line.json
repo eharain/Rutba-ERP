@@ -1,0 +1,54 @@
+{
+  "collectionName": "components_order_return_lines",
+  "info": {
+    "displayName": "Return Line",
+    "icon": "arrowLeft",
+    "description": "One returned line of a sale-order, pinned to the original line by index. Carries the restock decision that drives the stock-item walk on RECEIVED."
+  },
+  "options": {},
+  "attributes": {
+    "order_line_index": {
+      "type": "integer",
+      "required": true
+    },
+    "product": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::product.product"
+    },
+    "product_name": {
+      "type": "string"
+    },
+    "variant_name": {
+      "type": "string"
+    },
+    "quantity": {
+      "type": "integer",
+      "required": true
+    },
+    "unit_refund_paisa": {
+      "type": "biginteger"
+    },
+    "reason": {
+      "type": "enumeration",
+      "enum": ["defective", "damaged_in_transit", "wrong_item", "wrong_size", "changed_mind", "late_delivery", "other"],
+      "default": "other"
+    },
+    "reason_notes": {
+      "type": "text"
+    },
+    "restock_decision": {
+      "type": "enumeration",
+      "enum": ["back_to_inventory", "damaged_writeoff"],
+      "default": "back_to_inventory"
+    },
+    "inspection_notes": {
+      "type": "text"
+    },
+    "stock_item": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::stock-item.stock-item"
+    }
+  }
+}

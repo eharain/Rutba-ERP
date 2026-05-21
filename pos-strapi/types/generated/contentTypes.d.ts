@@ -2402,6 +2402,11 @@ export interface ApiNotificationTemplateNotificationTemplate
         'delivered',
         'cancelled',
         'refund_initiated',
+        'return_requested',
+        'return_approved',
+        'return_rejected',
+        'return_received',
+        'return_completed',
       ]
     > &
       Schema.Attribute.Required;
@@ -2867,6 +2872,8 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
       Schema.Attribute.Private;
     logo: Schema.Attribute.Media<'images'>;
     name: Schema.Attribute.String;
+    non_returnable: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<false>;
     offer_price: Schema.Attribute.Decimal;
     owners: Schema.Attribute.Relation<
       'manyToMany',
@@ -3091,6 +3098,198 @@ export interface ApiPurchasePurchase extends Struct.CollectionTypeSchema {
       'api::supplier.supplier'
     >;
     total: Schema.Attribute.Decimal;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiReturnMethodReturnMethod
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'return_methods';
+  info: {
+    description: 'How a customer can return a delivered order. Drives the return-label provider in the same way delivery-method drives the forward-label provider.';
+    displayName: 'Return Method';
+    pluralName: 'return-methods';
+    singularName: 'return-method';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    description: Schema.Attribute.Text;
+    instructions: Schema.Attribute.Text;
+    is_active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::return-method.return-method'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    pickup_type: Schema.Attribute.Enumeration<
+      ['own_rider_pickup', 'courier_dropoff', 'walk_in']
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'own_rider_pickup'>;
+    priority: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    publishedAt: Schema.Attribute.DateTime;
+    return_requests: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::return-request.return-request'
+    >;
+    service_provider: Schema.Attribute.Enumeration<
+      ['own_rider', 'easypost', 'custom']
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'own_rider'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiReturnPolicyReturnPolicy extends Struct.SingleTypeSchema {
+  collectionName: 'return_policies';
+  info: {
+    description: 'Global return-window configuration. MVP scope: one global policy + per-product non_returnable opt-out (on product schema). Future: per-category / per-channel scope rows.';
+    displayName: 'Return Policy';
+    pluralName: 'return-policies';
+    singularName: 'return-policy';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    auto_approve_under_paisa: Schema.Attribute.BigInteger;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    exchange_enabled: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<false>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::return-policy.return-policy'
+    > &
+      Schema.Attribute.Private;
+    policy_text: Schema.Attribute.RichText;
+    publishedAt: Schema.Attribute.DateTime;
+    restocking_fee_percent: Schema.Attribute.Decimal &
+      Schema.Attribute.DefaultTo<0>;
+    return_shipping_borne_by: Schema.Attribute.Enumeration<
+      ['merchant', 'customer']
+    > &
+      Schema.Attribute.DefaultTo<'merchant'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    window_days: Schema.Attribute.Integer &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<7>;
+  };
+}
+
+export interface ApiReturnRequestReturnRequest
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'return_requests';
+  info: {
+    description: 'Customer-initiated return of a sale-order; carries the workflow state, line-level restock decisions, and refund record.';
+    displayName: 'Return Request';
+    pluralName: 'return-requests';
+    singularName: 'return-request';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    approved_at: Schema.Attribute.DateTime;
+    approved_by: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    branches: Schema.Attribute.Relation<'manyToMany', 'api::branch.branch'>;
+    cancelled_at: Schema.Attribute.DateTime;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    customer_evidence: Schema.Attribute.Media<'images', true>;
+    items: Schema.Attribute.Component<'order.return-line', true>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::return-request.return-request'
+    > &
+      Schema.Attribute.Private;
+    owners: Schema.Attribute.Relation<
+      'manyToMany',
+      'plugin::users-permissions.user'
+    >;
+    pickup_carrier_ref: Schema.Attribute.String;
+    pickup_method: Schema.Attribute.Enumeration<
+      ['customer_ship', 'courier_pickup', 'store_dropoff']
+    > &
+      Schema.Attribute.DefaultTo<'customer_ship'>;
+    pickup_scheduled_at: Schema.Attribute.DateTime;
+    publishedAt: Schema.Attribute.DateTime;
+    reason: Schema.Attribute.Enumeration<
+      [
+        'defective',
+        'damaged_in_transit',
+        'wrong_item',
+        'wrong_size',
+        'changed_mind',
+        'late_delivery',
+        'other',
+      ]
+    > &
+      Schema.Attribute.Required;
+    reason_notes: Schema.Attribute.Text;
+    received_at: Schema.Attribute.DateTime;
+    received_by: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    refund_amount_paisa: Schema.Attribute.BigInteger;
+    refund_method: Schema.Attribute.Enumeration<
+      ['original_method', 'bank_transfer', 'manual_cash', 'store_credit']
+    > &
+      Schema.Attribute.DefaultTo<'manual_cash'>;
+    refund_notes: Schema.Attribute.Text;
+    refund_status: Schema.Attribute.Enumeration<
+      ['pending_manual', 'completed']
+    > &
+      Schema.Attribute.DefaultTo<'pending_manual'>;
+    rejection_reason: Schema.Attribute.Text;
+    resolution: Schema.Attribute.Enumeration<['refund', 'store_credit']> &
+      Schema.Attribute.DefaultTo<'refund'>;
+    return_label_generated_at: Schema.Attribute.DateTime;
+    return_label_url: Schema.Attribute.Text;
+    return_method: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::return-method.return-method'
+    >;
+    return_ref: Schema.Attribute.UID & Schema.Attribute.Required;
+    sale_order: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::sale-order.sale-order'
+    >;
+    status: Schema.Attribute.Enumeration<
+      [
+        'REQUESTED',
+        'APPROVED',
+        'REJECTED',
+        'AWAITING_PICKUP',
+        'RECEIVED',
+        'COMPLETED',
+        'CANCELLED',
+      ]
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'REQUESTED'>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -3349,7 +3548,9 @@ export interface ApiSaleOrderSaleOrder extends Struct.CollectionTypeSchema {
       'api::delivery-zone.delivery-zone'
     >;
     estimated_delivery_time: Schema.Attribute.DateTime;
+    label_generated_at: Schema.Attribute.DateTime;
     label_image: Schema.Attribute.Text;
+    label_url: Schema.Attribute.Text;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
@@ -3372,6 +3573,9 @@ export interface ApiSaleOrderSaleOrder extends Struct.CollectionTypeSchema {
         'DELIVERED',
         'CANCELLED',
         'FAILED_DELIVERY',
+        'RETURN_REQUESTED',
+        'RETURN_IN_TRANSIT',
+        'RETURNED',
         'REFUND_INITIATED',
         'REFUNDED',
       ]
@@ -3407,6 +3611,12 @@ export interface ApiSaleOrderSaleOrder extends Struct.CollectionTypeSchema {
     products: Schema.Attribute.Component<'order.order-products', false>;
     publishedAt: Schema.Attribute.DateTime;
     rate_id: Schema.Attribute.String;
+    return_label_generated_at: Schema.Attribute.DateTime;
+    return_label_url: Schema.Attribute.Text;
+    return_method: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::return-method.return-method'
+    >;
     rider_notes: Schema.Attribute.Text;
     savings: Schema.Attribute.Decimal;
     shipping_id: Schema.Attribute.String;
@@ -5305,6 +5515,9 @@ declare module '@strapi/strapi' {
       'api::purchase-return-item.purchase-return-item': ApiPurchaseReturnItemPurchaseReturnItem;
       'api::purchase-return.purchase-return': ApiPurchaseReturnPurchaseReturn;
       'api::purchase.purchase': ApiPurchasePurchase;
+      'api::return-method.return-method': ApiReturnMethodReturnMethod;
+      'api::return-policy.return-policy': ApiReturnPolicyReturnPolicy;
+      'api::return-request.return-request': ApiReturnRequestReturnRequest;
       'api::rider.rider': ApiRiderRider;
       'api::sale-audit-log.sale-audit-log': ApiSaleAuditLogSaleAuditLog;
       'api::sale-item.sale-item': ApiSaleItemSaleItem;

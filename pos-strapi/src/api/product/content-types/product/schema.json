@@ -61,6 +61,10 @@
       "type": "boolean",
       "default": true
     },
+    "non_returnable": {
+      "type": "boolean",
+      "default": false
+    },
     "categories": {
       "type": "relation",
       "relation": "manyToMany",
