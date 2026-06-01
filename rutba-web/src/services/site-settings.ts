@@ -34,20 +34,20 @@ export const SITE_SETTINGS_DEFAULTS = {
     default_footer: null as import('@/types/api/cms-page').CmsFooterInterface | null,
 };
 
+export type SiteSettings = typeof SITE_SETTINGS_DEFAULTS;
+
+export async function fetchSiteSettings(): Promise<SiteSettings> {
+    try {
+        const res = await WebSiteSettingsEndpoints.get();
+        const data = res?.data;
+        if (!data) return SITE_SETTINGS_DEFAULTS;
+        return { ...SITE_SETTINGS_DEFAULTS, ...data };
+    } catch {
+        return SITE_SETTINGS_DEFAULTS;
+    }
+}
+
 export function createWebSiteSettingsService(config = {}) {
     void config;
-    const proxy = WebSiteSettingsEndpoints;
-
-    const getSiteSettings = async () => {
-        try {
-            const res = await proxy.get();
-            const data = res?.data;
-            if (!data) return SITE_SETTINGS_DEFAULTS;
-            return { ...SITE_SETTINGS_DEFAULTS, ...data };
-        } catch {
-            return SITE_SETTINGS_DEFAULTS;
-        }
-    };
-
-    return { endpoints: proxy, getSiteSettings };
+    return { endpoints: WebSiteSettingsEndpoints, getSiteSettings: fetchSiteSettings };
 }

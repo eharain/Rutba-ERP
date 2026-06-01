@@ -3,15 +3,14 @@ import { useQuery } from "@tanstack/react-query";
 // route, and pulling the barrel here drags in the full api-provider tree
 // (checkout, orders, cart, …) and explodes the cold-compile root for
 // `pages/_app`. Keep this dep cone small.
-import { createWebSiteSettingsService, SITE_SETTINGS_DEFAULTS } from "@/services/site-settings";
-import { BASE_URL } from "@/static/const";
+import { fetchSiteSettings, SITE_SETTINGS_DEFAULTS } from "@/services/site-settings";
 
-const siteSettingsService = createWebSiteSettingsService({ baseURL: BASE_URL });
+export const SITE_SETTINGS_QUERY_KEY = ["site-settings"] as const;
 
 export function useSiteSettings() {
   const { data } = useQuery({
-    queryKey: ["site-settings"],
-    queryFn: () => siteSettingsService.getSiteSettings(),
+    queryKey: SITE_SETTINGS_QUERY_KEY,
+    queryFn: fetchSiteSettings,
     staleTime: Infinity,
     gcTime: Infinity,
   });
