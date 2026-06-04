@@ -556,8 +556,13 @@ function NewSaleReturn() {
                 ...(registerDocId ? { cash_register: { connect: [registerDocId] } } : {}),
             });
 
-            // 6) Record refund transaction on the active cash register
-            if (registerDocId) {
+            // 6) Record a cash Refund transaction ONLY for genuine cash payouts.
+            //    The register's expected cash tracks the physical drawer, so only a
+            //    'Cash' refund removes money from it. Card / Bank / Mobile Wallet /
+            //    Store Credit / Exchange Return refunds settle off-drawer and must
+            //    not reduce expected cash (the negative payment recorded above is
+            //    the audit trail for those).
+            if (registerDocId && refundMethod === "Cash") {
                 await CashRegisterTransactionEndpoints.postCreate({
                     type: "Refund",
                     amount: totalRefundAmt,

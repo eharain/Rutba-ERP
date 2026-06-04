@@ -21,8 +21,12 @@ export default function CashRegisterPage() {
     const userIsManager = typeof activeRoleKey === 'string' && /(?:^|_)manager$/.test(activeRoleKey);
     const userIsPrivileged = userIsAdmin || userIsManager;
     const [activeRegister, setActiveRegister] = useState(null);
+    const [lastCarryover, setLastCarryover] = useState(null);
     const [openingCash, setOpeningCash] = useState("");
-    const [closingCash, setClosingCash] = useState("");
+    // Close-day split: cash physically left in the drawer (becomes next session's
+    // float) vs cash drawn out (deposited / removed). Counted total = left + drawn.
+    const [cashLeft, setCashLeft] = useState("");
+    const [cashDrawn, setCashDrawn] = useState("");
     const [registerPayments, setRegisterPayments] = useState([]);
     const [registerTransactions, setRegisterTransactions] = useState([]);
     const [paymentsLoading, setPaymentsLoading] = useState(false);
@@ -134,7 +138,11 @@ export default function CashRegisterPage() {
             const amt = Number(p.amount || 0);
             const cashReceived = Number(p.cash_received || 0);
             const change = Number(p.change || 0);
-            const cashFlow = isCash ? (cashReceived || change ? cashReceived - change : amt) : 0;
+            // Only positive Cash tenders move the drawer here. Refund payouts are
+            // recorded as negative payments AND a matching 'Refund' transaction —
+            // counting both would double the cash-out, so the negative payment
+            // contributes 0 and the Refund transaction below carries the impact.
+            const cashFlow = (isCash && amt >= 0) ? (cashReceived || change ? cashReceived - change : amt) : 0;
             rows.push({
                 date: p.payment_date,
                 kind: 'Payment',
@@ -185,8 +193,13 @@ export default function CashRegisterPage() {
             + txnTotals.adjustments,
         [openingCashValue, paymentSummary.cashNet, txnTotals]
     );
-    const closingCashValue = useMemo(() => Number(closingCash || 0), [closingCash]);
-    const difference = useMemo(() => closingCashValue - expectedCash, [expectedCash, closingCashValue]);
+    // Counted total = what's left in the drawer + what's drawn out.
+    const countedTotal = useMemo(
+        () => Number(cashLeft || 0) + Number(cashDrawn || 0),
+        [cashLeft, cashDrawn]
+    );
+    const hasCountInput = cashLeft !== "" || cashDrawn !== "";
+    const difference = useMemo(() => countedTotal - expectedCash, [expectedCash, countedTotal]);
     const isExpired = activeRegister?.status === 'Expired';
     const warningHours = useMemo(() => {
         const hrs = hoursOpen(activeRegister);
@@ -210,6 +223,7 @@ export default function CashRegisterPage() {
 
             setActiveRegister(register);
             setCashRegister(register);
+            setLastCarryover(res?.meta?.carryover ?? null);
         } catch (err) {
             console.error("Failed to load cash register", err);
             setError("Failed to load cash register");
@@ -291,13 +305,16 @@ export default function CashRegisterPage() {
         setError(null);
         try {
             const res = await CashRegistersEndpoints.postClose(registerId, {
-                    counted_cash: Number(closingCash || 0),
+                    cash_left: Number(cashLeft || 0),
+                    cash_drawn: Number(cashDrawn || 0),
+                    counted_cash: countedTotal,
                     notes: closingNotes,
                     closed_by: user?.username || user?.email || "",
                     closed_by_id: user?.id ?? null,
                     ...(userId ? { closed_by_user: { connect: [userId] } } : {})
                 });
-            setClosingCash("");
+            setCashLeft("");
+            setCashDrawn("");
             setClosingNotes("");
             setCashRegister(null);
             setActiveRegister(null);
@@ -350,9 +367,14 @@ export default function CashRegisterPage() {
                             {locationLabel && <div className="text-muted small">{locationLabel}</div>}
                         </div>
                         {userIsPrivileged && (
-                            <Link href="/cash-register-history" className="btn btn-outline-secondary btn-sm">
-                                <i className="fas fa-history me-1"></i>History
-                            </Link>
+                            <div className="d-flex gap-1">
+                                <Link href="/cash-register-report" className="btn btn-outline-warning btn-sm">
+                                    <i className="fas fa-triangle-exclamation me-1"></i>Report
+                                </Link>
+                                <Link href="/cash-register-history" className="btn btn-outline-secondary btn-sm">
+                                    <i className="fas fa-history me-1"></i>History
+                                </Link>
+                            </div>
                         )}
                     </div>
 
@@ -401,7 +423,26 @@ export default function CashRegisterPage() {
                                                     <input type="number" step="0.01" min="0" className="form-control" value={openingCash}
                                                         onChange={(e) => setOpeningCash(e.target.value)} disabled={loading} autoFocus />
                                                 </div>
+                                                {lastCarryover?.amount != null && (
+                                                    <div className="form-text">
+                                                        Previous register{lastCarryover.registerId ? ` #${lastCarryover.registerId}` : ''} left{' '}
+                                                        <button type="button" className="btn btn-link btn-sm p-0 align-baseline"
+                                                            onClick={() => setOpeningCash(String(lastCarryover.amount))}>
+                                                            <strong>{fmt(lastCarryover.amount)}</strong>
+                                                        </button>
+                                                        {lastCarryover.source === 'expected' ? ' (expected — never counted)' : ''}. Opening cash should match this float.
+                                                    </div>
+                                                )}
                                             </div>
+                                            {lastCarryover?.amount != null && openingCash !== '' &&
+                                                Math.abs(Number(openingCash || 0) - lastCarryover.amount) >= 0.01 && (
+                                                <div className="alert alert-warning py-2 mb-0 small">
+                                                    <i className="fas fa-exclamation-triangle me-1"></i>
+                                                    Float mismatch: opening {fmt(openingCash)} vs previous {fmt(lastCarryover.amount)}{' '}
+                                                    ({Number(openingCash || 0) - lastCarryover.amount > 0 ? 'over' : 'short'} by {fmt(Math.abs(Number(openingCash || 0) - lastCarryover.amount))}).
+                                                    Opening anyway records this note on the new register.
+                                                </div>
+                                            )}
                                             <button className="btn btn-success" type="submit" disabled={loading}>
                                                 {loading ? <span className="spinner-border spinner-border-sm me-2"></span> : <i className="fas fa-cash-register me-1"></i>}
                                                 Start Day
@@ -422,6 +463,13 @@ export default function CashRegisterPage() {
                                         This register was opened on <strong>{activeRegister.desk_name || `Desk ${activeRegister.desk_id}`}</strong>.
                                         You are currently on <strong>{desk.name || `Desk ${desk.id}`}</strong>.
                                     </span>
+                                </div>
+                            )}
+                            {/* Opening float mismatch — recorded at open time */}
+                            {activeRegister.opening_note && (
+                                <div className="alert alert-warning py-2 d-flex align-items-start mb-2">
+                                    <i className="fas fa-exclamation-triangle me-2 mt-1"></i>
+                                    <span>{activeRegister.opening_note}</span>
                                 </div>
                             )}
                             {/* Status bar */}
@@ -488,18 +536,30 @@ export default function CashRegisterPage() {
                                             <div className="col-auto text-muted small" style={{ minWidth: 70 }}>
                                                 <i className="fas fa-door-closed me-1"></i>Close
                                             </div>
-                                            <div className="col-12 col-md-3">
+                                            <div className="col-6 col-md-2">
                                                 <div className="input-group input-group-sm">
-                                                    <span className="input-group-text">{currency}</span>
-                                                    <input type="number" step="0.01" className="form-control" value={closingCash}
-                                                        onChange={(e) => setClosingCash(e.target.value)} placeholder={`Counted (exp. ${expectedCash.toFixed(2)})`} required />
+                                                    <span className="input-group-text" title="Cash left in the drawer for the next session"><i className="fas fa-box-open"></i></span>
+                                                    <input type="number" step="0.01" min="0" className="form-control" value={cashLeft}
+                                                        onChange={(e) => setCashLeft(e.target.value)} placeholder="Left in drawer" required />
+                                                </div>
+                                            </div>
+                                            <div className="col-6 col-md-2">
+                                                <div className="input-group input-group-sm">
+                                                    <span className="input-group-text" title="Cash drawn out / deposited at close"><i className="fas fa-hand-holding-usd"></i></span>
+                                                    <input type="number" step="0.01" min="0" className="form-control" value={cashDrawn}
+                                                        onChange={(e) => setCashDrawn(e.target.value)} placeholder="Drawn out" />
                                                 </div>
                                             </div>
                                             <div className="col-auto small">
-                                                {closingCash !== "" && (
-                                                    <span className={difference >= 0 ? 'text-success' : 'text-danger'}>
-                                                        Diff: {difference >= 0 ? '+' : ''}{fmt(difference)}
+                                                {hasCountInput ? (
+                                                    <span className="d-inline-flex flex-column lh-sm">
+                                                        <span className="text-muted">Counted {fmt(countedTotal)} · Exp {fmt(expectedCash)}</span>
+                                                        <span className={difference >= 0 ? 'text-success' : 'text-danger'}>
+                                                            Diff: {difference >= 0 ? '+' : ''}{fmt(difference)}
+                                                        </span>
                                                     </span>
+                                                ) : (
+                                                    <span className="text-muted">Exp {fmt(expectedCash)}</span>
                                                 )}
                                             </div>
                                             <div className="col">
@@ -510,7 +570,7 @@ export default function CashRegisterPage() {
                                                 <button
                                                     className={`btn btn-sm ${closeArmed ? 'btn-danger' : 'btn-dark'}`}
                                                     type="submit"
-                                                    disabled={loading || paymentsLoading || closingCash === ""}
+                                                    disabled={loading || paymentsLoading || !hasCountInput}
                                                     title={closeArmed ? 'Click again to confirm — auto-cancels in a few seconds' : ''}
                                                 >
                                                     {loading

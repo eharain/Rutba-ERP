@@ -28,6 +28,57 @@ function isExpired(register) {
 }
 
 /**
+ * The cash a desk's previous session left behind — i.e. what a new register's
+ * opening cash should match. Looks at the most recent Closed/Expired register
+ * for the desk and prefers the physically counted_cash; falls back to the
+ * computed expected_cash when the session was never counted.
+ * Returns null when the desk has no prior register.
+ */
+async function getDeskCarryover(strapi, deskId) {
+  if (!deskId) return null;
+  const prev = await strapi.documents('api::cash-register.cash-register').findMany({
+    filters: {
+      desk_id: { $eq: Number(deskId) },
+      status: { $in: ['Closed', 'Expired'] },
+    },
+    sort: [{ closed_at: 'desc' }, { opened_at: 'desc' }],
+    limit: 1,
+    fields: ['cash_left', 'counted_cash', 'expected_cash', 'opening_cash', 'closed_at', 'opened_at', 'status', 'desk_name'],
+  });
+  const reg = prev?.[0];
+  if (!reg) return null;
+  // Prefer what was intentionally LEFT in the drawer; then what was counted;
+  // then the computed expected (session never counted).
+  const left = reg.cash_left;
+  const counted = reg.counted_cash;
+  const expected = reg.expected_cash;
+  let amount = null, source = 'none';
+  if (left != null) { amount = Number(left); source = 'left'; }
+  else if (counted != null) { amount = Number(counted); source = 'counted'; }
+  else if (expected != null) { amount = Number(expected); source = 'expected'; }
+  return {
+    amount,
+    source,
+    registerId: reg.id,
+    registerDocId: reg.documentId,
+    status: reg.status,
+    closedAt: reg.closed_at || null,
+  };
+}
+
+/** Build the opening mismatch warning string, or null when opening matches carryover. */
+function buildOpeningNote(opening, carryover) {
+  if (!carryover || carryover.amount == null) return null;
+  const diff = Math.round((Number(opening || 0) - carryover.amount) * 100) / 100;
+  if (Math.abs(diff) < 0.01) return null;
+  const srcLabel = carryover.source === 'left' ? 'left-in-drawer'
+    : carryover.source === 'counted' ? 'counted'
+    : 'expected (uncounted)';
+  return `⚠ Opening cash ${Number(opening || 0).toFixed(2)} does not match previous register #${carryover.registerId}'s ${srcLabel} cash ${carryover.amount.toFixed(2)} `
+    + `(${diff > 0 ? 'over by' : 'short by'} ${Math.abs(diff).toFixed(2)}). Verify the float before continuing.`;
+}
+
+/**
  * Manually parse the JWT and populate ctx.state.user.
  * Returns the user object, or null (after sending 401) if invalid.
  */
@@ -144,6 +195,14 @@ module.exports = createCoreController('api::cash-register.cash-register', ({ str
       }
     }
 
+    // No active register → the client will show the "Open Register" form.
+    // Surface the desk's carry-over so it can pre-warn on a float mismatch.
+    if (!register) {
+      let carryover = null;
+      try { carryover = await getDeskCarryover(strapi, desk_id); } catch (_) { /* best-effort */ }
+      return ctx.send({ data: null, meta: { carryover } });
+    }
+
     return ctx.send({ data: register });
   },
 
@@ -206,6 +265,17 @@ module.exports = createCoreController('api::cash-register.cash-register', ({ str
       }
     }
 
+    // ── Carry-over check: does this float match what the last session left? ──
+    // Never let this block opening a register — degrade to "no warning" on error.
+    let carryover = null;
+    let openingNote = null;
+    try {
+      carryover = await getDeskCarryover(strapi, desk_id);
+      openingNote = buildOpeningNote(opening_cash, carryover);
+    } catch (e) {
+      strapi.log.warn(`cash-register open: carryover lookup failed — ${e.message}`);
+    }
+
     const created = await strapi.documents('api::cash-register.cash-register').create({
       data: {
         opening_cash: Number(opening_cash || 0),
@@ -217,13 +287,15 @@ module.exports = createCoreController('api::cash-register.cash-register', ({ str
         branch_name: branch_name || '',
         opened_by: opened_by || '',
         opened_by_id: opened_by_id || null,
+        ...(carryover && carryover.amount != null ? { carry_over_expected: carryover.amount } : {}),
+        ...(openingNote ? { opening_note: openingNote } : {}),
         ...(branchConnect ? { branch: branchConnect } : {}),
         ...(userConnect ? { opened_by_user: userConnect } : {}),
       },
       populate: ['opened_by_user', 'branch'],
     });
 
-    return ctx.send({ data: created });
+    return ctx.send({ data: created, meta: { carryover, openingNote } });
   },
 
   /* ── PUT /cash-registers/:id/close ─────────────────────────── */
@@ -231,7 +303,7 @@ module.exports = createCoreController('api::cash-register.cash-register', ({ str
     if (!await ensureUser(ctx, strapi)) return;
 
     const { id } = ctx.params;
-    const { counted_cash, closing_cash, notes,
+    const { counted_cash, closing_cash, cash_left, cash_drawn, notes,
             closed_by, closed_by_id, closed_by_user: closedUserConnect } = ctx.request.body?.data ?? {};
 
     const register = await strapi.documents('api::cash-register.cash-register').findOne({
@@ -249,27 +321,44 @@ module.exports = createCoreController('api::cash-register.cash-register', ({ str
     let cashRefunds = 0;
     for (const p of (register.payments || [])) {
       const amt = Number(p.amount || 0);
-      if (p.payment_method === 'Cash') {
+      // Only positive Cash tenders are cash IN. Refund payouts are stored as
+      // negative Cash payments AND a matching 'Refund' transaction — counting the
+      // negative payment here too would double-subtract the refund (this is what
+      // pushed many historical registers to negative expected cash).
+      if (p.payment_method === 'Cash' && amt >= 0) {
         const received = Number(p.cash_received || amt);
         const change = Number(p.change || 0);
         cashSales += received - change;
       }
     }
     let cashDrops = 0;
+    let cashTopups = 0;
     let cashExpenses = 0;
     let cashAdjustments = 0;
     for (const t of (register.transactions || [])) {
       const amt = Number(t.amount || 0);
       switch (t.type) {
         case 'CashDrop':   cashDrops += amt; break;
+        case 'CashTopUp':  cashTopups += amt; break;
         case 'Expense':    cashExpenses += amt; break;
         case 'Refund':     cashRefunds += amt; break;
         case 'Adjustment': cashAdjustments += amt; break;
       }
     }
 
-    const expectedCash = openingCash + cashSales - cashRefunds - cashExpenses - cashDrops + cashAdjustments;
-    const countedValue = Number(counted_cash ?? closing_cash ?? 0);
+    // Mirror the POS dashboard's reconciliation exactly:
+    // opening + net cash sales + top-ups + adjustments − refunds − expenses − drops.
+    // Only genuine cash refunds reach `cashRefunds` (exchange returns no longer
+    // create a 'Refund' transaction; non-cash returns are gated client-side).
+    const expectedCash = openingCash + cashSales + cashTopups - cashRefunds - cashExpenses - cashDrops + cashAdjustments;
+
+    // Counted total = cash left in the drawer + cash drawn out. Fall back to the
+    // legacy single counted_cash/closing_cash field for older clients.
+    const leftVal = cash_left != null ? Number(cash_left) : null;
+    const drawnVal = cash_drawn != null ? Number(cash_drawn) : null;
+    const countedValue = (leftVal != null || drawnVal != null)
+      ? (leftVal || 0) + (drawnVal || 0)
+      : Number(counted_cash ?? closing_cash ?? 0);
     const difference = countedValue - expectedCash;
 
     const updated = await strapi.documents('api::cash-register.cash-register').update({
@@ -277,6 +366,8 @@ module.exports = createCoreController('api::cash-register.cash-register', ({ str
       data: {
         closing_cash: countedValue,
         counted_cash: countedValue,
+        ...(leftVal != null ? { cash_left: leftVal } : {}),
+        ...(drawnVal != null ? { cash_drawn: drawnVal } : {}),
         expected_cash: expectedCash,
         difference,
         short_cash: Math.max(-difference, 0),

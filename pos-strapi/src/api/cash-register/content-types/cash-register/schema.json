@@ -24,6 +24,12 @@
     "counted_cash": {
       "type": "decimal"
     },
+    "cash_left": {
+      "type": "decimal"
+    },
+    "cash_drawn": {
+      "type": "decimal"
+    },
     "difference": {
       "type": "decimal"
     },
@@ -49,6 +55,12 @@
     },
     "notes": {
       "type": "text"
+    },
+    "opening_note": {
+      "type": "text"
+    },
+    "carry_over_expected": {
+      "type": "decimal"
     },
     "desk_id": {
       "type": "integer"

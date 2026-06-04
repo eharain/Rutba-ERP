@@ -122,9 +122,14 @@ export default function CashRegisterHistoryPage() {
     ];
 
     const headerActions = (
-        <Link href="/cash-register" className="btn btn-outline-primary btn-sm">
-            <i className="fas fa-cash-register me-1"></i>Current Register
-        </Link>
+        <div className="d-flex gap-1">
+            <Link href="/cash-register-report" className="btn btn-outline-warning btn-sm">
+                <i className="fas fa-triangle-exclamation me-1"></i>Report
+            </Link>
+            <Link href="/cash-register" className="btn btn-outline-primary btn-sm">
+                <i className="fas fa-cash-register me-1"></i>Current Register
+            </Link>
+        </div>
     );
 
     const title = (
