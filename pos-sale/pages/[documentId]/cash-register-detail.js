@@ -57,8 +57,13 @@ export default function CashRegisterDetailPage() {
             switch (p.payment_method) {
                 case "Cash":
                     s.cash += amt;
-                    s.cashReceived += Number(p.cash_received || amt);
-                    s.cashChange += Number(p.change || 0);
+                    // Only positive cash tenders feed net cash; refund payouts are
+                    // negative payments tracked via 'Refund' transactions (avoid
+                    // double-counting against txnTotals.refunds below).
+                    if (amt >= 0) {
+                        s.cashReceived += Number(p.cash_received || amt);
+                        s.cashChange += Number(p.change || 0);
+                    }
                     break;
                 case "Card": s.card += amt; break;
                 case "Bank": s.bank += amt; break;
@@ -71,11 +76,12 @@ export default function CashRegisterDetailPage() {
     }, [payments]);
 
     const txnTotals = useMemo(() => {
-        const t = { cashDrops: 0, expenses: 0, refunds: 0, adjustments: 0 };
+        const t = { cashDrops: 0, topups: 0, expenses: 0, refunds: 0, adjustments: 0 };
         for (const tx of transactions) {
             const amt = Number(tx.amount || 0);
             switch (tx.type) {
                 case "CashDrop": t.cashDrops += amt; break;
+                case "CashTopUp": t.topups += amt; break;
                 case "Expense": t.expenses += amt; break;
                 case "Refund": t.refunds += amt; break;
                 case "Adjustment": t.adjustments += amt; break;
@@ -86,7 +92,7 @@ export default function CashRegisterDetailPage() {
 
     const computedExpectedCash = useMemo(() => {
         const opening = Number(register?.opening_cash || 0);
-        return opening + paymentSummary.cashNet - txnTotals.refunds - txnTotals.expenses - txnTotals.cashDrops + txnTotals.adjustments;
+        return opening + paymentSummary.cashNet - txnTotals.refunds - txnTotals.expenses - txnTotals.cashDrops + txnTotals.topups + txnTotals.adjustments;
     }, [register, paymentSummary.cashNet, txnTotals]);
 
     /* ── Ledger: every cash-impacting + non-cash event, in chronological order with running cash balance ── */
@@ -112,9 +118,11 @@ export default function CashRegisterDetailPage() {
             const amt = Number(p.amount || 0);
             const cashReceived = Number(p.cash_received || 0);
             const change = Number(p.change || 0);
-            // Cash impact: only Cash payments move physical cash. Net = cash_received - change
-            // (falls back to signed amount when cash_received isn't recorded — e.g. refunds).
-            const cashFlow = isCash
+            // Cash impact: only positive Cash tenders move physical cash.
+            // Net = cash_received - change. Refund payouts are negative payments
+            // paired with a 'Refund' transaction (which carries the cash-out), so
+            // negative payments contribute 0 here to avoid double-counting.
+            const cashFlow = (isCash && amt >= 0)
                 ? (cashReceived || change ? cashReceived - change : amt)
                 : 0;
             rows.push({
@@ -279,6 +287,14 @@ export default function CashRegisterDetailPage() {
                         </Link>
                     </div>
 
+                    {/* Opening float mismatch recorded at open time */}
+                    {register.opening_note && (
+                        <div className="alert alert-warning py-2 d-flex align-items-start mb-3">
+                            <i className="fas fa-exclamation-triangle me-2 mt-1"></i>
+                            <span>{register.opening_note}</span>
+                        </div>
+                    )}
+
                     {/* Summary cards */}
                     <div className="row g-2 mb-3">
                         <div className="col-6 col-md-3 col-xl-2">
@@ -309,6 +325,11 @@ export default function CashRegisterDetailPage() {
                             <div className="card text-center h-100"><div className="card-body py-2">
                                 <div className="text-muted small">Counted Cash</div>
                                 <div className="fw-bold">{register.counted_cash != null ? fmt(register.counted_cash) : '-'}</div>
+                                {(register.cash_left != null || register.cash_drawn != null) && (
+                                    <div className="text-muted" style={{ fontSize: 11 }}>
+                                        Left {fmt(register.cash_left)} · Drawn {fmt(register.cash_drawn)}
+                                    </div>
+                                )}
                             </div></div>
                         </div>
                         <div className="col-6 col-md-3 col-xl-2">
@@ -476,6 +497,9 @@ export default function CashRegisterDetailPage() {
                                             <tbody>
                                                 <tr><td>Opening Cash</td><td className="text-end">{fmt(register.opening_cash)}</td></tr>
                                                 <tr><td>(+) Net Cash Sales</td><td className="text-end text-success">{fmt(paymentSummary.cashNet)}</td></tr>
+                                                {txnTotals.topups > 0 && (
+                                                    <tr><td>(+) Cash Top-Ups</td><td className="text-end text-success">{fmt(txnTotals.topups)}</td></tr>
+                                                )}
                                                 <tr><td>(−) Cash Refunds</td><td className="text-end text-danger">{fmt(txnTotals.refunds)}</td></tr>
                                                 <tr><td>(−) Cash Expenses</td><td className="text-end text-danger">{fmt(txnTotals.expenses)}</td></tr>
                                                 <tr><td>(−) Cash Drops</td><td className="text-end text-danger">{fmt(txnTotals.cashDrops)}</td></tr>

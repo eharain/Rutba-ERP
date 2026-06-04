@@ -10,7 +10,6 @@ import {
     PaymentsEndpoints,
     StockItemsEndpoints,
     BranchesEndpoints,
-    CashRegisterTransactionEndpoints,
 } from '@rutba/api-provider/endpoints';
 
 export default class SaleApi {
@@ -459,17 +458,16 @@ export default class SaleApi {
             ...(registerDocId ? { cash_register: { connect: [registerDocId] } } : {}),
         });
 
-        // 5) Record refund transaction on the active cash register
-        if (registerDocId) {
-            await CashRegisterTransactionEndpoints.postCreate({
-                type: 'Refund',
-                amount: returnTotal,
-                description: `Exchange ${returnNo} — credit applied to new sale`,
-                transaction_date: new Date().toISOString(),
-                performed_by: user?.email || user?.username || '',
-                cash_register: { connect: [registerDocId] },
-            });
-        }
+        // 5) NO cash-register Refund transaction for exchanges.
+        //    An exchange return applies the returned value as CREDIT against the
+        //    new sale — no physical cash leaves the drawer. The 'Exchange Return'
+        //    payment created in step 4 (a non-cash tender on the new sale) already
+        //    represents this credit and has zero cash impact. Recording a 'Refund'
+        //    transaction here would wrongly reduce the register's expected cash by
+        //    the return amount (it double-counts the exchange as a cash payout),
+        //    which is exactly what skewed historical registers' expected_cash/
+        //    ledger. A cash Refund transaction is only correct for a genuine cash
+        //    refund (see sale-return.js, gated on refund_method === 'Cash').
 
         // 6) Mark the exchange return as persisted so subsequent saves skip it
         exchangeReturn.returnNo = returnNo;
