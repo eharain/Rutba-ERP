@@ -85,7 +85,7 @@ export default function ShopPageDetail({
   }
 
   return (
-    <LayoutMain footer={page.footer}>
+    <LayoutMain footer={page.footer} menus={page.menus}>
       <CmsPageContent page={page} />
     </LayoutMain>
   );

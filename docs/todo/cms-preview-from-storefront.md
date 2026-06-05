@@ -10,7 +10,7 @@ hover, mobile menu).
 ## Why it's tricky
 
 1. **Anonymous storefront vs. authenticated editor.** The storefront uses the
-   public `api` client (no JWT — see [api/web/ descriptors generate public-`api` clients](../../C:/Users/EjazArain/.claude/projects/d--Rutba-ERP/memory/project_api_provider_web_public_client.md)).
+   public `api` client (no JWT — see api/web/ descriptors generate public-`api` clients).
    Preview needs a controlled, time-bound elevation that doesn't leak to
    random visitors.
 
@@ -124,5 +124,5 @@ right now the publish-then-fix cycle works but won't scale to multiple editors.
 
 ## Related
 
-- [api/web/ descriptors generate public-`api` clients](../../C:/Users/EjazArain/.claude/projects/d--Rutba-ERP/memory/project_api_provider_web_public_client.md) — the public-client convention preview must not subvert.
-- [pos-strapi integration contracts](../../C:/Users/EjazArain/.claude/projects/d--Rutba-ERP/memory/project_pos_strapi_contracts.md) — preview tokens are a new "load-bearing header" that belongs in that contract.
+- api/web/ descriptors generate public-`api` clients — the public-client convention preview must not subvert.
+- pos-strapi integration contracts — preview tokens are a new "load-bearing header" that belongs in that contract.

@@ -4,6 +4,8 @@ export * from './banners';
 export * from './brands';
 export * from './categories';
 export * from './checkout';
+export * from './cms-menus';
+export * from './cms-page-groups';
 export * from './cms-pages';
 export * from './collections';
 export * from './delivery';

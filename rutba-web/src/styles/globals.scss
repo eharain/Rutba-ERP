@@ -125,6 +125,43 @@
 .shadow-card { box-shadow: var(--shadow-card); }
 .shadow-card-hover { box-shadow: var(--shadow-card-hover); }
 
+/* 3D flip-card primitives — used by CMS page-group flip cards. The inner
+   element rotates on hover, on keyboard focus, and on a tap-toggled
+   `.is-flipped` class for touch devices. Reduced-motion users get a plain
+   crossfade instead of the rotation. */
+.flip-card { perspective: 1200px; }
+.flip-card-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
+  transform-style: preserve-3d;
+}
+.flip-card:hover .flip-card-inner,
+.flip-card:focus-within .flip-card-inner,
+.flip-card-inner.is-flipped {
+  transform: rotateY(180deg);
+}
+.flip-card-face {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  overflow: hidden;
+}
+.flip-card-back { transform: rotateY(180deg); }
+
+@media (prefers-reduced-motion: reduce) {
+  .flip-card-inner { transition: none; transform: none !important; }
+  .flip-card-face { backface-visibility: visible; }
+  .flip-card-back { transform: none; opacity: 0; transition: opacity 0.2s; }
+  .flip-card:hover .flip-card-back,
+  .flip-card:focus-within .flip-card-back,
+  .flip-card-inner.is-flipped .flip-card-back { opacity: 1; }
+}
+
 /* Eyebrow tag — used above section titles */
 .eyebrow {
   font-size: 0.75rem;

@@ -49,6 +49,7 @@ export default function Home({
     isLoading,
     isError,
     error,
+    refetch,
   } = useQuery({
     queryKey: ["cms-page", "index"],
     queryFn: () => cmsPagesService.getCmsPageBySlug("index"),
@@ -68,7 +69,10 @@ export default function Home({
     return (
       <LayoutMain>
         <div className="container-fluid my-20">
-          <ErrorCard message={(error as Error).message} />
+          <ErrorCard
+            message={(error as Error).message}
+            onRetry={() => refetch()}
+          />
         </div>
       </LayoutMain>
     );
@@ -88,7 +92,7 @@ export default function Home({
   }
 
   return (
-    <LayoutMain footer={page.footer}>
+    <LayoutMain footer={page.footer} menus={page.menus}>
       <CmsPageContent page={page} />
     </LayoutMain>
   );

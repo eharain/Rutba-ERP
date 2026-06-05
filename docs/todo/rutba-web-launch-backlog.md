@@ -59,7 +59,7 @@ Sister doc: [contact-unification-launch-test-plan.md](./contact-unification-laun
   frozen ctx through the HTTP helpers. SSR pages now reliably send the
   header that `requireApp(ctx, 'web')` checks for, fixing recurring
   404 regressions after Turbopack HMR. See
-  [memory: web client baked app header](../../C:/Users/EjazArain/.claude/projects/D--Rutba-ERP/memory/project_web_client_baked_app_header.md).
+  memory: web client baked app header.
 
 ### SEO meta sibling (2026-05-19)
 - Storefront now consumes `seo_meta` siblings on page/product/group

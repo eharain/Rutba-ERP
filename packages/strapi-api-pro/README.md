@@ -126,7 +126,7 @@ npm run dev:strapi       # starts pos-strapi with the plugin loaded
 
 Re-seed on demand: `POST /api-pro/admin/seed` (button on Domains & Roles page).
 
-See `../api-provider/CLAUDE.md` for the source-of-truth shape and `../api-provider/api/CLAUDE.md` for the descriptor convention.
+See the `../api-provider/` package for the source-of-truth shape and its `api/` descriptor files for the descriptor convention.
 
 ## /me/permissions response
 

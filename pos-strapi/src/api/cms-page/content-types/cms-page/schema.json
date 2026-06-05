@@ -71,6 +71,23 @@
       "relation": "manyToMany",
       "target": "api::cms-page.cms-page"
     },
+    "page_groups": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::cms-page-group.cms-page-group"
+    },
+    "member_page_groups": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::cms-page-group.cms-page-group",
+      "mappedBy": "pages"
+    },
+    "menus": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::cms-menu.cms-menu",
+      "mappedBy": "pages"
+    },
     "owners": {
       "type": "relation",
       "relation": "manyToMany",
@@ -138,6 +155,10 @@
     "related_pages_priority": {
       "type": "integer",
       "default": 50
+    },
+    "page_groups_priority": {
+      "type": "integer",
+      "default": 45
     },
     "seo_meta": {
       "type": "relation",

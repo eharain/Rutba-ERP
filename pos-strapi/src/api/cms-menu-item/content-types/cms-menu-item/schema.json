@@ -1,0 +1,97 @@
+{
+  "kind": "collectionType",
+  "collectionName": "cms_menu_items",
+  "info": {
+    "singularName": "cms-menu-item",
+    "pluralName": "cms-menu-items",
+    "displayName": "CMS Menu Item",
+    "description": "A single navigation entry belonging to a CMS Menu; may link to an entity or URL and nest one level of children"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "label": {
+      "type": "string",
+      "required": true
+    },
+    "order": {
+      "type": "integer",
+      "default": 0
+    },
+    "open_in_new": {
+      "type": "boolean",
+      "default": false
+    },
+    "link_kind": {
+      "type": "enumeration",
+      "enum": [
+        "cms_page",
+        "page_group",
+        "product_group",
+        "collection",
+        "url",
+        "mega"
+      ],
+      "default": "url"
+    },
+    "url": {
+      "type": "string"
+    },
+    "collection_slug": {
+      "type": "string"
+    },
+    "icon_image": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "cms_page": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::cms-page.cms-page"
+    },
+    "page_group": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::cms-page-group.cms-page-group"
+    },
+    "product_group": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::product-group.product-group"
+    },
+    "mega_category_group": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::category-group.category-group"
+    },
+    "mega_brand_group": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::brand-group.brand-group"
+    },
+    "menu": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::cms-menu.cms-menu",
+      "inversedBy": "items"
+    },
+    "parent": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::cms-menu-item.cms-menu-item",
+      "inversedBy": "children"
+    },
+    "children": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::cms-menu-item.cms-menu-item",
+      "mappedBy": "parent"
+    }
+  }
+}

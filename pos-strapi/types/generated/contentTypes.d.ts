@@ -1219,6 +1219,9 @@ export interface ApiCashRegisterCashRegister
     branch: Schema.Attribute.Relation<'manyToOne', 'api::branch.branch'>;
     branch_id: Schema.Attribute.String;
     branch_name: Schema.Attribute.String;
+    carry_over_expected: Schema.Attribute.Decimal;
+    cash_drawn: Schema.Attribute.Decimal;
+    cash_left: Schema.Attribute.Decimal;
     closed_at: Schema.Attribute.DateTime;
     closed_by: Schema.Attribute.String;
     closed_by_id: Schema.Attribute.Integer;
@@ -1250,6 +1253,7 @@ export interface ApiCashRegisterCashRegister
       'plugin::users-permissions.user'
     >;
     opening_cash: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    opening_note: Schema.Attribute.Text;
     owners: Schema.Attribute.Relation<
       'manyToMany',
       'plugin::users-permissions.user'
@@ -1405,6 +1409,149 @@ export interface ApiCmsFooterCmsFooter extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiCmsMenuItemCmsMenuItem extends Struct.CollectionTypeSchema {
+  collectionName: 'cms_menu_items';
+  info: {
+    description: 'A single navigation entry belonging to a CMS Menu; may link to an entity or URL and nest one level of children';
+    displayName: 'CMS Menu Item';
+    pluralName: 'cms-menu-items';
+    singularName: 'cms-menu-item';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    children: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::cms-menu-item.cms-menu-item'
+    >;
+    cms_page: Schema.Attribute.Relation<'manyToOne', 'api::cms-page.cms-page'>;
+    collection_slug: Schema.Attribute.String;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    icon_image: Schema.Attribute.Media<'images'>;
+    label: Schema.Attribute.String & Schema.Attribute.Required;
+    link_kind: Schema.Attribute.Enumeration<
+      ['cms_page', 'page_group', 'product_group', 'collection', 'url', 'mega']
+    > &
+      Schema.Attribute.DefaultTo<'url'>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::cms-menu-item.cms-menu-item'
+    > &
+      Schema.Attribute.Private;
+    mega_brand_group: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::brand-group.brand-group'
+    >;
+    mega_category_group: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::category-group.category-group'
+    >;
+    menu: Schema.Attribute.Relation<'manyToOne', 'api::cms-menu.cms-menu'>;
+    open_in_new: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    order: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    page_group: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::cms-page-group.cms-page-group'
+    >;
+    parent: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::cms-menu-item.cms-menu-item'
+    >;
+    product_group: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::product-group.product-group'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    url: Schema.Attribute.String;
+  };
+}
+
+export interface ApiCmsMenuCmsMenu extends Struct.CollectionTypeSchema {
+  collectionName: 'cms_menus';
+  info: {
+    description: 'CMS-driven navigation menus (top / side / footer) for the storefront';
+    displayName: 'CMS Menu';
+    pluralName: 'cms-menus';
+    singularName: 'cms-menu';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    enabled: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    items: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::cms-menu-item.cms-menu-item'
+    >;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::cms-menu.cms-menu'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    pages: Schema.Attribute.Relation<'manyToMany', 'api::cms-page.cms-page'>;
+    position: Schema.Attribute.Enumeration<['top', 'side', 'footer']> &
+      Schema.Attribute.DefaultTo<'top'>;
+    publishedAt: Schema.Attribute.DateTime;
+    slug: Schema.Attribute.UID<'name'> & Schema.Attribute.Required;
+    title: Schema.Attribute.String;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiCmsPageGroupCmsPageGroup
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'cms_page_groups';
+  info: {
+    description: 'Curated groups of CMS pages rendered as flip cards on the storefront';
+    displayName: 'CMS Page Group';
+    pluralName: 'cms-page-groups';
+    singularName: 'cms-page-group';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    columns: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<3>;
+    cover_image: Schema.Attribute.Media<'images'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    excerpt: Schema.Attribute.RichText;
+    layout: Schema.Attribute.Enumeration<['flip-grid', 'grid', 'carousel']> &
+      Schema.Attribute.DefaultTo<'flip-grid'>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::cms-page-group.cms-page-group'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    pages: Schema.Attribute.Relation<'manyToMany', 'api::cms-page.cms-page'>;
+    publishedAt: Schema.Attribute.DateTime;
+    seo_meta: Schema.Attribute.Relation<'oneToOne', 'api::seo-meta.seo-meta'>;
+    slug: Schema.Attribute.UID<'name'> & Schema.Attribute.Required;
+    sort_order: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    title: Schema.Attribute.String;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiCmsPageCmsPage extends Struct.CollectionTypeSchema {
   collectionName: 'cms_pages';
   info: {
@@ -1458,6 +1605,11 @@ export interface ApiCmsPageCmsPage extends Struct.CollectionTypeSchema {
       'api::cms-page.cms-page'
     > &
       Schema.Attribute.Private;
+    member_page_groups: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::cms-page-group.cms-page-group'
+    >;
+    menus: Schema.Attribute.Relation<'manyToMany', 'api::cms-menu.cms-menu'>;
     offers: Schema.Attribute.Relation<
       'manyToMany',
       'api::sale-offer.sale-offer'
@@ -1466,6 +1618,12 @@ export interface ApiCmsPageCmsPage extends Struct.CollectionTypeSchema {
       'manyToMany',
       'plugin::users-permissions.user'
     >;
+    page_groups: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::cms-page-group.cms-page-group'
+    >;
+    page_groups_priority: Schema.Attribute.Integer &
+      Schema.Attribute.DefaultTo<45>;
     page_type: Schema.Attribute.Enumeration<
       ['shop', 'blog', 'news', 'info', 'page']
     > &
@@ -3848,6 +4006,10 @@ export interface ApiSeoMetaSeoMeta extends Struct.CollectionTypeSchema {
       'api::category-group.category-group'
     >;
     cms_page: Schema.Attribute.Relation<'oneToOne', 'api::cms-page.cms-page'>;
+    cms_page_group: Schema.Attribute.Relation<
+      'oneToOne',
+      'api::cms-page-group.cms-page-group'
+    >;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -3861,6 +4023,7 @@ export interface ApiSeoMetaSeoMeta extends Struct.CollectionTypeSchema {
         'product-group',
         'brand-group',
         'category-group',
+        'cms-page-group',
       ]
     > &
       Schema.Attribute.DefaultTo<'cms-page'>;
@@ -5493,6 +5656,9 @@ declare module '@strapi/strapi' {
       'api::category-group.category-group': ApiCategoryGroupCategoryGroup;
       'api::category.category': ApiCategoryCategory;
       'api::cms-footer.cms-footer': ApiCmsFooterCmsFooter;
+      'api::cms-menu-item.cms-menu-item': ApiCmsMenuItemCmsMenuItem;
+      'api::cms-menu.cms-menu': ApiCmsMenuCmsMenu;
+      'api::cms-page-group.cms-page-group': ApiCmsPageGroupCmsPageGroup;
       'api::cms-page.cms-page': ApiCmsPageCmsPage;
       'api::contact-ticket.contact-ticket': ApiContactTicketContactTicket;
       'api::crm-activity.crm-activity': ApiCrmActivityCrmActivity;

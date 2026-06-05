@@ -4,7 +4,7 @@
 > `api::person.person`, `api::address.address`, and the `sale-order` rewire
 > (`customer_person` / `delivery_address` / `delivery_snapshot`, no more
 > `customer_contact` component) are live. Web checkout writes the new shape.
-> See [project_contact_unification_phase1a memory](../../C:/Users/EjazArain/.claude/projects/d--Rutba-ERP/memory/project_contact_unification_phase1a.md)
+> See project_contact_unification_phase1a memory
 > for the deviations from this plan that the PR made (kept `name` instead of
 > `display_name`, kept `delivery_snapshot` forever, etc.). Phase 1B onward
 > below is still future work.
@@ -270,7 +270,7 @@ Phase 1A shipped `person`, `address`, and the `sale-order` rewire only — the
 six other contact-bearing entities still carry inline contact fields. This
 section is the authoritative todo for the remaining work, replacing the
 original Phase 1/2/3 sections above (which were written before Phase 1A and
-encode some decisions that were revised — see [project_contact_unification_phase1a memory](../../C:/Users/EjazArain/.claude/projects/d--Rutba-ERP/memory/project_contact_unification_phase1a.md)).
+encode some decisions that were revised — see project_contact_unification_phase1a memory).
 
 Each phase below is one PR. Order matters — Phase 1B (customer) first because
 it has actual production data; Phase 1C entities can land in any order; Phase
@@ -539,7 +539,7 @@ The merge UI lives in **rutba-crm**, not as a Strapi admin plugin. CRM is
 where humans already triage "who is this person" — sales reps, account
 managers, support — and a CRM-side UI can show order history / lead
 pipeline / ticket threads next to the merge decision in a way Strapi admin
-can't. See [project_crm_consolidates_contact_ui memory](../../C:/Users/EjazArain/.claude/projects/d--Rutba-ERP/memory/project_crm_consolidates_contact_ui.md).
+can't. See project_crm_consolidates_contact_ui memory.
 
 **Split of responsibility:**
 

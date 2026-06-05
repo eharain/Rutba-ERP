@@ -85,7 +85,7 @@ export default function BlogPageDetail({
   }
 
   return (
-    <LayoutMain footer={page.footer}>
+    <LayoutMain footer={page.footer} menus={page.menus}>
       <CmsBlogPageContent page={page} />
     </LayoutMain>
   );

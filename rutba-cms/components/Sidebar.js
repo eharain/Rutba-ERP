@@ -21,6 +21,8 @@ const SECTIONS = [
             { href: "/product-groups",   label: "Product Groups", icon: "fa-object-group" },
             { href: "/brand-groups",     label: "Brand Groups",   icon: "fa-bookmark" },
             { href: "/category-groups",  label: "Category Groups",icon: "fa-sitemap" },
+            { href: "/cms-page-groups",  label: "Page Groups",    icon: "fa-clone" },
+            { href: "/cms-menus",        label: "Menus",          icon: "fa-bars" },
             { href: "/footers",          label: "Footers",        icon: "fa-window-minimize" },
             { href: "/sale-offers",      label: "Sale Offers",    icon: "fa-tags" },
             { href: "/delivery-methods", label: "Delivery",       icon: "fa-truck" },

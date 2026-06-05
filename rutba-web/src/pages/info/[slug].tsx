@@ -85,7 +85,7 @@ export default function InfoPageDetail({
   }
 
   return (
-    <LayoutMain footer={page.footer}>
+    <LayoutMain footer={page.footer} menus={page.menus}>
       <CmsInfoPageContent page={page} />
     </LayoutMain>
   );

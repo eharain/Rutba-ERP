@@ -139,6 +139,7 @@ export const ENTITY_TYPE_TO_RELATION = {
     "product-group": "product_group",
     "brand-group": "brand_group",
     "category-group": "category_group",
+    "cms-page-group": "cms_page_group",
 };
 
 /**

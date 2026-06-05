@@ -51,6 +51,12 @@ export function buildProductGroupWebUrl(group, { draft = false } = {}) {
     return withDraft(`${webBase()}/product-groups/${encodeURIComponent(group.slug)}`, draft);
 }
 
+// CMS page-group detail page — /page-group/[slug] (the flip-card grid).
+export function buildPageGroupWebUrl(group, { draft = false } = {}) {
+    if (!group?.slug) return null;
+    return withDraft(`${webBase()}/page-group/${encodeURIComponent(group.slug)}`, draft);
+}
+
 // Brand filter page — the storefront filters /product by brand slug
 // (no dedicated /brands/[slug] route).
 export function buildBrandWebUrl(brand) {

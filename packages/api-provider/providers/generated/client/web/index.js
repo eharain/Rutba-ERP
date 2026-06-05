@@ -3,6 +3,8 @@ export * from './banners.js';
 export * from './brands.js';
 export * from './categories.js';
 export * from './checkout.js';
+export * from './cms-menus.js';
+export * from './cms-page-groups.js';
 export * from './cms-pages.js';
 export * from './collections.js';
 export * from './delivery.js';
