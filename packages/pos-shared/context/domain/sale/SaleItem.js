@@ -1,4 +1,5 @@
 import { applyDiscount, discountRateFromPrice, calculateTax, ValidNumberOrDefault } from './pricing';
+import { MAX_CUSTOM_QTY } from '../../../lib/utils.js';
 
 export default class SaleItem {
     constructor({
@@ -127,43 +128,67 @@ export default class SaleItem {
     }
 
     static CreateDynamiStockItem(name, price) {
+        const sp = Number(price) || 0;
+        // Plain data properties — NOT getters. The previous version used
+        // getter-only accessors (with no `return`, so they were undefined),
+        // which made setSellingPrice/applyOnAll throw "cost_price has only a
+        // getter" in strict mode (ESM) the moment a teller edited the price of
+        // a custom item. Mirror the ratios setSellingPrice applies so editing
+        // the price later doesn't make the derived values jump.
+        return {
+            name,
+            selling_price: sp,
+            cost_price: sp * 0.5,
+            offer_price: sp * 0.75,
+            more: [],
+        };
+    }
 
-        const item = {
-            name, selling_price: price,
-            get cost_price() {
-                item.selling_price * 0.75
-            },
-            get offer_price() {
-                item.selling_price * 0.85
-            },
-            more: []
-        }
-        return item;
+    /** Fabricate a fresh ad-hoc stock line cloning another's scalar fields.
+     *  Used to grow the quantity of a custom (non-stock) item, which has no
+     *  finite stock pool to draw extra units from. */
+    static cloneLineItem(src) {
+        return {
+            name: src?.name,
+            selling_price: src?.selling_price ?? 0,
+            cost_price: src?.cost_price ?? 0,
+            offer_price: src?.offer_price ?? 0,
+            more: [],
+        };
     }
 
 
     setQuantity(qty) {
-        const netQty = Math.max(1, qty);
-        if (qty < 1) {
-            return
-        }
-        const currentQty = this.quantity;
+        const netQty = Math.max(1, Math.floor(Number(qty) || 1));
 
         if (!Array.isArray(this.items)) {
             this.items = [];
         }
 
-        let stockItemWithMore = this.first();
-        if (!stockItemWithMore) {
+        // Ensure there's a first line to clone/draw from.
+        if (!this.first()) {
             this.items.push({ selling_price: 0, cost_price: 0, offer_price: 0, more: [] });
         }
-        if (!Array.isArray(stockItemWithMore?.more)) {
+        const stockItemWithMore = this.first();
+        if (!Array.isArray(stockItemWithMore.more)) {
             stockItemWithMore.more = [];
+        }
+
+        // Custom (ad-hoc) lines have no finite stock, so cap them at
+        // MAX_CUSTOM_QTY. Real stock items stay bounded by available units.
+        if (!this.isDynamicStock) {
+            netQty = Math.min(netQty, MAX_CUSTOM_QTY);
+        }
+
+        const currentQty = this.items.length;
+        if (netQty === currentQty) {
+            this.quantity = currentQty;
+            return;
         }
 
         const pool = stockItemWithMore.more;
 
-        // REMOVE
+        // REMOVE — park surplus units back in the pool so they can be re-added.
         if (netQty < currentQty) {
             const removeCount = currentQty - netQty;
 
@@ -173,15 +198,20 @@ export default class SaleItem {
             }
         }
 
-        // ADD
-        else if (netQty > currentQty) {
+        // ADD — pull from the pool first; for ad-hoc (custom) lines there's no
+        // finite stock, so fabricate clones to let the quantity grow freely.
+        // Real stock items stop at the available count.
+        else {
             const addCount = netQty - currentQty;
 
             for (let i = 0; i < addCount; i++) {
                 if (pool.length > 0) {
                     this.items.push(pool.shift());
+                } else if (!this.isDynamicStock) {
+                    this.items.push(SaleItem.cloneLineItem(stockItemWithMore));
+                } else {
+                    break; // real stock item: can't exceed available units
                 }
-
             }
         }
 

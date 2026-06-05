@@ -167,7 +167,7 @@ export default function CustomerSelect({ value, onChange, disabled }) {
                 </div>
 
                 {mode === 'form' && (
-                    <div className="dropdown-menu show w-100 shadow-sm mt-1 p-0" style={{ minWidth: 480 }}>
+                    <div className="position-absolute w-100 bg-white border rounded shadow-sm mt-1 p-0" style={{ minWidth: 480, left: 0, zIndex: 1000 }}>
                         <CustomerForm
                             customer={editingCustomer}
                             onCancel={() => { setMode('idle'); setEditingCustomer(null); }}
@@ -205,7 +205,7 @@ export default function CustomerSelect({ value, onChange, disabled }) {
             </div>
 
             {mode === 'search' && (
-                <div className="dropdown-menu show w-100 shadow-sm mt-1 p-0">
+                <div className="position-absolute w-100 bg-white border rounded shadow-sm mt-1 p-0" style={{ left: 0, zIndex: 1000 }}>
                     <div className="list-group list-group-flush">
                         {loading && <div className="list-group-item small text-muted">Searching…</div>}
 

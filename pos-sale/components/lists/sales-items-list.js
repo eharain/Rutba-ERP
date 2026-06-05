@@ -1,4 +1,50 @@
+import { useState, useEffect, useRef } from 'react';
+import { MAX_CUSTOM_QTY, CUSTOM_QTY_WARN } from '@rutba/pos-shared/lib/utils';
 import { StraipImageUrl, isImage } from '@rutba/api-provider/lib/api';
+
+/**
+ * Numeric cell that keeps a local text draft while focused so typing stays
+ * smooth — without it, the model-derived `value` is re-applied on every
+ * keystroke, which eats decimal points ("25." → "25") and snaps a cleared
+ * field back to a default. The model remains the source of truth: each valid
+ * keystroke commits, and on blur the field re-syncs to the (possibly clamped)
+ * model value.
+ */
+function NumberCell({ value, onCommit, disabled, min = 0, max, step = 'any', invalid = false, className = '', style }) {
+    const [draft, setDraft] = useState(() => (value == null ? '' : String(value)));
+    const editing = useRef(false);
+
+    useEffect(() => {
+        if (!editing.current) setDraft(value == null ? '' : String(value));
+    }, [value]);
+
+    return (
+        <input
+            type="number"
+            inputMode="decimal"
+            value={draft}
+            min={min}
+            max={max}
+            step={step}
+            className={`${className}${invalid ? ' border-danger text-danger fw-semibold' : ''}`}
+            style={style}
+            disabled={disabled}
+            onFocus={() => { editing.current = true; }}
+            onChange={(e) => {
+                setDraft(e.target.value);
+                const n = parseFloat(e.target.value);
+                if (Number.isFinite(n)) onCommit(n);
+            }}
+            onBlur={() => {
+                editing.current = false;
+                // Re-sync from the model — reflects any clamping (e.g. discount
+                // capped at 40, qty floored at 1) and restores a value if the
+                // teller left the field blank.
+                setDraft(value == null ? '' : String(value));
+            }}
+        />
+    );
+}
 
 /** Resolve the best thumbnail for a SaleItem. Prefers product.logo, falls
  *  back to the first image in product.gallery. Returns null for ad-hoc
@@ -100,13 +146,13 @@ export default function SalesItemsList({
                                     </div>
                                 ) : (
                                     <div className="d-flex align-items-center">
-                                        <input
-                                            type="number"
+                                        <NumberCell
                                             className="form-control form-control-sm"
                                             value={item.unitPrice ?? 0}
-                                            onChange={e =>
+                                            min={0}
+                                            onCommit={n =>
                                                 onUpdate(index, i =>
-                                                    i.setSellingPrice(+e.target.value)
+                                                    i.setSellingPrice(n)
                                                 )
                                             }
                                             disabled={disabled}
@@ -120,34 +166,50 @@ export default function SalesItemsList({
                                 )}
                             </td>
 
-                            {/* QTY */}
+                            {/* QTY — custom (non-stock) lines cap at MAX_CUSTOM_QTY
+                                 and turn red past CUSTOM_QTY_WARN so the teller
+                                 sees the limit approaching. */}
                             <td>
-                                <input
-                                    type="number"
-                                    min="1"
-                                    className="form-control form-control-sm text-center"
-                                    value={item.quantity}
-                                    onChange={e =>
-                                        onUpdate(index, i =>
-                                            i.setQuantity(+e.target.value)
-                                        )
-                                    }
-                                    disabled={disabled}
-                                />
+                                {(() => {
+                                    const isCustom = !item.isDynamicStock;
+                                    const qtyWarn = isCustom && item.quantity > CUSTOM_QTY_WARN;
+                                    return (
+                                        <>
+                                            <NumberCell
+                                                className="form-control form-control-sm text-center"
+                                                value={item.quantity}
+                                                min={1}
+                                                step={1}
+                                                max={isCustom ? MAX_CUSTOM_QTY : undefined}
+                                                invalid={qtyWarn}
+                                                onCommit={n =>
+                                                    onUpdate(index, i =>
+                                                        i.setQuantity(n)
+                                                    )
+                                                }
+                                                disabled={disabled}
+                                            />
+                                            {qtyWarn && (
+                                                <div className="text-danger text-center mt-1" style={{ fontSize: 10, lineHeight: 1.1 }}>
+                                                    {item.quantity >= MAX_CUSTOM_QTY ? `Max ${MAX_CUSTOM_QTY} reached` : `Max ${MAX_CUSTOM_QTY}`}
+                                                </div>
+                                            )}
+                                        </>
+                                    );
+                                })()}
                             </td>
 
                             {/* DISCOUNT / OFFER */}
                             <td>
                                 <div className="d-flex gap-1 align-items-center">
-                                    <input
-                                        type="number"
+                                    <NumberCell
                                         className="form-control form-control-sm"
                                         value={item.discount_percentage}
-                                        min="0"
-                                        max="100"
-                                        onChange={e =>
+                                        min={0}
+                                        step={1}
+                                        onCommit={n =>
                                             onUpdate(index, i =>
-                                                i.setDiscountPercent(+e.target.value)
+                                                i.setDiscountPercent(n)
                                             )
                                         }
                                         disabled={disabled}
