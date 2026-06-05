@@ -1,0 +1,16 @@
+{
+  "name": "rutba-image-server",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Masters-only media origin with on-the-fly resize + LRU cache for images.rutba.pk (Hostinger Node.js hosting)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "sharp": "^0.33.5"
+  }
+}

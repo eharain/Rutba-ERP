@@ -1,0 +1,15 @@
+{
+  "name": "strapi-provider-upload-media",
+  "version": "1.0.0",
+  "description": "Strapi upload provider for the Rutba standalone media service (masters-only, resize-on-request)",
+  "main": "index.js",
+  "license": "MIT",
+  "keywords": ["strapi", "provider", "upload", "media", "sharp"],
+  "strapi": {
+    "kind": "provider",
+    "name": "upload-media"
+  },
+  "peerDependencies": {
+    "@strapi/strapi": "^4.0.0 || ^5.0.0"
+  }
+}

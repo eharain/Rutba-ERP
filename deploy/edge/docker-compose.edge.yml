@@ -1,0 +1,38 @@
+# ============================================================
+# Shared edge reverse proxy (Caddy) — fronts every site on this VPS
+# ============================================================
+# The ONLY thing that binds host ports 80/443. Routes by hostname to
+# app containers over the external `edge` docker network, and obtains +
+# renews Let's Encrypt certificates automatically.
+#
+#   docker network create edge          # once, shared by all sites
+#   docker compose -f docker-compose.edge.yml up -d
+#   docker compose -f docker-compose.edge.yml exec caddy caddy reload --config /etc/caddy/Caddyfile
+#
+# trustlist.uk later adds its own block to Caddyfile (or a second
+# Caddyfile import) and joins the same `edge` network — no change here.
+# ============================================================
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    container_name: edge-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"        # HTTP/3
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data      # certificates — MUST persist
+      - caddy_config:/config
+    networks:
+      - edge
+
+networks:
+  edge:
+    external: true
+
+volumes:
+  caddy_data:
+  caddy_config:

@@ -1,0 +1,54 @@
+# ============================================================
+# Rutba POS — Production override for shared-VPS deployment
+# ============================================================
+# Use ALONGSIDE the base file:
+#
+#   docker compose --env-file .env.docker \
+#     -f docker-compose.yml -f docker-compose.prod.yml \
+#     up -d strapi auth web web-user order-management rider mysql
+#
+# What it changes vs the base compose:
+#   • Joins the web-facing services to the EXTERNAL `edge` network so the
+#     shared Caddy reverse proxy (deploy/edge/) can route to them by name.
+#     Create it once:  docker network create edge
+#   • Stops publishing app + DB ports to the host — all web traffic enters
+#     only through Caddy on 80/443 (UFW blocks everything else anyway).
+#     MySQL is reached via `docker exec`, never a host port.
+#
+# Only the 6 services in scope are overridden; the rest of the base file's
+# services are simply never started (compose only starts what you name).
+# ============================================================
+
+# `!override []` REPLACES the base file's port list (a plain `[]` would merge
+# to a no-op and leave the host bindings in place).
+services:
+  mysql:
+    ports: !override []       # internal only; import via docker exec
+
+  strapi:
+    networks: [default, edge] # default → mysql; edge → Caddy
+    ports: !override []
+
+  auth:
+    networks: [default, edge]
+    ports: !override []
+
+  web:
+    networks: [default, edge]
+    ports: !override []
+
+  web-user:
+    networks: [default, edge]
+    ports: !override []
+
+  order-management:
+    networks: [default, edge]
+    ports: !override []
+
+  rider:
+    networks: [default, edge]
+    ports: !override []
+
+networks:
+  edge:
+    external: true
