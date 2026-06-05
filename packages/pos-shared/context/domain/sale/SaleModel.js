@@ -1,7 +1,7 @@
 import SaleItem from './SaleItem';
 import { calculateTax } from './pricing';
 
-import { generateNextInvoiceNumber, parseContactLine, parseStockLine } from '../../../lib/utils.js';
+import { generateNextInvoiceNumber, parseContactLine, parseStockLine, MAX_CUSTOM_QTY } from '../../../lib/utils.js';
 
 /**
  * Resolve the product name for a sale-return-item.
@@ -288,7 +288,9 @@ export default class SaleModel {
         let { name, price, quantity, discount } = parseStockLine(input);
 
         let items = [];
-        quantity = Math.min(quantity ?? 1, 5);
+        // Custom lines have no finite stock, so clamp to [1, MAX_CUSTOM_QTY].
+        // (The old hard cap of 5 silently shrank legitimate quantities.)
+        quantity = Math.min(Math.max(Math.floor(Number(quantity) || 1), 1), MAX_CUSTOM_QTY);
         discount = Math.min(Math.max(discount ?? 0, 0), 40);
 
         for (let i = 0; i < (quantity ?? 1); i++) {

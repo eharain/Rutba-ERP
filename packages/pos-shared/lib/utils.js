@@ -1,5 +1,12 @@
 import { storage } from "@rutba/api-provider/lib/storage";
 
+/** Hard cap on the quantity of a custom (ad-hoc / non-stock) sale line —
+ *  these have no finite stock to bound them, so we cap them at a sane max. */
+export const MAX_CUSTOM_QTY = 30;
+/** Above this, the qty input is flagged red so the teller sees the cap
+ *  ({@link MAX_CUSTOM_QTY}) approaching before they hit it. */
+export const CUSTOM_QTY_WARN = 10;
+
 export function brachTaxRate() {
     return getBranch()?.tax_rate ?? 0;
 }

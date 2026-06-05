@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 
 import { useUtil } from '@rutba/pos-shared/context/UtilContext';
 import SaleApi from '@rutba/pos-shared/lib/saleApi';
+import { MAX_CUSTOM_QTY, CUSTOM_QTY_WARN } from '@rutba/pos-shared/lib/utils';
 import { StraipImageUrl, isImage } from '@rutba/api-provider/lib/api';
 import { isProductPinned, togglePinForStockItem } from '../RecentProductsPanel';
 
@@ -61,6 +62,10 @@ export default function SalesItemsForm({
     // so tellers can drop in a bag, delivery charge, freehand item, etc.
     // without first triggering an empty search.
     const [customName, setCustomName] = useState('');
+    // Has the teller edited the custom-name field for the current query? While
+    // false, the field mirrors the search box; once true it's independent so
+    // clearing it actually clears (instead of snapping back to the query).
+    const [customNameTouched, setCustomNameTouched] = useState(false);
     const [customPrice, setCustomPrice] = useState('');
     const [customQty, setCustomQty] = useState('1');
     const [customDiscount, setCustomDiscount] = useState('0');
@@ -69,6 +74,7 @@ export default function SalesItemsForm({
     const [pinTick, setPinTick] = useState(0);
     const { currency, branch, desk } = useUtil();
     const latestSearchRef = useRef('');
+    const containerRef = useRef(null);
 
     const handleTogglePin = (item, e) => {
         e.stopPropagation();
@@ -83,6 +89,27 @@ export default function SalesItemsForm({
         window.addEventListener('pos.pinnedChanged', handler);
         return () => window.removeEventListener('pos.pinnedChanged', handler);
     }, []);
+
+    // Editing the search box re-seeds the custom-name field from the query.
+    // (Typing in the name field doesn't change `query`, so this only fires
+    // when the teller changes the search text.)
+    useEffect(() => {
+        setCustomNameTouched(false);
+    }, [query]);
+
+    // Close the results/custom-item dropdown when clicking anywhere outside
+    // it. Without this the dropdown could get "stuck" open over the items
+    // list below, since Escape only worked while the search box was focused.
+    useEffect(() => {
+        if (!showResults) return;
+        const onDocMouseDown = (e) => {
+            if (containerRef.current && !containerRef.current.contains(e.target)) {
+                setShowResults(false);
+            }
+        };
+        document.addEventListener('mousedown', onDocMouseDown);
+        return () => document.removeEventListener('mousedown', onDocMouseDown);
+    }, [showResults]);
 
     // Collect stock-item documentIds already added to the sale
     const usedStockIds = new Set();
@@ -141,19 +168,33 @@ export default function SalesItemsForm({
     // so they don't retype. Builds the same space-delimited line the
     // model's parseStockLine parser expects so the add path stays
     // single-source.
-    const customNameValue = customName || query;
+    const customNameValue = customNameTouched ? customName : query;
     const canSubmitCustom = customNameValue.trim() && parseFloat(customPrice) > 0;
+    // Quantity state for the custom-item form, capped at MAX_CUSTOM_QTY and
+    // flagged red past CUSTOM_QTY_WARN so the teller sees the limit coming.
+    const customQtyNum = parseInt(customQty, 10) || 0;
+    const customQtyWarn = customQtyNum > CUSTOM_QTY_WARN;
+
+    // Keep the qty field from ever displaying above the cap (so the added line
+    // matches what was typed — no silent shrink on add).
+    const handleCustomQtyChange = (e) => {
+        const raw = e.target.value;
+        if (raw === '') { setCustomQty(''); return; }
+        const n = parseInt(raw, 10);
+        setCustomQty(Number.isFinite(n) && n > MAX_CUSTOM_QTY ? String(MAX_CUSTOM_QTY) : raw);
+    };
 
     const addCustomFromFields = (e) => {
         e?.preventDefault();
         const name = customNameValue.trim();
         const priceNum = parseFloat(customPrice);
         if (!name || !Number.isFinite(priceNum) || priceNum <= 0) return;
-        const qty = Math.max(1, parseInt(customQty, 10) || 1);
+        const qty = Math.min(MAX_CUSTOM_QTY, Math.max(1, parseInt(customQty, 10) || 1));
         const disc = Math.max(0, parseFloat(customDiscount) || 0);
         const line = `${name} ${priceNum} ${qty} ${disc}`;
         onAddNonStock(line);
         setCustomName('');
+        setCustomNameTouched(false);
         setCustomPrice('');
         setCustomQty('1');
         setCustomDiscount('0');
@@ -208,7 +249,7 @@ export default function SalesItemsForm({
     };
 
     return (
-        <div style={{ position: 'relative', marginBottom: 12 }}>
+        <div ref={containerRef} style={{ position: 'relative', marginBottom: 12 }}>
             <div className="input-group input-group-lg">
                 <span className="input-group-text bg-white">
                     <i className="fas fa-barcode text-muted"></i>
@@ -238,10 +279,40 @@ export default function SalesItemsForm({
             </div>
 
             {showResults && (
+                /* NOTE: deliberately NOT the Bootstrap `dropdown-menu` class.
+                   Bootstrap's JS bundle attaches a global delegated keydown
+                   handler to every `.dropdown-menu`; pressing Esc/arrows while
+                   focus is inside one that has no real dropdown toggle makes it
+                   build `new Dropdown(null)` and crash on
+                   `this._element.parentNode`. We replicate the look with plain
+                   utility classes so Bootstrap's data-api never touches it. */
                 <div
-                    className="dropdown-menu show w-100 shadow-sm p-0"
-                    style={{ maxHeight: '60vh', overflowY: 'auto', zIndex: 10 }}
+                    className="position-absolute w-100 bg-white border rounded shadow-sm p-0"
+                    style={{ left: 0, maxHeight: '60vh', overflowY: 'auto', zIndex: 1000 }}
+                    onKeyDown={(e) => {
+                        // Esc closes even when focus is inside the custom-item
+                        // form (the search box's own handler can't see it there).
+                        if (e.key === 'Escape') {
+                            e.stopPropagation();
+                            setShowResults(false);
+                        }
+                    }}
                 >
+                    {/* Always-present dismiss bar so the dropdown can never get
+                        stuck open over the items list below. */}
+                    <div
+                        className="d-flex justify-content-end align-items-center sticky-top bg-white border-bottom px-2 py-1"
+                        style={{ top: 0, zIndex: 1 }}
+                    >
+                        <button
+                            type="button"
+                            className="btn btn-sm btn-link text-muted text-decoration-none p-0 px-1"
+                            onClick={() => setShowResults(false)}
+                            title="Close (Esc)"
+                        >
+                            <i className="fas fa-times me-1"></i><span className="small">Close</span>
+                        </button>
+                    </div>
                     {filteredResults.length > 0 && (
                         <div className="list-group list-group-flush">
                             {filteredResults.slice(0, MAX_VISIBLE_RESULTS).map((item, index) => {
@@ -383,7 +454,10 @@ export default function SalesItemsForm({
                                                 className="form-control form-control-sm"
                                                 placeholder="Item name"
                                                 value={customNameValue}
-                                                onChange={(e) => setCustomName(e.target.value)}
+                                                onChange={(e) => {
+                                                    setCustomName(e.target.value);
+                                                    setCustomNameTouched(true);
+                                                }}
                                                 disabled={disabled}
                                             />
                                         </div>
@@ -396,19 +470,18 @@ export default function SalesItemsForm({
                                                     placeholder="Price"
                                                     value={customPrice}
                                                     onChange={(e) => setCustomPrice(e.target.value)}
-                                                    autoFocus
                                                 />
                                             </div>
                                         </div>
                                         <div className="col-4 col-md-auto" style={{ width: 80 }}>
                                             <div className="input-group input-group-sm">
-                                                <span className="input-group-text">{'\u00d7'}</span>
+                                                <span className={`input-group-text${customQtyWarn ? ' border-danger text-danger' : ''}`}>{'\u00d7'}</span>
                                                 <input
-                                                    type="number" min="1" step="1"
-                                                    className="form-control"
+                                                    type="number" min="1" step="1" max={MAX_CUSTOM_QTY}
+                                                    className={`form-control${customQtyWarn ? ' border-danger text-danger fw-semibold' : ''}`}
                                                     value={customQty}
-                                                    onChange={(e) => setCustomQty(e.target.value)}
-                                                    title="Quantity"
+                                                    onChange={handleCustomQtyChange}
+                                                    title={`Quantity (max ${MAX_CUSTOM_QTY})`}
                                                 />
                                             </div>
                                         </div>
@@ -433,6 +506,16 @@ export default function SalesItemsForm({
                                                 <i className="fas fa-plus me-1"></i>{'Add'}
                                             </button>
                                         </div>
+                                        {customQtyWarn && (
+                                            <div className="col-12">
+                                                <div className="small text-danger">
+                                                    <i className="fas fa-triangle-exclamation me-1"></i>
+                                                    {customQtyNum >= MAX_CUSTOM_QTY
+                                                        ? `Maximum ${MAX_CUSTOM_QTY} per custom item.`
+                                                        : `High quantity — capped at ${MAX_CUSTOM_QTY} per custom item.`}
+                                                </div>
+                                            </div>
+                                        )}
                                     </form>
                                     <div className="text-muted small mt-2">
                                         <i className="fas fa-bolt me-1 text-warning"></i>
