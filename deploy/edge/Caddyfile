@@ -1,0 +1,58 @@
+# ============================================================
+# Caddy — Rutba ERP sites on rutba.pk
+# ============================================================
+# Each site routes to a container by its compose service name on the
+# shared `edge` network. Caddy terminates TLS and auto-issues Let's
+# Encrypt certs once the hostname's DNS resolves to this VPS.
+#
+# Ports below match the per-app PORT set in .env.production
+# (PORT_WEB=4000, AUTH=4003, WEB_USER=4004, STRAPI=4010,
+#  RIDER=4012, ORDER_MANAGEMENT=4013).
+# ============================================================
+
+{
+	email eharain@gmail.com
+}
+
+# ---- Strapi API + admin + media ----------------------------
+api.rutba.pk {
+	# Collapse accidental double slashes (e.g. clients that join a trailing-slash
+	# base URL with a leading-slash path → /api//me/addresses), which Strapi 404s.
+	uri replace "//" "/"
+	reverse_proxy strapi:4010
+}
+
+# ---- Auth portal (login hub for staff/ops apps) ------------
+auth.rutba.pk {
+	reverse_proxy auth:4003
+}
+
+# ---- Customer "My Orders" ----------------------------------
+my.rutba.pk {
+	reverse_proxy web-user:4004
+}
+
+# ---- Order management (staff) ------------------------------
+orders.rutba.pk {
+	reverse_proxy order-management:4013
+}
+
+# ---- Rider app ---------------------------------------------
+rider.rutba.pk {
+	reverse_proxy rider:4012
+}
+
+# ---- Storefront: STAGING host (test before apex cutover) ---
+# Create an A/AAAA record new.rutba.pk -> this VPS to test the
+# storefront end-to-end without touching the live apex.
+new.rutba.pk {
+	reverse_proxy web:4000
+}
+
+# ---- Storefront: APEX (cut over) ---------------------------
+rutba.pk {
+	reverse_proxy web:4000
+}
+www.rutba.pk {
+	redir https://rutba.pk{uri} permanent
+}
