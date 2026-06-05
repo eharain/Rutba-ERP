@@ -94,7 +94,7 @@ export default function PageCompatibility({
   };
 
   return (
-    <LayoutMain footer={page.footer}>
+    <LayoutMain footer={page.footer} menus={page.menus}>
       {contentByType[page.page_type] ?? <CmsPageContent page={page} />}
     </LayoutMain>
   );

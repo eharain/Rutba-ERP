@@ -11,7 +11,7 @@ const DETAIL_FIELDS = [
   'title', 'slug', 'excerpt', 'content', 'page_type', 'sort_order',
   'enable_contact_form', 'createdAt', 'updatedAt', 'publishedAt',
   'excerpt_priority', 'featured_image_priority', 'content_priority',
-  'gallery_priority', 'related_pages_priority',
+  'gallery_priority', 'related_pages_priority', 'page_groups_priority',
 ];
 
 const DETAIL_POPULATE = {
@@ -65,7 +65,22 @@ const DETAIL_POPULATE = {
     ...PUBLISHED_FILTER,
     populate: { featured_image: true },
   },
+  page_groups: {
+    ...PUBLISHED_FILTER,
+    populate: {
+      cover_image: true,
+      pages: {
+        ...PUBLISHED_FILTER,
+        fields: ['title', 'slug', 'excerpt', 'page_type'],
+        populate: { featured_image: true },
+      },
+    },
+  },
   footer: { populate: { pinned_pages: true } },
+  // Menus assigned to this page — the storefront uses these by position,
+  // overriding the site-wide default. Light shape; the full resolved tree
+  // comes from /cms-menus/public, keyed by slug.
+  menus: { fields: ['slug', 'position'] },
 };
 
 module.exports = createCoreService('api::cms-page.cms-page', ({ strapi }) => ({

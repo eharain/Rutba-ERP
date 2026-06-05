@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import Layout from "../../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { BrandGroupsEndpoints, CategoryGroupsEndpoints, CmsFootersEndpoints, CmsPagesEndpoints, MediaUtilsEndpoints, ProductGroupsEndpoints, SeoMetasEndpoints } from "@rutba/api-provider/endpoints";
+import { BrandGroupsEndpoints, CategoryGroupsEndpoints, CmsFootersEndpoints, CmsMenusEndpoints, CmsPageGroupsEndpoints, CmsPagesEndpoints, MediaUtilsEndpoints, ProductGroupsEndpoints, SeoMetasEndpoints } from "@rutba/api-provider/endpoints";
 import MarkdownEditor from "@rutba/pos-shared/components/MarkdownEditor";
 import FileView from "@rutba/pos-shared/components/FileView";
 import Link from "next/link";
@@ -141,6 +141,9 @@ export default function CmsPageDetail() {
     const [selectedCategoryGroupIds, setSelectedCategoryGroupIds] = useState([]);
     const [selectedGroupIds, setSelectedGroupIds] = useState([]);
     const [selectedRelatedIds, setSelectedRelatedIds] = useState([]);
+    const [selectedPageGroupIds, setSelectedPageGroupIds] = useState([]);     // page-groups DISPLAYED on this page
+    const [selectedMemberGroupIds, setSelectedMemberGroupIds] = useState([]); // page-groups this page is FEATURED in
+    const [selectedMenuIds, setSelectedMenuIds] = useState([]);               // nav menus assigned to this page
     const [footerId, setFooterId] = useState("");
 
     const [priorities, setPriorities] = useState(() => ({ ...DEFAULT_PRIORITIES }));
@@ -155,6 +158,8 @@ export default function CmsPageDetail() {
     const [allGroups, setAllGroups] = useState([]);
     const [allBrandGroups, setAllBrandGroups] = useState([]);
     const [allCategoryGroups, setAllCategoryGroups] = useState([]);
+    const [allPageGroups, setAllPageGroups] = useState([]);
+    const [allMenus, setAllMenus] = useState([]);
     const [allPages, setAllPages] = useState([]);
     const [allFooters, setAllFooters] = useState([]);
 
@@ -166,6 +171,7 @@ export default function CmsPageDetail() {
                     featured_image: true, gallery: true, background_image: true,
                     hero_product_groups: true, brand_groups: true, category_groups: true,
                     product_groups: true, related_pages: true, footer: true,
+                    page_groups: true, member_page_groups: true, menus: true,
                     seo_meta: { populate: { og_image: true } },
                 },
             }),
@@ -186,6 +192,9 @@ export default function CmsPageDetail() {
                 setSelectedCategoryGroupIds((p.category_groups || []).map(cg => cg.documentId));
                 setSelectedGroupIds((p.product_groups || []).map(g => g.documentId));
                 setSelectedRelatedIds((p.related_pages || []).map(rp => rp.documentId));
+                setSelectedPageGroupIds((p.page_groups || []).map(g => g.documentId));
+                setSelectedMemberGroupIds((p.member_page_groups || []).map(g => g.documentId));
+                setSelectedMenuIds((p.menus || []).map(m => m.documentId));
                 setFooterId(p.footer?.documentId || "");
                 setPriorities(readPriorities(p));
                 setFeaturedImageId(p.featured_image?.id || null);
@@ -200,16 +209,20 @@ export default function CmsPageDetail() {
     const loadPickers = useCallback(async () => {
         if (!jwt) return;
         try {
-            const [groupsRes, brandGroupsRes, categoryGroupsRes, pagesRes, footersRes] = await Promise.all([
+            const [groupsRes, brandGroupsRes, categoryGroupsRes, pageGroupsRes, menusRes, pagesRes, footersRes] = await Promise.all([
                 ProductGroupsEndpoints.listDraft({ pagination: { pageSize: 100 }, sort: ["name:asc"] }),
                 BrandGroupsEndpoints.listDraft({ pagination: { pageSize: 100 }, sort: ["sort_order:asc", "name:asc"] }),
                 CategoryGroupsEndpoints.listDraft({ pagination: { pageSize: 100 }, sort: ["sort_order:asc", "name:asc"] }),
+                CmsPageGroupsEndpoints.listDraft({ pagination: { pageSize: 100 }, sort: ["sort_order:asc", "name:asc"] }),
+                CmsMenusEndpoints.listDraft({ pagination: { pageSize: 100 }, sort: ["position:asc", "name:asc"] }),
                 CmsPagesEndpoints.listDraft({ pageSize: 100, sort: ["title:asc"] }),
                 CmsFootersEndpoints.listDraft({ pagination: { pageSize: 100 }, sort: ["name:asc"] }),
             ]);
             setAllGroups(groupsRes.data || []);
             setAllBrandGroups(brandGroupsRes.data || []);
             setAllCategoryGroups(categoryGroupsRes.data || []);
+            setAllPageGroups(pageGroupsRes.data || []);
+            setAllMenus(menusRes.data || []);
             setAllPages((pagesRes.data || []).filter(p => p.documentId !== documentId));
             setAllFooters(footersRes.data || []);
         } catch (err) {
@@ -243,6 +256,24 @@ export default function CmsPageDetail() {
         );
     };
 
+    const togglePageGroup = (docId) => {
+        setSelectedPageGroupIds(prev =>
+            prev.includes(docId) ? prev.filter(id => id !== docId) : [...prev, docId]
+        );
+    };
+
+    const toggleMemberGroup = (docId) => {
+        setSelectedMemberGroupIds(prev =>
+            prev.includes(docId) ? prev.filter(id => id !== docId) : [...prev, docId]
+        );
+    };
+
+    const toggleMenu = (docId) => {
+        setSelectedMenuIds(prev =>
+            prev.includes(docId) ? prev.filter(id => id !== docId) : [...prev, docId]
+        );
+    };
+
     const saveSeoMeta = (entityDocumentId) =>
         persistSeoMeta({
             seoMeta,
@@ -267,6 +298,9 @@ export default function CmsPageDetail() {
                     category_groups: toOrderedRelation(selectedCategoryGroupIds),
                     product_groups: toOrderedRelation(selectedGroupIds),
                     related_pages: toOrderedRelation(selectedRelatedIds),
+                    page_groups: toOrderedRelation(selectedPageGroupIds),
+                    member_page_groups: toOrderedRelation(selectedMemberGroupIds),
+                    menus: toOrderedRelation(selectedMenuIds),
                     footer: footerId || null,
                     featured_image_priority: priorities.featured_image,
                     excerpt_priority: priorities.excerpt,
@@ -316,6 +350,9 @@ export default function CmsPageDetail() {
                     category_groups: toOrderedRelation(selectedCategoryGroupIds),
                     product_groups: toOrderedRelation(selectedGroupIds),
                     related_pages: toOrderedRelation(selectedRelatedIds),
+                    page_groups: toOrderedRelation(selectedPageGroupIds),
+                    member_page_groups: toOrderedRelation(selectedMemberGroupIds),
+                    menus: toOrderedRelation(selectedMenuIds),
                     footer: footerId || null,
                     featured_image_priority: priorities.featured_image,
                     excerpt_priority: priorities.excerpt,
@@ -369,6 +406,9 @@ export default function CmsPageDetail() {
                     category_groups: toOrderedRelation(selectedCategoryGroupIds),
                     product_groups: toOrderedRelation(selectedGroupIds),
                     related_pages: toOrderedRelation(selectedRelatedIds),
+                    page_groups: toOrderedRelation(selectedPageGroupIds),
+                    member_page_groups: toOrderedRelation(selectedMemberGroupIds),
+                    menus: toOrderedRelation(selectedMenuIds),
                     footer: footerId || null,
                 },
             };
@@ -573,6 +613,47 @@ export default function CmsPageDetail() {
                                 onToggle={toggleRelated}
                                 onReorder={setSelectedRelatedIds}
                                 onRemoveAll={() => setSelectedRelatedIds([])}
+                            />
+
+                            {/* Page Groups shown on this page (flip-card sections) — display attachment */}
+                            <RelationPickerTabs
+                                title="Page Groups on this page"
+                                icon="fas fa-clone"
+                                description="Each group renders as a flip-card section on this page."
+                                selectedIds={selectedPageGroupIds}
+                                allItems={allPageGroups}
+                                onToggle={togglePageGroup}
+                                onReorder={setSelectedPageGroupIds}
+                                onRemoveAll={() => setSelectedPageGroupIds([])}
+                                getEditHref={(g) => `/${g.documentId}/cms-page-group`}
+                            />
+
+                            {/* Page Groups this page is a member of — two-way with the group's "Pages" */}
+                            <RelationPickerTabs
+                                title="Featured in Page Groups"
+                                icon="fas fa-object-group"
+                                description="Groups that include this page as one of their flip cards. Editable from either side."
+                                selectedIds={selectedMemberGroupIds}
+                                allItems={allPageGroups}
+                                onToggle={toggleMemberGroup}
+                                onReorder={setSelectedMemberGroupIds}
+                                onRemoveAll={() => setSelectedMemberGroupIds([])}
+                                getEditHref={(g) => `/${g.documentId}/cms-page-group`}
+                            />
+
+                            {/* Navigation menus assigned to this page — override the site-wide
+                                default for their position. Two-way with the menu's "pages". */}
+                            <RelationPickerTabs
+                                title="Navigation Menus"
+                                icon="fas fa-bars"
+                                description="Menus shown on this page (by position) instead of the site-wide default. Leave empty to use the global menus."
+                                selectedIds={selectedMenuIds}
+                                allItems={allMenus}
+                                onToggle={toggleMenu}
+                                onReorder={setSelectedMenuIds}
+                                onRemoveAll={() => setSelectedMenuIds([])}
+                                getEditHref={(m) => `/${m.documentId}/cms-menu`}
+                                renderBadges={(m) => m.position && <span className="badge bg-light text-dark ms-1">{m.position}</span>}
                             />
                         </div>
 

@@ -1,0 +1,68 @@
+{
+  "kind": "collectionType",
+  "collectionName": "cms_page_groups",
+  "info": {
+    "singularName": "cms-page-group",
+    "pluralName": "cms-page-groups",
+    "displayName": "CMS Page Group",
+    "description": "Curated groups of CMS pages rendered as flip cards on the storefront"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "slug": {
+      "type": "uid",
+      "targetField": "name",
+      "required": true
+    },
+    "title": {
+      "type": "string"
+    },
+    "excerpt": {
+      "type": "richtext"
+    },
+    "layout": {
+      "type": "enumeration",
+      "enum": [
+        "flip-grid",
+        "grid",
+        "carousel"
+      ],
+      "default": "flip-grid"
+    },
+    "columns": {
+      "type": "integer",
+      "default": 3
+    },
+    "cover_image": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "sort_order": {
+      "type": "integer",
+      "default": 0
+    },
+    "pages": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::cms-page.cms-page",
+      "inversedBy": "member_page_groups"
+    },
+    "seo_meta": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::seo-meta.seo-meta",
+      "mappedBy": "cms_page_group"
+    }
+  }
+}

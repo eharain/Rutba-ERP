@@ -25,7 +25,8 @@
         "brand",
         "product-group",
         "brand-group",
-        "category-group"
+        "category-group",
+        "cms-page-group"
       ],
       "default": "cms-page"
     },
@@ -89,6 +90,12 @@
       "type": "relation",
       "relation": "oneToOne",
       "target": "api::category-group.category-group",
+      "inversedBy": "seo_meta"
+    },
+    "cms_page_group": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::cms-page-group.cms-page-group",
       "inversedBy": "seo_meta"
     }
   }

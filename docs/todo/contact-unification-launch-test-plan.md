@@ -5,7 +5,7 @@ public. Group by priority — P0 blocks launch, P1 must work before any real
 traffic, P2 is acceptable to fix in the first week post-launch.
 
 Companion to [contact-entity-unification.md](./contact-entity-unification.md)
-and [project_contact_unification_phase1a memory](../../C:/Users/EjazArain/.claude/projects/d--Rutba-ERP/memory/project_contact_unification_phase1a.md).
+and project_contact_unification_phase1a memory.
 
 ## Pre-flight
 

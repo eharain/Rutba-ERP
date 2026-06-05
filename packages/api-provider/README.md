@@ -27,7 +27,7 @@ packages/api-provider/
 â”‚   â”œâ”€â”€ roles.json                    # { [roleKey]: { level, domain } }
 â”‚   â”œâ”€â”€ configuration.json            # serialized aggregate (generated)
 â”‚   â””â”€â”€ configuration.source.js       # config loader; exported as `@rutba/api-provider/config`
-â”œâ”€â”€ api/                              # ENDPOINT DESCRIPTORS â€” see api/CLAUDE.md
+â”œâ”€â”€ api/                              # ENDPOINT DESCRIPTORS â€” see the api/ descriptor files
 â”‚   â”œâ”€â”€ index.js
 â”‚   â”œâ”€â”€ __publish_generic_helper.js
 â”‚   â”œâ”€â”€ cash-register-transactions.js # one file per Strapi content-type / resource

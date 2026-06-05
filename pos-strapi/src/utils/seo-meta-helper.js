@@ -14,6 +14,7 @@ const ENTITY_TYPES = [
     { type: 'product-group',  uid: 'api::product-group.product-group', relation: 'product_group',  titleField: 'name'  },
     { type: 'brand-group',    uid: 'api::brand-group.brand-group',     relation: 'brand_group',    titleField: 'name'  },
     { type: 'category-group', uid: 'api::category-group.category-group', relation: 'category_group', titleField: 'name'  },
+    { type: 'cms-page-group', uid: 'api::cms-page-group.cms-page-group', relation: 'cms_page_group', titleField: 'name'  },
 ];
 
 const BY_TYPE = new Map(ENTITY_TYPES.map((e) => [e.type, e]));

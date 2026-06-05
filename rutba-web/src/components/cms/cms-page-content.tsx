@@ -2,9 +2,10 @@ import NextImage from "@/components/next-image";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
-import { CmsPageDetailInterface, CmsProductGroupInterface } from "@/types/api/cms-page";
+import { CmsPageDetailInterface, CmsPageGroupInterface, CmsProductGroupInterface } from "@/types/api/cms-page";
 import { getPageUrl } from "@/lib/cms-page-types";
 import ProductGroupRenderer from "./ProductGroupRenderer";
+import CmsPageGroup from "./cms-page-group";
 import CmsContactFormSection from "./cms-contact-form-section";
 import Seo from "@/components/seo/seo";
 import { cn } from "@/lib/utils";
@@ -28,6 +29,18 @@ export default function CmsPageContent({
     }
   }
 
+  // Curated CMS page-groups (flip cards). Same _ord-preserving dedupe.
+  const pageGroups: CmsPageGroupInterface[] = [];
+  {
+    const seen = new Set<string>();
+    for (const g of page.page_groups ?? []) {
+      if (!seen.has(g.documentId)) {
+        seen.add(g.documentId);
+        pageGroups.push(g);
+      }
+    }
+  }
+
   const bgUrl = page.background_image?.url
     ? resolveMediaUrl(page.background_image.url)
     : null;
@@ -38,6 +51,7 @@ export default function CmsPageContent({
     | { type: "excerpt"; key: string }
     | { type: "content"; key: string }
     | { type: "gallery"; key: string }
+    | { type: "page-groups"; key: string }
     | { type: "related-pages"; key: string };
 
   // Each section attribute (featured_image, excerpt, content, gallery,
@@ -53,6 +67,7 @@ export default function CmsPageContent({
   if (page.excerpt) slots.push({ key: "excerpt", priority: page.excerpt_priority ?? 10 });
   if (page.content) slots.push({ key: "content", priority: page.content_priority ?? 20 });
   if (page.gallery && page.gallery.length > 0) slots.push({ key: "gallery", priority: page.gallery_priority ?? 40 });
+  if (pageGroups.length > 0) slots.push({ key: "page-groups", priority: page.page_groups_priority ?? 45 });
   if (page.related_pages && page.related_pages.length > 0) slots.push({ key: "related-pages", priority: page.related_pages_priority ?? 50 });
   slots.sort((a, b) => a.priority - b.priority);
 
@@ -61,6 +76,7 @@ export default function CmsPageContent({
     if (key === "excerpt") return { type: "excerpt", key: "excerpt" };
     if (key === "content") return { type: "content", key: "content" };
     if (key === "gallery") return { type: "gallery", key: "gallery" };
+    if (key === "page-groups") return { type: "page-groups", key: "page-groups" };
     if (key === "related-pages") return { type: "related-pages", key: "related-pages" };
     return null;
   };
@@ -211,6 +227,14 @@ export default function CmsPageContent({
                     <MosaicGallery items={page.gallery!} alt={page.title} />
                   </div>
                 </section>
+              );
+            case "page-groups":
+              return (
+                <div key={section.key}>
+                  {pageGroups.map((g) => (
+                    <CmsPageGroup key={g.documentId} group={g} />
+                  ))}
+                </div>
               );
             case "related-pages":
               return (

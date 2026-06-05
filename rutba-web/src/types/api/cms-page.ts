@@ -65,6 +65,21 @@ export interface CmsProductGroupInterface {
   seo_meta?: SeoMetaInterface;
 }
 
+export interface CmsPageGroupInterface {
+  id: number;
+  documentId: string;
+  name: string;
+  slug: string;
+  title?: string;
+  excerpt?: string;
+  layout?: "flip-grid" | "grid" | "carousel";
+  columns?: number;
+  cover_image?: ImageInterface;
+  sort_order?: number;
+  pages?: CmsPageInterface[];
+  seo_meta?: SeoMetaInterface;
+}
+
 export interface CmsBrandGroupInterface {
   id: number;
   documentId: string;
@@ -112,6 +127,7 @@ export interface CmsPageDetailInterface extends CmsPageInterface {
   brand_groups?: CmsBrandGroupInterface[];
   category_groups?: CmsCategoryGroupInterface[];
   product_groups?: CmsProductGroupInterface[];
+  page_groups?: CmsPageGroupInterface[];
   related_pages?: CmsPageInterface[];
   footer?: CmsFooterInterface;
   // Each section attribute carries an integer index. The renderer
@@ -125,4 +141,8 @@ export interface CmsPageDetailInterface extends CmsPageInterface {
   product_groups_priority?: number;
   gallery_priority?: number;
   related_pages_priority?: number;
+  page_groups_priority?: number;
+  // Menus assigned to this page (slug + position). The header uses these,
+  // falling back to the site-wide default menu for any unset position.
+  menus?: { slug: string; position: "top" | "side" | "footer" }[];
 }

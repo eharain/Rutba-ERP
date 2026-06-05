@@ -3,7 +3,7 @@ import Link from "next/link";
 import { getPageUrl } from "@/lib/cms-page-types";
 import { useSiteSettings } from "@/hooks/use-site-settings";
 
-import { ChevronRight, Menu, ShoppingBasket, User2 } from "lucide-react";
+import { ChevronRight, Menu, PanelLeft, ShoppingBasket, User2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -18,6 +18,8 @@ import NextImage from "@/components/next-image";
 import Cart from "@/components/cart";
 import SearchInput from "../search";
 import MenuSideBarMobile from "./menu-sidebar-mobile";
+import TopMenu from "./top-menu";
+import MenuSidebar from "./menu-sidebar";
 
 import { useQuery } from "@tanstack/react-query";
 import { SkeletonBrand, SkeletonCategory } from "../skeleton";
@@ -27,6 +29,8 @@ import { resolveMediaUrl } from "@/lib/media-url";
 import { useStoreCart } from "@/store/store-cart";
 import { useSession } from "next-auth/react";
 import { createWebCmsPagesService } from "@/services/";
+import { usePageMenu } from "@/hooks/use-menus";
+import { PageMenuRef } from "@/types/api/menu";
 import { BrandInterface } from "@/types/api/brand";
 import { CategoryInterface } from "@/types/api/category";
 import { BASE_URL } from "@/static/const";
@@ -86,7 +90,7 @@ function CategoryHeader({ categories }: { categories: CategoryInterface[] }) {
   );
 }
 
-export default function Header() {
+export default function Header({ pageMenus }: { pageMenus?: PageMenuRef[] }) {
   const { cartItem } = useStoreCart();
   const session = useSession();
   const cmsPagesService = createWebCmsPagesService({ baseURL: BASE_URL });
@@ -115,6 +119,13 @@ export default function Header() {
   const categories =
     cmsPage?.category_groups?.flatMap((g) => g.categories ?? []) ?? [];
   const pinnedPages = cmsPage?.footer?.pinned_pages ?? [];
+
+  // CMS-driven navigation. A page's own menu assignment wins; otherwise the
+  // site-wide default menu for the position is used. When neither exists we
+  // fall back to the legacy category/brand + pinned-pages nav so the header is
+  // never blank before any menu has been authored.
+  const topMenu = usePageMenu("top", pageMenus);
+  const sideMenu = usePageMenu("side", pageMenus);
 
   return (
     <>
@@ -158,57 +169,77 @@ export default function Header() {
             </div>
 
             <div className="flex items-center gap-1 md:gap-2">
-              <NavigationMenu className="hidden md:block">
-                <NavigationMenuList className="gap-0.5">
-                  {categories.length > 0 && (
-                    <NavigationMenuItem>
-                      <NavigationMenuTrigger className="text-sm font-medium hover:text-brand data-[state=open]:text-brand">
-                        {settings.nav_explore_products_label || "Explore Products"}
-                      </NavigationMenuTrigger>
-                      <NavigationMenuContent>
-                        {isCmsLoading ? (
-                          <SkeletonCategory />
-                        ) : isCmsError ? (
-                          <ErrorCard message={(cmsError as Error).message} />
-                        ) : (
-                          <CategoryHeader categories={categories} />
-                        )}
-                      </NavigationMenuContent>
-                    </NavigationMenuItem>
-                  )}
+              {sideMenu && sideMenu.items.length > 0 && (
+                <MenuSidebar
+                  menu={sideMenu}
+                  trigger={
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="hidden md:inline-flex rounded-full hover:bg-secondary"
+                      aria-label={sideMenu.title || sideMenu.name}
+                    >
+                      <PanelLeft className="h-5 w-5" />
+                    </Button>
+                  }
+                />
+              )}
 
-                  {brands.length > 0 && (
-                    <NavigationMenuItem>
-                      <NavigationMenuTrigger className="text-sm font-medium hover:text-brand data-[state=open]:text-brand">
-                        {settings.nav_explore_brands_label || "Explore Brands"}
-                      </NavigationMenuTrigger>
-                      <NavigationMenuContent>
-                        {isCmsLoading ? (
-                          <SkeletonBrand />
-                        ) : isCmsError ? (
-                          <ErrorCard message={(cmsError as Error).message} />
-                        ) : (
-                          <BrandHeader brands={brands} />
-                        )}
-                      </NavigationMenuContent>
-                    </NavigationMenuItem>
-                  )}
-
-                  {pinnedPages.length > 0 &&
-                    pinnedPages.map((pp) => (
-                      <NavigationMenuItem key={pp.documentId}>
-                        <Link
-                          href={getPageUrl(pp)}
-                          className="px-4 py-2 text-sm font-medium hover:text-brand transition-colors"
-                        >
-                          {pp.title}
-                        </Link>
+              {topMenu ? (
+                <TopMenu items={topMenu.items} />
+              ) : (
+                <NavigationMenu className="hidden md:block">
+                  <NavigationMenuList className="gap-0.5">
+                    {categories.length > 0 && (
+                      <NavigationMenuItem>
+                        <NavigationMenuTrigger className="text-sm font-medium hover:text-brand data-[state=open]:text-brand">
+                          {settings.nav_explore_products_label || "Explore Products"}
+                        </NavigationMenuTrigger>
+                        <NavigationMenuContent>
+                          {isCmsLoading ? (
+                            <SkeletonCategory />
+                          ) : isCmsError ? (
+                            <ErrorCard message={(cmsError as Error).message} />
+                          ) : (
+                            <CategoryHeader categories={categories} />
+                          )}
+                        </NavigationMenuContent>
                       </NavigationMenuItem>
-                    ))}
-                </NavigationMenuList>
+                    )}
 
-                <NavigationMenuViewport className="right-0" />
-              </NavigationMenu>
+                    {brands.length > 0 && (
+                      <NavigationMenuItem>
+                        <NavigationMenuTrigger className="text-sm font-medium hover:text-brand data-[state=open]:text-brand">
+                          {settings.nav_explore_brands_label || "Explore Brands"}
+                        </NavigationMenuTrigger>
+                        <NavigationMenuContent>
+                          {isCmsLoading ? (
+                            <SkeletonBrand />
+                          ) : isCmsError ? (
+                            <ErrorCard message={(cmsError as Error).message} />
+                          ) : (
+                            <BrandHeader brands={brands} />
+                          )}
+                        </NavigationMenuContent>
+                      </NavigationMenuItem>
+                    )}
+
+                    {pinnedPages.length > 0 &&
+                      pinnedPages.map((pp) => (
+                        <NavigationMenuItem key={pp.documentId}>
+                          <Link
+                            href={getPageUrl(pp)}
+                            className="px-4 py-2 text-sm font-medium hover:text-brand transition-colors"
+                          >
+                            {pp.title}
+                          </Link>
+                        </NavigationMenuItem>
+                      ))}
+                  </NavigationMenuList>
+
+                  <NavigationMenuViewport className="right-0" />
+                </NavigationMenu>
+              )}
 
               <Cart
                 trigger={
@@ -231,6 +262,7 @@ export default function Header() {
               <div className="block md:hidden">
                 <MenuSideBarMobile
                   pinnedPages={pinnedPages}
+                  menuItems={(topMenu?.items ?? []).concat(sideMenu?.items ?? [])}
                   trigger={
                     <Button
                       variant="ghost"

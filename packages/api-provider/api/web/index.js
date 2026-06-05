@@ -3,6 +3,8 @@ export { WebBannersEndpoints } from './banners.js';
 export { WebBrandsEndpoints } from './brands.js';
 export { WebCategoriesEndpoints } from './categories.js';
 export { WebCheckoutEndpoints } from './checkout.js';
+export { WebCmsMenusEndpoints } from './cms-menus.js';
+export { WebCmsPageGroupsEndpoints } from './cms-page-groups.js';
 export { WebCmsPagesEndpoints } from './cms-pages.js';
 export { WebCollectionsEndpoints } from './collections.js';
 export { WebDeliveryEndpoints } from './delivery.js';

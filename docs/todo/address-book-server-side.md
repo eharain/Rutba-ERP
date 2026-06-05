@@ -33,12 +33,12 @@ This buys 80% of the win: returning shoppers skip the form on their next express
 | `is_default` | boolean | exactly one per user — enforce in lifecycle |
 | `user` | relation oneToMany → users-permissions.user | the owner |
 
-Permissions: per-user RBAC — only the owner (or admin) can read/write their own rows. The `owners` relation pattern from [Authorization model](../../C:/Users/EjazArain/.claude/projects/d--Rutba-ERP/memory/project_authorization_model.md) applies.
+Permissions: per-user RBAC — only the owner (or admin) can read/write their own rows. The `owners` relation pattern from Authorization model applies.
 
 ### API surface
 Goes under `packages/api-provider/api/web/` (the public-`api` namespace currently) but **must require auth** — these are private to a user. Two options:
 - Move it into a new `api/me/` namespace that the scaffolder generates with `authApi` (override the web→api default per descriptor).
-- Or keep under `web/` and add a per-descriptor `clientName: 'authApi'` override. See [api/web/ descriptors generate public-`api` clients](../../C:/Users/EjazArain/.claude/projects/d--Rutba-ERP/memory/project_api_provider_web_public_client.md) for the convention to subvert.
+- Or keep under `web/` and add a per-descriptor `clientName: 'authApi'` override. See api/web/ descriptors generate public-`api` clients for the convention to subvert.
 
 Endpoints:
 - `GET /me/addresses` → list

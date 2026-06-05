@@ -64,13 +64,13 @@ This doc is the staged plan for adding all of the above.
   `payment_collected_by_rider`, `payment_collected_at`,
   `payment_verification_status` (`unverified` | `verified` | `disputed`),
   `payment_verified_at`, `payment_verified_by`. See
-  [project_cod_payment_collection_model memory](../../C:/Users/EjazArain/.claude/projects/D--Rutba-ERP/memory/project_cod_payment_collection_model.md).
+  project_cod_payment_collection_model memory.
   Order-management has the Payment card + verify endpoints; rider/accounts
   UIs are still queued (now Phase A.5 / A.6 below).
 - **Stock-item attach per line** — order-product-item has a `stock_item`
   relation, controller endpoint `attachStockItem` transitions the chosen
   unit InStock → Reserved, lifecycle hooks recompute product.stock_quantity
-  per the [stock model invariant](../../C:/Users/EjazArain/.claude/projects/D--Rutba-ERP/memory/project_stock_model_invariant.md).
+  per the stock model invariant.
   Order-management detail page has a per-line picker UI.
 - **Stock-item state machine closed on the order side** (E.1 + B.0,
   2026-05-21) — `sale-order-state-machine.executeTransition` walks
@@ -173,30 +173,30 @@ Apply these to every phase below:
    neutral providers (manual, stripe, easypost). Tenant-specific
    providers (TCS, JazzCash, etc.) ship in a tenant overlay with their
    API keys in tenant config — never in the generic seed. Per
-   [project_erp_generic_vs_rutba_pk_implementation memory](../../C:/Users/EjazArain/.claude/projects/D--Rutba-ERP/memory/project_erp_generic_vs_rutba_pk_implementation.md).
+   project_erp_generic_vs_rutba_pk_implementation memory.
 2. **Migrations, not seed JSON**, for any default data introduced. Per
-   [project_data_seeding_strategy_migrations_not_seed_json memory](../../C:/Users/EjazArain/.claude/projects/D--Rutba-ERP/memory/project_data_seeding_strategy_migrations_not_seed_json.md).
+   project_data_seeding_strategy_migrations_not_seed_json memory.
 3. **Money in integer paisa** — never decimal. `amount_paisa: bigint`.
 4. **`auth: false` routes manually parse JWT** when they want optional
    auth (customer-initiated cancel, customer-initiated return). Per
-   [feedback_strapi_auth_false_means_no_user memory](../../C:/Users/EjazArain/.claude/projects/D--Rutba-ERP/memory/feedback_strapi_auth_false_means_no_user.md).
+   feedback_strapi_auth_false_means_no_user memory.
 5. **Descriptors start with a whitelisted verb prefix** (`list`, `find`,
    `recompute`, `sync`, etc.) or the api-pro seeder silently skips them
    and every request 403s. Per
-   [feedback_api_pro_descriptor_verb_whitelist memory](../../C:/Users/EjazArain/.claude/projects/D--Rutba-ERP/memory/feedback_api_pro_descriptor_verb_whitelist.md).
+   feedback_api_pro_descriptor_verb_whitelist memory.
    New verbs proposed: `initiateRefund`, `createShipment`, `cancelShipment`,
    `inspectReturn`, `recordPickup`. Verify each against the whitelist
    before adding.
 6. **`owners` plural manyToMany** for any new entity with ownership
    semantics (refund, return-request). Per
-   [feedback_ownership_owners_convention memory](../../C:/Users/EjazArain/.claude/projects/D--Rutba-ERP/memory/feedback_ownership_owners_convention.md).
+   feedback_ownership_owners_convention memory.
 7. **Idempotency keys on every mutation endpoint reachable by a webhook**
    (carrier status webhooks retry; payment gateway webhooks retry). See
    Phase G.5.
 8. **Variant price fallback** — positive-or-parent + Number coercion.
    Applies anywhere variant pricing flows (refund credit values, return
    restock prices). Per
-   [feedback_variant_price_fallback_pattern memory](../../C:/Users/EjazArain/.claude/projects/D--Rutba-ERP/memory/feedback_variant_price_fallback_pattern.md).
+   feedback_variant_price_fallback_pattern memory.
 
 ## Prerequisites (tenant ops)
 
@@ -839,7 +839,7 @@ records `(key, response)` and replays the same response on duplicate.
 
 ### G.6 — Notification template migration off seed JSON
 
-Per the [data seeding directive](../../C:/Users/EjazArain/.claude/projects/D--Rutba-ERP/memory/project_data_seeding_strategy_migrations_not_seed_json.md),
+Per the data seeding directive,
 retire `src/seed/data/notification-template.json` in favour of a Strapi
 migration. New trigger events from Phases A-F (payment_partial_refunded,
 packed, parcel_picked_up, return_requested, return_approved,

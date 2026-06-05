@@ -34,7 +34,7 @@ Only one row exists; every app shares it.
 4. CMS UI: list page + edit-by-documentId page (replace whatever currently
    assumes a single record).
 5. Consumers: audit every app that reads site settings and switch them to the
-   per-app lookup. See [pos-strapi integration contracts](../../C:/Users/EjazArain/.claude/projects/d--Rutba-ERP/memory/project_pos_strapi_contracts.md)
+   per-app lookup. See pos-strapi integration contracts
    for headers/contracts that may be affected.
 6. Permissions: ensure RBAC scopes still make sense per-row (owners/app-scoped
    reads).

@@ -85,7 +85,7 @@ export default function NewsPageDetail({
   }
 
   return (
-    <LayoutMain footer={page.footer}>
+    <LayoutMain footer={page.footer} menus={page.menus}>
       <CmsNewsPageContent page={page} />
     </LayoutMain>
   );
