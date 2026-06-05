@@ -18,6 +18,7 @@ export default function CollectionList() {
     isLoading,
     isError,
     error,
+    refetch,
   } = useQuery({
     queryKey: ["collection-list"],
     queryFn: async () => {
@@ -28,7 +29,12 @@ export default function CollectionList() {
   if (isLoading) {
     return <SkeletonCollectionList></SkeletonCollectionList>;
   } else if (isError) {
-    return <ErrorCard message={(error as Error).message}></ErrorCard>;
+    return (
+      <ErrorCard
+        message={(error as Error).message}
+        onRetry={() => refetch()}
+      ></ErrorCard>
+    );
   }
 
   return (

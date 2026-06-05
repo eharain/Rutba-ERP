@@ -55,6 +55,14 @@ function authHeaders(jwt?: string | null) {
   return jwt ? { Authorization: `Bearer ${jwt}` } : undefined;
 }
 
+// BASE_URL (NEXT_PUBLIC_API_URL) ends with a trailing slash (".../api/") and the
+// endpoint paths start with one ("/me/addresses"). Naive concatenation yields a
+// double slash (".../api//me/addresses"), which Strapi 404s. Strip the trailing
+// slash so the join is correct at the source.
+function apiUrl(p: string) {
+  return `${BASE_URL.replace(/\/+$/, "")}${p}`;
+}
+
 /**
  * Server-side address book client.
  *
@@ -68,14 +76,14 @@ export function createMeAddressesService() {
   const list = async (jwt?: string | null): Promise<CustomerAddress[]> => {
     if (!jwt) return [];
     const ep = AddressesEndpoints.list();
-    const res = await axios.get(`${BASE_URL}${ep.path}`, { headers: authHeaders(jwt) });
+    const res = await axios.get(apiUrl(ep.path), { headers: authHeaders(jwt) });
     return (res.data?.data ?? []) as CustomerAddress[];
   };
 
   const create = async (data: AddressInput, jwt: string): Promise<CustomerAddress> => {
     const ep = AddressesEndpoints.create(data);
     const res = await axios.post(
-      `${BASE_URL}${ep.path}`,
+      apiUrl(ep.path),
       { data: ep.data },
       { headers: { "Content-Type": "application/json", ...(authHeaders(jwt) || {}) } }
     );
@@ -85,7 +93,7 @@ export function createMeAddressesService() {
   const update = async (documentId: string, data: AddressInput, jwt: string): Promise<CustomerAddress> => {
     const ep = AddressesEndpoints.update(documentId, data);
     const res = await axios.put(
-      `${BASE_URL}${ep.path}`,
+      apiUrl(ep.path),
       { data: ep.data },
       { headers: { "Content-Type": "application/json", ...(authHeaders(jwt) || {}) } }
     );
@@ -94,13 +102,13 @@ export function createMeAddressesService() {
 
   const remove = async (documentId: string, jwt: string): Promise<void> => {
     const ep = AddressesEndpoints.del(documentId);
-    await axios.delete(`${BASE_URL}${ep.path}`, { headers: authHeaders(jwt) });
+    await axios.delete(apiUrl(ep.path), { headers: authHeaders(jwt) });
   };
 
   const makeDefault = async (documentId: string, jwt: string): Promise<CustomerAddress> => {
     const ep = AddressesEndpoints.makeDefault(documentId);
     const res = await axios.post(
-      `${BASE_URL}${ep.path}`,
+      apiUrl(ep.path),
       { data: {} },
       { headers: { "Content-Type": "application/json", ...(authHeaders(jwt) || {}) } }
     );
