@@ -23,13 +23,17 @@ export default function HeroSlider() {
     isLoading,
     isError,
     error,
+    refetch,
   } = useQuery({
     queryKey: ["hero-slider"],
     queryFn: async () => bannersService.getBanners(),
   });
 
   if (isLoading) return <SkeletonBanner />;
-  if (isError) return <ErrorCard message={(error as Error).message} />;
+  if (isError)
+    return (
+      <ErrorCard message={(error as Error).message} onRetry={() => refetch()} />
+    );
   if (!banner?.products || banner.products.length === 0) return null;
 
   const multiple = banner.products.length > 1;

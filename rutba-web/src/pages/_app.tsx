@@ -35,7 +35,24 @@ function RutbaApp({
   // Seed site-settings into the cache so the very first render (SSR + client
   // hydration) uses the configured logo/SEO instead of in-code defaults.
   const [queryClient] = useState(() => {
-    const client = new QueryClient();
+    const client = new QueryClient({
+      defaultOptions: {
+        queries: {
+          // Auto-retry transient failures (network blips, 5xx) a couple of
+          // times before any ErrorCard is shown. Don't retry hard 4xx like
+          // 404 — the resource genuinely isn't there, so retrying just delays
+          // the (now friendly) error and burns requests.
+          retry: (failureCount, error) => {
+            const status = (error as { response?: { status?: number } })
+              ?.response?.status;
+            if (status && status >= 400 && status < 500) return false;
+            return failureCount < 2;
+          },
+          retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
+          refetchOnWindowFocus: false,
+        },
+      },
+    });
     client.setQueryData(SITE_SETTINGS_QUERY_KEY, siteSettings ?? SITE_SETTINGS_DEFAULTS);
     return client;
   });

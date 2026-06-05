@@ -14,6 +14,7 @@ export default function FeaturedSneakers() {
     isLoading,
     isError,
     error,
+    refetch,
   } = useQuery({
     queryKey: ["featured-sneakers"],
     queryFn: async () => {
@@ -39,7 +40,12 @@ export default function FeaturedSneakers() {
   }
 
   if (isError) {
-    return <ErrorCard message={(error as Error).message}></ErrorCard>;
+    return (
+      <ErrorCard
+        message={(error as Error).message}
+        onRetry={() => refetch()}
+      ></ErrorCard>
+    );
   }
 
   const sourceGroupId = products?.group?.slug || products?.group?.documentId;
