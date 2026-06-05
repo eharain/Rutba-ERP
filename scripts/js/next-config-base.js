@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 'use strict';
 
+const path = require('path');
+
 /**
  * scripts/next-config-base.js — Shared Next.js configuration factory
  *
@@ -73,6 +75,12 @@ function createNextConfig(overrides = {}) {
   const base = {
     reactStrictMode: true,
     ...(process.env.NEXT_BUILD_OUTPUT ? { output: process.env.NEXT_BUILD_OUTPUT } : {}),
+    // Pin the standalone file-tracing root to the monorepo root so hoisted
+    // workspace deps (e.g. next-auth) are bundled into .next/standalone and
+    // every app's output is consistently monorepo-rooted (<app>/server.js).
+    // Without this, an app can auto-detect the app dir as root and ship a
+    // standalone that fails at runtime with "Cannot find module …".
+    outputFileTracingRoot: path.resolve(__dirname, '..', '..'),
     transpilePackages: ['@rutba/pos-shared', '@rutba/api-provider'],
     images: {
       remotePatterns: generateRemotePatterns(DEFAULT_IMAGE_URLS),

@@ -28,34 +28,23 @@ WORKDIR /app
 # ----------------------------------------------------------
 FROM base AS deps
 
-# Copy root workspace manifests
-COPY package.json package-lock.json ./
+# Copy the FULL monorepo source BEFORE installing. Some workspaces run a
+# `prepare` build during `npm install` (e.g. strapi-api-pro → `strapi-plugin
+# build`, producing dist/ that pos-strapi loads), and native deps run their
+# postinstall — both need source present, so the old "package.json only first"
+# layer-cache trick breaks here. .dockerignore keeps node_modules/.next/.git/
+# .env* out of the context. .npmrc carries legacy-peer-deps=true, required by
+# the react@19 + @strapi/strapi@5 peer set (else npm ERESOLVEs).
+COPY . .
 
-# Copy every workspace's package.json so npm can resolve them
-COPY packages/pos-shared/package.json  packages/pos-shared/
-COPY pos-strapi/package.json           pos-strapi/
-COPY pos-auth/package.json             pos-auth/
-COPY pos-stock/package.json            pos-stock/
-COPY pos-sale/package.json             pos-sale/
-COPY pos-desk/package.json             pos-desk/
-COPY rutba-web/package.json            rutba-web/
-COPY rutba-web-user/package.json       rutba-web-user/
-COPY rutba-order-management/package.json rutba-order-management/
-COPY rutba-rider/package.json          rutba-rider/
-COPY rutba-social/package.json         rutba-social/
-COPY rutba-crm/package.json            rutba-crm/
-COPY rutba-hr/package.json             rutba-hr/
-COPY rutba-accounts/package.json       rutba-accounts/
-COPY rutba-payroll/package.json        rutba-payroll/
-COPY rutba-cms/package.json            rutba-cms/
-
-RUN npm ci
+# `npm install` (not `npm ci`) so a slightly stale lockfile reconciles in-image
+# — matches the production systemd deploy path (rutba_deploy.sh uses npm install).
+RUN npm install --no-audit --no-fund
 
 # ----------------------------------------------------------
-# 2.  Source — copy all source code on top of deps
+# 2.  Source — full source already present in deps (alias stage)
 # ----------------------------------------------------------
 FROM deps AS source
-COPY . .
 
 # ============================================================
 #  STRAPI
@@ -128,6 +117,12 @@ ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
     GOOGLE_CLIENT_KEY=$WEB_GOOGLE_CLIENT_KEY \
     GOOGLE_SECRET_KEY=$WEB_GOOGLE_SECRET_KEY
 
+# Docker runtime stages run each app as a Next.js standalone server
+# (COPY .next/standalone + `node server.js`). The shared next-config-base only
+# emits output:'standalone' when NEXT_BUILD_OUTPUT is set — so set it here for
+# every app build. (The systemd path instead uses `next start`, hence unset there.)
+ENV NEXT_BUILD_OUTPUT=standalone
+
 # ============================================================
 #  NEXT.JS APP STAGES
 # ============================================================
@@ -180,15 +175,26 @@ CMD ["node", "pos-sale/server.js"]
 #  rutba-web
 # ----------------------------------------------------------
 FROM build-env AS web-build
+# rutba-web runs via `next start` (NOT standalone). Turbopack's standalone
+# externalization is broken in Next 16.2 — every externalized node_modules
+# package (next-auth, axios, @radix-ui/*, …) is emitted as an unresolvable
+# hashed specifier (<pkg>-<hash>) that fails at runtime. Unset standalone so a
+# normal .next build is produced (flatten-standalone then no-ops), and serve it
+# with `next start`, exactly how the systemd production path runs it.
+ENV NEXT_BUILD_OUTPUT=
 RUN mkdir -p rutba-web/public && npm run build --workspace=rutba-web
 
 FROM base AS web
 WORKDIR /app
 ENV NODE_ENV=production HOSTNAME=0.0.0.0
-COPY --from=web-build /app/rutba-web/.next/standalone ./
-COPY --from=web-build /app/rutba-web/.next/static     ./rutba-web/.next/static
-COPY --from=web-build /app/rutba-web/public            ./rutba-web/public
-CMD ["node", "rutba-web/server.js"]
+# Full app + hoisted node_modules (workspace symlinks resolve into ./packages).
+COPY --from=web-build /app/node_modules ./node_modules
+COPY --from=web-build /app/package.json ./package.json
+COPY --from=web-build /app/packages     ./packages
+COPY --from=web-build /app/scripts      ./scripts
+COPY --from=web-build /app/rutba-web    ./rutba-web
+WORKDIR /app/rutba-web
+CMD ["sh", "-c", "node /app/node_modules/next/dist/bin/next start -H 0.0.0.0 -p ${PORT:-4000}"]
 
 # ----------------------------------------------------------
 #  rutba-web-user

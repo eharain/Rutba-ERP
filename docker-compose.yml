@@ -68,6 +68,18 @@ services:
       JWT_SECRET: ${STRAPI_JWT_SECRET}
       ENCRYPTION_KEY: ${STRAPI_ENCRYPTION_KEY}
       CORS_ORIGINS: ${CORS_ORIGINS}
+      # Public https origin Strapi advertises in absolute URLs (uploads,
+      # password-reset links). Empty in dev → Strapi computes from host/port.
+      # Behind Caddy in prod set STRAPI_PUBLIC_URL=https://api.rutba.pk.
+      PUBLIC_URL: ${STRAPI_PUBLIC_URL:-}
+      # Trust X-Forwarded-* from the reverse proxy. false in dev, true in prod.
+      IS_PROXIED: ${STRAPI_IS_PROXIED:-false}
+      # Email (nodemailer) — empty in dev falls back to config defaults.
+      EMAIL_HOST: ${STRAPI_EMAIL_HOST:-}
+      EMAIL_PORT: ${STRAPI_EMAIL_PORT:-}
+      EMAIL_USER: ${STRAPI_EMAIL_USER:-}
+      EMAIL_PASS: ${STRAPI_EMAIL_PASS:-}
+      EMAIL_FROM: ${STRAPI_EMAIL_FROM:-}
       NODE_ENV: production
     volumes:
       - strapi_uploads:/app/pos-strapi/public/uploads
