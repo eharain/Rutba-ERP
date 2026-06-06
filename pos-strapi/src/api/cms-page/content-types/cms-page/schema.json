@@ -38,6 +38,10 @@
         "images"
       ]
     },
+    "featured_image_show_overlay": {
+      "type": "boolean",
+      "default": true
+    },
     "gallery": {
       "type": "media",
       "multiple": true,

@@ -161,7 +161,10 @@ export default function CmsPageContent({
                   />
                 );
               }
-              case "featured-image":
+              case "featured-image": {
+              // Overlay (gradient + title/excerpt) is on by default; editors can
+              // turn it off for images that already carry their own baked-in text.
+              const showOverlay = page.featured_image_show_overlay ?? true;
               return (
                 <section
                   key={section.key}
@@ -172,26 +175,31 @@ export default function CmsPageContent({
                     className="absolute inset-0 w-full h-full object-cover"
                     alt={page.title}
                   />
-                  <div
-                    aria-hidden
-                    className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/30 to-black/10"
-                  />
-                  <div className="relative h-full container-fluid flex flex-col justify-end pb-12 md:pb-20">
-                    <p className="text-white/80 text-xs md:text-sm uppercase tracking-[0.22em] font-semibold mb-3">
-                      {page.page_type === "shop" ? "Collection" : page.page_type || "Featured"}
-                    </p>
-                    <h1 className="font-display text-white text-4xl md:text-6xl lg:text-7xl font-bold leading-[1.02] max-w-4xl drop-shadow-sm">
-                      {page.title}
-                    </h1>
-                    {page.excerpt && (
+                  {showOverlay && (
+                    <>
                       <div
-                        className="mt-4 max-w-2xl text-white/85 text-base md:text-lg prose prose-invert prose-sm md:prose-base"
-                        dangerouslySetInnerHTML={{ __html: renderMarkdown(page.excerpt) }}
+                        aria-hidden
+                        className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/30 to-black/10"
                       />
-                    )}
-                  </div>
+                      <div className="relative h-full container-fluid flex flex-col justify-end pb-12 md:pb-20">
+                        <p className="text-white/80 text-xs md:text-sm uppercase tracking-[0.22em] font-semibold mb-3">
+                          {page.page_type === "shop" ? "Collection" : page.page_type || "Featured"}
+                        </p>
+                        <h1 className="font-display text-white text-4xl md:text-6xl lg:text-7xl font-bold leading-[1.02] max-w-4xl drop-shadow-sm">
+                          {page.title}
+                        </h1>
+                        {page.excerpt && (
+                          <div
+                            className="mt-4 max-w-2xl text-white/85 text-base md:text-lg prose prose-invert prose-sm md:prose-base"
+                            dangerouslySetInnerHTML={{ __html: renderMarkdown(page.excerpt) }}
+                          />
+                        )}
+                      </div>
+                    </>
+                  )}
                 </section>
               );
+            }
             case "excerpt":
               return (
                 <section key={section.key} className="py-16 md:py-20">
