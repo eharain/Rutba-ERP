@@ -20,6 +20,7 @@ const LINK_POPULATE = {
   page_group: { fields: ['name', 'slug'] },
   product_group: { fields: ['name', 'slug'] },
   mega_category_group: {
+    fields: ['name'],
     populate: {
       categories: {
         ...PUBLISHED_FILTER,
@@ -29,6 +30,7 @@ const LINK_POPULATE = {
     },
   },
   mega_brand_group: {
+    fields: ['name'],
     populate: {
       brands: {
         ...PUBLISHED_FILTER,
@@ -74,9 +76,31 @@ function resolveHref(item) {
   }
 }
 
+// When an item has no explicit label, fall back to the name/title of the
+// entity it points to so authors can leave the label blank and still get a
+// sensible nav caption that tracks the target's current name.
+function deriveLabel(item) {
+  switch (item.link_kind) {
+    case 'cms_page':
+      return item.cms_page?.title || null;
+    case 'page_group':
+      return item.page_group?.name || null;
+    case 'product_group':
+      return item.product_group?.name || null;
+    case 'mega':
+      return item.mega_category_group?.name || item.mega_brand_group?.name || null;
+    case 'collection':
+      return item.collection_slug || null;
+    case 'url':
+      return item.url || null;
+    default:
+      return null;
+  }
+}
+
 function resolveItem(item, withChildren = true) {
   const node = {
-    label: item.label,
+    label: item.label || deriveLabel(item) || '',
     kind: item.link_kind,
     href: resolveHref(item),
     openInNew: !!item.open_in_new,
@@ -112,7 +136,7 @@ module.exports = createCoreService('api::cms-menu.cms-menu', ({ strapi }) => ({
     const menus = await strapi.documents('api::cms-menu.cms-menu').findMany({
       filters: { enabled: { $eq: true } },
       status: 'published',
-      fields: ['name', 'slug', 'title', 'position'],
+      fields: ['name', 'slug', 'title', 'position', 'is_default'],
       populate: {
         items: { ...PUBLISHED_FILTER, populate: ITEM_POPULATE },
         pages: { fields: ['slug'] },
@@ -137,6 +161,11 @@ module.exports = createCoreService('api::cms-menu.cms-menu', ({ strapi }) => ({
         slug: menu.slug,
         title: menu.title || null,
         position: menu.position,
+        // Explicit default occupier for its position (applies to every page
+        // that doesn't assign its own menu for the position).
+        isDefault: !!menu.is_default,
+        // Back-compat: a menu with no page assignments is also treated as a
+        // site-wide default for its position.
         global: pageSlugs.length === 0,
         pageSlugs,
         items: topLevel,

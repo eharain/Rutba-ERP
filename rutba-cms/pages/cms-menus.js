@@ -97,7 +97,10 @@ export default function CmsMenus() {
                                     <tr key={m.id}>
                                         <td>{m.name}</td>
                                         <td><code>{m.slug}</code></td>
-                                        <td><span className={`badge ${POSITION_BADGE[m.position] || "bg-light text-dark"}`}>{m.position}</span></td>
+                                        <td>
+                                            <span className={`badge ${POSITION_BADGE[m.position] || "bg-light text-dark"}`}>{m.position}</span>
+                                            {m.is_default && <span className="badge bg-warning text-dark ms-1" title="Default for this position">default</span>}
+                                        </td>
                                         <td><span className="badge bg-primary">{(m.items || []).length}</span></td>
                                         <td>{m.enabled ? <i className="fas fa-check text-success"></i> : <i className="fas fa-times text-muted"></i>}</td>
                                         <td>

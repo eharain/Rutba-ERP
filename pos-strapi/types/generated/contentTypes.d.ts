@@ -1431,7 +1431,7 @@ export interface ApiCmsMenuItemCmsMenuItem extends Struct.CollectionTypeSchema {
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     icon_image: Schema.Attribute.Media<'images'>;
-    label: Schema.Attribute.String & Schema.Attribute.Required;
+    label: Schema.Attribute.String;
     link_kind: Schema.Attribute.Enumeration<
       ['cms_page', 'page_group', 'product_group', 'collection', 'url', 'mega']
     > &
@@ -1489,6 +1489,7 @@ export interface ApiCmsMenuCmsMenu extends Struct.CollectionTypeSchema {
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     enabled: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    is_default: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     items: Schema.Attribute.Relation<
       'oneToMany',
       'api::cms-menu-item.cms-menu-item'

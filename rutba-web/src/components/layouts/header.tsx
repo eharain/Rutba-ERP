@@ -185,9 +185,7 @@ export default function Header({ pageMenus }: { pageMenus?: PageMenuRef[] }) {
                 />
               )}
 
-              {topMenu ? (
-                <TopMenu items={topMenu.items} />
-              ) : (
+              {!topMenu && (
                 <NavigationMenu className="hidden md:block">
                   <NavigationMenuList className="gap-0.5">
                     {categories.length > 0 && (
@@ -309,6 +307,14 @@ export default function Header({ pageMenus }: { pageMenus?: PageMenuRef[] }) {
             </div>
           </div>
         </div>
+
+        {topMenu && topMenu.items.length > 0 && (
+          <div className="hidden md:block border-t border-border bg-background/95">
+            <div className="container-fluid">
+              <TopMenu items={topMenu.items} />
+            </div>
+          </div>
+        )}
       </header>
     </>
   );

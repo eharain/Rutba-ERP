@@ -13,8 +13,7 @@
   "pluginOptions": {},
   "attributes": {
     "label": {
-      "type": "string",
-      "required": true
+      "type": "string"
     },
     "order": {
       "type": "integer",

@@ -37,6 +37,10 @@
       "type": "boolean",
       "default": true
     },
+    "is_default": {
+      "type": "boolean",
+      "default": false
+    },
     "items": {
       "type": "relation",
       "relation": "oneToMany",

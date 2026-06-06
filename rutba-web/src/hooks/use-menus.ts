@@ -21,11 +21,13 @@ export function useMenus(): MenuInterface[] {
 
 /**
  * Resolve the menu for a position, honouring per-page assignments:
- *   1. a menu assigned to this page (by slug) for the position, else
- *   2. the site-wide default (a `global` menu of that position), else
- *   3. the first menu of that position.
+ *   1. a menu assigned to this page (by slug) for the position — the page
+ *      "occupies" the position, so the default does not apply, else
+ *   2. the menu explicitly marked as default for that position, else
+ *   3. the site-wide default (a `global` menu of that position), else
+ *   4. the first menu of that position.
  * `pageMenus` is the current page's `menus` (slug + position); omit for
- * non-CMS routes to always get the global default.
+ * non-CMS routes to always get the default.
  */
 export function pickMenuForPosition(
   menus: MenuInterface[],
@@ -38,6 +40,7 @@ export function pickMenuForPosition(
     if (full) return full;
   }
   return (
+    menus.find((m) => m.position === position && m.isDefault) ??
     menus.find((m) => m.position === position && m.global) ??
     menus.find((m) => m.position === position)
   );
