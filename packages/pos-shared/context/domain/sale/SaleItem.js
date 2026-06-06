@@ -159,7 +159,7 @@ export default class SaleItem {
 
 
     setQuantity(qty) {
-        const netQty = Math.max(1, Math.floor(Number(qty) || 1));
+        let netQty = Math.max(1, Math.floor(Number(qty) || 1));
 
         if (!Array.isArray(this.items)) {
             this.items = [];
