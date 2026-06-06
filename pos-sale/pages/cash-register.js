@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/router";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
@@ -15,6 +16,7 @@ function hoursOpen(register) {
 }
 
 export default function CashRegisterPage() {
+    const router = useRouter();
     const { branch, desk, user, currency, setCashRegister, ensureBranchDesk } = useUtil();
     const { adminAppAccess, activeRoleKey } = useAuth();
     const userIsAdmin = isAppAdmin(adminAppAccess, AppContextEndpoints.getAppName());
@@ -25,8 +27,12 @@ export default function CashRegisterPage() {
     const [openingCash, setOpeningCash] = useState("");
     // Close-day split: cash physically left in the drawer (becomes next session's
     // float) vs cash drawn out (deposited / removed). Counted total = left + drawn.
+    // They complete each other against the expected total — filling one derives
+    // the other, until the user manually edits that other field.
     const [cashLeft, setCashLeft] = useState("");
     const [cashDrawn, setCashDrawn] = useState("");
+    const [leftEdited, setLeftEdited] = useState(false);
+    const [drawnEdited, setDrawnEdited] = useState(false);
     const [registerPayments, setRegisterPayments] = useState([]);
     const [registerTransactions, setRegisterTransactions] = useState([]);
     const [paymentsLoading, setPaymentsLoading] = useState(false);
@@ -200,6 +206,20 @@ export default function CashRegisterPage() {
     );
     const hasCountInput = cashLeft !== "" || cashDrawn !== "";
     const difference = useMemo(() => countedTotal - expectedCash, [expectedCash, countedTotal]);
+
+    // Left + Drawn complete each other against expected cash. Filling one fills
+    // the other (= expected − entered), until the user edits that other field.
+    const roundCash = (n) => String(Math.max(Math.round(n * 100) / 100, 0));
+    const handleLeftChange = (v) => {
+        setCashLeft(v);
+        setLeftEdited(v !== "");
+        if (!drawnEdited) setCashDrawn(v === "" ? "" : roundCash(expectedCash - Number(v || 0)));
+    };
+    const handleDrawnChange = (v) => {
+        setCashDrawn(v);
+        setDrawnEdited(v !== "");
+        if (!leftEdited) setCashLeft(v === "" ? "" : roundCash(expectedCash - Number(v || 0)));
+    };
     const isExpired = activeRegister?.status === 'Expired';
     const warningHours = useMemo(() => {
         const hrs = hoursOpen(activeRegister);
@@ -315,10 +335,15 @@ export default function CashRegisterPage() {
                 });
             setCashLeft("");
             setCashDrawn("");
+            setLeftEdited(false);
+            setDrawnEdited(false);
             setClosingNotes("");
             setCashRegister(null);
             setActiveRegister(null);
-            await loadActiveRegister();
+            // A closed register is no longer "current" — send the user to the
+            // Cash Registers list, where it now appears in history and a new
+            // register can be opened explicitly.
+            router.push("/cash-register-history");
         } catch (err) {
             console.error("Failed to close register", err);
             const msg = err?.response?.data?.error?.message || "Failed to close register";
@@ -366,16 +391,9 @@ export default function CashRegisterPage() {
                             <h4 className="mb-0"><i className="fas fa-cash-register me-2"></i>Cash Register</h4>
                             {locationLabel && <div className="text-muted small">{locationLabel}</div>}
                         </div>
-                        {userIsPrivileged && (
-                            <div className="d-flex gap-1">
-                                <Link href="/cash-register-report" className="btn btn-outline-warning btn-sm">
-                                    <i className="fas fa-triangle-exclamation me-1"></i>Report
-                                </Link>
-                                <Link href="/cash-register-history" className="btn btn-outline-secondary btn-sm">
-                                    <i className="fas fa-history me-1"></i>History
-                                </Link>
-                            </div>
-                        )}
+                        <Link href="/cash-register-history" className="btn btn-outline-secondary btn-sm">
+                            <i className="fas fa-list me-1"></i>Cash Registers
+                        </Link>
                     </div>
 
                     {isExpired && activeRegister && (
@@ -540,14 +558,14 @@ export default function CashRegisterPage() {
                                                 <div className="input-group input-group-sm">
                                                     <span className="input-group-text" title="Cash left in the drawer for the next session"><i className="fas fa-box-open"></i></span>
                                                     <input type="number" step="0.01" min="0" className="form-control" value={cashLeft}
-                                                        onChange={(e) => setCashLeft(e.target.value)} placeholder="Left in drawer" required />
+                                                        onChange={(e) => handleLeftChange(e.target.value)} placeholder="Left in drawer" required />
                                                 </div>
                                             </div>
                                             <div className="col-6 col-md-2">
                                                 <div className="input-group input-group-sm">
                                                     <span className="input-group-text" title="Cash drawn out / deposited at close"><i className="fas fa-hand-holding-usd"></i></span>
                                                     <input type="number" step="0.01" min="0" className="form-control" value={cashDrawn}
-                                                        onChange={(e) => setCashDrawn(e.target.value)} placeholder="Drawn out" />
+                                                        onChange={(e) => handleDrawnChange(e.target.value)} placeholder="Drawn out" />
                                                 </div>
                                             </div>
                                             <div className="col-auto small">

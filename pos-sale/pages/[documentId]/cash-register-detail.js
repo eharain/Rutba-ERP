@@ -283,7 +283,7 @@ export default function CashRegisterDetailPage() {
                             </div>
                         </div>
                         <Link href="/cash-register-history" className="btn btn-outline-secondary btn-sm">
-                            <i className="fas fa-arrow-left me-1"></i>Back to History
+                            <i className="fas fa-arrow-left me-1"></i>All Registers
                         </Link>
                     </div>
 

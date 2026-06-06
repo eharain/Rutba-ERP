@@ -200,7 +200,7 @@ export default function CashRegisterReportPage() {
                         </div>
                         <div className="d-flex gap-1">
                             <Link href="/cash-register-history" className="btn btn-outline-secondary btn-sm">
-                                <i className="fas fa-history me-1"></i>History
+                                <i className="fas fa-list me-1"></i>All Registers
                             </Link>
                             <Link href="/cash-register" className="btn btn-outline-primary btn-sm">
                                 <i className="fas fa-cash-register me-1"></i>Current Register

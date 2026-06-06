@@ -12,7 +12,7 @@ import ListPagination from "@rutba/pos-shared/components/ListPagination";
 const STATUS_OPTIONS = ["Active", "Open", "Closed", "Expired", "Cancelled"];
 
 export default function CashRegisterHistoryPage() {
-    const { currency } = useUtil();
+    const { currency, desk, user } = useUtil();
     const { adminAppAccess } = useAuth();
     const userIsAdmin = isAppAdmin(adminAppAccess, AppContextEndpoints.getAppName());
     const [registers, setRegisters] = useState([]);
@@ -20,6 +20,30 @@ export default function CashRegisterHistoryPage() {
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
     const [total, setTotal] = useState(0);
+
+    // Current-register pointer for this desk/user (drives the hub banner).
+    const [current, setCurrent] = useState(null);        // active register | null
+    const [currentExpired, setCurrentExpired] = useState(null);
+    const [currentLoaded, setCurrentLoaded] = useState(false);
+
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            try {
+                const userId = user?.documentId ?? user?.id;
+                if (!desk?.id && !userId) { setCurrentLoaded(true); return; }
+                const res = await CashRegistersEndpoints.fetchActive({ deskId: desk?.id, userId });
+                if (cancelled) return;
+                setCurrent(res?.data ?? null);
+                setCurrentExpired(res?.meta?.expired ?? null);
+            } catch (e) {
+                if (!cancelled) { setCurrent(null); setCurrentExpired(null); }
+            } finally {
+                if (!cancelled) setCurrentLoaded(true);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [desk?.id, user?.documentId, user?.id]);
 
     // Filters
     const [filterStatus, setFilterStatus] = useState("");
@@ -126,14 +150,46 @@ export default function CashRegisterHistoryPage() {
             <Link href="/cash-register-report" className="btn btn-outline-warning btn-sm">
                 <i className="fas fa-triangle-exclamation me-1"></i>Report
             </Link>
-            <Link href="/cash-register" className="btn btn-outline-primary btn-sm">
-                <i className="fas fa-cash-register me-1"></i>Current Register
-            </Link>
+            {current ? (
+                <Link href="/cash-register" className="btn btn-primary btn-sm">
+                    <i className="fas fa-cash-register me-1"></i>Current Register
+                </Link>
+            ) : (
+                <Link href="/cash-register" className="btn btn-success btn-sm">
+                    <i className="fas fa-plus me-1"></i>New Register
+                </Link>
+            )}
         </div>
     );
 
     const title = (
-        <h4 className="mb-0"><i className="fas fa-history me-2"></i>Cash Register History</h4>
+        <h4 className="mb-0"><i className="fas fa-money-bill-wave me-2"></i>Cash Registers</h4>
+    );
+
+    // Hub banner: where's "current"? active → open it; expired → close it; none → open new.
+    const currentBanner = !currentLoaded ? null : current ? (
+        <div className="alert alert-success py-2 d-flex align-items-center justify-content-between mb-2">
+            <span>
+                <i className="fas fa-circle-check me-2"></i>
+                <strong>Register #{current.id}</strong> is open on {current.desk_name || `Desk ${current.desk_id}`}
+                {current.opened_at ? ` since ${new Date(current.opened_at).toLocaleString()}` : ''}
+                {' '}· Opening {fmt(current.opening_cash)}
+            </span>
+            <Link href="/cash-register" className="btn btn-sm btn-light">Open <i className="fas fa-arrow-right ms-1"></i></Link>
+        </div>
+    ) : currentExpired ? (
+        <div className="alert alert-danger py-2 d-flex align-items-center justify-content-between mb-2">
+            <span>
+                <i className="fas fa-exclamation-triangle me-2"></i>
+                Register #{currentExpired.id} <strong>expired</strong> and is still open — close it before starting a new one.
+            </span>
+            <Link href="/cash-register" className="btn btn-sm btn-light">Close it <i className="fas fa-arrow-right ms-1"></i></Link>
+        </div>
+    ) : (
+        <div className="alert alert-secondary py-2 d-flex align-items-center justify-content-between mb-2">
+            <span><i className="fas fa-circle-info me-2"></i>No open register on this desk.</span>
+            <Link href="/cash-register" className="btn btn-sm btn-success"><i className="fas fa-plus me-1"></i>Open New Register</Link>
+        </div>
     );
 
     return (
@@ -157,6 +213,7 @@ export default function CashRegisterHistoryPage() {
                     }
                     emptyState={<div>No registers found.</div>}
                 >
+                    {currentBanner}
                     <div className="table-responsive">
                         <table className="table table-hover list-table">
                             <thead>

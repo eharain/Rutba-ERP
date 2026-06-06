@@ -33,18 +33,18 @@ export default function Home() {
                     <div className="col-md-4">
                         <div className="card border-success h-100">
                             <div className="card-body">
-                                <h5 className="card-title"><i className="fas fa-cash-register me-2 text-success"></i>Cash Register</h5>
-                                <p className="card-text text-muted">Open, close, and monitor register activity for daily POS operations.</p>
-                                <Link className="btn btn-outline-success btn-sm" href="/cash-register">Open Register</Link>
+                                <h5 className="card-title"><i className="fas fa-money-bill-wave me-2 text-success"></i>Cash Registers</h5>
+                                <p className="card-text text-muted">Browse all register sessions, see the current one, and audit cash movement.</p>
+                                <Link className="btn btn-outline-success btn-sm" href="/cash-register-history">All Registers</Link>
                             </div>
                         </div>
                     </div>
                     <div className="col-md-4">
                         <div className="card border-warning h-100">
                             <div className="card-body">
-                                <h5 className="card-title"><i className="fas fa-history me-2 text-warning"></i>Register History</h5>
-                                <p className="card-text text-muted">Review previous register sessions and audit cash movement history.</p>
-                                <Link className="btn btn-outline-warning btn-sm" href="/cash-register-history">View History</Link>
+                                <h5 className="card-title"><i className="fas fa-cash-register me-2 text-warning"></i>Current Register</h5>
+                                <p className="card-text text-muted">Open, monitor, and close the active register for daily POS operations.</p>
+                                <Link className="btn btn-outline-warning btn-sm" href="/cash-register">Open / Current</Link>
                             </div>
                         </div>
                     </div>

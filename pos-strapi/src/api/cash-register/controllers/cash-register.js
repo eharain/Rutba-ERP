@@ -157,7 +157,9 @@ module.exports = createCoreController('api::cash-register.cash-register', ({ str
         data: { status: 'Expired' },
       });
       register.status = 'Expired';
-      return ctx.send({ data: null, meta: { expired: register } });
+      let carryover = null;
+      try { carryover = await getDeskCarryover(strapi, desk_id); } catch (_) { /* best-effort */ }
+      return ctx.send({ data: null, meta: { expired: register, carryover } });
     }
 
     // If no active register, look for unclosed expired registers
@@ -191,7 +193,9 @@ module.exports = createCoreController('api::cash-register.cash-register', ({ str
         expired = byUser[0] ?? null;
       }
       if (expired) {
-        return ctx.send({ data: null, meta: { expired } });
+        let carryover = null;
+        try { carryover = await getDeskCarryover(strapi, desk_id); } catch (_) { /* best-effort */ }
+        return ctx.send({ data: null, meta: { expired, carryover } });
       }
     }
 

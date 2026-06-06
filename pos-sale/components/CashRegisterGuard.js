@@ -55,6 +55,7 @@ export default function CashRegisterGuard({ children }) {
 
     const [status, setStatus] = useState('loading'); // loading | ok | no-register | expired | no-desk
     const [expiredRegister, setExpiredRegister] = useState(null);
+    const [carryover, setCarryover] = useState(null);
     const [crossDesk, setCrossDesk] = useState(false);
     const [warningHours, setWarningHours] = useState(null);
     const [showModal, setShowModal] = useState(false);
@@ -81,6 +82,8 @@ export default function CashRegisterGuard({ children }) {
         try {
             const res = await CashRegistersEndpoints.fetchActive({ deskId: desk?.id, userId });
             const register = res?.data ?? null;
+            // Previous session's leftover — used to pre-fill + verify the new float.
+            setCarryover(res?.meta?.carryover ?? null);
 
             if (res?.meta?.expired) {
                 setExpiredRegister(res.meta.expired);
@@ -171,6 +174,7 @@ export default function CashRegisterGuard({ children }) {
                     onOpened={() => { setShowModal(false); checkRegister(); }}
                     status={status}
                     expiredRegister={expiredRegister}
+                    carryover={carryover}
                 />
             )}
         </CashRegisterContext.Provider>
@@ -179,11 +183,24 @@ export default function CashRegisterGuard({ children }) {
 
 // ── Open Register Modal ───────────────────────────────────────
 
-function OpenRegisterModal({ onClose, onOpened, status, expiredRegister }) {
+function OpenRegisterModal({ onClose, onOpened, status, expiredRegister, carryover }) {
     const { desk, branch, user, setCashRegister, currency } = useUtil();
-    const [openingCash, setOpeningCash] = useState('');
+    const carryAmount = carryover && carryover.amount != null ? Number(carryover.amount) : null;
+    // Pre-fill the float from the previous session's leftover so the common
+    // "drawer unchanged" case is one click — but the cashier must still verify
+    // the physical count, and any change away from it is flagged.
+    const [openingCash, setOpeningCash] = useState(carryAmount != null ? String(carryAmount) : '');
+    const [verified, setVerified] = useState(false);
     const [opening, setOpening] = useState(false);
     const [error, setError] = useState(null);
+
+    const fmtAmt = (v) => `${currency}${Number(v || 0).toFixed(2)}`;
+    const sourceLabel = carryover?.source === 'left' ? 'left in the drawer'
+        : carryover?.source === 'counted' ? 'counted at close'
+        : carryover?.source === 'expected' ? 'expected (never counted)'
+        : '';
+    const enteredNum = Number(openingCash || 0);
+    const mismatch = carryAmount != null && openingCash !== '' && Math.abs(enteredNum - carryAmount) >= 0.01;
 
     const handleOpen = async (e) => {
         e.preventDefault();
@@ -240,8 +257,29 @@ function OpenRegisterModal({ onClose, onOpened, status, expiredRegister }) {
                                 ? 'Open a new register to continue processing payments.'
                                 : 'No active cash register found. Open one to process payments.'}
                         </p>
+
+                        {/* Previous session's leftover — the float to verify against */}
+                        {carryAmount != null ? (
+                            <div className="alert alert-info py-2 d-flex align-items-center justify-content-between">
+                                <span>
+                                    <i className="fas fa-arrow-right-arrow-left me-2"></i>
+                                    Previous register{carryover?.registerId ? ` #${carryover.registerId}` : ''} {sourceLabel}:{' '}
+                                    <strong>{fmtAmt(carryAmount)}</strong>
+                                </span>
+                                <button type="button" className="btn btn-sm btn-outline-primary"
+                                    onClick={() => setOpeningCash(String(carryAmount))} disabled={opening}>
+                                    Use
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="alert alert-light border py-2 small mb-3">
+                                <i className="fas fa-circle-info me-1"></i>
+                                No reconciled previous register found for this desk — confirm the starting cash manually.
+                            </div>
+                        )}
+
                         <form onSubmit={handleOpen}>
-                            <div className="mb-3">
+                            <div className="mb-2">
                                 <label className="form-label fw-semibold">Opening Cash</label>
                                 <div className="input-group">
                                     <span className="input-group-text">{currency}</span>
@@ -250,8 +288,27 @@ function OpenRegisterModal({ onClose, onOpened, status, expiredRegister }) {
                                         disabled={opening} autoFocus />
                                 </div>
                             </div>
+
+                            {mismatch && (
+                                <div className="alert alert-warning py-2 small">
+                                    <i className="fas fa-exclamation-triangle me-1"></i>
+                                    Opening {fmtAmt(enteredNum)} doesn't match the previous {fmtAmt(carryAmount)}{' '}
+                                    ({enteredNum > carryAmount ? 'over' : 'short'} by {fmtAmt(Math.abs(enteredNum - carryAmount))}).
+                                    This will be recorded on the new register.
+                                </div>
+                            )}
+
+                            <div className="form-check mb-3">
+                                <input className="form-check-input" type="checkbox" id="verifyFloat"
+                                    checked={verified} onChange={(e) => setVerified(e.target.checked)} disabled={opening} />
+                                <label className="form-check-label small" htmlFor="verifyFloat">
+                                    I have physically counted the cash and verified the opening float
+                                    {carryAmount != null ? ' against the previous register.' : '.'}
+                                </label>
+                            </div>
+
                             {error && <div className="alert alert-danger py-2">{error}</div>}
-                            <button className="btn btn-success w-100" type="submit" disabled={opening}>
+                            <button className="btn btn-success w-100" type="submit" disabled={opening || !verified}>
                                 {opening
                                     ? <><span className="spinner-border spinner-border-sm me-2"></span>Opening...</>
                                     : <><i className="fas fa-cash-register me-2"></i>Open Cash Register</>}
