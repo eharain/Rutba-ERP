@@ -16,6 +16,10 @@ export interface CmsPageInterface {
   updatedAt: string;
   publishedAt: string;
   featured_image?: ImageInterface;
+  /** When false, the storefront hides the title/excerpt overlay drawn on top
+   *  of the featured image (use for images that already contain their own text).
+   *  Absent/true → overlay is shown. */
+  featured_image_show_overlay?: boolean;
   background_image?: ImageInterface;
   seo_meta?: SeoMetaInterface;
 }

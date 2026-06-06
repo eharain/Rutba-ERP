@@ -97,7 +97,7 @@ export const CmsPagesEndpoints = {
         approle: ['admin', 'manager', 'staff', 'public', 'user'],
         params: {
             filters: { slug: { $eq: slug } },
-            fields: ['title', 'slug', 'excerpt', 'content', 'page_type', 'sort_order', 'enable_contact_form', 'createdAt', 'updatedAt', 'publishedAt', 'excerpt_priority', 'featured_image_priority', 'content_priority', 'product_groups_priority', 'gallery_priority', 'related_pages_priority'],
+            fields: ['title', 'slug', 'excerpt', 'content', 'page_type', 'sort_order', 'enable_contact_form', 'createdAt', 'updatedAt', 'publishedAt', 'excerpt_priority', 'featured_image_priority', 'content_priority', 'product_groups_priority', 'gallery_priority', 'related_pages_priority', 'featured_image_show_overlay'],
             populate: {
                 featured_image: true, background_image: true, gallery: true,
                 hero_product_groups: { populate: { cover_image: true, offers: true, products: { populate: { gallery: true, logo: true, brands: true, categories: true, variants: { populate: { terms: { populate: { term_types: true } } } } } } } },

@@ -1589,6 +1589,8 @@ export interface ApiCmsPageCmsPage extends Struct.CollectionTypeSchema {
     featured_image: Schema.Attribute.Media<'images'>;
     featured_image_priority: Schema.Attribute.Integer &
       Schema.Attribute.DefaultTo<0>;
+    featured_image_show_overlay: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<true>;
     footer: Schema.Attribute.Relation<
       'manyToOne',
       'api::cms-footer.cms-footer'

@@ -149,6 +149,7 @@ export default function CmsPageDetail() {
     const [priorities, setPriorities] = useState(() => ({ ...DEFAULT_PRIORITIES }));
 
     const [featuredImageId, setFeaturedImageId] = useState(null);
+    const [featuredImageShowOverlay, setFeaturedImageShowOverlay] = useState(true);
     const [backgroundImageId, setBackgroundImageId] = useState(null);
     const [galleryIds, setGalleryIds] = useState([]);
 
@@ -198,6 +199,7 @@ export default function CmsPageDetail() {
                 setFooterId(p.footer?.documentId || "");
                 setPriorities(readPriorities(p));
                 setFeaturedImageId(p.featured_image?.id || null);
+                setFeaturedImageShowOverlay(p.featured_image_show_overlay !== false);
                 setBackgroundImageId(p.background_image?.id || null);
                 setSeoMeta(p.seo_meta || null);
                 setGalleryIds((p.gallery || []).map(g => g.id));
@@ -294,6 +296,7 @@ export default function CmsPageDetail() {
                     page_type: pageType,
                     sort_order: sortOrder,
                     enable_contact_form: !!enableContactForm,
+                    featured_image_show_overlay: !!featuredImageShowOverlay,
                     brand_groups: toOrderedRelation(selectedBrandGroupIds),
                     category_groups: toOrderedRelation(selectedCategoryGroupIds),
                     product_groups: toOrderedRelation(selectedGroupIds),
@@ -346,6 +349,7 @@ export default function CmsPageDetail() {
                     page_type: pageType,
                     sort_order: sortOrder,
                     enable_contact_form: !!enableContactForm,
+                    featured_image_show_overlay: !!featuredImageShowOverlay,
                     brand_groups: toOrderedRelation(selectedBrandGroupIds),
                     category_groups: toOrderedRelation(selectedCategoryGroupIds),
                     product_groups: toOrderedRelation(selectedGroupIds),
@@ -402,6 +406,7 @@ export default function CmsPageDetail() {
                     title, content, excerpt,
                     page_type: pageType, sort_order: sortOrder,
                     enable_contact_form: !!enableContactForm,
+                    featured_image_show_overlay: !!featuredImageShowOverlay,
                     brand_groups: toOrderedRelation(selectedBrandGroupIds),
                     category_groups: toOrderedRelation(selectedCategoryGroupIds),
                     product_groups: toOrderedRelation(selectedGroupIds),
@@ -435,6 +440,7 @@ export default function CmsPageDetail() {
             setFooterId(p.footer?.documentId || "");
             setPriorities(readPriorities(p));
             setFeaturedImageId(p.featured_image?.id || null);
+            setFeaturedImageShowOverlay(p.featured_image_show_overlay !== false);
             setBackgroundImageId(p.background_image?.id || null);
             setGalleryIds((p.gallery || []).map(g => g.id));
             setPage(p);
@@ -731,6 +737,20 @@ export default function CmsPageDetail() {
                                                 name={title}
                                                 onFileChange={(f, file) => setFeaturedImageId(file?.id || null)}
                                             />
+                                            <div className="form-check form-switch mt-3">
+                                                <input
+                                                    className="form-check-input"
+                                                    type="checkbox"
+                                                    role="switch"
+                                                    id="featured-image-show-overlay"
+                                                    checked={featuredImageShowOverlay}
+                                                    onChange={(e) => setFeaturedImageShowOverlay(e.target.checked)}
+                                                />
+                                                <label className="form-check-label" htmlFor="featured-image-show-overlay">
+                                                    Show title &amp; excerpt overlay text
+                                                </label>
+                                                <div className="form-text">On by default. Uncheck when the image already contains its own text — the storefront then hides the overlaid title/excerpt.</div>
+                                            </div>
                                         </div>
                                     </div>
                                     <div className="card mb-3">
