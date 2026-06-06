@@ -58,6 +58,12 @@
       "target": "api::cms-page.cms-page",
       "inversedBy": "member_page_groups"
     },
+    "displayed_on_pages": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::cms-page.cms-page",
+      "mappedBy": "page_groups"
+    },
     "seo_meta": {
       "type": "relation",
       "relation": "oneToOne",

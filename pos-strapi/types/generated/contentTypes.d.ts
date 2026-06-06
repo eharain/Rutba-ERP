@@ -1531,6 +1531,10 @@ export interface ApiCmsPageGroupCmsPageGroup
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    displayed_on_pages: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::cms-page.cms-page'
+    >;
     excerpt: Schema.Attribute.RichText;
     layout: Schema.Attribute.Enumeration<['flip-grid', 'grid', 'carousel']> &
       Schema.Attribute.DefaultTo<'flip-grid'>;

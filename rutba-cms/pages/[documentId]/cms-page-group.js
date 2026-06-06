@@ -38,7 +38,8 @@ export default function CmsPageGroupDetail() {
     const [layout, setLayout] = useState("flip-grid");
     const [columns, setColumns] = useState(3);
     const [sortOrder, setSortOrder] = useState(0);
-    const [selectedPageIds, setSelectedPageIds] = useState([]);
+    const [selectedPageIds, setSelectedPageIds] = useState([]);                  // pages rendered as flip cards INSIDE this group
+    const [selectedDisplayedOnPageIds, setSelectedDisplayedOnPageIds] = useState([]); // pages that DISPLAY this group as a section
     const [allCmsPages, setAllCmsPages] = useState([]);
     const [seoMeta, setSeoMeta] = useState(null);
 
@@ -51,6 +52,7 @@ export default function CmsPageGroupDetail() {
         setColumns(g.columns ?? 3);
         setSortOrder(g.sort_order ?? 0);
         setSelectedPageIds((g.pages || []).map(p => p.documentId));
+        setSelectedDisplayedOnPageIds((g.displayed_on_pages || []).map(p => p.documentId));
     };
 
     useEffect(() => {
@@ -60,6 +62,7 @@ export default function CmsPageGroupDetail() {
                 populate: {
                     cover_image: true,
                     pages: true,
+                    displayed_on_pages: true,
                     seo_meta: { populate: { og_image: true } },
                 },
             }),
@@ -101,6 +104,7 @@ export default function CmsPageGroupDetail() {
         columns,
         sort_order: sortOrder,
         pages: toOrderedRelation(selectedPageIds),
+        displayed_on_pages: toOrderedRelation(selectedDisplayedOnPageIds),
     });
 
     const handleSave = async () => {
@@ -247,6 +251,22 @@ export default function CmsPageGroupDetail() {
                                 title="Pages in this Group"
                                 icon="fas fa-clone"
                                 description="These pages render as flip cards (front: featured image + title, back: excerpt + open link)."
+                            />
+
+                            {/* Reverse of cms-page "Page Groups on this page" — the pages that
+                                show this group as a flip-card section. Two-way: editable here or
+                                from the page editor. Ordering on a page is controlled there. */}
+                            <PagePickerTabs
+                                allPages={allCmsPages}
+                                selectedPageIds={selectedDisplayedOnPageIds}
+                                onToggle={(docId) => setSelectedDisplayedOnPageIds(prev =>
+                                    prev.includes(docId) ? prev.filter(id => id !== docId) : [...prev, docId]
+                                )}
+                                onReorder={setSelectedDisplayedOnPageIds}
+                                onRemoveAll={() => setSelectedDisplayedOnPageIds([])}
+                                title="Displayed on Pages"
+                                icon="fas fa-clone"
+                                description="Pages that render this group as a flip-card section. Editable from either side."
                             />
                         </div>
 

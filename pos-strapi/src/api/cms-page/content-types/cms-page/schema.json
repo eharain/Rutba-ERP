@@ -78,7 +78,8 @@
     "page_groups": {
       "type": "relation",
       "relation": "manyToMany",
-      "target": "api::cms-page-group.cms-page-group"
+      "target": "api::cms-page-group.cms-page-group",
+      "inversedBy": "displayed_on_pages"
     },
     "member_page_groups": {
       "type": "relation",
