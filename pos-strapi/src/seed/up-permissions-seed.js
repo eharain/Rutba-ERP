@@ -23,6 +23,15 @@ const { pathToFileURL } = require('url');
 const ROLE_TYPE = 'rutba_app_user';
 const STANDARD_ACTIONS = ['find', 'findOne', 'create', 'update', 'delete'];
 
+// Custom (non-CRUD) controller actions referenced by api-provider descriptors.
+// UP route permissions are per-action, so each custom route handler needs its
+// own grant here. The controller stays responsible for any finer-grained
+// authorization (e.g. crm-lead.assignees checks the caller holds a CRM
+// app-role itself, because a UP grant alone admits every app user).
+const CUSTOM_ACTIONS = {
+  'api::crm-lead.crm-lead': ['assignees'],
+};
+
 function resolveApiProviderRoot(strapi) {
   const cwd = strapi?.dirs?.app?.root || process.cwd();
   try {
@@ -90,7 +99,8 @@ async function ensureUpPermissions(strapi) {
 
   let granted = 0;
   for (const uid of uids) {
-    for (const action of STANDARD_ACTIONS) {
+    const actions = [...STANDARD_ACTIONS, ...(CUSTOM_ACTIONS[uid] || [])];
+    for (const action of actions) {
       const actionUid = `${uid}.${action}`;
       if (have.has(actionUid)) continue;
       await strapi.db.query('plugin::users-permissions.permission').create({

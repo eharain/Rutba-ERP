@@ -22,6 +22,16 @@ async function update(documentId, data) {
     return authApi.put(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
+async function del(documentId) {
+    const ep = CrmLeadsEndpointsApi.del(documentId);
+    return authApi.del(withQuery(ep.path, ep.params));
+}
+
+async function listAssignees() {
+    const ep = CrmLeadsEndpointsApi.listAssignees();
+    return authApi.fetch(ep.path, ep.params);
+}
+
 const endpoints = strictEndpointGuard(
     'CrmLeadsEndpoints',
     {
@@ -29,9 +39,11 @@ const endpoints = strictEndpointGuard(
         byId,
         create,
         update,
+        del,
+        listAssignees,
         meta: CrmLeadsEndpointsApi.meta,
     },
-    ["list","byId","create","update","meta"],
+    ["list","byId","create","update","del","listAssignees","meta"],
 );
 
 export default endpoints;

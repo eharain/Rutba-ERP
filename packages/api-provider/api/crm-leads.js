@@ -56,5 +56,29 @@ export const CrmLeadsEndpoints = {
         data,
     }),
 
+    /** Descriptor: delete a CRM lead by documentId. */
+    del: (documentId) => ({
+        path: `/crm-leads/${documentId}`,
+        action: 'delete',
+        method: 'delete',
+        apps: ['crm'],
+        approle: ['admin', 'manager'],
+    }),
+
+    /**
+     * Descriptor: list users holding a CRM app-role (lead assignee picker).
+     * Custom route — returns [{ id, documentId, username, email }].
+     */
+    listAssignees: () => ({
+        path: '/crm-leads/assignees',
+        // action must equal the Strapi route handler's action name
+        // ('api::crm-lead.crm-lead.assignees') — the api-pro interceptor
+        // matches policies on it, not on the path.
+        action: 'assignees',
+        method: 'get',
+        apps: ['crm'],
+        approle: ['admin', 'manager', 'staff'],
+    }),
+
 };
 

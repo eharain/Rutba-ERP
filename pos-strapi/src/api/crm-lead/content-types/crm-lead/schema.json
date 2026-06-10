@@ -52,7 +52,9 @@
       "type": "decimal"
     },
     "assigned_to": {
-      "type": "string"
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
     },
     "notes": {
       "type": "text"

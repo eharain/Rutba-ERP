@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { CustomersEndpoints, CrmLeadsEndpoints } from '@rutba/api-provider/endpoints';
+import { CustomersEndpoints, CrmLeadsEndpoints, CrmContactsEndpoints } from '@rutba/api-provider/endpoints';
+import ContactPicker from './ContactPicker';
 
 const SOURCES = ['Website', 'Referral', 'Social Media', 'Cold Call', 'Advertisement', 'Other'];
 const STATUSES = ['New', 'Contacted', 'Qualified', 'Negotiation', 'Won', 'Lost'];
 
-export default function LeadForm({ lead, onSaved, onCancel }) {
+export default function LeadForm({ lead, contact: presetContact, onSaved, onCancel }) {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [phone, setPhone] = useState('');
@@ -13,9 +14,14 @@ export default function LeadForm({ lead, onSaved, onCancel }) {
     const [status, setStatus] = useState('New');
     const [value, setValue] = useState('');
     const [assignedTo, setAssignedTo] = useState('');
+    const [assignees, setAssignees] = useState([]);
     const [notes, setNotes] = useState('');
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState(null);
+
+    // Linked contact (crm-contact) — auto-created from the lead fields when
+    // none is picked, so every lead hangs off a contact record.
+    const [selectedContact, setSelectedContact] = useState(presetContact || null);
 
     // Customer search
     const [customerQuery, setCustomerQuery] = useState('');
@@ -32,11 +38,29 @@ export default function LeadForm({ lead, onSaved, onCancel }) {
             setSource(lead.source || '');
             setStatus(lead.status || 'New');
             setValue(lead.value != null ? String(lead.value) : '');
-            setAssignedTo(lead.assigned_to || '');
+            setAssignedTo(lead.assigned_to?.documentId || '');
             setNotes(lead.notes || '');
             setSelectedCustomer(lead.customer || null);
+            setSelectedContact(lead.contact || presetContact || null);
         }
     }, [lead]);
+
+    useEffect(() => {
+        CrmLeadsEndpoints.listAssignees()
+            .then((res) => setAssignees(res?.data || []))
+            .catch(() => setAssignees([]));
+    }, []);
+
+    // When picking a contact, prefill empty lead fields from it.
+    const handleContactChange = (c) => {
+        setSelectedContact(c);
+        if (c) {
+            if (!name && c.name) setName(c.name);
+            if (!email && c.email) setEmail(c.email);
+            if (!phone && c.phone) setPhone(c.phone);
+            if (!company && c.company) setCompany(c.company);
+        }
+    };
 
     useEffect(() => {
         if (!customerQuery || customerQuery.length < 2) {
@@ -46,7 +70,7 @@ export default function LeadForm({ lead, onSaved, onCancel }) {
         const timer = setTimeout(async () => {
             setSearchingCustomer(true);
             try {
-                const res = await CustomersEndpoints.fetchSearch(customerQuery, 10);
+                const res = await CustomersEndpoints.search(customerQuery, 10);
                 setCustomerResults(res?.data || []);
             } catch {
                 setCustomerResults([]);
@@ -64,28 +88,44 @@ export default function LeadForm({ lead, onSaved, onCancel }) {
         setSaving(true);
         setError(null);
         try {
-            const payload = {
-                data: {
+            // Every new lead hangs off a crm-contact: create one from the
+            // lead fields when the user didn't pick an existing record.
+            // Edits keep whatever the lead already has.
+            let contact = selectedContact;
+            if (!contact?.documentId && !lead?.documentId) {
+                const created = await CrmContactsEndpoints.create({
                     name,
                     email: email || undefined,
                     phone: phone || undefined,
                     company: company || undefined,
-                    source: source || undefined,
-                    status: status || 'New',
-                    value: value ? parseFloat(value) : undefined,
-                    assigned_to: assignedTo || undefined,
-                    notes: notes || undefined,
-                    customer: selectedCustomer?.documentId
-                        ? { connect: [selectedCustomer.documentId] }
-                        : undefined,
-                },
+                });
+                contact = created.data || created;
+            }
+
+            const data = {
+                name,
+                email: email || undefined,
+                phone: phone || undefined,
+                company: company || undefined,
+                source: source || undefined,
+                status: status || 'New',
+                value: value ? parseFloat(value) : undefined,
+                // Plain documentId (or null to unassign) — the crm-lead
+                // controller applies this server-side; the content API
+                // rejects client-written UP-user relations.
+                assigned_to: assignedTo || null,
+                notes: notes || undefined,
+                contact: contact?.documentId ? { connect: [contact.documentId] } : undefined,
+                customer: selectedCustomer?.documentId
+                    ? { connect: [selectedCustomer.documentId] }
+                    : undefined,
             };
 
             let result;
             if (lead?.documentId) {
-                result = await CrmLeadsEndpoints.putUpdate(lead.documentId, payload.data);
+                result = await CrmLeadsEndpoints.update(lead.documentId, data);
             } else {
-                result = await CrmLeadsEndpoints.postCreate(payload.data);
+                result = await CrmLeadsEndpoints.create(data);
             }
 
             if (onSaved) onSaved(result.data || result);
@@ -179,12 +219,27 @@ export default function LeadForm({ lead, onSaved, onCancel }) {
                 </div>
                 <div className="col-md-6">
                     <label className="form-label">Assigned To</label>
-                    <input
-                        className="form-control"
-                        placeholder="Assignee name"
+                    <select
+                        className="form-select"
                         value={assignedTo}
                         onChange={(e) => setAssignedTo(e.target.value)}
-                    />
+                    >
+                        <option value="">— Unassigned —</option>
+                        {assignees.map((u) => (
+                            <option key={u.documentId} value={u.documentId}>
+                                {u.username || u.email}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+                <div className="col-md-6">
+                    <label className="form-label">Contact</label>
+                    <ContactPicker value={selectedContact} onChange={handleContactChange} />
+                    {!selectedContact && (
+                        <small className="text-muted">
+                            Leave empty to create a contact from the lead details.
+                        </small>
+                    )}
                 </div>
                 <div className="col-md-6">
                     <label className="form-label">Customer</label>
@@ -263,4 +318,3 @@ export default function LeadForm({ lead, onSaved, onCancel }) {
         </form>
     );
 }
-
