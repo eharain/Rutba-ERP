@@ -42,11 +42,11 @@ rider.rutba.pk {
 	reverse_proxy rider:4012
 }
 
-# ---- Storefront: STAGING host (test before apex cutover) ---
-# Create an A/AAAA record new.rutba.pk -> this VPS to test the
-# storefront end-to-end without touching the live apex.
+# ---- Storefront: legacy staging host -----------------------
+# Apex is live, so new.rutba.pk is redundant — permanently
+# redirect it (and www) to the real apex so old links still land.
 new.rutba.pk {
-	reverse_proxy web:4000
+	redir https://rutba.pk{uri} permanent
 }
 
 # ---- Storefront: APEX (cut over) ---------------------------
