@@ -6,7 +6,7 @@ import { WebOrdersEndpoints } from "@rutba/api-provider/endpoints/web/orders.js"
 // populate (auth lives in the NextAuth session). For the order-create call
 // we want the descriptor for path/method only and axios+Bearer ourselves.
 import { WebOrdersEndpoints as WebOrdersEndpointsApi } from "@rutba/api-provider/api/web/orders.js";
-import { BASE_URL } from "@/static/const";
+import { apiUrl } from "@/static/const";
 
 function authHeaders(jwt?: string | null) {
   return jwt ? { Authorization: `Bearer ${jwt}` } : undefined;
@@ -38,7 +38,7 @@ export function createWebCheckoutService(config = {}) {
   const checkoutItem = async (data, jwt) => {
     const ep = WebOrdersEndpointsApi.create({ data });
     const res = await axios.post(
-      `${BASE_URL}${ep.path}`,
+      `${apiUrl(ep.path)}`,
       { data: ep.data?.data ?? data },
       { headers: { "Content-Type": "application/json", ...(authHeaders(jwt) || {}) } }
     );

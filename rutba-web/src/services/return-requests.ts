@@ -5,16 +5,16 @@ import qs from "qs";
 // is decoupled from NextAuth, so we can't share its client here.
 import { WebReturnRequestsEndpoints } from "@rutba/api-provider/api/web/return-requests.js";
 import { WebReturnPoliciesEndpoints } from "@rutba/api-provider/api/web/return-policies.js";
-import { BASE_URL } from "@/static/const";
+import { apiUrl } from "@/static/const";
 
 function authHeaders(jwt?: string | null) {
   return jwt ? { Authorization: `Bearer ${jwt}` } : undefined;
 }
 
 function urlWithParams(path: string, params?: Record<string, unknown>) {
-  if (!params || Object.keys(params).length === 0) return `${BASE_URL}${path}`;
+  if (!params || Object.keys(params).length === 0) return `${apiUrl(path)}`;
   const query = qs.stringify(params, { encodeValuesOnly: true });
-  return `${BASE_URL}${path}${query ? `?${query}` : ""}`;
+  return `${apiUrl(path)}${query ? `?${query}` : ""}`;
 }
 
 export type ReturnLineInput = {
@@ -43,7 +43,7 @@ export function createWebReturnsService() {
 
   const create = async (input: CreateReturnInput, jwt: string) => {
     const ep = WebReturnRequestsEndpoints.createReturnRequest(input);
-    const res = await axios.post(`${BASE_URL}${ep.path}`, ep.data, {
+    const res = await axios.post(`${apiUrl(ep.path)}`, ep.data, {
       headers: authHeaders(jwt),
     });
     return res.data?.data ?? res.data;
@@ -51,7 +51,7 @@ export function createWebReturnsService() {
 
   const listMine = async (jwt: string) => {
     const ep = WebReturnRequestsEndpoints.listMine();
-    const res = await axios.get(`${BASE_URL}${ep.path}`, {
+    const res = await axios.get(`${apiUrl(ep.path)}`, {
       headers: authHeaders(jwt),
     });
     return res.data?.data ?? [];
@@ -59,7 +59,7 @@ export function createWebReturnsService() {
 
   const byId = async (documentId: string, jwt: string) => {
     const ep = WebReturnRequestsEndpoints.byId(documentId);
-    const res = await axios.get(`${BASE_URL}${ep.path}`, {
+    const res = await axios.get(`${apiUrl(ep.path)}`, {
       headers: authHeaders(jwt),
     });
     return res.data?.data ?? res.data;
@@ -67,7 +67,7 @@ export function createWebReturnsService() {
 
   const cancelMine = async (documentId: string, jwt: string) => {
     const ep = WebReturnRequestsEndpoints.cancelMine(documentId);
-    const res = await axios.post(`${BASE_URL}${ep.path}`, {}, {
+    const res = await axios.post(`${apiUrl(ep.path)}`, {}, {
       headers: authHeaders(jwt),
     });
     return res.data?.data ?? res.data;

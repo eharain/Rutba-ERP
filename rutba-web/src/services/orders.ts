@@ -7,7 +7,7 @@ import qs from "qs";
 // only and axios + the session JWT ourselves — same pattern as
 // services/me-addresses.ts.
 import { WebOrdersEndpoints as WebOrdersEndpointsApi } from "@rutba/api-provider/api/web/orders.js";
-import { BASE_URL } from "@/static/const";
+import { apiUrl } from "@/static/const";
 
 function authHeaders(jwt?: string | null) {
   return jwt ? { Authorization: `Bearer ${jwt}` } : undefined;
@@ -17,9 +17,9 @@ function authHeaders(jwt?: string | null) {
 // `?<qs>` only when there are params, using bracket-notation for nested
 // objects (Strapi's expected populate shape).
 function urlWithParams(path: string, params?: Record<string, unknown>) {
-  if (!params || Object.keys(params).length === 0) return `${BASE_URL}${path}`;
+  if (!params || Object.keys(params).length === 0) return `${apiUrl(path)}`;
   const query = qs.stringify(params, { encodeValuesOnly: true });
-  return `${BASE_URL}${path}${query ? `?${query}` : ""}`;
+  return `${apiUrl(path)}${query ? `?${query}` : ""}`;
 }
 
 export function createWebOrdersService(config = {}) {

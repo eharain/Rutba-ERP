@@ -33,7 +33,7 @@ export default function FormRegister() {
     resolver: zodResolver(ValidationFormRegister),
   });
 
-  const [showConfirmEmailAlert, setShowConfirmEmailAlert] = useState(false);
+  const [showRegisteredAlert, setShowRegisteredAlert] = useState(false);
 
   const onRegisterWithCredential: SubmitHandler<
     ValidationFormRegisterSchema
@@ -48,7 +48,7 @@ export default function FormRegister() {
 
       resetFormRegister();
 
-      setShowConfirmEmailAlert(true);
+      setShowRegisteredAlert(true);
       setIsLoading(false);
     } catch (error) {
       handleRejection(error);
@@ -58,11 +58,11 @@ export default function FormRegister() {
 
   return (
     <>
-      {showConfirmEmailAlert && (
+      {showRegisteredAlert && (
         <Alert variant={"default"} className="bg-green-600 text-white">
-          <AlertTitle>Please confirm your email</AlertTitle>
+          <AlertTitle>Account created 🎉</AlertTitle>
           <AlertDescription className="text-sm">
-            Registration successful. Please login to your account.
+            You&apos;re all set — log in to start shopping.
           </AlertDescription>
           <Link href="/login" className="text-blue-500">Login</Link>
         </Alert>
