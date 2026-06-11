@@ -28,7 +28,7 @@ export default function CollectionList() {
 
   if (isLoading) {
     return <SkeletonCollectionList></SkeletonCollectionList>;
-  } else if (isError) {
+  } else if (isError && !collections) {
     return (
       <ErrorCard
         message={(error as Error).message}

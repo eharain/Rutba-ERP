@@ -5,8 +5,11 @@ import Layout from "../../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
-import { ReturnRequestsEndpoints } from "@rutba/api-provider/endpoints/index.js";
+import { ReturnRequestsEndpoints, WorkflowsEndpoints } from "@rutba/api-provider/endpoints/index.js";
+import WorkflowViewer from "@rutba/pos-shared/components/workflow/WorkflowViewer";
 import { useToast } from "../../components/Toast";
+
+const RR_ENTITY_UID = "api::return-request.return-request";
 
 const STATUS_LABELS = {
     REQUESTED:       "Pending Approval",
@@ -46,6 +49,23 @@ export default function ReturnDetailPage() {
     const [refundMethod, setRefundMethod] = useState("manual_cash");
     const [refundAmount, setRefundAmount] = useState("");
     const [refundNotes, setRefundNotes] = useState("");
+    const [workflow, setWorkflow] = useState(null);
+
+    // Definable workflow for return-requests (visual map; the action buttons
+    // below drive the actual moves since they carry required data).
+    useEffect(() => {
+        if (!jwt) return;
+        let cancelled = false;
+        (async () => {
+            try {
+                const res = await WorkflowsEndpoints.list(1, 1, { entityUid: RR_ENTITY_UID });
+                if (!cancelled) setWorkflow((res.data || [])[0] || null);
+            } catch (err) {
+                console.warn("Failed to load return workflow", err);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [jwt]);
 
     const load = useCallback(async () => {
         if (!jwt || !router.isReady || !documentId || documentId === "new") return;
@@ -171,6 +191,23 @@ export default function ReturnDetailPage() {
                         )}
                     </div>
                 </div>
+
+                {workflow && (
+                    <div className="card mb-3">
+                        <div className="card-header">
+                            <i className="fas fa-diagram-project me-2" />
+                            Workflow — {workflow.name}
+                        </div>
+                        <div className="card-body">
+                            <WorkflowViewer
+                                workflow={workflow}
+                                currentKey={ret.stage_key}
+                                currentStatus={status}
+                                height={240}
+                            />
+                        </div>
+                    </div>
+                )}
 
                 <div className="row g-3">
                     <div className="col-lg-8">

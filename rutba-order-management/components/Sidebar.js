@@ -1,4 +1,7 @@
 import SharedSidebar from "@rutba/pos-shared/components/Sidebar";
+import { useAuth } from "@rutba/pos-shared/context/AuthContext";
+import { isAppAdmin, isActiveAdminRole } from "@rutba/pos-shared/lib/roles";
+import { getAppName } from "@rutba/api-provider/lib/api";
 
 // Each child links to the orders list page with a `status` filter — see
 // pages/sale-orders.js which reads that query param and filters the API call.
@@ -11,6 +14,7 @@ const SECTIONS = [
         label: "Customer Orders",
         icon: "fa-shopping-bag",
         children: [
+            { href: "/board",                                         label: "Board",              icon: "fa-table-columns" },
             { href: "/sale-orders",                                   label: "All Orders",         icon: "fa-list" },
             { href: "/sale-orders?status=PENDING_PAYMENT",            label: "Awaiting Payment",   icon: "fa-money-bill-wave" },
             { href: "/sale-orders?status=PAYMENT_CONFIRMED",          label: "Verifying Payment",  icon: "fa-shield-halved" },
@@ -49,8 +53,22 @@ const SECTIONS = [
             { href: "/notification-templates", label: "Notification Templates",icon: "fa-bell" },
         ],
     },
+    {
+        key: "workflow",
+        label: "Configuration",
+        icon: "fa-gear",
+        adminOnly: true,
+        children: [
+            { href: "/workflows", label: "Order Workflows", icon: "fa-diagram-project" },
+        ],
+    },
 ];
 
 export default function Sidebar() {
-    return <SharedSidebar sections={SECTIONS} storageKey="rutba-om-sidebar-pinned" />;
+    const { adminAppAccess, activeRoleKey } = useAuth();
+    const isAdmin = activeRoleKey
+        ? isActiveAdminRole(activeRoleKey)
+        : isAppAdmin(adminAppAccess, getAppName());
+    const sections = SECTIONS.filter((s) => !s.adminOnly || isAdmin);
+    return <SharedSidebar sections={sections} storageKey="rutba-om-sidebar-pinned" />;
 }

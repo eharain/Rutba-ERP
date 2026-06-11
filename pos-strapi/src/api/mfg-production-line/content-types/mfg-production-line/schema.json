@@ -1,0 +1,65 @@
+{
+  "kind": "collectionType",
+  "collectionName": "mfg_production_lines",
+  "info": {
+    "singularName": "mfg-production-line",
+    "pluralName": "mfg-production-lines",
+    "displayName": "Mfg Production Line",
+    "description": "Production line / floor / section (lightweight tree)"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "local_name": {
+      "type": "string"
+    },
+    "code": {
+      "type": "uid",
+      "targetField": "name"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "parent": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::mfg-production-line.mfg-production-line",
+      "inversedBy": "children"
+    },
+    "children": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::mfg-production-line.mfg-production-line",
+      "mappedBy": "parent"
+    },
+    "branch": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::branch.branch"
+    },
+    "supervisor": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-employee.hr-employee"
+    },
+    "workers": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::mfg-worker-profile.mfg-worker-profile",
+      "mappedBy": "production_line"
+    },
+    "work_orders": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::mfg-work-order.mfg-work-order",
+      "mappedBy": "production_line"
+    }
+  }
+}

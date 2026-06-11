@@ -1,0 +1,42 @@
+{
+  "collectionName": "components_mfg_bom_lines",
+  "info": {
+    "displayName": "BOM Line",
+    "icon": "layer",
+    "description": "One material requirement on a bill of materials"
+  },
+  "options": {},
+  "attributes": {
+    "material_product": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::product.product"
+    },
+    "quantity": {
+      "type": "decimal"
+    },
+    "uom": {
+      "type": "enumeration",
+      "enum": [
+        "piece",
+        "meter",
+        "yard",
+        "kg",
+        "gram",
+        "dozen",
+        "set",
+        "cone",
+        "roll",
+        "box"
+      ],
+      "default": "piece"
+    },
+    "wastage_pct": {
+      "type": "decimal",
+      "default": 0
+    },
+    "notes": {
+      "type": "string"
+    }
+  }
+}

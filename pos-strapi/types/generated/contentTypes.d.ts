@@ -1805,7 +1805,10 @@ export interface ApiCrmLeadCrmLead extends Struct.CollectionTypeSchema {
     draftAndPublish: false;
   };
   attributes: {
-    assigned_to: Schema.Attribute.String;
+    assigned_to: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
     company: Schema.Attribute.String;
     contact: Schema.Attribute.Relation<
       'manyToOne',
@@ -2339,6 +2342,766 @@ export interface ApiHrTeamHrTeam extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiMfgBomMfgBom extends Struct.CollectionTypeSchema {
+  collectionName: 'mfg_boms';
+  info: {
+    description: 'Versioned bill of materials + routing for a finished product';
+    displayName: 'Mfg BOM';
+    pluralName: 'mfg-boms';
+    singularName: 'mfg-bom';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    is_default: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    local_name: Schema.Attribute.String;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::mfg-bom.mfg-bom'
+    > &
+      Schema.Attribute.Private;
+    material_lines: Schema.Attribute.Component<'mfg.bom-line', true>;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    notes: Schema.Attribute.Text;
+    output_quantity: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<1>;
+    product: Schema.Attribute.Relation<'manyToOne', 'api::product.product'>;
+    production_line: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::mfg-production-line.mfg-production-line'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    routing_steps: Schema.Attribute.Component<'mfg.routing-step', true>;
+    status: Schema.Attribute.Enumeration<['Draft', 'Active', 'Archived']> &
+      Schema.Attribute.DefaultTo<'Draft'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    version: Schema.Attribute.String & Schema.Attribute.DefaultTo<'1'>;
+    work_orders: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::mfg-work-order.mfg-work-order'
+    >;
+  };
+}
+
+export interface ApiMfgBundleMfgBundle extends Struct.CollectionTypeSchema {
+  collectionName: 'mfg_bundles';
+  info: {
+    description: 'WIP traceability unit: a tied bundle of cut pieces moving through operations';
+    displayName: 'Mfg Bundle';
+    pluralName: 'mfg-bundles';
+    singularName: 'mfg-bundle';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    bundle_code: Schema.Attribute.String & Schema.Attribute.Unique;
+    color: Schema.Attribute.String;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    current_operation: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::mfg-operation.mfg-operation'
+    >;
+    current_operation_seq: Schema.Attribute.Integer &
+      Schema.Attribute.DefaultTo<0>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::mfg-bundle.mfg-bundle'
+    > &
+      Schema.Attribute.Private;
+    material_issues: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::mfg-material-issue.mfg-material-issue'
+    >;
+    production_line: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::mfg-production-line.mfg-production-line'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    qc_inspections: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::mfg-qc-inspection.mfg-qc-inspection'
+    >;
+    quantity: Schema.Attribute.Integer & Schema.Attribute.Required;
+    quantity_completed: Schema.Attribute.Integer &
+      Schema.Attribute.DefaultTo<0>;
+    quantity_rejected: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    size: Schema.Attribute.String;
+    status: Schema.Attribute.Enumeration<
+      [
+        'Created',
+        'Issued',
+        'InProgress',
+        'QCHold',
+        'Completed',
+        'Rejected',
+        'Scrapped',
+      ]
+    > &
+      Schema.Attribute.DefaultTo<'Created'>;
+    tasks: Schema.Attribute.Relation<'oneToMany', 'api::mfg-task.mfg-task'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    work_order: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::mfg-work-order.mfg-work-order'
+    >;
+  };
+}
+
+export interface ApiMfgDefectTypeMfgDefectType
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'mfg_defect_types';
+  info: {
+    description: 'QC defect catalogue';
+    displayName: 'Mfg Defect Type';
+    pluralName: 'mfg-defect-types';
+    singularName: 'mfg-defect-type';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    attributable_to_worker: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<true>;
+    code: Schema.Attribute.UID<'name'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    is_active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    is_reworkable: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    local_name: Schema.Attribute.String;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::mfg-defect-type.mfg-defect-type'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    operations: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::mfg-operation.mfg-operation'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    severity: Schema.Attribute.Enumeration<['minor', 'major', 'critical']> &
+      Schema.Attribute.DefaultTo<'minor'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiMfgMaterialIssueMfgMaterialIssue
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'mfg_material_issues';
+  info: {
+    description: 'Immutable issue/return/wastage ledger row against a material lot and work order';
+    displayName: 'Mfg Material Issue';
+    pluralName: 'mfg-material-issues';
+    singularName: 'mfg-material-issue';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    branch: Schema.Attribute.Relation<'manyToOne', 'api::branch.branch'>;
+    bundle: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::mfg-bundle.mfg-bundle'
+    >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    issue_type: Schema.Attribute.Enumeration<
+      ['Issue', 'Return', 'Wastage', 'Adjustment']
+    > &
+      Schema.Attribute.DefaultTo<'Issue'>;
+    issued_at: Schema.Attribute.DateTime;
+    issued_by: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::hr-employee.hr-employee'
+    >;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::mfg-material-issue.mfg-material-issue'
+    > &
+      Schema.Attribute.Private;
+    material_lot: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::mfg-material-lot.mfg-material-lot'
+    >;
+    notes: Schema.Attribute.Text;
+    publishedAt: Schema.Attribute.DateTime;
+    quantity: Schema.Attribute.Decimal & Schema.Attribute.Required;
+    total_cost: Schema.Attribute.Decimal;
+    unit_cost: Schema.Attribute.Decimal;
+    uom: Schema.Attribute.Enumeration<
+      [
+        'piece',
+        'meter',
+        'yard',
+        'kg',
+        'gram',
+        'dozen',
+        'set',
+        'cone',
+        'roll',
+        'box',
+      ]
+    > &
+      Schema.Attribute.DefaultTo<'meter'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    work_order: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::mfg-work-order.mfg-work-order'
+    >;
+  };
+}
+
+export interface ApiMfgMaterialLotMfgMaterialLot
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'mfg_material_lots';
+  info: {
+    description: 'Quantity-based ledger for bulk raw materials (fabric rolls, thread, trims)';
+    displayName: 'Mfg Material Lot';
+    pluralName: 'mfg-material-lots';
+    singularName: 'mfg-material-lot';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    branch: Schema.Attribute.Relation<'manyToOne', 'api::branch.branch'>;
+    color: Schema.Attribute.String;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    dye_lot: Schema.Attribute.String;
+    expiry: Schema.Attribute.Date;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::mfg-material-lot.mfg-material-lot'
+    > &
+      Schema.Attribute.Private;
+    lot_code: Schema.Attribute.String & Schema.Attribute.Unique;
+    material_issues: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::mfg-material-issue.mfg-material-issue'
+    >;
+    name: Schema.Attribute.String;
+    product: Schema.Attribute.Relation<'manyToOne', 'api::product.product'>;
+    publishedAt: Schema.Attribute.DateTime;
+    purchase_item: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::purchase-item.purchase-item'
+    >;
+    quantity_received: Schema.Attribute.Decimal & Schema.Attribute.Required;
+    quantity_remaining: Schema.Attribute.Decimal & Schema.Attribute.Required;
+    quantity_reserved: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    received_at: Schema.Attribute.DateTime;
+    status: Schema.Attribute.Enumeration<
+      [
+        'Available',
+        'Reserved',
+        'PartiallyConsumed',
+        'Consumed',
+        'Returned',
+        'Scrapped',
+        'Quarantined',
+      ]
+    > &
+      Schema.Attribute.DefaultTo<'Available'>;
+    supplier: Schema.Attribute.Relation<'manyToOne', 'api::supplier.supplier'>;
+    total_cost: Schema.Attribute.Decimal;
+    unit_cost: Schema.Attribute.Decimal;
+    uom: Schema.Attribute.Enumeration<
+      [
+        'piece',
+        'meter',
+        'yard',
+        'kg',
+        'gram',
+        'dozen',
+        'set',
+        'cone',
+        'roll',
+        'box',
+      ]
+    > &
+      Schema.Attribute.DefaultTo<'meter'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    width: Schema.Attribute.String;
+  };
+}
+
+export interface ApiMfgOperationMfgOperation
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'mfg_operations';
+  info: {
+    description: 'Catalogue of production operations (cutting, stitching, finishing, QC, packing...)';
+    displayName: 'Mfg Operation';
+    pluralName: 'mfg-operations';
+    singularName: 'mfg-operation';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    category: Schema.Attribute.Enumeration<
+      ['cutting', 'sewing', 'finishing', 'qc', 'packing', 'other']
+    > &
+      Schema.Attribute.DefaultTo<'sewing'>;
+    code: Schema.Attribute.UID<'name'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    default_uom: Schema.Attribute.Enumeration<
+      [
+        'piece',
+        'meter',
+        'yard',
+        'kg',
+        'gram',
+        'dozen',
+        'set',
+        'cone',
+        'roll',
+        'box',
+      ]
+    > &
+      Schema.Attribute.DefaultTo<'piece'>;
+    defect_types: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::mfg-defect-type.mfg-defect-type'
+    >;
+    description: Schema.Attribute.Text;
+    is_active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    local_name: Schema.Attribute.String;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::mfg-operation.mfg-operation'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    piece_rates: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::mfg-piece-rate.mfg-piece-rate'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    sequence_hint: Schema.Attribute.Integer;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiMfgPieceRateMfgPieceRate
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'mfg_piece_rates';
+  info: {
+    description: 'Tiered, effective-dated piece-rate card (operation x product x skill grade x qty band)';
+    displayName: 'Mfg Piece Rate';
+    pluralName: 'mfg-piece-rates';
+    singularName: 'mfg-piece-rate';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    effective_from: Schema.Attribute.Date;
+    effective_to: Schema.Attribute.Date;
+    is_active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::mfg-piece-rate.mfg-piece-rate'
+    > &
+      Schema.Attribute.Private;
+    max_qty: Schema.Attribute.Integer;
+    min_qty: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    operation: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::mfg-operation.mfg-operation'
+    >;
+    product: Schema.Attribute.Relation<'manyToOne', 'api::product.product'>;
+    production_line: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::mfg-production-line.mfg-production-line'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    rate: Schema.Attribute.Decimal & Schema.Attribute.Required;
+    skill_grade: Schema.Attribute.Enumeration<
+      ['A', 'B', 'C', 'trainee', 'any']
+    > &
+      Schema.Attribute.DefaultTo<'any'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiMfgProductionLineMfgProductionLine
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'mfg_production_lines';
+  info: {
+    description: 'Production line / floor / section (lightweight tree)';
+    displayName: 'Mfg Production Line';
+    pluralName: 'mfg-production-lines';
+    singularName: 'mfg-production-line';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    branch: Schema.Attribute.Relation<'manyToOne', 'api::branch.branch'>;
+    children: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::mfg-production-line.mfg-production-line'
+    >;
+    code: Schema.Attribute.UID<'name'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    is_active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    local_name: Schema.Attribute.String;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::mfg-production-line.mfg-production-line'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    parent: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::mfg-production-line.mfg-production-line'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    supervisor: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::hr-employee.hr-employee'
+    >;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    work_orders: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::mfg-work-order.mfg-work-order'
+    >;
+    workers: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::mfg-worker-profile.mfg-worker-profile'
+    >;
+  };
+}
+
+export interface ApiMfgQcInspectionMfgQcInspection
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'mfg_qc_inspections';
+  info: {
+    description: 'A quality-control inspection event with defect lines and worker accountability';
+    displayName: 'Mfg QC Inspection';
+    pluralName: 'mfg-qc-inspections';
+    singularName: 'mfg-qc-inspection';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    branch: Schema.Attribute.Relation<'manyToOne', 'api::branch.branch'>;
+    bundle: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::mfg-bundle.mfg-bundle'
+    >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    defect_lines: Schema.Attribute.Component<'mfg.qc-defect-line', true>;
+    inspected_at: Schema.Attribute.DateTime;
+    inspector: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::hr-employee.hr-employee'
+    >;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::mfg-qc-inspection.mfg-qc-inspection'
+    > &
+      Schema.Attribute.Private;
+    notes: Schema.Attribute.Text;
+    operation: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::mfg-operation.mfg-operation'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    quantity_failed: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    quantity_inspected: Schema.Attribute.Integer &
+      Schema.Attribute.DefaultTo<0>;
+    quantity_passed: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    quantity_rework: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    result: Schema.Attribute.Enumeration<
+      ['Pass', 'Fail', 'PartialPass', 'Rework']
+    > &
+      Schema.Attribute.DefaultTo<'Pass'>;
+    stage: Schema.Attribute.Enumeration<['InProcess', 'Final']> &
+      Schema.Attribute.DefaultTo<'Final'>;
+    task: Schema.Attribute.Relation<'manyToOne', 'api::mfg-task.mfg-task'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    work_order: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::mfg-work-order.mfg-work-order'
+    >;
+  };
+}
+
+export interface ApiMfgTaskMfgTask extends Struct.CollectionTypeSchema {
+  collectionName: 'mfg_tasks';
+  info: {
+    description: 'A worker doing one operation on a work order / bundle. Drives worker KPIs and piece-rate payroll.';
+    displayName: 'Mfg Task';
+    pluralName: 'mfg-tasks';
+    singularName: 'mfg-task';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    amount: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    approved_at: Schema.Attribute.DateTime;
+    bundle: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::mfg-bundle.mfg-bundle'
+    >;
+    completed_at: Schema.Attribute.DateTime;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    employee: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::hr-employee.hr-employee'
+    >;
+    is_rework: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::mfg-task.mfg-task'
+    > &
+      Schema.Attribute.Private;
+    notes: Schema.Attribute.Text;
+    operation: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::mfg-operation.mfg-operation'
+    >;
+    payroll_locked: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<false>;
+    payslip: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::pay-payslip.pay-payslip'
+    >;
+    piece_rate: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    piece_rate_card: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::mfg-piece-rate.mfg-piece-rate'
+    >;
+    production_line: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::mfg-production-line.mfg-production-line'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    qc_inspections: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::mfg-qc-inspection.mfg-qc-inspection'
+    >;
+    quantity_assigned: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    quantity_completed: Schema.Attribute.Integer &
+      Schema.Attribute.DefaultTo<0>;
+    quantity_rejected: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    quantity_reworked: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    skill_grade: Schema.Attribute.Enumeration<['A', 'B', 'C', 'trainee']>;
+    started_at: Schema.Attribute.DateTime;
+    status: Schema.Attribute.Enumeration<
+      [
+        'Assigned',
+        'InProgress',
+        'Completed',
+        'Approved',
+        'Rejected',
+        'Reworked',
+        'Cancelled',
+      ]
+    > &
+      Schema.Attribute.DefaultTo<'Assigned'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    work_order: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::mfg-work-order.mfg-work-order'
+    >;
+    worker: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::mfg-worker-profile.mfg-worker-profile'
+    >;
+  };
+}
+
+export interface ApiMfgWorkOrderMfgWorkOrder
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'mfg_work_orders';
+  info: {
+    description: 'Production job card: a quantity of a finished product to manufacture';
+    displayName: 'Mfg Work Order';
+    pluralName: 'mfg-work-orders';
+    singularName: 'mfg-work-order';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    bom: Schema.Attribute.Relation<'manyToOne', 'api::mfg-bom.mfg-bom'>;
+    branch: Schema.Attribute.Relation<'manyToOne', 'api::branch.branch'>;
+    bundles: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::mfg-bundle.mfg-bundle'
+    >;
+    completed_at: Schema.Attribute.DateTime;
+    cost_per_unit: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    due_date: Schema.Attribute.Date;
+    finished_stock_items: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::stock-item.stock-item'
+    >;
+    labor_cost: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::mfg-work-order.mfg-work-order'
+    > &
+      Schema.Attribute.Private;
+    material_cost: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    material_issues: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::mfg-material-issue.mfg-material-issue'
+    >;
+    name: Schema.Attribute.String;
+    notes: Schema.Attribute.Text;
+    overhead_cost: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    overhead_rate: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    priority: Schema.Attribute.Enumeration<
+      ['Low', 'Normal', 'High', 'Urgent']
+    > &
+      Schema.Attribute.DefaultTo<'Normal'>;
+    product: Schema.Attribute.Relation<'manyToOne', 'api::product.product'>;
+    production_line: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::mfg-production-line.mfg-production-line'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    qc_inspections: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::mfg-qc-inspection.mfg-qc-inspection'
+    >;
+    quantity_completed: Schema.Attribute.Integer &
+      Schema.Attribute.DefaultTo<0>;
+    quantity_ordered: Schema.Attribute.Integer & Schema.Attribute.Required;
+    quantity_rejected: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    sale_order: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::sale-order.sale-order'
+    >;
+    size_breakup: Schema.Attribute.Component<'mfg.size-breakup', true>;
+    stage_key: Schema.Attribute.String;
+    started_at: Schema.Attribute.DateTime;
+    status: Schema.Attribute.Enumeration<
+      ['Draft', 'Released', 'InProgress', 'OnHold', 'Completed', 'Cancelled']
+    > &
+      Schema.Attribute.DefaultTo<'Draft'>;
+    supervisor: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::hr-employee.hr-employee'
+    >;
+    tasks: Schema.Attribute.Relation<'oneToMany', 'api::mfg-task.mfg-task'>;
+    total_cost: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    wo_number: Schema.Attribute.String & Schema.Attribute.Unique;
+  };
+}
+
+export interface ApiMfgWorkerProfileMfgWorkerProfile
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'mfg_worker_profiles';
+  info: {
+    description: 'Manufacturing facet of a worker (1:1 with hr-employee)';
+    displayName: 'Mfg Worker Profile';
+    pluralName: 'mfg-worker-profiles';
+    singularName: 'mfg-worker-profile';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    code: Schema.Attribute.String;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    default_skill_grade: Schema.Attribute.Enumeration<
+      ['A', 'B', 'C', 'trainee']
+    > &
+      Schema.Attribute.DefaultTo<'C'>;
+    employee: Schema.Attribute.Relation<
+      'oneToOne',
+      'api::hr-employee.hr-employee'
+    >;
+    is_active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::mfg-worker-profile.mfg-worker-profile'
+    > &
+      Schema.Attribute.Private;
+    production_line: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::mfg-production-line.mfg-production-line'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    skill_grades: Schema.Attribute.Component<'mfg.skill-grade', true>;
+    tasks: Schema.Attribute.Relation<'oneToMany', 'api::mfg-task.mfg-task'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    worker_type: Schema.Attribute.Enumeration<
+      ['piece_rate', 'fixed', 'hybrid', 'contractor']
+    > &
+      Schema.Attribute.DefaultTo<'piece_rate'>;
+  };
+}
+
 export interface ApiNotificationEventNotificationEvent
   extends Struct.CollectionTypeSchema {
   collectionName: 'notification_events';
@@ -2687,6 +3450,60 @@ export interface ApiOrderMessageOrderMessage
   };
 }
 
+export interface ApiPayAdjustmentPayAdjustment
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'pay_adjustments';
+  info: {
+    description: 'Advances, loans, penalties, bonuses and other one-off payroll adjustments';
+    displayName: 'Payroll Adjustment';
+    pluralName: 'pay-adjustments';
+    singularName: 'pay-adjustment';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    amount: Schema.Attribute.Decimal & Schema.Attribute.Required;
+    balance: Schema.Attribute.Decimal;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    effective_date: Schema.Attribute.Date;
+    employee: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::hr-employee.hr-employee'
+    >;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::pay-adjustment.pay-adjustment'
+    > &
+      Schema.Attribute.Private;
+    payroll_run: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::pay-payroll-run.pay-payroll-run'
+    >;
+    payslip: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::pay-payslip.pay-payslip'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    reason: Schema.Attribute.Text;
+    recovery_per_period: Schema.Attribute.Decimal;
+    status: Schema.Attribute.Enumeration<
+      ['Pending', 'PartiallyApplied', 'Applied', 'Cancelled']
+    > &
+      Schema.Attribute.DefaultTo<'Pending'>;
+    type: Schema.Attribute.Enumeration<
+      ['advance', 'loan', 'penalty', 'bonus', 'incentive', 'deduction']
+    > &
+      Schema.Attribute.Required;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiPayPayrollRunPayPayrollRun
   extends Struct.CollectionTypeSchema {
   collectionName: 'pay_payroll_runs';
@@ -2763,6 +3580,7 @@ export interface ApiPayPayslipPayPayslip extends Struct.CollectionTypeSchema {
     publishedAt: Schema.Attribute.DateTime;
     status: Schema.Attribute.Enumeration<['Pending', 'Paid']> &
       Schema.Attribute.DefaultTo<'Pending'>;
+    tasks: Schema.Attribute.Relation<'oneToMany', 'api::mfg-task.mfg-task'>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -3011,8 +3829,11 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
   };
   attributes: {
     barcode: Schema.Attribute.String;
+    boms: Schema.Attribute.Relation<'oneToMany', 'api::mfg-bom.mfg-bom'>;
     branches: Schema.Attribute.Relation<'manyToMany', 'api::branch.branch'>;
     brands: Schema.Attribute.Relation<'manyToMany', 'api::brand.brand'>;
+    bulk_quantity_on_hand: Schema.Attribute.Decimal &
+      Schema.Attribute.DefaultTo<0>;
     bundle_units: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<1>;
     categories: Schema.Attribute.Relation<
       'manyToMany',
@@ -3031,6 +3852,16 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
     is_variant: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     items: Schema.Attribute.Relation<'oneToMany', 'api::stock-item.stock-item'>;
     keywords: Schema.Attribute.JSON;
+    kind: Schema.Attribute.Enumeration<
+      [
+        'raw_material',
+        'consumable',
+        'semi_finished',
+        'finished_good',
+        'service',
+      ]
+    > &
+      Schema.Attribute.DefaultTo<'finished_good'>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
@@ -3038,6 +3869,10 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
     > &
       Schema.Attribute.Private;
     logo: Schema.Attribute.Media<'images'>;
+    material_lots: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::mfg-material-lot.mfg-material-lot'
+    >;
     name: Schema.Attribute.String;
     non_returnable: Schema.Attribute.Boolean &
       Schema.Attribute.DefaultTo<false>;
@@ -3066,6 +3901,23 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
     >;
     tax_rate: Schema.Attribute.Decimal;
     terms: Schema.Attribute.Relation<'manyToMany', 'api::term.term'>;
+    track_mode: Schema.Attribute.Enumeration<['serialized', 'bulk']> &
+      Schema.Attribute.DefaultTo<'serialized'>;
+    unit_of_measure: Schema.Attribute.Enumeration<
+      [
+        'piece',
+        'meter',
+        'yard',
+        'kg',
+        'gram',
+        'dozen',
+        'set',
+        'cone',
+        'roll',
+        'box',
+      ]
+    > &
+      Schema.Attribute.DefaultTo<'piece'>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -3444,6 +4296,7 @@ export interface ApiReturnRequestReturnRequest
       'manyToOne',
       'api::sale-order.sale-order'
     >;
+    stage_key: Schema.Attribute.String;
     status: Schema.Attribute.Enumeration<
       [
         'REQUESTED',
@@ -3800,6 +4653,7 @@ export interface ApiSaleOrderSaleOrder extends Struct.CollectionTypeSchema {
     shipping_label: Schema.Attribute.JSON;
     shipping_name: Schema.Attribute.String;
     shipping_price: Schema.Attribute.Decimal;
+    stage_key: Schema.Attribute.String;
     stripe_id: Schema.Attribute.String;
     stripe_request: Schema.Attribute.JSON;
     stripe_response_webhook: Schema.Attribute.JSON;
@@ -4395,6 +5249,10 @@ export interface ApiStockItemStockItem extends Struct.CollectionTypeSchema {
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    work_order: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::mfg-work-order.mfg-work-order'
+    >;
   };
 }
 
@@ -4508,6 +5366,41 @@ export interface ApiTermTerm extends Struct.CollectionTypeSchema {
       'manyToMany',
       'api::term-type.term-type'
     >;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiWorkflowWorkflow extends Struct.CollectionTypeSchema {
+  collectionName: 'workflows';
+  info: {
+    description: "Definable stage workflow for an entity (work orders, sale orders); validated and executed by that entity's state machine";
+    displayName: 'Workflow';
+    pluralName: 'workflows';
+    singularName: 'workflow';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    description: Schema.Attribute.Text;
+    entity_uid: Schema.Attribute.String & Schema.Attribute.Required;
+    is_active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    is_default: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::workflow.workflow'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    publishedAt: Schema.Attribute.DateTime;
+    stages: Schema.Attribute.Component<'workflow.stage', true>;
+    transitions: Schema.Attribute.Component<'workflow.transition', true>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -5682,12 +6575,25 @@ declare module '@strapi/strapi' {
       'api::hr-employee.hr-employee': ApiHrEmployeeHrEmployee;
       'api::hr-leave-request.hr-leave-request': ApiHrLeaveRequestHrLeaveRequest;
       'api::hr-team.hr-team': ApiHrTeamHrTeam;
+      'api::mfg-bom.mfg-bom': ApiMfgBomMfgBom;
+      'api::mfg-bundle.mfg-bundle': ApiMfgBundleMfgBundle;
+      'api::mfg-defect-type.mfg-defect-type': ApiMfgDefectTypeMfgDefectType;
+      'api::mfg-material-issue.mfg-material-issue': ApiMfgMaterialIssueMfgMaterialIssue;
+      'api::mfg-material-lot.mfg-material-lot': ApiMfgMaterialLotMfgMaterialLot;
+      'api::mfg-operation.mfg-operation': ApiMfgOperationMfgOperation;
+      'api::mfg-piece-rate.mfg-piece-rate': ApiMfgPieceRateMfgPieceRate;
+      'api::mfg-production-line.mfg-production-line': ApiMfgProductionLineMfgProductionLine;
+      'api::mfg-qc-inspection.mfg-qc-inspection': ApiMfgQcInspectionMfgQcInspection;
+      'api::mfg-task.mfg-task': ApiMfgTaskMfgTask;
+      'api::mfg-work-order.mfg-work-order': ApiMfgWorkOrderMfgWorkOrder;
+      'api::mfg-worker-profile.mfg-worker-profile': ApiMfgWorkerProfileMfgWorkerProfile;
       'api::notification-event.notification-event': ApiNotificationEventNotificationEvent;
       'api::notification-log.notification-log': ApiNotificationLogNotificationLog;
       'api::notification-preference.notification-preference': ApiNotificationPreferenceNotificationPreference;
       'api::notification-template.notification-template': ApiNotificationTemplateNotificationTemplate;
       'api::notification.notification': ApiNotificationNotification;
       'api::order-message.order-message': ApiOrderMessageOrderMessage;
+      'api::pay-adjustment.pay-adjustment': ApiPayAdjustmentPayAdjustment;
       'api::pay-payroll-run.pay-payroll-run': ApiPayPayrollRunPayPayrollRun;
       'api::pay-payslip.pay-payslip': ApiPayPayslipPayPayslip;
       'api::pay-salary-structure.pay-salary-structure': ApiPaySalaryStructurePaySalaryStructure;
@@ -5721,6 +6627,7 @@ declare module '@strapi/strapi' {
       'api::supplier.supplier': ApiSupplierSupplier;
       'api::term-type.term-type': ApiTermTypeTermType;
       'api::term.term': ApiTermTerm;
+      'api::workflow.workflow': ApiWorkflowWorkflow;
       'plugin::api-pro.api-interface': PluginApiProApiInterface;
       'plugin::api-pro.api-interface-method': PluginApiProApiInterfaceMethod;
       'plugin::api-pro.api-method-policy': PluginApiProApiMethodPolicy;

@@ -30,7 +30,7 @@ export default function HeroSlider() {
   });
 
   if (isLoading) return <SkeletonBanner />;
-  if (isError)
+  if (isError && !banner)
     return (
       <ErrorCard message={(error as Error).message} onRetry={() => refetch()} />
     );

@@ -66,13 +66,13 @@ export default function InfoIndex({
             </div>
           )}
 
-          {isError && <ErrorCard message={(error as Error).message} />}
+          {isError && !pages && <ErrorCard message={(error as Error).message} />}
 
-          {!isLoading && !isError && pages && pages.length === 0 && (
+          {!isLoading && pages && pages.length === 0 && (
             <p className="text-slate-500 text-center py-12">No info pages published yet.</p>
           )}
 
-          {!isLoading && !isError && pages && pages.length > 0 && (
+          {!isLoading && pages && pages.length > 0 && (
             <div className="grid grid-cols-12 gap-6">
               {pages.map((page) => (
                 <div key={page.id} className="col-span-12 md:col-span-6 lg:col-span-4">

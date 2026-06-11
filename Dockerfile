@@ -79,6 +79,7 @@ ARG NEXT_PUBLIC_SALE_URL
 ARG NEXT_PUBLIC_WEB_URL
 ARG NEXT_PUBLIC_WEB_USER_URL
 ARG NEXT_PUBLIC_ORDER_MANAGEMENT_URL
+ARG NEXT_PUBLIC_MANUFACTURING_URL
 ARG NEXT_PUBLIC_RIDER_URL
 ARG NEXT_PUBLIC_SOCIAL_URL
 ARG NEXT_PUBLIC_CRM_URL
@@ -102,6 +103,7 @@ ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
     NEXT_PUBLIC_WEB_URL=$NEXT_PUBLIC_WEB_URL \
     NEXT_PUBLIC_WEB_USER_URL=$NEXT_PUBLIC_WEB_USER_URL \
     NEXT_PUBLIC_ORDER_MANAGEMENT_URL=$NEXT_PUBLIC_ORDER_MANAGEMENT_URL \
+    NEXT_PUBLIC_MANUFACTURING_URL=$NEXT_PUBLIC_MANUFACTURING_URL \
     NEXT_PUBLIC_RIDER_URL=$NEXT_PUBLIC_RIDER_URL \
     NEXT_PUBLIC_SOCIAL_URL=$NEXT_PUBLIC_SOCIAL_URL \
     NEXT_PUBLIC_CRM_URL=$NEXT_PUBLIC_CRM_URL \
@@ -321,3 +323,17 @@ COPY --from=social-build /app/rutba-social/.next/standalone ./
 COPY --from=social-build /app/rutba-social/.next/static     ./rutba-social/.next/static
 COPY --from=social-build /app/rutba-social/public            ./rutba-social/public
 CMD ["node", "rutba-social/server.js"]
+
+# ----------------------------------------------------------
+#  rutba-manufacturing
+# ----------------------------------------------------------
+FROM build-env AS manufacturing-build
+RUN mkdir -p rutba-manufacturing/public && npm run build --workspace=rutba-manufacturing
+
+FROM base AS manufacturing
+WORKDIR /app
+ENV NODE_ENV=production HOSTNAME=0.0.0.0
+COPY --from=manufacturing-build /app/rutba-manufacturing/.next/standalone ./
+COPY --from=manufacturing-build /app/rutba-manufacturing/.next/static     ./rutba-manufacturing/.next/static
+COPY --from=manufacturing-build /app/rutba-manufacturing/public            ./rutba-manufacturing/public
+CMD ["node", "rutba-manufacturing/server.js"]

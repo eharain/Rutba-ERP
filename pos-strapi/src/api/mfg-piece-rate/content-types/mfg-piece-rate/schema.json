@@ -1,0 +1,64 @@
+{
+  "kind": "collectionType",
+  "collectionName": "mfg_piece_rates",
+  "info": {
+    "singularName": "mfg-piece-rate",
+    "pluralName": "mfg-piece-rates",
+    "displayName": "Mfg Piece Rate",
+    "description": "Tiered, effective-dated piece-rate card (operation x product x skill grade x qty band)"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "rate": {
+      "type": "decimal",
+      "required": true
+    },
+    "skill_grade": {
+      "type": "enumeration",
+      "enum": [
+        "A",
+        "B",
+        "C",
+        "trainee",
+        "any"
+      ],
+      "default": "any"
+    },
+    "min_qty": {
+      "type": "integer",
+      "default": 0
+    },
+    "max_qty": {
+      "type": "integer"
+    },
+    "effective_from": {
+      "type": "date"
+    },
+    "effective_to": {
+      "type": "date"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "operation": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::mfg-operation.mfg-operation",
+      "inversedBy": "piece_rates"
+    },
+    "product": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::product.product"
+    },
+    "production_line": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::mfg-production-line.mfg-production-line"
+    }
+  }
+}

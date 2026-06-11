@@ -367,7 +367,7 @@ export default function ProductDetail({
         <SkeletonProductDetail></SkeletonProductDetail>
       </LayoutMain>
     );
-  } else if (isError) {
+  } else if (isError && !product) {
     return (
       <LayoutMain>
         <div className="container-fluid my-20">

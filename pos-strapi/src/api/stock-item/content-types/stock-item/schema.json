@@ -103,6 +103,12 @@
     },
     "archived_at": {
       "type": "datetime"
+    },
+    "work_order": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::mfg-work-order.mfg-work-order",
+      "inversedBy": "finished_stock_items"
     }
   }
 }

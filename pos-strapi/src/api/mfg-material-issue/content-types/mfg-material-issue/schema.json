@@ -1,0 +1,86 @@
+{
+  "kind": "collectionType",
+  "collectionName": "mfg_material_issues",
+  "info": {
+    "singularName": "mfg-material-issue",
+    "pluralName": "mfg-material-issues",
+    "displayName": "Mfg Material Issue",
+    "description": "Immutable issue/return/wastage ledger row against a material lot and work order"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "quantity": {
+      "type": "decimal",
+      "required": true
+    },
+    "uom": {
+      "type": "enumeration",
+      "enum": [
+        "piece",
+        "meter",
+        "yard",
+        "kg",
+        "gram",
+        "dozen",
+        "set",
+        "cone",
+        "roll",
+        "box"
+      ],
+      "default": "meter"
+    },
+    "issue_type": {
+      "type": "enumeration",
+      "enum": [
+        "Issue",
+        "Return",
+        "Wastage",
+        "Adjustment"
+      ],
+      "default": "Issue"
+    },
+    "unit_cost": {
+      "type": "decimal"
+    },
+    "total_cost": {
+      "type": "decimal"
+    },
+    "issued_at": {
+      "type": "datetime"
+    },
+    "notes": {
+      "type": "text"
+    },
+    "material_lot": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::mfg-material-lot.mfg-material-lot",
+      "inversedBy": "material_issues"
+    },
+    "work_order": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::mfg-work-order.mfg-work-order",
+      "inversedBy": "material_issues"
+    },
+    "bundle": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::mfg-bundle.mfg-bundle",
+      "inversedBy": "material_issues"
+    },
+    "issued_by": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-employee.hr-employee"
+    },
+    "branch": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::branch.branch"
+    }
+  }
+}

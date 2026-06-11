@@ -57,6 +57,45 @@
     "reorder_level": {
       "type": "integer"
     },
+    "kind": {
+      "type": "enumeration",
+      "enum": [
+        "raw_material",
+        "consumable",
+        "semi_finished",
+        "finished_good",
+        "service"
+      ],
+      "default": "finished_good"
+    },
+    "unit_of_measure": {
+      "type": "enumeration",
+      "enum": [
+        "piece",
+        "meter",
+        "yard",
+        "kg",
+        "gram",
+        "dozen",
+        "set",
+        "cone",
+        "roll",
+        "box"
+      ],
+      "default": "piece"
+    },
+    "track_mode": {
+      "type": "enumeration",
+      "enum": [
+        "serialized",
+        "bulk"
+      ],
+      "default": "serialized"
+    },
+    "bulk_quantity_on_hand": {
+      "type": "decimal",
+      "default": 0
+    },
     "is_active": {
       "type": "boolean",
       "default": true
@@ -156,6 +195,18 @@
       "type": "relation",
       "relation": "oneToOne",
       "target": "api::seo-meta.seo-meta",
+      "mappedBy": "product"
+    },
+    "boms": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::mfg-bom.mfg-bom",
+      "mappedBy": "product"
+    },
+    "material_lots": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::mfg-material-lot.mfg-material-lot",
       "mappedBy": "product"
     }
   }

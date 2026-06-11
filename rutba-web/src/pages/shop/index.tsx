@@ -77,15 +77,15 @@ export default function ShopIndex({
             </div>
           )}
 
-          {isError && <ErrorCard message={(error as Error).message} />}
+          {isError && !pages && <ErrorCard message={(error as Error).message} />}
 
-          {!isLoading && !isError && pages && pages.length === 0 && (
+          {!isLoading && pages && pages.length === 0 && (
             <p className="text-muted-foreground text-center py-12">
               No shop pages published yet.
             </p>
           )}
 
-          {!isLoading && !isError && pages && pages.length > 0 && (
+          {!isLoading && pages && pages.length > 0 && (
             <div className="grid grid-cols-12 gap-5 md:gap-6">
               {pages.map((page) => (
                 <div

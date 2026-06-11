@@ -4,7 +4,10 @@ import {
   RidersEndpoints,
   ProductsEndpoints,
   ReturnRequestsEndpoints,
+  WorkflowsEndpoints,
 } from "@rutba/api-provider/endpoints/index.js";
+
+export const SO_ENTITY_UID = "api::sale-order.sale-order";
 
 // Lifecycle map for the order-management UI. Mirrors the server-side
 // state machine in pos-strapi/src/api/sale-order/services/sale-order-state-machine.js
@@ -37,6 +40,30 @@ export const STAGE_ORDER = [
 
 export function isTerminal(status) {
   return ["REFUNDED"].includes(status);
+}
+
+// A workflow definition counts as "custom" when it goes beyond a 1:1 mirror
+// of the canonical statuses — extra stages for a status, or stage keys that
+// aren't just lowercased statuses. Only then does the UI surface the
+// workflow card; the seeded mirror behaves exactly like the built-in flow.
+export function isCustomWorkflow(wf) {
+  const stages = wf?.stages || [];
+  if (!stages.length) return false;
+  const canonical = new Set(Object.keys(TRANSITIONS).map((s) => s.toLowerCase()));
+  if (stages.some((s) => !canonical.has(s.key))) return true;
+  const mapped = stages.map((s) => s.maps_to_status);
+  return new Set(mapped).size !== mapped.length;
+}
+
+// Resolve the stage an order currently sits in: explicit stage_key first,
+// else the first stage (by sequence) mapping its canonical status.
+export function workflowStage(wf, order) {
+  const stages = (wf?.stages || []).slice().sort((a, b) => (a.sequence ?? 0) - (b.sequence ?? 0));
+  return (
+    stages.find((s) => s.key === order?.stage_key) ||
+    stages.find((s) => s.maps_to_status === order?.order_status) ||
+    null
+  );
 }
 
 // Statuses that put the order into the return detour. The shell uses this
@@ -78,6 +105,22 @@ export function useSaleOrder({ documentId, isNew, jwt, toast }) {
   const [loading, setLoading] = useState(true);
   const [riders, setRiders] = useState([]);
   const [productsCatalog, setProductsCatalog] = useState([]);
+  const [workflow, setWorkflow] = useState(null);
+
+  // Definable workflow for sale orders (null → built-in lifecycle only).
+  useEffect(() => {
+    if (!jwt) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await WorkflowsEndpoints.list(1, 1, { entityUid: SO_ENTITY_UID });
+        if (!cancelled) setWorkflow((res.data || [])[0] || null);
+      } catch (err) {
+        console.warn("Failed to load sale-order workflow", err);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [jwt]);
 
   const refresh = useCallback(async () => {
     if (!documentId || isNew) return null;
@@ -152,5 +195,6 @@ export function useSaleOrder({ documentId, isNew, jwt, toast }) {
     riders,
     productsCatalog,
     refresh,
+    workflow,
   };
 }

@@ -61,7 +61,7 @@ export default function NewsPageDetail({
     );
   }
 
-  if (isError) {
+  if (isError && !page) {
     return (
       <LayoutMain>
         <div className="container-fluid my-20">

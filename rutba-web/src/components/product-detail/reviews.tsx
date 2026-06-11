@@ -35,11 +35,11 @@ export default function Reviews({ slug }: { slug: string }) {
     );
   }
 
-  if (isError) {
+  if (isError && !reviews) {
     return <ErrorCard message={(error as Error).message}></ErrorCard>;
   }
 
-  if (reviews.length <= 0) {
+  if (!reviews || reviews.length <= 0) {
     return (
       <div className="flex h-[450px] mb-3 shrink-0 items-center justify-center rounded-md border border-dashed">
         <div className="mx-auto flex max-w-[420px] flex-col items-center justify-center text-center">

@@ -8,6 +8,8 @@ declare module "next-auth" {
   interface Session {
     id: string | undefined;
     jwt: string | undefined;
+    /** "SessionExpired" when the Strapi refresh token is dead — client signs out quietly. */
+    error?: "SessionExpired";
     user: {
       name: string;
       email: string;
@@ -17,6 +19,7 @@ declare module "next-auth" {
   interface User {
     id: string;
     jwt: string;
+    refreshToken?: string;
   }
 
   interface Token {
@@ -31,5 +34,8 @@ declare module "next-auth/jwt" {
     /** OpenID ID Token */
     id?: string;
     jwt?: string;
+    /** Strapi users-permissions refresh token (jwtManagement: 'refresh'). Server-side only. */
+    refreshToken?: string;
+    error?: "SessionExpired";
   }
 }

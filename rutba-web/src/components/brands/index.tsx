@@ -70,7 +70,7 @@ export default function BrandList({
         <SkeletonBrand></SkeletonBrand>
       </div>
     );
-  } else if (isError) {
+  } else if (isError && !brands) {
     return <ErrorCard message={(error as Error).message}></ErrorCard>;
   }
 

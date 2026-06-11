@@ -100,6 +100,7 @@ services:
         NEXT_PUBLIC_WEB_URL: ${NEXT_PUBLIC_WEB_URL}
         NEXT_PUBLIC_WEB_USER_URL: ${NEXT_PUBLIC_WEB_USER_URL}
         NEXT_PUBLIC_ORDER_MANAGEMENT_URL: ${NEXT_PUBLIC_ORDER_MANAGEMENT_URL}
+        NEXT_PUBLIC_MANUFACTURING_URL: ${NEXT_PUBLIC_MANUFACTURING_URL}
         NEXT_PUBLIC_RIDER_URL: ${NEXT_PUBLIC_RIDER_URL}
         NEXT_PUBLIC_SOCIAL_URL: ${NEXT_PUBLIC_SOCIAL_URL}
         NEXT_PUBLIC_CRM_URL: ${NEXT_PUBLIC_CRM_URL}
@@ -329,6 +330,23 @@ services:
       - "${PORT_CMS}:${PORT_CMS}"
     environment:
       PORT: ${PORT_CMS}
+      HOSTNAME: 0.0.0.0
+
+  # --------------------------------------------------------
+  # Manufacturing
+  # --------------------------------------------------------
+  manufacturing:
+    build:
+      context: .
+      target: manufacturing
+      args: *global-build-args
+    restart: unless-stopped
+    depends_on:
+      - strapi
+    ports:
+      - "${PORT_MANUFACTURING:-4014}:${PORT_MANUFACTURING:-4014}"
+    environment:
+      PORT: ${PORT_MANUFACTURING:-4014}
       HOSTNAME: 0.0.0.0
 
 volumes:

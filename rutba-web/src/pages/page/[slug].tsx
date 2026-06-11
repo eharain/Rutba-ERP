@@ -64,7 +64,7 @@ export default function PageCompatibility({
     );
   }
 
-  if (isError) {
+  if (isError && !page) {
     return (
       <LayoutMain>
         <div className="container-fluid my-20">

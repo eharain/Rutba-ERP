@@ -1,0 +1,32 @@
+{
+  "collectionName": "components_mfg_qc_defect_lines",
+  "info": {
+    "displayName": "QC Defect Line",
+    "icon": "crossCircle",
+    "description": "One defect found in a QC inspection, with worker accountability"
+  },
+  "options": {},
+  "attributes": {
+    "defect_type": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::mfg-defect-type.mfg-defect-type"
+    },
+    "quantity": {
+      "type": "integer"
+    },
+    "responsible_worker": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::mfg-worker-profile.mfg-worker-profile"
+    },
+    "responsible_task": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::mfg-task.mfg-task"
+    },
+    "notes": {
+      "type": "string"
+    }
+  }
+}

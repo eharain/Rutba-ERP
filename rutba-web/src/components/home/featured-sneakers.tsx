@@ -39,7 +39,7 @@ export default function FeaturedSneakers() {
     );
   }
 
-  if (isError) {
+  if (isError && !products) {
     return (
       <ErrorCard
         message={(error as Error).message}

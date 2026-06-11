@@ -65,7 +65,9 @@ export default function Home({
     );
   }
 
-  if (isError) {
+  // Only surface the error when there's nothing to show — if a refetch fails
+  // while cached content exists, keep rendering the content (stale beats blank).
+  if (isError && !page) {
     return (
       <LayoutMain>
         <div className="container-fluid my-20">

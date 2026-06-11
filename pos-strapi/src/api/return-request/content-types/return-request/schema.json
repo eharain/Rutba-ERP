@@ -35,6 +35,9 @@
       "default": "REQUESTED",
       "required": true
     },
+    "stage_key": {
+      "type": "string"
+    },
     "reason": {
       "type": "enumeration",
       "enum": ["defective", "damaged_in_transit", "wrong_item", "wrong_size", "changed_mind", "late_delivery", "other"],

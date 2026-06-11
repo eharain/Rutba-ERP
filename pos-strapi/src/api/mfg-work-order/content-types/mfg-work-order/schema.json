@@ -1,0 +1,163 @@
+{
+  "kind": "collectionType",
+  "collectionName": "mfg_work_orders",
+  "info": {
+    "singularName": "mfg-work-order",
+    "pluralName": "mfg-work-orders",
+    "displayName": "Mfg Work Order",
+    "description": "Production job card: a quantity of a finished product to manufacture"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "wo_number": {
+      "type": "string",
+      "unique": true
+    },
+    "name": {
+      "type": "string"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "Draft",
+        "Released",
+        "InProgress",
+        "OnHold",
+        "Completed",
+        "Cancelled"
+      ],
+      "default": "Draft"
+    },
+    "stage_key": {
+      "type": "string"
+    },
+    "priority": {
+      "type": "enumeration",
+      "enum": [
+        "Low",
+        "Normal",
+        "High",
+        "Urgent"
+      ],
+      "default": "Normal"
+    },
+    "quantity_ordered": {
+      "type": "integer",
+      "required": true
+    },
+    "quantity_completed": {
+      "type": "integer",
+      "default": 0
+    },
+    "quantity_rejected": {
+      "type": "integer",
+      "default": 0
+    },
+    "due_date": {
+      "type": "date"
+    },
+    "started_at": {
+      "type": "datetime"
+    },
+    "completed_at": {
+      "type": "datetime"
+    },
+    "material_cost": {
+      "type": "decimal",
+      "default": 0
+    },
+    "labor_cost": {
+      "type": "decimal",
+      "default": 0
+    },
+    "overhead_cost": {
+      "type": "decimal",
+      "default": 0
+    },
+    "overhead_rate": {
+      "type": "decimal",
+      "default": 0
+    },
+    "total_cost": {
+      "type": "decimal",
+      "default": 0
+    },
+    "cost_per_unit": {
+      "type": "decimal",
+      "default": 0
+    },
+    "notes": {
+      "type": "text"
+    },
+    "size_breakup": {
+      "type": "component",
+      "repeatable": true,
+      "component": "mfg.size-breakup"
+    },
+    "product": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::product.product"
+    },
+    "bom": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::mfg-bom.mfg-bom",
+      "inversedBy": "work_orders"
+    },
+    "production_line": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::mfg-production-line.mfg-production-line",
+      "inversedBy": "work_orders"
+    },
+    "branch": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::branch.branch"
+    },
+    "sale_order": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::sale-order.sale-order"
+    },
+    "supervisor": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-employee.hr-employee"
+    },
+    "bundles": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::mfg-bundle.mfg-bundle",
+      "mappedBy": "work_order"
+    },
+    "tasks": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::mfg-task.mfg-task",
+      "mappedBy": "work_order"
+    },
+    "material_issues": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::mfg-material-issue.mfg-material-issue",
+      "mappedBy": "work_order"
+    },
+    "qc_inspections": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::mfg-qc-inspection.mfg-qc-inspection",
+      "mappedBy": "work_order"
+    },
+    "finished_stock_items": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::stock-item.stock-item",
+      "mappedBy": "work_order"
+    }
+  }
+}

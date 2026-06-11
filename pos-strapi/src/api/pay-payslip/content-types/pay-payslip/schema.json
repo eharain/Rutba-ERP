@@ -42,6 +42,12 @@
       "relation": "manyToOne",
       "target": "api::pay-payroll-run.pay-payroll-run",
       "inversedBy": "payslips"
+    },
+    "tasks": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::mfg-task.mfg-task",
+      "mappedBy": "payslip"
     }
   }
 }

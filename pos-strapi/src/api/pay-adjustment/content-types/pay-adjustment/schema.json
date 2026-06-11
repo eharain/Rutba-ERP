@@ -1,0 +1,69 @@
+{
+  "kind": "collectionType",
+  "collectionName": "pay_adjustments",
+  "info": {
+    "singularName": "pay-adjustment",
+    "pluralName": "pay-adjustments",
+    "displayName": "Payroll Adjustment",
+    "description": "Advances, loans, penalties, bonuses and other one-off payroll adjustments"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "type": {
+      "type": "enumeration",
+      "enum": [
+        "advance",
+        "loan",
+        "penalty",
+        "bonus",
+        "incentive",
+        "deduction"
+      ],
+      "required": true
+    },
+    "amount": {
+      "type": "decimal",
+      "required": true
+    },
+    "balance": {
+      "type": "decimal"
+    },
+    "recovery_per_period": {
+      "type": "decimal"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "Pending",
+        "PartiallyApplied",
+        "Applied",
+        "Cancelled"
+      ],
+      "default": "Pending"
+    },
+    "reason": {
+      "type": "text"
+    },
+    "effective_date": {
+      "type": "date"
+    },
+    "employee": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-employee.hr-employee"
+    },
+    "payslip": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::pay-payslip.pay-payslip"
+    },
+    "payroll_run": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::pay-payroll-run.pay-payroll-run"
+    }
+  }
+}

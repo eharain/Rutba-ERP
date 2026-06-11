@@ -1,0 +1,24 @@
+{
+  "collectionName": "components_mfg_size_breakups",
+  "info": {
+    "displayName": "Size Breakup",
+    "icon": "grid",
+    "description": "Per-size / per-colour quantity split for a work order"
+  },
+  "options": {},
+  "attributes": {
+    "size": {
+      "type": "string"
+    },
+    "color": {
+      "type": "string"
+    },
+    "quantity": {
+      "type": "integer"
+    },
+    "quantity_completed": {
+      "type": "integer",
+      "default": 0
+    }
+  }
+}

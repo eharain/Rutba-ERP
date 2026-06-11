@@ -26,6 +26,10 @@ export default function Transaction() {
     enabled: !!session.data && !!router.query.id,
   });
 
+  // Error check first — the loading gate below also catches `!dataTransaction`,
+  // which would otherwise show an endless "Loading..." on a failed fetch.
+  if (isError && !dataTransaction)
+    return <ErrorCard message={(error as Error).message}></ErrorCard>;
   if (isLoading || !dataTransaction)
     return (
       <ProfileLayout>
@@ -33,8 +37,6 @@ export default function Transaction() {
         <p>Loading...</p>
       </ProfileLayout>
     );
-  if (isError)
-    return <ErrorCard message={(error as Error).message}></ErrorCard>;
 
   // Show the Request-return CTA once the order is delivered. We don't
   // re-check the policy window here — the request-return page does that

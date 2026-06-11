@@ -1,4 +1,4 @@
-import { STAGE_ORDER } from "./hooks/useSaleOrder";
+import { STAGE_ORDER, isCustomWorkflow } from "./hooks/useSaleOrder";
 
 // Visual progress through the happy path. Detour states (FAILED_DELIVERY,
 // CANCELLED, REFUND_INITIATED, REFUNDED) are rendered as a single trailing
@@ -24,7 +24,53 @@ const DETOUR_LABELS = {
   REFUNDED:          { label: "Refunded",         color: "bg-secondary" },
 };
 
-export default function StageStepper({ status }) {
+// Workflow-defined stepper: renders the definable stages instead of the
+// hardcoded happy path when a customised workflow exists. Terminal stages
+// render as a trailing pill only while active (they're exits, not steps).
+function WorkflowStepper({ workflow, currentKey }) {
+  const stages = (workflow.stages || []).slice().sort((a, b) => (a.sequence ?? 0) - (b.sequence ?? 0));
+  const inline = stages.filter((s) => !s.is_terminal);
+  const current = stages.find((s) => s.key === currentKey);
+  const activeIndex = inline.findIndex((s) => s.key === currentKey);
+
+  return (
+    <div className="d-flex flex-wrap align-items-center gap-1 mb-3">
+      {inline.map((s, i) => {
+        const done = activeIndex >= 0 && i < activeIndex;
+        const active = i === activeIndex;
+        return (
+          <span
+            key={s.key}
+            className={
+              "badge rounded-pill px-3 py-2 " +
+              (active ? `bg-${s.color || "primary"}`
+                : done ? "bg-success"
+                : "bg-light text-muted border")
+            }
+            title={s.maps_to_status}
+          >
+            <span className="me-1 small">{i + 1}</span>
+            {s.name || s.key}
+            {i < inline.length - 1 && (
+              <i className="fas fa-chevron-right ms-2 small opacity-50" />
+            )}
+          </span>
+        );
+      })}
+      {current?.is_terminal && (
+        <span className={`badge rounded-pill px-3 py-2 ms-2 bg-${current.color || "secondary"}`}>
+          <i className="fas fa-circle-exclamation me-1" />
+          {current.name || current.key}
+        </span>
+      )}
+    </div>
+  );
+}
+
+export default function StageStepper({ status, workflow, stageKey }) {
+  if (workflow && isCustomWorkflow(workflow)) {
+    return <WorkflowStepper workflow={workflow} currentKey={stageKey} />;
+  }
   const detour = DETOUR_LABELS[status];
 
   const activeIndex = detour

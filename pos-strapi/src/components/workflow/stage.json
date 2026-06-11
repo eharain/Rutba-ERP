@@ -1,0 +1,46 @@
+{
+  "collectionName": "components_workflow_stages",
+  "info": {
+    "displayName": "Workflow Stage",
+    "icon": "stack",
+    "description": "One definable stage; maps_to_status ties it to the entity's canonical status enum so state-machine side effects keep firing"
+  },
+  "options": {},
+  "attributes": {
+    "key": {
+      "type": "string",
+      "required": true
+    },
+    "name": {
+      "type": "string"
+    },
+    "local_name": {
+      "type": "string"
+    },
+    "maps_to_status": {
+      "type": "string",
+      "required": true
+    },
+    "sequence": {
+      "type": "integer",
+      "default": 0
+    },
+    "color": {
+      "type": "string"
+    },
+    "pos_x": {
+      "type": "float"
+    },
+    "pos_y": {
+      "type": "float"
+    },
+    "is_initial": {
+      "type": "boolean",
+      "default": false
+    },
+    "is_terminal": {
+      "type": "boolean",
+      "default": false
+    }
+  }
+}

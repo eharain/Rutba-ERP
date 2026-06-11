@@ -62,7 +62,7 @@ export default function PageGroupRoute({
     );
   }
 
-  if (isError) {
+  if (isError && !group) {
     return (
       <LayoutMain>
         <div className="container-fluid my-20">

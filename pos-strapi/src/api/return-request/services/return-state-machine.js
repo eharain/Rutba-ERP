@@ -21,6 +21,8 @@ const RETURN_REQUEST_UID = 'api::return-request.return-request';
 const STOCK_ITEM_UID     = 'api::stock-item.stock-item';
 const SALE_ORDER_UID     = 'api::sale-order.sale-order';
 
+const workflowEngine = require('../../../utils/workflow-engine');
+
 const TRANSITIONS = {
     REQUESTED:        ['APPROVED', 'REJECTED', 'CANCELLED'],
     APPROVED:         ['AWAITING_PICKUP', 'RECEIVED', 'CANCELLED'],
@@ -68,10 +70,10 @@ module.exports = {
      *                            received_by, received_at, refund_status, …)
      * @returns {Promise<object>} Updated return-request
      */
-    async executeTransition(returnDocumentId, newStatus, extra = {}) {
+    async executeTransition(returnDocumentId, target, extra = {}) {
         const current = await strapi.documents(RETURN_REQUEST_UID).findOne({
             documentId: returnDocumentId,
-            fields: ['id', 'status'],
+            fields: ['id', 'status', 'stage_key'],
         });
         if (!current) {
             const err = new Error(`Return request ${returnDocumentId} not found`);
@@ -80,20 +82,45 @@ module.exports = {
         }
 
         const fromStatus = current.status || 'REQUESTED';
-        if (!this.validateTransition(fromStatus, newStatus)) {
+        let newStatus = target;
+        let stageKey = null;
+
+        // Definable workflow: when one exists for return-requests, its graph
+        // replaces the hardcoded transition map. `target` may be a stage key
+        // or a canonical status name; side effects stay keyed to the canonical
+        // status and only run when it changes.
+        const wf = await workflowEngine.getWorkflowFor(RETURN_REQUEST_UID);
+        if (wf) {
+            const fromStage = workflowEngine.currentStage(wf, current, 'status');
+            const toStage = workflowEngine.resolveTargetStage(wf, target);
+            if (!toStage) {
+                const err = new Error(`Unknown workflow stage or status: ${target}`);
+                err.status = 400;
+                throw err;
+            }
+            if (fromStage && !workflowEngine.validateTransition(wf, fromStage.key, toStage.key)) {
+                const err = new Error(`Invalid stage transition: ${fromStage.key} → ${toStage.key}`);
+                err.status = 400;
+                throw err;
+            }
+            newStatus = toStage.maps_to_status || fromStatus;
+            stageKey = toStage.key;
+        } else if (!this.validateTransition(fromStatus, newStatus)) {
             const err = new Error(`Invalid return-request transition: ${fromStatus} → ${newStatus}`);
             err.status = 400;
             throw err;
         }
 
+        const statusChanged = newStatus !== fromStatus;
         const updateData = { status: newStatus, ...extra };
+        if (stageKey) updateData.stage_key = stageKey;
 
         // Auto-stamp received_at on RECEIVED — controller can override by
         // passing it in extra (e.g. backdating a paper trail).
-        if (newStatus === 'RECEIVED' && !extra.received_at) {
+        if (statusChanged && newStatus === 'RECEIVED' && !extra.received_at) {
             updateData.received_at = new Date();
         }
-        if (newStatus === 'CANCELLED' && !extra.cancelled_at) {
+        if (statusChanged && newStatus === 'CANCELLED' && !extra.cancelled_at) {
             updateData.cancelled_at = new Date();
         }
 
@@ -102,23 +129,28 @@ module.exports = {
             data: updateData,
         });
 
-        // Stock-item walk on RECEIVED. Best-effort like the sale-order
-        // side effects — a failure logs but does not unwind the transition.
-        if (newStatus === 'RECEIVED') {
-            try {
-                await this.walkRestockDecisions(returnDocumentId);
-            } catch (err) {
-                strapi.log.warn(
-                    `[return-state-machine] stock walk failed for return=${returnDocumentId}: ${err.message}`,
-                );
+        // Side effects only when the canonical status actually changed — a
+        // custom stage move within the same status must not re-walk stock
+        // or re-mirror onto the order.
+        if (statusChanged) {
+            // Stock-item walk on RECEIVED. Best-effort like the sale-order
+            // side effects — a failure logs but does not unwind the transition.
+            if (newStatus === 'RECEIVED') {
+                try {
+                    await this.walkRestockDecisions(returnDocumentId);
+                } catch (err) {
+                    strapi.log.warn(
+                        `[return-state-machine] stock walk failed for return=${returnDocumentId}: ${err.message}`,
+                    );
+                }
             }
-        }
 
-        // Mirror onto the parent order's state machine so the order-management
-        // shell renders the right stage. Best-effort: the order may have been
-        // cancelled or manually adjusted, in which case the transition is
-        // invalid and we just log + move on. The return itself still succeeded.
-        await this.mirrorOntoOrder(returnDocumentId, newStatus);
+            // Mirror onto the parent order's state machine so the order-management
+            // shell renders the right stage. Best-effort: the order may have been
+            // cancelled or manually adjusted, in which case the transition is
+            // invalid and we just log + move on. The return itself still succeeded.
+            await this.mirrorOntoOrder(returnDocumentId, newStatus);
+        }
 
         return updated;
     },

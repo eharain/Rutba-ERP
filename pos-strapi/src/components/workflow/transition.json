@@ -1,0 +1,25 @@
+{
+  "collectionName": "components_workflow_transitions",
+  "info": {
+    "displayName": "Workflow Transition",
+    "icon": "arrowRight",
+    "description": "One allowed move between two stage keys"
+  },
+  "options": {},
+  "attributes": {
+    "from_key": {
+      "type": "string",
+      "required": true
+    },
+    "to_key": {
+      "type": "string",
+      "required": true
+    },
+    "label": {
+      "type": "string"
+    },
+    "approles": {
+      "type": "string"
+    }
+  }
+}

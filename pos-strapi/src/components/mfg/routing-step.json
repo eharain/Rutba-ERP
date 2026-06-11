@@ -1,0 +1,52 @@
+{
+  "collectionName": "components_mfg_routing_steps",
+  "info": {
+    "displayName": "Routing Step",
+    "icon": "bulletList",
+    "description": "One operation in a BOM's production routing"
+  },
+  "options": {},
+  "attributes": {
+    "operation": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::mfg-operation.mfg-operation"
+    },
+    "sequence": {
+      "type": "integer"
+    },
+    "expected_minutes": {
+      "type": "decimal"
+    },
+    "expected_pieces_per_hour": {
+      "type": "decimal"
+    },
+    "default_skill_grade": {
+      "type": "enumeration",
+      "enum": [
+        "A",
+        "B",
+        "C",
+        "trainee"
+      ]
+    },
+    "is_optional": {
+      "type": "boolean",
+      "default": false
+    },
+    "depends_on_sequence": {
+      "type": "integer"
+    },
+    "can_run_parallel": {
+      "type": "boolean",
+      "default": false
+    },
+    "outsource_allowed": {
+      "type": "boolean",
+      "default": false
+    },
+    "notes": {
+      "type": "string"
+    }
+  }
+}

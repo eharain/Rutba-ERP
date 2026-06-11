@@ -142,7 +142,9 @@ export default function FormCheckoutShippingService({
           })}
         </>
       );
-    } else if (isError) {
+    } else if (isError && !shippingRate) {
+      // A failed re-quote already toasts via onError; if we still have the
+      // previous rates, keep them selectable instead of blanking the step.
       return <ErrorCard message={(error as Error).message}></ErrorCard>;
     } else {
       if (shippingRate && shippingRate.rates.length <= 0) {

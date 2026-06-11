@@ -1,6 +1,6 @@
 import ProductCard from "@/components/product-list/product-card";
 import { SkeletonProduct } from "@/components/skeleton";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { ErrorCard } from "@/components/errors/error-card";
 import { useRouter } from "next/router";
 import { ChevronLeft, ChevronRight, Search } from "lucide-react";
@@ -46,6 +46,10 @@ export default function ProductListItem() {
         page as string
       );
     },
+    // Keep the current grid on screen while the next page/filter loads —
+    // no skeleton flash, and a failed page fetch degrades to stale results
+    // instead of wiping the grid.
+    placeholderData: keepPreviousData,
   });
 
   if (isLoading) {
@@ -65,11 +69,11 @@ export default function ProductListItem() {
     );
   }
 
-  if (isError) {
+  if (isError && !products) {
     return <ErrorCard message={(error as Error).message}></ErrorCard>;
   }
 
-  if (products.data.length <= 0) {
+  if (!products || products.data.length <= 0) {
     return (
       <div className="flex h-[450px] mb-10 shrink-0 items-center justify-center rounded-md border border-dashed">
         <div className="mx-auto flex max-w-[420px] flex-col items-center justify-center text-center">

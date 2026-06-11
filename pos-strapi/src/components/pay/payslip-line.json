@@ -1,0 +1,37 @@
+{
+  "collectionName": "components_pay_payslip_lines",
+  "info": {
+    "displayName": "Payslip Line",
+    "icon": "bulletList",
+    "description": "One earning or deduction line on a payslip"
+  },
+  "options": {},
+  "attributes": {
+    "label": {
+      "type": "string"
+    },
+    "category": {
+      "type": "enumeration",
+      "enum": [
+        "salary",
+        "piece_rate",
+        "incentive",
+        "penalty",
+        "advance",
+        "deduction"
+      ]
+    },
+    "quantity": {
+      "type": "decimal"
+    },
+    "rate": {
+      "type": "decimal"
+    },
+    "amount": {
+      "type": "decimal"
+    },
+    "source_ref": {
+      "type": "string"
+    }
+  }
+}

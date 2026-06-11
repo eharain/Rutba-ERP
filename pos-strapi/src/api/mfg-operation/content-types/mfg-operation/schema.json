@@ -1,0 +1,77 @@
+{
+  "kind": "collectionType",
+  "collectionName": "mfg_operations",
+  "info": {
+    "singularName": "mfg-operation",
+    "pluralName": "mfg-operations",
+    "displayName": "Mfg Operation",
+    "description": "Catalogue of production operations (cutting, stitching, finishing, QC, packing...)"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "local_name": {
+      "type": "string"
+    },
+    "code": {
+      "type": "uid",
+      "targetField": "name"
+    },
+    "description": {
+      "type": "text"
+    },
+    "category": {
+      "type": "enumeration",
+      "enum": [
+        "cutting",
+        "sewing",
+        "finishing",
+        "qc",
+        "packing",
+        "other"
+      ],
+      "default": "sewing"
+    },
+    "default_uom": {
+      "type": "enumeration",
+      "enum": [
+        "piece",
+        "meter",
+        "yard",
+        "kg",
+        "gram",
+        "dozen",
+        "set",
+        "cone",
+        "roll",
+        "box"
+      ],
+      "default": "piece"
+    },
+    "sequence_hint": {
+      "type": "integer"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "piece_rates": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::mfg-piece-rate.mfg-piece-rate",
+      "mappedBy": "operation"
+    },
+    "defect_types": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::mfg-defect-type.mfg-defect-type",
+      "inversedBy": "operations"
+    }
+  }
+}

@@ -196,7 +196,7 @@ export default function Header({ pageMenus }: { pageMenus?: PageMenuRef[] }) {
                         <NavigationMenuContent>
                           {isCmsLoading ? (
                             <SkeletonCategory />
-                          ) : isCmsError ? (
+                          ) : isCmsError && !cmsPage ? (
                             <ErrorCard message={(cmsError as Error).message} />
                           ) : (
                             <CategoryHeader categories={categories} />
@@ -213,7 +213,7 @@ export default function Header({ pageMenus }: { pageMenus?: PageMenuRef[] }) {
                         <NavigationMenuContent>
                           {isCmsLoading ? (
                             <SkeletonBrand />
-                          ) : isCmsError ? (
+                          ) : isCmsError && !cmsPage ? (
                             <ErrorCard message={(cmsError as Error).message} />
                           ) : (
                             <BrandHeader brands={brands} />

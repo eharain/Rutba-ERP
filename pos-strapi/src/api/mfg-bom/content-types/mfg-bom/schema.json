@@ -1,0 +1,74 @@
+{
+  "kind": "collectionType",
+  "collectionName": "mfg_boms",
+  "info": {
+    "singularName": "mfg-bom",
+    "pluralName": "mfg-boms",
+    "displayName": "Mfg BOM",
+    "description": "Versioned bill of materials + routing for a finished product"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "local_name": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string",
+      "default": "1"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "Draft",
+        "Active",
+        "Archived"
+      ],
+      "default": "Draft"
+    },
+    "is_default": {
+      "type": "boolean",
+      "default": false
+    },
+    "output_quantity": {
+      "type": "decimal",
+      "default": 1
+    },
+    "notes": {
+      "type": "text"
+    },
+    "material_lines": {
+      "type": "component",
+      "repeatable": true,
+      "component": "mfg.bom-line"
+    },
+    "routing_steps": {
+      "type": "component",
+      "repeatable": true,
+      "component": "mfg.routing-step"
+    },
+    "product": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::product.product",
+      "inversedBy": "boms"
+    },
+    "production_line": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::mfg-production-line.mfg-production-line"
+    },
+    "work_orders": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::mfg-work-order.mfg-work-order",
+      "mappedBy": "bom"
+    }
+  }
+}

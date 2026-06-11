@@ -1,0 +1,54 @@
+{
+  "kind": "collectionType",
+  "collectionName": "mfg_defect_types",
+  "info": {
+    "singularName": "mfg-defect-type",
+    "pluralName": "mfg-defect-types",
+    "displayName": "Mfg Defect Type",
+    "description": "QC defect catalogue"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "local_name": {
+      "type": "string"
+    },
+    "code": {
+      "type": "uid",
+      "targetField": "name"
+    },
+    "severity": {
+      "type": "enumeration",
+      "enum": [
+        "minor",
+        "major",
+        "critical"
+      ],
+      "default": "minor"
+    },
+    "is_reworkable": {
+      "type": "boolean",
+      "default": true
+    },
+    "attributable_to_worker": {
+      "type": "boolean",
+      "default": true
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "operations": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::mfg-operation.mfg-operation",
+      "mappedBy": "defect_types"
+    }
+  }
+}

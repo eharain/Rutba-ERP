@@ -51,7 +51,7 @@ export default function Transaction() {
           })}
         </div>
       );
-    } else if (isError)
+    } else if (isError && !transactions)
       return <ErrorCard message={(error as Error).message}></ErrorCard>;
     else {
       return (

@@ -1,0 +1,45 @@
+{
+  "kind": "collectionType",
+  "collectionName": "workflows",
+  "info": {
+    "singularName": "workflow",
+    "pluralName": "workflows",
+    "displayName": "Workflow",
+    "description": "Definable stage workflow for an entity (work orders, sale orders); validated and executed by that entity's state machine"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "entity_uid": {
+      "type": "string",
+      "required": true
+    },
+    "description": {
+      "type": "text"
+    },
+    "is_default": {
+      "type": "boolean",
+      "default": true
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "stages": {
+      "type": "component",
+      "repeatable": true,
+      "component": "workflow.stage"
+    },
+    "transitions": {
+      "type": "component",
+      "repeatable": true,
+      "component": "workflow.transition"
+    }
+  }
+}

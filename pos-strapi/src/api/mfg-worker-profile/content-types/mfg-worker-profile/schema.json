@@ -1,0 +1,65 @@
+{
+  "kind": "collectionType",
+  "collectionName": "mfg_worker_profiles",
+  "info": {
+    "singularName": "mfg-worker-profile",
+    "pluralName": "mfg-worker-profiles",
+    "displayName": "Mfg Worker Profile",
+    "description": "Manufacturing facet of a worker (1:1 with hr-employee)"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "worker_type": {
+      "type": "enumeration",
+      "enum": [
+        "piece_rate",
+        "fixed",
+        "hybrid",
+        "contractor"
+      ],
+      "default": "piece_rate"
+    },
+    "default_skill_grade": {
+      "type": "enumeration",
+      "enum": [
+        "A",
+        "B",
+        "C",
+        "trainee"
+      ],
+      "default": "C"
+    },
+    "code": {
+      "type": "string"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "skill_grades": {
+      "type": "component",
+      "repeatable": true,
+      "component": "mfg.skill-grade"
+    },
+    "employee": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::hr-employee.hr-employee"
+    },
+    "production_line": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::mfg-production-line.mfg-production-line",
+      "inversedBy": "workers"
+    },
+    "tasks": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::mfg-task.mfg-task",
+      "mappedBy": "worker"
+    }
+  }
+}

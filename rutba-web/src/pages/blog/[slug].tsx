@@ -61,7 +61,7 @@ export default function BlogPageDetail({
     );
   }
 
-  if (isError) {
+  if (isError && !page) {
     return (
       <LayoutMain>
         <div className="container-fluid my-20">

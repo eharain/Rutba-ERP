@@ -110,6 +110,7 @@
       ],
       "default": "PENDING_PAYMENT"
     },
+    "stage_key": { "type": "string" },
     "label_url": { "type": "text" },
     "label_generated_at": { "type": "datetime" },
     "return_label_url": { "type": "text" },

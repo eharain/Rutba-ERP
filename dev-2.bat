@@ -20,6 +20,7 @@ echo   Accounts     : http://localhost:4007
 echo   Payroll      : http://localhost:4008
 echo   CMS          : http://localhost:4009
 echo   Social       : http://localhost:4011
+echo   Manufacturing: http://localhost:4014
 echo.
 
 echo [1/13] Starting Strapi API...
@@ -50,6 +51,7 @@ echo   Accounts     : http://localhost:4007
 echo   Payroll      : http://localhost:4008
 echo   CMS          : http://localhost:4009
 echo   Social       : http://localhost:4011
+echo   Manufacturing: http://localhost:4014
 echo.
 echo   Close this window
 echo   (The service windows will keep running.)

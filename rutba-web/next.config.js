@@ -3,6 +3,14 @@
 /** @type {import('next').NextConfig} */
 module.exports = createNextConfig({
   reactStrictMode: false,
+  // Restore the previous scroll position on browser back/forward. Without this
+  // the storefront lands at the top of the listing/home after viewing a product,
+  // forcing the shopper to scroll back down. Listing + home keep their data in
+  // the react-query cache, so the full page height is available synchronously on
+  // back and the saved position applies cleanly.
+  experimental: {
+    scrollRestoration: true,
+  },
   images: {
 	remotePatterns: [
 	  {

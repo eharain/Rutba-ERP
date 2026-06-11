@@ -1,0 +1,31 @@
+{
+  "collectionName": "components_mfg_skill_grades",
+  "info": {
+    "displayName": "Skill Grade",
+    "icon": "medal",
+    "description": "A worker's certified grade + optional rate override for one operation"
+  },
+  "options": {},
+  "attributes": {
+    "operation": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::mfg-operation.mfg-operation"
+    },
+    "grade": {
+      "type": "enumeration",
+      "enum": [
+        "A",
+        "B",
+        "C",
+        "trainee"
+      ]
+    },
+    "rate_override": {
+      "type": "decimal"
+    },
+    "certified_at": {
+      "type": "date"
+    }
+  }
+}

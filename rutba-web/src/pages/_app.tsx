@@ -1,7 +1,7 @@
 import "@/styles/globals.scss";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import App, { type AppContext, type AppProps } from "next/app";
-import { SessionProvider } from "next-auth/react";
+import { SessionProvider, signOut, useSession } from "next-auth/react";
 import { Toaster } from "@/components/ui/toaster";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -22,6 +22,19 @@ import { SITE_SETTINGS_QUERY_KEY } from "@/hooks/use-site-settings";
 AppContextEndpoints.setAppName('web');
 
 type RutbaAppProps = AppProps & { siteSettings?: SiteSettings };
+
+// When the Strapi refresh token is dead (NextAuth marks the session with
+// error: "SessionExpired"), drop to guest browsing quietly instead of letting
+// every authenticated call 401 into error cards while the UI still says
+// "logged in". No redirect — the shopper keeps whatever page they're on.
+function SessionExpiryGuard() {
+  const { data: session } = useSession();
+  const expired = session?.error === "SessionExpired";
+  useEffect(() => {
+    if (expired) signOut({ redirect: false });
+  }, [expired]);
+  return null;
+}
 
 function RutbaApp({
   Component,
@@ -50,6 +63,11 @@ function RutbaApp({
           },
           retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
           refetchOnWindowFocus: false,
+          // Storefront data changes slowly; serving the cache for a minute
+          // avoids a refetch on every remount/navigation. Every skipped
+          // request is one less chance for a flaky connection to flip a
+          // rendered page into an error state.
+          staleTime: 60_000,
         },
       },
     });
@@ -58,7 +76,12 @@ function RutbaApp({
   });
 
   return (
-    <SessionProvider session={session}>
+    // refetchInterval keeps long-lived tabs hitting /api/auth/session, which
+    // is where the NextAuth jwt callback rotates the 2h Strapi access token.
+    // 30 min gives 3-4 renewal chances per token lifetime; focus refetch
+    // (default on) covers tabs coming back from background.
+    <SessionProvider session={session} refetchInterval={30 * 60}>
+      <SessionExpiryGuard />
       <QueryClientProvider client={queryClient}>
         <Toaster />
         {/* Site-wide SEO defaults — pages override with their own <Seo />.

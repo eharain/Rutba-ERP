@@ -17,7 +17,8 @@
     "rutba-accounts",
     "rutba-payroll",
     "rutba-cms",
-    "rutba-social"
+    "rutba-social",
+    "rutba-manufacturing"
   ],
   "scripts": {
     "dev:desk": "node scripts/js/load-env.js -- npm run dev --workspace=pos-desk",
@@ -35,6 +36,7 @@
     "dev:payroll": "node scripts/js/load-env.js -- npm run dev --workspace=rutba-payroll",
     "dev:cms": "node scripts/js/load-env.js -- npm run dev --workspace=rutba-cms",
     "dev:social": "node scripts/js/load-env.js -- npm run dev --workspace=rutba-social",
+    "dev:manufacturing": "node scripts/js/load-env.js -- npm run dev --workspace=rutba-manufacturing",
     "dev:all": "node scripts/js/run-all.js dev",
     "start:strapi": "node scripts/js/load-env.js -- npm --prefix pos-strapi run start",
     "start:auth": "node scripts/js/load-env.js -- npm run start --workspace=pos-auth",
@@ -50,6 +52,7 @@
     "start:payroll": "node scripts/js/load-env.js -- npm run start --workspace=rutba-payroll",
     "start:cms": "node scripts/js/load-env.js -- npm run start --workspace=rutba-cms",
     "start:social": "node scripts/js/load-env.js -- npm run start --workspace=rutba-social",
+    "start:manufacturing": "node scripts/js/load-env.js -- npm run start --workspace=rutba-manufacturing",
 
     "build:api": "node scripts/js/load-env.js -- npm run build --workspace=@rutba/api-provider",
     "build:api-pro": "node scripts/js/load-env.js -- npm run build --workspace=strapi-api-pro",
@@ -66,6 +69,7 @@
     "build:payroll": "node scripts/js/load-env.js -- npm run build --workspace=rutba-payroll",
     "build:cms": "node scripts/js/load-env.js -- npm run build --workspace=rutba-cms",
     "build:social": "node scripts/js/load-env.js -- npm run build --workspace=rutba-social",
+    "build:manufacturing": "node scripts/js/load-env.js -- npm run build --workspace=rutba-manufacturing",
     "build:strapi": "node scripts/js/load-env.js -- npm --prefix pos-strapi run build",
 
     "build:all": "node scripts/js/run-app.js build",
@@ -82,6 +86,7 @@
     "@fortawesome/fontawesome-free": "^7.2.0",
     "@rutba/pos-shared": "file://packages/pos-shared",
     "@rutba/api-provider": "file://packages/api-provider",
+    "@xyflow/react": "^12.3.5",
     "axios": "^1.14.0",
     "bootstrap": "^5.3.8",
     "marked": "^17.0.5",

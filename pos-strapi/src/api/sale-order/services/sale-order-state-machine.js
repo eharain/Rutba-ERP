@@ -23,6 +23,8 @@
 const SALE_ORDER_UID = 'api::sale-order.sale-order';
 const STOCK_ITEM_UID = 'api::stock-item.stock-item';
 
+const workflowEngine = require('../../../utils/workflow-engine');
+
 const TRANSITIONS = {
     PENDING_PAYMENT:    ['PAYMENT_CONFIRMED', 'CANCELLED'],
     PAYMENT_CONFIRMED:  ['PREPARING', 'CANCELLED'],
@@ -68,10 +70,10 @@ module.exports = {
      * @param {object} [extra]  - additional fields to update (e.g. actual_delivery_time)
      * @returns {Promise<object>} Updated order
      */
-    async executeTransition(orderDocumentId, newStatus, extra = {}) {
+    async executeTransition(orderDocumentId, target, extra = {}) {
         const order = await strapi.documents('api::sale-order.sale-order').findOne({
             documentId: orderDocumentId,
-            fields: ['id', 'order_status'],
+            fields: ['id', 'order_status', 'stage_key'],
         });
 
         if (!order) {
@@ -79,8 +81,31 @@ module.exports = {
         }
 
         const currentStatus = order.order_status || 'PENDING_PAYMENT';
+        let newStatus = target;
+        let stageKey = null;
 
-        if (!this.validateTransition(currentStatus, newStatus)) {
+        // Definable workflow (api::workflow.workflow): when one exists for
+        // sale orders, its transition graph replaces the hardcoded map.
+        // `target` may be a stage key or a canonical status name; the stage's
+        // maps_to_status decides the canonical status, which keeps owning the
+        // stock side effects below.
+        const wf = await workflowEngine.getWorkflowFor(SALE_ORDER_UID);
+        if (wf) {
+            const fromStage = workflowEngine.currentStage(wf, order, 'order_status');
+            const toStage = workflowEngine.resolveTargetStage(wf, target);
+            if (!toStage) {
+                const err = new Error(`Unknown workflow stage or status: ${target}`);
+                err.status = 400;
+                throw err;
+            }
+            if (fromStage && !workflowEngine.validateTransition(wf, fromStage.key, toStage.key)) {
+                const err = new Error(`Invalid stage transition: ${fromStage.key} → ${toStage.key}`);
+                err.status = 400;
+                throw err;
+            }
+            newStatus = toStage.maps_to_status || currentStatus;
+            stageKey = toStage.key;
+        } else if (!this.validateTransition(currentStatus, newStatus)) {
             const err = new Error(
                 `Invalid status transition: ${currentStatus} → ${newStatus}`
             );
@@ -88,10 +113,12 @@ module.exports = {
             throw err;
         }
 
+        const statusChanged = newStatus !== currentStatus;
         const updateData = { order_status: newStatus, ...extra };
+        if (stageKey) updateData.stage_key = stageKey;
 
         // Auto-set actual_delivery_time when delivered
-        if (newStatus === 'DELIVERED' && !extra.actual_delivery_time) {
+        if (statusChanged && newStatus === 'DELIVERED' && !extra.actual_delivery_time) {
             updateData.actual_delivery_time = new Date();
         }
 
@@ -105,7 +132,9 @@ module.exports = {
         // status change — the stock-item lifecycle hooks already self-heal
         // `product.stock_quantity` on the next recompute job, and an admin
         // can correct an individual unit's status manually if needed.
-        const stockMove = STOCK_TRANSITIONS_ON_ORDER_STATUS[newStatus];
+        // Only when the canonical status actually changed — a custom stage
+        // move within the same status must not re-walk stock items.
+        const stockMove = statusChanged ? STOCK_TRANSITIONS_ON_ORDER_STATUS[newStatus] : null;
         if (stockMove) {
             try {
                 await this.transitionAttachedStockItems(

@@ -1,0 +1,112 @@
+{
+  "kind": "collectionType",
+  "collectionName": "mfg_material_lots",
+  "info": {
+    "singularName": "mfg-material-lot",
+    "pluralName": "mfg-material-lots",
+    "displayName": "Mfg Material Lot",
+    "description": "Quantity-based ledger for bulk raw materials (fabric rolls, thread, trims)"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "lot_code": {
+      "type": "string",
+      "unique": true
+    },
+    "name": {
+      "type": "string"
+    },
+    "uom": {
+      "type": "enumeration",
+      "enum": [
+        "piece",
+        "meter",
+        "yard",
+        "kg",
+        "gram",
+        "dozen",
+        "set",
+        "cone",
+        "roll",
+        "box"
+      ],
+      "default": "meter"
+    },
+    "quantity_received": {
+      "type": "decimal",
+      "required": true
+    },
+    "quantity_remaining": {
+      "type": "decimal",
+      "required": true
+    },
+    "quantity_reserved": {
+      "type": "decimal",
+      "default": 0
+    },
+    "unit_cost": {
+      "type": "decimal"
+    },
+    "total_cost": {
+      "type": "decimal"
+    },
+    "dye_lot": {
+      "type": "string"
+    },
+    "color": {
+      "type": "string"
+    },
+    "width": {
+      "type": "string"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "Available",
+        "Reserved",
+        "PartiallyConsumed",
+        "Consumed",
+        "Returned",
+        "Scrapped",
+        "Quarantined"
+      ],
+      "default": "Available"
+    },
+    "received_at": {
+      "type": "datetime"
+    },
+    "expiry": {
+      "type": "date"
+    },
+    "product": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::product.product",
+      "inversedBy": "material_lots"
+    },
+    "supplier": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::supplier.supplier"
+    },
+    "purchase_item": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::purchase-item.purchase-item"
+    },
+    "branch": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::branch.branch"
+    },
+    "material_issues": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::mfg-material-issue.mfg-material-issue",
+      "mappedBy": "material_lot"
+    }
+  }
+}

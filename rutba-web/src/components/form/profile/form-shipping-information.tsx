@@ -193,7 +193,7 @@ function ServerAddressBook({ jwt }: { jwt: string }) {
           </div>
         )}
 
-        {isError && (
+        {isError && addresses.length === 0 && (
           <Alert variant="destructive">
             <AlertTitle>Couldn't load addresses</AlertTitle>
             <AlertDescription>

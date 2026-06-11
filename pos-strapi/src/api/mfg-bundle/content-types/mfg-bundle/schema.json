@@ -1,0 +1,89 @@
+{
+  "kind": "collectionType",
+  "collectionName": "mfg_bundles",
+  "info": {
+    "singularName": "mfg-bundle",
+    "pluralName": "mfg-bundles",
+    "displayName": "Mfg Bundle",
+    "description": "WIP traceability unit: a tied bundle of cut pieces moving through operations"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "bundle_code": {
+      "type": "string",
+      "unique": true
+    },
+    "size": {
+      "type": "string"
+    },
+    "color": {
+      "type": "string"
+    },
+    "quantity": {
+      "type": "integer",
+      "required": true
+    },
+    "quantity_completed": {
+      "type": "integer",
+      "default": 0
+    },
+    "quantity_rejected": {
+      "type": "integer",
+      "default": 0
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "Created",
+        "Issued",
+        "InProgress",
+        "QCHold",
+        "Completed",
+        "Rejected",
+        "Scrapped"
+      ],
+      "default": "Created"
+    },
+    "current_operation_seq": {
+      "type": "integer",
+      "default": 0
+    },
+    "work_order": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::mfg-work-order.mfg-work-order",
+      "inversedBy": "bundles"
+    },
+    "production_line": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::mfg-production-line.mfg-production-line"
+    },
+    "current_operation": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::mfg-operation.mfg-operation"
+    },
+    "tasks": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::mfg-task.mfg-task",
+      "mappedBy": "bundle"
+    },
+    "material_issues": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::mfg-material-issue.mfg-material-issue",
+      "mappedBy": "bundle"
+    },
+    "qc_inspections": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::mfg-qc-inspection.mfg-qc-inspection",
+      "mappedBy": "bundle"
+    }
+  }
+}

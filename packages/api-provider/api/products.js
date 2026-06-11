@@ -61,7 +61,7 @@ export const ProductsEndpoints = {
 
     /**
      * List products with conditional filters (brands, categories, suppliers, purchases,
-     * parentOnly, status, sort).
+     * kinds, parentOnly, status, sort).
      *
      * @param {number} page
      * @param {number} pageSize
@@ -70,6 +70,7 @@ export const ProductsEndpoints = {
      *   categories?: string[],
      *   suppliers?: string[],
      *   purchases?: string[],
+     *   kinds?: string[],
      *   parentOnly?: boolean,
      *   status?: string,
      *   sort?: string,
@@ -77,9 +78,13 @@ export const ProductsEndpoints = {
      * }} filters
      */
     list: (page = 1, pageSize = 100, filters = {}) => {
-        const { brands, categories, suppliers, purchases, parentOnly, status, sort, fields, populate: extraPopulate } = filters;
+        const { brands, categories, suppliers, purchases, kinds, parentOnly, status, sort, fields, populate: extraPopulate } = filters;
 
         const filterObj = {};
+
+        if (Array.isArray(kinds) && kinds.length > 0) {
+            filterObj.kind = { $in: kinds };
+        }
 
         if (Array.isArray(brands) && brands.length > 0) {
             filterObj.brands = { documentId: { $in: brands } };

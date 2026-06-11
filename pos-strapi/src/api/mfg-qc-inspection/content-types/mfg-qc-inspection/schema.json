@@ -1,0 +1,94 @@
+{
+  "kind": "collectionType",
+  "collectionName": "mfg_qc_inspections",
+  "info": {
+    "singularName": "mfg-qc-inspection",
+    "pluralName": "mfg-qc-inspections",
+    "displayName": "Mfg QC Inspection",
+    "description": "A quality-control inspection event with defect lines and worker accountability"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "result": {
+      "type": "enumeration",
+      "enum": [
+        "Pass",
+        "Fail",
+        "PartialPass",
+        "Rework"
+      ],
+      "default": "Pass"
+    },
+    "quantity_inspected": {
+      "type": "integer",
+      "default": 0
+    },
+    "quantity_passed": {
+      "type": "integer",
+      "default": 0
+    },
+    "quantity_failed": {
+      "type": "integer",
+      "default": 0
+    },
+    "quantity_rework": {
+      "type": "integer",
+      "default": 0
+    },
+    "stage": {
+      "type": "enumeration",
+      "enum": [
+        "InProcess",
+        "Final"
+      ],
+      "default": "Final"
+    },
+    "inspected_at": {
+      "type": "datetime"
+    },
+    "notes": {
+      "type": "text"
+    },
+    "defect_lines": {
+      "type": "component",
+      "repeatable": true,
+      "component": "mfg.qc-defect-line"
+    },
+    "work_order": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::mfg-work-order.mfg-work-order",
+      "inversedBy": "qc_inspections"
+    },
+    "bundle": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::mfg-bundle.mfg-bundle",
+      "inversedBy": "qc_inspections"
+    },
+    "task": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::mfg-task.mfg-task",
+      "inversedBy": "qc_inspections"
+    },
+    "operation": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::mfg-operation.mfg-operation"
+    },
+    "inspector": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-employee.hr-employee"
+    },
+    "branch": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::branch.branch"
+    }
+  }
+}

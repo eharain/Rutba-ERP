@@ -1,0 +1,132 @@
+{
+  "kind": "collectionType",
+  "collectionName": "mfg_tasks",
+  "info": {
+    "singularName": "mfg-task",
+    "pluralName": "mfg-tasks",
+    "displayName": "Mfg Task",
+    "description": "A worker doing one operation on a work order / bundle. Drives worker KPIs and piece-rate payroll."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "Assigned",
+        "InProgress",
+        "Completed",
+        "Approved",
+        "Rejected",
+        "Reworked",
+        "Cancelled"
+      ],
+      "default": "Assigned"
+    },
+    "quantity_assigned": {
+      "type": "integer",
+      "default": 0
+    },
+    "quantity_completed": {
+      "type": "integer",
+      "default": 0
+    },
+    "quantity_rejected": {
+      "type": "integer",
+      "default": 0
+    },
+    "quantity_reworked": {
+      "type": "integer",
+      "default": 0
+    },
+    "skill_grade": {
+      "type": "enumeration",
+      "enum": [
+        "A",
+        "B",
+        "C",
+        "trainee"
+      ]
+    },
+    "piece_rate": {
+      "type": "decimal",
+      "default": 0
+    },
+    "amount": {
+      "type": "decimal",
+      "default": 0
+    },
+    "is_rework": {
+      "type": "boolean",
+      "default": false
+    },
+    "started_at": {
+      "type": "datetime"
+    },
+    "completed_at": {
+      "type": "datetime"
+    },
+    "approved_at": {
+      "type": "datetime"
+    },
+    "payroll_locked": {
+      "type": "boolean",
+      "default": false
+    },
+    "notes": {
+      "type": "text"
+    },
+    "work_order": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::mfg-work-order.mfg-work-order",
+      "inversedBy": "tasks"
+    },
+    "bundle": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::mfg-bundle.mfg-bundle",
+      "inversedBy": "tasks"
+    },
+    "operation": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::mfg-operation.mfg-operation"
+    },
+    "worker": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::mfg-worker-profile.mfg-worker-profile",
+      "inversedBy": "tasks"
+    },
+    "employee": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-employee.hr-employee"
+    },
+    "production_line": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::mfg-production-line.mfg-production-line"
+    },
+    "piece_rate_card": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::mfg-piece-rate.mfg-piece-rate"
+    },
+    "payslip": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::pay-payslip.pay-payslip",
+      "inversedBy": "tasks"
+    },
+    "qc_inspections": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::mfg-qc-inspection.mfg-qc-inspection",
+      "mappedBy": "task"
+    }
+  }
+}
