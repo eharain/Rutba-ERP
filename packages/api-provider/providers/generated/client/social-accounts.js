@@ -22,6 +22,21 @@ async function del(documentId) {
     return authApi.del(withQuery(ep.path, ep.params));
 }
 
+async function getConnectUrl(documentId) {
+    const ep = SocialAccountsEndpointsApi.getConnectUrl(documentId);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+}
+
+async function validateConnection(documentId) {
+    const ep = SocialAccountsEndpointsApi.validateConnection(documentId);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+}
+
+async function syncToken(documentId) {
+    const ep = SocialAccountsEndpointsApi.syncToken(documentId);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+}
+
 const endpoints = strictEndpointGuard(
     'SocialAccountsEndpoints',
     {
@@ -29,9 +44,12 @@ const endpoints = strictEndpointGuard(
         create,
         update,
         del,
+        getConnectUrl,
+        validateConnection,
+        syncToken,
         meta: SocialAccountsEndpointsApi.meta,
     },
-    ["list","create","update","del","meta"],
+    ["list","create","update","del","getConnectUrl","validateConnection","syncToken","meta"],
 );
 
 export default endpoints;

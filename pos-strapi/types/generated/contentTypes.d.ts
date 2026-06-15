@@ -4991,8 +4991,9 @@ export interface ApiSocialAccountSocialAccount
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
-    extra_config: Schema.Attribute.JSON;
+    extra_config: Schema.Attribute.JSON & Schema.Attribute.Private;
     is_active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    last_connected_at: Schema.Attribute.DateTime;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
@@ -5004,8 +5005,10 @@ export interface ApiSocialAccountSocialAccount
       ['instagram', 'facebook', 'x', 'tiktok', 'youtube']
     > &
       Schema.Attribute.Required;
+    platform_user_id: Schema.Attribute.String;
     publishedAt: Schema.Attribute.DateTime;
     refresh_token: Schema.Attribute.Text & Schema.Attribute.Private;
+    token_expires_at: Schema.Attribute.DateTime & Schema.Attribute.Private;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -5051,6 +5054,7 @@ export interface ApiSocialPostSocialPost extends Struct.CollectionTypeSchema {
     products: Schema.Attribute.Relation<'manyToMany', 'api::product.product'>;
     published_at_social: Schema.Attribute.DateTime;
     publishedAt: Schema.Attribute.DateTime;
+    replies_synced_at: Schema.Attribute.DateTime;
     scheduled_at: Schema.Attribute.DateTime;
     social_accounts: Schema.Attribute.Relation<
       'oneToMany',
@@ -5095,6 +5099,7 @@ export interface ApiSocialReplySocialReply extends Struct.CollectionTypeSchema {
       'api::social-reply.social-reply'
     > &
       Schema.Attribute.Private;
+    parent_comment_id: Schema.Attribute.String;
     parent_reply: Schema.Attribute.Relation<
       'manyToOne',
       'api::social-reply.social-reply'

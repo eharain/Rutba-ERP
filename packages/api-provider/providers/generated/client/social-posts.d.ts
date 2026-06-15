@@ -9,6 +9,10 @@ export interface SocialPostsEndpointsType {
     byId(documentId: any, params?: any): Promise<any>;
     update(documentId: any, data: any): Promise<any>;
     replies(documentId: any): Promise<any>;
+    publishSocial(documentId: any): Promise<any>;
+    unpublishSocial(documentId: any): Promise<any>;
+    syncReplies(documentId: any): Promise<any>;
+    sendReply(documentId: any, data: any): Promise<any>;
     publishedMarker(): Promise<any>;
     meta: any;
 }

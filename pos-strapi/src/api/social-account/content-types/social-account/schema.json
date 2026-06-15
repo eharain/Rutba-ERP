@@ -46,8 +46,19 @@
     "page_id": {
       "type": "string"
     },
+    "platform_user_id": {
+      "type": "string"
+    },
+    "token_expires_at": {
+      "type": "datetime",
+      "private": true
+    },
+    "last_connected_at": {
+      "type": "datetime"
+    },
     "extra_config": {
-      "type": "json"
+      "type": "json",
+      "private": true
     },
     "is_active": {
       "type": "boolean",

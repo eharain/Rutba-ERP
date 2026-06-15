@@ -47,6 +47,26 @@ async function replies(documentId) {
     return authApi.fetch(ep.path, ep.params);
 }
 
+async function publishSocial(documentId) {
+    const ep = SocialPostsEndpointsApi.publishSocial(documentId);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+}
+
+async function unpublishSocial(documentId) {
+    const ep = SocialPostsEndpointsApi.unpublishSocial(documentId);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+}
+
+async function syncReplies(documentId) {
+    const ep = SocialPostsEndpointsApi.syncReplies(documentId);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+}
+
+async function sendReply(documentId, data) {
+    const ep = SocialPostsEndpointsApi.sendReply(documentId, data);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+}
+
 async function publishedMarker() {
     const ep = SocialPostsEndpointsApi.publishedMarker();
     return authApi.fetch(ep.path, ep.params);
@@ -64,10 +84,14 @@ const endpoints = strictEndpointGuard(
         byId,
         update,
         replies,
+        publishSocial,
+        unpublishSocial,
+        syncReplies,
+        sendReply,
         publishedMarker,
         meta: SocialPostsEndpointsApi.meta,
     },
-    ["updateDraft","publish","unpublish","create","del","list","byId","update","replies","publishedMarker","meta"],
+    ["updateDraft","publish","unpublish","create","del","list","byId","update","replies","publishSocial","unpublishSocial","syncReplies","sendReply","publishedMarker","meta"],
 );
 
 export default endpoints;

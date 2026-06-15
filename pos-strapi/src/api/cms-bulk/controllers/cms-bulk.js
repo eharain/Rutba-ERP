@@ -34,6 +34,10 @@ const CONTENT_TYPES = {
     'api::product-group.product-group': { relation: 'product_group',  entityType: 'product-group',  naturalKey: 'slug' },
     'api::sale-offer.sale-offer':       { relation: null,             entityType: null,             naturalKey: 'name' },
     'api::delivery-method.delivery-method': { relation: null,         entityType: null,             naturalKey: 'name' },
+    // Social posts: documentId-only matching (naturalKey null) — titles aren't
+    // unique, so a row without a documentId always creates a new draft rather
+    // than risk merging two posts that happen to share a title.
+    'api::social-post.social-post':     { relation: null,             entityType: null,             naturalKey: null   },
 };
 
 const SEO_FIELDS = new Set(['meta_title', 'meta_description', 'keywords', 'noindex']);

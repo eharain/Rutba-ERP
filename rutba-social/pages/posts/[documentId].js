@@ -183,29 +183,98 @@ export default function PostDetailPage() {
         setSaving(true);
         try {
             await SocialPostsEndpoints.updateDraft(documentId, buildPayload());
-            await SocialPostsEndpoints.publish(documentId);
-            setIsPublished(true);
-            toast("Post saved & published!", "success");
+            const res = await SocialPostsEndpoints.publishSocial(documentId);
+            const r = res?.data || res || {};
+            const ok = r.successes || 0;
+            const fail = Math.max(0, (r.attempted || 0) - ok);
+            setIsPublished(ok > 0);
+            if (ok > 0 && fail > 0) toast(`Published to ${ok} platform(s); ${fail} failed — see Publish Results.`, "warning");
+            else if (ok > 0) toast(`Saved & published to ${ok} platform(s)!`, "success");
+            else toast("Publish failed on all platforms — see Publish Results below.", "danger");
             await loadPost();
         } catch (err) {
             console.error("Failed to publish post", err);
-            toast("Failed to publish.", "danger");
+            toast(err?.response?.data?.error?.message || "Failed to publish.", "danger");
         } finally {
             setSaving(false);
         }
     };
 
     const handleUnpublish = async () => {
+        if (!confirm("Remove this post from the connected platforms (where the API allows) and unpublish in CMS?")) return;
         setSaving(true);
         try {
-            await SocialPostsEndpoints.unpublish(documentId);
+            await SocialPostsEndpoints.unpublishSocial(documentId);
             setIsPublished(false);
-            toast("Post unpublished.", "success");
+            toast("Removed from platforms.", "success");
+            await loadPost();
         } catch (err) {
             console.error("Failed to unpublish post", err);
             toast("Failed to unpublish.", "danger");
         } finally {
             setSaving(false);
+        }
+    };
+
+    const [syncing, setSyncing] = useState(false);
+    const handleSyncReplies = async () => {
+        setSyncing(true);
+        try {
+            const res = await SocialPostsEndpoints.syncReplies(documentId);
+            const imported = (res?.data || res)?.imported ?? 0;
+            toast(imported > 0 ? `Imported ${imported} new repl${imported === 1 ? "y" : "ies"}.` : "No new replies.", "success");
+            await loadPost();
+        } catch (err) {
+            console.error("Failed to sync replies", err);
+            toast(err?.response?.data?.error?.message || "Failed to sync replies.", "danger");
+        } finally {
+            setSyncing(false);
+        }
+    };
+
+    // ── outbound reply composer ──
+    const [replyingTo, setReplyingTo] = useState(null); // reply object or 'new'
+    const [replyText, setReplyText] = useState("");
+    const [replyAccountId, setReplyAccountId] = useState("");
+    const [sendingReply, setSendingReply] = useState(false);
+
+    // accounts that this post was actually published to (have a platform_post_id)
+    const publishedAccountIds = new Set(
+        Object.values(post?.platform_results || {})
+            .filter(v => v && v.platform_post_id && v.account_id)
+            .map(v => v.account_id)
+    );
+    const replyableAccounts = accounts.filter(a => publishedAccountIds.has(a.documentId));
+
+    const openReply = (target) => {
+        setReplyingTo(target);
+        setReplyText("");
+        // default the account: match the comment's platform, else first replyable
+        const match = target && target !== "new"
+            ? replyableAccounts.find(a => a.platform === target.platform)
+            : replyableAccounts[0];
+        setReplyAccountId(match?.documentId || replyableAccounts[0]?.documentId || "");
+    };
+
+    const submitReply = async () => {
+        if (!replyText.trim()) { toast("Write a reply first.", "warning"); return; }
+        if (!replyAccountId) { toast("No connected account to reply from. Publish the post first.", "warning"); return; }
+        setSendingReply(true);
+        try {
+            await SocialPostsEndpoints.sendReply(documentId, {
+                accountDocumentId: replyAccountId,
+                parentReplyDocumentId: replyingTo && replyingTo !== "new" ? replyingTo.documentId : null,
+                parentCommentId: replyingTo && replyingTo !== "new" ? (replyingTo.platform_comment_id || null) : null,
+                body: replyText.trim(),
+            });
+            toast("Reply sent.", "success");
+            setReplyingTo(null); setReplyText("");
+            await loadPost();
+        } catch (err) {
+            console.error("Failed to send reply", err);
+            toast(err?.response?.data?.error?.message || "Failed to send reply.", "danger");
+        } finally {
+            setSendingReply(false);
         }
     };
 
@@ -282,13 +351,18 @@ export default function PostDetailPage() {
                     <div className="ms-auto d-flex gap-2">
                         <button className="btn btn-sm btn-outline-danger" onClick={handleDelete}><i className="fas fa-trash me-1"></i>Delete</button>
                         {isPublished && (
+                            <button className="btn btn-sm btn-outline-info" onClick={handleSyncReplies} disabled={syncing} title="Pull new comments from the platforms">
+                                {syncing ? <span className="spinner-border spinner-border-sm me-1"></span> : <i className="fas fa-sync me-1"></i>}Sync Replies
+                            </button>
+                        )}
+                        {isPublished && (
                             <button className="btn btn-sm btn-outline-secondary" onClick={handleUnpublish} disabled={saving}><i className="fas fa-eye-slash me-1"></i>Unpublish</button>
                         )}
                         {isPublished && (
                             <button className="btn btn-sm btn-outline-warning" onClick={handleDiscardDraft} disabled={saving}><i className="fas fa-undo me-1"></i>Load Published</button>
                         )}
                         <button className="btn btn-sm btn-primary" onClick={handleSave} disabled={saving}>{saving ? "Saving..." : "Save Draft"}</button>
-                        <button className="btn btn-sm btn-success" onClick={handlePublish} disabled={saving}>
+                        <button className="btn btn-sm btn-success" onClick={handlePublish} disabled={saving} title="Push to the selected connected platforms">
                             <i className="fas fa-upload me-1"></i>{saving ? "Publishing..." : "Save & Publish"}
                         </button>
                     </div>
@@ -438,10 +512,52 @@ export default function PostDetailPage() {
                         <div className="card mb-3">
                             <div className="card-header d-flex align-items-center justify-content-between">
                                 <span><i className="fas fa-comments me-2"></i>Replies ({replies.length})</span>
+                                <div className="d-flex gap-2">
+                                    {isPublished && (
+                                        <button className="btn btn-sm btn-outline-info" onClick={handleSyncReplies} disabled={syncing}>
+                                            {syncing ? <span className="spinner-border spinner-border-sm me-1"></span> : <i className="fas fa-sync me-1"></i>}Sync
+                                        </button>
+                                    )}
+                                    {replyableAccounts.length > 0 && (
+                                        <button className="btn btn-sm btn-primary" onClick={() => openReply("new")}>
+                                            <i className="fas fa-reply me-1"></i>New Comment
+                                        </button>
+                                    )}
+                                </div>
                             </div>
                             <div className="card-body">
+                                {post.replies_synced_at && (
+                                    <p className="text-muted small mb-2"><i className="fas fa-clock me-1"></i>Last synced {new Date(post.replies_synced_at).toLocaleString()}</p>
+                                )}
+
+                                {replyingTo !== null && (
+                                    <div className="border rounded p-2 mb-3 bg-light">
+                                        <div className="d-flex justify-content-between align-items-center mb-2">
+                                            <small className="fw-semibold">
+                                                {replyingTo === "new"
+                                                    ? "New top-level comment"
+                                                    : <>Replying to <strong>{replyingTo.author_name || replyingTo.author_handle || "comment"}</strong></>}
+                                            </small>
+                                            <button className="btn-close btn-sm" onClick={() => setReplyingTo(null)}></button>
+                                        </div>
+                                        <select className="form-select form-select-sm mb-2" value={replyAccountId} onChange={e => setReplyAccountId(e.target.value)}>
+                                            <option value="">Reply from…</option>
+                                            {replyableAccounts.map(a => (
+                                                <option key={a.documentId} value={a.documentId}>{a.account_name} ({a.platform})</option>
+                                            ))}
+                                        </select>
+                                        <textarea className="form-control form-control-sm mb-2" rows={3} value={replyText} onChange={e => setReplyText(e.target.value)} placeholder="Write a reply…" />
+                                        <div className="d-flex gap-2">
+                                            <button className="btn btn-sm btn-success" onClick={submitReply} disabled={sendingReply}>
+                                                {sendingReply ? "Sending…" : <><i className="fas fa-paper-plane me-1"></i>Send</>}
+                                            </button>
+                                            <button className="btn btn-sm btn-secondary" onClick={() => setReplyingTo(null)}>Cancel</button>
+                                        </div>
+                                    </div>
+                                )}
+
                                 {sortedReplies.length === 0 ? (
-                                    <p className="text-muted small mb-0">No replies yet.</p>
+                                    <p className="text-muted small mb-0">No replies yet.{isPublished ? " Click Sync to pull comments from the platforms." : ""}</p>
                                 ) : (
                                     <div className="list-group list-group-flush">
                                         {sortedReplies.map(r => (
@@ -474,6 +590,11 @@ export default function PostDetailPage() {
                                                     </div>
                                                 </div>
                                                 <p className="mb-0 mt-1" style={{ whiteSpace: "pre-wrap" }}>{r.body}</p>
+                                                {!r.is_outbound && replyableAccounts.some(a => a.platform === r.platform) && (
+                                                    <button className="btn btn-link btn-sm p-0 mt-1" onClick={() => openReply(r)}>
+                                                        <i className="fas fa-reply me-1"></i>Reply
+                                                    </button>
+                                                )}
                                             </div>
                                         ))}
                                     </div>

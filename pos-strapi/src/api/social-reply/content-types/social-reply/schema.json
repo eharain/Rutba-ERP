@@ -30,6 +30,9 @@
     "platform_comment_id": {
       "type": "string"
     },
+    "parent_comment_id": {
+      "type": "string"
+    },
     "author_name": {
       "type": "string"
     },

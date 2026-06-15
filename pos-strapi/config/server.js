@@ -1,3 +1,5 @@
+const buildSocialCronTasks = require('./cron-tasks');
+
 module.exports = ({ env }) => ({
     host: env('HOST', '0.0.0.0'),
     port: env.int('PORT', 1337),
@@ -28,6 +30,18 @@ module.exports = ({ env }) => ({
     },
     webhooks: {
         populateRelations: env.bool('WEBHOOKS_POPULATE_RELATIONS', false),
+    },
+
+    // Social-module background jobs (scheduled publishing, reply sync, token
+    // refresh). Disable with POS_STRAPI__SOCIAL_CRON_ENABLED=false in envs where
+    // a separate worker owns them or to avoid double-publishing across instances.
+    cron: {
+        enabled: env.bool('SOCIAL_CRON_ENABLED', true),
+        tasks: buildSocialCronTasks({
+            publishRule: env('SOCIAL_CRON_PUBLISH_RULE', '* * * * *'),
+            syncRule: env('SOCIAL_CRON_SYNC_RULE', '*/10 * * * *'),
+            refreshRule: env('SOCIAL_CRON_REFRESH_RULE', '0 */6 * * *'),
+        }),
     },
     logger: {
      //   config: { level: 'silly' }

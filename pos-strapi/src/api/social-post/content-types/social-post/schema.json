@@ -30,6 +30,9 @@
     "published_at_social": {
       "type": "datetime"
     },
+    "replies_synced_at": {
+      "type": "datetime"
+    },
     "post_status": {
       "type": "enumeration",
       "enum": [

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { SocialRepliesEndpoints } from "@rutba/api-provider/endpoints";
+import { SocialRepliesEndpoints, SocialAccountsEndpoints, SocialPostsEndpoints } from "@rutba/api-provider/endpoints";
 import { useToast } from "../components/Toast";
 import { PlatformBadge } from "../components/PlatformBadge";
 import Link from "next/link";
@@ -54,6 +54,52 @@ export default function RepliesPage() {
     }, [jwt, page, platformFilter, directionFilter]);
 
     useEffect(() => { loadReplies(); }, [loadReplies]);
+
+    // active accounts, used to populate the "reply from" picker per platform
+    const [accounts, setAccounts] = useState([]);
+    useEffect(() => {
+        if (!jwt) return;
+        SocialAccountsEndpoints.list({ filters: { is_active: { $eq: true } }, sort: ['platform:asc'] })
+            .then(res => setAccounts(res.data || []))
+            .catch(err => console.error("Failed to load accounts", err));
+    }, [jwt]);
+
+    // inline composer state
+    const [replyingTo, setReplyingTo] = useState(null); // reply object
+    const [replyText, setReplyText] = useState("");
+    const [replyAccountId, setReplyAccountId] = useState("");
+    const [sendingReply, setSendingReply] = useState(false);
+
+    const openReply = (reply) => {
+        setReplyingTo(reply);
+        setReplyText("");
+        const match = accounts.find(a => a.platform === reply.platform);
+        setReplyAccountId(match?.documentId || "");
+    };
+
+    const submitReply = async () => {
+        if (!replyText.trim()) { toast("Write a reply first.", "warning"); return; }
+        if (!replyAccountId) { toast("No connected account for this platform.", "warning"); return; }
+        const postDocId = replyingTo?.social_post?.documentId;
+        if (!postDocId) { toast("This reply isn't linked to a post.", "danger"); return; }
+        setSendingReply(true);
+        try {
+            await SocialPostsEndpoints.sendReply(postDocId, {
+                accountDocumentId: replyAccountId,
+                parentReplyDocumentId: replyingTo.documentId,
+                parentCommentId: replyingTo.platform_comment_id || null,
+                body: replyText.trim(),
+            });
+            toast("Reply sent.", "success");
+            setReplyingTo(null); setReplyText("");
+            await loadReplies();
+        } catch (err) {
+            console.error("Failed to send reply", err);
+            toast(err?.response?.data?.error?.message || "Failed to send reply.", "danger");
+        } finally {
+            setSendingReply(false);
+        }
+    };
 
     const handleDelete = async (reply) => {
         if (!confirm("Delete this reply?")) return;
@@ -147,12 +193,35 @@ export default function RepliesPage() {
                                             <small className="text-muted">
                                                 {reply.replied_at ? new Date(reply.replied_at).toLocaleString() : reply.createdAt ? new Date(reply.createdAt).toLocaleString() : ""}
                                             </small>
+                                            {!reply.is_outbound && reply.social_post && accounts.some(a => a.platform === reply.platform) && (
+                                                <button className="btn btn-sm btn-outline-primary" title="Reply" onClick={() => openReply(reply)}>
+                                                    <i className="fas fa-reply"></i>
+                                                </button>
+                                            )}
                                             <button className="btn btn-sm btn-outline-danger" onClick={() => handleDelete(reply)}>
                                                 <i className="fas fa-trash"></i>
                                             </button>
                                         </div>
                                     </div>
                                     <p className="mb-0 mt-1" style={{ whiteSpace: "pre-wrap" }}>{reply.body}</p>
+
+                                    {replyingTo && replyingTo.id === reply.id && (
+                                        <div className="border rounded p-2 mt-2 bg-light">
+                                            <select className="form-select form-select-sm mb-2" value={replyAccountId} onChange={e => setReplyAccountId(e.target.value)}>
+                                                <option value="">Reply from…</option>
+                                                {accounts.filter(a => a.platform === reply.platform).map(a => (
+                                                    <option key={a.documentId} value={a.documentId}>{a.account_name} ({a.platform})</option>
+                                                ))}
+                                            </select>
+                                            <textarea className="form-control form-control-sm mb-2" rows={2} value={replyText} onChange={e => setReplyText(e.target.value)} placeholder={`Reply to ${reply.author_name || reply.author_handle || "viewer"}…`} />
+                                            <div className="d-flex gap-2">
+                                                <button className="btn btn-sm btn-success" onClick={submitReply} disabled={sendingReply}>
+                                                    {sendingReply ? "Sending…" : <><i className="fas fa-paper-plane me-1"></i>Send</>}
+                                                </button>
+                                                <button className="btn btn-sm btn-secondary" onClick={() => setReplyingTo(null)}>Cancel</button>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                         </div>

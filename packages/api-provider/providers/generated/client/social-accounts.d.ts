@@ -4,6 +4,9 @@ export interface SocialAccountsEndpointsType {
     create(data: any): Promise<any>;
     update(documentId: any, data: any): Promise<any>;
     del(documentId: any): Promise<any>;
+    getConnectUrl(documentId: any): Promise<any>;
+    validateConnection(documentId: any): Promise<any>;
+    syncToken(documentId: any): Promise<any>;
     meta: any;
 }
 

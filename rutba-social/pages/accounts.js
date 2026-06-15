@@ -106,6 +106,61 @@ export default function AccountsPage() {
         }
     };
 
+    // ── OAuth connect ────────────────────────────────────────
+    const [busyId, setBusyId] = useState(null);
+
+    // Listen for the popup-closer's postMessage and refresh on success.
+    useEffect(() => {
+        const onMessage = (e) => {
+            const d = e.data;
+            if (!d || d.source !== "rutba-social-oauth") return;
+            if (d.ok) {
+                toast(`Connected ${d.message || ""}`.trim(), "success");
+                loadAccounts();
+            } else {
+                toast(d.message || "Connection failed.", "danger");
+            }
+        };
+        window.addEventListener("message", onMessage);
+        return () => window.removeEventListener("message", onMessage);
+    }, [loadAccounts]);
+
+    const handleConnect = async (account) => {
+        setBusyId(account.documentId);
+        try {
+            const res = await SocialAccountsEndpoints.getConnectUrl(account.documentId);
+            const url = res?.url || res?.data?.url;
+            if (!url) { toast("No connect URL returned. Set this platform's OAuth client id/secret on the server.", "warning"); return; }
+            const w = 600, h = 720;
+            const left = window.screenX + (window.outerWidth - w) / 2;
+            const top = window.screenY + (window.outerHeight - h) / 2;
+            window.open(url, "rutba-social-oauth", `width=${w},height=${h},left=${left},top=${top}`);
+        } catch (err) {
+            console.error("Failed to start OAuth", err);
+            toast(err?.response?.data?.error?.message || "Could not start OAuth. Is the platform's client id/secret configured?", "danger");
+        } finally {
+            setBusyId(null);
+        }
+    };
+
+    const handleTest = async (account) => {
+        setBusyId(account.documentId);
+        try {
+            const res = await SocialAccountsEndpoints.validateConnection(account.documentId);
+            const r = res?.data || res;
+            if (r?.ok) {
+                toast(`✅ ${account.account_name} is connected${r.token_expires_at ? ` (token valid until ${new Date(r.token_expires_at).toLocaleString()})` : ""}.`, "success");
+            } else {
+                toast(`⚠️ ${r?.reason || "Not connected."}`, "warning");
+            }
+        } catch (err) {
+            console.error("Test failed", err);
+            toast("Connection test failed.", "danger");
+        } finally {
+            setBusyId(null);
+        }
+    };
+
     return (
         <ProtectedRoute>
             <Layout>
@@ -188,6 +243,7 @@ export default function AccountsPage() {
                                     <th>Account Name</th>
                                     <th>Page / Channel ID</th>
                                     <th>Status</th>
+                                    <th>Connection</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
@@ -203,12 +259,29 @@ export default function AccountsPage() {
                                                 : <span className="badge bg-secondary">Inactive</span>}
                                         </td>
                                         <td>
-                                            <button className="btn btn-sm btn-outline-primary me-1" onClick={() => openEdit(acc)}>
-                                                <i className="fas fa-pen"></i>
-                                            </button>
-                                            <button className="btn btn-sm btn-outline-danger" onClick={() => handleDelete(acc)}>
-                                                <i className="fas fa-trash"></i>
-                                            </button>
+                                            {acc.last_connected_at ? (
+                                                <span className="badge bg-success" title={new Date(acc.last_connected_at).toLocaleString()}>
+                                                    <i className="fas fa-link me-1"></i>Connected
+                                                </span>
+                                            ) : (
+                                                <span className="badge bg-light text-dark border"><i className="fas fa-unlink me-1"></i>Not connected</span>
+                                            )}
+                                        </td>
+                                        <td>
+                                            <div className="d-flex gap-1">
+                                                <button className="btn btn-sm btn-outline-success" title="Connect via OAuth" disabled={busyId === acc.documentId} onClick={() => handleConnect(acc)}>
+                                                    {busyId === acc.documentId ? <span className="spinner-border spinner-border-sm"></span> : <><i className="fas fa-plug me-1"></i>Connect</>}
+                                                </button>
+                                                <button className="btn btn-sm btn-outline-secondary" title="Test connection" disabled={busyId === acc.documentId} onClick={() => handleTest(acc)}>
+                                                    <i className="fas fa-heartbeat"></i>
+                                                </button>
+                                                <button className="btn btn-sm btn-outline-primary" title="Edit" onClick={() => openEdit(acc)}>
+                                                    <i className="fas fa-pen"></i>
+                                                </button>
+                                                <button className="btn btn-sm btn-outline-danger" title="Delete" onClick={() => handleDelete(acc)}>
+                                                    <i className="fas fa-trash"></i>
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
