@@ -1,6 +1,8 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import SearchableSelect from "../SearchableSelect";
+import PermissionCheck from "../PermissionCheck";
 import WorkflowCanvas from "./WorkflowCanvas";
+import { exportWorkflowToExcel, parseWorkflowFromExcel } from "./workflowExcel";
 
 const COLORS = ["secondary", "info", "primary", "warning", "success", "danger", "dark", "light"];
 
@@ -39,6 +41,8 @@ export default function WorkflowEditor({ endpoints, entities = [], jwt }) {
     const [editing, setEditing] = useState(null); // documentId | "new" | null
     const [view, setView] = useState("visual"); // "visual" | "table"
     const [form, setForm] = useState(emptyForm(entities[0]?.uid));
+    const [ioMsg, setIoMsg] = useState(null); // { type, text } — Excel import/export feedback
+    const fileRef = useRef(null);
 
     const uids = entities.map((e) => e.uid);
     const entityFor = (uid) => entities.find((e) => e.uid === uid);
@@ -135,6 +139,48 @@ export default function WorkflowEditor({ endpoints, entities = [], jwt }) {
         } finally { setBusy(false); }
     }
 
+    // ── Excel import/export (admin-only — see PermissionCheck wraps below) ──
+    function exportWorkflow(w) {
+        try { exportWorkflowToExcel(w); }
+        catch (err) { setIoMsg({ type: "danger", text: `Export failed: ${err.message || err}` }); }
+    }
+
+    async function onImportFile(e) {
+        const file = e.target.files?.[0];
+        if (fileRef.current) fileRef.current.value = "";
+        if (!file) return;
+        setIoMsg(null);
+        try {
+            const parsed = await parseWorkflowFromExcel(file);
+            if (!uids.includes(parsed.entity_uid)) {
+                setIoMsg({ type: "danger", text: `This workbook targets "${parsed.entity_uid}", which isn't managed here. Import it from the app that owns that entity.` });
+                return;
+            }
+            // Match by documentId so a round-tripped file updates its source;
+            // otherwise it loads as a new workflow. Either way the admin
+            // reviews in the designer and Saves through the normal (admin-only)
+            // create/update path — import never writes blindly.
+            const match = parsed.documentId ? rows.find((r) => r.documentId === parsed.documentId) : null;
+            setForm({
+                name: parsed.name,
+                entity_uid: parsed.entity_uid,
+                description: parsed.description,
+                is_default: parsed.is_default,
+                is_active: parsed.is_active,
+                stages: parsed.stages,
+                transitions: parsed.transitions,
+            });
+            setEditing(match ? match.documentId : "new");
+            setView("visual");
+            setIoMsg({
+                type: "success",
+                text: `Loaded "${parsed.name}" — ${parsed.stages.length} stage(s), ${parsed.transitions.length} transition(s). ${match ? "Will update the existing workflow" : "Will create a new workflow"} when you Save. Review below.`,
+            });
+        } catch (err) {
+            setIoMsg({ type: "danger", text: err.message || "Import failed." });
+        }
+    }
+
     const statuses = entityFor(form.entity_uid)?.statuses || [];
     const stageKeyOptions = form.stages.filter((s) => s.key.trim()).map((s) => ({ value: s.key.trim(), label: `${s.key.trim()}${s.name ? ` (${s.name})` : ""}` }));
 
@@ -142,13 +188,27 @@ export default function WorkflowEditor({ endpoints, entities = [], jwt }) {
         <div>
             <div className="d-flex justify-content-between align-items-center mb-3">
                 <h2 className="mb-0">Workflows</h2>
-                <button className="btn btn-sm btn-primary" onClick={startNew}>＋ New Workflow</button>
+                <div className="d-flex gap-2">
+                    <PermissionCheck showIf="admin">
+                        <label className="btn btn-sm btn-outline-info mb-0" title="Import a workflow definition from Excel">
+                            <i className="fa-solid fa-file-excel me-1"></i>Import Excel
+                            <input ref={fileRef} type="file" accept=".xlsx,.xls" className="d-none" onChange={onImportFile} />
+                        </label>
+                    </PermissionCheck>
+                    <button className="btn btn-sm btn-primary" onClick={startNew}>＋ New Workflow</button>
+                </div>
             </div>
             <p className="text-muted">
                 Stages are free-form steps; each maps to a canonical status so the state machine keeps running
                 stock / costing side effects. Transitions define which moves are allowed.
             </p>
 
+            {ioMsg && (
+                <div className={`alert alert-${ioMsg.type} d-flex justify-content-between align-items-start`}>
+                    <span>{ioMsg.text}</span>
+                    <button type="button" className="btn-close" aria-label="Close" onClick={() => setIoMsg(null)} />
+                </div>
+            )}
             {error && <div className="alert alert-danger">{error}</div>}
             {loading && <p>Loading workflows...</p>}
 
@@ -170,6 +230,11 @@ export default function WorkflowEditor({ endpoints, entities = [], jwt }) {
                                     <td>{w.is_default !== false ? "✓" : "—"}</td>
                                     <td>
                                         <div className="d-flex gap-1">
+                                            <PermissionCheck showIf="admin">
+                                                <button className="btn btn-sm btn-outline-success" disabled={busy} onClick={() => exportWorkflow(w)} title="Export to Excel">
+                                                    <i className="fa-solid fa-file-excel"></i>
+                                                </button>
+                                            </PermissionCheck>
                                             <button className="btn btn-sm btn-outline-primary" disabled={busy} onClick={() => startEdit(w)} title="Edit">
                                                 <i className="fa-solid fa-pen"></i>
                                             </button>
@@ -188,7 +253,19 @@ export default function WorkflowEditor({ endpoints, entities = [], jwt }) {
             {editing && (
                 <form onSubmit={save}>
                     <div className="card mb-4">
-                        <div className="card-header">{editing === "new" ? "New Workflow" : `Edit Workflow — ${form.name}`}</div>
+                        <div className="card-header d-flex justify-content-between align-items-center">
+                            <span>{editing === "new" ? "New Workflow" : `Edit Workflow — ${form.name}`}</span>
+                            <PermissionCheck showIf="admin">
+                                <button
+                                    type="button"
+                                    className="btn btn-sm btn-outline-success"
+                                    title="Export this workflow to Excel"
+                                    onClick={() => exportWorkflow({ ...form, documentId: editing !== "new" ? editing : undefined })}
+                                >
+                                    <i className="fa-solid fa-file-excel me-1"></i>Export
+                                </button>
+                            </PermissionCheck>
+                        </div>
                         <div className="card-body">
                             <div className="row g-3 mb-2">
                                 <div className="col-md-4">

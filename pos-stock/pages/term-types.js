@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, useRef } from "react";
 import * as XLSX from 'xlsx';
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
+import PermissionCheck from "@rutba/pos-shared/components/PermissionCheck";
 import { TermTypesEndpoints, TermsEndpoints } from "@rutba/api-provider/endpoints/index.js";
 import ListPageLayout from "@rutba/pos-shared/components/ListPageLayout";
 
@@ -609,6 +610,7 @@ export default function TermTypesPage() {
                                 </div>
                             </div>
 
+                            <PermissionCheck showIf="admin">
                             <div className="card mb-3">
                                 <div className="card-body">
                                     <h5 className="card-title">
@@ -701,6 +703,7 @@ export default function TermTypesPage() {
                                     )}
                                 </div>
                             </div>
+                            </PermissionCheck>
 
                             <div className="card">
                                 <div className="card-body">

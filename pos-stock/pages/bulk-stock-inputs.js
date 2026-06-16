@@ -577,7 +577,8 @@ export default function BulkStockInputs() {
                         {/* ═══════════ Add New Tab ═══════════ */}
                         {activeTab === 'add' && (
                         <>
-                        {/* Excel Upload */}
+                        {/* Excel Upload — admin only */}
+                        <PermissionCheck showIf="admin">
                         <div className="card mb-4">
                             <div className="card-header">
                                 <strong><i className="fas fa-file-excel me-1"></i>Import from Excel</strong>
@@ -608,6 +609,7 @@ export default function BulkStockInputs() {
                                 </div>
                             </div>
                         </div>
+                        </PermissionCheck>
 
                         {/* Bulk Entry Table */}
                         <div className="card mb-4">
