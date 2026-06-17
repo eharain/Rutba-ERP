@@ -3,8 +3,15 @@
 const { createCoreController } = require('@strapi/strapi').factories;
 const crypto = require('crypto');
 const { ensureUser } = require('../../../utils/ensure-user');
+const { requireAppMember } = require('../../../utils/require-admin');
 
 const POST_UID = 'api::social-post.social-post';
+
+// Operations that act on the brand's live social presence (publish, delete,
+// reply, sync) require a social app-role (admin/manager/staff) — this closes the
+// "any logged-in user can publish" gap while still letting social staff operate.
+// CMS draft ops + reads stay open to any authd user; webhooks are public.
+const requireSocialMember = (ctx, strapi) => requireAppMember(ctx, strapi, 'social');
 
 module.exports = createCoreController(POST_UID, ({ strapi }) => ({
   // ── CMS draft/publish (unchanged) ──────────────────────────────────────────
@@ -28,7 +35,7 @@ module.exports = createCoreController(POST_UID, ({ strapi }) => ({
 
   /** Push the post to every selected, connected platform. */
   async publishSocial(ctx) {
-    if (!await ensureUser(ctx, strapi)) return;
+    if (!await requireSocialMember(ctx, strapi)) return;
     try {
       const result = await strapi.service(POST_UID).publishToProviders(ctx.params.id);
       return ctx.send(result);
@@ -39,7 +46,7 @@ module.exports = createCoreController(POST_UID, ({ strapi }) => ({
 
   /** Best-effort delete from each platform + CMS unpublish. */
   async unpublishSocial(ctx) {
-    if (!await ensureUser(ctx, strapi)) return;
+    if (!await requireSocialMember(ctx, strapi)) return;
     try {
       const result = await strapi.service(POST_UID).unpublishFromProviders(ctx.params.id);
       return ctx.send(result);
@@ -50,7 +57,7 @@ module.exports = createCoreController(POST_UID, ({ strapi }) => ({
 
   /** Pull fresh comments/replies from each platform into social-reply rows. */
   async syncReplies(ctx) {
-    if (!await ensureUser(ctx, strapi)) return;
+    if (!await requireSocialMember(ctx, strapi)) return;
     try {
       const result = await strapi.service(POST_UID).syncRepliesForPost(ctx.params.id);
       return ctx.send(result);
@@ -61,7 +68,7 @@ module.exports = createCoreController(POST_UID, ({ strapi }) => ({
 
   /** Post an outbound reply to a platform comment thread. */
   async sendReply(ctx) {
-    if (!await ensureUser(ctx, strapi)) return;
+    if (!await requireSocialMember(ctx, strapi)) return;
     const data = ctx.request.body?.data || ctx.request.body || {};
     try {
       const reply = await strapi.service(POST_UID).sendReply({
@@ -130,13 +137,21 @@ module.exports = createCoreController(POST_UID, ({ strapi }) => ({
   },
 
   _verifyWebhookSignature(ctx, platform) {
-    // FB/IG sign with the app secret over the raw body (X-Hub-Signature-256).
+    // FB/IG sign the RAW request body with the app secret (X-Hub-Signature-256).
+    // We verify against the exact bytes (config/middlewares.js includeUnparsed),
+    // and fail CLOSED: no configured secret or no/invalid signature → reject, so
+    // an unauthenticated caller can't drive provider sync work.
     const cfg = (strapi.config.get('social') || {}).providers || {};
     const secret = cfg[platform]?.clientSecret;
+    if (!secret) {
+      strapi.log.warn(`[social] webhook ${platform} rejected: no clientSecret configured`);
+      return false;
+    }
     const header = ctx.request.headers['x-hub-signature-256'];
-    if (!secret || !header) return true; // not configured → don't block
-    const raw = ctx.request.body ? JSON.stringify(ctx.request.body) : '';
-    const expected = 'sha256=' + crypto.createHmac('sha256', secret).update(raw).digest('hex');
+    if (!header) return false;
+    const raw = ctx.request.body?.[Symbol.for('unparsedBody')]
+      ?? (ctx.request.body ? JSON.stringify(ctx.request.body) : '');
+    const expected = 'sha256=' + crypto.createHmac('sha256', secret).update(raw, 'utf8').digest('hex');
     try {
       return crypto.timingSafeEqual(Buffer.from(header), Buffer.from(expected));
     } catch {

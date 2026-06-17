@@ -29,12 +29,30 @@ const POST_EXCEL_COLUMNS = [
     {
         key: "scheduled_at", width: 20,
         format: (r) => (r.scheduled_at ? new Date(r.scheduled_at).toISOString() : ""),
+        // Normalize whatever Excel hands back: an ISO string round-trips as-is,
+        // but a cell the user reformatted comes back as a Date or an Excel
+        // serial number — convert both to ISO so Strapi accepts it.
+        parse: (cell) => {
+            if (cell === "" || cell === null || cell === undefined) return undefined;
+            if (cell instanceof Date) return cell.toISOString();
+            if (typeof cell === "number") {
+                const d = new Date(Math.round((cell - 25569) * 86400 * 1000)); // Excel serial → epoch
+                return isNaN(d.getTime()) ? undefined : d.toISOString();
+            }
+            const d = new Date(String(cell).trim());
+            return isNaN(d.getTime()) ? String(cell).trim() : d.toISOString();
+        },
     },
     {
-        // draft | scheduled are the meaningful editable values; the publish/
-        // failed states are managed by the Publish flow, not the spreadsheet.
+        // Only draft | scheduled are meaningful to set in bulk; publishing/failed
+        // states are owned by the Publish flow. Anything else is dropped (left
+        // unchanged) so a stray value can't corrupt a post's status.
         key: "post_status", width: 18,
         format: (r) => r.post_status || "draft",
+        parse: (cell) => {
+            const v = String(cell).trim().toLowerCase();
+            return (v === "draft" || v === "scheduled") ? v : undefined;
+        },
     },
     {
         key: "published_at_social", width: 22, readOnly: true,

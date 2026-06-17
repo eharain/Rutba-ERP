@@ -39,7 +39,7 @@ async function byId(documentId, params = {}) {
 
 async function update(documentId, data) {
     const ep = SocialPostsEndpointsApi.update(documentId, data);
-    return authApi.fetch(ep.path, ep.params);
+    return authApi.put(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
 async function replies(documentId) {

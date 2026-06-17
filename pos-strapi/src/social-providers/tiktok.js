@@ -125,7 +125,8 @@ module.exports = {
   label: 'TikTok',
 
   // No public comment API and no delete API for this app type — see file header.
-  capabilities: { publish: true, delete: false, comments: false, reply: false },
+  // oauth:true is required for buildConnectUrl / token refresh to engage.
+  capabilities: { publish: true, delete: false, comments: false, reply: false, oauth: true },
 
   /**
    * Build the TikTok Login-Kit consent URL. Sync. The platform is carried back

@@ -2994,6 +2994,10 @@ export interface ApiMfgWorkOrderMfgWorkOrder
     draftAndPublish: false;
   };
   attributes: {
+    assignee: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::hr-employee.hr-employee'
+    >;
     bom: Schema.Attribute.Relation<'manyToOne', 'api::mfg-bom.mfg-bom'>;
     branch: Schema.Attribute.Relation<'manyToOne', 'api::branch.branch'>;
     bundles: Schema.Attribute.Relation<
@@ -4424,6 +4428,10 @@ export interface ApiReturnRequestReturnRequest
       'manyToOne',
       'plugin::users-permissions.user'
     >;
+    assignee: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::hr-employee.hr-employee'
+    >;
     branches: Schema.Attribute.Relation<'manyToMany', 'api::branch.branch'>;
     cancelled_at: Schema.Attribute.DateTime;
     createdAt: Schema.Attribute.DateTime;
@@ -4735,6 +4743,10 @@ export interface ApiSaleOrderSaleOrder extends Struct.CollectionTypeSchema {
   attributes: {
     actual_delivery_time: Schema.Attribute.DateTime;
     assigned_rider: Schema.Attribute.Relation<'manyToOne', 'api::rider.rider'>;
+    assignee: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::hr-employee.hr-employee'
+    >;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -5568,6 +5580,132 @@ export interface ApiTermTerm extends Struct.CollectionTypeSchema {
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+  };
+}
+
+export interface ApiWorkItemActivityWorkItemActivity
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'work_item_activities';
+  info: {
+    description: 'Append-only audit trail for any workflow-driven work item, keyed by entity_uid + target_document_id (transitions, assignments, watch changes, comments).';
+    displayName: 'Work Item Activity';
+    pluralName: 'work-item-activities';
+    singularName: 'work-item-activity';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    actor: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    actor_label: Schema.Attribute.String;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    data: Schema.Attribute.JSON;
+    entity_uid: Schema.Attribute.String & Schema.Attribute.Required;
+    from_value: Schema.Attribute.String;
+    kind: Schema.Attribute.Enumeration<
+      [
+        'created',
+        'transition',
+        'assigned',
+        'unassigned',
+        'watch',
+        'unwatch',
+        'comment',
+        'note',
+      ]
+    > &
+      Schema.Attribute.DefaultTo<'note'>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::work-item-activity.work-item-activity'
+    > &
+      Schema.Attribute.Private;
+    publishedAt: Schema.Attribute.DateTime;
+    summary: Schema.Attribute.String;
+    target_document_id: Schema.Attribute.String & Schema.Attribute.Required;
+    to_value: Schema.Attribute.String;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiWorkItemCommentWorkItemComment
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'work_item_comments';
+  info: {
+    description: 'Discussion thread for any workflow-driven work item, keyed by entity_uid + target_document_id.';
+    displayName: 'Work Item Comment';
+    pluralName: 'work-item-comments';
+    singularName: 'work-item-comment';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    author: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    author_label: Schema.Attribute.String;
+    body: Schema.Attribute.Text & Schema.Attribute.Required;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    entity_uid: Schema.Attribute.String & Schema.Attribute.Required;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::work-item-comment.work-item-comment'
+    > &
+      Schema.Attribute.Private;
+    publishedAt: Schema.Attribute.DateTime;
+    target_document_id: Schema.Attribute.String & Schema.Attribute.Required;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiWorkItemWatchWorkItemWatch
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'work_item_watches';
+  info: {
+    description: 'A user watching a workflow-driven work item (entity_uid + target_document_id). One row per user per item.';
+    displayName: 'Work Item Watch';
+    pluralName: 'work-item-watches';
+    singularName: 'work-item-watch';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    entity_uid: Schema.Attribute.String & Schema.Attribute.Required;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::work-item-watch.work-item-watch'
+    > &
+      Schema.Attribute.Private;
+    publishedAt: Schema.Attribute.DateTime;
+    target_document_id: Schema.Attribute.String & Schema.Attribute.Required;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    user: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    user_label: Schema.Attribute.String;
   };
 }
 
@@ -6829,6 +6967,9 @@ declare module '@strapi/strapi' {
       'api::supplier.supplier': ApiSupplierSupplier;
       'api::term-type.term-type': ApiTermTypeTermType;
       'api::term.term': ApiTermTerm;
+      'api::work-item-activity.work-item-activity': ApiWorkItemActivityWorkItemActivity;
+      'api::work-item-comment.work-item-comment': ApiWorkItemCommentWorkItemComment;
+      'api::work-item-watch.work-item-watch': ApiWorkItemWatchWorkItemWatch;
       'api::workflow.workflow': ApiWorkflowWorkflow;
       'plugin::api-pro.api-interface': PluginApiProApiInterface;
       'plugin::api-pro.api-interface-method': PluginApiProApiInterfaceMethod;

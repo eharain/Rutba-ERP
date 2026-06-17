@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useCallback } from "react";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
+import PermissionCheck from "@rutba/pos-shared/components/PermissionCheck";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { SocialAccountsEndpoints } from "@rutba/api-provider/endpoints";
+import { API_URL } from "@rutba/api-provider/lib/api";
 import { useToast } from "../components/Toast";
 import PLATFORMS, { PlatformBadge } from "../components/PlatformBadge";
 
@@ -111,7 +113,12 @@ export default function AccountsPage() {
 
     // Listen for the popup-closer's postMessage and refresh on success.
     useEffect(() => {
+        // The OAuth callback page is served from the API origin; only trust
+        // messages from there (or our own origin) so another tab can't forge one.
+        let apiOrigin = null;
+        try { apiOrigin = new URL(API_URL).origin; } catch { /* leave null */ }
         const onMessage = (e) => {
+            if (apiOrigin && e.origin !== apiOrigin && e.origin !== window.location.origin) return;
             const d = e.data;
             if (!d || d.source !== "rutba-social-oauth") return;
             if (d.ok) {
@@ -134,7 +141,10 @@ export default function AccountsPage() {
             const w = 600, h = 720;
             const left = window.screenX + (window.outerWidth - w) / 2;
             const top = window.screenY + (window.outerHeight - h) / 2;
-            window.open(url, "rutba-social-oauth", `width=${w},height=${h},left=${left},top=${top}`);
+            const popup = window.open(url, "rutba-social-oauth", `width=${w},height=${h},left=${left},top=${top}`);
+            if (!popup || popup.closed || typeof popup.closed === "undefined") {
+                toast("Popup blocked — allow popups for this site, then click Connect again.", "warning");
+            }
         } catch (err) {
             console.error("Failed to start OAuth", err);
             toast(err?.response?.data?.error?.message || "Could not start OAuth. Is the platform's client id/secret configured?", "danger");
@@ -165,6 +175,7 @@ export default function AccountsPage() {
         <ProtectedRoute>
             <Layout>
                 <ToastContainer />
+                <PermissionCheck adminOnly>
                 <div className="d-flex justify-content-between align-items-center mb-3">
                     <h3><i className="fas fa-key me-2"></i>Social Accounts</h3>
                     <button className="btn btn-primary btn-sm" onClick={openCreate}>
@@ -289,6 +300,7 @@ export default function AccountsPage() {
                         </table>
                     </div>
                 )}
+                </PermissionCheck>
             </Layout>
         </ProtectedRoute>
     );

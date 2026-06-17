@@ -226,7 +226,7 @@ module.exports = createCoreService(POST_UID, ({ strapi }) => ({
     let imported = 0;
 
     for (const val of Object.values(results)) {
-      if (!val || val.status === 'error' || !val.platform_post_id || !val.account_id) continue;
+      if (!val || val.status === 'error' || val.status === 'removed' || !val.platform_post_id || !val.account_id) continue;
       try {
         const adapter = providers.getAdapter(val.platform);
         if (!adapter.capabilities?.comments) continue;
@@ -286,10 +286,11 @@ module.exports = createCoreService(POST_UID, ({ strapi }) => ({
     let account = await this._accountFull(accountDocumentId);
     if (!account) throw new Error('Account not found');
 
-    // platform_post_id for this account on this post
+    // platform_post_id for this account on this post (match platform too, so a
+    // future multi-platform account can't resolve to the wrong post id)
     const results = post.platform_results || {};
     const row = Object.values(results).find(
-      (v) => v && v.account_id === accountDocumentId && v.platform_post_id
+      (v) => v && v.account_id === accountDocumentId && v.platform === account.platform && v.platform_post_id
     );
     if (!row) throw new Error('This post has not been published to the selected account yet.');
 
@@ -349,14 +350,26 @@ module.exports = createCoreService(POST_UID, ({ strapi }) => ({
     const [accountDocumentId, nonce] = String(state).split('.');
     const account = await this._accountFull(accountDocumentId);
     if (!account) throw new Error('Unknown account in OAuth state');
-    if (base.extra(account, 'oauth_nonce') && base.extra(account, 'oauth_nonce') !== nonce) {
-      throw new Error('OAuth state mismatch');
+    // Require a stored, matching nonce — a missing/blank one must NOT pass (else
+    // a forged `${accountId}.anything` state would be accepted).
+    const storedNonce = base.extra(account, 'oauth_nonce');
+    if (!storedNonce || !nonce || storedNonce !== nonce) {
+      throw new Error('OAuth state is invalid or has already been used');
     }
     const adapter = providers.getAdapter(account.platform);
+    // exchangeCode reads account.extra_config.oauth_state (X PKCE) — keep it
+    // intact for this call, then clear the one-time nonce/state below.
     const patch = await adapter.exchangeCode({ strapi, account, code, state });
     const updated = await this._applyAccountPatch(account, {
       ...patch,
-      extra_config: { ...(patch?.extra_config || {}), connected_at: new Date().toISOString() },
+      // null out the one-time OAuth state/nonce so a captured callback URL can't
+      // be replayed.
+      extra_config: {
+        ...(patch?.extra_config || {}),
+        connected_at: new Date().toISOString(),
+        oauth_state: null,
+        oauth_nonce: null,
+      },
     });
     // activate + stamp connection on successful connect
     await strapi.documents(ACCOUNT_UID).update({

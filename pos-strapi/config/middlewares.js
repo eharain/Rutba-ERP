@@ -29,7 +29,15 @@ module.exports = ({ env }) => {
     },
     'strapi::poweredBy',
     'strapi::query',
-    'strapi::body',
+    {
+      name: 'strapi::body',
+      config: {
+        // Expose the raw request body (ctx.request.body[Symbol.for('unparsedBody')])
+        // so inbound webhook HMAC signatures (e.g. Meta's X-Hub-Signature-256)
+        // can be verified against the exact bytes sent, not a re-serialization.
+        includeUnparsed: true,
+      },
+    },
     'strapi::session',
     'strapi::favicon',
     'global::video-range',

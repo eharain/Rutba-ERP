@@ -1,9 +1,14 @@
 'use strict';
 
 const { createCoreController } = require('@strapi/strapi').factories;
-const { ensureUser } = require('../../../utils/ensure-user');
+const { requireAppAdmin } = require('../../../utils/require-admin');
 
 const POST_UID = 'api::social-post.social-post';
+
+// Social accounts hold the platform API keys/secrets/tokens — managing them is
+// an admin-only job. Reads (find/findOne) stay open so non-admins can still pick
+// accounts when composing a post (secrets are `private` and never serialized).
+const requireAdmin = (ctx, strapi) => requireAppAdmin(ctx, strapi, 'social');
 
 // The OAuth/connection orchestration lives on the social-post service (it owns
 // the provider adapters + token persistence). The account controller is a thin
@@ -26,9 +31,23 @@ function popupHtml({ ok, message }) {
 }
 
 module.exports = createCoreController('api::social-account.social-account', ({ strapi }) => ({
+  // ── credential CRUD: admin-only writes (keys live here) ────────────────────
+  async create(ctx) {
+    if (!await requireAdmin(ctx, strapi)) return;
+    return super.create(ctx);
+  },
+  async update(ctx) {
+    if (!await requireAdmin(ctx, strapi)) return;
+    return super.update(ctx);
+  },
+  async delete(ctx) {
+    if (!await requireAdmin(ctx, strapi)) return;
+    return super.delete(ctx);
+  },
+
   /** Build the provider OAuth consent URL for this account. */
   async getConnectUrl(ctx) {
-    if (!await ensureUser(ctx, strapi)) return;
+    if (!await requireAdmin(ctx, strapi)) return;
     try {
       const result = await svc(strapi).buildConnectUrl(ctx.params.id);
       return ctx.send(result);
@@ -52,7 +71,7 @@ module.exports = createCoreController('api::social-account.social-account', ({ s
 
   /** Probe whether the stored token is usable (refreshing if needed). */
   async validateConnection(ctx) {
-    if (!await ensureUser(ctx, strapi)) return;
+    if (!await requireAdmin(ctx, strapi)) return;
     try {
       const result = await svc(strapi).validateConnection(ctx.params.id);
       return ctx.send(result);
@@ -63,7 +82,7 @@ module.exports = createCoreController('api::social-account.social-account', ({ s
 
   /** Force a token refresh. */
   async syncToken(ctx) {
-    if (!await ensureUser(ctx, strapi)) return;
+    if (!await requireAdmin(ctx, strapi)) return;
     try {
       const result = await svc(strapi).refreshAccountToken(ctx.params.id);
       return ctx.send(result);
