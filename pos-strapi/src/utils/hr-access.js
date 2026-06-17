@@ -11,8 +11,9 @@
  *      on. Resolved here from the hr-team graph (team_manager / members /
  *      parent_team→child_teams), NOT from a role.
  *
- * An HR manager/admin acts org-wide; a line manager (any role, but typically
- * hr_staff) acts only on their reports; an employee acts only on themselves.
+ * An HR manager/admin (active hr_admin/hr_manager claim) acts org-wide; a line
+ * manager (an ess_manager, or anyone who is a team_manager) acts only on their
+ * reports; an employee acts only on themselves.
  */
 
 const TEAM_UID = 'api::hr-team.hr-team';
@@ -36,25 +37,24 @@ async function resolveEmployeeForUser(strapi, user) {
   return byEmail?.[0] || null;
 }
 
-/** Highest HR functional level the user holds: 'admin' | 'manager' | 'staff' | null. */
-function hrLevel(user) {
-  const roles = user?.permission_roles || [];
-  let best = null; // staff < manager < admin
-  for (const r of roles) {
-    const dom = r?.domain?.key;
-    if (dom !== 'hr' && dom !== 'auth') continue;
-    if (r.level === 'admin') return 'admin';
-    if (r.level === 'manager') best = 'manager';
-    else if (r.level === 'staff' && best === null) best = 'staff';
-  }
-  return best;
-}
+// Active-claim role keys that carry org-wide HR authority.
+const HR_MANAGER_ROLE_KEYS = new Set(['hr_admin', 'hr_manager']);
 
-/** Org-wide HR authority: Strapi super-admin, or hr/auth admin/manager. */
-function isHrManager(user) {
-  if (user?.role?.type === 'admin') return true;
-  const lvl = hrLevel(user);
-  return lvl === 'admin' || lvl === 'manager';
+/**
+ * Org-wide HR authority for the CURRENT request. True for a Strapi super-admin,
+ * or when the active api-pro claim is an HR admin/manager role.
+ *
+ * Keyed to the single ACTIVE claim (ctx.state.apiProClaim, set by the api-pro
+ * request interceptor) — NOT the user's full role set. This respects the
+ * "one claimed role applies" model and prevents authority bleeding in from an
+ * unrelated role the user happens to hold (e.g. an auth-domain admin). A line
+ * manager (ess_manager, or anyone who is a team_manager) is intentionally NOT
+ * org-wide here — they are scoped to their reports via managedReportDocIds.
+ */
+function isHrManager(ctx, user) {
+  if (user?.role?.type === 'admin') return true; // Strapi super-admin
+  const roleKey = ctx?.state?.apiProClaim?.roleKey;
+  return roleKey ? HR_MANAGER_ROLE_KEYS.has(roleKey) : false;
 }
 
 /**
@@ -110,7 +110,6 @@ async function managedReportDocIds(strapi, employeeDocId) {
 
 module.exports = {
   resolveEmployeeForUser,
-  hrLevel,
   isHrManager,
   managedReportDocIds,
 };

@@ -39,7 +39,7 @@ export default function TeamsPage() {
             setTeams(teamsRes?.data || []);
             setEmployees(empRes?.data || []);
             setDepartments(depRes?.data || []);
-            const roleRes = await HrTeamsEndpoints.getAppRoleOptions();
+            const roleRes = await HrTeamsEndpoints.getAppRoleOptions().catch(() => ({ data: [] }));
             setAppRoleOptions(roleRes?.data || []);
         } catch (err) {
             console.error("Failed to load teams", err);

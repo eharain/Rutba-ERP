@@ -14,7 +14,6 @@ async function loadActor(ctx, strapi) {
     where: { id },
     populate: {
       role: { select: ['type'] },
-      permission_roles: { select: ['level'], populate: { domain: { select: ['key'] } } },
     },
   });
 }
@@ -43,7 +42,7 @@ async function decide(ctx, strapi, target) {
   });
   if (!current) return ctx.notFound('Leave request not found');
 
-  if (!isHrManager(user)) {
+  if (!isHrManager(ctx, user)) {
     const reports = await callerReportDocIds(strapi, user);
     const targetDoc = current.employee?.documentId;
     if (!targetDoc || !reports.includes(targetDoc)) {
@@ -52,6 +51,9 @@ async function decide(ctx, strapi, target) {
   }
 
   if (current.status === target) return ctx.send({ data: current }); // idempotent re-click
+  if (['Approved', 'Rejected', 'Cancelled'].includes(current.status)) {
+    return ctx.badRequest(`This request is already ${current.status} and cannot be changed.`);
+  }
 
   const body = ctx.request.body?.data ?? ctx.request.body ?? {};
   const reason = body.reason || body.rejection_reason || null;
@@ -76,7 +78,12 @@ module.exports = createCoreController(LR_UID, ({ strapi }) => ({
     if (!user) return ctx.unauthorized('You must be logged in');
     ctx.request.body = ctx.request.body || {};
     const data = ctx.request.body.data || ctx.request.body || {};
-    if (!data.employee) {
+    // Self-service (ess / any non-HR claim) may only file for themselves; an HR
+    // claim (hr_*) or super-admin may file on behalf of others via an explicit
+    // employee. Force the caller's own employee unless they are acting as HR.
+    const roleKey = ctx.state?.apiProClaim?.roleKey || '';
+    const isHrActor = user.role?.type === 'admin' || roleKey.startsWith('hr_');
+    if (!isHrActor || !data.employee) {
       const emp = await resolveEmployeeForUser(strapi, user);
       if (emp) data.employee = emp.documentId;
     }
@@ -110,7 +117,7 @@ module.exports = createCoreController(LR_UID, ({ strapi }) => ({
     if (!user) return ctx.unauthorized('You must be logged in');
 
     let filters = { status: { $eq: 'Pending' } };
-    if (!isHrManager(user)) {
+    if (!isHrManager(ctx, user)) {
       const reports = await callerReportDocIds(strapi, user);
       if (!reports.length) return ctx.send({ data: [] });
       filters = { status: { $eq: 'Pending' }, employee: { documentId: { $in: reports } } };
@@ -146,7 +153,7 @@ module.exports = createCoreController(LR_UID, ({ strapi }) => ({
     if (!current) return ctx.notFound('Leave request not found');
 
     const ownerUserId = current.employee?.user?.id;
-    let allowed = (ownerUserId && ownerUserId === user.id) || isHrManager(user);
+    let allowed = (ownerUserId && ownerUserId === user.id) || isHrManager(ctx, user);
     if (!allowed) {
       const reports = await callerReportDocIds(strapi, user);
       const targetDoc = current.employee?.documentId;

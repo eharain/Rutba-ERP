@@ -500,7 +500,7 @@ module.exports = createCoreService(PR_UID, ({ strapi }) => ({
             .filter((r) => {
                 const types = Array.isArray(r.applies_to_pay_types) ? r.applies_to_pay_types : [];
                 if (types.length && !types.includes(payType)) return false;
-                if (r.branch?.id && branchId && r.branch.id !== branchId) return false;
+                if (r.branch?.id && r.branch.id !== branchId) return false;
                 if (r.effective_from && r.effective_from > period.end) return false;
                 if (r.effective_to && r.effective_to < period.start) return false;
                 return true;
