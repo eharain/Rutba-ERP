@@ -11,7 +11,7 @@ export default function Departments() {
 
     useEffect(() => {
         if (!jwt) return;
-        HrDepartmentsEndpoints.fetchList()
+        HrDepartmentsEndpoints.list()
             .then((res) => setDepartments(res.data || []))
             .catch((err) => console.error("Failed to load departments", err))
             .finally(() => setLoading(false));

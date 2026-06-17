@@ -95,6 +95,14 @@
     "level": "staff",
     "domain": "delivery"
   },
+  "ess_employee": {
+    "level": "user",
+    "domain": "ess"
+  },
+  "ess_manager": {
+    "level": "manager",
+    "domain": "ess"
+  },
   "hr_admin": {
     "level": "admin",
     "domain": "hr"

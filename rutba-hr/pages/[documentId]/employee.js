@@ -18,7 +18,7 @@ export default function EmployeeDetail() {
 
     useEffect(() => {
         if (!jwt || !documentId) return;
-        HrEmployeesEndpoints.fetchById(documentId, { populate: '*' })
+        HrEmployeesEndpoints.byId(documentId, { populate: '*' })
             .then((res) => setEmployee(res.data || res))
             .catch((err) => console.error("Failed to load employee", err))
             .finally(() => setLoading(false));
@@ -26,7 +26,7 @@ export default function EmployeeDetail() {
 
     useEffect(() => {
         if (!jwt) return;
-        AuthAdminEndpoints.fetchUsers()
+        AuthAdminEndpoints.users()
             .then((res) => {
                 const rows = Array.isArray(res) ? res : res?.data || [];
                 setUsers(rows);
@@ -46,11 +46,11 @@ export default function EmployeeDetail() {
         if (!employee?.documentId) return;
         setSavingLink(true);
         try {
-            await HrEmployeesEndpoints.putUpdate(employee.documentId, {
+            await HrEmployeesEndpoints.update(employee.documentId, {
                 user: linkDraft ? { id: Number(linkDraft) } : null,
             });
 
-            const res = await HrEmployeesEndpoints.fetchById(employee.documentId, { populate: '*' });
+            const res = await HrEmployeesEndpoints.byId(employee.documentId, { populate: '*' });
             setEmployee(res.data || res);
         } catch (err) {
             console.error("Failed to save employee-user link", err);

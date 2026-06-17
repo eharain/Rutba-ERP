@@ -27,6 +27,11 @@ async function del(documentId) {
     return authApi.del(withQuery(ep.path, ep.params));
 }
 
+async function createBill(documentId) {
+    const ep = PurchasesEndpointsApi.createBill(documentId);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+}
+
 const endpoints = strictEndpointGuard(
     'PurchasesEndpoints',
     {
@@ -35,9 +40,10 @@ const endpoints = strictEndpointGuard(
         create,
         update,
         del,
+        createBill,
         meta: PurchasesEndpointsApi.meta,
     },
-    ["list","byId","create","update","del","meta"],
+    ["list","byId","create","update","del","createBill","meta"],
 );
 
 export default endpoints;

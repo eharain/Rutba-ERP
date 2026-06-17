@@ -299,6 +299,34 @@ module.exports = createCoreController('api::cash-register.cash-register', ({ str
       populate: ['opened_by_user', 'branch'],
     });
 
+    // Accounting: opening float moves from the safe into the drawer.
+    try {
+      const oc = Number(created.opening_cash || 0);
+      if (oc > 0) {
+        const accounting = strapi.service('api::acc-journal-entry.accounting');
+        const resolver = strapi.service('api::acc-journal-entry.account-resolver');
+        const branchId = created.branch?.id || null;
+        const already = await accounting.findBySource('Cash Register Open', created.id);
+        if (!already || already.length === 0) {
+          await accounting.createAndPost({
+            date: new Date(),
+            description: `Register opened — desk ${created.desk_name || created.desk_id}`,
+            source_type: 'Cash Register Open',
+            source_id: created.id,
+            source_ref: `REG-${created.id}`,
+            lines: [
+              { account: await resolver.resolve('CASH_DRAWER', branchId), debit: oc, credit: 0, description: 'Opening float' },
+              { account: await resolver.resolve('CASH_SAFE', branchId), debit: 0, credit: oc, description: 'From safe' },
+            ],
+            branch: branchId,
+            posted_by: ctx.state?.user?.email || '',
+          });
+        }
+      }
+    } catch (err) {
+      strapi.log.error(`[cash-register open] accounting failed: ${err.message}`);
+    }
+
     return ctx.send({ data: created, meta: { carryover, openingNote } });
   },
 
@@ -384,6 +412,42 @@ module.exports = createCoreController('api::cash-register.cash-register', ({ str
       },
       populate: ['opened_by_user', 'closed_by_user', 'branch', 'payments', 'transactions'],
     });
+
+    // Accounting: clear the drawer into the safe, booking the variance to Cash
+    // Short/Over. The GL drawer balance excludes manual Adjustments (those are
+    // reconciliation markers whose cash effect is booked by their underlying
+    // event), so it equals opening + cash sales + top-ups − refunds − expenses −
+    // drops — exactly what the per-event JEs have accumulated on the drawer.
+    try {
+      const accounting = strapi.service('api::acc-journal-entry.accounting');
+      const resolver = strapi.service('api::acc-journal-entry.account-resolver');
+      const branchId = updated.branch?.id || register.branch?.id || null;
+      const already = await accounting.findBySource('Cash Register Close', register.id);
+      if (!already || already.length === 0) {
+        const glDrawer = Math.round((expectedCash - cashAdjustments) * 100) / 100;
+        const counted = Math.round(countedValue * 100) / 100;
+        const variance = Math.round((counted - glDrawer) * 100) / 100;
+        const lines = [];
+        if (counted > 0) lines.push({ account: await resolver.resolve('CASH_SAFE', branchId), debit: counted, credit: 0, description: 'Counted cash to safe' });
+        if (variance < 0) lines.push({ account: await resolver.resolve('CASH_SHORT_OVER', branchId), debit: -variance, credit: 0, description: 'Cash short' });
+        if (glDrawer > 0) lines.push({ account: await resolver.resolve('CASH_DRAWER', branchId), debit: 0, credit: glDrawer, description: 'Clear drawer' });
+        if (variance > 0) lines.push({ account: await resolver.resolve('CASH_SHORT_OVER', branchId), debit: 0, credit: variance, description: 'Cash over' });
+        if (lines.length >= 2) {
+          await accounting.createAndPost({
+            date: new Date(),
+            description: `Register closed — desk ${register.desk_name || register.desk_id}`,
+            source_type: 'Cash Register Close',
+            source_id: register.id,
+            source_ref: `REG-${register.id}`,
+            lines,
+            branch: branchId,
+            posted_by: ctx.state?.user?.email || '',
+          });
+        }
+      }
+    } catch (err) {
+      strapi.log.error(`[cash-register close] accounting failed: ${err.message}`);
+    }
 
     return ctx.send({ data: updated });
   },

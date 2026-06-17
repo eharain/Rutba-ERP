@@ -55,6 +55,12 @@
       "delivery_staff"
     ]
   },
+  "ess": {
+    "roles": [
+      "ess_employee",
+      "ess_manager"
+    ]
+  },
   "hr": {
     "roles": [
       "hr_admin",

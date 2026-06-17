@@ -3,22 +3,38 @@
   "info": {
     "displayName": "Payslip Line",
     "icon": "bulletList",
-    "description": "One earning or deduction line on a payslip"
+    "description": "One earning, deduction, or employer-contribution line on a payslip"
   },
   "options": {},
   "attributes": {
     "label": {
       "type": "string"
     },
+    "kind": {
+      "type": "enumeration",
+      "enum": [
+        "earning",
+        "deduction",
+        "employer_contribution"
+      ]
+    },
     "category": {
       "type": "enumeration",
       "enum": [
         "salary",
+        "allowance",
+        "overtime",
         "piece_rate",
+        "bonus",
         "incentive",
+        "unpaid_leave",
+        "tax",
+        "eobi",
+        "provident_fund",
+        "advance_recovery",
         "penalty",
-        "advance",
-        "deduction"
+        "deduction",
+        "other"
       ]
     },
     "quantity": {
@@ -29,6 +45,9 @@
     },
     "amount": {
       "type": "decimal"
+    },
+    "gl_account_key": {
+      "type": "string"
     },
     "source_ref": {
       "type": "string"

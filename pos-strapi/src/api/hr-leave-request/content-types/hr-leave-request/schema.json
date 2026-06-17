@@ -38,12 +38,30 @@
       "enum": [
         "Pending",
         "Approved",
-        "Rejected"
+        "Rejected",
+        "Cancelled"
       ],
       "default": "Pending"
     },
+    "stage_key": {
+      "type": "string"
+    },
     "reason": {
       "type": "text"
+    },
+    "total_days": {
+      "type": "integer"
+    },
+    "rejection_reason": {
+      "type": "text"
+    },
+    "decided_at": {
+      "type": "datetime"
+    },
+    "decided_by": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
     },
     "employee": {
       "type": "relation",

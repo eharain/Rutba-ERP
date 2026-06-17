@@ -924,7 +924,7 @@ module.exports = factories.createCoreController(
 
             const order = await strapi.documents('api::sale-order.sale-order').findOne({
                 documentId,
-                fields: ['id', 'paid_amount'],
+                fields: ['id', 'order_id', 'paid_amount', 'payment_method'],
             });
             if (!order) return ctx.notFound('Order not found');
             if (status === 'verified' && (Number(order.paid_amount) || 0) <= 0) {
@@ -943,6 +943,35 @@ module.exports = factories.createCoreController(
                 },
                 populate: ['payment_collected_by_rider', 'payment_verified_by'],
             });
+
+            // COD settlement: when accounts confirm the rider's cash, move it from
+            // the rider-float clearing account to the bank. COD only — prepaid
+            // orders already debited the bank at delivery. Best-effort + idempotent.
+            if (status === 'verified' && order.payment_method === 'cod' && Number(order.paid_amount) > 0) {
+                try {
+                    const accounting = strapi.service('api::acc-journal-entry.accounting');
+                    const resolver = strapi.service('api::acc-journal-entry.account-resolver');
+                    const already = await accounting.findBySource('Web Order Payment', order.id);
+                    if (!already || already.length === 0) {
+                        const amt = Number(order.paid_amount);
+                        await accounting.createAndPost({
+                            date: new Date(),
+                            description: `COD settlement — Web Order ${order.order_id || order.id}`,
+                            source_type: 'Web Order Payment',
+                            source_id: order.id,
+                            source_ref: order.order_id || String(order.id),
+                            lines: [
+                                { account: await resolver.resolve('BANK_PRIMARY', null), debit: amt, credit: 0, description: 'COD cash banked' },
+                                { account: await resolver.resolve('COD_CLEARING', null), debit: 0, credit: amt, description: 'Clear rider float' },
+                            ],
+                            posted_by: user?.email || '',
+                        });
+                    }
+                } catch (err) {
+                    strapi.log.error(`[order verifyPayment] COD settlement failed for ${documentId}: ${err.message}`);
+                }
+            }
+
             return ctx.send({ data: updated });
         },
 

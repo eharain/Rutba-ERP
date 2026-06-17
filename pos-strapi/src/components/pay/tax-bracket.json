@@ -1,0 +1,19 @@
+{
+  "collectionName": "components_pay_tax_brackets",
+  "info": {
+    "displayName": "Tax Bracket",
+    "icon": "chartBubble",
+    "description": "One marginal slab: the portion of the base between the previous threshold and `up_to` is charged at `rate` %. Leave up_to empty (or 0) for the open-ended top bracket."
+  },
+  "options": {},
+  "attributes": {
+    "up_to": {
+      "type": "decimal"
+    },
+    "rate": {
+      "type": "decimal",
+      "required": true,
+      "default": 0
+    }
+  }
+}

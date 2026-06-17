@@ -1,9 +1,14 @@
 // AUTO-GENERATED — do not edit. Source: scaffold-endpoint-providers.mjs
 export interface HrLeaveRequestsEndpointsType {
-    myRequests(): Promise<any>;
-    teamQueue(): Promise<any>;
+    list({ page, pageSize, sort, populate, filters, fields }?: any): Promise<any>;
+    byId(documentId: any, { populate, fields }?: any): Promise<any>;
+    listMyRequests(): Promise<any>;
+    listTeamQueue(): Promise<any>;
     create(data: any): Promise<any>;
-    action(documentId: any, action: any): Promise<any>;
+    update(documentId: any, data: any): Promise<any>;
+    approve(documentId: any, extra?: any): Promise<any>;
+    reject(documentId: any, extra?: any): Promise<any>;
+    cancel(documentId: any, extra?: any): Promise<any>;
     meta: any;
 }
 

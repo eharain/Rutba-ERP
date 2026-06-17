@@ -4,38 +4,30 @@ import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { HrLeaveRequestsEndpoints } from "@rutba/api-provider/endpoints";
 
-const LEAVE_TYPES = ["Annual", "Sick", "Casual", "Maternity", "Paternity", "Unpaid", "Other"];
+// HR-department, org-wide leave oversight. Personal self-service (apply / my
+// requests) and line-manager approvals now live in the Employee Self-Service
+// (ess) app; HR managers retain org-wide approve/reject here.
+const STATUSES = ["", "Pending", "Approved", "Rejected", "Cancelled"];
 
-export default function LeaveRequests() {
-    const { jwt, adminAppAccess } = useAuth();
-    const [leaves, setLeaves] = useState([]);
-    const [teamQueue, setTeamQueue] = useState([]);
+export default function LeaveAdministration() {
+    const { jwt } = useAuth();
+    const [rows, setRows] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState(false);
+    const [status, setStatus] = useState("Pending");
     const [actionLoading, setActionLoading] = useState({});
-    const [tab, setTab] = useState("my");
-    const [newRequest, setNewRequest] = useState({
-        leave_type: "Annual",
-        start_date: "",
-        end_date: "",
-        reason: "",
-    });
 
-    const isManager = Array.isArray(adminAppAccess) && (adminAppAccess.includes("hr") || adminAppAccess.includes("auth"));
+    useEffect(() => { if (jwt) load(); /* eslint-disable-next-line */ }, [jwt, status]);
 
-    useEffect(() => {
-        if (jwt) loadAll();
-    }, [jwt]);
-
-    async function loadAll() {
+    async function load() {
         setLoading(true);
         try {
-            const [myRes, teamRes] = await Promise.all([
-                HrLeaveRequestsEndpoints.fetchMyRequests(),
-                isManager ? HrLeaveRequestsEndpoints.fetchTeamQueue() : Promise.resolve({ data: [] }),
-            ]);
-            setLeaves(myRes?.data || []);
-            setTeamQueue(teamRes?.data || []);
+            const res = await HrLeaveRequestsEndpoints.list({
+                sort: ["createdAt:desc"],
+                populate: ["employee", "decided_by"],
+                pageSize: 200,
+                ...(status ? { filters: { status } } : {}),
+            });
+            setRows(res?.data || []);
         } catch (err) {
             console.error("Failed to load leave requests", err);
         } finally {
@@ -43,35 +35,18 @@ export default function LeaveRequests() {
         }
     }
 
-    async function submitRequest(e) {
-        e.preventDefault();
-        if (!newRequest.start_date || !newRequest.end_date) return;
-        setSaving(true);
-        try {
-            await HrLeaveRequestsEndpoints.postCreate({
-                leave_type: newRequest.leave_type,
-                start_date: newRequest.start_date,
-                end_date: newRequest.end_date,
-                reason: newRequest.reason || null,
-                status: "Pending",
-            });
-            setNewRequest({ leave_type: "Annual", start_date: "", end_date: "", reason: "" });
-            await loadAll();
-        } catch (err) {
-            console.error("Failed to submit leave request", err);
-        } finally {
-            setSaving(false);
-        }
-    }
-
-    async function processRequest(documentId, action) {
+    async function decide(documentId, action) {
         const key = `${documentId}:${action}`;
+        let reason = null;
+        if (action === "reject") { reason = window.prompt("Reason for rejection (optional):"); if (reason === null) return; }
         setActionLoading((p) => ({ ...p, [key]: true }));
         try {
-            await HrLeaveRequestsEndpoints.postAction(documentId, action, {});
-            await loadAll();
+            if (action === "approve") await HrLeaveRequestsEndpoints.approve(documentId);
+            else await HrLeaveRequestsEndpoints.reject(documentId, { reason: reason || null });
+            await load();
         } catch (err) {
-            console.error(`Failed to ${action} leave request`, err);
+            console.error(`Failed to ${action}`, err);
+            alert(`Failed to ${action} — you may not have approval rights.`);
         } finally {
             setActionLoading((p) => ({ ...p, [key]: false }));
         }
@@ -80,125 +55,43 @@ export default function LeaveRequests() {
     return (
         <ProtectedRoute>
             <Layout>
-                <h2 className="mb-3">Leave Requests</h2>
-
-                <div className="card mb-4">
-                    <div className="card-header bg-light fw-semibold">Submit Leave Request</div>
-                    <div className="card-body">
-                        <form onSubmit={submitRequest}>
-                            <div className="row g-2 align-items-end">
-                                <div className="col-md-2">
-                                    <label className="form-label">Type</label>
-                                    <select className="form-select" value={newRequest.leave_type} onChange={(e) => setNewRequest((p) => ({ ...p, leave_type: e.target.value }))}>
-                                        {LEAVE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-                                    </select>
-                                </div>
-                                <div className="col-md-2">
-                                    <label className="form-label">From</label>
-                                    <input type="date" className="form-control" value={newRequest.start_date} onChange={(e) => setNewRequest((p) => ({ ...p, start_date: e.target.value }))} required />
-                                </div>
-                                <div className="col-md-2">
-                                    <label className="form-label">To</label>
-                                    <input type="date" className="form-control" value={newRequest.end_date} onChange={(e) => setNewRequest((p) => ({ ...p, end_date: e.target.value }))} required />
-                                </div>
-                                <div className="col-md-5">
-                                    <label className="form-label">Reason</label>
-                                    <input className="form-control" value={newRequest.reason} onChange={(e) => setNewRequest((p) => ({ ...p, reason: e.target.value }))} />
-                                </div>
-                                <div className="col-md-1 d-grid">
-                                    <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? "..." : "Submit"}</button>
-                                </div>
-                            </div>
-                        </form>
+                <div className="d-flex align-items-center justify-content-between mb-2">
+                    <h2 className="mb-0">Leave Administration</h2>
+                    <div className="d-flex align-items-center gap-2">
+                        <label className="form-label mb-0 small text-muted">Status</label>
+                        <select className="form-select form-select-sm" style={{ width: 150 }} value={status} onChange={(e) => setStatus(e.target.value)}>
+                            {STATUSES.map((s) => <option key={s || "all"} value={s}>{s || "All"}</option>)}
+                        </select>
                     </div>
                 </div>
+                <p className="text-muted small">Org-wide oversight. HR managers can approve/reject; employees apply and managers approve their own teams in the Employee Self-Service app.</p>
 
-                <ul className="nav nav-tabs mb-3">
-                    <li className="nav-item">
-                        <button className={`nav-link ${tab === "my" ? "active" : ""}`} onClick={() => setTab("my")}>My Requests</button>
-                    </li>
-                    {isManager && (
-                        <li className="nav-item">
-                            <button className={`nav-link ${tab === "team" ? "active" : ""}`} onClick={() => setTab("team")}>Team Queue</button>
-                        </li>
-                    )}
-                </ul>
-
-                {loading && <p>Loading leave requests...</p>}
-
-                {!loading && tab === "my" && leaves.length === 0 && (
-                    <div className="alert alert-info">No leave requests found.</div>
-                )}
-
-                {!loading && tab === "team" && teamQueue.length === 0 && (
-                    <div className="alert alert-info">No pending team requests found.</div>
-                )}
-
-                {!loading && tab === "my" && leaves.length > 0 && (
+                {loading && <p>Loading…</p>}
+                {!loading && rows.length === 0 && <div className="alert alert-info">No leave requests{status ? ` with status "${status}"` : ""}.</div>}
+                {!loading && rows.length > 0 && (
                     <div className="table-responsive">
-                        <table className="table table-striped table-hover">
+                        <table className="table table-striped table-hover align-middle">
                             <thead className="table-dark">
-                                <tr>
-                                    <th>Employee</th>
-                                    <th>Type</th>
-                                    <th>From</th>
-                                    <th>To</th>
-                                    <th>Status</th>
-                                    <th>Reason</th>
-                                </tr>
+                                <tr><th>Employee</th><th>Type</th><th>From</th><th>To</th><th>Days</th><th>Status</th><th>Reason</th><th>Decided by</th><th>Actions</th></tr>
                             </thead>
                             <tbody>
-                                {leaves.map((l) => (
+                                {rows.map((l) => (
                                     <tr key={l.id}>
                                         <td>{l.employee?.name || "—"}</td>
                                         <td>{l.leave_type || "—"}</td>
                                         <td>{l.start_date ? new Date(l.start_date).toLocaleDateString() : "—"}</td>
                                         <td>{l.end_date ? new Date(l.end_date).toLocaleDateString() : "—"}</td>
-                                        <td>
-                                            <span className={`badge bg-${leaveStatusColor(l.status)}`}>
-                                                {l.status || "Pending"}
-                                            </span>
-                                        </td>
+                                        <td>{l.total_days ?? "—"}</td>
+                                        <td><span className={`badge bg-${statusColor(l.status)}`}>{l.status || "Pending"}</span></td>
                                         <td>{l.reason || "—"}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
-
-                {!loading && tab === "team" && teamQueue.length > 0 && (
-                    <div className="table-responsive">
-                        <table className="table table-striped table-hover">
-                            <thead className="table-dark">
-                                <tr>
-                                    <th>Employee</th>
-                                    <th>Type</th>
-                                    <th>From</th>
-                                    <th>To</th>
-                                    <th>Status</th>
-                                    <th>Reason</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {teamQueue.map((l) => (
-                                    <tr key={l.id}>
-                                        <td>{l.employee?.name || "—"}</td>
-                                        <td>{l.leave_type || "—"}</td>
-                                        <td>{l.start_date ? new Date(l.start_date).toLocaleDateString() : "—"}</td>
-                                        <td>{l.end_date ? new Date(l.end_date).toLocaleDateString() : "—"}</td>
+                                        <td className="small">{l.decided_by?.username || l.decided_by?.email || "—"}</td>
                                         <td>
-                                            <span className={`badge bg-${leaveStatusColor(l.status)}`}>
-                                                {l.status || "Pending"}
-                                            </span>
-                                        </td>
-                                        <td>{l.reason || "—"}</td>
-                                        <td>
-                                            <div className="d-flex gap-1">
-                                                <button className="btn btn-sm btn-success" onClick={() => processRequest(l.documentId, "approve")} disabled={actionLoading[`${l.documentId}:approve`]}>Approve</button>
-                                                <button className="btn btn-sm btn-danger" onClick={() => processRequest(l.documentId, "reject")} disabled={actionLoading[`${l.documentId}:reject`]}>Reject</button>
-                                            </div>
+                                            {l.status === "Pending" ? (
+                                                <div className="d-flex gap-1">
+                                                    <button className="btn btn-sm btn-success" onClick={() => decide(l.documentId, "approve")} disabled={actionLoading[`${l.documentId}:approve`]}>Approve</button>
+                                                    <button className="btn btn-sm btn-danger" onClick={() => decide(l.documentId, "reject")} disabled={actionLoading[`${l.documentId}:reject`]}>Reject</button>
+                                                </div>
+                                            ) : (l.rejection_reason ? <span className="text-muted small">{l.rejection_reason}</span> : "—")}
                                         </td>
                                     </tr>
                                 ))}
@@ -211,12 +104,12 @@ export default function LeaveRequests() {
     );
 }
 
-function leaveStatusColor(status) {
+function statusColor(status) {
     switch (status) {
         case "Approved": return "success";
         case "Rejected": return "danger";
         case "Pending": return "warning";
+        case "Cancelled": return "secondary";
         default: return "secondary";
     }
 }
-

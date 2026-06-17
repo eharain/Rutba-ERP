@@ -1,0 +1,62 @@
+{
+  "kind": "collectionType",
+  "collectionName": "pay_statutory_remittances",
+  "info": {
+    "singularName": "pay-statutory-remittance",
+    "pluralName": "pay-statutory-remittances",
+    "displayName": "Statutory Remittance",
+    "description": "A payment of withheld statutory liabilities (tax / social security / pension, etc.) to the relevant authority. Settles a GL liability account."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "reference": {
+      "type": "string"
+    },
+    "authority": {
+      "type": "string"
+    },
+    "gl_account_key": {
+      "type": "string",
+      "default": "STATUTORY_PAYABLE"
+    },
+    "amount": {
+      "type": "decimal",
+      "required": true
+    },
+    "period_label": {
+      "type": "string"
+    },
+    "method": {
+      "type": "enumeration",
+      "enum": [
+        "Cash",
+        "Bank",
+        "Mobile Wallet"
+      ],
+      "default": "Bank"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "Pending",
+        "Paid",
+        "Cancelled"
+      ],
+      "default": "Pending"
+    },
+    "paid_at": {
+      "type": "datetime"
+    },
+    "notes": {
+      "type": "text"
+    },
+    "branch": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::branch.branch"
+    }
+  }
+}

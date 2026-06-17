@@ -22,6 +22,21 @@
     },
     "description": {
       "type": "text"
+    },
+    "pay_frequency": {
+      "type": "enumeration",
+      "enum": [
+        "Monthly",
+        "Biweekly",
+        "Weekly",
+        "Daily"
+      ],
+      "default": "Monthly"
+    },
+    "salary_components": {
+      "type": "component",
+      "repeatable": true,
+      "component": "pay.salary-component"
     }
   }
 }

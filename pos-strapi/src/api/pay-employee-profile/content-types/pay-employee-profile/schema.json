@@ -1,0 +1,70 @@
+{
+  "kind": "collectionType",
+  "collectionName": "pay_employee_profiles",
+  "info": {
+    "singularName": "pay-employee-profile",
+    "pluralName": "pay-employee-profiles",
+    "displayName": "Employee Pay Profile",
+    "description": "Per-employee payroll setup (pay type, bank, statutory). Held behind the payroll role, deliberately off hr-employee to preserve the salary-data privacy wall."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "employee": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::hr-employee.hr-employee"
+    },
+    "pay_type": {
+      "type": "enumeration",
+      "enum": [
+        "monthly_salary",
+        "piece_rate",
+        "hybrid",
+        "daily_wage",
+        "contractor"
+      ],
+      "default": "monthly_salary"
+    },
+    "base_salary_override": {
+      "type": "decimal"
+    },
+    "daily_rate": {
+      "type": "decimal"
+    },
+    "bank_account_title": {
+      "type": "string"
+    },
+    "bank_account_number": {
+      "type": "string"
+    },
+    "iban": {
+      "type": "string"
+    },
+    "bank_name": {
+      "type": "string"
+    },
+    "tax_id": {
+      "type": "string"
+    },
+    "statutory_no": {
+      "type": "string"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "branch": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::branch.branch"
+    },
+    "owners": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

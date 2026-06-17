@@ -34,6 +34,8 @@ export { MediaLibraryEndpoints } from './media-library.js';
 export { MediaUtilsEndpoints } from './media-utils.js';
 export { NotificationTemplatesEndpoints } from './notification-templates.js';
 export { PaymentsEndpoints } from './payments.js';
+export { PayAdjustmentsEndpoints } from './pay-adjustments.js';
+export { PayEmployeeProfilesEndpoints } from './pay-employee-profiles.js';
 export { PayPayrollRunsEndpoints } from './pay-payroll-runs.js';
 export { PayPayslipsEndpoints } from './pay-payslips.js';
 export { PaySalaryStructuresEndpoints } from './pay-salary-structures.js';

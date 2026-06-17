@@ -11,8 +11,7 @@ export default function Expenses() {
 
     useEffect(() => {
         if (!jwt) return;
-        const ep = AccExpensesEndpoints.list();
-        AccExpensesEndpoints.fetchList(ep.params)
+        AccExpensesEndpoints.list()
             .then((res) => setExpenses(res.data || []))
             .catch((err) => console.error("Failed to load expenses", err))
             .finally(() => setLoading(false));

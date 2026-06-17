@@ -5,6 +5,7 @@ const SECTIONS = [
     { href: "/journal-entries",   label: "Journal Entries",   icon: "fa-book" },
     { href: "/invoices",          label: "Invoices",          icon: "fa-file-invoice-dollar" },
     { href: "/expenses",          label: "Expenses",          icon: "fa-receipt" },
+    { href: "/reports",           label: "Reports",           icon: "fa-chart-line" },
 ];
 
 export default function Sidebar() {

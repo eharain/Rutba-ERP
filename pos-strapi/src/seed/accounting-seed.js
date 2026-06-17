@@ -47,6 +47,17 @@ const DEFAULT_ACCOUNTS = [
   { code: '6200', name: 'Utilities Expense',    account_type: 'Expense',   sub_type: 'Operating Expense',   normal_balance: 'Debit', is_system: false },
   { code: '6300', name: 'Payroll Expense',      account_type: 'Expense',   sub_type: 'Payroll Expense',     normal_balance: 'Debit', is_system: false },
   { code: '6400', name: 'Tax Expense',          account_type: 'Expense',   sub_type: 'Tax Expense',         normal_balance: 'Debit', is_system: false },
+
+  // ── Accounting completion (web/COD orders, cash variance) ──
+  { code: '1210', name: 'COD / Rider Float',           account_type: 'Asset',     sub_type: 'Other Current Asset',     normal_balance: 'Debit',  is_system: true },
+  { code: '4300', name: 'Shipping Revenue',            account_type: 'Revenue',   sub_type: 'Other Revenue',           normal_balance: 'Credit', is_system: true },
+  { code: '6700', name: 'Cash Short/Over',             account_type: 'Expense',   sub_type: 'Operating Expense',       normal_balance: 'Debit',  is_system: true },
+
+  // ── Payroll ────────────────────────────────────────────────
+  { code: '1220', name: 'Employee Advances',           account_type: 'Asset',     sub_type: 'Other Current Asset',     normal_balance: 'Debit',  is_system: true },
+  { code: '1310', name: 'Work-in-Process – Labor',     account_type: 'Asset',     sub_type: 'Inventory',               normal_balance: 'Debit',  is_system: true },
+  { code: '2300', name: 'Salaries & Wages Payable',    account_type: 'Liability', sub_type: 'Other Current Liability',  normal_balance: 'Credit', is_system: true },
+  { code: '2310', name: 'Statutory Deductions Payable', account_type: 'Liability', sub_type: 'Other Current Liability',  normal_balance: 'Credit', is_system: true },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -69,6 +80,19 @@ const DEFAULT_MAPPINGS = [
   { key: 'SALES_RETURNS',      code: '4100', description: 'Sales returns and allowances' },
   { key: 'COGS',               code: '5000', description: 'Cost of goods sold' },
   { key: 'OPERATING_EXPENSES', code: '6000', description: 'General operating expenses' },
+
+  // ── Accounting completion ──────────────────────────────────
+  { key: 'COD_CLEARING',       code: '1210', description: 'COD cash collected by rider, not yet deposited' },
+  { key: 'SHIPPING_REVENUE',   code: '4300', description: 'Delivery charged to customer (web orders)' },
+  { key: 'CASH_SHORT_OVER',    code: '6700', description: 'Cash register count variance (short/over)' },
+
+  // ── Payroll ────────────────────────────────────────────────
+  { key: 'PAYROLL_EXPENSE',    code: '6300', description: 'Salaries and wages expense' },
+  { key: 'SALARY_PAYABLE',     code: '2300', description: 'Net pay owed to employees' },
+  { key: 'WAGES_PAYABLE',      code: '2300', description: 'Production wages payable (shares Salaries & Wages Payable)' },
+  { key: 'STATUTORY_PAYABLE',  code: '2310', description: 'Tax / EOBI / PF withheld, owed to authorities' },
+  { key: 'EMPLOYEE_ADVANCES',  code: '1220', description: 'Advances / loans recoverable from employees' },
+  { key: 'WIP_LABOR',          code: '1310', description: 'Capitalized production labor (target model)' },
 ];
 
 /* ------------------------------------------------------------------ */

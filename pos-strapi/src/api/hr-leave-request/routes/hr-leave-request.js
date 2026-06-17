@@ -25,6 +25,11 @@ const customRoutes = [
     path: '/hr-leave-requests/:documentId/reject',
     handler: 'api::hr-leave-request.hr-leave-request.reject',
   },
+  {
+    method: 'POST',
+    path: '/hr-leave-requests/:documentId/cancel',
+    handler: 'api::hr-leave-request.hr-leave-request.cancel',
+  },
 ];
 
 module.exports = {

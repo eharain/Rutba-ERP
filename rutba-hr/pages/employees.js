@@ -12,7 +12,7 @@ export default function Employees() {
 
     useEffect(() => {
         if (!jwt) return;
-        HrEmployeesEndpoints.fetchList({ sort: ["name:asc"], populate: ["department", "user"] })
+        HrEmployeesEndpoints.list({ sort: ["name:asc"], populate: ["department", "user"] })
             .then((res) => setEmployees(res.data || []))
             .catch((err) => console.error("Failed to load employees", err))
             .finally(() => setLoading(false));

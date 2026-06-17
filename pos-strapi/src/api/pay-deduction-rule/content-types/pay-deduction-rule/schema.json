@@ -1,0 +1,118 @@
+{
+  "kind": "collectionType",
+  "collectionName": "pay_deduction_rules",
+  "info": {
+    "singularName": "pay-deduction-rule",
+    "pluralName": "pay-deduction-rules",
+    "displayName": "Payroll Deduction Rule",
+    "description": "Configurable statutory deduction or employer contribution applied during a payroll run (income tax, social security, pension, insurance, etc.). Generic by design — no jurisdiction is baked into code; each tenant defines the rules that apply to it."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "code": {
+      "type": "string"
+    },
+    "deduction_type": {
+      "type": "enumeration",
+      "enum": [
+        "tax",
+        "social_security",
+        "pension",
+        "insurance",
+        "union",
+        "other"
+      ],
+      "default": "other"
+    },
+    "payslip_category": {
+      "type": "enumeration",
+      "enum": [
+        "tax",
+        "eobi",
+        "provident_fund",
+        "deduction",
+        "other"
+      ],
+      "default": "deduction"
+    },
+    "payer": {
+      "type": "enumeration",
+      "enum": [
+        "employee",
+        "employer"
+      ],
+      "default": "employee"
+    },
+    "method": {
+      "type": "enumeration",
+      "enum": [
+        "flat",
+        "percent",
+        "slab"
+      ],
+      "default": "percent"
+    },
+    "base": {
+      "type": "enumeration",
+      "enum": [
+        "gross",
+        "base_salary"
+      ],
+      "default": "gross"
+    },
+    "value": {
+      "type": "decimal",
+      "default": 0
+    },
+    "brackets": {
+      "type": "component",
+      "repeatable": true,
+      "component": "pay.tax-bracket"
+    },
+    "min_base": {
+      "type": "decimal"
+    },
+    "max_base": {
+      "type": "decimal"
+    },
+    "min_amount": {
+      "type": "decimal"
+    },
+    "max_amount": {
+      "type": "decimal"
+    },
+    "gl_account_key": {
+      "type": "string",
+      "default": "STATUTORY_PAYABLE"
+    },
+    "applies_to_pay_types": {
+      "type": "json"
+    },
+    "sequence": {
+      "type": "integer",
+      "default": 100
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "effective_from": {
+      "type": "date"
+    },
+    "effective_to": {
+      "type": "date"
+    },
+    "branch": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::branch.branch"
+    }
+  }
+}

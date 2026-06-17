@@ -198,19 +198,70 @@ export interface OrderReturnLine extends Struct.ComponentSchema {
 export interface PayPayslipLine extends Struct.ComponentSchema {
   collectionName: 'components_pay_payslip_lines';
   info: {
-    description: 'One earning or deduction line on a payslip';
+    description: 'One earning, deduction, or employer-contribution line on a payslip';
     displayName: 'Payslip Line';
     icon: 'bulletList';
   };
   attributes: {
     amount: Schema.Attribute.Decimal;
     category: Schema.Attribute.Enumeration<
-      ['salary', 'piece_rate', 'incentive', 'penalty', 'advance', 'deduction']
+      [
+        'salary',
+        'allowance',
+        'overtime',
+        'piece_rate',
+        'bonus',
+        'incentive',
+        'unpaid_leave',
+        'tax',
+        'eobi',
+        'provident_fund',
+        'advance_recovery',
+        'penalty',
+        'deduction',
+        'other',
+      ]
+    >;
+    gl_account_key: Schema.Attribute.String;
+    kind: Schema.Attribute.Enumeration<
+      ['earning', 'deduction', 'employer_contribution']
     >;
     label: Schema.Attribute.String;
     quantity: Schema.Attribute.Decimal;
     rate: Schema.Attribute.Decimal;
     source_ref: Schema.Attribute.String;
+  };
+}
+
+export interface PaySalaryComponent extends Struct.ComponentSchema {
+  collectionName: 'components_pay_salary_components';
+  info: {
+    description: 'A recurring earning or deduction within a salary structure';
+    displayName: 'Salary Component';
+    icon: 'calculator';
+  };
+  attributes: {
+    calc: Schema.Attribute.Enumeration<['fixed', 'percent_of_base']> &
+      Schema.Attribute.DefaultTo<'fixed'>;
+    kind: Schema.Attribute.Enumeration<['earning', 'deduction']> &
+      Schema.Attribute.DefaultTo<'earning'>;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    value: Schema.Attribute.Decimal & Schema.Attribute.Required;
+  };
+}
+
+export interface PayTaxBracket extends Struct.ComponentSchema {
+  collectionName: 'components_pay_tax_brackets';
+  info: {
+    description: 'One marginal slab: the portion of the base between the previous threshold and `up_to` is charged at `rate` %. Leave up_to empty (or 0) for the open-ended top bracket.';
+    displayName: 'Tax Bracket';
+    icon: 'chartBubble';
+  };
+  attributes: {
+    rate: Schema.Attribute.Decimal &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<0>;
+    up_to: Schema.Attribute.Decimal;
   };
 }
 
@@ -344,6 +395,8 @@ declare module '@strapi/strapi' {
       'order.order-products': OrderOrderProducts;
       'order.return-line': OrderReturnLine;
       'pay.payslip-line': PayPayslipLine;
+      'pay.salary-component': PaySalaryComponent;
+      'pay.tax-bracket': PayTaxBracket;
       'pos.sales-desks': PosSalesDesks;
       'pos.stock-status-history': PosStockStatusHistory;
       'product.variant-information': ProductVariantInformation;

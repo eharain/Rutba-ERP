@@ -43,6 +43,11 @@
         "Expense",
         "Invoice Payment",
         "Bill Payment",
+        "Web Order Payment",
+        "Payroll Run",
+        "Payroll Payment",
+        "Production Labor",
+        "Statutory Remittance",
         "Manual"
       ]
     },

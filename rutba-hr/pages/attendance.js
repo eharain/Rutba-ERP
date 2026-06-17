@@ -11,7 +11,7 @@ export default function Attendance() {
 
     useEffect(() => {
         if (!jwt) return;
-        HrAttendancesEndpoints.fetchList()
+        HrAttendancesEndpoints.list()
             .then((res) => setRecords(res.data || []))
             .catch((err) => console.error("Failed to load attendance", err))
             .finally(() => setLoading(false));

@@ -35,9 +35,13 @@ export default function HrEmployeeManagementPage() {
         setLoading(true);
         try {
             const [empRes, depRes, usersRes] = await Promise.all([
-                HrEmployeesEndpoints.fetchList({ sort: ["name:asc"], populate: ["department", "user"] }),
-                HrDepartmentsEndpoints.fetchList({ sort: ["name:asc"] }),
-                AuthAdminEndpoints.fetchUsers(),
+                HrEmployeesEndpoints.list({ sort: ["name:asc"], populate: ["department", "user"] }),
+                HrDepartmentsEndpoints.list({ sort: ["name:asc"] }),
+                // The user list comes from the auth-admin API, which is gated to
+                // the auth app context (X-Rutba-App: auth) — from HR it returns
+                // 403. Best-effort so it never blocks the page; the employee↔user
+                // link picker simply stays empty unless auth-admin is opened to HR.
+                AuthAdminEndpoints.users().catch(() => ({ data: [] })),
             ]);
             setEmployees(empRes?.data || []);
             setDepartments(depRes?.data || []);
@@ -104,9 +108,9 @@ export default function HrEmployeeManagementPage() {
         setSaving(true);
         try {
             if (editingId) {
-                await HrEmployeesEndpoints.putUpdate(editingId, payload.data);
+                await HrEmployeesEndpoints.update(editingId, payload.data);
             } else {
-                await HrEmployeesEndpoints.postCreate(payload.data);
+                await HrEmployeesEndpoints.create(payload.data);
             }
             resetForm();
             await loadAll();

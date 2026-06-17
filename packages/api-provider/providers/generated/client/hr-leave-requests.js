@@ -2,13 +2,23 @@ import { authApi } from '../../../lib/api.js';
 import { withQuery, wrapData, strictEndpointGuard } from './___core__.js';
 import { HrLeaveRequestsEndpoints as HrLeaveRequestsEndpointsApi } from '../../../api/hr-leave-requests.js';
 
-async function myRequests() {
-    const ep = HrLeaveRequestsEndpointsApi.myRequests();
+async function list(arg1 = {}) {
+    const ep = HrLeaveRequestsEndpointsApi.list(arg1);
     return authApi.fetch(ep.path, ep.params);
 }
 
-async function teamQueue() {
-    const ep = HrLeaveRequestsEndpointsApi.teamQueue();
+async function byId(documentId, arg2 = {}) {
+    const ep = HrLeaveRequestsEndpointsApi.byId(documentId, arg2);
+    return authApi.fetch(ep.path, ep.params);
+}
+
+async function listMyRequests() {
+    const ep = HrLeaveRequestsEndpointsApi.listMyRequests();
+    return authApi.fetch(ep.path, ep.params);
+}
+
+async function listTeamQueue() {
+    const ep = HrLeaveRequestsEndpointsApi.listTeamQueue();
     return authApi.fetch(ep.path, ep.params);
 }
 
@@ -17,21 +27,41 @@ async function create(data) {
     return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
-async function action(documentId, action) {
-    const ep = HrLeaveRequestsEndpointsApi.action(documentId, action);
+async function update(documentId, data) {
+    const ep = HrLeaveRequestsEndpointsApi.update(documentId, data);
+    return authApi.put(withQuery(ep.path, ep.params), wrapData(ep.data));
+}
+
+async function approve(documentId, extra = {}) {
+    const ep = HrLeaveRequestsEndpointsApi.approve(documentId, extra);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+}
+
+async function reject(documentId, extra = {}) {
+    const ep = HrLeaveRequestsEndpointsApi.reject(documentId, extra);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+}
+
+async function cancel(documentId, extra = {}) {
+    const ep = HrLeaveRequestsEndpointsApi.cancel(documentId, extra);
     return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
 const endpoints = strictEndpointGuard(
     'HrLeaveRequestsEndpoints',
     {
-        myRequests,
-        teamQueue,
+        list,
+        byId,
+        listMyRequests,
+        listTeamQueue,
         create,
-        action,
+        update,
+        approve,
+        reject,
+        cancel,
         meta: HrLeaveRequestsEndpointsApi.meta,
     },
-    ["myRequests","teamQueue","create","action","meta"],
+    ["list","byId","listMyRequests","listTeamQueue","create","update","approve","reject","cancel","meta"],
 );
 
 export default endpoints;

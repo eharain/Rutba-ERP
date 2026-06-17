@@ -6,4 +6,14 @@
 
 const { createCoreRouter } = require('@strapi/strapi').factories;
 
-module.exports = createCoreRouter('api::purchase.purchase');
+const defaultRouter = createCoreRouter('api::purchase.purchase');
+
+const customRoutes = [
+  { method: 'POST', path: '/purchases/:documentId/generate-bill', handler: 'api::purchase.purchase.generateBill' },
+];
+
+module.exports = {
+  get routes() {
+    return [...customRoutes, ...defaultRouter.routes];
+  },
+};

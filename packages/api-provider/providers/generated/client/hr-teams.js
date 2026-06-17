@@ -7,8 +7,8 @@ async function list(arg1 = {}) {
     return authApi.fetch(ep.path, ep.params);
 }
 
-async function appRoleOptions() {
-    const ep = HrTeamsEndpointsApi.appRoleOptions();
+async function getAppRoleOptions() {
+    const ep = HrTeamsEndpointsApi.getAppRoleOptions();
     return authApi.fetch(ep.path, ep.params);
 }
 
@@ -26,12 +26,12 @@ const endpoints = strictEndpointGuard(
     'HrTeamsEndpoints',
     {
         list,
-        appRoleOptions,
+        getAppRoleOptions,
         create,
         update,
         meta: HrTeamsEndpointsApi.meta,
     },
-    ["list","appRoleOptions","create","update","meta"],
+    ["list","getAppRoleOptions","create","update","meta"],
 );
 
 export default endpoints;

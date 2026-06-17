@@ -48,6 +48,15 @@ export default function Home() {
                             </div>
                         </div>
                     </div>
+                    <div className="col-md-4">
+                        <div className="card border-dark h-100">
+                            <div className="card-body">
+                                <h5 className="card-title"><i className="fas fa-chart-line me-2 text-dark"></i>Reports</h5>
+                                <p className="card-text text-muted">Trial balance, P&amp;L, balance sheet, cash flow and AR/AP aging.</p>
+                                <Link className="btn btn-outline-dark btn-sm" href="/reports">View Reports</Link>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </Layout>
         </ProtectedRoute>

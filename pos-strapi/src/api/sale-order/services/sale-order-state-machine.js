@@ -48,6 +48,18 @@ const STOCK_TRANSITIONS_ON_ORDER_STATUS = {
     DELIVERED: { from: 'Reserved', to: 'Sold' },
 };
 
+// Map the sale-order payment_method enum → account-resolver key used to debit
+// the cash / clearing account when web-order revenue is recognised on delivery.
+// COD lands in a rider-float clearing account until the cash is deposited and
+// verified (see record-payment / verify accounting hook).
+const ORDER_PAYMENT_METHOD_KEY = {
+    cod:            'COD_CLEARING',
+    card:           'CARD_CLEARING',
+    online_gateway: 'CARD_CLEARING',
+    bank_transfer:  'BANK_PRIMARY',
+    mobile_wallet:  'MOBILE_WALLET',
+};
+
 module.exports = {
     /**
      * Check whether a status transition is valid.
@@ -149,6 +161,19 @@ module.exports = {
             }
         }
 
+        // Accounting side effects (best-effort; a missing mapping must never
+        // unwind the order status change). DELIVERED recognises revenue + COGS;
+        // CANCELLED / REFUNDED reverse the order's posted entries.
+        if (statusChanged) {
+            try {
+                await this.postAccountingForStatus(orderDocumentId, newStatus, extra);
+            } catch (err) {
+                strapi.log.warn(
+                    `[order-state-machine] accounting post failed for order=${orderDocumentId} on ${newStatus}: ${err.message}`,
+                );
+            }
+        }
+
         return updated;
     },
 
@@ -224,5 +249,126 @@ module.exports = {
 
     getAllowedTransitions(currentStatus) {
         return TRANSITIONS[currentStatus] || [];
+    },
+
+    /* ────────────────────────────────────────────────────────────────
+     *  Accounting side effects
+     *
+     *  Mirrors the POS sale pattern (sale/controllers/checkout.js): post
+     *  through the accounting engine + account-resolver, key every entry to
+     *  source_type 'Web Order' + the order id so it is idempotent (findBySource)
+     *  and reversible (reverseBySource). Callers wrap this in try/catch — a
+     *  configuration gap (e.g. a missing mapping) logs a warning and is
+     *  reconciled later; it never throws a hard failure that unwinds a delivery.
+     * ──────────────────────────────────────────────────────────────── */
+
+    async postAccountingForStatus(orderDocumentId, newStatus, extra = {}) {
+        const posted_by = extra?.posted_by || '';
+        if (newStatus === 'DELIVERED') {
+            await this.postOrderRevenueAndCogs(orderDocumentId, posted_by);
+        } else if (newStatus === 'CANCELLED' || newStatus === 'REFUNDED') {
+            const accounting = strapi.service('api::acc-journal-entry.accounting');
+            const order = await strapi.documents(SALE_ORDER_UID).findOne({
+                documentId: orderDocumentId,
+                fields: ['id'],
+            });
+            if (order) {
+                await accounting.reverseBySource('Web Order', order.id, { posted_by });
+                await accounting.reverseBySource('Web Order Payment', order.id, { posted_by });
+            }
+        }
+    },
+
+    /**
+     * Recognise revenue (+ shipping) and COGS for a delivered web order.
+     * Revenue is recognised on the accrual basis at DELIVERED.
+     */
+    async postOrderRevenueAndCogs(orderDocumentId, posted_by = '') {
+        const accounting = strapi.service('api::acc-journal-entry.accounting');
+        const resolver = strapi.service('api::acc-journal-entry.account-resolver');
+
+        const order = await strapi.documents(SALE_ORDER_UID).findOne({
+            documentId: orderDocumentId,
+            fields: ['id', 'order_id', 'subtotal', 'total', 'payment_method'],
+            populate: {
+                products: {
+                    populate: {
+                        items: {
+                            populate: { stock_item: { fields: ['cost_price'] } },
+                        },
+                    },
+                },
+            },
+        });
+        if (!order) return;
+
+        // Idempotency: never double-post if an entry already exists for this order.
+        const existing = await accounting.findBySource('Web Order', order.id);
+        if (existing && existing.length > 0) return;
+
+        // sale-order has no branch relation — resolve mappings globally.
+        const branchId = null;
+        const total = Number(order.total || 0);
+        const subtotal = Number(order.subtotal || 0);
+        if (total <= 0) return;
+
+        // --- Revenue entry ---
+        // Split the customer total into product revenue + shipping revenue.
+        // Defensive: if subtotal somehow exceeds total, lump everything into
+        // revenue so the entry can never be unbalanced.
+        let shipping = Math.round((total - subtotal) * 100) / 100;
+        let revenue = subtotal;
+        if (shipping < 0) { revenue = total; shipping = 0; }
+
+        const methodKey = ORDER_PAYMENT_METHOD_KEY[order.payment_method] || 'COD_CLEARING';
+        const payAccountId = await resolver.resolve(methodKey, branchId);
+        const revenueAccountId = await resolver.resolve('SALES_REVENUE', branchId);
+
+        const revenueLines = [
+            { account: payAccountId, debit: total, credit: 0, description: `Web order payment – ${order.payment_method || 'cod'}` },
+            { account: revenueAccountId, debit: 0, credit: revenue, description: 'Sales revenue' },
+        ];
+        if (shipping > 0) {
+            const shippingAccountId = await resolver.resolve('SHIPPING_REVENUE', branchId);
+            revenueLines.push({ account: shippingAccountId, debit: 0, credit: shipping, description: 'Shipping revenue' });
+        }
+
+        await accounting.createAndPost({
+            date: new Date(),
+            description: `Web Order ${order.order_id || order.id}`,
+            source_type: 'Web Order',
+            source_id: order.id,
+            source_ref: order.order_id || String(order.id),
+            lines: revenueLines,
+            branch: branchId,
+            posted_by,
+        });
+
+        // --- COGS entry ---
+        // Cost basis = the cost_price of the specific stock-items attached to the
+        // order lines (the same units the stock walk just moved Reserved → Sold).
+        const lineItems = order.products?.items || [];
+        let totalCost = 0;
+        for (const li of lineItems) {
+            const cost = Number(li?.stock_item?.cost_price || 0);
+            if (cost > 0) totalCost += cost;
+        }
+        if (totalCost > 0) {
+            const cogsAccountId = await resolver.resolve('COGS', branchId);
+            const inventoryAccountId = await resolver.resolve('INVENTORY', branchId);
+            await accounting.createAndPost({
+                date: new Date(),
+                description: `COGS for Web Order ${order.order_id || order.id}`,
+                source_type: 'Web Order',
+                source_id: order.id,
+                source_ref: order.order_id || String(order.id),
+                lines: [
+                    { account: cogsAccountId, debit: totalCost, credit: 0, description: 'Cost of goods sold' },
+                    { account: inventoryAccountId, debit: 0, credit: totalCost, description: 'Inventory relieved' },
+                ],
+                branch: branchId,
+                posted_by,
+            });
+        }
     },
 };

@@ -30,6 +30,13 @@ const STANDARD_ACTIONS = ['find', 'findOne', 'create', 'update', 'delete'];
 // app-role itself, because a UP grant alone admits every app user).
 const CUSTOM_ACTIONS = {
   'api::crm-lead.crm-lead': ['assignees'],
+  'api::hr-leave-request.hr-leave-request': ['myRequests', 'teamQueue', 'approve', 'reject', 'cancel'],
+  'api::hr-team.hr-team': ['appRoleOptions'],
+  'api::pay-statutory-remittance.pay-statutory-remittance': ['process'],
+  'api::acc-journal-entry.acc-journal-entry': ['trialBalance', 'incomeStatement', 'balanceSheet', 'cashFlow', 'arAging', 'apAging'],
+  'api::purchase.purchase': ['generateBill'],
+  'api::pay-payroll-run.pay-payroll-run': ['preview', 'process', 'cancel'],
+  'api::pay-payslip.pay-payslip': ['myPayslips', 'markPaid'],
 };
 
 function resolveApiProviderRoot(strapi) {

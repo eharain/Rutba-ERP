@@ -11,8 +11,7 @@ export default function Invoices() {
 
     useEffect(() => {
         if (!jwt) return;
-        const ep = AccInvoicesEndpoints.list();
-        AccInvoicesEndpoints.fetchList(ep.params)
+        AccInvoicesEndpoints.list()
             .then((res) => setInvoices(res.data || []))
             .catch((err) => console.error("Failed to load invoices", err))
             .finally(() => setLoading(false));

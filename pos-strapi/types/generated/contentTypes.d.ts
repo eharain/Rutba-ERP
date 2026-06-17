@@ -879,6 +879,11 @@ export interface ApiAccJournalEntryAccJournalEntry
         'Expense',
         'Invoice Payment',
         'Bill Payment',
+        'Web Order Payment',
+        'Payroll Run',
+        'Payroll Payment',
+        'Production Labor',
+        'Statutory Remittance',
         'Manual',
       ]
     >;
@@ -2263,6 +2268,11 @@ export interface ApiHrLeaveRequestHrLeaveRequest
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    decided_at: Schema.Attribute.DateTime;
+    decided_by: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
     employee: Schema.Attribute.Relation<
       'manyToOne',
       'api::hr-employee.hr-employee'
@@ -2284,9 +2294,14 @@ export interface ApiHrLeaveRequestHrLeaveRequest
     >;
     publishedAt: Schema.Attribute.DateTime;
     reason: Schema.Attribute.Text;
+    rejection_reason: Schema.Attribute.Text;
+    stage_key: Schema.Attribute.String;
     start_date: Schema.Attribute.Date & Schema.Attribute.Required;
-    status: Schema.Attribute.Enumeration<['Pending', 'Approved', 'Rejected']> &
+    status: Schema.Attribute.Enumeration<
+      ['Pending', 'Approved', 'Rejected', 'Cancelled']
+    > &
       Schema.Attribute.DefaultTo<'Pending'>;
+    total_days: Schema.Attribute.Integer;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -3504,6 +3519,116 @@ export interface ApiPayAdjustmentPayAdjustment
   };
 }
 
+export interface ApiPayDeductionRulePayDeductionRule
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'pay_deduction_rules';
+  info: {
+    description: 'Configurable statutory deduction or employer contribution applied during a payroll run (income tax, social security, pension, insurance, etc.). Generic by design \u2014 no jurisdiction is baked into code; each tenant defines the rules that apply to it.';
+    displayName: 'Payroll Deduction Rule';
+    pluralName: 'pay-deduction-rules';
+    singularName: 'pay-deduction-rule';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    applies_to_pay_types: Schema.Attribute.JSON;
+    base: Schema.Attribute.Enumeration<['gross', 'base_salary']> &
+      Schema.Attribute.DefaultTo<'gross'>;
+    brackets: Schema.Attribute.Component<'pay.tax-bracket', true>;
+    branch: Schema.Attribute.Relation<'manyToOne', 'api::branch.branch'>;
+    code: Schema.Attribute.String;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    deduction_type: Schema.Attribute.Enumeration<
+      ['tax', 'social_security', 'pension', 'insurance', 'union', 'other']
+    > &
+      Schema.Attribute.DefaultTo<'other'>;
+    effective_from: Schema.Attribute.Date;
+    effective_to: Schema.Attribute.Date;
+    gl_account_key: Schema.Attribute.String &
+      Schema.Attribute.DefaultTo<'STATUTORY_PAYABLE'>;
+    is_active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::pay-deduction-rule.pay-deduction-rule'
+    > &
+      Schema.Attribute.Private;
+    max_amount: Schema.Attribute.Decimal;
+    max_base: Schema.Attribute.Decimal;
+    method: Schema.Attribute.Enumeration<['flat', 'percent', 'slab']> &
+      Schema.Attribute.DefaultTo<'percent'>;
+    min_amount: Schema.Attribute.Decimal;
+    min_base: Schema.Attribute.Decimal;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    payer: Schema.Attribute.Enumeration<['employee', 'employer']> &
+      Schema.Attribute.DefaultTo<'employee'>;
+    payslip_category: Schema.Attribute.Enumeration<
+      ['tax', 'eobi', 'provident_fund', 'deduction', 'other']
+    > &
+      Schema.Attribute.DefaultTo<'deduction'>;
+    publishedAt: Schema.Attribute.DateTime;
+    sequence: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<100>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    value: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+  };
+}
+
+export interface ApiPayEmployeeProfilePayEmployeeProfile
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'pay_employee_profiles';
+  info: {
+    description: 'Per-employee payroll setup (pay type, bank, statutory). Held behind the payroll role, deliberately off hr-employee to preserve the salary-data privacy wall.';
+    displayName: 'Employee Pay Profile';
+    pluralName: 'pay-employee-profiles';
+    singularName: 'pay-employee-profile';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    bank_account_number: Schema.Attribute.String;
+    bank_account_title: Schema.Attribute.String;
+    bank_name: Schema.Attribute.String;
+    base_salary_override: Schema.Attribute.Decimal;
+    branch: Schema.Attribute.Relation<'manyToOne', 'api::branch.branch'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    daily_rate: Schema.Attribute.Decimal;
+    employee: Schema.Attribute.Relation<
+      'oneToOne',
+      'api::hr-employee.hr-employee'
+    >;
+    iban: Schema.Attribute.String;
+    is_active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::pay-employee-profile.pay-employee-profile'
+    > &
+      Schema.Attribute.Private;
+    owners: Schema.Attribute.Relation<
+      'manyToMany',
+      'plugin::users-permissions.user'
+    >;
+    pay_type: Schema.Attribute.Enumeration<
+      ['monthly_salary', 'piece_rate', 'hybrid', 'daily_wage', 'contractor']
+    > &
+      Schema.Attribute.DefaultTo<'monthly_salary'>;
+    publishedAt: Schema.Attribute.DateTime;
+    statutory_no: Schema.Attribute.String;
+    tax_id: Schema.Attribute.String;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiPayPayrollRunPayPayrollRun
   extends Struct.CollectionTypeSchema {
   collectionName: 'pay_payroll_runs';
@@ -3517,23 +3642,34 @@ export interface ApiPayPayrollRunPayPayrollRun
     draftAndPublish: false;
   };
   attributes: {
+    branch: Schema.Attribute.Relation<'manyToOne', 'api::branch.branch'>;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    journal_entry: Schema.Attribute.Relation<
+      'oneToOne',
+      'api::acc-journal-entry.acc-journal-entry'
+    >;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
       'api::pay-payroll-run.pay-payroll-run'
     > &
       Schema.Attribute.Private;
+    notes: Schema.Attribute.Text;
     payslips: Schema.Attribute.Relation<
       'oneToMany',
       'api::pay-payslip.pay-payslip'
     >;
     period_end: Schema.Attribute.Date & Schema.Attribute.Required;
     period_start: Schema.Attribute.Date & Schema.Attribute.Required;
+    processed_at: Schema.Attribute.DateTime;
+    processed_by: Schema.Attribute.String;
     publishedAt: Schema.Attribute.DateTime;
-    status: Schema.Attribute.Enumeration<['Draft', 'Processed', 'Cancelled']> &
+    stage_key: Schema.Attribute.String;
+    status: Schema.Attribute.Enumeration<
+      ['Draft', 'Approved', 'Processed', 'Paid', 'Cancelled']
+    > &
       Schema.Attribute.DefaultTo<'Draft'>;
     total_deductions: Schema.Attribute.Decimal;
     total_gross: Schema.Attribute.Decimal;
@@ -3556,6 +3692,8 @@ export interface ApiPayPayslipPayPayslip extends Struct.CollectionTypeSchema {
     draftAndPublish: false;
   };
   attributes: {
+    bank_reference: Schema.Attribute.String;
+    branch: Schema.Attribute.Relation<'manyToOne', 'api::branch.branch'>;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -3565,6 +3703,11 @@ export interface ApiPayPayslipPayPayslip extends Struct.CollectionTypeSchema {
       'api::hr-employee.hr-employee'
     >;
     gross: Schema.Attribute.Decimal;
+    journal_entry: Schema.Attribute.Relation<
+      'oneToOne',
+      'api::acc-journal-entry.acc-journal-entry'
+    >;
+    lines: Schema.Attribute.Component<'pay.payslip-line', true>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
@@ -3572,6 +3715,10 @@ export interface ApiPayPayslipPayPayslip extends Struct.CollectionTypeSchema {
     > &
       Schema.Attribute.Private;
     net_pay: Schema.Attribute.Decimal;
+    paid_at: Schema.Attribute.DateTime;
+    payment_method: Schema.Attribute.Enumeration<
+      ['Cash', 'Bank', 'Mobile Wallet']
+    >;
     payroll_run: Schema.Attribute.Relation<
       'manyToOne',
       'api::pay-payroll-run.pay-payroll-run'
@@ -3612,7 +3759,54 @@ export interface ApiPaySalaryStructurePaySalaryStructure
     > &
       Schema.Attribute.Private;
     name: Schema.Attribute.String & Schema.Attribute.Required;
+    pay_frequency: Schema.Attribute.Enumeration<
+      ['Monthly', 'Biweekly', 'Weekly', 'Daily']
+    > &
+      Schema.Attribute.DefaultTo<'Monthly'>;
     publishedAt: Schema.Attribute.DateTime;
+    salary_components: Schema.Attribute.Component<'pay.salary-component', true>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiPayStatutoryRemittancePayStatutoryRemittance
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'pay_statutory_remittances';
+  info: {
+    description: 'A payment of withheld statutory liabilities (tax / social security / pension, etc.) to the relevant authority. Settles a GL liability account.';
+    displayName: 'Statutory Remittance';
+    pluralName: 'pay-statutory-remittances';
+    singularName: 'pay-statutory-remittance';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    amount: Schema.Attribute.Decimal & Schema.Attribute.Required;
+    authority: Schema.Attribute.String;
+    branch: Schema.Attribute.Relation<'manyToOne', 'api::branch.branch'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    gl_account_key: Schema.Attribute.String &
+      Schema.Attribute.DefaultTo<'STATUTORY_PAYABLE'>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::pay-statutory-remittance.pay-statutory-remittance'
+    > &
+      Schema.Attribute.Private;
+    method: Schema.Attribute.Enumeration<['Cash', 'Bank', 'Mobile Wallet']> &
+      Schema.Attribute.DefaultTo<'Bank'>;
+    notes: Schema.Attribute.Text;
+    paid_at: Schema.Attribute.DateTime;
+    period_label: Schema.Attribute.String;
+    publishedAt: Schema.Attribute.DateTime;
+    reference: Schema.Attribute.String;
+    status: Schema.Attribute.Enumeration<['Pending', 'Paid', 'Cancelled']> &
+      Schema.Attribute.DefaultTo<'Pending'>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -6599,9 +6793,12 @@ declare module '@strapi/strapi' {
       'api::notification.notification': ApiNotificationNotification;
       'api::order-message.order-message': ApiOrderMessageOrderMessage;
       'api::pay-adjustment.pay-adjustment': ApiPayAdjustmentPayAdjustment;
+      'api::pay-deduction-rule.pay-deduction-rule': ApiPayDeductionRulePayDeductionRule;
+      'api::pay-employee-profile.pay-employee-profile': ApiPayEmployeeProfilePayEmployeeProfile;
       'api::pay-payroll-run.pay-payroll-run': ApiPayPayrollRunPayPayrollRun;
       'api::pay-payslip.pay-payslip': ApiPayPayslipPayPayslip;
       'api::pay-salary-structure.pay-salary-structure': ApiPaySalaryStructurePaySalaryStructure;
+      'api::pay-statutory-remittance.pay-statutory-remittance': ApiPayStatutoryRemittancePayStatutoryRemittance;
       'api::payment.payment': ApiPaymentPayment;
       'api::person-dedup-audit.person-dedup-audit': ApiPersonDedupAuditPersonDedupAudit;
       'api::person.person': ApiPersonPerson;

@@ -5,6 +5,7 @@ export interface PurchasesEndpointsType {
     create(data: any): Promise<any>;
     update(documentId: any, data: any): Promise<any>;
     del(documentId: any): Promise<any>;
+    createBill(documentId: any): Promise<any>;
     meta: any;
 }
 

@@ -11,8 +11,7 @@ export default function SalaryStructures() {
 
     useEffect(() => {
         if (!jwt) return;
-        const ep = PaySalaryStructuresEndpoints.list();
-        PaySalaryStructuresEndpoints.fetchList(ep.params)
+        PaySalaryStructuresEndpoints.list()
             .then((res) => setStructures(res.data || []))
             .catch((err) => console.error("Failed to load salary structures", err))
             .finally(() => setLoading(false));

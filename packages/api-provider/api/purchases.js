@@ -91,4 +91,13 @@ export const PurchasesEndpoints = {
         apps: ['purchase', 'stock'],
         approle: ['admin', 'manager', 'staff'],
     }),
+
+    /** Generate a supplier bill (acc-bill) from a received purchase → posts AP. */
+    createBill: (documentId) => ({
+        path: `/purchases/${documentId}/generate-bill`,
+        action: 'generateBill',
+        method: 'post',
+        apps: ['purchase', 'stock'],
+        approle: ['admin', 'manager'],
+    }),
 };

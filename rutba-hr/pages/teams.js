@@ -32,14 +32,14 @@ export default function TeamsPage() {
         setLoading(true);
         try {
             const [teamsRes, empRes, depRes] = await Promise.all([
-                HrTeamsEndpoints.fetchList({ sort: ["name:asc"], populate: ["team_manager", "members", "parent_team", "department"] }),
-                HrEmployeesEndpoints.fetchList({ sort: ["name:asc"] }),
-                HrDepartmentsEndpoints.fetchList({ sort: ["name:asc"] }),
+                HrTeamsEndpoints.list({ sort: ["name:asc"], populate: ["team_manager", "members", "parent_team", "department"] }),
+                HrEmployeesEndpoints.list({ sort: ["name:asc"] }),
+                HrDepartmentsEndpoints.list({ sort: ["name:asc"] }),
             ]);
             setTeams(teamsRes?.data || []);
             setEmployees(empRes?.data || []);
             setDepartments(depRes?.data || []);
-            const roleRes = await HrTeamsEndpoints.fetchAppRoleOptions();
+            const roleRes = await HrTeamsEndpoints.getAppRoleOptions();
             setAppRoleOptions(roleRes?.data || []);
         } catch (err) {
             console.error("Failed to load teams", err);
@@ -122,9 +122,9 @@ export default function TeamsPage() {
         setSaving(true);
         try {
             if (editingId) {
-                await HrTeamsEndpoints.putUpdate(editingId, payload.data);
+                await HrTeamsEndpoints.update(editingId, payload.data);
             } else {
-                await HrTeamsEndpoints.postCreate(payload.data);
+                await HrTeamsEndpoints.create(payload.data);
             }
             resetForm();
             await loadAll();

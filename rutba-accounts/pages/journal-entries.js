@@ -11,8 +11,7 @@ export default function JournalEntries() {
 
     useEffect(() => {
         if (!jwt) return;
-        const ep = AccJournalEntriesEndpoints.list();
-        AccJournalEntriesEndpoints.fetchList(ep.params)
+        AccJournalEntriesEndpoints.list()
             .then((res) => setEntries(res.data || []))
             .catch((err) => console.error("Failed to load journal entries", err))
             .finally(() => setLoading(false));

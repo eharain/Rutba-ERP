@@ -24,7 +24,9 @@
       "type": "enumeration",
       "enum": [
         "Draft",
+        "Approved",
         "Processed",
+        "Paid",
         "Cancelled"
       ],
       "default": "Draft"
@@ -43,6 +45,28 @@
       "relation": "oneToMany",
       "target": "api::pay-payslip.pay-payslip",
       "mappedBy": "payroll_run"
+    },
+    "branch": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::branch.branch"
+    },
+    "stage_key": {
+      "type": "string"
+    },
+    "processed_at": {
+      "type": "datetime"
+    },
+    "processed_by": {
+      "type": "string"
+    },
+    "journal_entry": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::acc-journal-entry.acc-journal-entry"
+    },
+    "notes": {
+      "type": "text"
     }
   }
 }

@@ -1,0 +1,35 @@
+{
+  "collectionName": "components_pay_salary_components",
+  "info": {
+    "displayName": "Salary Component",
+    "icon": "calculator",
+    "description": "A recurring earning or deduction within a salary structure"
+  },
+  "options": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "kind": {
+      "type": "enumeration",
+      "enum": [
+        "earning",
+        "deduction"
+      ],
+      "default": "earning"
+    },
+    "calc": {
+      "type": "enumeration",
+      "enum": [
+        "fixed",
+        "percent_of_base"
+      ],
+      "default": "fixed"
+    },
+    "value": {
+      "type": "decimal",
+      "required": true
+    }
+  }
+}

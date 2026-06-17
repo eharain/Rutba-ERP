@@ -48,6 +48,35 @@
       "relation": "oneToMany",
       "target": "api::mfg-task.mfg-task",
       "mappedBy": "payslip"
+    },
+    "lines": {
+      "type": "component",
+      "repeatable": true,
+      "component": "pay.payslip-line"
+    },
+    "paid_at": {
+      "type": "datetime"
+    },
+    "payment_method": {
+      "type": "enumeration",
+      "enum": [
+        "Cash",
+        "Bank",
+        "Mobile Wallet"
+      ]
+    },
+    "bank_reference": {
+      "type": "string"
+    },
+    "branch": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::branch.branch"
+    },
+    "journal_entry": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::acc-journal-entry.acc-journal-entry"
     }
   }
 }

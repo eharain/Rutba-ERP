@@ -121,6 +121,23 @@ module.exports = ({ strapi }) => ({
       source_type === 'Manual' ? 'JE' : 'JE'
     );
 
+    // --- Resolve currency -------------------------------------------------
+    // Currency is configurable per branch (branch.currency). When the caller
+    // doesn't pass one, derive it from the entry's branch so every GL entry is
+    // currency-aware off the tenant's configuration. Best-effort + additive —
+    // a lookup miss just leaves it null (as before) and never blocks posting.
+    let resolvedCurrency = currency;
+    if (!resolvedCurrency && branch) {
+      try {
+        const b = await strapi.entityService.findOne('api::branch.branch', branch, {
+          populate: { currency: { fields: ['id'] } },
+        });
+        resolvedCurrency = b?.currency?.id || null;
+      } catch (e) {
+        strapi.log.warn(`[accounting] branch currency resolve failed: ${e.message}`);
+      }
+    }
+
     // --- Create header ----------------------------------------------------
     const headerData = {
       entry_number,
@@ -137,7 +154,7 @@ module.exports = ({ strapi }) => ({
       posted_by: autoPost ? posted_by : null,
       posted_at: autoPost ? new Date() : null,
       ...(branch ? { branch } : {}),
-      ...(currency ? { currency } : {}),
+      ...(resolvedCurrency ? { currency: resolvedCurrency } : {}),
       ...(period ? { fiscal_period: period.id } : {}),
     };
 
