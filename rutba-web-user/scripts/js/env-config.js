@@ -27,6 +27,7 @@ const GLOBAL_VARS = [
   { key: 'NEXT_PUBLIC_WEB_USER_URL',         severity: 'error', description: 'Web User portal URL' },
   { key: 'NEXT_PUBLIC_CRM_URL',              severity: 'error', description: 'CRM app URL' },
   { key: 'NEXT_PUBLIC_HR_URL',               severity: 'error', description: 'HR app URL' },
+  { key: 'NEXT_PUBLIC_ESS_URL',              severity: 'warn',  description: 'Employee Self-Service (ESS) portal URL' },
   { key: 'NEXT_PUBLIC_ACCOUNTS_URL',         severity: 'error', description: 'Accounts app URL' },
   { key: 'NEXT_PUBLIC_PAYROLL_URL',          severity: 'error', description: 'Payroll app URL' },
   { key: 'NEXT_PUBLIC_CMS_URL',              severity: 'error', description: 'CMS app URL' },

@@ -105,6 +105,7 @@ services:
         NEXT_PUBLIC_SOCIAL_URL: ${NEXT_PUBLIC_SOCIAL_URL}
         NEXT_PUBLIC_CRM_URL: ${NEXT_PUBLIC_CRM_URL}
         NEXT_PUBLIC_HR_URL: ${NEXT_PUBLIC_HR_URL}
+        NEXT_PUBLIC_ESS_URL: ${NEXT_PUBLIC_ESS_URL}
         NEXT_PUBLIC_ACCOUNTS_URL: ${NEXT_PUBLIC_ACCOUNTS_URL}
         NEXT_PUBLIC_PAYROLL_URL: ${NEXT_PUBLIC_PAYROLL_URL}
         NEXT_PUBLIC_CMS_URL: ${NEXT_PUBLIC_CMS_URL}
@@ -262,6 +263,23 @@ services:
       - "${PORT_HR}:${PORT_HR}"
     environment:
       PORT: ${PORT_HR}
+      HOSTNAME: 0.0.0.0
+
+  # --------------------------------------------------------
+  # Employee Self-Service (ESS)
+  # --------------------------------------------------------
+  ess:
+    build:
+      context: .
+      target: ess
+      args: *global-build-args
+    restart: unless-stopped
+    depends_on:
+      - strapi
+    ports:
+      - "${PORT_ESS:-4015}:${PORT_ESS:-4015}"
+    environment:
+      PORT: ${PORT_ESS:-4015}
       HOSTNAME: 0.0.0.0
 
   # --------------------------------------------------------

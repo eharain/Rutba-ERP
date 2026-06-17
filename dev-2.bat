@@ -1,9 +1,9 @@
 @echo off
-title Rutba POS - Development Environment
+title Rutba ERP - Development Environment
 color 0A
 
 echo ============================================
-echo   Rutba POS - Starting Dev Environment
+echo   Rutba ERP - Starting Dev Environment
 echo ============================================
 echo.
 echo   Strapi API   : http://localhost:4010
@@ -16,6 +16,7 @@ echo   Order Mgmt   : http://localhost:4013
 echo   Rider        : http://localhost:4012
 echo   CRM          : http://localhost:4005
 echo   HR           : http://localhost:4006
+echo   Employee SS  : http://localhost:4015
 echo   Accounts     : http://localhost:4007
 echo   Payroll      : http://localhost:4008
 echo   CMS          : http://localhost:4009
@@ -23,12 +24,12 @@ echo   Social       : http://localhost:4011
 echo   Manufacturing: http://localhost:4014
 echo.
 
-echo [1/13] Starting Strapi API...
+echo [1/2] Starting Strapi API...
 start "Strapi API" cmd /k "cd /d "%~dp0" && npm run dev:strapi"
 
 timeout /t 3 /nobreak >nul
 
-echo [2/13] Starting Rutba Web...
+echo [2/2] Starting all apps (dev:all - includes ess, manufacturing, and the rest)...
 start "Rutba All" cmd /k "cd /d "%~dp0" && npm run dev:all"
 
 
@@ -47,6 +48,7 @@ echo   Order Mgmt   : http://localhost:4013
 echo   Rider        : http://localhost:4012
 echo   CRM          : http://localhost:4005
 echo   HR           : http://localhost:4006
+echo   Employee SS  : http://localhost:4015
 echo   Accounts     : http://localhost:4007
 echo   Payroll      : http://localhost:4008
 echo   CMS          : http://localhost:4009

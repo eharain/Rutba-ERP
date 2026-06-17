@@ -30,7 +30,7 @@ module.exports = (config) => {
             // (prod uses `strapi start` which doesn't run Vite). Hosts here are derived
             // from .env.development (localhost) and .env.production (*.rutba.pk family:
             // rutba.pk, api.rutba.pk, auth.rutba.pk, stock.rutba.pk, sale.rutba.pk,
-            // my.rutba.pk, crm.rutba.pk, hr.rutba.pk, accounts.rutba.pk, payroll.rutba.pk,
+            // my.rutba.pk, crm.rutba.pk, hr.rutba.pk, ess.rutba.pk, accounts.rutba.pk, payroll.rutba.pk,
             // cms.rutba.pk, social.rutba.pk) — the leading-dot wildcard matches every
             // subdomain so we don't have to enumerate.
             allowedHosts: [

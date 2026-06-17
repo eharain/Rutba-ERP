@@ -84,6 +84,7 @@ ARG NEXT_PUBLIC_RIDER_URL
 ARG NEXT_PUBLIC_SOCIAL_URL
 ARG NEXT_PUBLIC_CRM_URL
 ARG NEXT_PUBLIC_HR_URL
+ARG NEXT_PUBLIC_ESS_URL
 ARG NEXT_PUBLIC_ACCOUNTS_URL
 ARG NEXT_PUBLIC_PAYROLL_URL
 ARG NEXT_PUBLIC_CMS_URL
@@ -108,6 +109,7 @@ ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
     NEXT_PUBLIC_SOCIAL_URL=$NEXT_PUBLIC_SOCIAL_URL \
     NEXT_PUBLIC_CRM_URL=$NEXT_PUBLIC_CRM_URL \
     NEXT_PUBLIC_HR_URL=$NEXT_PUBLIC_HR_URL \
+    NEXT_PUBLIC_ESS_URL=$NEXT_PUBLIC_ESS_URL \
     NEXT_PUBLIC_ACCOUNTS_URL=$NEXT_PUBLIC_ACCOUNTS_URL \
     NEXT_PUBLIC_PAYROLL_URL=$NEXT_PUBLIC_PAYROLL_URL \
     NEXT_PUBLIC_CMS_URL=$NEXT_PUBLIC_CMS_URL \
@@ -267,6 +269,20 @@ COPY --from=hr-build /app/rutba-hr/.next/standalone ./
 COPY --from=hr-build /app/rutba-hr/.next/static     ./rutba-hr/.next/static
 COPY --from=hr-build /app/rutba-hr/public            ./rutba-hr/public
 CMD ["node", "rutba-hr/server.js"]
+
+# ----------------------------------------------------------
+#  rutba-ess
+# ----------------------------------------------------------
+FROM build-env AS ess-build
+RUN mkdir -p rutba-ess/public && npm run build --workspace=rutba-ess
+
+FROM base AS ess
+WORKDIR /app
+ENV NODE_ENV=production HOSTNAME=0.0.0.0
+COPY --from=ess-build /app/rutba-ess/.next/standalone ./
+COPY --from=ess-build /app/rutba-ess/.next/static     ./rutba-ess/.next/static
+COPY --from=ess-build /app/rutba-ess/public            ./rutba-ess/public
+CMD ["node", "rutba-ess/server.js"]
 
 # ----------------------------------------------------------
 #  rutba-accounts

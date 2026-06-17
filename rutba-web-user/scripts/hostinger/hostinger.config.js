@@ -99,6 +99,12 @@ const APPS = {
     domain: 'hr.rutba.pk',
     prefix: 'RUTBA_HR',
   },
+  ess: {
+    type: 'nextjs',
+    workspace: 'rutba-ess',
+    domain: 'ess.rutba.pk',
+    prefix: 'RUTBA_ESS',
+  },
   accounts: {
     type: 'nextjs',
     workspace: 'rutba-accounts',

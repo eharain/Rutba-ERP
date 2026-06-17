@@ -48,7 +48,6 @@
     "./client/web": "./client/web/index.js",
     "./client/web/*": "./client/web/*",
     "./api/web": "./api/web/index.js",
-    "./api/web/*": "./api/web/*",
-    "./server": "./server/index.js"
+    "./api/web/*": "./api/web/*"
   }
 }

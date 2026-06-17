@@ -43,12 +43,12 @@ SERVICES=(
     rutba_rider
     rutba_crm
     rutba_hr
+    rutba_ess
     rutba_accounts
     rutba_payroll
     rutba_cms
     rutba_social
     rutba_manufacturing
-    rutba_pos_desk
 )
 
 declare -A SVC_CMD=(
@@ -62,12 +62,12 @@ declare -A SVC_CMD=(
     [rutba_rider]="run start --workspace=rutba-rider"
     [rutba_crm]="run start --workspace=rutba-crm"
     [rutba_hr]="run start --workspace=rutba-hr"
+    [rutba_ess]="run start --workspace=rutba-ess"
     [rutba_accounts]="run start --workspace=rutba-accounts"
     [rutba_payroll]="run start --workspace=rutba-payroll"
     [rutba_cms]="run start --workspace=rutba-cms"
     [rutba_social]="run start --workspace=rutba-social"
     [rutba_manufacturing]="run start --workspace=rutba-manufacturing"
-    [rutba_pos_desk]="run start --workspace=pos-desk"
 )
 
 declare -A SVC_DESC=(
@@ -81,12 +81,12 @@ declare -A SVC_DESC=(
     [rutba_rider]="Rutba ERP - Rider App (rutba-rider)"
     [rutba_crm]="Rutba ERP - CRM (rutba-crm)"
     [rutba_hr]="Rutba ERP - Human Resources (rutba-hr)"
+    [rutba_ess]="Rutba ERP - Employee Self-Service (rutba-ess)"
     [rutba_accounts]="Rutba ERP - Accounting (rutba-accounts)"
     [rutba_payroll]="Rutba ERP - Payroll (rutba-payroll)"
     [rutba_cms]="Rutba ERP - Content Management (rutba-cms)"
     [rutba_social]="Rutba ERP - Social Media (rutba-social)"
     [rutba_manufacturing]="Rutba ERP - Manufacturing (rutba-manufacturing)"
-    [rutba_pos_desk]="Rutba ERP - Legacy Desk (pos-desk)"
 )
 
 ###########################################

@@ -54,10 +54,10 @@ SERVICES=(
     rutba_web_user
     rutba_crm
     rutba_hr
+    rutba_ess
     rutba_accounts
     rutba_payroll
     rutba_cms
-    rutba_pos_desk
 )
 
 ###########################################

@@ -18,7 +18,7 @@ const API_DIR = path.resolve(__dirname, '..', 'api');
 
 const APP_FOLDERS = [
     'pos-auth', 'pos-sale', 'pos-stock',
-    'rutba-accounts', 'rutba-cms', 'rutba-crm', 'rutba-hr',
+    'rutba-accounts', 'rutba-cms', 'rutba-crm', 'rutba-hr', 'rutba-ess',
     'rutba-order-management', 'rutba-payroll', 'rutba-rider',
     'rutba-social', 'rutba-web-user', 'rutba-web',
 ];

@@ -21,6 +21,7 @@ export const APP_URLS = {
     rider:     process.env.NEXT_PUBLIC_RIDER_URL     || 'http://localhost:4012',
     crm:       process.env.NEXT_PUBLIC_CRM_URL       || 'http://localhost:4005',
     hr:        process.env.NEXT_PUBLIC_HR_URL        || 'http://localhost:4006',
+    ess:       process.env.NEXT_PUBLIC_ESS_URL       || 'http://localhost:4015',
     accounts:  process.env.NEXT_PUBLIC_ACCOUNTS_URL  || 'http://localhost:4007',
     payroll:   process.env.NEXT_PUBLIC_PAYROLL_URL   || 'http://localhost:4008',
     cms:       process.env.NEXT_PUBLIC_CMS_URL       || 'http://localhost:4009',
@@ -29,7 +30,7 @@ export const APP_URLS = {
 };
 
 /** All recognised app keys */
-const VALID_APP_KEYS = ['stock', 'sale', 'auth', 'web-user', 'order-management', 'rider', 'crm', 'hr', 'accounts', 'payroll', 'cms', 'social'];
+const VALID_APP_KEYS = ['stock', 'sale', 'auth', 'web-user', 'order-management', 'rider', 'crm', 'hr', 'ess', 'accounts', 'payroll', 'cms', 'social'];
 
 /**
  * Metadata for each app — icon (FontAwesome class), display label,
@@ -46,6 +47,7 @@ export const APP_META = {
     rider:      { icon: 'fa-solid fa-motorcycle',         label: 'Rider App',          description: 'Delivery offers, active deliveries, history, and profile', border: 'border-primary',   color: 'text-primary' },
     crm:        { icon: 'fa-solid fa-handshake',          label: 'CRM',                description: 'Contacts, leads, activities',                 border: 'border-warning',   color: 'text-warning' },
     hr:         { icon: 'fa-solid fa-users',              label: 'Human Resources',    description: 'Employees, departments, attendance, leave',   border: 'border-secondary', color: 'text-secondary' },
+    ess:        { icon: 'fa-solid fa-user-clock',         label: 'Employee Self-Service', description: 'My profile, attendance, leave requests, payslips', border: 'border-secondary', color: 'text-secondary' },
     accounts:   { icon: 'fa-solid fa-chart-line',         label: 'Accounts',           description: 'Chart of accounts, journals, invoices',       border: 'border-dark',      color: 'text-dark' },
     payroll:    { icon: 'fa-solid fa-money-check-dollar', label: 'Payroll',            description: 'Salary structures, payroll runs, payslips',   border: 'border-danger',    color: 'text-danger' },
     cms:        { icon: 'fa-solid fa-pen-nib',            label: 'Content Management', description: 'Website content, pages, banners, and sales offers', border: 'border-purple',    color: 'text-purple' },

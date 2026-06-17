@@ -46,7 +46,6 @@ const CONSUMER_GLOB_DIRS = [
     'packages/pos-shared',
     'packages/api-provider/endpoints',
     'packages/api-provider/pos',
-    'packages/api-provider/server',
 ];
 
 const FILE_EXT_INCLUDE = new Set(['.js', '.jsx', '.ts', '.tsx', '.mjs', '.cjs']);
