@@ -102,77 +102,73 @@ async function seedAccounting(strapi) {
   strapi.log.info('[Accounting Seed] Starting...');
 
   // 1. Seed accounts
-  const accountIdByCode = {};
+  const accountDocIdByCode = {};
 
   for (const acct of DEFAULT_ACCOUNTS) {
-    const existing = await strapi.entityService.findMany(
-      'api::acc-account.acc-account',
-      { filters: { code: acct.code }, limit: 1 }
-    );
+    const existing = await strapi.documents('api::acc-account.acc-account').findMany({
+      filters: { code: acct.code },
+      fields: ['id', 'documentId', 'code'],
+      pagination: { pageSize: 1 },
+    });
 
     if (existing && existing.length > 0) {
-      accountIdByCode[acct.code] = existing[0].id;
+      accountDocIdByCode[acct.code] = existing[0].documentId;
       continue; // skip — already exists
     }
 
-    const created = await strapi.entityService.create(
-      'api::acc-account.acc-account',
-      { data: { ...acct, balance: 0 } }
-    );
-    accountIdByCode[acct.code] = created.id;
+    const created = await strapi.documents('api::acc-account.acc-account').create({
+      data: { ...acct, balance: 0 },
+    });
+    accountDocIdByCode[acct.code] = created.documentId;
     strapi.log.info(`[Accounting Seed] Created account ${acct.code} – ${acct.name}`);
   }
 
   // 2. Seed account mappings
   for (const mapping of DEFAULT_MAPPINGS) {
-    const existing = await strapi.entityService.findMany(
-      'api::acc-account-mapping.acc-account-mapping',
-      { filters: { key: mapping.key }, limit: 1 }
-    );
+    const existing = await strapi.documents('api::acc-account-mapping.acc-account-mapping').findMany({
+      filters: { key: mapping.key },
+      fields: ['id', 'documentId', 'key'],
+      pagination: { pageSize: 1 },
+    });
 
     if (existing && existing.length > 0) continue; // skip
 
-    const accountId = accountIdByCode[mapping.code];
-    if (!accountId) {
+    const accountDocId = accountDocIdByCode[mapping.code];
+    if (!accountDocId) {
       strapi.log.warn(
         `[Accounting Seed] Cannot map "${mapping.key}" — account ${mapping.code} not found.`
       );
       continue;
     }
 
-    await strapi.entityService.create(
-      'api::acc-account-mapping.acc-account-mapping',
-      {
-        data: {
-          key: mapping.key,
-          description: mapping.description,
-          account: accountId,
-        },
-      }
-    );
+    await strapi.documents('api::acc-account-mapping.acc-account-mapping').create({
+      data: {
+        key: mapping.key,
+        description: mapping.description,
+        account: accountDocId,
+      },
+    });
     strapi.log.info(`[Accounting Seed] Created mapping ${mapping.key} → ${mapping.code}`);
   }
 
   // 3. Seed a default fiscal period for the current year (if none exists)
   const year = new Date().getFullYear();
-  const existingPeriod = await strapi.entityService.findMany(
-    'api::acc-fiscal-period.acc-fiscal-period',
-    { filters: { fiscal_year: String(year) }, limit: 1 }
-  );
+  const existingPeriod = await strapi.documents('api::acc-fiscal-period.acc-fiscal-period').findMany({
+    filters: { fiscal_year: String(year) },
+    fields: ['id', 'documentId', 'fiscal_year'],
+    pagination: { pageSize: 1 },
+  });
 
   if (!existingPeriod || existingPeriod.length === 0) {
-    await strapi.entityService.create(
-      'api::acc-fiscal-period.acc-fiscal-period',
-      {
-        data: {
-          name: `FY ${year}`,
-          start_date: `${year}-01-01`,
-          end_date: `${year}-12-31`,
-          status: 'Open',
-          fiscal_year: String(year),
-        },
-      }
-    );
+    await strapi.documents('api::acc-fiscal-period.acc-fiscal-period').create({
+      data: {
+        name: `FY ${year}`,
+        start_date: `${year}-01-01`,
+        end_date: `${year}-12-31`,
+        status: 'Open',
+        fiscal_year: String(year),
+      },
+    });
     strapi.log.info(`[Accounting Seed] Created fiscal period FY ${year}`);
   }
 
