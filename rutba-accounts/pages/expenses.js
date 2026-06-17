@@ -46,7 +46,7 @@ export default function Expenses() {
                                         <td>{new Date(exp.date).toLocaleDateString()}</td>
                                         <td>{exp.category || "—"}</td>
                                         <td>{exp.description || "—"}</td>
-                                        <td>{exp.amount != null ? exp.amount.toFixed(2) : "0.00"}</td>
+                                        <td>{Number(exp.amount || 0).toFixed(2)}</td>
                                         <td>{exp.payment_method || "—"}</td>
                                     </tr>
                                 ))}

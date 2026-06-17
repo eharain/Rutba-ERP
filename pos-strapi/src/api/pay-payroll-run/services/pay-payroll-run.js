@@ -249,9 +249,13 @@ module.exports = createCoreService(PR_UID, ({ strapi }) => ({
             },
         });
 
-        // Payout JE (best-effort).
+        // Payout JE (best-effort, idempotent — never double-post for one payslip).
         try {
-            await this._postPayout(payslip, { method, branchId: payslip.branch?.id || null, posted_by: user?.email || user?.username || '' });
+            const accounting = strapi.service('api::acc-journal-entry.accounting');
+            const already = await accounting.findBySource('Payroll Payment', payslip.id);
+            if (!already || already.length === 0) {
+                await this._postPayout(payslip, { method, branchId: payslip.branch?.id || null, posted_by: user?.email || user?.username || '' });
+            }
         } catch (err) {
             strapi.log.error(`[payroll] payout posting failed for payslip ${payslip.id}: ${err.message}`);
         }
@@ -319,7 +323,7 @@ module.exports = createCoreService(PR_UID, ({ strapi }) => ({
             const base = Number(profile?.base_salary_override ?? emp.salary_structure?.base_salary ?? 0);
             if (base > 0) {
                 // Proration for mid-period joiners.
-                let earned = base;
+                let earned = round2(base);
                 if (emp.date_of_joining && emp.date_of_joining > period.start) {
                     const activeDays = daysInclusive(emp.date_of_joining, period.end);
                     earned = round2(base * Math.min(activeDays, periodDays) / periodDays);
@@ -383,7 +387,15 @@ module.exports = createCoreService(PR_UID, ({ strapi }) => ({
             });
             const base = Number(profile?.base_salary_override ?? emp.salary_structure?.base_salary ?? 0);
             let unpaidDays = 0;
-            for (const lv of leaves) { if (overlapsPeriod(lv, period.start, period.end)) unpaidDays += Number(lv.total_days || 0); }
+            for (const lv of leaves) {
+                const ls = lv.start_date, le = lv.end_date || lv.start_date;
+                if (!ls || ls > period.end || le < period.start) continue; // no overlap with this period
+                // Clip the leave to the run period so a leave spanning multiple
+                // periods is only deducted for its in-period days (no double-count).
+                const from = ls > period.start ? ls : period.start;
+                const to = le < period.end ? le : period.end;
+                unpaidDays += daysInclusive(from, to);
+            }
             if (unpaidDays > 0 && base > 0) {
                 const ded = round2(base / periodDays * Math.min(unpaidDays, periodDays));
                 lines.push({ label: `Unpaid leave (${unpaidDays}d)`, kind: 'deduction', category: 'unpaid_leave', amount: ded, quantity: unpaidDays });

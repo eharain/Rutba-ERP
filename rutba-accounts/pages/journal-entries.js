@@ -46,8 +46,8 @@ export default function JournalEntries() {
                                         <td>{new Date(e.date).toLocaleDateString()}</td>
                                         <td>{e.reference || "—"}</td>
                                         <td>{e.description || "—"}</td>
-                                        <td>{e.debit != null ? e.debit.toFixed(2) : "0.00"}</td>
-                                        <td>{e.credit != null ? e.credit.toFixed(2) : "0.00"}</td>
+                                        <td>{Number(e.total_debit || 0).toFixed(2)}</td>
+                                        <td>{Number(e.total_credit || 0).toFixed(2)}</td>
                                     </tr>
                                 ))}
                             </tbody>

@@ -47,7 +47,7 @@ export default function ChartOfAccounts() {
                                         <td>
                                             <span className="badge bg-secondary">{a.account_type || "—"}</span>
                                         </td>
-                                        <td>{a.balance != null ? a.balance.toFixed(2) : "0.00"}</td>
+                                        <td>{Number(a.balance || 0).toFixed(2)}</td>
                                     </tr>
                                 ))}
                             </tbody>

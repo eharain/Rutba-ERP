@@ -29,7 +29,7 @@ async function postReturn(strapi, id) {
   const resolver = strapi.service('api::acc-journal-entry.account-resolver');
 
   const sr = await strapi.entityService.findOne(SR_UID, id, {
-    fields: ['return_no', 'total_refund', 'refund_method', 'refund_status', 'type'],
+    fields: ['return_no', 'return_date', 'total_refund', 'refund_method', 'refund_status', 'type'],
     populate: {
       branches: { fields: ['id'] },
       items: { populate: { items: { fields: ['cost_price'] } } },

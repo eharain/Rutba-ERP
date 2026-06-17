@@ -42,7 +42,7 @@ export default function SalaryStructures() {
                                 {structures.map((s) => (
                                     <tr key={s.id}>
                                         <td>{s.name}</td>
-                                        <td>{s.base_salary != null ? s.base_salary.toFixed(2) : "0.00"}</td>
+                                        <td>{Number(s.base_salary || 0).toFixed(2)}</td>
                                         <td>{s.description || "—"}</td>
                                     </tr>
                                 ))}

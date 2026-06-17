@@ -45,8 +45,8 @@ export default function Invoices() {
                                     <tr key={inv.id}>
                                         <td>{inv.invoice_number || inv.id}</td>
                                         <td>{new Date(inv.date).toLocaleDateString()}</td>
-                                        <td>{inv.customer_name || "—"}</td>
-                                        <td>{inv.amount != null ? inv.amount.toFixed(2) : "0.00"}</td>
+                                        <td>{inv.customer?.name || "—"}</td>
+                                        <td>{Number(inv.total || 0).toFixed(2)}</td>
                                         <td>
                                             <span className={`badge bg-${invoiceStatusColor(inv.status)}`}>
                                                 {inv.status || "Draft"}
