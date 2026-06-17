@@ -1,5 +1,7 @@
 # Shop Page Redesign — Product Groups with Layouts & Priority
 
+> **Phases 1–7 shipped (2026); historical plan.** Sections A–F remain proposals.
+
 ## Overview
 
 Replace the current shop page rendering (which uses brands, categories, and flat product groups) with a **layout-driven, priority-ordered product group system**. Each product group gets a `layout` (how it displays) and a `priority` (integer, lower = higher on page). The shop page becomes a single page that renders multiple product groups in priority order, each using its assigned layout.
@@ -189,7 +191,7 @@ Define these layouts for rendering a product group on the shop page:
 - Ensure the API call to fetch CMS page detail populates `product_groups.layout`, `product_groups.priority` (and same for `hero_product_groups`).
 - Check the `populate` parameter in the Strapi query.
 
-**Step 14 — (Optional) Remove `swiper` package from rutba-web**
+**Step 14 — (Optional) Remove `swiper` package from rutba-web** — ⚠️ **STILL OPEN.** `"swiper": "^10.3.1"` is still listed in `rutba-web/package.json`, and homepage components still import it: `src/components/home/hero-slider.tsx`, `src/components/home/collection-list.tsx`, and `src/components/brands/index.tsx`. The shop-page path was migrated off Swiper, but these homepage/brand components were not, so the package cannot be uninstalled yet.
 - If after steps 10-11 no remaining code imports from `swiper`, run `npm uninstall swiper` in the `rutba-web` workspace.
 - Keep `@radix-ui/react-slider` — that's a UI slider (range input), not a carousel.
 
@@ -522,9 +524,11 @@ Review of what is implemented so far across Phases 1–7 and the site-settings l
 
 ## G. Offer Entity Architecture (Implemented)
 
-Offers are a first-class Strapi entity (`api::offer.offer`) that can be linked uniformly to **product groups**, **CMS pages**, and **categories** via `manyToMany` relations.
+> **Correction (verified against code).** The entity is **`api::sale-offer.sale-offer`** — *not* `api::offer.offer`. There is no `api::offer.offer` / `pos-strapi/src/api/offer/` in the repo. Paths below are corrected to the `sale-offer` API. The singular name is `sale-offer`, plural `sale-offers`, displayName "Sales Offer".
 
-### Schema: `pos-strapi/src/api/offer/content-types/offer/schema.json`
+Offers are a first-class Strapi entity (`api::sale-offer.sale-offer`) that can be linked uniformly to **product groups**, **CMS pages**, and **categories** via `manyToMany` relations.
+
+### Schema: `pos-strapi/src/api/sale-offer/content-types/sale-offer/schema.json`
 
 | Field | Type | Notes |
 |---|---|---|
@@ -540,7 +544,7 @@ Offers are a first-class Strapi entity (`api::offer.offer`) that can be linked u
 
 ### Relation sides
 - **Offer** owns the relation (`inversedBy`).
-- **Product Group / CMS Page / Category** carry a `offers` field (`mappedBy`).
+- **Product Group / CMS Page / Category** carry an `offers` field (`mappedBy`). Verified: product-group's `offers` relation `target` is **`api::sale-offer.sale-offer`** (`mappedBy: product_groups`).
 
 ### Resolution logic (frontend)
 ```ts
@@ -553,8 +557,8 @@ const activeOffer = (entity.offers ?? []).find(o => {
 ```
 
 ### CMS management
-- **List page**: `rutba-cms/pages/offers.js` — shows all offers with status (Active/Upcoming/Expired/Inactive), linked entity counts, and publish state.
-- **Editor page**: `rutba-cms/pages/[documentId]/offer.js` — full editor with entity pickers for product groups, CMS pages, and categories.
+- **List page**: `rutba-cms/pages/sale-offers.js` — shows all offers with status (Active/Upcoming/Expired/Inactive), linked entity counts, and publish state.
+- **Editor page**: `rutba-cms/pages/[documentId]/sale-offer.js` — full editor with entity pickers for product groups, CMS pages, and categories. (A `rutba-cms/pages/new/sale-offer.js` create-shim also exists.)
 - **Navigation**: Offers link added under Content dropdown.
 
 ### Migration from group-level offers

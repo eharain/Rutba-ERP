@@ -69,8 +69,10 @@ once fixed.
 
 ## Tier 2 — Per-app smoke flows
 
-For each app, walk the golden path end-to-end as the corresponding `*_staff`
-role.
+For each app, walk the golden path end-to-end as the corresponding domain role
+— typically `*_staff` (e.g. `hr_staff`), but use the app's actual claim where it
+differs: `ess_employee` / `ess_manager` for rutba-ess, and exercise the `hr_*`
+manager/admin claims where approval steps require them.
 
 16. **pos-sale** — login → open register → add items → apply discount →
     checkout (cash + card) → receipt → close register.
@@ -83,8 +85,19 @@ role.
 19. **rutba-crm** — leads → activities → contacts; convert lead.
 20. **rutba-hr** — employees, teams, departments, attendance entry, leave
     request submit + approve.
-21. **rutba-payroll** — salary structure → payroll run → payslip generate.
-22. **rutba-accounts** — invoice, expense, journal entry; AP and AR flows.
+20a. **rutba-ess** (Employee Self-Service, `ess_employee` / `ess_manager`) —
+    view own profile + attendance, submit a leave request, view own payslips;
+    `ess_manager` sees the approvals queue and approves/rejects a report's leave.
+21. **rutba-payroll** — employee profile → salary structure → configurable
+    deduction rules (statutory engine) → adjustment entry → payroll run →
+    payslip generate; verify the run posts into the accounting ledger.
+21a. **rutba-manufacturing** — create BOM → release work order → split into
+    bundles → record piece-rate tasks/operations → material issue from lot →
+    QC inspection → complete WO (finished stock-items + labor/material cost
+    roll-up).
+22. **rutba-accounts** — chart of accounts, invoice, bill, expense, journal
+    entry; AP and AR flows; double-entry journal posting balances and lands in
+    the correct fiscal period; per-branch currency resolves on posted entries.
 23. **rutba-order-management** — incoming order → assign rider → status
     updates → delivered.
 24. **rutba-rider** — order list, accept, status update, proof of delivery.
@@ -127,7 +140,7 @@ role.
     not stripped.
 39. **Email delivery** — nodemailer config in plugins.js delivers via the
     configured SMTP; notification templates render correctly.
-40. **Backup / restore** — DB dump of `rutba_pos`, restore to a fresh
+40. **Backup / restore** — DB dump of `pos_db`, restore to a fresh
     instance, all apps still functional. The `api_pro_*` tables survive the
     round-trip.
 41. **Logs** — no `[api-pro] interceptor error` lines, no unhandled rejection

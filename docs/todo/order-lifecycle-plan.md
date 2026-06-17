@@ -82,6 +82,11 @@ This doc is the staged plan for adding all of the above.
   lives on the state-machine service; every caller of `executeTransition`
   picks up the side effect automatically. Best-effort: a stock-item
   failure logs a warning but doesn't unwind the order transition.
+- **GL posting on order transitions** (added since this plan was drafted) —
+  `executeTransition` now also posts accounting journal entries: Web Order
+  revenue + COGS on DELIVERED (reversed on CANCELLED/REFUNDED), and the COD
+  settlement on payment verify. Same best-effort chokepoint as the stock walk.
+  See accounting-completion-spec.md §4.1.
 - **Returns workflow** (F.1 + F.2 + F.3 + F.5, 2026-05-21):
   - `api::return-request` content type with its own state machine
     (`return-state-machine.js`): REQUESTED → APPROVED → AWAITING_PICKUP

@@ -1,5 +1,78 @@
 # Server-side address book — multi-address per customer
 
+## ✅ Shipped
+
+The server-side, multi-address book is **built and live** — it rides the
+contact-unification model (see `docs/todo/` notes on person unification),
+**not** the `api::customer-address` + `user` design sketched further down.
+
+> **Deviation from the original spec:** built as **`api::address`** with a
+> **`person`** relation (ownership resolved via `person.user.id`), *not* the
+> spec's `api::customer-address` keyed directly on `users-permissions.user`.
+> The address belongs to the unified `person`, and the person belongs to the
+> user. The descriptor, paths, and lifecycle behaviour below are the real,
+> shipped surface — the "Design sketch" section is kept only as historical
+> context.
+
+### What shipped (maps to the old "What's missing")
+- **Cross-device** ✓ — addresses persist server-side per user (resolved via
+  their `person`), so phone + laptop share one book.
+- **Multi-address** ✓ — the schema is a `collectionType`; a person can hold
+  many addresses, one flagged `is_default`.
+- **CSR / Strapi visibility** ✓ — rows live in the `addresses` table linked to
+  `person`, so admin and order history can reference them.
+
+### Schema — `pos-strapi/src/api/address/content-types/address/schema.json`
+`api::address.address` (collectionType, `collectionName: "addresses"`):
+`label`, `line1`, `line2`, `city`, `state`, `country`, `zip_code`,
+`is_default` (boolean), `archived_at` (datetime — soft-delete),
+`recipient_name` + `recipient_phone` (gift-order overrides), and
+`person` (manyToOne → `api::person.person`, `inversedBy: addresses`).
+
+### API surface — shipped endpoints
+Routes in `pos-strapi/src/api/address/routes/address.js`, handlers in
+`pos-strapi/src/api/address/controllers/address.js` (every op scoped by
+resolving `ctx.state.user → person → addresses`; ownership enforced in
+`findOwnedAddress` via `row.person.user.id === userId`):
+- `GET /me/addresses` → `list` (default first, then oldest; archived excluded)
+- `POST /me/addresses` → `createForMe` (first address auto-defaults)
+- `PUT /me/addresses/:documentId` → `updateForMe`
+- `DELETE /me/addresses/:documentId` → `deleteForMe` (soft-delete via
+  `archived_at`; promotes the next address to default if the deleted one was)
+- `POST /me/addresses/:documentId/make-default` → `makeDefault`
+  (lifecycle clears `is_default` on the person's other rows)
+
+Descriptor: `packages/api-provider/api/addresses.js` (`AddressesEndpoints`,
+top-level `api/` so it defaults to `authApi`; `domains: ['web','web-user']`,
+`roles: ['user']`).
+
+### Storefront — shipped
+- `rutba-web/src/services/me-addresses.ts` — `createMeAddressesService()`
+  (`list` / `create` / `update` / `remove` / `makeDefault`). Uses the
+  descriptors for paths/methods but calls via axios + the next-auth session
+  JWT (the generated proxy authenticates with the api-provider storage JWT,
+  which rutba-web doesn't populate).
+- `rutba-web/src/components/form/profile/form-shipping-information.tsx` — the
+  profile address form.
+- `rutba-web/src/pages/profile/address.tsx` — the profile address screen.
+- `rutba-web/src/pages/checkout.tsx` — pre-fills from the **default** server
+  address (`serverAddresses.find(a => a.is_default) || [0]`), falling back to
+  the legacy localStorage `savedCustomer`; logged-in full-address checkouts
+  persist into the server book (`saveAddress: !!jwt`).
+
+## Remaining / open
+
+1. **Fold anonymous localStorage address into the server book on login** — not
+   done. The localStorage `useSavedCustomer` store
+   (`rutba-web/src/store/store-customer.ts`) still lives in parallel; on login
+   the local record is never POSTed into `/me/addresses`. Checkout only reads
+   the server default and *falls back* to the local record — it doesn't migrate it.
+2. **Multi-address picker dialog at checkout** (optional) — checkout currently
+   pre-fills the default address only; there's no "Use a different address"
+   picker to switch between saved addresses inline.
+
+---
+
 ## Current state (v1, shipped)
 
 - [src/store/store-customer.ts](rutba-web/src/store/store-customer.ts) — Zustand-persisted, single saved customer record (contact + last shipping address) in `localStorage`.
@@ -10,6 +83,11 @@
 
 This buys 80% of the win: returning shoppers skip the form on their next express order; logged-in users see a friendlier checkout greeting; the profile has an actual shipping section instead of dead UI.
 
+> **Superseded — see "✅ Shipped" at the top.** The "What's missing" items
+> below (cross-device, multi-address, user-tied visibility) all shipped via the
+> `api::address` + `person` model. Only item 3's *fold-on-login* half remains
+> open (tracked under "Remaining / open"). The section is kept for history.
+
 ## What's missing — and why we'll need it
 
 1. **Cross-device** — the localStorage record only follows the browser. A shopper on phone + laptop has two ghost address books.
@@ -18,6 +96,10 @@ This buys 80% of the win: returning shoppers skip the form on their next express
 4. **CSR / Strapi visibility** — admins can't see a customer's saved addresses; orders can't reference them.
 
 ## Design sketch
+
+> **Historical — NOT how it was built.** Shipped as `api::address` + `person`
+> (ownership via `person.user.id`), not `api::customer-address` + `user`. See
+> the "✅ Shipped" section for the real schema, endpoints, and storefront wiring.
 
 ### Strapi content type
 `api::customer-address.customer-address`:

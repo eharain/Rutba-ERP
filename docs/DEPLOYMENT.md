@@ -47,7 +47,7 @@ This guide covers deploying Rutba ERP: full-stack on a Linux server with systemd
             │  from /etc/systemd/system/rutba_*.service
             ▼
 ┌──────────────────────────────────────────────────────────────────┐
-│  15 systemd services  (each runs: node scripts/js/load-env.js --)│
+│  16 systemd services  (each runs: node scripts/js/load-env.js --)│
 │                                                                  │
 │  rutba_pos_strapi   :4010  ─── MySQL 8                          │
 │  rutba_pos_auth     :4003                                        │
@@ -59,11 +59,12 @@ This guide covers deploying Rutba ERP: full-stack on a Linux server with systemd
 │  rutba_rider        :4012                                        │
 │  rutba_crm          :4005                                        │
 │  rutba_hr           :4006                                        │
+│  rutba_ess          :4015                                        │
 │  rutba_accounts     :4007                                        │
 │  rutba_payroll      :4008                                        │
 │  rutba_cms          :4009                                        │
 │  rutba_social       :4011                                        │
-│  rutba_pos_desk     :3000  (legacy)                              │
+│  rutba_manufacturing :4014                                       │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
@@ -256,10 +257,12 @@ NEXT_PUBLIC_ORDER_MANAGEMENT_URL=https://orders.rutba.pk
 NEXT_PUBLIC_RIDER_URL=https://rider.rutba.pk
 NEXT_PUBLIC_CRM_URL=https://crm.rutba.pk
 NEXT_PUBLIC_HR_URL=https://hr.rutba.pk
+NEXT_PUBLIC_ESS_URL=https://ess.rutba.pk
 NEXT_PUBLIC_ACCOUNTS_URL=https://accounts.rutba.pk
 NEXT_PUBLIC_PAYROLL_URL=https://payroll.rutba.pk
 NEXT_PUBLIC_CMS_URL=https://cms.rutba.pk
 NEXT_PUBLIC_SOCIAL_URL=https://social.rutba.pk
+NEXT_PUBLIC_MANUFACTURING_URL=https://manufacturing.rutba.pk
 
 # ── Image host (mirrors api.rutba.pk) ──────────────────────────────
 NEXT_PUBLIC_IMAGE_HOST_PROTOCOL=https
@@ -305,10 +308,12 @@ RUTBA_ORDER_MANAGEMENT__PORT=4013
 RUTBA_RIDER__PORT=4012
 RUTBA_CRM__PORT=4005
 RUTBA_HR__PORT=4006
+RUTBA_ESS__PORT=4015
 RUTBA_ACCOUNTS__PORT=4007
 RUTBA_PAYROLL__PORT=4008
 RUTBA_CMS__PORT=4009
 RUTBA_SOCIAL__PORT=4011
+RUTBA_MANUFACTURING__PORT=4014
 ```
 
 > **Generate all Strapi secrets at once:**
@@ -459,11 +464,12 @@ sudo journalctl -fu rutba_pos_strapi
 | `rutba_rider` | Rider app | `rutba-rider/` | 4012 |
 | `rutba_crm` | CRM | `rutba-crm/` | 4005 |
 | `rutba_hr` | Human resources | `rutba-hr/` | 4006 |
+| `rutba_ess` | Employee self-service | `rutba-ess/` | 4015 |
 | `rutba_accounts` | Accounting | `rutba-accounts/` | 4007 |
 | `rutba_payroll` | Payroll | `rutba-payroll/` | 4008 |
 | `rutba_cms` | Content editor | `rutba-cms/` | 4009 |
 | `rutba_social` | Social media | `rutba-social/` | 4011 |
-| `rutba_pos_desk` | Legacy desk | `pos-desk/` | 3000 |
+| `rutba_manufacturing` | Manufacturing | `rutba-manufacturing/` | 4014 |
 
 ### systemd Unit File Structure
 

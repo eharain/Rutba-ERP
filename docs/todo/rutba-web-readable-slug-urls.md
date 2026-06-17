@@ -24,13 +24,13 @@ This hurts:
 
 ## What to do
 
-1. **Ensure every public content type has a `slug` field** (string, unique, URL-safe). Most already do — `product`, `cms-page`, `product-group`. Audit and backfill where missing (brands, categories?).
+1. ✓ **Ensure every public content type has a `slug` field** (string, unique, URL-safe). Done — `product`, `cms-page`, `product-group`, brand, category all carry slugs; lifecycle hooks generate unique slugs on create and a backfill seeder filled existing rows.
 
-2. **Make `slug` the URL parameter** instead of `documentId`. The Next pages already use `[slug]` in the path (e.g. `pages/product/[slug].tsx`), but the *value* in `router.query.slug` is currently the documentId. Change every `<Link href="/product/${product.documentId}">` to `<Link href="/product/${product.slug}">`.
+2. ✓ **Make `slug` the URL parameter** instead of `documentId`. Done — `rutba-web/src/pages/product/[slug].tsx` resolves via `router.query.slug` → `getProductDetailSSR(slug)`, and storefront `<Link>`s emit `product.slug`. (Recently-viewed and breadcrumbs use `product.slug || product.documentId`.)
 
-3. **Backend lookups by slug** — the web endpoints (`WebProductsEndpoints.detail`, `WebCmsPagesEndpoints.bySlug`, etc.) already accept either documentId or slug in most cases; verify and lock them to slug-only.
+3. ✓ **Backend lookups by slug** — done. The web detail services accept slug-or-documentId so legacy/cached URLs keep resolving; `[slug].tsx` and `sitemap.xml.ts` both use `product.slug || product.documentId` as the key.
 
-4. **Generate sitemap** from slugs so search engines find the readable URLs from launch.
+4. ✓ **Generate sitemap** from slugs — done in `rutba-web/src/pages/sitemap.xml.ts` (products emit `/product/${slug || documentId}`; resolves `site_url` at request time). Canonical `<link rel="canonical">` + product JSON-LD on `[slug].tsx` also key off the slug.
 
 (No redirect for documentId URLs — site hasn't launched, no old links to preserve.)
 

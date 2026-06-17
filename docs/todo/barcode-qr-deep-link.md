@@ -70,6 +70,12 @@ The barcode/QR layouts are functional today, and the storefront URL routing
 isn't fully nailed down (slug strategy is in-flight per `docs/todo/rutba-web-readable-slug-urls.md`).
 Once that lands, wire the deep-link mode here.
 
+> **Update:** the blocking precondition — readable slug URLs — has now
+> **shipped** (see `docs/todo/rutba-web-readable-slug-urls.md`). This task is
+> therefore **unblocked and actionable**; the storefront product URLs the QR
+> deep-link should encode (`/product/<slug>`) now exist. (Status stays PENDING
+> — the label-generator and scanner-strip work below is not started.)
+
 ## Related files
 
 - `pos-stock/components/print/BulkBarcodePrint.js` — label renderer

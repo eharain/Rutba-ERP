@@ -1,5 +1,7 @@
 # Pre-Deployment Audit Findings — 2026-05-15
 
+> **Historical snapshot — 2026-05-15. Superseded; do NOT update.** The critical findings here are resolved: api-pro now enforces (hybrid + denyByDefault, no policy = 403); /me/permissions populate is correct; the return-requests descriptor is fully implemented. Kept as the pre-deploy audit trail.
+
 Snapshot of issues found during a live endpoint sweep against the running
 Strapi (`localhost:4010`) using a `rutba_app_user` JWT and the
 `x-rutba-app: cms` / `x-rutba-app-role: cms_staff` claim. Companion to

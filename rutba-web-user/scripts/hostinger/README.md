@@ -52,6 +52,7 @@ node scripts/hostinger/restart.js --all
 | `sale`     | nextjs  | pos-sale         | sale.rutba.pk      |
 | `crm`      | nextjs  | rutba-crm        | crm.rutba.pk       |
 | `hr`       | nextjs  | rutba-hr         | hr.rutba.pk        |
+| `ess`      | nextjs  | rutba-ess        | ess.rutba.pk       |
 | `accounts` | nextjs  | rutba-accounts   | accounts.rutba.pk  |
 | `payroll`  | nextjs  | rutba-payroll    | payroll.rutba.pk   |
 | `cms`      | nextjs  | rutba-cms        | cms.rutba.pk       |

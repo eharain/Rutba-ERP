@@ -7,6 +7,19 @@ metadata:
   originSessionId: fcd105ef-dfd6-48f9-a4bd-3519a8356db4
 ---
 
+> **STATUS BLOCK — what's actually true now (supersedes the design narrative below).**
+>
+> The architectural **goals** in this doc were achieved, but via a **different mechanism** than the design it describes. Read this block first; treat the rest of the doc as a design record, not a description of the current system.
+>
+> - **`meta.scope` / `ROLE_SCOPES` — ✅ DONE (via seeder + interceptor).** Per-role scope is authored in the descriptors using a shorthand (`owner` / `recency` / `owner+recency`) plus optional literal `filters`/`body`/`populate`/`query` overrides — see the `ROLE_SCOPES` const and the `scope:` field on every method in `packages/api-provider/api/sale-orders.js`. This is the canonical role-bound filter source described in follow-up #2 below. **DONE.**
+> - **Scope expansion happens in the SEEDER, not in generated handlers.** `packages/strapi-api-pro/server/src/services/seeder.js` reads each descriptor's `meta.scope` and per-method `scope`, expands the shorthand (`expandScopeShorthand` / `buildTemplatesFromLevelBlock` / `templatesForRole`), and writes `{filters,populate,body,query}Template` rows into the `api_method_policies` DB table. Admin-tuned policies (`templateVersion > 1`) are preserved across reseeds.
+> - **Additive enforcement + `$user.*` resolution happen in the REQUEST-INTERCEPTOR, not in per-entity handlers.** `packages/strapi-api-pro/server/src/services/request-interceptor.js` looks up the single policy for (contentTypeUid, action, claimed role), resolves `$user.*` / `$last7days` tokens against the live request, and **additively** merges the resolved filter/populate/body/query fragment into `ctx.query` / `ctx.request.body`. This covers follow-up #4 ($user.* resolution). **DONE.**
+> - **`scaffoldStrapiHandlers` → `providers/generated/server/<entity>.js` — NOT BUILT, and largely MOOT.** The headline design of this doc (generating a per-entity Strapi policy file from each descriptor) was never built. There is no `providers/generated/server/` directory, no `scaffoldStrapiHandlers`, and no `policies.json` reflection dump. The interceptor + seeder pair covers the entire purpose of that design (DB-row-driven, single interception point), so this piece is not just unbuilt — it is superseded and need not be built.
+> - **Follow-up #1 (descriptor signature sweep) and #6 (`validate-strapi-alignment.mjs`) — SUPERSEDED / NOT BUILT.** The signature sweep was overtaken by the wire-codec closed-shape rule (see the amendment note below) and the `listParams`/`byIdParams` builders in `api/__param_builders.js`; `validate-strapi-alignment.mjs` does not exist in `packages/api-provider/scripts/` and was never built.
+> - **DEAD CODE to delete.** `packages/api-provider/providers/createStrapiProxy.js` is a no-op passthrough (it just returns `{ key, ep, args }` and is never wired into Strapi), and the `*Server` exports in `packages/api-provider/server/index.js` (`AccAccountsServer`, `SaleOrdersServer`, … all built via `createStrapiProxy`) are vestigial — nothing on the Strapi side consumes them now that enforcement lives in the interceptor. Both are deletion candidates.
+>
+> Everything below is preserved as the original design discussion. Where it conflicts with this block, this block wins.
+
 The api-provider monorepo (`packages/api-provider`) is converging on an architecture the user laid out across the long pre-execution discussion (turns up to "I have given you the picture, now eliminate the client runtime errors"). The runtime-error cleanup that followed is a tactical subset; this memory captures the bigger picture so future sessions can pick up the architectural work without re-deriving it.
 
 > **AMENDMENT (2026-05-14) — closed-shape rule.** The earlier framing in this doc allows the client developer to pass `populate`/`fields`/`filters`/`sort` per call (the `param ?? [defaults]` pattern). That escape hatch is now **closed**: the descriptor method owns the shape, callers pass only declared variables, and any variation requires a new method or an enum parameter. The full rationale, wire format, and migration plan live in [[project-api-provider-wire-codec]]. Sections of this doc that conflict with the closed-shape rule (notably "The client/server split" → "Client developer owns" bullets, the example descriptor signatures with `{ populate, fields, … } = {}`, and §"Settled design decisions" item on parameter visibility) are **superseded** by the codec doc. Everything else here — isomorphic descriptor, additive server enforcement, `meta.scope`, scaffoldStrapiHandlers, strict rollout, identity requirements — stands.
@@ -41,7 +54,9 @@ The earlier framing said the client sends "thin whitelisted params" and the serv
 
 So `populate: { featured_image: true, gallery: true }` lives on the descriptor where the developer can see it and reason about it — not hidden inside a server-side policy block.
 
-## scaffoldStrapiHandlers (the not-yet-built piece)
+## scaffoldStrapiHandlers (NOT built — superseded by the seeder + interceptor; see status block)
+
+> This section is moot. The seeder (`strapi-api-pro/server/src/services/seeder.js`) materializes the scope templates into DB policy rows and the request-interceptor (`strapi-api-pro/server/src/services/request-interceptor.js`) does the additive merge at request time. The per-entity generated policy file below was never built and is not needed. `createStrapiProxy` is now dead code, not a placeholder to replace.
 
 Replaces the existing `createStrapiProxy` placeholder. For each descriptor it generates a Strapi policy that:
 
@@ -124,12 +139,12 @@ Each method exposes the full Strapi query surface in its destructured signature 
 
 ## What's still ahead (the bigger work)
 
-1. **Descriptor signature sweep** — every `list*`/`byId*` method updated to take the canonical full Strapi query shape with `?? [default]` fallbacks. (~70 methods across ~30 entity files.)
-2. **`meta.scope` field** — formalize the per-role scope contributions already partly there (`SaleOrdersEndpoints.ROLE_SCOPES`). Becomes the canonical role-bound filter source for the server-side handler.
-3. **scaffoldStrapiHandlers** — generate per-entity Strapi policies from descriptors. Hook into strapi-api-pro's register phase. Handler reads `meta.scope[role]`, materializes filter contributions, AND-merges into `ctx.query.filters`. Calls `next()`.
-4. **Token resolution layer** — implement `$user.*` resolver for the scope filters. Per [[feedback_policy_token_syntax]] use `$`-prefix not Mustache.
-5. **Custom action route locking** — handlers lock `ctx.params.id` for ownership-bound actions (e.g. rider accepting a delivery offer can only act on offers assigned to `$user.rider.id`).
-6. **Strapi-alignment validator** — `validate-strapi-alignment.mjs` that reads every descriptor's `meta.uid`, walks the matching `pos-strapi/src/api/<slug>/`, and confirms each method's path/verb resolves to a registered route, and that the descriptor's use of `status: 'draft'` is honored by `draftAndPublish: true` on the CT. Catches the `//todo:` speculation gap.
+1. ~~**Descriptor signature sweep**~~ — **SUPERSEDED / NOT BUILT.** Overtaken by the wire-codec closed-shape rule and the `listParams`/`byIdParams` builders in `api/__param_builders.js`; the canonical-full-shape design was abandoned.
+2. ~~**`meta.scope` field**~~ — **✅ DONE (via seeder + interceptor).** Authored as `meta.scope` / per-method `scope` (shorthand `owner`/`recency`/`owner+recency` + optional literal templates) on descriptors like `api/sale-orders.js`; expanded by the seeder into DB policy rows. This is now the canonical role-bound filter source.
+3. ~~**scaffoldStrapiHandlers**~~ — **NOT BUILT, and MOOT.** Its purpose (DB-row-driven additive enforcement) is fully covered by the seeder + request-interceptor pair. No `providers/generated/server/` dir, no codegen of per-entity policies.
+4. ~~**Token resolution layer**~~ — **✅ DONE (via interceptor).** `$user.*` / `$last7days` token resolution lives in `request-interceptor.js` (`resolver.buildTokenContext` + `resolvePolicyTemplates`), `$`-prefix per [[feedback_policy_token_syntax]].
+5. **Custom action route locking** — handlers lock `ctx.params.id` for ownership-bound actions (e.g. rider accepting a delivery offer can only act on offers assigned to `$user.rider.id`). (Still open — the interceptor injects filters/body, but per-action `ctx.params.id` ownership locks are not generically modeled.)
+6. ~~**Strapi-alignment validator**~~ — **SUPERSEDED / NOT BUILT.** No `validate-strapi-alignment.mjs` exists in `packages/api-provider/scripts/`; this validator was never authored.
 7. **Retire `createClientProxy.js` legacy proxy** — once the inline-generation scaffolder (per [[feedback-scaffolder-inline-generation]]) covers all paths, the runtime URL builder + legacy alias dispatch is dead.
 8. **api-provider/pos refactor** — per [[project_api_provider_pos_anti_pattern]] this directory shouldn't exist; pos-specific helpers move to pos-shared. Not done yet.
 9. **Pre-existing `lib/http-client.js` and similar legacy lib files** — get cleaned up as part of the broader architecture migration.
@@ -138,6 +153,6 @@ Each method exposes the full Strapi query surface in its destructured signature 
 
 - Existing descriptor source of truth: `packages/api-provider/api/*.js`
 - Existing client codegen output: `packages/api-provider/providers/generated/client/`
-- Existing (placeholder) server codegen target: `packages/api-provider/providers/generated/server/` — directory doesn't exist yet; createStrapiProxy placeholder lives at `packages/api-provider/providers/createStrapiProxy.js`
+- ~~Existing (placeholder) server codegen target: `packages/api-provider/providers/generated/server/`~~ — **never built and not planned.** `packages/api-provider/providers/createStrapiProxy.js` is **dead code** (no-op passthrough), not a placeholder; the `*Server` exports in `packages/api-provider/server/index.js` are vestigial. Server-side enforcement actually lives in `packages/strapi-api-pro/server/src/services/{seeder,request-interceptor}.js`.
 - Scaffolder: `packages/api-provider/scripts/scaffold-endpoint-providers.mjs`
 - strapi-api-pro plugin: per [[reference_agp_location]] pointer, owns the policy-authorship and enforcement surface that the generated handlers will register into.

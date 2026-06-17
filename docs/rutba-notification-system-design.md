@@ -28,6 +28,7 @@ Key fields:
 - `subject`, `body_template`
 - `channels` (JSON; in-app primary)
 - `is_active`, `is_enabled`
+- Also present on the schema (not covered above): `channel` (enum `email|sms|both`, default `email` — distinct from the JSON `channels`), `scope` (enum `global|per_branch`) + `branch` relation, `send_to` (enum `customer|rider|staff|admin`), and `available_variables` (JSON, documents the variables usable in the template).
 
 ### 2) Notification (new)
 UID: `api::notification.notification`
@@ -99,6 +100,8 @@ Key fields:
 - `POST /api/notifications/:documentId/read`
   - Marks a notification as read.
 
+> **Auth note**: these three custom routes are declared `auth: false` (to bypass Strapi's scope-based permission check for the non-standard action names). The two in-app read endpoints (`/me`, `/:documentId/read`) still restore the caller by manually parsing the JWT via the `ensureUser` helper. The `process-event` endpoint does **not** key off `ctx.state.user` for delivery — the engine resolves *recipients* from payload IDs (`payload.user_id` / `assigned_to` / `reply_by`, plus admin users by role type `rutba_app_user`).
+
 ### Contact Ticket Flow APIs
 - `POST /api/contact-tickets/submit`
   - Creates ticket and emits `contact.submitted`.
@@ -125,7 +128,7 @@ Pipeline:
 5. Enforce user preference (`notification-preference`).
 6. Deduplicate using `dedup_key` + `dedup_window_minutes`.
 7. Create in-app `notification`.
-8. Send email only when effective priority is critical.
+8. Send email only when the rule is critical — specifically when `template.is_critical === true` **or** the effective `priority === 'critical'` (and the recipient has an email + email isn't disabled by preference).
 9. Write delivery log (`notification-log`).
 10. Mark event status as processed/failed/deduplicated.
 

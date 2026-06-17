@@ -1,16 +1,16 @@
-# Contributing to Rutba POS
+# Contributing to Rutba ERP
 
-Thank you for your interest in contributing to Rutba POS! We welcome contributions from the community to help make this project better.
+Thank you for your interest in contributing to Rutba ERP! We welcome contributions from the community to help make this project better.
 
 ## Project Structure
 
-Rutba POS is an **npm workspaces monorepo** containing multiple Next.js 15 apps and a Strapi 5 backend. Before contributing, please review the [root README](README.md) for the full workspace layout and port assignments.
+Rutba ERP is an **npm workspaces monorepo** containing multiple Next.js 16 apps and a Strapi 5 backend. Before contributing, please review the [root README](README.md) for the full workspace layout and port assignments.
 
 Key directories:
 - `packages/pos-shared/` — shared library (components, context, utilities)
 - `pos-auth/`, `pos-stock/`, `pos-sale/` — core POS apps
 - `rutba-web/` — customer-facing storefront (TypeScript, Tailwind CSS)
-- `rutba-crm/`, `rutba-hr/`, `rutba-accounts/`, `rutba-payroll/` — business management apps
+- `rutba-crm/`, `rutba-hr/`, `rutba-ess/`, `rutba-accounts/`, `rutba-payroll/`, `rutba-manufacturing/` — business management apps
 - `pos-strapi/` — Strapi 5 API backend
 
 ## How to Contribute
@@ -51,7 +51,7 @@ Please read and follow our [Code of Conduct](CODE_OF_CONDUCT.md) to foster a wel
 
 ## Reporting Issues
 
-- Use the [Issues](https://github.com/ejazarain/rutba-pos/issues) tab to report bugs or request features.
+- Use the [Issues](https://github.com/eharain/Rutba-ERP/issues) tab to report bugs or request features.
 - Provide as much detail as possible, including steps to reproduce, expected behavior, and screenshots if applicable.
 
 ## Community
@@ -59,4 +59,4 @@ Please read and follow our [Code of Conduct](CODE_OF_CONDUCT.md) to foster a wel
 - Join discussions, ask questions, and provide feedback in issues and pull requests.
 - Be respectful and constructive in all interactions.
 
-Thank you for helping to improve Rutba POS!
+Thank you for helping to improve Rutba ERP!

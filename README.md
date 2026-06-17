@@ -15,9 +15,9 @@ An open-source, modular business management system built as an **npm workspaces 
  :4003   :4001   :4002  :4000   user    :4009   :4011    mgmt
                                 :4004                     :4013
 
- rutba-  rutba-  rutba-  rutba-  rutba-
- rider   crm     hr      acct    payroll
- :4012   :4005   :4006   :4007   :4008
+ rutba-  rutba-  rutba-  rutba-  rutba-  rutba-  rutba-
+ rider   crm     hr      ess     acct    payroll mfg
+ :4012   :4005   :4006   :4015   :4007   :4008   :4014
 
  Shared:  packages/pos-shared  (UI + context)
           packages/api-provider (descriptor-driven Strapi clients)
@@ -43,9 +43,10 @@ An open-source, modular business management system built as an **npm workspaces 
 | `rutba-rider/` | **Rider App** | 4012 | Rider offers, active deliveries, status updates, buyer messaging |
 | `rutba-crm/` | **CRM** | 4005 | Contacts, leads, activities, person browse + dedup audit (planned) |
 | `rutba-hr/` | **Human Resources** | 4006 | Employees, departments, attendance, leave requests |
+| `rutba-ess/` | **Employee Self-Service** | 4015 | Employee portal — own profile, attendance, leave requests, payslips |
 | `rutba-accounts/` | **Accounting** | 4007 | Chart of accounts, journal entries, invoices, expenses |
-| `rutba-payroll/` | **Payroll** | 4008 | Salary structures, payroll runs, payslips |
-| `pos-desk/` | Legacy App | — | Original combined app — kept for reference, not actively developed |
+| `rutba-payroll/` | **Payroll** | 4008 | Salary structures, payroll runs, payslips, deduction rules, employee profiles, adjustments |
+| `rutba-manufacturing/` | **Manufacturing** | 4014 | Tailoring production — work orders, tasks/piece-rate, BOM, bundles, operations, material lots/issues, QC |
 
 > Ports above are the workspace defaults; `process.env.PORT` (set by Hostinger / Passenger / Docker) always overrides. See [.env.example](.env.example) for the `<APP_PREFIX>__PORT=` overrides.
 
@@ -97,8 +98,10 @@ npm run dev:order-management # Order Mgmt      → http://localhost:4013
 npm run dev:rider            # Rider App       → http://localhost:4012
 npm run dev:crm              # CRM             → http://localhost:4005
 npm run dev:hr               # HR              → http://localhost:4006
+npm run dev:ess              # Employee Self-Service → http://localhost:4015
 npm run dev:accounts         # Accounts        → http://localhost:4007
 npm run dev:payroll          # Payroll         → http://localhost:4008
+npm run dev:manufacturing    # Manufacturing   → http://localhost:4014
 npm run dev:all              # Strapi + every app (Linux/macOS friendly)
 ```
 
@@ -145,12 +148,14 @@ docker compose down
 | My Orders | http://localhost:4004 |
 | CRM | http://localhost:4005 |
 | HR | http://localhost:4006 |
+| Employee Self-Service | http://localhost:4015 |
 | Accounts | http://localhost:4007 |
 | Payroll | http://localhost:4008 |
 | CMS | http://localhost:4009 |
 | Social | http://localhost:4011 |
 | Rider App | http://localhost:4012 |
 | Order Management | http://localhost:4013 |
+| Manufacturing | http://localhost:4014 |
 
 ## Scripts Directory
 
@@ -214,12 +219,13 @@ Key domain groupings:
 | **People** | Person (canonical contact identity), Address, Person Dedup Audit, Customer, Customer Address (legacy), Contact Ticket |
 | **CRM** | CRM Contact, CRM Lead, CRM Activity |
 | **HR** | HR Employee, HR Department, HR Team, HR Attendance, HR Leave Request |
-| **Payroll** | Salary Structure, Payroll Run, Payslip |
+| **Payroll** | Salary Structure, Payroll Run, Payslip, Pay Adjustment, Pay Employee Profile, Pay Deduction Rule (configurable statutory engine) |
+| **Manufacturing** | Mfg Work Order, Mfg Task (piece-rate), Mfg BOM, Mfg Bundle, Mfg Operation, Mfg Piece Rate, Mfg Material Lot, Mfg Material Issue, Mfg QC Inspection, Mfg Production Line, Mfg Worker Profile, Mfg Defect Type (tailoring) |
 | **Accounting** | Acc Account (CoA), Acc Account Mapping, Acc Journal Entry, Acc Journal Line, Acc Fiscal Period, Acc Invoice, Acc Bill, Acc Bank Account, Acc Expense, Acc Tax Rate |
 | **Delivery** | Rider, Delivery Offer, Delivery Method, Delivery Zone |
-| **CMS** | CMS Page, CMS Footer, CMS Bulk (sections, layouts, SEO defaults) |
+| **CMS** | CMS Page, CMS Page Group, CMS Menu, CMS Menu Item, CMS Footer |
 | **Notifications** | Notification Template, Notification Event, Notification Log, Notification Preference |
-| **Auth / RBAC** | App Access (per-app claims), App Role, Policy (via `strapi-api-pro` plugin) |
+| **Auth / RBAC** | via `strapi-api-pro` plugin: App Domain, App Role, API Interface, API Interface Method, API Method Policy |
 | **Site** | Site Setting, Branch, Currency |
 
 ## Documentation
@@ -238,15 +244,16 @@ Key domain groupings:
 
 ### Active planning docs (`docs/todo/`)
 
-Forward-looking work, organised by surface. Items marked ✓ have shipped.
+Forward-looking work, organised by surface. Items marked ✓ have shipped. Cross-cutting cleanup / tech-debt (dead code, stale scripts, config drift) is tracked in [tech-debt-cleanup.md](docs/todo/tech-debt-cleanup.md).
 
 - [order-lifecycle-plan.md](docs/todo/order-lifecycle-plan.md) — payment / packaging / delivery / refund / returns / audit-log roadmap. **Recently shipped (2026-05-21):** stock-item state-machine closed on CANCELLED + DELIVERED (E.1/B.0); returns workflow end-to-end (F.1/F.2/F.3/F.5) — customer self-serve, staff console, restock-decision walk, return-policy window; label-provider registry + print pages (C.5). **Next up:** A.0 (tighten `verifyPayment`), then A.4 (pre-dispatch confirmation queue), with G.1 (audit log + buyer timeline) flagged priority.
-- [accounting-engine-implementation.md](docs/todo/accounting-engine-implementation.md) — 19-phase accounting engine spec. Phases 1–6 (account schema, journal posting service, fiscal periods, POS hook, sale-return hook) partly landed; the rest is planned.
+- [accounting-engine-implementation.md](docs/todo/accounting-engine-implementation.md) — 19-phase accounting engine spec. The accounting engine + double-entry posting + reports are **built** (see [accounting-completion-spec.md](docs/todo/accounting-completion-spec.md) for the actual build state vs. spec); remaining work is frontend polish and the wider COA/reporting surface.
+- [payroll-module-implementation.md](docs/todo/payroll-module-implementation.md) — payroll module spec. **Built:** the `pay-payroll-run` engine, configurable deduction engine (`pay-deduction-rule`), employee profiles, and adjustments; posts into the accounting ledger.
 - [contact-entity-unification.md](docs/todo/contact-entity-unification.md) — Phase 1A (person + address + sale-order rewire) and 1C.5 (contact-ticket), 3.3 (UP signup promotion) ✓. Phase 1B (customer backfill) is next.
 - [contact-unification-launch-test-plan.md](docs/todo/contact-unification-launch-test-plan.md) — Tier P0/P1/P2 test plan for the unification work.
 - [rutba-web-launch-backlog.md](docs/todo/rutba-web-launch-backlog.md) — storefront pre/post-launch backlog.
 - [rutba-web-readable-slug-urls.md](docs/todo/rutba-web-readable-slug-urls.md) — ✓ shipped (commit `99500f3`).
-- [address-book-server-side.md](docs/todo/address-book-server-side.md) — multi-address per customer; localStorage shim ships, server-side multi-row planned.
+- [address-book-server-side.md](docs/todo/address-book-server-side.md) — ✓ server-side address book shipped (`/me/addresses` on the person/address model); only fold-anonymous-on-login + a checkout multi-address picker remain.
 - [barcode-qr-deep-link.md](docs/todo/barcode-qr-deep-link.md) — storefront-URL QR + POS scanner strip. Blocked on the slug pass (now done).
 - [cms-preview-from-storefront.md](docs/todo/cms-preview-from-storefront.md) — draft-mode preview from CMS to storefront.
 - [site-settings-multi-tenant.md](docs/todo/site-settings-multi-tenant.md) — singleType → collectionType per app, with SEO follow-ups.

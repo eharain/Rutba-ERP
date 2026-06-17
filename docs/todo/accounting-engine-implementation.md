@@ -5,6 +5,33 @@
 > Continues from `docs/accounting-architecture.md`. Does not repeat the architecture.
 > Focuses on implementation detail: schemas, engine logic, integration code, edge cases.
 
+> **Status (2026-06): ✅ Built.** The engine ships in
+> `pos-strapi/src/api/acc-journal-entry/services/accounting.js`
+> (`createAndPost` / `reverse` / `reverseBySource` / `findBySource` /
+> `findOpenPeriod` / `generateEntryNumber`), with `account-resolver.js`,
+> `tax-calculator.js`, and `reports.js` alongside it. Posting is wired into
+> `sale/controllers/checkout.js` (POS sale + cancel), `sale-return/.../lifecycles.js`,
+> `cash-register/controllers/cash-register.js`, `purchase/controllers/purchase.js`
+> (`generateBill` → `acc-bill` AP), `sale-order/services/sale-order-state-machine.js`
+> (Web Order revenue/COGS + COD settlement), and
+> `pay-payroll-run/services/pay-payroll-run.js` (payroll accrual/payout). This spec
+> is retained for design rationale; the inline markers and the Implementation
+> Roadmap at the end are updated to reflect what shipped.
+>
+> **Deliberately NOT built (aspirational — do not implement without a proven need):**
+> the `acc_account_balances` snapshot table (§2.1, §10.5, §12.4), the
+> `acc_stock_valuation_layers` table + FIFO/WAC layer bookkeeping (§4.7, §10.2),
+> the MySQL balance/CHECK triggers (§2.2 Layer 2, §2.1 constraints), and the WAC
+> cost-rewrite-on-receipt (§4.6). **Reporting derives directly from `acc-journal-line`**
+> (see `reports.js`), so none of these snapshot/trigger structures are required.
+>
+> **Line-shape caveat:** the `lines: [{ account_id, … }]` + `branch_id`/`currency_id`
+> examples throughout this doc **never matched the real engine.** `accounting.js`
+> takes `lines: [{ account, debit, credit, description, tax_rate, tax_amount }]`
+> with top-level `branch` / `currency` (Strapi ids), and `resolver.resolve()`
+> returns an account **id** (not the object these examples pass `.id` on). See
+> `accounting-completion-spec.md` §1.3 for the correct usage.
+
 ---
 
 ## Table of Contents
@@ -2579,11 +2606,14 @@ function round2(n) { return Math.round(n * 100) / 100; }
 
 ## Implementation Roadmap
 
-> **Status (May 2026):** Phases 1–5 land the core engine and the POS sale +
-> sale-cancel postings. Sale-return, cash-register, purchase, tax, bills,
-> invoices, bank reconciliation, valuation, reports — all still pending.
-> Verify before claiming any later phase by grepping for the relevant
-> content type / service call site:
+> **Status (2026-06):** Engine + all operational postings shipped. Phases 1–13
+> and 16 are done (POS sale/cancel, sale-return, cash-register open/close/variance,
+> purchase→bill, tax, bills, invoices, web/COD order, and the reporting layer).
+> Still pending: bank reconciliation (12), and the deliberately-deferred
+> valuation-layer / balance-snapshot / cron / gift-card / year-end items
+> (14, 15, 17–20) — most of which the top-of-file banner marks as aspirational
+> (reporting derives from `acc-journal-line`, so snapshot tables are not needed).
+> Verify any phase by grepping for the relevant service call site:
 >   `grep -rE "createAndPost|api::acc-journal-entry" pos-strapi/src/api/<entity>/`
 
 | Phase | Scope | Priority | Status |
@@ -2593,17 +2623,17 @@ function round2(n) { return Math.round(n * 100) / 100; }
 | **3** | Accounting service (`createAndPost`, `reverse`, `findOpenPeriod`) | 🔴 Critical | ✓ `pos-strapi/src/api/acc-journal-entry/services/accounting.js` exports all of these plus `generateEntryNumber` and `reverseBySource` |
 | **4** | `acc-fiscal-period` entity + period validation | 🔴 Critical | ✓ content type present; `findOpenPeriod` consulted from the engine |
 | **5** | POS Sale integration (checkout.js hook) | 🔴 Critical | ✓ `pos-strapi/src/api/sale/controllers/checkout.js` + `cancel.js` call `createAndPost` / reversal |
-| **6** | Sale Return integration (lifecycle hook) | 🔴 Critical | ⏳ TODO — no `createAndPost` call in `sale-return/` yet |
-| **7** | Cash Register open/close integration | 🟡 High | ⏳ TODO |
-| **8** | Purchase Receipt integration | 🟡 High | ⏳ TODO |
-| **9** | `acc-tax-rate` entity + tax calculation service | 🟡 High | ⏳ entity present; service partly there (`tax-calculator.js`); end-to-end wiring TODO |
-| **10** | `acc-bill` entity + purchase payment flow | 🟡 High | ⏳ entity present; flow TODO |
-| **11** | Enhanced `acc-invoice` + payment tracking | 🟡 High | ⏳ entity present; payment tracking TODO |
+| **6** | Sale Return integration (lifecycle hook) | 🔴 Critical | ✓ `sale-return/content-types/sale-return/lifecycles.js` posts `source_type: 'Sale Return'` (idempotent via `findBySource`) |
+| **7** | Cash Register open/close integration | 🟡 High | ✓ `cash-register/controllers/cash-register.js` posts `Cash Register Open` / `Cash Register Close` incl. short/over variance |
+| **8** | Purchase Receipt integration | 🟡 High | ✓ via `purchase/controllers/purchase.js` `generateBill` → `acc-bill` (AP posts on Draft→Received) |
+| **9** | `acc-tax-rate` entity + tax calculation service | 🟡 High | ✓ `tax-calculator.js` wired into the sale/return/order postings |
+| **10** | `acc-bill` entity + purchase payment flow | 🟡 High | ✓ `acc-bill` lifecycle auto-posts AP + payment; `generateBill` creates it from a received purchase |
+| **11** | Enhanced `acc-invoice` + payment tracking | 🟡 High | ✓ `acc-invoice` lifecycle auto-posts (Draft→Sent, payment, cancel) |
 | **12** | `acc-bank-account` entity + bank reconciliation | 🟢 Medium | ⏳ entity present; reconciliation TODO |
-| **13** | Web order (Stripe) integration | 🟢 Medium | ⏳ TODO — paired with order-lifecycle Phase A.2 |
-| **14** | Stock valuation layers | 🟢 Medium | ⏳ TODO |
-| **15** | `acc_account_balances` snapshots + period close automation | 🟢 Medium | ⏳ TODO |
-| **16** | Financial reports (Trial Balance, P&L, Balance Sheet) | 🟢 Medium | ⏳ TODO |
+| **13** | Web order (COD/Stripe) integration | 🟢 Medium | ✓ `sale-order/services/sale-order-state-machine.js` posts Web Order revenue/COGS on DELIVERED + COD settlement on payment verify |
+| **14** | Stock valuation layers | 🟢 Medium | ⏳ aspirational — not built; reporting derives from `acc-journal-line` (see top-of-file banner) |
+| **15** | `acc_account_balances` snapshots + period close automation | 🟢 Medium | ⏳ aspirational — not built (see top-of-file banner) |
+| **16** | Financial reports (Trial Balance, P&L, Balance Sheet) | 🟢 Medium | ✓ `acc-journal-entry/services/reports.js` + `routes/acc-journal-entry.js` (`reports/trial-balance`, `income-statement`, `balance-sheet`, `cash-flow`, `ar-aging`, `ap-aging`) |
 | **17** | Daily summary cron job | 🔵 Low | ⏳ TODO |
 | **18** | Summary tables + performance optimization | 🔵 Low | ⏳ TODO |
 | **19** | Gift card / loyalty point accounting | 🔵 Low | ⏳ TODO |

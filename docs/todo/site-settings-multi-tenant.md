@@ -28,9 +28,14 @@ Only one row exists; every app shares it.
    unique) or equivalent discriminator field.
 2. Migration: seed one row per existing app from the current singleton; map
    downstream readers to the new lookup.
-3. API provider: update [packages/api-provider/api/site-setting.js](packages/api-provider/api/site-setting.js)
-   — list + getByDocumentId + getByAppKey; drop the implicit single-record
-   assumption.
+3. API provider: update the descriptors — list + getByDocumentId + getByAppKey;
+   drop the implicit single-record assumption. Two files are involved:
+   - [packages/api-provider/api/site-setting.js](packages/api-provider/api/site-setting.js)
+     — the admin/CMS descriptor (`SiteSettingEndpoints`: draft/published
+     get + updateDraft/publish/discard).
+   - [packages/api-provider/api/web/site-settings.js](packages/api-provider/api/web/site-settings.js)
+     — the storefront read descriptor (`WebSiteSettingsEndpoints.get`, the
+     deep-populate the storefront reads at request time).
 4. CMS UI: list page + edit-by-documentId page (replace whatever currently
    assumes a single record).
 5. Consumers: audit every app that reads site settings and switch them to the
@@ -48,11 +53,21 @@ Only one row exists; every app shares it.
 
 ## SEO follow-ups (added 2026-05-14)
 
+> **Status:** the SEO *fields* below have **landed** on the singleton (see "✅
+> Fields added"). The multi-tenant *evolution* of those fields (per-host
+> resolution, per-app robots/sitemap) is still pending alongside the core
+> singleType→collectionType migration.
+
 The recent storefront SEO pass extended site-setting with fields that assume
 *one* canonical storefront identity. When this becomes per-app, the model
 needs to evolve.
 
-### Fields added to site-setting
+### ✅ Fields added to site-setting (landed)
+These SEO fields are **on the schema now**
+(`pos-strapi/src/api/site-setting/content-types/site-setting/schema.json`) and
+consumed by the storefront (`sitemap.xml.ts` reads `site_url` at request time;
+the Seo / JSON-LD components read the meta/OG/twitter fallbacks). They live on
+the **singleton** — the per-app evolution below is still pending.
 - `site_url` — canonical base for `<link rel="canonical">`, OG `og:url`,
   sitemap entries, JSON-LD `url`.
 - `default_meta_title`, `default_meta_description`, `default_meta_keywords` —
