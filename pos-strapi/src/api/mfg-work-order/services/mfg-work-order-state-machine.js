@@ -154,7 +154,7 @@ module.exports = {
    * @param {object} [extra] - extra fields to set; `extra.quantity_finished`
    *                           overrides how many stock-items Completed creates.
    */
-  async executeTransition(workOrderDocumentId, target, extra = {}) {
+  async executeTransition(workOrderDocumentId, target, extra = {}, opts = {}) {
     const wo = await strapi.documents(WO_UID).findOne({
       documentId: workOrderDocumentId,
       populate: {
@@ -177,8 +177,25 @@ module.exports = {
         err.status = 400;
         throw err;
       }
-      if (fromStage && !workflowEngine.validateTransition(wf, fromStage.key, toStage.key)) {
-        const err = new Error(`Invalid stage transition: ${fromStage.key} → ${toStage.key}`);
+      if (fromStage) {
+        if (!workflowEngine.validateTransition(wf, fromStage.key, toStage.key)) {
+          const err = new Error(`Invalid stage transition: ${fromStage.key} → ${toStage.key}`);
+          err.status = 400;
+          throw err;
+        }
+        // Per-transition role gate (approles). actorRoleLevels omitted = trusted
+        // internal call.
+        const edge = workflowEngine.findTransition(wf, fromStage.key, toStage.key);
+        if (!workflowEngine.transitionAllowsRoles(edge, opts.actorRoleLevels)) {
+          const err = new Error(`Your role is not permitted to perform "${edge.label || toStage.key}".`);
+          err.status = 403;
+          throw err;
+        }
+      } else if (!this.validateTransition(currentStatus, toStage.maps_to_status || currentStatus)) {
+        // Current status maps to no stage (workflow edited mid-flight) — fall
+        // back to the canonical graph so the record stays on a safe path
+        // instead of allowing an arbitrary jump.
+        const err = new Error(`Invalid transition: ${currentStatus} → ${toStage.maps_to_status}`);
         err.status = 400;
         throw err;
       }
@@ -191,7 +208,9 @@ module.exports = {
     }
 
     const statusChanged = newStatus !== currentStatus;
-    const { quantity_finished, ...restExtra } = extra || {};
+    // Strip fields the state machine owns so a caller's `extra` can't override
+    // the resolved status/stage.
+    const { quantity_finished, status: _ignoredStatus, stage_key: _ignoredStage, ...restExtra } = extra || {};
     const updateData = { status: newStatus, ...restExtra };
     if (stageKey) updateData.stage_key = stageKey;
 

@@ -70,7 +70,7 @@ module.exports = {
      *                            received_by, received_at, refund_status, …)
      * @returns {Promise<object>} Updated return-request
      */
-    async executeTransition(returnDocumentId, target, extra = {}) {
+    async executeTransition(returnDocumentId, target, extra = {}, opts = {}) {
         const current = await strapi.documents(RETURN_REQUEST_UID).findOne({
             documentId: returnDocumentId,
             fields: ['id', 'status', 'stage_key'],
@@ -98,8 +98,22 @@ module.exports = {
                 err.status = 400;
                 throw err;
             }
-            if (fromStage && !workflowEngine.validateTransition(wf, fromStage.key, toStage.key)) {
-                const err = new Error(`Invalid stage transition: ${fromStage.key} → ${toStage.key}`);
+            if (fromStage) {
+                if (!workflowEngine.validateTransition(wf, fromStage.key, toStage.key)) {
+                    const err = new Error(`Invalid stage transition: ${fromStage.key} → ${toStage.key}`);
+                    err.status = 400;
+                    throw err;
+                }
+                const edge = workflowEngine.findTransition(wf, fromStage.key, toStage.key);
+                if (!workflowEngine.transitionAllowsRoles(edge, opts.actorRoleLevels)) {
+                    const err = new Error(`Your role is not permitted to perform "${edge.label || toStage.key}".`);
+                    err.status = 403;
+                    throw err;
+                }
+            } else if (!this.validateTransition(fromStatus, toStage.maps_to_status || fromStatus)) {
+                // Current status maps to no stage (workflow edited mid-flight) —
+                // fall back to the canonical graph rather than allow any jump.
+                const err = new Error(`Invalid transition: ${fromStatus} → ${toStage.maps_to_status}`);
                 err.status = 400;
                 throw err;
             }
@@ -112,7 +126,10 @@ module.exports = {
         }
 
         const statusChanged = newStatus !== fromStatus;
-        const updateData = { status: newStatus, ...extra };
+        // Strip fields the state machine owns so a caller's `extra` can't
+        // override the resolved status/stage.
+        const { status: _ignoredStatus, stage_key: _ignoredStage, ...safeExtra } = extra || {};
+        const updateData = { status: newStatus, ...safeExtra };
         if (stageKey) updateData.stage_key = stageKey;
 
         // Auto-stamp received_at on RECEIVED — controller can override by

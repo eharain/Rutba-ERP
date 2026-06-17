@@ -17,6 +17,10 @@
 
 const WF_UID = 'api::workflow.workflow';
 const TTL_MS = 30000;
+// NOTE: this cache is per Node process. invalidate() (called from the workflow
+// content-type lifecycle) only clears the cache in the process that handled the
+// write. On a single-instance deployment that's complete; in a clustered /
+// multi-container setup other instances pick up an edit within TTL_MS.
 const cache = new Map(); // entityUid -> { at, wf }
 
 async function getWorkflowFor(entityUid) {
@@ -69,7 +73,20 @@ function resolveTargetStage(wf, target) {
 
 /** The stage an entity is currently in: explicit stage_key wins, else derive from status. */
 function currentStage(wf, entity, statusField = 'status') {
-  return findStage(wf, entity?.stage_key) || stageForStatus(wf, entity?.[statusField]);
+  const byKey = findStage(wf, entity?.stage_key);
+  if (byKey) return byKey;
+  const status = entity?.[statusField];
+  // A canonical status may map to several stages (e.g. cutting/stitching/qc all
+  // → InProgress). Without a stage_key we can only guess the first-by-sequence;
+  // warn so a record that lost its stage_key is visible rather than silently
+  // resolving to the wrong stage.
+  const matches = (wf.stages || []).filter((s) => s.maps_to_status === status);
+  if (matches.length > 1) {
+    try {
+      strapi.log.warn(`[workflow-engine] ${entity?.documentId || entity?.id || '?'} status="${status}" maps to ${matches.length} stages and stage_key is empty — resolving to the first by sequence.`);
+    } catch (_) { /* no-op */ }
+  }
+  return stageForStatus(wf, status);
 }
 
 function allowedTransitions(wf, fromKey) {
@@ -78,6 +95,28 @@ function allowedTransitions(wf, fromKey) {
 
 function validateTransition(wf, fromKey, toKey) {
   return allowedTransitions(wf, fromKey).some((t) => t.to_key === toKey);
+}
+
+/** The transition edge between two stage keys, or null. */
+function findTransition(wf, fromKey, toKey) {
+  return (wf.transitions || []).find((t) => t.from_key === fromKey && t.to_key === toKey) || null;
+}
+
+/**
+ * Whether an actor may take a transition. A transition with no `approles` is
+ * unrestricted. `approles` is a comma-separated list of role LEVELS (e.g.
+ * "admin,manager"); the actor passes if they hold any listed level (super-admin
+ * carries the "*" wildcard). When actorLevels is undefined the call is an
+ * internal/system transition (no HTTP actor) and is trusted.
+ */
+function transitionAllowsRoles(transition, actorLevels) {
+  const req = String(transition?.approles || '')
+    .split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+  if (req.length === 0) return true;          // unrestricted
+  if (actorLevels == null) return true;       // system / internal call — trusted
+  const have = actorLevels instanceof Set ? actorLevels : new Set(actorLevels);
+  if (have.has('*')) return true;             // super-admin
+  return req.some((r) => have.has(r));
 }
 
 module.exports = {
@@ -90,4 +129,6 @@ module.exports = {
   currentStage,
   allowedTransitions,
   validateTransition,
+  findTransition,
+  transitionAllowsRoles,
 };

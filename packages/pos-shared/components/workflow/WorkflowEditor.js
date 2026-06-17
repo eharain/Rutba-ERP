@@ -42,6 +42,7 @@ export default function WorkflowEditor({ endpoints, entities = [], jwt }) {
     const [view, setView] = useState("visual"); // "visual" | "table"
     const [form, setForm] = useState(emptyForm(entities[0]?.uid));
     const [ioMsg, setIoMsg] = useState(null); // { type, text } — Excel import/export feedback
+    const [importNonce, setImportNonce] = useState(0); // bumped each import so the canvas reseeds
     const fileRef = useRef(null);
 
     const uids = entities.map((e) => e.uid);
@@ -171,6 +172,7 @@ export default function WorkflowEditor({ endpoints, entities = [], jwt }) {
                 transitions: parsed.transitions,
             });
             setEditing(match ? match.documentId : "new");
+            setImportNonce((n) => n + 1); // force the visual canvas to reseed from the imported data
             setView("visual");
             setIoMsg({
                 type: "success",
@@ -316,7 +318,7 @@ export default function WorkflowEditor({ endpoints, entities = [], jwt }) {
 
                             {view === "visual" && (
                                 <WorkflowCanvas
-                                    key={editing}
+                                    key={`${editing}:${importNonce}`}
                                     stages={form.stages}
                                     transitions={form.transitions}
                                     statuses={statuses}

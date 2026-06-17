@@ -1,17 +1,6 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
-
-const COLOR_HEX = {
-    secondary: "#6c757d",
-    info: "#0dcaf0",
-    primary: "#0d6efd",
-    warning: "#ffc107",
-    success: "#198754",
-    danger: "#dc3545",
-    dark: "#212529",
-    light: "#adb5bd",
-};
-const hexFor = (c) => COLOR_HEX[c] || COLOR_HEX.secondary;
+import { hexFor } from "./colors";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -137,7 +126,7 @@ export default function WorkflowBoard({
                                     className="btn btn-sm btn-outline-secondary py-0 px-1"
                                     disabled={busy || isMoving}
                                     title="Move to…"
-                                    onClick={() => setMenuFor(menuFor === id ? null : id)}
+                                    onClick={(e) => { e.stopPropagation(); setMenuFor(menuFor === id ? null : id); }}
                                 >
                                     {isMoving
                                         ? <span className="spinner-border spinner-border-sm" style={{ width: 12, height: 12 }}></span>

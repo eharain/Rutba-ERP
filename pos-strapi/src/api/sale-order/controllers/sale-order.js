@@ -5,6 +5,7 @@
 
 const { factories } = require("@strapi/strapi");
 const { ensureUser } = require("../../../utils/ensure-user");
+const { roleLevelsFor } = require("../../../utils/app-roles");
 const deliveryCostCalculator = require('../services/delivery-cost-calculator');
 const stateMachine           = require('../services/sale-order-state-machine');
 const notificationService    = require('../services/notification-service');
@@ -598,7 +599,8 @@ module.exports = factories.createCoreController(
                 const meta = {};
                 if (rider_notes) meta.rider_notes = rider_notes;
                 if (estimated_delivery_time) meta.estimated_delivery_time = estimated_delivery_time;
-                const updated = await stateMachine.executeTransition(documentId, status, meta);
+                const actorRoleLevels = await roleLevelsFor(user.id, strapi);
+                const updated = await stateMachine.executeTransition(documentId, status, meta, { actorRoleLevels });
                 const eventMap = {
                     PREPARING: 'preparing', AWAITING_PICKUP: 'awaiting_pickup',
                     OUT_FOR_DELIVERY: 'out_for_delivery', DELIVERED: 'delivered',
@@ -607,7 +609,7 @@ module.exports = factories.createCoreController(
                 const event = eventMap[status];
                 if (event) notificationService.send(event, documentId).catch(() => {});
                 return ctx.send({ data: updated });
-            } catch (err) { return ctx.badRequest(err.message); }
+            } catch (err) { return ctx.throw(err.status || 400, err.message); }
         },
 
         // ── POST /sale-orders/:documentId/attach-stock-item ─────────────────

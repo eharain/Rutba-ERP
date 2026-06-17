@@ -12,6 +12,7 @@ import {
     useEdgesState,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
+import { COLOR_HEX, hexFor } from "./colors";
 
 /**
  * Visual designer for a definable workflow. Stages render as draggable nodes;
@@ -28,19 +29,6 @@ import "@xyflow/react/dist/style.css";
  *  - colors       string[]          bootstrap contextual color names
  *  - onChange     (stages, transitions) => void
  */
-
-const COLOR_HEX = {
-    secondary: "#6c757d",
-    info: "#0dcaf0",
-    primary: "#0d6efd",
-    warning: "#ffc107",
-    success: "#198754",
-    danger: "#dc3545",
-    dark: "#212529",
-    light: "#adb5bd",
-};
-
-const hexFor = (c) => COLOR_HEX[c] || COLOR_HEX.secondary;
 
 let _seq = 0;
 const genId = (p = "n") => `${p}${++_seq}`;
