@@ -7,6 +7,7 @@ import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
 import { ReturnRequestsEndpoints, WorkflowsEndpoints } from "@rutba/api-provider/endpoints/index.js";
 import WorkflowViewer from "@rutba/pos-shared/components/workflow/WorkflowViewer";
+import WorkItemPanel from "@rutba/pos-shared/components/workflow/WorkItemPanel";
 import { useToast } from "../../components/Toast";
 
 const RR_ENTITY_UID = "api::return-request.return-request";
@@ -34,7 +35,7 @@ const REFUND_METHOD_LABEL = {
 export default function ReturnDetailPage() {
     const router = useRouter();
     const { documentId } = router.query;
-    const { jwt } = useAuth();
+    const { jwt, user } = useAuth();
     const { currency } = useUtil();
     const { toast, ToastContainer } = useToast();
     const [ret, setRet] = useState(null);
@@ -423,6 +424,15 @@ export default function ReturnDetailPage() {
                         </div>
                     </div>
                 </div>
+
+                <WorkItemPanel
+                    entityUid={RR_ENTITY_UID}
+                    documentId={ret.documentId}
+                    jwt={jwt}
+                    currentUserId={user?.id}
+                    assignee={ret.assignee}
+                    onAssigned={load}
+                />
             </Layout>
         </ProtectedRoute>
     );

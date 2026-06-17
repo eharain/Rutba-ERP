@@ -129,6 +129,11 @@
       "relation": "manyToOne",
       "target": "api::hr-employee.hr-employee"
     },
+    "assignee": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-employee.hr-employee"
+    },
     "bundles": {
       "type": "relation",
       "relation": "oneToMany",

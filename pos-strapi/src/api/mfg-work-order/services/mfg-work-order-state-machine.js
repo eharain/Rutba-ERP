@@ -25,6 +25,7 @@ const ISSUE_UID = 'api::mfg-material-issue.mfg-material-issue';
 const STOCK_ITEM_UID = 'api::stock-item.stock-item';
 
 const workflowEngine = require('../../../utils/workflow-engine');
+const { logActivity } = require('../../../utils/work-item-activity');
 
 const TRANSITIONS = {
   Draft: ['Released', 'Cancelled'],
@@ -240,6 +241,20 @@ module.exports = {
       documentId: workOrderDocumentId,
       data: updateData,
     });
+
+    // Audit trail (best-effort) — record the move on the generic work-item log.
+    if (statusChanged || stageKey) {
+      await logActivity(strapi, {
+        entityUid: WO_UID,
+        documentId: workOrderDocumentId,
+        kind: 'transition',
+        summary: `${wo.wo_number || 'WO'}: ${currentStatus} → ${stageKey || newStatus}`,
+        from: wo.stage_key || currentStatus,
+        to: stageKey || newStatus,
+        actor: opts.actor,
+        data: { from_status: currentStatus, to_status: newStatus, stage_key: stageKey || null },
+      });
+    }
 
     // Side effects after the WO row lands — keyed to the CANONICAL status and
     // only when it changed; a stage move within the same status is metadata.

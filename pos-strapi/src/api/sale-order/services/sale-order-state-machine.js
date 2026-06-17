@@ -24,6 +24,7 @@ const SALE_ORDER_UID = 'api::sale-order.sale-order';
 const STOCK_ITEM_UID = 'api::stock-item.stock-item';
 
 const workflowEngine = require('../../../utils/workflow-engine');
+const { logActivity } = require('../../../utils/work-item-activity');
 
 const TRANSITIONS = {
     PENDING_PAYMENT:    ['PAYMENT_CONFIRMED', 'CANCELLED'],
@@ -157,6 +158,20 @@ module.exports = {
             documentId: orderDocumentId,
             data: updateData,
         });
+
+        // Audit trail (best-effort).
+        if (statusChanged || stageKey) {
+            await logActivity(strapi, {
+                entityUid: SALE_ORDER_UID,
+                documentId: orderDocumentId,
+                kind: 'transition',
+                summary: `${currentStatus} → ${stageKey || newStatus}`,
+                from: order.stage_key || currentStatus,
+                to: stageKey || newStatus,
+                actor: opts.actor,
+                data: { from_status: currentStatus, to_status: newStatus, stage_key: stageKey || null },
+            });
+        }
 
         // Run attached-stock-item side effects AFTER the order update lands.
         // Best-effort: failures here log a warning but don't unwind the order

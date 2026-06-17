@@ -1,0 +1,58 @@
+{
+  "kind": "collectionType",
+  "collectionName": "work_item_activities",
+  "info": {
+    "singularName": "work-item-activity",
+    "pluralName": "work-item-activities",
+    "displayName": "Work Item Activity",
+    "description": "Append-only audit trail for any workflow-driven work item, keyed by entity_uid + target_document_id (transitions, assignments, watch changes, comments)."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "entity_uid": {
+      "type": "string",
+      "required": true
+    },
+    "target_document_id": {
+      "type": "string",
+      "required": true
+    },
+    "kind": {
+      "type": "enumeration",
+      "enum": [
+        "created",
+        "transition",
+        "assigned",
+        "unassigned",
+        "watch",
+        "unwatch",
+        "comment",
+        "note"
+      ],
+      "default": "note"
+    },
+    "summary": {
+      "type": "string"
+    },
+    "from_value": {
+      "type": "string"
+    },
+    "to_value": {
+      "type": "string"
+    },
+    "actor_label": {
+      "type": "string"
+    },
+    "data": {
+      "type": "json"
+    },
+    "actor": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

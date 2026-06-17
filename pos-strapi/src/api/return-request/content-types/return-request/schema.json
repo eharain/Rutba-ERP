@@ -109,6 +109,11 @@
       "relation": "manyToOne",
       "target": "plugin::users-permissions.user"
     },
+    "assignee": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-employee.hr-employee"
+    },
     "approved_at": {
       "type": "datetime"
     },

@@ -22,6 +22,7 @@ const STOCK_ITEM_UID     = 'api::stock-item.stock-item';
 const SALE_ORDER_UID     = 'api::sale-order.sale-order';
 
 const workflowEngine = require('../../../utils/workflow-engine');
+const { logActivity } = require('../../../utils/work-item-activity');
 
 const TRANSITIONS = {
     REQUESTED:        ['APPROVED', 'REJECTED', 'CANCELLED'],
@@ -145,6 +146,20 @@ module.exports = {
             documentId: returnDocumentId,
             data: updateData,
         });
+
+        // Audit trail (best-effort).
+        if (statusChanged || stageKey) {
+            await logActivity(strapi, {
+                entityUid: RETURN_REQUEST_UID,
+                documentId: returnDocumentId,
+                kind: 'transition',
+                summary: `${fromStatus} → ${stageKey || newStatus}`,
+                from: current.stage_key || fromStatus,
+                to: stageKey || newStatus,
+                actor: opts.actor,
+                data: { from_status: fromStatus, to_status: newStatus, stage_key: stageKey || null },
+            });
+        }
 
         // Side effects only when the canonical status actually changed — a
         // custom stage move within the same status must not re-walk stock

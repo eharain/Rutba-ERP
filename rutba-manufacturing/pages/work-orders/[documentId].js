@@ -6,6 +6,7 @@ import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import PermissionCheck from "@rutba/pos-shared/components/PermissionCheck";
 import SearchableSelect from "@rutba/pos-shared/components/SearchableSelect";
 import WorkflowViewer from "@rutba/pos-shared/components/workflow/WorkflowViewer";
+import WorkItemPanel from "@rutba/pos-shared/components/workflow/WorkItemPanel";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import {
     MfgWorkOrdersEndpoints,
@@ -82,7 +83,7 @@ function num(v) {
 export default function WorkOrderDetail() {
     const router = useRouter();
     const { documentId } = router.query;
-    const { jwt } = useAuth();
+    const { jwt, user } = useAuth();
 
     const [wo, setWo] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -736,6 +737,16 @@ export default function WorkOrderDetail() {
                                 </form>
                             </div>
                         </div>
+
+                        {/* COLLABORATION — assignee, watchers, activity, comments */}
+                        <WorkItemPanel
+                            entityUid={WO_ENTITY_UID}
+                            documentId={wo.documentId}
+                            jwt={jwt}
+                            currentUserId={user?.id}
+                            assignee={wo.assignee}
+                            onAssigned={reload}
+                        />
                     </>
                 )}
             </Layout>

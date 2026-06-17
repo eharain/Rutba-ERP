@@ -44,6 +44,7 @@ export const MfgWorkOrdersEndpoints = {
                 branch: true,
                 production_line: true,
                 supervisor: true,
+                assignee: true,
                 sale_order: true,
                 size_breakup: true,
                 bom: { populate: { material_lines: { populate: { material_product: true } }, routing_steps: { populate: { operation: true } } } },

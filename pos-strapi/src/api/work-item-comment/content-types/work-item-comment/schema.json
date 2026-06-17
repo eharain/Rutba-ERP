@@ -1,0 +1,36 @@
+{
+  "kind": "collectionType",
+  "collectionName": "work_item_comments",
+  "info": {
+    "singularName": "work-item-comment",
+    "pluralName": "work-item-comments",
+    "displayName": "Work Item Comment",
+    "description": "Discussion thread for any workflow-driven work item, keyed by entity_uid + target_document_id."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "entity_uid": {
+      "type": "string",
+      "required": true
+    },
+    "target_document_id": {
+      "type": "string",
+      "required": true
+    },
+    "body": {
+      "type": "text",
+      "required": true
+    },
+    "author_label": {
+      "type": "string"
+    },
+    "author": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

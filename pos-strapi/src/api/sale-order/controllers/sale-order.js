@@ -600,7 +600,7 @@ module.exports = factories.createCoreController(
                 if (rider_notes) meta.rider_notes = rider_notes;
                 if (estimated_delivery_time) meta.estimated_delivery_time = estimated_delivery_time;
                 const actorRoleLevels = await roleLevelsFor(user.id, strapi);
-                const updated = await stateMachine.executeTransition(documentId, status, meta, { actorRoleLevels });
+                const updated = await stateMachine.executeTransition(documentId, status, meta, { actorRoleLevels, actor: user });
                 const eventMap = {
                     PREPARING: 'preparing', AWAITING_PICKUP: 'awaiting_pickup',
                     OUT_FOR_DELIVERY: 'out_for_delivery', DELIVERED: 'delivered',

@@ -81,6 +81,7 @@ const ORDER_POPULATE = {
   customer_person: true,
   delivery_address: true,
   assigned_rider: true,
+  assignee: true,
   delivery_method: true,
   payment_collected_by_rider: { fields: ["documentId", "full_name"] },
   payment_verified_by: { fields: ["id", "username", "email"] },

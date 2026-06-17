@@ -1,0 +1,32 @@
+{
+  "kind": "collectionType",
+  "collectionName": "work_item_watches",
+  "info": {
+    "singularName": "work-item-watch",
+    "pluralName": "work-item-watches",
+    "displayName": "Work Item Watch",
+    "description": "A user watching a workflow-driven work item (entity_uid + target_document_id). One row per user per item."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "entity_uid": {
+      "type": "string",
+      "required": true
+    },
+    "target_document_id": {
+      "type": "string",
+      "required": true
+    },
+    "user_label": {
+      "type": "string"
+    },
+    "user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

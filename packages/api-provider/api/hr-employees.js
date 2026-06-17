@@ -7,11 +7,13 @@ export const HrEmployeesEndpoints = {
         roles: ['admin', 'manager', 'staff'],
     },
 
+    // Read access is shared with the apps that reference employees (assignee /
+    // supervisor / worker-profile pickers); writes stay HR-only.
     list: ({ page, pageSize, sort, populate, filters, fields } = {}) => ({
         path: '/hr-employees',
         action: 'find',
         method: 'get',
-        apps: ['hr'],
+        apps: ['hr', 'manufacturing', 'order-management'],
         approle: ['admin', 'manager', 'staff'],
         params: listParams(
             { page, pageSize, sort, populate, filters, fields },
@@ -23,7 +25,7 @@ export const HrEmployeesEndpoints = {
         path: `/hr-employees/${documentId}`,
         action: 'findOne',
         method: 'get',
-        apps: ['hr'],
+        apps: ['hr', 'manufacturing', 'order-management'],
         approle: ['admin', 'manager', 'staff'],
         params: byIdParams({ populate, fields }),
     }),

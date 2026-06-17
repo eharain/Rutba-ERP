@@ -135,6 +135,11 @@
       "relation": "manyToOne",
       "target": "api::rider.rider"
     },
+    "assignee": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hr-employee.hr-employee"
+    },
     "delivery_cost": { "type": "decimal" },
     "delivery_cost_breakdown": { "type": "json" },
     "estimated_delivery_time": { "type": "datetime" },

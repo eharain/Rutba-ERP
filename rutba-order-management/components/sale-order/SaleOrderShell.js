@@ -7,7 +7,10 @@ import { useSaleOrder, isCustomWorkflow, workflowStage } from "./hooks/useSaleOr
 import { SaleOrdersEndpoints } from "@rutba/api-provider/endpoints/index.js";
 import PermissionCheck from "@rutba/pos-shared/components/PermissionCheck";
 import WorkflowViewer from "@rutba/pos-shared/components/workflow/WorkflowViewer";
+import WorkItemPanel from "@rutba/pos-shared/components/workflow/WorkItemPanel";
 import StageStepper from "./StageStepper";
+
+const SO_ENTITY_UID = "api::sale-order.sale-order";
 import DraftStage from "./stages/DraftStage";
 import DeliveryMethodStage from "./stages/DeliveryMethodStage";
 import PaymentStage from "./stages/PaymentStage";
@@ -133,7 +136,7 @@ function WorkflowMovesCard({ order, workflow, toast, refresh }) {
 export default function SaleOrderShell() {
   const router = useRouter();
   const { documentId } = router.query;
-  const { jwt } = useAuth();
+  const { jwt, user } = useAuth();
   const { toast, ToastContainer } = useToast();
 
   const isNew = !documentId || documentId === "new";
@@ -224,6 +227,16 @@ export default function SaleOrderShell() {
             <WorkflowMovesCard order={order} workflow={workflow} toast={toast} refresh={refresh} />
           )}
           {renderStage()}
+          {!isNew && order && (
+            <WorkItemPanel
+              entityUid={SO_ENTITY_UID}
+              documentId={order.documentId}
+              jwt={jwt}
+              currentUserId={user?.id}
+              assignee={order.assignee}
+              onAssigned={refresh}
+            />
+          )}
         </>
       )}
     </>

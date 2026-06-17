@@ -82,5 +82,8 @@ export * from './term-types.js';
 export * from './terms.js';
 export * from './upload.js';
 export * from './web-orders.js';
+export * from './work-item-activities.js';
+export * from './work-item-comments.js';
+export * from './work-item-watches.js';
 export * from './workflows.js';
 export * from './web/index.js';

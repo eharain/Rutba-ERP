@@ -62,7 +62,7 @@ export const ReturnRequestsEndpoints = {
         scope: ROLE_SCOPES,
         params: byIdParams(
             { populate, fields },
-            { populate: ['sale_order', 'items', 'owners', 'customer_evidence', 'approved_by', 'received_by'] },
+            { populate: ['sale_order', 'items', 'owners', 'customer_evidence', 'approved_by', 'received_by', 'assignee'] },
         ),
     }),
 

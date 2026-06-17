@@ -30,7 +30,7 @@ module.exports = {
 
     try {
       const actorRoleLevels = await roleLevelsFor(user.id, strapi);
-      const updated = await stateMachine.executeTransition(documentId, status, extra, { actorRoleLevels });
+      const updated = await stateMachine.executeTransition(documentId, status, extra, { actorRoleLevels, actor: user });
       return ctx.send({ success: true, data: updated });
     } catch (err) {
       strapi.log.warn(`[mfg-work-order/process] ${documentId} → ${status} failed: ${err.message}`);
