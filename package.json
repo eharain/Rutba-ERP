@@ -19,7 +19,8 @@
     "rutba-payroll",
     "rutba-cms",
     "rutba-social",
-    "rutba-manufacturing"
+    "rutba-manufacturing",
+    "rutba-marketplace"
   ],
   "scripts": {
     "dev:strapi": "node scripts/js/load-env.js -- npm --prefix pos-strapi run develop",
@@ -38,6 +39,8 @@
     "dev:cms": "node scripts/js/load-env.js -- npm run dev --workspace=rutba-cms",
     "dev:social": "node scripts/js/load-env.js -- npm run dev --workspace=rutba-social",
     "dev:manufacturing": "node scripts/js/load-env.js -- npm run dev --workspace=rutba-manufacturing",
+    "dev:marketplace": "node scripts/js/load-env.js -- npm run dev --workspace=rutba-marketplace",
+    "worker:marketplace": "node scripts/js/load-env.js -- npm run worker --workspace=rutba-marketplace",
     "dev:all": "node scripts/js/run-all.js dev",
     "start:strapi": "node scripts/js/load-env.js -- npm --prefix pos-strapi run start",
     "start:auth": "node scripts/js/load-env.js -- npm run start --workspace=pos-auth",
@@ -55,6 +58,7 @@
     "start:cms": "node scripts/js/load-env.js -- npm run start --workspace=rutba-cms",
     "start:social": "node scripts/js/load-env.js -- npm run start --workspace=rutba-social",
     "start:manufacturing": "node scripts/js/load-env.js -- npm run start --workspace=rutba-manufacturing",
+    "start:marketplace": "node scripts/js/load-env.js -- npm run start --workspace=rutba-marketplace",
 
     "build:api": "node scripts/js/load-env.js -- npm run build --workspace=@rutba/api-provider",
     "build:api-pro": "node scripts/js/load-env.js -- npm run build --workspace=strapi-api-pro",
@@ -73,6 +77,7 @@
     "build:cms": "node scripts/js/load-env.js -- npm run build --workspace=rutba-cms",
     "build:social": "node scripts/js/load-env.js -- npm run build --workspace=rutba-social",
     "build:manufacturing": "node scripts/js/load-env.js -- npm run build --workspace=rutba-manufacturing",
+    "build:marketplace": "node scripts/js/load-env.js -- npm run build --workspace=rutba-marketplace",
     "build:strapi": "node scripts/js/load-env.js -- npm --prefix pos-strapi run build",
 
     "build:all": "node scripts/js/run-app.js build",

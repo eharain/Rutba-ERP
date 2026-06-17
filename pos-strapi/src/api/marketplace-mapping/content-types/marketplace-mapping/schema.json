@@ -1,0 +1,60 @@
+{
+  "kind": "collectionType",
+  "collectionName": "marketplace_mappings",
+  "info": {
+    "singularName": "marketplace-mapping",
+    "pluralName": "marketplace-mappings",
+    "displayName": "Marketplace Mapping",
+    "description": "Maps an internal taxonomy entity (category/brand/term/term-type) to a marketplace's taxonomy id. Pure reference data — the rutba-marketplace app reads/writes it; Strapi just stores it."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "platform": {
+      "type": "string",
+      "required": true
+    },
+    "kind": {
+      "type": "enumeration",
+      "enum": [
+        "category",
+        "brand",
+        "term",
+        "term_type"
+      ],
+      "required": true
+    },
+    "internal_uid": {
+      "type": "string"
+    },
+    "internal_document_id": {
+      "type": "string"
+    },
+    "internal_name": {
+      "type": "string"
+    },
+    "external_id": {
+      "type": "string"
+    },
+    "external_name": {
+      "type": "string"
+    },
+    "external_parent_id": {
+      "type": "string"
+    },
+    "attributes": {
+      "type": "json"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "marketplace_account": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::marketplace-account.marketplace-account"
+    }
+  }
+}

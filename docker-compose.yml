@@ -109,6 +109,7 @@ services:
         NEXT_PUBLIC_ACCOUNTS_URL: ${NEXT_PUBLIC_ACCOUNTS_URL}
         NEXT_PUBLIC_PAYROLL_URL: ${NEXT_PUBLIC_PAYROLL_URL}
         NEXT_PUBLIC_CMS_URL: ${NEXT_PUBLIC_CMS_URL}
+        NEXT_PUBLIC_MARKETPLACE_URL: ${NEXT_PUBLIC_MARKETPLACE_URL}
         NEXT_PUBLIC_IMAGE_HOST_PROTOCOL: ${NEXT_PUBLIC_IMAGE_HOST_PROTOCOL}
         NEXT_PUBLIC_IMAGE_HOST_NAME: ${NEXT_PUBLIC_IMAGE_HOST_NAME}
         NEXT_PUBLIC_IMAGE_HOST_PORT: ${NEXT_PUBLIC_IMAGE_HOST_PORT}
@@ -366,6 +367,55 @@ services:
     environment:
       PORT: ${PORT_MANUFACTURING:-4014}
       HOSTNAME: 0.0.0.0
+
+  # --------------------------------------------------------
+  # Marketplace (Daraz integration UI)
+  # --------------------------------------------------------
+  marketplace:
+    build:
+      context: .
+      target: marketplace
+      args: *global-build-args
+    restart: unless-stopped
+    depends_on:
+      - strapi
+    ports:
+      - "${PORT_MARKETPLACE:-4016}:${PORT_MARKETPLACE:-4016}"
+    environment:
+      PORT: ${PORT_MARKETPLACE:-4016}
+      HOSTNAME: 0.0.0.0
+      # API routes call the engine, so the app process needs Strapi + Daraz creds too.
+      STRAPI_API_URL: ${RUTBA_MARKETPLACE_STRAPI_API_URL:-http://strapi:4010/api}
+      STRAPI_SERVICE_TOKEN: ${RUTBA_MARKETPLACE_STRAPI_SERVICE_TOKEN}
+      PUBLIC_URL: ${RUTBA_MARKETPLACE_PUBLIC_URL}
+      DARAZ_APP_KEY: ${RUTBA_MARKETPLACE_DARAZ_APP_KEY}
+      DARAZ_APP_SECRET: ${RUTBA_MARKETPLACE_DARAZ_APP_SECRET}
+      DARAZ_REGION: ${RUTBA_MARKETPLACE_DARAZ_REGION:-pk}
+
+  # --------------------------------------------------------
+  # Marketplace Worker (standalone sync process — no HTTP port)
+  # Reaches Strapi by service name (strapi:4010). Env arrives as
+  # bare names (no load-env here), so map the RUTBA_MARKETPLACE_* vars.
+  # --------------------------------------------------------
+  marketplace-worker:
+    build:
+      context: .
+      target: marketplace-worker
+    restart: unless-stopped
+    depends_on:
+      - strapi
+    environment:
+      WORKER_ENABLED: ${RUTBA_MARKETPLACE_WORKER_ENABLED:-true}
+      JOBS_BACKEND: ${RUTBA_MARKETPLACE_JOBS_BACKEND:-inproc}
+      STRAPI_API_URL: ${RUTBA_MARKETPLACE_STRAPI_API_URL:-http://strapi:4010/api}
+      STRAPI_SERVICE_TOKEN: ${RUTBA_MARKETPLACE_STRAPI_SERVICE_TOKEN}
+      PUBLIC_URL: ${RUTBA_MARKETPLACE_PUBLIC_URL}
+      CRON_ORDERS_RULE: ${RUTBA_MARKETPLACE_CRON_ORDERS_RULE:-*/15 * * * *}
+      CRON_INVENTORY_RULE: ${RUTBA_MARKETPLACE_CRON_INVENTORY_RULE:-*/30 * * * *}
+      CRON_REFRESH_RULE: ${RUTBA_MARKETPLACE_CRON_REFRESH_RULE:-0 */4 * * *}
+      DARAZ_APP_KEY: ${RUTBA_MARKETPLACE_DARAZ_APP_KEY}
+      DARAZ_APP_SECRET: ${RUTBA_MARKETPLACE_DARAZ_APP_SECRET}
+      DARAZ_REGION: ${RUTBA_MARKETPLACE_DARAZ_REGION:-pk}
 
 volumes:
   mysql_data:

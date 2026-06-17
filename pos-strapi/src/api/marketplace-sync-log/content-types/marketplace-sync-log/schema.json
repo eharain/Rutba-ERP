@@ -1,0 +1,77 @@
+{
+  "kind": "collectionType",
+  "collectionName": "marketplace_sync_logs",
+  "info": {
+    "singularName": "marketplace-sync-log",
+    "pluralName": "marketplace-sync-logs",
+    "displayName": "Marketplace Sync Log",
+    "description": "Audit trail of marketplace sync runs (order pulls, inventory pushes, token refreshes)"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "marketplace_account": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::marketplace-account.marketplace-account",
+      "inversedBy": "sync_logs"
+    },
+    "platform": {
+      "type": "string"
+    },
+    "kind": {
+      "type": "enumeration",
+      "enum": [
+        "orders",
+        "inventory",
+        "oauth",
+        "fulfillment"
+      ],
+      "required": true
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "running",
+        "success",
+        "partial",
+        "error"
+      ],
+      "default": "running"
+    },
+    "fetched": {
+      "type": "integer",
+      "default": 0
+    },
+    "created": {
+      "type": "integer",
+      "default": 0
+    },
+    "updated": {
+      "type": "integer",
+      "default": 0
+    },
+    "skipped": {
+      "type": "integer",
+      "default": 0
+    },
+    "failed": {
+      "type": "integer",
+      "default": 0
+    },
+    "error": {
+      "type": "text"
+    },
+    "detail": {
+      "type": "json"
+    },
+    "started_at": {
+      "type": "datetime"
+    },
+    "finished_at": {
+      "type": "datetime"
+    }
+  }
+}

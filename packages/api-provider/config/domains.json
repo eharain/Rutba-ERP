@@ -68,6 +68,13 @@
       "hr_staff"
     ]
   },
+  "marketplace": {
+    "roles": [
+      "marketplace_admin",
+      "marketplace_manager",
+      "marketplace_staff"
+    ]
+  },
   "order-management": {
     "roles": [
       "order_admin",

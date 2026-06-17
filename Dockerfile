@@ -80,6 +80,7 @@ ARG NEXT_PUBLIC_WEB_URL
 ARG NEXT_PUBLIC_WEB_USER_URL
 ARG NEXT_PUBLIC_ORDER_MANAGEMENT_URL
 ARG NEXT_PUBLIC_MANUFACTURING_URL
+ARG NEXT_PUBLIC_MARKETPLACE_URL
 ARG NEXT_PUBLIC_RIDER_URL
 ARG NEXT_PUBLIC_SOCIAL_URL
 ARG NEXT_PUBLIC_CRM_URL
@@ -105,6 +106,7 @@ ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
     NEXT_PUBLIC_WEB_USER_URL=$NEXT_PUBLIC_WEB_USER_URL \
     NEXT_PUBLIC_ORDER_MANAGEMENT_URL=$NEXT_PUBLIC_ORDER_MANAGEMENT_URL \
     NEXT_PUBLIC_MANUFACTURING_URL=$NEXT_PUBLIC_MANUFACTURING_URL \
+    NEXT_PUBLIC_MARKETPLACE_URL=$NEXT_PUBLIC_MARKETPLACE_URL \
     NEXT_PUBLIC_RIDER_URL=$NEXT_PUBLIC_RIDER_URL \
     NEXT_PUBLIC_SOCIAL_URL=$NEXT_PUBLIC_SOCIAL_URL \
     NEXT_PUBLIC_CRM_URL=$NEXT_PUBLIC_CRM_URL \
@@ -353,3 +355,34 @@ COPY --from=manufacturing-build /app/rutba-manufacturing/.next/standalone ./
 COPY --from=manufacturing-build /app/rutba-manufacturing/.next/static     ./rutba-manufacturing/.next/static
 COPY --from=manufacturing-build /app/rutba-manufacturing/public            ./rutba-manufacturing/public
 CMD ["node", "rutba-manufacturing/server.js"]
+
+# ----------------------------------------------------------
+#  rutba-marketplace (Daraz integration UI)
+# ----------------------------------------------------------
+FROM build-env AS marketplace-build
+RUN mkdir -p rutba-marketplace/public && npm run build --workspace=rutba-marketplace
+
+FROM base AS marketplace
+WORKDIR /app
+ENV NODE_ENV=production HOSTNAME=0.0.0.0
+COPY --from=marketplace-build /app/rutba-marketplace/.next/standalone ./
+COPY --from=marketplace-build /app/rutba-marketplace/.next/static     ./rutba-marketplace/.next/static
+COPY --from=marketplace-build /app/rutba-marketplace/public            ./rutba-marketplace/public
+CMD ["node", "rutba-marketplace/server.js"]
+
+# ----------------------------------------------------------
+#  rutba-marketplace worker (standalone sync process — no HTTP)
+#  Runs worker.js, not the Next server, so it needs the full
+#  workspace (lib/, worker.js) + hoisted node_modules — which the
+#  Next standalone stage above omits. Env (STRAPI_SERVICE_TOKEN,
+#  DARAZ_*, …) is injected at runtime by compose, not baked in.
+# ----------------------------------------------------------
+FROM base AS marketplace-worker
+WORKDIR /app
+ENV NODE_ENV=production
+COPY --from=marketplace-build /app/node_modules      ./node_modules
+COPY --from=marketplace-build /app/package.json      ./package.json
+COPY --from=marketplace-build /app/packages          ./packages
+COPY --from=marketplace-build /app/rutba-marketplace ./rutba-marketplace
+WORKDIR /app/rutba-marketplace
+CMD ["node", "worker.js"]

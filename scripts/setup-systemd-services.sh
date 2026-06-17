@@ -62,6 +62,8 @@ SERVICES=(
     rutba_cms
     rutba_social
     rutba_manufacturing
+    rutba_marketplace
+    rutba_marketplace_worker
 )
 
 declare -A SVC_CMD=(
@@ -81,6 +83,8 @@ declare -A SVC_CMD=(
     [rutba_cms]="run start --workspace=rutba-cms"
     [rutba_social]="run start --workspace=rutba-social"
     [rutba_manufacturing]="run start --workspace=rutba-manufacturing"
+    [rutba_marketplace]="run start --workspace=rutba-marketplace"
+    [rutba_marketplace_worker]="run worker --workspace=rutba-marketplace"
 )
 
 declare -A SVC_DESC=(
@@ -100,6 +104,8 @@ declare -A SVC_DESC=(
     [rutba_cms]="Rutba ERP — Content Management (rutba-cms)"
     [rutba_social]="Rutba ERP — Social Media (rutba-social)"
     [rutba_manufacturing]="Rutba ERP — Manufacturing (rutba-manufacturing)"
+    [rutba_marketplace]="Rutba ERP — Marketplace (rutba-marketplace)"
+    [rutba_marketplace_worker]="Rutba ERP — Marketplace Worker (rutba-marketplace)"
 )
 
 ###########################################

@@ -1,0 +1,14 @@
+:root {
+  --mk-bg: #f7f8fa;
+}
+
+html,
+body {
+  padding: 0;
+  margin: 0;
+  background: var(--mk-bg);
+}
+
+a {
+  color: inherit;
+}

@@ -1,0 +1,90 @@
+{
+  "kind": "collectionType",
+  "collectionName": "marketplace_accounts",
+  "info": {
+    "singularName": "marketplace-account",
+    "pluralName": "marketplace-accounts",
+    "displayName": "Marketplace Account",
+    "description": "API credentials + sync state for a connected marketplace seller account (Daraz, Amazon, Shopify, ...)"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "platform": {
+      "type": "enumeration",
+      "enum": [
+        "daraz",
+        "amazon",
+        "shopify"
+      ],
+      "required": true
+    },
+    "account_name": {
+      "type": "string",
+      "required": true
+    },
+    "region": {
+      "type": "string"
+    },
+    "seller_id": {
+      "type": "string"
+    },
+    "api_key": {
+      "type": "text",
+      "private": true
+    },
+    "api_secret": {
+      "type": "text",
+      "private": true
+    },
+    "access_token": {
+      "type": "text",
+      "private": true
+    },
+    "refresh_token": {
+      "type": "text",
+      "private": true
+    },
+    "token_expires_at": {
+      "type": "datetime",
+      "private": true
+    },
+    "refresh_expires_at": {
+      "type": "datetime",
+      "private": true
+    },
+    "last_connected_at": {
+      "type": "datetime"
+    },
+    "last_orders_synced_at": {
+      "type": "datetime"
+    },
+    "last_inventory_synced_at": {
+      "type": "datetime"
+    },
+    "extra_config": {
+      "type": "json",
+      "private": true
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "sync_orders_enabled": {
+      "type": "boolean",
+      "default": true
+    },
+    "sync_inventory_enabled": {
+      "type": "boolean",
+      "default": true
+    },
+    "sync_logs": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::marketplace-sync-log.marketplace-sync-log",
+      "mappedBy": "marketplace_account"
+    }
+  }
+}

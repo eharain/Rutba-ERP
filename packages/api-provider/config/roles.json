@@ -115,6 +115,18 @@
     "level": "staff",
     "domain": "hr"
   },
+  "marketplace_admin": {
+    "level": "admin",
+    "domain": "marketplace"
+  },
+  "marketplace_manager": {
+    "level": "manager",
+    "domain": "marketplace"
+  },
+  "marketplace_staff": {
+    "level": "staff",
+    "domain": "marketplace"
+  },
   "order_admin": {
     "level": "admin",
     "domain": "order-management"

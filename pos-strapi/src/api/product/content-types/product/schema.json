@@ -156,6 +156,9 @@
     "keywords": {
       "type": "json"
     },
+    "external_ids": {
+      "type": "json"
+    },
     "suppliers": {
       "type": "relation",
       "relation": "manyToMany",

@@ -221,6 +221,35 @@
     },
     "customer_confirmation_notes": {
       "type": "text"
+    },
+    "channel": {
+      "type": "enumeration",
+      "enum": [
+        "web",
+        "pos",
+        "manual",
+        "daraz",
+        "amazon",
+        "shopify"
+      ],
+      "default": "web"
+    },
+    "external_order_id": {
+      "type": "string"
+    },
+    "external_order_number": {
+      "type": "string"
+    },
+    "external_vendor_id": {
+      "type": "string"
+    },
+    "channel_meta": {
+      "type": "json"
+    },
+    "marketplace_account": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::marketplace-account.marketplace-account"
     }
   }
 }

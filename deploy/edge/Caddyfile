@@ -37,6 +37,14 @@ orders.rutba.pk {
 	reverse_proxy order-management:4013
 }
 
+# ---- Marketplace (Daraz integration; staff) ----------------
+# OAuth callback lives at https://marketplace.rutba.pk/api/oauth/callback —
+# whitelist it in the Daraz app. The sync worker is a separate container with
+# no HTTP surface, so it gets no Caddy block.
+marketplace.rutba.pk {
+	reverse_proxy marketplace:4016
+}
+
 # ---- Rider app ---------------------------------------------
 rider.rutba.pk {
 	reverse_proxy rider:4012

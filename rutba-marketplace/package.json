@@ -1,0 +1,12 @@
+{
+  "name": "rutba-marketplace",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --webpack",
+    "build": "next build",
+    "start": "next start",
+    "worker": "node worker.js",
+    "lint": "next lint"
+  }
+}
