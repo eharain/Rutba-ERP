@@ -92,7 +92,20 @@ function resolveApiUrl(apiUrl) {
   let parsed;
   try { parsed = new URL(apiUrl); } catch { return apiUrl; }
 
-  // Swap the API host to match the browser host, keep port + path + scheme.
+  // Only adopt the browser's hostname when the configured API host is a local
+  // placeholder (localhost / 127.0.0.1 / …). That's the dev convenience case:
+  // env points at `http://localhost:4010/api`, but the storefront is opened
+  // from a phone via `http://192.168.x.x:4000`, so the API call must follow
+  // to the same LAN IP.
+  //
+  // When the env URL already names a real, absolute host (e.g.
+  // `https://api.rutba.pk/api`), it is the source of truth — NEVER rewrite it.
+  // In production the storefront (rutba.pk) and API (api.rutba.pk) are distinct
+  // subdomains; swapping the hostname turned every browser API call into
+  // `https://rutba.pk/api/...`, which the storefront's own Next.js server 404s.
+  if (!LOCAL_NAMES.has(parsed.hostname)) return apiUrl;
+
+  // Swap the (local) API host to match the browser host, keep port + path + scheme.
   parsed.hostname = browserHost;
   return parsed.toString().replace(/\/+$/, '');
 }
