@@ -26,11 +26,13 @@ export const APP_URLS = {
     payroll:   process.env.NEXT_PUBLIC_PAYROLL_URL   || 'http://localhost:4008',
     cms:       process.env.NEXT_PUBLIC_CMS_URL       || 'http://localhost:4009',
     social:    process.env.NEXT_PUBLIC_SOCIAL_URL    || 'http://localhost:4011',
+    manufacturing: process.env.NEXT_PUBLIC_MANUFACTURING_URL || 'http://localhost:4014',
+    marketplace:   process.env.NEXT_PUBLIC_MARKETPLACE_URL   || 'http://localhost:4016',
     web:       process.env.NEXT_PUBLIC_WEB_URL       || 'http://localhost:4010',
 };
 
 /** All recognised app keys */
-const VALID_APP_KEYS = ['stock', 'sale', 'auth', 'web-user', 'order-management', 'rider', 'crm', 'hr', 'ess', 'accounts', 'payroll', 'cms', 'social'];
+const VALID_APP_KEYS = ['stock', 'sale', 'auth', 'web-user', 'order-management', 'rider', 'crm', 'hr', 'ess', 'accounts', 'payroll', 'cms', 'social', 'manufacturing', 'marketplace'];
 
 /**
  * Metadata for each app — icon (FontAwesome class), display label,
@@ -52,6 +54,8 @@ export const APP_META = {
     payroll:    { icon: 'fa-solid fa-money-check-dollar', label: 'Payroll',            description: 'Salary structures, payroll runs, payslips',   border: 'border-danger',    color: 'text-danger' },
     cms:        { icon: 'fa-solid fa-pen-nib',            label: 'Content Management', description: 'Website content, pages, banners, and sales offers', border: 'border-purple',    color: 'text-purple' },
     social:     { icon: 'fa-solid fa-share-nodes',         label: 'Social Media',       description: 'Posts, replies, multi-platform publishing',   border: 'border-info',      color: 'text-info' },
+    manufacturing: { icon: 'fa-solid fa-industry',         label: 'Manufacturing',      description: 'Work orders, bundles, production, piece-rate payroll', border: 'border-primary',   color: 'text-primary' },
+    marketplace:   { icon: 'fa-solid fa-store',            label: 'Marketplace',        description: 'Daraz & channel accounts, order/inventory sync', border: 'border-warning',   color: 'text-warning' },
     web:        { icon: 'fa-solid fa-globe',               label: 'Storefront',         description: 'Public customer-facing website',              border: 'border-info',      color: 'text-info', public: true },
 };
 
