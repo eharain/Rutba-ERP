@@ -29,7 +29,7 @@ module.exports = {
     // 'bullmq' / 'pubsub' (lib/jobs.js) once volume warrants a broker.
     backend: process.env.JOBS_BACKEND || 'inproc',
     ordersRule: process.env.CRON_ORDERS_RULE || '*/15 * * * *',
-    inventoryRule: process.env.CRON_INVENTORY_RULE || '*/30 * * * *',
+    inventoryRule: process.env.CRON_INVENTORY_RULE || '*/60 * * * *',
     refreshRule: process.env.CRON_REFRESH_RULE || '0 */4 * * *',
   },
 
