@@ -215,13 +215,37 @@ function adjustPrice(base, pct) {
   return Math.round(b * (1 + (Number(pct) || 0) / 100) * 100) / 100;
 }
 
-// ── listings: push selected products' adjusted price + stock ─────────────────
+// ── listings: push the publish set's adjusted price + stock ──────────────────
 
-// Pushes only the operator-SELECTED listings (not the whole catalog), applying
-// the per-marketplace price adjustment. Used by both the manual "Push" button
-// and the inventory cron, so price + stock stay in sync. Products must already
-// exist on the marketplace by SellerSku — creating brand-new listings
-// (product/create with images + category attributes) is the next increment.
+// Stamp a listing's push state — update its row, or create one for a
+// group-sourced product that has no listing row yet (so its status is tracked).
+async function stampListing(account, meta, patch) {
+  const data = { last_pushed_at: new Date().toISOString(), ...patch };
+  try {
+    if (meta.listing) {
+      await strapi.updateListing(meta.listing.documentId, data);
+    } else {
+      await strapi.createListing({
+        marketplace_account: account.documentId,
+        platform: account.platform,
+        product: { documentId: meta.product.documentId },
+        product_sku: meta.product.sku || null,
+        product_name: meta.product.name || null,
+        selected: false, // published via a product-group, not individually picked
+        ...data,
+      });
+    }
+  } catch (e) {
+    console.warn(`[marketplace] stampListing failed: ${msg(e)}`);
+  }
+}
+
+// The publish set = products in the account's attached product-groups ∪
+// individually-selected listings. Each is pushed with the per-marketplace price
+// adjustment; the SalePrice comes from a live marketplace offer when one applies
+// (else the product's own offer_price). Only Published + active products go out
+// (drafts are excluded by Strapi's relation populate; is_active is re-checked).
+// Used by both the manual "Push" button and the inventory cron.
 async function syncInventoryForAccount(accountDocumentId) {
   let account = await strapi.getAccountSecrets(accountDocumentId);
   if (!account) throw new Error('Account not found');
@@ -237,22 +261,48 @@ async function syncInventoryForAccount(accountDocumentId) {
   const counts = { fetched: 0, created: 0, updated: 0, skipped: 0, failed: 0 };
   const detail = [];
   try {
-    const listings = await strapi.listSelectedListings(account.documentId);
-    counts.fetched = listings.length;
+    const [groupProducts, allListings] = await Promise.all([
+      strapi.listAccountGroupProducts(account.documentId),
+      strapi.listAllListings(account.documentId),
+    ]);
+    const listingByProduct = new Map();
+    for (const l of allListings) { const pid = l.product?.documentId; if (pid) listingByProduct.set(pid, l); }
+
+    // publish set: group products ∪ individually-selected listings
+    const set = new Map(); // productDocId → { product, listing }
+    for (const p of groupProducts) {
+      if (p?.documentId) set.set(p.documentId, { product: p, listing: listingByProduct.get(p.documentId) || null });
+    }
+    for (const l of allListings) {
+      if (!l.selected) continue;
+      const p = l.product;
+      if (!p?.documentId) continue;
+      if (set.has(p.documentId)) set.get(p.documentId).listing = l; // explicit listing wins (its % override)
+      else set.set(p.documentId, { product: p, listing: l });
+    }
+
+    // Gate: published (populate already returns published) + active + has SKU.
+    const entries = [...set.values()].filter(({ product }) => product && product.is_active !== false && product.sku);
+    counts.fetched = entries.length;
+
+    // Marketplace SalePrice from live offers scoped to this account.
+    const offerPrices = await strapi.fetchOfferPrices(account.documentId, entries.map((e) => e.product.documentId));
 
     const updates = [];
-    const bySku = new Map(); // sku → { listing, price } to stamp results back
-    for (const l of listings) {
-      const product = l.product || {};
-      const sku = l.product_sku || product.sku;
-      if (!sku) { counts.skipped += 1; detail.push({ listing: l.documentId, error: 'listing has no SKU' }); continue; }
-      const pct = pctFor(l, account);
+    const bySku = new Map(); // sku → { product, listing, price }
+    for (const { product, listing } of entries) {
+      const sku = product.sku || listing?.product_sku;
+      if (!sku) { counts.skipped += 1; continue; }
+      const pct = pctFor(listing, account);
       const price = adjustPrice(product.selling_price, pct);
-      const offer = Number(product.offer_price) || 0;
-      const salePrice = offer > 0 ? adjustPrice(offer, pct) : undefined;
+      const offer = offerPrices[product.documentId];
+      const offerBase = offer && Number.isFinite(Number(offer.finalPrice))
+        ? Number(offer.finalPrice)
+        : (Number(product.offer_price) > 0 ? Number(product.offer_price) : null);
+      const salePrice = offerBase != null ? adjustPrice(offerBase, pct) : undefined;
       const quantity = Number(product.stock_quantity) || 0;
       updates.push({ sku, quantity, price, salePrice });
-      bySku.set(String(sku), { listing: l, price });
+      bySku.set(String(sku), { product, listing, price });
     }
 
     for (let i = 0; i < updates.length; i += INVENTORY_BATCH) {
@@ -262,19 +312,11 @@ async function syncInventoryForAccount(accountDocumentId) {
         const meta = bySku.get(String(r.sku));
         if (r.ok) {
           counts.updated += 1;
-          if (meta) {
-            await strapi.updateListing(meta.listing.documentId, {
-              status: 'listed', listed_price: meta.price, last_pushed_at: new Date().toISOString(), push_error: null,
-            });
-          }
+          if (meta) await stampListing(account, meta, { status: 'listed', listed_price: meta.price, push_error: null });
         } else {
           counts.failed += 1;
           detail.push({ sku: r.sku, error: r.error });
-          if (meta) {
-            await strapi.updateListing(meta.listing.documentId, {
-              status: 'error', push_error: String(r.error || '').slice(0, 500), last_pushed_at: new Date().toISOString(),
-            });
-          }
+          if (meta) await stampListing(account, meta, { status: 'error', push_error: String(r.error || '').slice(0, 500) });
         }
       }
     }

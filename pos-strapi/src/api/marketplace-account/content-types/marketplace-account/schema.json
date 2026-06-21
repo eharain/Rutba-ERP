@@ -84,6 +84,11 @@
       "type": "decimal",
       "default": 0
     },
+    "product_groups": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::product-group.product-group"
+    },
     "sync_logs": {
       "type": "relation",
       "relation": "oneToMany",

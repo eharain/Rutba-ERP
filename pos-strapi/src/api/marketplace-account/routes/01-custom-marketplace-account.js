@@ -20,5 +20,10 @@ module.exports = {
       path: '/marketplace-accounts/:id/ingest-orders',
       handler: 'marketplace-account.ingestOrders',
     },
+    {
+      method: 'POST',
+      path: '/marketplace-accounts/:id/offer-prices',
+      handler: 'marketplace-account.offerPrices',
+    },
   ],
 };

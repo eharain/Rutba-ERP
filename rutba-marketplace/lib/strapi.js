@@ -112,16 +112,46 @@ module.exports = {
     return r.data || r;
   },
 
-  /** Selected listings for an account, with their product price/stock populated. */
-  async listSelectedListings(accountDocumentId) {
+  /** All listings for an account (selected or not), product price/stock populated. */
+  async listAllListings(accountDocumentId) {
     const r = await sreq('GET', '/marketplace-listings', {
       query: {
-        filters: { marketplace_account: { documentId: { $eq: accountDocumentId } }, selected: { $eq: true } },
-        populate: { product: { fields: ['name', 'sku', 'selling_price', 'offer_price', 'stock_quantity'] } },
-        pagination: { pageSize: 1000 },
+        filters: { marketplace_account: { documentId: { $eq: accountDocumentId } } },
+        populate: { product: { fields: ['name', 'sku', 'selling_price', 'offer_price', 'stock_quantity', 'is_active'] } },
+        pagination: { pageSize: 2000 },
       },
     });
     return r.data || [];
+  },
+
+  /** Products from the account's attached product-groups (Strapi populate returns published only). */
+  async listAccountGroupProducts(accountDocumentId) {
+    const r = await sreq('GET', `/marketplace-accounts/${accountDocumentId}`, {
+      query: {
+        populate: {
+          product_groups: { populate: { products: { fields: ['name', 'sku', 'selling_price', 'offer_price', 'stock_quantity', 'is_active'] } } },
+        },
+      },
+    });
+    const acc = r.data || {};
+    const map = new Map();
+    for (const g of acc.product_groups || []) {
+      for (const p of g.products || []) {
+        if (p?.documentId && !map.has(p.documentId)) map.set(p.documentId, p);
+      }
+    }
+    return [...map.values()];
+  },
+
+  async createListing(data) {
+    const r = await sreq('POST', '/marketplace-listings', { body: { data } });
+    return r.data || r;
+  },
+
+  /** Live marketplace offer prices for the given products: { [documentId]: { finalPrice, offerName } }. */
+  async fetchOfferPrices(accountDocumentId, productDocumentIds) {
+    const r = await sreq('POST', `/marketplace-accounts/${accountDocumentId}/offer-prices`, { body: { productDocumentIds } });
+    return r.data || {};
   },
 
   async updateListing(documentId, data) {
@@ -142,5 +172,20 @@ module.exports = {
       },
     });
     return { items: r.data || [], pagination: r.meta?.pagination || {} };
+  },
+
+  /** Product-groups for the account's publish-set selector. */
+  async listProductGroups() {
+    const out = [];
+    for (let page = 1; page <= 20; page += 1) {
+      const r = await sreq('GET', '/product-groups', {
+        query: { fields: ['name', 'title', 'slug'], sort: ['name:asc'], pagination: { page, pageSize: 200 } },
+      });
+      const rows = r.data || [];
+      for (const g of rows) out.push({ documentId: g.documentId, name: g.title || g.name || g.slug });
+      const pageCount = r.meta?.pagination?.pageCount || 1;
+      if (page >= pageCount) break;
+    }
+    return out;
   },
 };

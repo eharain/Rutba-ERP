@@ -73,6 +73,15 @@
       "relation": "manyToMany",
       "target": "api::category.category",
       "inversedBy": "offers"
+    },
+    "applies_to_web": {
+      "type": "boolean",
+      "default": true
+    },
+    "marketplaces": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::marketplace-account.marketplace-account"
     }
   }
 }

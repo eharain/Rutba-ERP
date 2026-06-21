@@ -64,7 +64,7 @@ module.exports = createCoreService('api::sale-offer.sale-offer', ({ strapi }) =>
     // backward-compat fallback for any cached/legacy traffic.
     const groupPopulate = {
       products: { fields: ['id', 'selling_price', 'offer_price'] },
-      offers: { fields: ['name', 'active', 'start_date', 'end_date', 'discount_mode', 'discount_value', 'free_shipping', 'priority'] },
+      offers: { fields: ['name', 'active', 'start_date', 'end_date', 'discount_mode', 'discount_value', 'free_shipping', 'priority', 'applies_to_web'] },
     };
     let group = await strapi.documents('api::product-group.product-group').findFirst({
       status: 'published',
@@ -87,7 +87,9 @@ module.exports = createCoreService('api::sale-offer.sale-offer', ({ strapi }) =>
     if (!product) return null;
 
     const now = Date.now();
-    const liveOffers = (group.offers || []).filter((o) => isOfferLive(o, now));
+    // Storefront path: only offers that apply to web (a Daraz-only promo sets
+    // applies_to_web=false so it never shows on the storefront).
+    const liveOffers = (group.offers || []).filter((o) => isOfferLive(o, now) && o.applies_to_web !== false);
     if (liveOffers.length === 0) return null;
 
     // Highest priority wins for price. Free shipping is OR'd across all.
@@ -117,5 +119,61 @@ module.exports = createCoreService('api::sale-offer.sale-offer', ({ strapi }) =>
       savingsPct,
       freeShipping,
     };
+  },
+
+  /**
+   * Resolve the best live marketplace offer price per product for a given
+   * marketplace account, reusing the storefront's discount engine. An offer
+   * applies to a marketplace only when that account is in the offer's
+   * `marketplaces` relation. Targeting is via the offer's product_groups
+   * (category-scoped marketplace offers are not resolved here yet).
+   *
+   * @returns {Object} { [productDocumentId]: { finalPrice, offerName } }
+   */
+  async marketplaceOfferPrices(accountDocumentId, productDocumentIds = []) {
+    const ids = (productDocumentIds || []).filter(Boolean).map(String);
+    if (!accountDocumentId || ids.length === 0) return {};
+    const idSet = new Set(ids);
+
+    const offers = await strapi.documents('api::sale-offer.sale-offer').findMany({
+      status: 'published',
+      filters: {
+        active: { $eq: true },
+        marketplaces: { documentId: { $eq: accountDocumentId } },
+      },
+      fields: ['name', 'active', 'start_date', 'end_date', 'discount_mode', 'discount_value', 'priority', 'createdAt'],
+      populate: {
+        product_groups: { populate: { products: { fields: ['documentId', 'selling_price', 'offer_price'] } } },
+      },
+      pagination: { pageSize: 200 },
+    });
+
+    const now = Date.now();
+    // Live + actually-discounting, highest priority first (then newest).
+    const live = offers
+      .filter((o) => isOfferLive(o, now) && o.discount_mode && o.discount_mode !== 'none')
+      .sort((a, b) => {
+        const pa = Number(a.priority) || 0;
+        const pb = Number(b.priority) || 0;
+        if (pa !== pb) return pb - pa;
+        const ca = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const cb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return cb - ca;
+      });
+
+    const out = {};
+    for (const o of live) {
+      for (const g of (o.product_groups || [])) {
+        for (const p of (g.products || [])) {
+          const pid = p.documentId;
+          if (!pid || !idSet.has(String(pid)) || out[pid]) continue; // first (highest priority) wins
+          const finalPrice = computeDiscountedPrice(o, p.selling_price, p.offer_price);
+          if (finalPrice > 0 && finalPrice < (Number(p.selling_price) || 0)) {
+            out[pid] = { finalPrice, offerName: o.name };
+          }
+        }
+      }
+    }
+    return out;
   },
 }));

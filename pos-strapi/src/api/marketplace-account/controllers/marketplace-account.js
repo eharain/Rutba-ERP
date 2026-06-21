@@ -71,4 +71,15 @@ module.exports = createCoreController(ACCOUNT_UID, ({ strapi }) => ({
     }
     return ctx.send({ data: { results } });
   },
+
+  // ── worker-only: resolve the marketplace SalePrice from live offers ──────────
+  async offerPrices(ctx) {
+    if (!isServiceToken(ctx)) return ctx.forbidden('Service token required');
+    const productDocumentIds = ctx.request.body?.productDocumentIds;
+    if (!Array.isArray(productDocumentIds)) return ctx.badRequest('productDocumentIds[] is required');
+    const prices = await strapi
+      .service('api::sale-offer.sale-offer')
+      .marketplaceOfferPrices(ctx.params.id, productDocumentIds);
+    return ctx.send({ data: prices });
+  },
 }));

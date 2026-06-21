@@ -4,7 +4,7 @@ import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { MarketplaceAccountsEndpoints } from "@rutba/api-provider/endpoints";
 import { useToast } from "../components/Toast";
-import { appPost } from "../components/appClient";
+import { appGet, appPost } from "../components/appClient";
 
 const REGIONS = ["pk", "bd", "lk", "np", "mm"];
 
@@ -14,6 +14,7 @@ const EMPTY_FORM = {
     region: "pk",
     seller_id: "",
     price_adjust_pct: 0,
+    product_groups: [],
     // Per-account credentials. Each marketplace provides keys its own way
     // (OAuth app key/secret, static API key, long-lived token); the adapter
     // prefers these over the app-level env defaults. Stored `private`, so they
@@ -34,6 +35,7 @@ export default function AccountsPage() {
     const { toast, ToastContainer } = useToast();
 
     const [accounts, setAccounts] = useState([]);
+    const [productGroups, setProductGroups] = useState([]);
     const [loading, setLoading] = useState(false);
     const [showForm, setShowForm] = useState(false);
     const [editing, setEditing] = useState(null);
@@ -45,7 +47,7 @@ export default function AccountsPage() {
         if (!jwt) return;
         setLoading(true);
         try {
-            const res = await MarketplaceAccountsEndpoints.list({ sort: ["createdAt:desc"] });
+            const res = await MarketplaceAccountsEndpoints.list({ sort: ["createdAt:desc"], populate: ["product_groups"] });
             setAccounts(res.data || []);
         } catch (err) {
             console.error("Failed to load accounts", err);
@@ -56,6 +58,11 @@ export default function AccountsPage() {
     }, [jwt]);
 
     useEffect(() => { loadAccounts(); }, [loadAccounts]);
+
+    useEffect(() => {
+        if (!jwt) return;
+        appGet("/api/internal/product-groups", jwt).then((r) => setProductGroups(r.items || [])).catch(() => {});
+    }, [jwt]);
 
     // OAuth popup-closer postMessage (callback served from this app's origin).
     useEffect(() => {
@@ -75,6 +82,14 @@ export default function AccountsPage() {
         setForm((prev) => ({ ...prev, [name]: type === "checkbox" ? checked : value }));
     };
 
+    const toggleGroup = (docId, checked) => {
+        setForm((prev) => {
+            const set = new Set(prev.product_groups || []);
+            if (checked) set.add(docId); else set.delete(docId);
+            return { ...prev, product_groups: [...set] };
+        });
+    };
+
     const openCreate = () => { setEditing(null); setForm({ ...EMPTY_FORM }); setShowForm(true); };
     const openEdit = (acc) => {
         setEditing(acc);
@@ -84,6 +99,7 @@ export default function AccountsPage() {
             region: acc.region || "pk",
             seller_id: acc.seller_id || "",
             price_adjust_pct: acc.price_adjust_pct ?? 0,
+            product_groups: (acc.product_groups || []).map((g) => g.documentId),
             api_key: "", api_secret: "", access_token: "", refresh_token: "",
             is_active: acc.is_active !== false,
             sync_orders_enabled: acc.sync_orders_enabled !== false,
@@ -218,6 +234,21 @@ export default function AccountsPage() {
                                     <div className="col-md-6">
                                         <label className="form-label">Refresh Token</label>
                                         <input className="form-control" name="refresh_token" value={form.refresh_token} onChange={handleChange} type="password" autoComplete="off" />
+                                    </div>
+                                    <div className="col-12">
+                                        <label className="form-label">Publish product-groups <span className="text-muted small">— every product in a checked group is published to this marketplace (∪ products you pick on the Listings page)</span></label>
+                                        <div className="border rounded p-2" style={{ maxHeight: 160, overflow: "auto" }}>
+                                            {productGroups.length === 0 ? (
+                                                <span className="text-muted small">No product-groups found.</span>
+                                            ) : productGroups.map((g) => (
+                                                <div className="form-check" key={g.documentId}>
+                                                    <input className="form-check-input" type="checkbox" id={`pg-${g.documentId}`}
+                                                        checked={(form.product_groups || []).includes(g.documentId)}
+                                                        onChange={(e) => toggleGroup(g.documentId, e.target.checked)} />
+                                                    <label className="form-check-label" htmlFor={`pg-${g.documentId}`}>{g.name}</label>
+                                                </div>
+                                            ))}
+                                        </div>
                                     </div>
                                     <div className="col-12 d-flex gap-4">
                                         <div className="form-check">
