@@ -199,20 +199,36 @@ async function syncOrdersForAccount(accountDocumentId) {
 
 // ── price adjustment ─────────────────────────────────────────────────────────
 
-// Effective % = the per-listing override when set, else the account default.
-// Each marketplace (account) can raise/lower prices independently, and any
-// single listing can override for a product the marketplace treats differently.
-function pctFor(listing, account) {
+// Resolve a product's price adjustment as { pct, fixed } (either may be negative
+// to lower or positive to raise). Precedence:
+//   1. the listing's per-product % override (operator set one for this product)
+//   2. the highest-priority active category rule the product matches — carries
+//      BOTH a % and a fixed amount (e.g. +5% +Rs.50 to cover that platform's
+//      shipping on a category)
+//   3. the account default %
+function effectiveAdjustment(product, listing, account, rules) {
   const lp = listing && listing.price_adjust_pct;
-  if (lp !== null && lp !== undefined && lp !== '') return Number(lp) || 0;
+  if (lp !== null && lp !== undefined && lp !== '') return { pct: Number(lp) || 0, fixed: 0 };
+
+  const catIds = new Set((product.categories || []).map((c) => c && c.documentId).filter(Boolean));
+  let best = null;
+  for (const r of rules) {
+    const cat = r.category && r.category.documentId;
+    if (!cat || !catIds.has(cat)) continue;
+    if (!best || (Number(r.priority) || 0) > (Number(best.priority) || 0)) best = r;
+  }
+  if (best) return { pct: Number(best.adjust_pct) || 0, fixed: Number(best.adjust_fixed) || 0 };
+
   const ap = account && account.price_adjust_pct;
-  return (ap !== null && ap !== undefined && ap !== '') ? (Number(ap) || 0) : 0;
+  return { pct: (ap !== null && ap !== undefined && ap !== '') ? (Number(ap) || 0) : 0, fixed: 0 };
 }
 
-function adjustPrice(base, pct) {
+// adjusted = base × (1 + pct/100) + fixed, floored at 0, rounded to 2dp.
+function applyAdjustment(base, adj) {
   const b = Number(base) || 0;
   if (!b) return 0;
-  return Math.round(b * (1 + (Number(pct) || 0) / 100) * 100) / 100;
+  const v = b * (1 + (Number(adj.pct) || 0) / 100) + (Number(adj.fixed) || 0);
+  return Math.round(Math.max(0, v) * 100) / 100;
 }
 
 // ── listings: push the publish set's adjusted price + stock ──────────────────
@@ -285,21 +301,24 @@ async function syncInventoryForAccount(accountDocumentId) {
     const entries = [...set.values()].filter(({ product }) => product && product.is_active !== false && product.sku);
     counts.fetched = entries.length;
 
-    // Marketplace SalePrice from live offers scoped to this account.
-    const offerPrices = await strapi.fetchOfferPrices(account.documentId, entries.map((e) => e.product.documentId));
+    // Marketplace SalePrice from live offers + the account's category price rules.
+    const [offerPrices, rules] = await Promise.all([
+      strapi.fetchOfferPrices(account.documentId, entries.map((e) => e.product.documentId)),
+      strapi.listPriceRules(account.documentId),
+    ]);
 
     const updates = [];
     const bySku = new Map(); // sku → { product, listing, price }
     for (const { product, listing } of entries) {
       const sku = product.sku || listing?.product_sku;
       if (!sku) { counts.skipped += 1; continue; }
-      const pct = pctFor(listing, account);
-      const price = adjustPrice(product.selling_price, pct);
+      const adj = effectiveAdjustment(product, listing, account, rules);
+      const price = applyAdjustment(product.selling_price, adj);
       const offer = offerPrices[product.documentId];
       const offerBase = offer && Number.isFinite(Number(offer.finalPrice))
         ? Number(offer.finalPrice)
         : (Number(product.offer_price) > 0 ? Number(product.offer_price) : null);
-      const salePrice = offerBase != null ? adjustPrice(offerBase, pct) : undefined;
+      const salePrice = offerBase != null ? applyAdjustment(offerBase, adj) : undefined;
       const quantity = Number(product.stock_quantity) || 0;
       updates.push({ sku, quantity, price, salePrice });
       bySku.set(String(sku), { product, listing, price });

@@ -4,6 +4,7 @@ const SECTIONS = [
     { href: "/",          label: "Dashboard", icon: "fa-gauge" },
     { href: "/accounts",  label: "Accounts",  icon: "fa-plug" },
     { href: "/listings",  label: "Listings",  icon: "fa-tags" },
+    { href: "/pricing",   label: "Pricing",   icon: "fa-sliders" },
     { href: "/mapping",   label: "Mapping",   icon: "fa-diagram-project" },
     { href: "/sync-runs", label: "Sync Runs", icon: "fa-rotate" },
 ];

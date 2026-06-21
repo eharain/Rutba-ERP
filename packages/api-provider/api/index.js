@@ -33,6 +33,7 @@ export { HrTeamsEndpoints } from './hr-teams.js';
 export { MarketplaceAccountsEndpoints } from './marketplace-accounts.js';
 export { MarketplaceListingsEndpoints } from './marketplace-listings.js';
 export { MarketplaceMappingsEndpoints } from './marketplace-mappings.js';
+export { MarketplacePriceRulesEndpoints } from './marketplace-price-rules.js';
 export { MarketplaceSyncLogsEndpoints } from './marketplace-sync-logs.js';
 export { MediaLibraryEndpoints } from './media-library.js';
 export { MediaUtilsEndpoints } from './media-utils.js';

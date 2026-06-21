@@ -34,6 +34,7 @@ export * from './hr-teams.js';
 export * from './marketplace-accounts.js';
 export * from './marketplace-listings.js';
 export * from './marketplace-mappings.js';
+export * from './marketplace-price-rules.js';
 export * from './marketplace-sync-logs.js';
 export * from './media-library.js';
 export * from './media-utils.js';

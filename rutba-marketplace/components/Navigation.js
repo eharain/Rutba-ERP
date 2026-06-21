@@ -4,6 +4,7 @@ const SECONDARY = [
     { href: "/",          label: "Dashboard", variant: "primary" },
     { href: "/accounts",  label: "Accounts",  variant: "secondary" },
     { href: "/listings",  label: "Listings",  variant: "success" },
+    { href: "/pricing",   label: "Pricing",   variant: "warning" },
     { href: "/mapping",   label: "Mapping",   variant: "dark" },
     { href: "/sync-runs", label: "Sync Runs", variant: "info" },
 ];

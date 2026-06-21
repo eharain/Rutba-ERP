@@ -117,7 +117,7 @@ module.exports = {
     const r = await sreq('GET', '/marketplace-listings', {
       query: {
         filters: { marketplace_account: { documentId: { $eq: accountDocumentId } } },
-        populate: { product: { fields: ['name', 'sku', 'selling_price', 'offer_price', 'stock_quantity', 'is_active'] } },
+        populate: { product: { fields: ['name', 'sku', 'selling_price', 'offer_price', 'stock_quantity', 'is_active'], populate: { categories: { fields: ['documentId'] } } } },
         pagination: { pageSize: 2000 },
       },
     });
@@ -129,7 +129,7 @@ module.exports = {
     const r = await sreq('GET', `/marketplace-accounts/${accountDocumentId}`, {
       query: {
         populate: {
-          product_groups: { populate: { products: { fields: ['name', 'sku', 'selling_price', 'offer_price', 'stock_quantity', 'is_active'] } } },
+          product_groups: { populate: { products: { fields: ['name', 'sku', 'selling_price', 'offer_price', 'stock_quantity', 'is_active'], populate: { categories: { fields: ['documentId'] } } } } },
         },
       },
     });
@@ -152,6 +152,19 @@ module.exports = {
   async fetchOfferPrices(accountDocumentId, productDocumentIds) {
     const r = await sreq('POST', `/marketplace-accounts/${accountDocumentId}/offer-prices`, { body: { productDocumentIds } });
     return r.data || {};
+  },
+
+  /** Active per-category price rules for an account (highest priority first). */
+  async listPriceRules(accountDocumentId) {
+    const r = await sreq('GET', '/marketplace-price-rules', {
+      query: {
+        filters: { marketplace_account: { documentId: { $eq: accountDocumentId } }, is_active: { $eq: true } },
+        populate: { category: { fields: ['documentId', 'name'] } },
+        sort: ['priority:desc'],
+        pagination: { pageSize: 500 },
+      },
+    });
+    return r.data || [];
   },
 
   async updateListing(documentId, data) {

@@ -34,6 +34,7 @@ export * from './hr-teams';
 export * from './marketplace-accounts';
 export * from './marketplace-listings';
 export * from './marketplace-mappings';
+export * from './marketplace-price-rules';
 export * from './marketplace-sync-logs';
 export * from './media-library';
 export * from './media-utils';

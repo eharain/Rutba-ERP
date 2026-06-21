@@ -1,0 +1,48 @@
+{
+  "kind": "collectionType",
+  "collectionName": "marketplace_price_rules",
+  "info": {
+    "singularName": "marketplace-price-rule",
+    "pluralName": "marketplace-price-rules",
+    "displayName": "Marketplace Price Rule",
+    "description": "Per-account price adjustment scoped to a product category — a percentage and/or fixed amount (either direction) applied to that category's products when pushing to the marketplace. Highest priority wins. Pure datastore."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "marketplace_account": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::marketplace-account.marketplace-account"
+    },
+    "platform": {
+      "type": "string"
+    },
+    "category": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::category.category"
+    },
+    "adjust_pct": {
+      "type": "decimal",
+      "default": 0
+    },
+    "adjust_fixed": {
+      "type": "decimal",
+      "default": 0
+    },
+    "priority": {
+      "type": "integer",
+      "default": 0
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "note": {
+      "type": "string"
+    }
+  }
+}
