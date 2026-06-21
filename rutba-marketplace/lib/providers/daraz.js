@@ -294,8 +294,16 @@ module.exports = {
     const rows = (updates || []).filter((u) => u && u.sku != null);
     if (!rows.length) return { results: [] };
 
+    // SellerSku + Quantity, plus Price/SalePrice when supplied (the operator's
+    // per-marketplace price adjustment is already applied by the caller).
     const skuXml = rows
-      .map((u) => `<Sku><SellerSku>${xmlEscape(u.sku)}</SellerSku><Quantity>${Math.max(0, Math.trunc(Number(u.quantity) || 0))}</Quantity></Sku>`)
+      .map((u) => {
+        const qty = Math.max(0, Math.trunc(Number(u.quantity) || 0));
+        let inner = `<SellerSku>${xmlEscape(u.sku)}</SellerSku><Quantity>${qty}</Quantity>`;
+        if (Number.isFinite(Number(u.price)) && Number(u.price) > 0) inner += `<Price>${Number(u.price).toFixed(2)}</Price>`;
+        if (Number.isFinite(Number(u.salePrice)) && Number(u.salePrice) > 0) inner += `<SalePrice>${Number(u.salePrice).toFixed(2)}</SalePrice>`;
+        return `<Sku>${inner}</Sku>`;
+      })
       .join('');
     const payload = `<Request><Product><Skus>${skuXml}</Skus></Product></Request>`;
 

@@ -2357,6 +2357,156 @@ export interface ApiHrTeamHrTeam extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiMarketplaceAccountMarketplaceAccount
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'marketplace_accounts';
+  info: {
+    description: 'API credentials + sync state for a connected marketplace seller account (Daraz, Amazon, Shopify, ...)';
+    displayName: 'Marketplace Account';
+    pluralName: 'marketplace-accounts';
+    singularName: 'marketplace-account';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    access_token: Schema.Attribute.Text & Schema.Attribute.Private;
+    account_name: Schema.Attribute.String & Schema.Attribute.Required;
+    api_key: Schema.Attribute.Text & Schema.Attribute.Private;
+    api_secret: Schema.Attribute.Text & Schema.Attribute.Private;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    extra_config: Schema.Attribute.JSON & Schema.Attribute.Private;
+    is_active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    last_connected_at: Schema.Attribute.DateTime;
+    last_inventory_synced_at: Schema.Attribute.DateTime;
+    last_orders_synced_at: Schema.Attribute.DateTime;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::marketplace-account.marketplace-account'
+    > &
+      Schema.Attribute.Private;
+    platform: Schema.Attribute.Enumeration<['daraz', 'amazon', 'shopify']> &
+      Schema.Attribute.Required;
+    publishedAt: Schema.Attribute.DateTime;
+    refresh_expires_at: Schema.Attribute.DateTime & Schema.Attribute.Private;
+    refresh_token: Schema.Attribute.Text & Schema.Attribute.Private;
+    region: Schema.Attribute.String;
+    seller_id: Schema.Attribute.String;
+    sync_inventory_enabled: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<true>;
+    sync_logs: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::marketplace-sync-log.marketplace-sync-log'
+    >;
+    sync_orders_enabled: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<true>;
+    token_expires_at: Schema.Attribute.DateTime & Schema.Attribute.Private;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiMarketplaceMappingMarketplaceMapping
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'marketplace_mappings';
+  info: {
+    description: "Maps an internal taxonomy entity (category/brand/term/term-type) to a marketplace's taxonomy id. Pure reference data \u2014 the rutba-marketplace app reads/writes it; Strapi just stores it.";
+    displayName: 'Marketplace Mapping';
+    pluralName: 'marketplace-mappings';
+    singularName: 'marketplace-mapping';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    attributes: Schema.Attribute.JSON;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    external_id: Schema.Attribute.String;
+    external_name: Schema.Attribute.String;
+    external_parent_id: Schema.Attribute.String;
+    internal_document_id: Schema.Attribute.String;
+    internal_name: Schema.Attribute.String;
+    internal_uid: Schema.Attribute.String;
+    is_active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    kind: Schema.Attribute.Enumeration<
+      ['category', 'brand', 'term', 'term_type']
+    > &
+      Schema.Attribute.Required;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::marketplace-mapping.marketplace-mapping'
+    > &
+      Schema.Attribute.Private;
+    marketplace_account: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::marketplace-account.marketplace-account'
+    >;
+    platform: Schema.Attribute.String & Schema.Attribute.Required;
+    publishedAt: Schema.Attribute.DateTime;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiMarketplaceSyncLogMarketplaceSyncLog
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'marketplace_sync_logs';
+  info: {
+    description: 'Audit trail of marketplace sync runs (order pulls, inventory pushes, token refreshes)';
+    displayName: 'Marketplace Sync Log';
+    pluralName: 'marketplace-sync-logs';
+    singularName: 'marketplace-sync-log';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    created: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    detail: Schema.Attribute.JSON;
+    error: Schema.Attribute.Text;
+    failed: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    fetched: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    finished_at: Schema.Attribute.DateTime;
+    kind: Schema.Attribute.Enumeration<
+      ['orders', 'inventory', 'oauth', 'fulfillment']
+    > &
+      Schema.Attribute.Required;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::marketplace-sync-log.marketplace-sync-log'
+    > &
+      Schema.Attribute.Private;
+    marketplace_account: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::marketplace-account.marketplace-account'
+    >;
+    platform: Schema.Attribute.String;
+    publishedAt: Schema.Attribute.DateTime;
+    skipped: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    started_at: Schema.Attribute.DateTime;
+    status: Schema.Attribute.Enumeration<
+      ['running', 'success', 'partial', 'error']
+    > &
+      Schema.Attribute.DefaultTo<'running'>;
+    updated: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiMfgBomMfgBom extends Struct.CollectionTypeSchema {
   collectionName: 'mfg_boms';
   info: {
@@ -4042,6 +4192,7 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     description: Schema.Attribute.RichText;
+    external_ids: Schema.Attribute.JSON;
     gallery: Schema.Attribute.Media<'images' | 'videos' | 'audios', true>;
     is_active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
     is_exchangeable: Schema.Attribute.Boolean &
@@ -4747,6 +4898,11 @@ export interface ApiSaleOrderSaleOrder extends Struct.CollectionTypeSchema {
       'manyToOne',
       'api::hr-employee.hr-employee'
     >;
+    channel: Schema.Attribute.Enumeration<
+      ['web', 'pos', 'manual', 'daraz', 'amazon', 'shopify']
+    > &
+      Schema.Attribute.DefaultTo<'web'>;
+    channel_meta: Schema.Attribute.JSON;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -4783,6 +4939,9 @@ export interface ApiSaleOrderSaleOrder extends Struct.CollectionTypeSchema {
       'api::delivery-zone.delivery-zone'
     >;
     estimated_delivery_time: Schema.Attribute.DateTime;
+    external_order_id: Schema.Attribute.String;
+    external_order_number: Schema.Attribute.String;
+    external_vendor_id: Schema.Attribute.String;
     label_generated_at: Schema.Attribute.DateTime;
     label_image: Schema.Attribute.Text;
     label_url: Schema.Attribute.Text;
@@ -4792,6 +4951,10 @@ export interface ApiSaleOrderSaleOrder extends Struct.CollectionTypeSchema {
       'api::sale-order.sale-order'
     > &
       Schema.Attribute.Private;
+    marketplace_account: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::marketplace-account.marketplace-account'
+    >;
     order_id: Schema.Attribute.UID & Schema.Attribute.Required;
     order_messages: Schema.Attribute.Relation<
       'oneToMany',
@@ -6912,6 +7075,9 @@ declare module '@strapi/strapi' {
       'api::hr-employee.hr-employee': ApiHrEmployeeHrEmployee;
       'api::hr-leave-request.hr-leave-request': ApiHrLeaveRequestHrLeaveRequest;
       'api::hr-team.hr-team': ApiHrTeamHrTeam;
+      'api::marketplace-account.marketplace-account': ApiMarketplaceAccountMarketplaceAccount;
+      'api::marketplace-mapping.marketplace-mapping': ApiMarketplaceMappingMarketplaceMapping;
+      'api::marketplace-sync-log.marketplace-sync-log': ApiMarketplaceSyncLogMarketplaceSyncLog;
       'api::mfg-bom.mfg-bom': ApiMfgBomMfgBom;
       'api::mfg-bundle.mfg-bundle': ApiMfgBundleMfgBundle;
       'api::mfg-defect-type.mfg-defect-type': ApiMfgDefectTypeMfgDefectType;

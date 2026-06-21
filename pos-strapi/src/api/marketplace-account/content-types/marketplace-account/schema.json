@@ -80,6 +80,10 @@
       "type": "boolean",
       "default": true
     },
+    "price_adjust_pct": {
+      "type": "decimal",
+      "default": 0
+    },
     "sync_logs": {
       "type": "relation",
       "relation": "oneToMany",

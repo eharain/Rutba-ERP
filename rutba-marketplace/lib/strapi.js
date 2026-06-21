@@ -112,37 +112,35 @@ module.exports = {
     return r.data || r;
   },
 
-  /**
-   * Products to push stock for. Listing flow (phase 2) sets
-   * product.external_ids[platform]; until then matchAll pushes every active
-   * SKU'd product. Paginates the core /products endpoint and filters in JS
-   * (JSON-column key presence isn't cleanly queryable in Strapi filters).
-   */
-  async listedProducts(platform, matchAll) {
-    const out = [];
-    const pageSize = 200;
-    const MAX_PAGES = 50; // safety cap → 10k products
-    for (let page = 1; page <= MAX_PAGES; page += 1) {
-      const r = await sreq('GET', '/products', {
-        query: {
-          filters: { sku: { $notNull: true }, ...(matchAll ? { is_active: true } : {}) },
-          fields: ['sku', 'stock_quantity', 'external_ids', 'is_active'],
-          pagination: { page, pageSize },
-        },
-      });
-      const rows = r.data || [];
-      for (const p of rows) {
-        if (!p.sku) continue;
-        if (matchAll) { out.push(p); continue; }
-        const ext = p.external_ids;
-        if (ext && typeof ext === 'object' && ext[platform]) out.push(p);
-      }
-      const pageCount = r.meta?.pagination?.pageCount || 1;
-      if (page >= pageCount) break;
-      if (page === MAX_PAGES) {
-        console.warn(`[marketplace] listedProducts truncated at ${MAX_PAGES * pageSize} products`);
-      }
-    }
-    return out;
+  /** Selected listings for an account, with their product price/stock populated. */
+  async listSelectedListings(accountDocumentId) {
+    const r = await sreq('GET', '/marketplace-listings', {
+      query: {
+        filters: { marketplace_account: { documentId: { $eq: accountDocumentId } }, selected: { $eq: true } },
+        populate: { product: { fields: ['name', 'sku', 'selling_price', 'offer_price', 'stock_quantity'] } },
+        pagination: { pageSize: 1000 },
+      },
+    });
+    return r.data || [];
+  },
+
+  async updateListing(documentId, data) {
+    const r = await sreq('PUT', `/marketplace-listings/${documentId}`, { body: { data } });
+    return r.data || r;
+  },
+
+  /** Our products for the selection UI (paginated, optional name/sku search). */
+  async listProducts({ page = 1, pageSize = 50, q } = {}) {
+    const filters = {};
+    if (q) filters.$or = [{ name: { $containsi: q } }, { sku: { $containsi: q } }];
+    const r = await sreq('GET', '/products', {
+      query: {
+        filters,
+        fields: ['name', 'sku', 'selling_price', 'offer_price', 'stock_quantity', 'is_active'],
+        sort: ['name:asc'],
+        pagination: { page, pageSize },
+      },
+    });
+    return { items: r.data || [], pagination: r.meta?.pagination || {} };
   },
 };

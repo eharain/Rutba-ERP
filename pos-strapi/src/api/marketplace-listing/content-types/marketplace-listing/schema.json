@@ -1,0 +1,67 @@
+{
+  "kind": "collectionType",
+  "collectionName": "marketplace_listings",
+  "info": {
+    "singularName": "marketplace-listing",
+    "pluralName": "marketplace-listings",
+    "displayName": "Marketplace Listing",
+    "description": "Per (account, product) listing config: whether the product is selected for a marketplace, its per-listing price adjustment, and the external listing/sku ids + push state. Pure datastore — the rutba-marketplace app reads/writes it."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "marketplace_account": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::marketplace-account.marketplace-account"
+    },
+    "platform": {
+      "type": "string"
+    },
+    "product": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::product.product"
+    },
+    "product_sku": {
+      "type": "string"
+    },
+    "product_name": {
+      "type": "string"
+    },
+    "selected": {
+      "type": "boolean",
+      "default": false
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "draft",
+        "listed",
+        "delisted",
+        "error"
+      ],
+      "default": "draft"
+    },
+    "external_listing_id": {
+      "type": "string"
+    },
+    "external_sku_id": {
+      "type": "string"
+    },
+    "price_adjust_pct": {
+      "type": "decimal"
+    },
+    "listed_price": {
+      "type": "decimal"
+    },
+    "last_pushed_at": {
+      "type": "datetime"
+    },
+    "push_error": {
+      "type": "text"
+    }
+  }
+}

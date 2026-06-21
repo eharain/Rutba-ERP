@@ -3,6 +3,7 @@ import SharedSidebar from "@rutba/pos-shared/components/Sidebar";
 const SECTIONS = [
     { href: "/",          label: "Dashboard", icon: "fa-gauge" },
     { href: "/accounts",  label: "Accounts",  icon: "fa-plug" },
+    { href: "/listings",  label: "Listings",  icon: "fa-tags" },
     { href: "/mapping",   label: "Mapping",   icon: "fa-diagram-project" },
     { href: "/sync-runs", label: "Sync Runs", icon: "fa-rotate" },
 ];

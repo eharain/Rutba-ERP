@@ -32,6 +32,7 @@ export * from './hr-employees.js';
 export * from './hr-leave-requests.js';
 export * from './hr-teams.js';
 export * from './marketplace-accounts.js';
+export * from './marketplace-listings.js';
 export * from './marketplace-mappings.js';
 export * from './marketplace-sync-logs.js';
 export * from './media-library.js';

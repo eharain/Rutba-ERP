@@ -197,17 +197,39 @@ async function syncOrdersForAccount(accountDocumentId) {
   }
 }
 
-// ── inventory ────────────────────────────────────────────────────────────────
+// ── price adjustment ─────────────────────────────────────────────────────────
 
+// Effective % = the per-listing override when set, else the account default.
+// Each marketplace (account) can raise/lower prices independently, and any
+// single listing can override for a product the marketplace treats differently.
+function pctFor(listing, account) {
+  const lp = listing && listing.price_adjust_pct;
+  if (lp !== null && lp !== undefined && lp !== '') return Number(lp) || 0;
+  const ap = account && account.price_adjust_pct;
+  return (ap !== null && ap !== undefined && ap !== '') ? (Number(ap) || 0) : 0;
+}
+
+function adjustPrice(base, pct) {
+  const b = Number(base) || 0;
+  if (!b) return 0;
+  return Math.round(b * (1 + (Number(pct) || 0) / 100) * 100) / 100;
+}
+
+// ── listings: push selected products' adjusted price + stock ─────────────────
+
+// Pushes only the operator-SELECTED listings (not the whole catalog), applying
+// the per-marketplace price adjustment. Used by both the manual "Push" button
+// and the inventory cron, so price + stock stay in sync. Products must already
+// exist on the marketplace by SellerSku — creating brand-new listings
+// (product/create with images + category attributes) is the next increment.
 async function syncInventoryForAccount(accountDocumentId) {
   let account = await strapi.getAccountSecrets(accountDocumentId);
   if (!account) throw new Error('Account not found');
   if (!account.is_active) return { skipped: true, reason: 'inactive' };
   account = await ensureFreshToken(account);
   const adapter = providers.getAdapter(account.platform);
-  if (!adapter.capabilities?.inventory) return { skipped: true, reason: 'inventory not supported' };
+  if (!adapter.capabilities?.inventory) return { skipped: true, reason: 'price/stock push not supported' };
 
-  const matchAll = !!base.extra(account, 'inventory_match_all', false);
   const log = await strapi.createSyncLog({
     marketplace_account: account.documentId, platform: account.platform,
     kind: 'inventory', status: 'running', started_at: new Date().toISOString(),
@@ -215,16 +237,45 @@ async function syncInventoryForAccount(accountDocumentId) {
   const counts = { fetched: 0, created: 0, updated: 0, skipped: 0, failed: 0 };
   const detail = [];
   try {
-    const products = await strapi.listedProducts(account.platform, matchAll);
-    counts.fetched = products.length;
-    const updates = products.map((p) => ({ sku: p.sku, quantity: Number(p.stock_quantity) || 0 }));
+    const listings = await strapi.listSelectedListings(account.documentId);
+    counts.fetched = listings.length;
+
+    const updates = [];
+    const bySku = new Map(); // sku → { listing, price } to stamp results back
+    for (const l of listings) {
+      const product = l.product || {};
+      const sku = l.product_sku || product.sku;
+      if (!sku) { counts.skipped += 1; detail.push({ listing: l.documentId, error: 'listing has no SKU' }); continue; }
+      const pct = pctFor(l, account);
+      const price = adjustPrice(product.selling_price, pct);
+      const offer = Number(product.offer_price) || 0;
+      const salePrice = offer > 0 ? adjustPrice(offer, pct) : undefined;
+      const quantity = Number(product.stock_quantity) || 0;
+      updates.push({ sku, quantity, price, salePrice });
+      bySku.set(String(sku), { listing: l, price });
+    }
 
     for (let i = 0; i < updates.length; i += INVENTORY_BATCH) {
       const batch = updates.slice(i, i + INVENTORY_BATCH);
       const { results } = await adapter.pushInventory({ account, updates: batch });
       for (const r of results || []) {
-        if (r.ok) counts.updated += 1;
-        else { counts.failed += 1; detail.push({ sku: r.sku, error: r.error }); }
+        const meta = bySku.get(String(r.sku));
+        if (r.ok) {
+          counts.updated += 1;
+          if (meta) {
+            await strapi.updateListing(meta.listing.documentId, {
+              status: 'listed', listed_price: meta.price, last_pushed_at: new Date().toISOString(), push_error: null,
+            });
+          }
+        } else {
+          counts.failed += 1;
+          detail.push({ sku: r.sku, error: r.error });
+          if (meta) {
+            await strapi.updateListing(meta.listing.documentId, {
+              status: 'error', push_error: String(r.error || '').slice(0, 500), last_pushed_at: new Date().toISOString(),
+            });
+          }
+        }
       }
     }
 

@@ -32,6 +32,7 @@ export * from './hr-employees';
 export * from './hr-leave-requests';
 export * from './hr-teams';
 export * from './marketplace-accounts';
+export * from './marketplace-listings';
 export * from './marketplace-mappings';
 export * from './marketplace-sync-logs';
 export * from './media-library';

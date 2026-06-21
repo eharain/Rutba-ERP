@@ -13,6 +13,7 @@ const EMPTY_FORM = {
     account_name: "",
     region: "pk",
     seller_id: "",
+    price_adjust_pct: 0,
     // Per-account credentials. Each marketplace provides keys its own way
     // (OAuth app key/secret, static API key, long-lived token); the adapter
     // prefers these over the app-level env defaults. Stored `private`, so they
@@ -82,6 +83,7 @@ export default function AccountsPage() {
             account_name: acc.account_name || "",
             region: acc.region || "pk",
             seller_id: acc.seller_id || "",
+            price_adjust_pct: acc.price_adjust_pct ?? 0,
             api_key: "", api_secret: "", access_token: "", refresh_token: "",
             is_active: acc.is_active !== false,
             sync_orders_enabled: acc.sync_orders_enabled !== false,
@@ -98,6 +100,7 @@ export default function AccountsPage() {
             // on an edit (they never read back, so the form shows them blank).
             const data = { ...form };
             for (const k of CRED_FIELDS) { if (!data[k]) delete data[k]; }
+            data.price_adjust_pct = data.price_adjust_pct === "" || data.price_adjust_pct == null ? 0 : Number(data.price_adjust_pct);
             const payload = { data };
             if (editing) {
                 await MarketplaceAccountsEndpoints.update(editing.documentId, payload);
@@ -188,9 +191,13 @@ export default function AccountsPage() {
                                             {REGIONS.map((r) => <option key={r} value={r}>{r.toUpperCase()}</option>)}
                                         </select>
                                     </div>
-                                    <div className="col-md-2">
+                                    <div className="col-md-1">
                                         <label className="form-label">Seller ID</label>
                                         <input className="form-control" name="seller_id" value={form.seller_id} onChange={handleChange} placeholder="Optional" />
+                                    </div>
+                                    <div className="col-md-1">
+                                        <label className="form-label" title="Raise (+) or lower (−) pushed prices vs your selling price">Price %</label>
+                                        <input className="form-control" name="price_adjust_pct" value={form.price_adjust_pct} onChange={handleChange} inputMode="decimal" placeholder="0" />
                                     </div>
                                     <div className="col-12">
                                         <hr className="my-1" />

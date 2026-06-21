@@ -31,6 +31,7 @@ export { HrEmployeesEndpoints } from './hr-employees.js';
 export { HrLeaveRequestsEndpoints } from './hr-leave-requests.js';
 export { HrTeamsEndpoints } from './hr-teams.js';
 export { MarketplaceAccountsEndpoints } from './marketplace-accounts.js';
+export { MarketplaceListingsEndpoints } from './marketplace-listings.js';
 export { MarketplaceMappingsEndpoints } from './marketplace-mappings.js';
 export { MarketplaceSyncLogsEndpoints } from './marketplace-sync-logs.js';
 export { MediaLibraryEndpoints } from './media-library.js';
