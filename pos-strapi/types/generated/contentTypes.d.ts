@@ -2390,6 +2390,11 @@ export interface ApiMarketplaceAccountMarketplaceAccount
       Schema.Attribute.Private;
     platform: Schema.Attribute.Enumeration<['daraz', 'amazon', 'shopify']> &
       Schema.Attribute.Required;
+    price_adjust_pct: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    product_groups: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::product-group.product-group'
+    >;
     publishedAt: Schema.Attribute.DateTime;
     refresh_expires_at: Schema.Attribute.DateTime & Schema.Attribute.Private;
     refresh_token: Schema.Attribute.Text & Schema.Attribute.Private;
@@ -2404,6 +2409,54 @@ export interface ApiMarketplaceAccountMarketplaceAccount
     sync_orders_enabled: Schema.Attribute.Boolean &
       Schema.Attribute.DefaultTo<true>;
     token_expires_at: Schema.Attribute.DateTime & Schema.Attribute.Private;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiMarketplaceListingMarketplaceListing
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'marketplace_listings';
+  info: {
+    description: 'Per (account, product) listing config: whether the product is selected for a marketplace, its per-listing price adjustment, and the external listing/sku ids + push state. Pure datastore \u2014 the rutba-marketplace app reads/writes it.';
+    displayName: 'Marketplace Listing';
+    pluralName: 'marketplace-listings';
+    singularName: 'marketplace-listing';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    external_listing_id: Schema.Attribute.String;
+    external_sku_id: Schema.Attribute.String;
+    last_pushed_at: Schema.Attribute.DateTime;
+    listed_price: Schema.Attribute.Decimal;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::marketplace-listing.marketplace-listing'
+    > &
+      Schema.Attribute.Private;
+    marketplace_account: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::marketplace-account.marketplace-account'
+    >;
+    platform: Schema.Attribute.String;
+    price_adjust_pct: Schema.Attribute.Decimal;
+    product: Schema.Attribute.Relation<'manyToOne', 'api::product.product'>;
+    product_name: Schema.Attribute.String;
+    product_sku: Schema.Attribute.String;
+    publishedAt: Schema.Attribute.DateTime;
+    push_error: Schema.Attribute.Text;
+    selected: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    status: Schema.Attribute.Enumeration<
+      ['draft', 'listed', 'delisted', 'error']
+    > &
+      Schema.Attribute.DefaultTo<'draft'>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -2449,6 +2502,46 @@ export interface ApiMarketplaceMappingMarketplaceMapping
       'api::marketplace-account.marketplace-account'
     >;
     platform: Schema.Attribute.String & Schema.Attribute.Required;
+    publishedAt: Schema.Attribute.DateTime;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiMarketplacePriceRuleMarketplacePriceRule
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'marketplace_price_rules';
+  info: {
+    description: "Per-account price adjustment scoped to a product category \u2014 a percentage and/or fixed amount (either direction) applied to that category's products when pushing to the marketplace. Highest priority wins. Pure datastore.";
+    displayName: 'Marketplace Price Rule';
+    pluralName: 'marketplace-price-rules';
+    singularName: 'marketplace-price-rule';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    adjust_fixed: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    adjust_pct: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    category: Schema.Attribute.Relation<'manyToOne', 'api::category.category'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    is_active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::marketplace-price-rule.marketplace-price-rule'
+    > &
+      Schema.Attribute.Private;
+    marketplace_account: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::marketplace-account.marketplace-account'
+    >;
+    note: Schema.Attribute.String;
+    platform: Schema.Attribute.String;
+    priority: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
     publishedAt: Schema.Attribute.DateTime;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
@@ -4840,6 +4933,7 @@ export interface ApiSaleOfferSaleOffer extends Struct.CollectionTypeSchema {
   };
   attributes: {
     active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    applies_to_web: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
     banner_image: Schema.Attribute.Media<'images'>;
     categories: Schema.Attribute.Relation<
       'manyToMany',
@@ -4866,6 +4960,10 @@ export interface ApiSaleOfferSaleOffer extends Struct.CollectionTypeSchema {
       'api::sale-offer.sale-offer'
     > &
       Schema.Attribute.Private;
+    marketplaces: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::marketplace-account.marketplace-account'
+    >;
     name: Schema.Attribute.String & Schema.Attribute.Required;
     priority: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
     product_groups: Schema.Attribute.Relation<
@@ -7076,7 +7174,9 @@ declare module '@strapi/strapi' {
       'api::hr-leave-request.hr-leave-request': ApiHrLeaveRequestHrLeaveRequest;
       'api::hr-team.hr-team': ApiHrTeamHrTeam;
       'api::marketplace-account.marketplace-account': ApiMarketplaceAccountMarketplaceAccount;
+      'api::marketplace-listing.marketplace-listing': ApiMarketplaceListingMarketplaceListing;
       'api::marketplace-mapping.marketplace-mapping': ApiMarketplaceMappingMarketplaceMapping;
+      'api::marketplace-price-rule.marketplace-price-rule': ApiMarketplacePriceRuleMarketplacePriceRule;
       'api::marketplace-sync-log.marketplace-sync-log': ApiMarketplaceSyncLogMarketplaceSyncLog;
       'api::mfg-bom.mfg-bom': ApiMfgBomMfgBom;
       'api::mfg-bundle.mfg-bundle': ApiMfgBundleMfgBundle;

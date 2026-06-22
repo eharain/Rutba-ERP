@@ -3,10 +3,14 @@
 // hit /api/* on this app's origin — distinct from the Strapi data reads that go
 // through @rutba/api-provider.
 
-export async function appPost(path, jwt) {
+export async function appPost(path, jwt, body) {
+    const headers = {};
+    if (jwt) headers.Authorization = `Bearer ${jwt}`;
+    if (body !== undefined) headers["Content-Type"] = "application/json";
     const res = await fetch(path, {
         method: "POST",
-        headers: jwt ? { Authorization: `Bearer ${jwt}` } : {},
+        headers,
+        body: body !== undefined ? JSON.stringify(body) : undefined,
     });
     let data = {};
     try { data = await res.json(); } catch (_) { /* empty body */ }

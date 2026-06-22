@@ -172,6 +172,15 @@ export default function AccountsPage() {
         }
     };
 
+    const setEnabled = async (acc, key, checked) => {
+        try {
+            await appPost(`/api/accounts/${acc.documentId}/set-enabled`, jwt, { [key]: checked });
+            setAccounts((list) => list.map((a) => (a.documentId === acc.documentId ? { ...a, [key]: checked } : a)));
+        } catch (e) {
+            toast(`Update failed: ${e.message}`, "danger");
+        }
+    };
+
     const busy = (acc, path) => busyId === acc.documentId + path;
 
     return (
@@ -284,17 +293,33 @@ export default function AccountsPage() {
                         <table className="table table-hover align-middle">
                             <thead>
                                 <tr>
-                                    <th>Platform</th><th>Account</th><th>Region</th><th>Status</th>
+                                    <th>Platform</th><th>Account</th><th>Region</th><th>Enabled</th>
                                     <th>Connection</th><th>Last Orders Sync</th><th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {accounts.map((acc) => (
+                                {accounts.map((acc) => {
+                                    const ordersOn = acc.is_active !== false && acc.sync_orders_enabled !== false;
+                                    const invOn = acc.is_active !== false && acc.sync_inventory_enabled !== false;
+                                    return (
                                     <tr key={acc.id}>
                                         <td><span className="badge bg-warning text-dark text-capitalize">{acc.platform}</span></td>
                                         <td>{acc.account_name}{acc.seller_id ? <div className="text-muted small">seller {acc.seller_id}</div> : null}</td>
                                         <td><code>{(acc.region || "—").toUpperCase()}</code></td>
-                                        <td>{acc.is_active ? <span className="badge bg-success">Active</span> : <span className="badge bg-secondary">Inactive</span>}</td>
+                                        <td style={{ minWidth: 150 }}>
+                                            <div className="form-check form-switch mb-0">
+                                                <input className="form-check-input" type="checkbox" checked={acc.is_active !== false} onChange={(e) => setEnabled(acc, "is_active", e.target.checked)} />
+                                                <label className="form-check-label small">Active</label>
+                                            </div>
+                                            <div className="form-check form-switch mb-0">
+                                                <input className="form-check-input" type="checkbox" checked={acc.sync_orders_enabled !== false} disabled={acc.is_active === false} onChange={(e) => setEnabled(acc, "sync_orders_enabled", e.target.checked)} />
+                                                <label className="form-check-label small">Sync orders</label>
+                                            </div>
+                                            <div className="form-check form-switch mb-0">
+                                                <input className="form-check-input" type="checkbox" checked={acc.sync_inventory_enabled !== false} disabled={acc.is_active === false} onChange={(e) => setEnabled(acc, "sync_inventory_enabled", e.target.checked)} />
+                                                <label className="form-check-label small">Sync inventory</label>
+                                            </div>
+                                        </td>
                                         <td>{acc.last_connected_at
                                             ? <span className="badge bg-success" title={new Date(acc.last_connected_at).toLocaleString()}><i className="fas fa-link me-1"></i>Connected</span>
                                             : <span className="badge bg-light text-dark border"><i className="fas fa-unlink me-1"></i>Not connected</span>}</td>
@@ -307,10 +332,10 @@ export default function AccountsPage() {
                                                 <button className="btn btn-sm btn-outline-secondary" title="Test connection" disabled={busy(acc, "/validate")} onClick={() => runAction(acc, "/validate", "Validate")}>
                                                     <i className="fas fa-heartbeat"></i>
                                                 </button>
-                                                <button className="btn btn-sm btn-outline-info" title="Sync orders now" disabled={busy(acc, "/sync-orders")} onClick={() => runAction(acc, "/sync-orders", "Order sync")}>
+                                                <button className="btn btn-sm btn-outline-info" title={ordersOn ? "Sync orders now" : "Enable Active + Sync orders first"} disabled={busy(acc, "/sync-orders") || !ordersOn} onClick={() => runAction(acc, "/sync-orders", "Order sync")}>
                                                     {busy(acc, "/sync-orders") ? <span className="spinner-border spinner-border-sm"></span> : <><i className="fas fa-download me-1"></i>Orders</>}
                                                 </button>
-                                                <button className="btn btn-sm btn-outline-info" title="Push inventory now" disabled={busy(acc, "/sync-inventory")} onClick={() => runAction(acc, "/sync-inventory", "Inventory sync")}>
+                                                <button className="btn btn-sm btn-outline-info" title={invOn ? "Push inventory now" : "Enable Active + Sync inventory first"} disabled={busy(acc, "/sync-inventory") || !invOn} onClick={() => runAction(acc, "/sync-inventory", "Inventory sync")}>
                                                     {busy(acc, "/sync-inventory") ? <span className="spinner-border spinner-border-sm"></span> : <><i className="fas fa-upload me-1"></i>Stock</>}
                                                 </button>
                                                 <button className="btn btn-sm btn-outline-primary" title="Edit" onClick={() => openEdit(acc)}><i className="fas fa-pen"></i></button>
@@ -318,7 +343,7 @@ export default function AccountsPage() {
                                             </div>
                                         </td>
                                     </tr>
-                                ))}
+                                ); })}
                             </tbody>
                         </table>
                     </div>

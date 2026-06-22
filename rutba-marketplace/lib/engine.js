@@ -108,6 +108,18 @@ async function refreshAccountToken(accountDocumentId) {
   return { refreshed: true };
 }
 
+// Toggle the account's enable flags (operator-facing "enable buttons"). Sync
+// (manual + cron) is gated on these, so an account does nothing until enabled.
+async function setAccountEnabled(accountDocumentId, flags = {}) {
+  const data = {};
+  for (const k of ['is_active', 'sync_orders_enabled', 'sync_inventory_enabled']) {
+    if (typeof flags[k] === 'boolean') data[k] = flags[k];
+  }
+  if (Object.keys(data).length === 0) throw new Error('No enable flag provided');
+  await strapi.updateAccount(accountDocumentId, data);
+  return data;
+}
+
 // ── catalog taxonomy (for the category/brand mapping layer) ──────────────────
 
 // Per-provider mapping spec — the UI renders its dimensions, so each
@@ -144,7 +156,8 @@ async function pullTaxonomy(accountDocumentId, kind = 'category', opts = {}) {
 async function syncOrdersForAccount(accountDocumentId) {
   let account = await strapi.getAccountSecrets(accountDocumentId);
   if (!account) throw new Error('Account not found');
-  if (!account.is_active) return { skipped: true, reason: 'inactive' };
+  if (!account.is_active) return { skipped: true, reason: 'account disabled' };
+  if (account.sync_orders_enabled === false) return { skipped: true, reason: 'order sync disabled' };
   account = await ensureFreshToken(account);
   const adapter = providers.getAdapter(account.platform);
   if (!adapter.capabilities?.orders) return { skipped: true, reason: 'orders not supported' };
@@ -265,7 +278,8 @@ async function stampListing(account, meta, patch) {
 async function syncInventoryForAccount(accountDocumentId) {
   let account = await strapi.getAccountSecrets(accountDocumentId);
   if (!account) throw new Error('Account not found');
-  if (!account.is_active) return { skipped: true, reason: 'inactive' };
+  if (!account.is_active) return { skipped: true, reason: 'account disabled' };
+  if (account.sync_inventory_enabled === false) return { skipped: true, reason: 'inventory sync disabled' };
   account = await ensureFreshToken(account);
   const adapter = providers.getAdapter(account.platform);
   if (!adapter.capabilities?.inventory) return { skipped: true, reason: 'price/stock push not supported' };
@@ -390,6 +404,7 @@ module.exports = {
   handleOAuthCallback,
   validateConnection,
   refreshAccountToken,
+  setAccountEnabled,
   getCatalogSpec,
   pullTaxonomy,
   syncOrdersForAccount,

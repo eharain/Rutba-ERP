@@ -30,6 +30,7 @@ export default function ListingsPage() {
 
     const account = useMemo(() => accounts.find((a) => a.documentId === accountId), [accounts, accountId]);
     const accountPct = num(account?.price_adjust_pct) || 0;
+    const invOn = account && account.is_active !== false && account.sync_inventory_enabled !== false;
 
     useEffect(() => {
         if (!jwt) return;
@@ -159,7 +160,9 @@ export default function ListingsPage() {
                                 <span className="badge bg-light text-dark border">Account default: {accountPct}%</span>
                                 <span className="badge bg-secondary">{selectedCount} selected</span>
                             </div>
-                            <button className="btn btn-success btn-sm" disabled={pushing || selectedCount === 0} onClick={pushSelected}>
+                            <button className="btn btn-success btn-sm" disabled={pushing || selectedCount === 0 || !invOn}
+                                title={invOn ? "Push price + stock for the publish set" : "Enable this account's inventory sync (Accounts page) first"}
+                                onClick={pushSelected}>
                                 {pushing ? <span className="spinner-border spinner-border-sm me-1"></span> : <i className="fas fa-cloud-arrow-up me-1"></i>}
                                 Push selected ({selectedCount})
                             </button>
