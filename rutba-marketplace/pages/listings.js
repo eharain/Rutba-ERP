@@ -112,11 +112,13 @@ export default function ListingsPage() {
         upsertListing(product, { selected: checked });
     };
 
-    const commitPct = (product, value) => {
+    const commitPct = async (product, value) => {
         const v = String(value ?? "").trim();
         const pct = v === "" ? null : Number(v);
         if (v !== "" && !Number.isFinite(pct)) { toast("Enter a number, e.g. 10 or -5.", "warning"); return; }
-        upsertListing(product, { price_adjust_pct: pct });
+        await upsertListing(product, { price_adjust_pct: pct });
+        // Drop the local edit so the row shows the persisted value after refresh.
+        setPctInputs((s) => { const n = { ...s }; delete n[product.documentId]; return n; });
     };
 
     const pushSelected = async () => {
@@ -167,7 +169,7 @@ export default function ListingsPage() {
                                 Push selected ({selectedCount})
                             </button>
                         </div>
-                        <p className="text-muted small">Price % raises (+) or lowers (−) the pushed price vs your selling price. Per-product value overrides the account default. Edit the account default on the Accounts page.</p>
+                        <p className="text-muted small">Price % raises (+) or lowers (−) the pushed price vs your selling price; per-product value overrides the account default (edit it on the Accounts page). The column below is a %-only <em>estimate</em> — category price rules (incl. fixed amounts) and live offers are applied at push time; the actual pushed price shows under Status afterward.</p>
 
                         {loading ? (
                             <div className="text-center py-4"><div className="spinner-border"></div></div>
@@ -184,7 +186,7 @@ export default function ListingsPage() {
                                             <th className="text-end">Price</th>
                                             <th className="text-end">Stock</th>
                                             <th style={{ width: 110 }}>Price %</th>
-                                            <th className="text-end">Marketplace price</th>
+                                            <th className="text-end">Est. price</th>
                                             <th>Status</th>
                                         </tr>
                                     </thead>

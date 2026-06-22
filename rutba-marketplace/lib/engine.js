@@ -220,20 +220,28 @@ async function syncOrdersForAccount(accountDocumentId) {
 //      shipping on a category)
 //   3. the account default %
 function effectiveAdjustment(product, listing, account, rules) {
-  const lp = listing && listing.price_adjust_pct;
-  if (lp !== null && lp !== undefined && lp !== '') return { pct: Number(lp) || 0, fixed: 0 };
-
+  // Matching category rule (highest priority among the product's categories).
   const catIds = new Set((product.categories || []).map((c) => c && c.documentId).filter(Boolean));
-  let best = null;
-  for (const r of rules) {
+  let rule = null;
+  for (const r of rules || []) {
     const cat = r.category && r.category.documentId;
     if (!cat || !catIds.has(cat)) continue;
-    if (!best || (Number(r.priority) || 0) > (Number(best.priority) || 0)) best = r;
+    if (!rule || (Number(r.priority) || 0) > (Number(rule.priority) || 0)) rule = r;
   }
-  if (best) return { pct: Number(best.adjust_pct) || 0, fixed: Number(best.adjust_fixed) || 0 };
-
-  const ap = account && account.price_adjust_pct;
-  return { pct: (ap !== null && ap !== undefined && ap !== '') ? (Number(ap) || 0) : 0, fixed: 0 };
+  // % precedence: per-listing override → category rule → account default.
+  const lp = listing && listing.price_adjust_pct;
+  let pct;
+  if (lp !== null && lp !== undefined && lp !== '') pct = Number(lp) || 0;
+  else if (rule) pct = Number(rule.adjust_pct) || 0;
+  else {
+    const ap = account && account.price_adjust_pct;
+    pct = (ap !== null && ap !== undefined && ap !== '') ? (Number(ap) || 0) : 0;
+  }
+  // The fixed amount comes only from a category rule (e.g. a shipping surcharge);
+  // a per-product % override changes the margin but does NOT drop the category's
+  // fixed cost.
+  const fixed = rule ? (Number(rule.adjust_fixed) || 0) : 0;
+  return { pct, fixed };
 }
 
 // adjusted = base × (1 + pct/100) + fixed, floored at 0, rounded to 2dp.
@@ -251,8 +259,16 @@ function applyAdjustment(base, adj) {
 async function stampListing(account, meta, patch) {
   const data = { last_pushed_at: new Date().toISOString(), ...patch };
   try {
-    if (meta.listing) {
-      await strapi.updateListing(meta.listing.documentId, data);
+    let listingDocId = meta.listing && meta.listing.documentId;
+    if (!listingDocId) {
+      // Re-query before creating — the manual push (app) and the cron (worker)
+      // run in different processes, so the run-start listing map can be stale;
+      // this avoids creating a duplicate row for a group-sourced product.
+      const existing = await strapi.findListing(account.documentId, meta.product.documentId);
+      listingDocId = existing && existing.documentId;
+    }
+    if (listingDocId) {
+      await strapi.updateListing(listingDocId, data);
     } else {
       await strapi.createListing({
         marketplace_account: account.documentId,
@@ -270,11 +286,12 @@ async function stampListing(account, meta, patch) {
 }
 
 // The publish set = products in the account's attached product-groups ∪
-// individually-selected listings. Each is pushed with the per-marketplace price
-// adjustment; the SalePrice comes from a live marketplace offer when one applies
-// (else the product's own offer_price). Only Published + active products go out
-// (drafts are excluded by Strapi's relation populate; is_active is re-checked).
-// Used by both the manual "Push" button and the inventory cron.
+// individually-selected listings, fetched fresh as PUBLISHED-only (a direct
+// /products find excludes drafts, unlike a nested relation populate, so a draft
+// product never reaches the marketplace) + active. Each is pushed with the
+// per-marketplace price adjustment; the SalePrice comes from a live marketplace
+// offer when one applies (else the product's own offer_price). Used by both the
+// manual "Push" button and the inventory cron.
 async function syncInventoryForAccount(accountDocumentId) {
   let account = await strapi.getAccountSecrets(accountDocumentId);
   if (!account) throw new Error('Account not found');
@@ -298,21 +315,19 @@ async function syncInventoryForAccount(accountDocumentId) {
     const listingByProduct = new Map();
     for (const l of allListings) { const pid = l.product?.documentId; if (pid) listingByProduct.set(pid, l); }
 
-    // publish set: group products ∪ individually-selected listings
-    const set = new Map(); // productDocId → { product, listing }
-    for (const p of groupProducts) {
-      if (p?.documentId) set.set(p.documentId, { product: p, listing: listingByProduct.get(p.documentId) || null });
-    }
-    for (const l of allListings) {
-      if (!l.selected) continue;
-      const p = l.product;
-      if (!p?.documentId) continue;
-      if (set.has(p.documentId)) set.get(p.documentId).listing = l; // explicit listing wins (its % override)
-      else set.set(p.documentId, { product: p, listing: l });
-    }
+    // Candidate product ids: every group product ∪ each individually-selected listing.
+    const wantedIds = new Set();
+    for (const p of groupProducts) if (p?.documentId) wantedIds.add(p.documentId);
+    for (const l of allListings) if (l.selected && l.product?.documentId) wantedIds.add(l.product.documentId);
 
-    // Gate: published (populate already returns published) + active + has SKU.
-    const entries = [...set.values()].filter(({ product }) => product && product.is_active !== false && product.sku);
+    // Authoritative PUBLISHED product data — the publish gate. Drafts are absent
+    // here, so they never get pushed; is_active + sku are re-checked.
+    const products = await strapi.getPublishedProducts([...wantedIds]);
+    const entries = [];
+    for (const product of products) {
+      if (product.is_active === false || !product.sku) continue;
+      entries.push({ product, listing: listingByProduct.get(product.documentId) || null });
+    }
     counts.fetched = entries.length;
 
     // Marketplace SalePrice from live offers + the account's category price rules.
@@ -328,11 +343,20 @@ async function syncInventoryForAccount(accountDocumentId) {
       if (!sku) { counts.skipped += 1; continue; }
       const adj = effectiveAdjustment(product, listing, account, rules);
       const price = applyAdjustment(product.selling_price, adj);
+      // A non-positive regular price would be silently dropped from the XML
+      // (quantity-only) and is invalid on Daraz — skip it with a clear reason.
+      if (!(price > 0)) {
+        counts.skipped += 1;
+        detail.push({ sku, error: `computed price ${price} is not > 0 — check this product's adjustment/fixed rule` });
+        continue;
+      }
       const offer = offerPrices[product.documentId];
       const offerBase = offer && Number.isFinite(Number(offer.finalPrice))
         ? Number(offer.finalPrice)
         : (Number(product.offer_price) > 0 ? Number(product.offer_price) : null);
-      const salePrice = offerBase != null ? applyAdjustment(offerBase, adj) : undefined;
+      let salePrice = offerBase != null ? applyAdjustment(offerBase, adj) : undefined;
+      // Daraz requires SalePrice < Price; drop it if the adjustment collapsed the gap.
+      if (salePrice != null && !(salePrice < price)) salePrice = undefined;
       const quantity = Number(product.stock_quantity) || 0;
       updates.push({ sku, quantity, price, salePrice });
       bySku.set(String(sku), { product, listing, price });
@@ -412,5 +436,8 @@ module.exports = {
   syncAllOrders,
   syncAllInventory,
   refreshExpiringTokens,
+  // pure helpers exported for unit tests
+  effectiveAdjustment,
+  applyAdjustment,
   _msg: msg,
 };

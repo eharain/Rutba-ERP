@@ -148,6 +148,47 @@ module.exports = {
     return r.data || r;
   },
 
+  /** Find an existing listing for (account, product), or null. */
+  async findListing(accountDocumentId, productDocumentId) {
+    const r = await sreq('GET', '/marketplace-listings', {
+      query: {
+        filters: {
+          marketplace_account: { documentId: { $eq: accountDocumentId } },
+          product: { documentId: { $eq: productDocumentId } },
+        },
+        fields: ['documentId'],
+        pagination: { pageSize: 1 },
+      },
+    });
+    return (r.data && r.data[0]) || null;
+  },
+
+  /**
+   * Authoritative PUBLISHED product data for the given documentIds — the publish
+   * gate. A direct /products find returns published only (draft versions are
+   * excluded), unlike a nested relation populate, so drafts never reach the
+   * marketplace.
+   */
+  async getPublishedProducts(documentIds) {
+    const ids = [...new Set((documentIds || []).filter(Boolean))];
+    if (!ids.length) return [];
+    const out = [];
+    for (let i = 0; i < ids.length; i += 100) {
+      const batch = ids.slice(i, i + 100);
+      const r = await sreq('GET', '/products', {
+        query: {
+          filters: { documentId: { $in: batch } },
+          status: 'published',
+          fields: ['name', 'sku', 'selling_price', 'offer_price', 'stock_quantity', 'is_active'],
+          populate: { categories: { fields: ['documentId'] } },
+          pagination: { pageSize: 100 },
+        },
+      });
+      out.push(...(r.data || []));
+    }
+    return out;
+  },
+
   /** Live marketplace offer prices for the given products: { [documentId]: { finalPrice, offerName } }. */
   async fetchOfferPrices(accountDocumentId, productDocumentIds) {
     const r = await sreq('POST', `/marketplace-accounts/${accountDocumentId}/offer-prices`, { body: { productDocumentIds } });

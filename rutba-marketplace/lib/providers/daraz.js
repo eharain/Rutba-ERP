@@ -137,6 +137,74 @@ function pickStatus(statuses) {
   return undefined;
 }
 
+// ── pure transforms (extracted so they're unit-testable; see __test export) ──
+
+function normalizeOrder(o) {
+  return {
+    externalOrderId: String(o.order_id),
+    externalOrderNumber: o.order_number ? String(o.order_number) : undefined,
+    placedAt: o.created_at ? new Date(o.created_at).toISOString() : undefined,
+    status: pickStatus(o.statuses),
+    paymentMethod: o.payment_method || undefined,
+    paid: !/cash|cod/i.test(String(o.payment_method || '')),
+    currency: o.currency || undefined,
+    buyer: {
+      name: [o.customer_first_name, o.customer_last_name].filter(Boolean).join(' ').trim() || undefined,
+      phone: (o.address_shipping && (o.address_shipping.phone || o.address_shipping.phone2)) || undefined,
+    },
+    shipping: normalizeShipping(o.address_shipping),
+    totals: {
+      itemsTotal: o.price !== undefined ? Number(o.price) : undefined,
+      shippingFee: o.shipping_fee !== undefined ? Number(o.shipping_fee) : undefined,
+      total: o.price !== undefined ? Number(o.price) : undefined,
+    },
+    raw: o,
+  };
+}
+
+function normalizeItem(it) {
+  const qty = Number(it.quantity) || 1;
+  const unitPrice = it.paid_price !== undefined ? Number(it.paid_price)
+    : (it.item_price !== undefined ? Number(it.item_price) : undefined);
+  return {
+    sku: it.sku || it.shop_sku || it.seller_sku || null,
+    name: it.name || it.product_name || undefined,
+    quantity: qty,
+    unitPrice,
+    total: it.paid_price !== undefined ? Number(it.paid_price) * qty : undefined,
+    variant: it.variation || undefined,
+    raw: it,
+  };
+}
+
+function flattenCategoryTree(roots) {
+  const out = [];
+  const walk = (nodes, parentId) => {
+    for (const n of nodes || []) {
+      const id = n.category_id ?? n.id;
+      if (id == null) continue;
+      out.push({ external_id: String(id), name: n.name, parent_id: parentId != null ? String(parentId) : null, leaf: !!n.leaf });
+      if (Array.isArray(n.children) && n.children.length) walk(n.children, id);
+    }
+  };
+  walk(Array.isArray(roots) ? roots : [], null);
+  return out;
+}
+
+function buildPriceQuantityXml(rows) {
+  const skuXml = (rows || [])
+    .filter((u) => u && u.sku != null)
+    .map((u) => {
+      const qty = Math.max(0, Math.trunc(Number(u.quantity) || 0));
+      let inner = `<SellerSku>${xmlEscape(u.sku)}</SellerSku><Quantity>${qty}</Quantity>`;
+      if (Number.isFinite(Number(u.price)) && Number(u.price) > 0) inner += `<Price>${Number(u.price).toFixed(2)}</Price>`;
+      if (Number.isFinite(Number(u.salePrice)) && Number(u.salePrice) > 0) inner += `<SalePrice>${Number(u.salePrice).toFixed(2)}</SalePrice>`;
+      return `<Sku>${inner}</Sku>`;
+    })
+    .join('');
+  return `<Request><Product><Skus>${skuXml}</Skus></Product></Request>`;
+}
+
 module.exports = {
   key: PLATFORM,
   label: 'Daraz',
@@ -253,41 +321,13 @@ module.exports = {
       }
     }
 
-    return orders.map((o) => ({
-      externalOrderId: String(o.order_id),
-      externalOrderNumber: o.order_number ? String(o.order_number) : undefined,
-      placedAt: o.created_at ? new Date(o.created_at).toISOString() : undefined,
-      status: pickStatus(o.statuses),
-      paymentMethod: o.payment_method || undefined,
-      paid: !/cash|cod/i.test(String(o.payment_method || '')),
-      currency: o.currency || undefined,
-      buyer: {
-        name: [o.customer_first_name, o.customer_last_name].filter(Boolean).join(' ').trim() || undefined,
-        phone: (o.address_shipping && (o.address_shipping.phone || o.address_shipping.phone2)) || undefined,
-      },
-      shipping: normalizeShipping(o.address_shipping),
-      totals: {
-        itemsTotal: o.price !== undefined ? Number(o.price) : undefined,
-        shippingFee: o.shipping_fee !== undefined ? Number(o.shipping_fee) : undefined,
-        total: o.price !== undefined ? Number(o.price) : undefined,
-      },
-      raw: o,
-    }));
+    return orders.map(normalizeOrder);
   },
 
   async fetchOrderItems({ account, externalOrderId }) {
     const data = await callApi({ account, apiPath: '/order/items/get', business: { order_id: externalOrderId } });
     const items = (Array.isArray(data) && data) || (data && Array.isArray(data.order_items) && data.order_items) || [];
-    return items.map((it) => ({
-      sku: it.sku || it.shop_sku || it.seller_sku || null,
-      name: it.name || it.product_name || undefined,
-      quantity: Number(it.quantity) || 1,
-      unitPrice: it.paid_price !== undefined ? Number(it.paid_price)
-        : (it.item_price !== undefined ? Number(it.item_price) : undefined),
-      total: it.paid_price !== undefined ? Number(it.paid_price) * (Number(it.quantity) || 1) : undefined,
-      variant: it.variation || undefined,
-      raw: it,
-    }));
+    return items.map(normalizeItem);
   },
 
   async pushInventory({ account, updates }) {
@@ -296,16 +336,7 @@ module.exports = {
 
     // SellerSku + Quantity, plus Price/SalePrice when supplied (the operator's
     // per-marketplace price adjustment is already applied by the caller).
-    const skuXml = rows
-      .map((u) => {
-        const qty = Math.max(0, Math.trunc(Number(u.quantity) || 0));
-        let inner = `<SellerSku>${xmlEscape(u.sku)}</SellerSku><Quantity>${qty}</Quantity>`;
-        if (Number.isFinite(Number(u.price)) && Number(u.price) > 0) inner += `<Price>${Number(u.price).toFixed(2)}</Price>`;
-        if (Number.isFinite(Number(u.salePrice)) && Number(u.salePrice) > 0) inner += `<SalePrice>${Number(u.salePrice).toFixed(2)}</SalePrice>`;
-        return `<Sku>${inner}</Sku>`;
-      })
-      .join('');
-    const payload = `<Request><Product><Skus>${skuXml}</Skus></Product></Request>`;
+    const payload = buildPriceQuantityXml(rows);
 
     let data;
     try {
@@ -335,22 +366,7 @@ module.exports = {
   async fetchCategoryTree({ account }) {
     const data = await callApi({ account, apiPath: '/category/tree/get' });
     const roots = Array.isArray(data) ? data : (Array.isArray(data?.categories) ? data.categories : []);
-    const out = [];
-    const walk = (nodes, parentId) => {
-      for (const n of nodes || []) {
-        const id = n.category_id ?? n.id;
-        if (id == null) continue;
-        out.push({
-          external_id: String(id),
-          name: n.name,
-          parent_id: parentId != null ? String(parentId) : null,
-          leaf: !!n.leaf,
-        });
-        if (Array.isArray(n.children) && n.children.length) walk(n.children, id);
-      }
-    };
-    walk(roots, null);
-    return out;
+    return flattenCategoryTree(roots);
   },
 
   /** Required/optional attributes for a leaf category — drives listing validation later. */
@@ -376,4 +392,7 @@ module.exports = {
       || (Array.isArray(data) ? data : []);
     return rows.map((b) => ({ external_id: String(b.brand_id ?? b.id), name: b.name, raw: b }));
   },
+
+  // Internals exposed for unit tests only (not part of the adapter contract).
+  __test: { sign, xmlEscape, normalizeShipping, pickStatus, normalizeOrder, normalizeItem, flattenCategoryTree, buildPriceQuantityXml },
 };

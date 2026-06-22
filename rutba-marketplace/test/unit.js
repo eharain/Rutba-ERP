@@ -1,0 +1,177 @@
+'use strict';
+
+// Standalone unit tests for the marketplace engine's pure logic — no Strapi,
+// no network, no framework. Run: `npm test` (from rutba-marketplace) or
+// `node test/unit.js`. Covers the price math, the Daraz signing + transforms,
+// the scheduler cron parser, the job runner, and the shared base helpers.
+
+const assert = require('assert');
+const crypto = require('crypto');
+
+const base = require('../lib/providers/base');
+const providers = require('../lib/providers');
+const daraz = require('../lib/providers/daraz');
+const engine = require('../lib/engine');
+const { intervalFromCron } = require('../lib/scheduler');
+const { createJobRunner } = require('../lib/jobs');
+
+const T = daraz.__test;
+
+let passed = 0;
+let failed = 0;
+async function test(name, fn) {
+  try {
+    await fn();
+    passed += 1;
+    console.log(`  ok   ${name}`);
+  } catch (e) {
+    failed += 1;
+    console.log(`  FAIL ${name} :: ${e && e.message}`);
+  }
+}
+
+(async () => {
+  console.log('— base helpers —');
+  await test('hmacSha256 returns 64-char hex', () => {
+    assert.strictEqual(base.hmacSha256('k', 'msg', 'hex').length, 64);
+  });
+  await test('tokenExpired: past=true, future=false, none=false', () => {
+    assert.strictEqual(base.tokenExpired({ token_expires_at: new Date(Date.now() - 1000).toISOString() }), true);
+    assert.strictEqual(base.tokenExpired({ token_expires_at: new Date(Date.now() + 3600000).toISOString() }), false);
+    assert.strictEqual(base.tokenExpired({}), false);
+  });
+  await test('extra reads extra_config with fallback', () => {
+    assert.strictEqual(base.extra({ extra_config: { a: 1 } }, 'a'), 1);
+    assert.strictEqual(base.extra({}, 'a', 'def'), 'def');
+  });
+  await test('extractError pulls Lazada/Daraz message', () => {
+    assert.strictEqual(base.extractError({ code: 'X', message: 'boom' }), 'boom');
+  });
+
+  console.log('— provider registry —');
+  await test('getAdapter/hasAdapter', () => {
+    assert.strictEqual(providers.hasAdapter('daraz'), true);
+    assert.strictEqual(providers.hasAdapter('nope'), false);
+    assert.strictEqual(providers.getAdapter('daraz').key, 'daraz');
+    assert.throws(() => providers.getAdapter('nope'));
+  });
+
+  console.log('— daraz: signing —');
+  await test('sign: sorted apiPath+k+v, sha256 hex-upper, excludes sign', () => {
+    const apiPath = '/orders/get';
+    const params = { app_key: 'k', timestamp: '100', sign_method: 'sha256', sign: 'IGNORED' };
+    const concat = `${apiPath}app_keyksign_methodsha256timestamp100`;
+    const expected = crypto.createHmac('sha256', 'secret').update(concat, 'utf8').digest('hex').toUpperCase();
+    assert.strictEqual(T.sign(apiPath, params, 'secret'), expected);
+    // order-independent
+    assert.strictEqual(
+      T.sign(apiPath, { timestamp: '100', sign_method: 'sha256', app_key: 'k' }, 'secret'),
+      expected,
+    );
+  });
+
+  console.log('— daraz: transforms —');
+  await test('xmlEscape escapes & < > " \'', () => {
+    assert.strictEqual(T.xmlEscape(`a&b<c>"d'`), 'a&amp;b&lt;c&gt;&quot;d&apos;');
+  });
+  await test('buildPriceQuantityXml: Price/SalePrice/Quantity + escaping + omit non-positive', () => {
+    const xml = T.buildPriceQuantityXml([
+      { sku: 'A&B', quantity: 5, price: 110, salePrice: 99 },
+      { sku: 'C', quantity: 0 },          // no price/salePrice
+      { sku: 'Z', quantity: 3, price: 0 }, // price 0 → omitted
+    ]);
+    assert.ok(xml.includes('<SellerSku>A&amp;B</SellerSku>'));
+    assert.ok(xml.includes('<Quantity>5</Quantity>'));
+    assert.ok(xml.includes('<Price>110.00</Price>'));
+    assert.ok(xml.includes('<SalePrice>99.00</SalePrice>'));
+    assert.ok(xml.includes('<Sku><SellerSku>C</SellerSku><Quantity>0</Quantity></Sku>'));
+    assert.ok(!/<Sku><SellerSku>Z<\/SellerSku><Quantity>3<\/Quantity><Price>/.test(xml));
+    assert.ok(xml.startsWith('<Request><Product><Skus>'));
+  });
+  await test('normalizeOrder: ids, COD=not paid, shipping, totals', () => {
+    const o = T.normalizeOrder({
+      order_id: 123, order_number: 'X1', created_at: '2024-01-01T00:00:00+05:00',
+      statuses: ['pending'], payment_method: 'Cash on Delivery', price: '500', shipping_fee: '50',
+      customer_first_name: 'A', customer_last_name: 'B',
+      address_shipping: { first_name: 'A', last_name: 'B', phone: '03', address1: 'St', city: 'KHI', country: 'PK' },
+    });
+    assert.strictEqual(o.externalOrderId, '123');
+    assert.strictEqual(o.externalOrderNumber, 'X1');
+    assert.strictEqual(o.status, 'pending');
+    assert.strictEqual(o.paid, false);            // COD is collected later
+    assert.strictEqual(o.shipping.line1, 'St');
+    assert.strictEqual(o.shipping.name, 'A B');
+    assert.strictEqual(o.totals.shippingFee, 50);
+    assert.strictEqual(o.totals.total, 500);
+  });
+  await test('normalizeOrder: prepaid => paid true', () => {
+    assert.strictEqual(T.normalizeOrder({ order_id: 1, payment_method: 'Credit Card' }).paid, true);
+  });
+  await test('normalizeItem: sku fallbacks, qty, unit/total, variant', () => {
+    const it = T.normalizeItem({ shop_sku: 'SHOP', name: 'P', quantity: 2, paid_price: '100', variation: 'Red' });
+    assert.strictEqual(it.sku, 'SHOP');
+    assert.strictEqual(it.quantity, 2);
+    assert.strictEqual(it.unitPrice, 100);
+    assert.strictEqual(it.total, 200);
+    assert.strictEqual(it.variant, 'Red');
+  });
+  await test('flattenCategoryTree: parent links + leaf', () => {
+    const flat = T.flattenCategoryTree([{ category_id: 1, name: 'A', children: [{ category_id: 2, name: 'B', leaf: true }] }]);
+    assert.strictEqual(flat.length, 2);
+    assert.deepStrictEqual(flat[0], { external_id: '1', name: 'A', parent_id: null, leaf: false });
+    assert.deepStrictEqual(flat[1], { external_id: '2', name: 'B', parent_id: '1', leaf: true });
+  });
+
+  console.log('— engine: price adjustment —');
+  await test('applyAdjustment: pct + fixed, floor at 0, base 0', () => {
+    assert.strictEqual(engine.applyAdjustment(100, { pct: 10, fixed: 50 }), 160);
+    assert.strictEqual(engine.applyAdjustment(100, { pct: -5, fixed: 0 }), 95);
+    assert.strictEqual(engine.applyAdjustment(200, { pct: 0, fixed: -250 }), 0); // floored
+    assert.strictEqual(engine.applyAdjustment(0, { pct: 10, fixed: 5 }), 0);
+    assert.strictEqual(engine.applyAdjustment(199.99, { pct: 12, fixed: 5 }), 228.99);
+  });
+  await test('effectiveAdjustment precedence + M3 layering (override keeps category fixed)', () => {
+    const product = { categories: [{ documentId: 'cat1' }] };
+    const account = { price_adjust_pct: 3 };
+    const rules = [{ category: { documentId: 'cat1' }, adjust_pct: 8, adjust_fixed: 50, priority: 1 }];
+    // category rule applies when no per-listing override
+    assert.deepStrictEqual(engine.effectiveAdjustment(product, null, account, rules), { pct: 8, fixed: 50 });
+    // per-listing % overrides the %, but the category's fixed surcharge is KEPT
+    assert.deepStrictEqual(engine.effectiveAdjustment(product, { price_adjust_pct: 12 }, account, rules), { pct: 12, fixed: 50 });
+    // no rule + no override => account default, fixed 0
+    assert.deepStrictEqual(engine.effectiveAdjustment({ categories: [] }, null, account, []), { pct: 3, fixed: 0 });
+    // highest-priority rule wins
+    const rules2 = [
+      { category: { documentId: 'cat1' }, adjust_pct: 1, priority: 1 },
+      { category: { documentId: 'cat1' }, adjust_pct: 9, priority: 5 },
+    ];
+    assert.strictEqual(engine.effectiveAdjustment(product, null, account, rules2).pct, 9);
+  });
+  await test('end-to-end: category +8% +50 on a 100 product => 158', () => {
+    const adj = engine.effectiveAdjustment(
+      { categories: [{ documentId: 'c' }] }, null, { price_adjust_pct: 0 },
+      [{ category: { documentId: 'c' }, adjust_pct: 8, adjust_fixed: 50, priority: 0 }],
+    );
+    assert.strictEqual(engine.applyAdjustment(100, adj), 158);
+  });
+
+  console.log('— scheduler / jobs —');
+  await test('intervalFromCron parses */N min and 0 */N hr, else fallback', () => {
+    assert.strictEqual(intervalFromCron('*/15 * * * *', 0), 15 * 60 * 1000);
+    assert.strictEqual(intervalFromCron('0 */4 * * *', 0), 4 * 60 * 60 * 1000);
+    assert.strictEqual(intervalFromCron('garbage', 999), 999);
+  });
+  await test('job runner: defineJob/run returns handler result; bad backend throws', async () => {
+    const r = createJobRunner({ backend: 'inproc' });
+    let ran = 0;
+    r.defineJob('x', () => { ran += 1; return 42; });
+    const v = await r.run('x');
+    assert.strictEqual(v, 42);
+    assert.strictEqual(ran, 1);
+    await assert.rejects(() => r.run('missing'));
+    assert.throws(() => createJobRunner({ backend: 'bullmq' }).scheduleRecurring('y', '*/5 * * * *', {}));
+  });
+
+  console.log(`\n${passed} passed, ${failed} failed`);
+  process.exit(failed ? 1 : 0);
+})();
