@@ -12,7 +12,6 @@ const INDEX_FILES = [
     './client/web/index.js',
     './api/index.js',
     './api/web/index.js',
-    './server/index.js',
     './endpoints/index.js',
     './pos/index.js',
 ];
