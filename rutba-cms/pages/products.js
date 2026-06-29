@@ -49,7 +49,7 @@ const DEFAULT_PAGE_SIZE = 25;
 const PAGE_SIZE_OPTIONS = [5, 10, 25, 50, 100, 150, 200];
 const DEFAULT_SORT_FIELD = "createdAt";
 const DEFAULT_SORT_DIR = "desc";
-const SORTABLE_FIELDS = new Set(["name", "sku", "selling_price", "stock_quantity", "updatedAt", "createdAt"]);
+const SORTABLE_FIELDS = new Set(["id", "name", "sku", "selling_price", "stock_quantity", "updatedAt", "createdAt"]);
 
 export default function Products() {
     const router = useRouter();
@@ -486,6 +486,7 @@ export default function Products() {
                                     </th>
                                     <th style={{ width: 30 }}></th>
                                     <th style={{ width: 50 }}></th>
+                                    <SortableTh label="ID" field="id" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
                                     <SortableTh label="Name" field="name" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
                                     <SortableTh label="SKU" field="sku" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
                                     <SortableTh label="Price" field="selling_price" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
@@ -493,6 +494,7 @@ export default function Products() {
                                     <th>Categories</th>
                                     <th>Brands</th>
                                     <th>Purchase #</th>
+                                    <SortableTh label="Created" field="createdAt" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
                                     <SortableTh label="Modified" field="updatedAt" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
                                     <th>Published</th>
                                     <th>Actions</th>
@@ -525,6 +527,7 @@ export default function Products() {
                                                     <span className="text-muted"><i className="fas fa-image"></i></span>
                                                 )}
                                             </td>
+                                            <td className="small text-muted">{p.id}</td>
                                             <td><strong>{p.name}</strong></td>
                                             <td>{p.sku || "—"}</td>
                                             <td>{currency}{parseFloat(p.selling_price || 0).toFixed(2)}</td>
@@ -532,6 +535,7 @@ export default function Products() {
                                             <td>{(p.categories || []).map(c => c.name).join(", ") || "—"}</td>
                                             <td>{(p.brands || []).map(b => b.name).join(", ") || "—"}</td>
                                             <td>{(p.purchase_items || []).map(pi => pi.purchase?.orderId).filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(", ") || "—"}</td>
+                                            <td className="small text-nowrap">{p.createdAt ? new Date(p.createdAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "—"}</td>
                                             <td className="small text-nowrap">{p.updatedAt ? new Date(p.updatedAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "—"}</td>
                                             <td className="small text-nowrap">
                                                 {p._isPublished
@@ -565,13 +569,13 @@ export default function Products() {
                                         {expandedProducts[p.documentId] && (
                                             loadingVariants[p.documentId] ? (
                                                 <tr>
-                                                    <td colSpan={13} className="text-center text-muted">
+                                                    <td colSpan={15} className="text-center text-muted">
                                                         Loading variants...
                                                     </td>
                                                 </tr>
                                             ) : (variantsMap[p.documentId] || []).length === 0 ? (
                                                 <tr>
-                                                    <td colSpan={13} className="text-center text-muted">
+                                                    <td colSpan={15} className="text-center text-muted">
                                                         No variants
                                                     </td>
                                                 </tr>
@@ -591,6 +595,7 @@ export default function Products() {
                                                                 <span className="text-muted"><i className="fas fa-image" style={{ fontSize: '0.8em' }}></i></span>
                                                             )}
                                                         </td>
+                                                        <td className="small text-muted">{v.id}</td>
                                                         <td className="ps-4">
                                                             <i className="fas fa-level-up-alt fa-rotate-90 me-1 text-muted" style={{ fontSize: '0.8em' }}></i>
                                                             {v.name}
@@ -601,6 +606,7 @@ export default function Products() {
                                                         <td>{(v.categories || []).map(c => c.name).join(", ") || "—"}</td>
                                                         <td>{(v.brands || []).map(b => b.name).join(", ") || "—"}</td>
                                                         <td>{(v.purchase_items || []).map(pi => pi.purchase?.orderId).filter(Boolean).filter((val, i, a) => a.indexOf(val) === i).join(", ") || "—"}</td>
+                                                        <td className="small text-nowrap">{v.createdAt ? new Date(v.createdAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "—"}</td>
                                                         <td className="small text-nowrap">{v.updatedAt ? new Date(v.updatedAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "—"}</td>
                                                         <td className="small text-nowrap">
                                                             {v._isPublished
