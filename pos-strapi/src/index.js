@@ -6,6 +6,7 @@ const runJsonSeeds = require('./seed/json-seed-runner');
 const seedUpPermissions = require('./seed/up-permissions-seed');
 const ensureSeoMetaPerEntity = require('./seed/seo-meta-backfill');
 const backfillProductSlugs = require('./seed/product-slug-backfill');
+const ensureSlugIndexes = require('./db/ensure-slug-indexes');
 const { resolveHrRolesForUser } = require('./utils/hr-role-provider');
 
 // Ensures the site-setting singleType has a published row so consumers
@@ -135,6 +136,13 @@ module.exports = {
 async function runBackgroundSeeds(strapi) {
     const started = Date.now();
     strapi.log.info('[bootstrap] background seed pipeline started (non-blocking)');
+
+    try {
+        await ensureSlugIndexes(strapi);
+    } catch (err) {
+        strapi.log.error('[bootstrap] slug-index ensure failed: ' + err.message);
+        strapi.log.error(err.stack);
+    }
 
     try {
         await seedApiProvider(strapi);
