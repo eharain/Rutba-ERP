@@ -13,6 +13,38 @@ function clampInt(value, fallback, min, max) {
 }
 
 module.exports = createCoreController('api::product.product', ({ strapi }) => ({
+  // Default list. Extended only to resolve the CMS "Unpublished" filter, which
+  // is a set-difference (documents that have a draft but no published sibling)
+  // and therefore not expressible as a single field filter. Every other caller
+  // — and the "Published" filter (served by status=published) — is untouched.
+  async find(ctx) {
+    if (ctx.query?.publishState === 'unpublished') {
+      // Strip our custom hint so the core query builder doesn't see it.
+      delete ctx.query.publishState;
+      ctx.query.status = 'draft';
+
+      // documentIds that have a published row (published_at IS NOT NULL).
+      // NOTE: the db query engine has no `limit: -1` convention (that's
+      // entityService/REST); omitting limit returns all matching rows.
+      const publishedRows = await strapi.db.query('api::product.product').findMany({
+        where: { publishedAt: { $notNull: true } },
+        select: ['documentId'],
+      });
+      const publishedDocIds = [...new Set(publishedRows.map((r) => r.documentId).filter(Boolean))];
+
+      // Exclude the published documents; if nothing is published every draft is
+      // already unpublished, so no extra filter is needed. Wrap any existing
+      // filters (built-ins, api-guard ownership, etc.) in $and to preserve them.
+      if (publishedDocIds.length > 0) {
+        const exclude = { documentId: { $notIn: publishedDocIds } };
+        ctx.query.filters = ctx.query.filters
+          ? { $and: [ctx.query.filters, exclude] }
+          : exclude;
+      }
+    }
+    return await super.find(ctx);
+  },
+
   async publicDetail(ctx) {
     if (!requireApp(ctx, 'web')) return;
     // The route param is named `documentId` for backward compat; in practice

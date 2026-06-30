@@ -81,6 +81,17 @@ export async function fetchProducts(filters, page, rowsPerPage, sort) {
         parentOnly: filters.parentOnly,
         status: filters.status,
         populate: filters.populate,
+        // Completeness / range / publish-state filters (see ProductsEndpoints.list).
+        missingContent: filters.missingContent,
+        missingLogo: filters.missingLogo,
+        missingGallery: filters.missingGallery,
+        priceMin: filters.priceMin,
+        priceMax: filters.priceMax,
+        createdFrom: filters.createdFrom,
+        createdTo: filters.createdTo,
+        updatedFrom: filters.updatedFrom,
+        updatedTo: filters.updatedTo,
+        publishState: filters.publishState,
         sort,
     });
 }

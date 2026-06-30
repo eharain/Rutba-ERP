@@ -149,6 +149,43 @@ module.exports = (plugin) => {
     };
   }
 
+  // Confirm the account whenever a password reset succeeds. The reset link
+  // proves the user owns the email, so an unconfirmed account can be promoted
+  // to confirmed without a separate confirmation step.
+  if (authController && typeof authController.resetPassword === 'function') {
+    const originalResetPassword = authController.resetPassword.bind(authController);
+    authController.resetPassword = async (ctx) => {
+      const code = ctx?.request?.body?.code;
+      let userIdToConfirm = null;
+      if (code) {
+        try {
+          const u = await strapi.db.query('plugin::users-permissions.user').findOne({
+            where: { resetPasswordToken: code },
+            select: ['id', 'confirmed'],
+          });
+          if (u && u.confirmed !== true) userIdToConfirm = u.id;
+        } catch (e) {
+          strapi.log.warn(`[users-permissions] confirm-on-reset lookup failed: ${e.message}`);
+        }
+      }
+
+      await originalResetPassword(ctx);
+
+      if (userIdToConfirm) {
+        try {
+          await strapi
+            .plugin('users-permissions')
+            .service('user')
+            .edit(userIdToConfirm, { confirmed: true, confirmationToken: null });
+        } catch (e) {
+          strapi.log.warn(`[users-permissions] confirm-on-reset update failed: ${e.message}`);
+        }
+      }
+
+      return ctx;
+    };
+  }
+
   // Register routes for content-api (preserve existing routes)
   const capi = plugin.routes && plugin.routes['content-api'];
   if (capi) {

@@ -32,6 +32,13 @@ export default function Products() {
     const [selectedPurchase, setSelectedPurchase] = useState("");
     const [stockStatus, setStockStatus] = useState(false);
     const [searchText, setSearchText] = useState("");
+    // Completeness / range filters (publish state is CMS-only, omitted here).
+    const [missingContent, setMissingContent] = useState(false);
+    const [missingLogo, setMissingLogo] = useState(false);
+    const [missingGallery, setMissingGallery] = useState(false);
+    const [priceRange, setPriceRange] = useState({ min: "", max: "" });
+    const [createdRange, setCreatedRange] = useState({ from: "", to: "" });
+    const [updatedRange, setUpdatedRange] = useState({ from: "", to: "" });
     const [filtersInitialized, setFiltersInitialized] = useState(false);
     const [sortField, setSortField] = useState('id');
     const [sortOrder, setSortOrder] = useState('desc');
@@ -138,7 +145,8 @@ export default function Products() {
         }
 
         const getQueryValue = (value) => (Array.isArray(value) ? value[0] : value);
-        const { brands, categories, suppliers, terms, purchases, searchText, stockStatus } = router.query;
+        const q = router.query;
+        const { brands, categories, suppliers, terms, purchases, searchText, stockStatus } = q;
 
         if (brands) setSelectedBrand(getQueryValue(brands));
         if (categories) setSelectedCategory(getQueryValue(categories));
@@ -147,6 +155,12 @@ export default function Products() {
         if (purchases) setSelectedPurchase(getQueryValue(purchases));
         if (searchText) setSearchText(getQueryValue(searchText));
         if (stockStatus) setStockStatus(getQueryValue(stockStatus));
+        if (getQueryValue(q.missingContent) === "1") setMissingContent(true);
+        if (getQueryValue(q.missingLogo) === "1") setMissingLogo(true);
+        if (getQueryValue(q.missingGallery) === "1") setMissingGallery(true);
+        if (q.priceMin || q.priceMax) setPriceRange({ min: getQueryValue(q.priceMin) || "", max: getQueryValue(q.priceMax) || "" });
+        if (q.createdFrom || q.createdTo) setCreatedRange({ from: getQueryValue(q.createdFrom) || "", to: getQueryValue(q.createdTo) || "" });
+        if (q.updatedFrom || q.updatedTo) setUpdatedRange({ from: getQueryValue(q.updatedFrom) || "", to: getQueryValue(q.updatedTo) || "" });
 
         setFiltersInitialized(true);
     }, [router.isReady, router.query, filtersInitialized]);
@@ -164,6 +178,15 @@ export default function Products() {
             searchText,
             parentOnly: true
         };
+        if (missingContent) updatedFilters.missingContent = true;
+        if (missingLogo) updatedFilters.missingLogo = true;
+        if (missingGallery) updatedFilters.missingGallery = true;
+        if (priceRange.min) updatedFilters.priceMin = priceRange.min;
+        if (priceRange.max) updatedFilters.priceMax = priceRange.max;
+        if (createdRange.from) updatedFilters.createdFrom = createdRange.from;
+        if (createdRange.to) updatedFilters.createdTo = createdRange.to;
+        if (updatedRange.from) updatedFilters.updatedFrom = updatedRange.from;
+        if (updatedRange.to) updatedFilters.updatedTo = updatedRange.to;
 
         const query = {};
         if (selectedBrand) query.brands = selectedBrand;
@@ -173,6 +196,15 @@ export default function Products() {
         if (selectedPurchase) query.purchases = selectedPurchase;
         if (searchText) query.searchText = searchText;
         if (stockStatus) query.stockStatus = stockStatus;
+        if (missingContent) query.missingContent = "1";
+        if (missingLogo) query.missingLogo = "1";
+        if (missingGallery) query.missingGallery = "1";
+        if (priceRange.min) query.priceMin = priceRange.min;
+        if (priceRange.max) query.priceMax = priceRange.max;
+        if (createdRange.from) query.createdFrom = createdRange.from;
+        if (createdRange.to) query.createdTo = createdRange.to;
+        if (updatedRange.from) query.updatedFrom = updatedRange.from;
+        if (updatedRange.to) query.updatedTo = updatedRange.to;
         router.replace({ pathname: router.pathname, query }, undefined, { shallow: true });
 
         for (const [key, value] of Object.entries(updatedFilters)) {
@@ -186,7 +218,7 @@ export default function Products() {
 
         setFilters(updatedFilters);
         setPage(1);
-    }, [selectedBrand, selectedCategory, selectedSupplier, selectedTerm, selectedPurchase, stockStatus, searchText, filtersInitialized]);
+    }, [selectedBrand, selectedCategory, selectedSupplier, selectedTerm, selectedPurchase, stockStatus, searchText, missingContent, missingLogo, missingGallery, priceRange, createdRange, updatedRange, filtersInitialized]);
 
     const toggleVariants = async (product) => {
         const docId = product.documentId;
@@ -313,6 +345,48 @@ export default function Products() {
                                             { value: "outOfStock", label: "Out of stock" },
                                             { value: "low", label: "Low stock" },
                                         ],
+                                    },
+                                    {
+                                        key: "price",
+                                        type: "number-range",
+                                        label: "Price",
+                                        value: priceRange,
+                                        onChange: setPriceRange,
+                                    },
+                                    {
+                                        key: "created",
+                                        type: "date-range",
+                                        label: "Created",
+                                        value: createdRange,
+                                        onChange: setCreatedRange,
+                                    },
+                                    {
+                                        key: "modified",
+                                        type: "date-range",
+                                        label: "Modified",
+                                        value: updatedRange,
+                                        onChange: setUpdatedRange,
+                                    },
+                                    {
+                                        key: "missingContent",
+                                        type: "toggle",
+                                        label: "Missing content",
+                                        value: missingContent,
+                                        onChange: setMissingContent,
+                                    },
+                                    {
+                                        key: "missingLogo",
+                                        type: "toggle",
+                                        label: "Missing logo",
+                                        value: missingLogo,
+                                        onChange: setMissingLogo,
+                                    },
+                                    {
+                                        key: "missingGallery",
+                                        type: "toggle",
+                                        label: "Missing gallery",
+                                        value: missingGallery,
+                                        onChange: setMissingGallery,
                                     },
                                 ]}
                             />

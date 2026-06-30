@@ -216,6 +216,17 @@ export default function Products() {
     const pageSize = parseInt(router.query.pageSize, 10) || DEFAULT_PAGE_SIZE;
     const sortField = SORTABLE_FIELDS.has(qVal(router.query.sortField)) ? qVal(router.query.sortField) : DEFAULT_SORT_FIELD;
     const sortDir = qVal(router.query.sortDir) || DEFAULT_SORT_DIR;
+    // --- completeness / range / publish filters (all URL-driven) ---
+    const missingContent = qVal(router.query.missingContent) === "1";
+    const missingLogo = qVal(router.query.missingLogo) === "1";
+    const missingGallery = qVal(router.query.missingGallery) === "1";
+    const priceMin = qVal(router.query.priceMin);
+    const priceMax = qVal(router.query.priceMax);
+    const createdFrom = qVal(router.query.createdFrom);
+    const createdTo = qVal(router.query.createdTo);
+    const updatedFrom = qVal(router.query.updatedFrom);
+    const updatedTo = qVal(router.query.updatedTo);
+    const publishState = qVal(router.query.publishState); // "" | "published" | "unpublished"
 
     // helper: merge params into the current URL (falsy values are removed)
     const updateQuery = useCallback((params) => {
@@ -232,6 +243,22 @@ export default function Products() {
         updateQuery({ sortField: field === DEFAULT_SORT_FIELD && newDir === DEFAULT_SORT_DIR ? undefined : field, sortDir: newDir === DEFAULT_SORT_DIR && field === DEFAULT_SORT_FIELD ? undefined : newDir, page: undefined });
     }, [sortField, sortDir, updateQuery]);
 
+    // Layer the completeness / range / publish-state filters onto a filters
+    // object. Shared by the page-fetch effect and the "All" export path.
+    const applyExtraFilters = useCallback((filters) => {
+        if (missingContent) filters.missingContent = true;
+        if (missingLogo) filters.missingLogo = true;
+        if (missingGallery) filters.missingGallery = true;
+        if (priceMin) filters.priceMin = priceMin;
+        if (priceMax) filters.priceMax = priceMax;
+        if (createdFrom) filters.createdFrom = createdFrom;
+        if (createdTo) filters.createdTo = createdTo;
+        if (updatedFrom) filters.updatedFrom = updatedFrom;
+        if (updatedTo) filters.updatedTo = updatedTo;
+        if (publishState) filters.publishState = publishState;
+        return filters;
+    }, [missingContent, missingLogo, missingGallery, priceMin, priceMax, createdFrom, createdTo, updatedFrom, updatedTo, publishState]);
+
     // single effect: fetch products whenever URL params or jwt change
     useEffect(() => {
         if (!router.isReady || !jwt) return;
@@ -242,6 +269,7 @@ export default function Products() {
         if (selectedSupplier) filters.suppliers = [selectedSupplier];
         if (selectedTerm) filters.terms = [selectedTerm];
         if (selectedPurchase) filters.purchases = [selectedPurchase];
+        applyExtraFilters(filters);
 
         let cancelled = false;
         setLoading(true);
@@ -278,7 +306,7 @@ export default function Products() {
             });
 
         return () => { cancelled = true; };
-    }, [router.isReady, jwt, page, pageSize, selectedBrand, selectedCategory, selectedSupplier, selectedTerm, selectedPurchase, searchText, sortField, sortDir]);
+    }, [router.isReady, jwt, page, pageSize, selectedBrand, selectedCategory, selectedSupplier, selectedTerm, selectedPurchase, searchText, sortField, sortDir, applyExtraFilters]);
 
     const setPage = (p) => updateQuery({ page: p > 1 ? p : undefined });
     const setPageSize = (s) => updateQuery({ pageSize: s, page: undefined });
@@ -333,6 +361,7 @@ export default function Products() {
         if (selectedSupplier) filters.suppliers = [selectedSupplier];
         if (selectedTerm) filters.terms = [selectedTerm];
         if (selectedPurchase) filters.purchases = [selectedPurchase];
+        applyExtraFilters(filters);
         // Strapi caps pageSize at 100, so a PAGE > 100 quietly returns 100
         // and the loop's `arr.length < PAGE` check breaks early — that was
         // capping "All" exports at 100 rows. Use 100 to match the server max
@@ -349,7 +378,7 @@ export default function Products() {
             if (p > 500) break; // safety stop ~50k rows
         }
         return out;
-    }, [searchText, selectedBrand, selectedCategory, selectedSupplier, selectedTerm, selectedPurchase, sortField, sortDir]);
+    }, [searchText, selectedBrand, selectedCategory, selectedSupplier, selectedTerm, selectedPurchase, sortField, sortDir, applyExtraFilters]);
 
     const toggleVariants = async (product) => {
         const docId = product.documentId;
@@ -447,6 +476,62 @@ export default function Products() {
                             onTermChange={(v) => updateQuery({ terms: v || undefined, page: undefined })}
                             onPurchaseChange={(v) => updateQuery({ purchases: v || undefined, page: undefined })}
                             onSearchTextChange={(v) => updateQuery({ searchText: v || undefined, page: undefined })}
+                            extra={[
+                                {
+                                    key: "publishState",
+                                    type: "select",
+                                    label: "Publish",
+                                    value: publishState || "",
+                                    onChange: (v) => updateQuery({ publishState: v || undefined, page: undefined }),
+                                    placeholder: "All publish states",
+                                    options: [
+                                        { value: "published", label: "Published" },
+                                        { value: "unpublished", label: "Unpublished" },
+                                    ],
+                                },
+                                {
+                                    key: "price",
+                                    type: "number-range",
+                                    label: "Price",
+                                    value: { min: priceMin, max: priceMax },
+                                    onChange: (v) => updateQuery({ priceMin: v.min || undefined, priceMax: v.max || undefined, page: undefined }),
+                                },
+                                {
+                                    key: "created",
+                                    type: "date-range",
+                                    label: "Created",
+                                    value: { from: createdFrom, to: createdTo },
+                                    onChange: (v) => updateQuery({ createdFrom: v.from || undefined, createdTo: v.to || undefined, page: undefined }),
+                                },
+                                {
+                                    key: "modified",
+                                    type: "date-range",
+                                    label: "Modified",
+                                    value: { from: updatedFrom, to: updatedTo },
+                                    onChange: (v) => updateQuery({ updatedFrom: v.from || undefined, updatedTo: v.to || undefined, page: undefined }),
+                                },
+                                {
+                                    key: "missingContent",
+                                    type: "toggle",
+                                    label: "Missing content",
+                                    value: missingContent,
+                                    onChange: (checked) => updateQuery({ missingContent: checked ? "1" : undefined, page: undefined }),
+                                },
+                                {
+                                    key: "missingLogo",
+                                    type: "toggle",
+                                    label: "Missing logo",
+                                    value: missingLogo,
+                                    onChange: (checked) => updateQuery({ missingLogo: checked ? "1" : undefined, page: undefined }),
+                                },
+                                {
+                                    key: "missingGallery",
+                                    type: "toggle",
+                                    label: "Missing gallery",
+                                    value: missingGallery,
+                                    onChange: (checked) => updateQuery({ missingGallery: checked ? "1" : undefined, page: undefined }),
+                                },
+                            ]}
                         />
                     }
                     bulkActions={

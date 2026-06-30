@@ -19,6 +19,13 @@ import SearchableSelect from "../SearchableSelect";
  *   'select'                                          — native <select>
  *   'text'                                            — plain text input
  *   'toggle'                                          — single checkbox
+ *   'number-range'                                    — min/max number inputs
+ *   'date-range'                                      — from/to date inputs
+ *
+ * For the range types, `value` is an object and `onChange` receives the full
+ * next object:
+ *   number-range → value { min, max }
+ *   date-range   → value { from, to }
  */
 function FilterField({ def }) {
     if (!def) return null;
@@ -76,7 +83,63 @@ function FilterField({ def }) {
             </div>
         );
     }
+    if (type === "number-range") {
+        const v = def.value || {};
+        return (
+            <div className="d-flex gap-1" title={def.label}>
+                <input
+                    type="number"
+                    className="form-control form-control-sm"
+                    placeholder={def.placeholderMin || `Min ${def.label || ""}`.trim()}
+                    value={v.min ?? ""}
+                    onChange={(e) => def.onChange({ ...v, min: e.target.value })}
+                />
+                <input
+                    type="number"
+                    className="form-control form-control-sm"
+                    placeholder={def.placeholderMax || `Max ${def.label || ""}`.trim()}
+                    value={v.max ?? ""}
+                    onChange={(e) => def.onChange({ ...v, max: e.target.value })}
+                />
+            </div>
+        );
+    }
+    if (type === "date-range") {
+        const v = def.value || {};
+        return (
+            <div className="d-flex gap-1 align-items-center" title={def.label}>
+                {def.label && <span className="small text-muted text-nowrap">{def.label}</span>}
+                <input
+                    type="date"
+                    className="form-control form-control-sm"
+                    value={v.from ?? ""}
+                    onChange={(e) => def.onChange({ ...v, from: e.target.value })}
+                />
+                <input
+                    type="date"
+                    className="form-control form-control-sm"
+                    value={v.to ?? ""}
+                    onChange={(e) => def.onChange({ ...v, to: e.target.value })}
+                />
+            </div>
+        );
+    }
     return null;
+}
+
+// Built-in select cells share this responsive width; combined with the
+// per-type widths below, the cells flow onto multiple rows instead of being
+// crammed into a single line.
+const BUILTIN_COL = "col-6 col-md-4 col-lg-3";
+
+// Width for an extra cell. Range cells are wider (they hold two inputs);
+// toggles are narrow. A def may override with an explicit `colClass`.
+function colClassFor(def) {
+    if (def.colClass) return def.colClass;
+    const type = def.type || (def.options ? "searchable-select" : "text");
+    if (type === "toggle") return "col-6 col-md-3 col-lg-2 d-flex align-items-center";
+    if (type === "number-range" || type === "date-range") return "col-12 col-sm-6 col-md-4";
+    return "col-6 col-md-4 col-lg-3";
 }
 
 export function ProductFilter({
@@ -126,7 +189,7 @@ export function ProductFilter({
                 </div>
             )}
             {!hidden("brand") && (
-                <div className="col">
+                <div className={BUILTIN_COL}>
                     <SearchableSelect
                         value={selectedBrand}
                         onChange={onBrandChange}
@@ -136,7 +199,7 @@ export function ProductFilter({
                 </div>
             )}
             {!hidden("category") && (
-                <div className="col">
+                <div className={BUILTIN_COL}>
                     <SearchableSelect
                         value={selectedCategory}
                         onChange={onCategoryChange}
@@ -146,7 +209,7 @@ export function ProductFilter({
                 </div>
             )}
             {!hidden("supplier") && (
-                <div className="col">
+                <div className={BUILTIN_COL}>
                     <SearchableSelect
                         value={selectedSupplier}
                         onChange={onSupplierChange}
@@ -156,7 +219,7 @@ export function ProductFilter({
                 </div>
             )}
             {!hidden("term") && (
-                <div className="col">
+                <div className={BUILTIN_COL}>
                     <SearchableSelect
                         value={selectedTerm}
                         onChange={onTermChange}
@@ -166,7 +229,7 @@ export function ProductFilter({
                 </div>
             )}
             {!hidden("purchase") && (
-                <div className="col">
+                <div className={BUILTIN_COL}>
                     <SearchableSelect
                         value={selectedPurchase}
                         onChange={onPurchaseChange}
@@ -176,7 +239,7 @@ export function ProductFilter({
                 </div>
             )}
             {(extra || []).map((def) => (
-                <div className="col" key={def.key}>
+                <div className={colClassFor(def)} key={def.key}>
                     <FilterField def={def} />
                 </div>
             ))}
