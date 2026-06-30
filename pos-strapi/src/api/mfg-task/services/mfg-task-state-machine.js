@@ -93,7 +93,6 @@ module.exports = {
     const candidates = await strapi.db.query(PIECE_RATE_UID).findMany({
       where: { operation: operationId, is_active: true },
       populate: { product: { select: ['id'] } },
-      limit: -1,
     });
 
     const day = today();

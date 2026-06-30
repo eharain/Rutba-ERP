@@ -94,9 +94,12 @@ module.exports = createCoreService(STOCK_ITEM_UID, ({ strapi }) => ({
   async recomputeAllProducts() {
     const started = Date.now();
 
+    // No `limit` — the low-level db.query engine returns all matching rows when
+    // limit is omitted. (`limit: -1` is a Document/Entity Service convention
+    // only; at this layer it passes straight through to SQL as `LIMIT -1`,
+    // which MySQL rejects.)
     const rows = await strapi.db.query(PRODUCT_UID).findMany({
       select: ['id', 'documentId', 'stock_quantity'],
-      limit: -1,
     });
     if (!Array.isArray(rows) || rows.length === 0) {
       return { processed: 0, corrected: 0, durationMs: Date.now() - started };

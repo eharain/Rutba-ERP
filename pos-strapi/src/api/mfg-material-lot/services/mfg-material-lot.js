@@ -61,7 +61,6 @@ module.exports = createCoreService(LOT_UID, ({ strapi }) => ({
     const issues = await strapi.db.query(ISSUE_UID).findMany({
       where: { material_lot: lotId },
       select: ['id', 'quantity', 'issue_type'],
-      limit: -1,
     });
 
     const consumed = (issues || []).reduce((sum, i) => sum + netConsumed(i), 0);
@@ -116,7 +115,6 @@ module.exports = createCoreService(LOT_UID, ({ strapi }) => ({
     const started = Date.now();
     const rows = await strapi.db.query(LOT_UID).findMany({
       select: ['id', 'documentId', 'quantity_remaining'],
-      limit: -1,
     });
     if (!Array.isArray(rows) || rows.length === 0) {
       return { processed: 0, corrected: 0, durationMs: Date.now() - started };

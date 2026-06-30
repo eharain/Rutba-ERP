@@ -67,14 +67,12 @@ module.exports = {
     const issues = await strapi.db.query(ISSUE_UID).findMany({
       where: { work_order: woId },
       select: ['id', 'total_cost', 'issue_type'],
-      limit: -1,
     });
     const material_cost = (issues || []).reduce((s, i) => s + signedCost(i), 0);
 
     const tasks = await strapi.db.query(TASK_UID).findMany({
       where: { work_order: woId, status: { $in: ['Completed', 'Approved'] } },
       select: ['id', 'amount'],
-      limit: -1,
     });
     const labor_cost = (tasks || []).reduce((s, t) => s + (Number(t.amount) || 0), 0);
 
