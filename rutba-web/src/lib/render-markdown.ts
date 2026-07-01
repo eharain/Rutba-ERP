@@ -57,5 +57,5 @@ export function normalizeMarkdown(input: string | null | undefined): string {
 export function renderMarkdown(input: string | null | undefined): string {
     if (input == null) return "";
     const normalised = normalizeMarkdown(input);
-    return marked.parse(normalised) as string;
+    return marked.parse(normalised, { async: false }) as string;
 }

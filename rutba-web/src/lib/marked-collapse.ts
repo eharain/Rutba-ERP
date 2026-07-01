@@ -63,7 +63,7 @@ function truthy(v: string | undefined): boolean {
 
 function renderDetails({ open, title, body }: CollapsePayload): string {
   const titleHtml = title ? (marked.parseInline(title) as string) : "Details";
-  const bodyHtml = body ? (marked.parse(body) as string) : "";
+  const bodyHtml = body ? (marked.parse(body, { async: false }) as string) : "";
   const openAttr = open ? " open" : "";
   return (
     `<details class="md-collapse"${openAttr}>` +

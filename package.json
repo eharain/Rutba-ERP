@@ -97,7 +97,7 @@
     "@xyflow/react": "^12.3.5",
     "axios": "^1.14.0",
     "bootstrap": "^5.3.8",
-    "marked": "^17.0.5",
+    "marked": "^18.0.5",
     "next": "16.2.9",
     "primereact": "^10.9.7",
     "qrcode.react": "^4.2.0",
