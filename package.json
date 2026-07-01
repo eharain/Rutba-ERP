@@ -98,13 +98,13 @@
     "axios": "^1.14.0",
     "bootstrap": "^5.3.8",
     "marked": "^17.0.5",
-    "next": "16.2.1",
+    "next": "16.2.9",
     "primereact": "^10.9.7",
     "qrcode.react": "^4.2.0",
     "qs": "^6.15.0",
-    "react": "19.2.4",
+    "react": "19.2.7",
     "react-barcode": "^1.6.1",
-    "react-dom": "19.2.4",
+    "react-dom": "19.2.7",
     "sonner": "^2.0.7",
     "xlsx": "^0.18.5",
     "pdfjs-dist": "^4.10.38"
@@ -112,6 +112,6 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.5",
     "eslint": "^9.39.4",
-    "eslint-config-next": "16.2.1"
+    "eslint-config-next": "16.2.9"
   }
 }
