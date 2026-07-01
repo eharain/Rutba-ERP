@@ -37,7 +37,7 @@
     "api-pro": "file://../packages/strapi-api-pro",
     "strapi-content-sync-pro": "^1.0.6",
 
-    "stripe": "^21.0.1",
+    "stripe": "^22.3.0",
     "styled-components": "^6.3.12",
     "xlsx": "^0.18.5"
   },
