@@ -1,4 +1,4 @@
-import "@/styles/globals.scss";
+import "@/styles/globals.css";
 import { useEffect, useState } from "react";
 import App, { type AppContext, type AppProps } from "next/app";
 import { SessionProvider, signOut, useSession } from "next-auth/react";

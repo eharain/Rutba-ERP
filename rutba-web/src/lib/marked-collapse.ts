@@ -23,7 +23,7 @@
  *   `:::` closers.
  *
  * Raw <details>…</details> HTML also passes through marked unchanged.
- * Styles in globals.scss cover all three forms.
+ * Styles in globals.css cover all three forms.
  */
 
 import { marked } from "marked";
