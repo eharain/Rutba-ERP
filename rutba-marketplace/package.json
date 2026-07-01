@@ -7,7 +7,6 @@
     "build": "next build",
     "start": "next start",
     "worker": "node worker.js",
-    "test": "node test/unit.js",
-    "lint": "next lint"
+    "test": "node test/unit.js"
   }
 }

@@ -9,8 +9,7 @@
 		"start": "next start",
 		"prettier": "prettier --write --list-different .",
 		"lint:js": "eslint --ignore-path .gitignore .",
-		"lintfix": "npm run prettier && npm run lint:js -- --fix",
-		"lint": "next lint"
+		"lintfix": "npm run prettier && npm run lint:js -- --fix"
 	},
 	"dependencies": {
 		"@rutba/api-provider": "file:../packages/api-provider",
