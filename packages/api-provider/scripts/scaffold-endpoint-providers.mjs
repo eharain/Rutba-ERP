@@ -741,6 +741,18 @@ function resolveHttpVerb(key, explicitMethod) {
     return 'GET';
 }
 
+// A descriptor whose HTTP verb is only known at runtime (e.g. a delegating
+// `save(id, data)` that returns create() OR update()) resolves to GET by the
+// static fallback in resolveHttpVerb, which would silently drop its body. We
+// detect these by: verb === GET *and* the signature carries a bare `data`
+// param (read endpoints never take a `data` body). Such wrappers get a
+// runtime dispatch on `ep.method` instead of a hard-coded fetch().
+function signatureCarriesDataBody(paramsRaw) {
+    return splitParamList(paramsRaw ?? '')
+        .map((p) => splitParamAtTopLevelEquals(p).name)
+        .some((name) => name === 'data');
+}
+
 function buildSignatureAndForwarding(paramsRaw) {
     // Mirror the descriptor's own parameter list in the generated wrapper, so
     // call sites see the same named parameters (with defaults) instead of an
@@ -781,13 +793,24 @@ function buildSignatureAndForwarding(paramsRaw) {
     return { signature: sigParts.join(', '), forwarding: fwdParts.join(', ') };
 }
 
-function buildActionBody(functionName, clientName, apiRef, verb, signature, forwarding, rawBody) {
+function buildActionBody(functionName, clientName, apiRef, verb, signature, forwarding, rawBody, dynamicMethod) {
     // Each generated action calls authApi.<verb> directly — the verb is
     // resolved at scaffold time from the descriptor's `method:` literal (or
     // its key prefix as a fallback). withQuery/wrapData are pure shape
     // helpers; the HTTP dispatch happens right here at the call site.
     const lines = [`async function ${functionName}(${signature}) {`];
     lines.push(`    const ep = ${apiRef}(${forwarding});`);
+
+    if (dynamicMethod) {
+        // Delegating descriptor — the verb rides on the returned ep at runtime.
+        const body = rawBody ? 'ep.data' : 'wrapData(ep.data)';
+        lines.push(`    const __verb = (ep.method || 'get').toLowerCase();`);
+        lines.push(`    if (__verb === 'get') return ${clientName}.fetch(ep.path, ep.params);`);
+        lines.push(`    if (__verb === 'delete') return ${clientName}.del(withQuery(ep.path, ep.params));`);
+        lines.push(`    return ${clientName}[__verb](withQuery(ep.path, ep.params), ${body});`);
+        lines.push('}');
+        return lines;
+    }
 
     if (verb === 'GET') {
         lines.push(`    return ${clientName}.fetch(ep.path, ep.params);`);
@@ -825,16 +848,19 @@ function buildProviderArtifacts(parsed, apiShape, imports) {
 
         const apiRef = toApiMemberReference(parsed.apiAliasName, key);
         const verb = resolveHttpVerb(key, method);
+        // Verb unknown at scaffold time but the descriptor takes a body →
+        // dispatch on ep.method at runtime (see signatureCarriesDataBody).
+        const dynamicMethod = verb === 'GET' && signatureCarriesDataBody(params);
 
-        if (verb === 'DELETE' || verb === 'POST' || verb === 'PUT' || verb === 'PATCH') {
+        if (verb === 'DELETE' || verb === 'POST' || verb === 'PUT' || verb === 'PATCH' || dynamicMethod) {
             usedCoreHelpers.add('withQuery');
         }
-        if ((verb === 'POST' || verb === 'PUT' || verb === 'PATCH') && !rawBody) {
+        if (((verb === 'POST' || verb === 'PUT' || verb === 'PATCH') && !rawBody) || dynamicMethod) {
             usedCoreHelpers.add('wrapData');
         }
 
         const { signature, forwarding } = buildSignatureAndForwarding(params);
-        methodLines.push(...buildActionBody(functionName, clientName, apiRef, verb, signature, forwarding, !!rawBody));
+        methodLines.push(...buildActionBody(functionName, clientName, apiRef, verb, signature, forwarding, !!rawBody, dynamicMethod));
         methodLines.push('');
 
         endpointPropertyLines.push(isValidIdentifier(key)

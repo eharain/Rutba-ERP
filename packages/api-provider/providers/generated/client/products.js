@@ -34,7 +34,10 @@ async function byId(documentId, arg2 = {}) {
 
 async function save(id, data) {
     const ep = ProductsEndpointsApi.save(id, data);
-    return authApi.fetch(ep.path, ep.params);
+    const __verb = (ep.method || 'get').toLowerCase();
+    if (__verb === 'get') return authApi.fetch(ep.path, ep.params);
+    if (__verb === 'delete') return authApi.del(withQuery(ep.path, ep.params));
+    return authApi[__verb](withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
 async function create(data) {
@@ -84,7 +87,7 @@ async function byIdPublished(documentId, params = {}) {
 
 async function updateDraft(documentId, data) {
     const ep = ProductsEndpointsApi.updateDraft(documentId, data);
-    return authApi.fetch(ep.path, ep.params);
+    return authApi.put(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
 async function publish(documentId) {

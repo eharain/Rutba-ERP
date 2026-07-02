@@ -95,6 +95,11 @@ export const ProductsEndpoints = {
         const {
             brands, categories, suppliers, purchases, kinds, parentOnly, status, sort, fields,
             populate: extraPopulate,
+            // Raw Strapi filter object passed straight through by callers that
+            // need a filter the named params don't cover (e.g. variant loading
+            // by `parent`, published-status `documentId $in`, slug/sku lookup).
+            // ANDed with any built-in filters below.
+            filters: rawFilters,
             // Content / asset completeness + range filters (shared by the CMS and
             // stock product lists). See product-filter.js for the UI cells.
             missingContent, missingLogo, missingGallery,
@@ -169,6 +174,12 @@ export const ProductsEndpoints = {
 
         if (and.length > 0) filterObj.$and = and;
 
+        // Combine built-in filters with any caller-supplied raw filter object.
+        let finalFilters = Object.keys(filterObj).length > 0 ? filterObj : undefined;
+        if (rawFilters && typeof rawFilters === 'object' && Object.keys(rawFilters).length > 0) {
+            finalFilters = finalFilters ? { $and: [finalFilters, rawFilters] } : rawFilters;
+        }
+
         // Resolve publish state into Strapi status + an optional controller hint.
         let effectiveStatus = status;
         let publishStateParam;
@@ -191,7 +202,7 @@ export const ProductsEndpoints = {
                 ...(extraPopulate && typeof extraPopulate === 'object' ? extraPopulate : {}),
             },
             pagination: { page, pageSize },
-            filters: Object.keys(filterObj).length > 0 ? filterObj : undefined,
+            filters: finalFilters,
             ...(sort ? { sort } : {}),
             ...(effectiveStatus ? { status: effectiveStatus } : {}),
             ...(fields ? { fields } : {}),
@@ -401,8 +412,9 @@ export const ProductsEndpoints = {
      */
     updateDraft: (documentId, data) => ({
         path: `/products/${documentId}`,
+        method: 'put',
         params: { status: 'draft' },
-        data,   
+        data,
     }),
 
     /**

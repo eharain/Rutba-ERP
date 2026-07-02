@@ -162,7 +162,9 @@ export const BrandsEndpoints = {
      */
     updateDraft: (documentId, data) => ({
         path: `/brands/${documentId}`,
+        method: 'put',
         params: { status: 'draft' },
+        data,
     }),
 
     /**

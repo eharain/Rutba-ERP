@@ -9,7 +9,7 @@ async function create(data) {
 
 async function update(documentId, data) {
     const ep = SaleReturnItemsEndpointsApi.update(documentId, data);
-    return authApi.fetch(ep.path, ep.params);
+    return authApi.put(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
 const endpoints = strictEndpointGuard(

@@ -6,13 +6,13 @@ export const SaleReturnItemsEndpoints = {
     meta: { domains: ['sale'] },
 
     /** Create a new sale return item. */
-    create: (data) => ({ path: '/sale-return-items', action: 'create', method: 'post', data , data }),
+    create: (data) => ({ path: '/sale-return-items', action: 'create', method: 'post', data }),
 
     /**
      * Update a sale return item by documentId â€” body provided by caller as { data }.
      * @param {string} documentId
      */
-    update: (documentId, data) => ({ path: `/sale-return-items/${documentId}` , data }),
+    update: (documentId, data) => ({ path: `/sale-return-items/${documentId}`, action: 'update', method: 'put', data }),
 /** Async: update a sale return item by documentId. */
 
 };

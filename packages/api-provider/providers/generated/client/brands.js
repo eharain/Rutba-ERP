@@ -49,7 +49,7 @@ async function byIdPublished(documentId, arg2 = {}) {
 
 async function updateDraft(documentId, data) {
     const ep = BrandsEndpointsApi.updateDraft(documentId, data);
-    return authApi.fetch(ep.path, ep.params);
+    return authApi.put(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
 async function del(documentId) {
