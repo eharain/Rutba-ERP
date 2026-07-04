@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import Seo from "@/components/seo/seo";
 import Link from "next/link";
 import { renderMarkdown } from "@/lib/render-markdown";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 
 import LayoutMain from "@/components/layouts";
@@ -35,6 +35,8 @@ const SORT_OPTIONS: { value: string; label: string }[] = [
 export const getServerSideProps: GetServerSideProps<{
   initialData: ProductGroupDetailResponse | null;
   slug: string;
+  ssrPage: number;
+  ssrPageSize: number;
 }> = async (context) => {
   const productGroupsService = createWebProductGroupsService({ baseURL: BASE_URL });
   const slug = context.params?.slug as string;
@@ -43,25 +45,27 @@ export const getServerSideProps: GetServerSideProps<{
 
   try {
     const data = await productGroupsService.getProductGroupBySlug(slug, page, pageSize) as ProductGroupDetailResponse;
-    return { props: { initialData: data, slug } };
+    return { props: { initialData: data, slug, ssrPage: page, ssrPageSize: pageSize } };
   } catch {
-    return { props: { initialData: null, slug } };
+    return { props: { initialData: null, slug, ssrPage: page, ssrPageSize: pageSize } };
   }
 };
 
 export default function ProductGroupPage({
   initialData,
   slug: ssrSlug,
+  ssrPage,
+  ssrPageSize,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const productGroupsService = createWebProductGroupsService({ baseURL: BASE_URL });
   const router = useRouter();
   const slug = (router.query.slug as string) ?? ssrSlug;
-  const [page, setPage] = useState(
-    parseInt(router.query.page as string, 10) || 1
-  );
-  const [pageSize, setPageSize] = useState(
-    parseInt(router.query.pageSize as string, 10) || 24
-  );
+  // Drive pagination straight from the URL query (not one-shot local state) so
+  // page-number clicks — which only mutate the query string — change the query
+  // key and retrigger the fetch. Local useState was seeded once at mount and
+  // never re-synced, which is why clicks didn't refresh until a manual reload.
+  const page = parseInt(router.query.page as string, 10) || 1;
+  const pageSize = parseInt(router.query.pageSize as string, 10) || 24;
   const [sort, setSort] = useState<SortOption>("default");
 
   const { data, isLoading, isError, error } = useQuery({
@@ -69,17 +73,23 @@ export default function ProductGroupPage({
     queryFn: () => productGroupsService.getProductGroupBySlug(slug, page, pageSize),
     enabled: !!slug,
     staleTime: 60_000,
-    initialData: initialData ?? undefined,
+    placeholderData: keepPreviousData,
+    // Seed the SSR payload only into the page/size the server actually
+    // rendered; every other page must fetch fresh instead of reusing page 1.
+    initialData:
+      initialData && page === ssrPage && pageSize === ssrPageSize
+        ? initialData
+        : undefined,
   });
 
   const group = data?.data;
   const pagination = data?.meta?.pagination;
 
-  // Update URL when page/pageSize changes
+  // Update the URL only; the useQuery key is derived from the query string, so
+  // the page/pageSize change alone re-fetches. Shallow keeps it a client-side
+  // fetch with no getServerSideProps round-trip.
   const navigatePage = (newPage: number, newPageSize?: number) => {
     const ps = newPageSize ?? pageSize;
-    setPage(newPage);
-    if (newPageSize) setPageSize(newPageSize);
     router.push(
       { pathname: router.pathname, query: { slug, page: newPage, pageSize: ps } },
       undefined,
