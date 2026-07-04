@@ -43,6 +43,45 @@ async function ensureSiteSettingSingleton(strapi) {
     }
 }
 
+// Strapi ships email templates seeded with no-reply@strapi.io — Mailcow rejects
+// that as "sender not owned by user no-reply@rutba.pk" and forgot-password
+// silently 500s. Every fresh DB import from the on-prem POS also brings the
+// strapi.io value back, so patching once is not enough. Fix at boot: overwrite
+// the `from` on both templates with the app's own EMAIL_FROM. Idempotent — a
+// no-op when the templates already match.
+async function ensureUsersPermissionsEmailFrom(strapi) {
+    try {
+        const fromEmail = process.env.EMAIL_FROM || 'no-reply@rutba.pk';
+        const fromName = process.env.EMAIL_FROM_NAME || 'Rutba';
+
+        const store = strapi.store({
+            type: 'plugin',
+            name: 'users-permissions',
+            key: 'email',
+        });
+        const current = await store.get();
+        if (!current || typeof current !== 'object') return;
+
+        let changed = false;
+        for (const key of ['reset_password', 'email_confirmation']) {
+            const tpl = current[key];
+            const opts = tpl && tpl.options;
+            if (!opts) continue;
+            const from = opts.from || {};
+            if (from.email !== fromEmail || from.name !== fromName) {
+                opts.from = { name: fromName, email: fromEmail };
+                changed = true;
+            }
+        }
+        if (changed) {
+            await store.set({ value: current });
+            strapi.log.info(`[bootstrap] users-permissions email templates: from set to ${fromName} <${fromEmail}>`);
+        }
+    } catch (err) {
+        strapi.log.error('[bootstrap] users-permissions email FROM ensure failed: ' + err.message);
+    }
+}
+
 async function ensureUsersPermissionsDefaults(strapi) {
     try {
         const roleQuery = strapi.query('plugin::users-permissions.role');
@@ -95,6 +134,7 @@ module.exports = {
 
     async bootstrap({ strapi }) {
         await ensureUsersPermissionsDefaults(strapi);
+        await ensureUsersPermissionsEmailFrom(strapi);
         await ensureSiteSettingSingleton(strapi);
 
         // ─── Register HR team-role provider with api-pro ─────────────
