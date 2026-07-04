@@ -12,3 +12,11 @@ const strapi = require('@strapi/strapi');
 
 const app = strapi.createStrapi();
 app.start();
+
+
+
+
+
+
+
+

@@ -11,8 +11,8 @@ const DETAIL_FIELDS = [
   'title', 'slug', 'excerpt', 'content', 'page_type', 'sort_order',
   'enable_contact_form', 'createdAt', 'updatedAt', 'publishedAt',
   'excerpt_priority', 'featured_image_priority', 'content_priority',
-  'gallery_priority', 'related_pages_priority', 'page_groups_priority',
-  'featured_image_show_overlay',
+  'product_groups_priority', 'gallery_priority', 'related_pages_priority',
+  'page_groups_priority', 'featured_image_show_overlay',
 ];
 
 const DETAIL_POPULATE = {

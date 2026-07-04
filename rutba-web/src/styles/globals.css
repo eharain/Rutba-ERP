@@ -1,7 +1,9 @@
+/* External font import must precede @import "tailwindcss" — that import inlines
+   thousands of rules at build time, and CSS requires every @import to come
+   before any style rule (Turbopack/lightningcss enforces this strictly). */
+@import url("https://api.fontshare.com/v2/css?f[]=satoshi@900,700,500,400&f[]=cabinet-grotesk@800,700,500&display=swap");
 @import "tailwindcss";
 @config "../../tailwind.config.ts";
-
-@import url("https://api.fontshare.com/v2/css?f[]=satoshi@900,700,500,400&f[]=cabinet-grotesk@800,700,500&display=swap");
 
 @layer base {
   :root {
