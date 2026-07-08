@@ -26,15 +26,21 @@
 # Snippet: serve domain-specific verification files before proxying.
 # Files live in deploy/verifications/<domain>/ (mounted read-only at
 # /srv/verifications/<domain>/ inside the container).
+#
+# NOTE: Caddyfile directives are NOT executed in the order they're written —
+# Caddy auto-sorts them by a fixed internal priority, and `reverse_proxy`
+# always sorts BEFORE `handle`. Wrapping this in `handle` would mean every
+# request hits reverse_proxy first and never reaches the file check. `root`
+# and `file_server`, guarded by a matcher, both sort BEFORE `reverse_proxy`,
+# so they get first look at every request and fall through correctly when
+# the matcher doesn't match.
 # ---------------------------------------------------------------------------
 (verif) {
 	@has_verif_file file {
 		root /srv/verifications/{args[0]}
 	}
-	handle @has_verif_file {
-		root * /srv/verifications/{args[0]}
-		file_server
-	}
+	root @has_verif_file /srv/verifications/{args[0]}
+	file_server @has_verif_file
 }
 
 # ---- Strapi API + admin + media ----------------------------
