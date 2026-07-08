@@ -24,6 +24,7 @@ services:
       - "443:443/udp"        # HTTP/3
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ../verifications:/srv/verifications:ro
       - caddy_data:/data      # certificates — MUST persist
       - caddy_config:/config
     networks:

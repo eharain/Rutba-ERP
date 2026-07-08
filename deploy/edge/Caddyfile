@@ -1,5 +1,5 @@
 # ============================================================
-# Caddy — Rutba ERP sites on rutba.pk
+# Caddy — Rutba ERP sites on rutba.pk + trustlist.uk
 # ============================================================
 # Each site routes to a container by its compose service name on the
 # shared `edge` network. Caddy terminates TLS and auto-issues Let's
@@ -8,14 +8,38 @@
 # Ports below match the per-app PORT set in .env.production
 # (PORT_WEB=4000, AUTH=4003, WEB_USER=4004, STRAPI=4010,
 #  RIDER=4012, ORDER_MANAGEMENT=4013).
+#
+# Verification files
+# ------------------
+# Drop any third-party verification file under:
+#   deploy/verifications/<domain>/<url-path>
+# e.g. deploy/verifications/rutba.pk/info/tt-verifcation/tiktokXXX.txt
+#      deploy/verifications/trustlist.uk/google1234.html
+# Caddy serves them directly — no app rebuild or restart needed.
 # ============================================================
 
 {
 	email eharain@gmail.com
 }
 
+# ---------------------------------------------------------------------------
+# Snippet: serve domain-specific verification files before proxying.
+# Files live in deploy/verifications/<domain>/ (mounted read-only at
+# /srv/verifications/<domain>/ inside the container).
+# ---------------------------------------------------------------------------
+(verif) {
+	@has_verif_file file {
+		root /srv/verifications/{args[0]}
+	}
+	handle @has_verif_file {
+		root * /srv/verifications/{args[0]}
+		file_server
+	}
+}
+
 # ---- Strapi API + admin + media ----------------------------
 api.rutba.pk {
+	import verif api.rutba.pk
 	# Collapse accidental double slashes (e.g. clients that join a trailing-slash
 	# base URL with a leading-slash path → /api//me/addresses), which Strapi 404s.
 	uri replace "//" "/"
@@ -24,16 +48,19 @@ api.rutba.pk {
 
 # ---- Auth portal (login hub for staff/ops apps) ------------
 auth.rutba.pk {
+	import verif auth.rutba.pk
 	reverse_proxy auth:4003
 }
 
 # ---- Customer "My Orders" ----------------------------------
 my.rutba.pk {
+	import verif my.rutba.pk
 	reverse_proxy web-user:4004
 }
 
 # ---- Order management (staff) ------------------------------
 orders.rutba.pk {
+	import verif orders.rutba.pk
 	reverse_proxy order-management:4013
 }
 
@@ -42,11 +69,13 @@ orders.rutba.pk {
 # whitelist it in the Daraz app. The sync worker is a separate container with
 # no HTTP surface, so it gets no Caddy block.
 marketplace.rutba.pk {
+	import verif marketplace.rutba.pk
 	reverse_proxy marketplace:4016
 }
 
 # ---- Rider app ---------------------------------------------
 rider.rutba.pk {
+	import verif rider.rutba.pk
 	reverse_proxy rider:4012
 }
 
@@ -59,8 +88,19 @@ new.rutba.pk {
 
 # ---- Storefront: APEX (cut over) ---------------------------
 rutba.pk {
+	import verif rutba.pk
 	reverse_proxy web:4000
 }
 www.rutba.pk {
 	redir https://rutba.pk{uri} permanent
+}
+
+# ---- trustlist.uk ------------------------------------------
+# TODO: update reverse_proxy target when trustlist containers are deployed.
+trustlist.uk {
+	import verif trustlist.uk
+	reverse_proxy trustlist:4020
+}
+www.trustlist.uk {
+	redir https://trustlist.uk{uri} permanent
 }
