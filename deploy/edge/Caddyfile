@@ -119,13 +119,11 @@ www.rutba.pk {
 }
 
 # ---- trustlist.uk ------------------------------------------
-# TODO: update reverse_proxy target when trustlist containers are deployed.
-trustlist.uk {
-	import verif trustlist.uk
-	handle {
-		reverse_proxy trustlist:4020
-	}
-}
-www.trustlist.uk {
-	redir https://trustlist.uk{uri} permanent
-}
+# The trustlist.uk site blocks are NOT tracked here — they are appended
+# by /opt/trustlist/edge/caddy-guard.sh (systemd timer, every 60s) from
+# /opt/trustlist/edge/trustlist.caddy. Do NOT add a trustlist block here
+# or the guard will assume it's already installed and skip re-appending
+# the real config.
+# TODO(verifications): to give trustlist.uk the same static-file behavior,
+# add `import verif trustlist.uk` + wrap `reverse_proxy` in `handle{}` in
+# /opt/trustlist/edge/trustlist.caddy on the VPS.
