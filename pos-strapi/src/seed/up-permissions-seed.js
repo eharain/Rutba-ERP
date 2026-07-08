@@ -30,6 +30,7 @@ const STANDARD_ACTIONS = ['find', 'findOne', 'create', 'update', 'delete'];
 // app-role itself, because a UP grant alone admits every app user).
 const CUSTOM_ACTIONS = {
   'api::crm-lead.crm-lead': ['assignees'],
+  'api::stock-item.stock-item': ['resolveBulkStock', 'processBulkStock'],
   'api::hr-leave-request.hr-leave-request': ['myRequests', 'teamQueue', 'approve', 'reject', 'cancel'],
   'api::hr-team.hr-team': ['appRoleOptions'],
   'api::pay-statutory-remittance.pay-statutory-remittance': ['process'],

@@ -42,6 +42,29 @@ module.exports = createCoreController('api::product.product', ({ strapi }) => ({
           : exclude;
       }
     }
+
+    // "Low stock" filter. Low = positive stock at or below the product's own
+    // reorder_level — a column-to-column comparison the REST filter syntax can't
+    // express, so the client sends a `stockStatus=low` hint and we resolve it to
+    // a documentId set here. (outOfStock / inStock are plain field filters and
+    // never reach this branch.) Products without a reorder_level are excluded.
+    if (ctx.query?.stockStatus === 'low') {
+      delete ctx.query.stockStatus;
+      const lowRows = await strapi.db.connection('products')
+        .whereNotNull('reorder_level')
+        .andWhere('stock_quantity', '>', 0)
+        .andWhereRaw('stock_quantity <= reorder_level')
+        .select('document_id');
+      const lowDocIds = [...new Set(lowRows.map((r) => r.document_id).filter(Boolean))];
+      // No product qualifies → an unsatisfiable filter yields an empty page
+      // rather than silently returning everything.
+      const lowFilter = lowDocIds.length > 0
+        ? { documentId: { $in: lowDocIds } }
+        : { documentId: { $in: ['__none__'] } };
+      ctx.query.filters = ctx.query.filters
+        ? { $and: [ctx.query.filters, lowFilter] }
+        : lowFilter;
+    }
     return await super.find(ctx);
   },
 

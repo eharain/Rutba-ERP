@@ -63,7 +63,7 @@ export async function saveProduct(id, formData) {
 
 /**
  * Fetch a filtered/paginated product list with search support.
- * @param {{ searchText?, brands?, categories?, suppliers?, purchases?, parentOnly?, status? }} filters
+ * @param {{ searchText?, brands?, categories?, suppliers?, purchases?, parentOnly?, status?, stockStatus? }} filters
  * @param {number} page
  * @param {number} rowsPerPage
  * @param {string} sort
@@ -81,6 +81,8 @@ export async function fetchProducts(filters, page, rowsPerPage, sort) {
         parentOnly: filters.parentOnly,
         status: filters.status,
         populate: filters.populate,
+        // Stock status (outOfStock / inStock / low) — see ProductsEndpoints.list.
+        stockStatus: filters.stockStatus,
         // Completeness / range / publish-state filters (see ProductsEndpoints.list).
         missingContent: filters.missingContent,
         missingLogo: filters.missingLogo,

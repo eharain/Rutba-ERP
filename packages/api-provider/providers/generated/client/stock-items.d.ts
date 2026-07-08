@@ -7,6 +7,8 @@ export interface StockItemsEndpointsType {
     orphanGroups({ page = 1, pageSize = 50, search, statusFilter, skuFilter, sortField, sortDir }?: any): Promise<any>;
     orphanGroupItems({ page = 1, pageSize = 10000, name, selling_price, statusFilter, skuFilter, sortField, sortDir }?: any): Promise<any>;
     create(data: any): Promise<any>;
+    resolveBulkStock(rows: any): Promise<any>;
+    processBulkStock(rows: any): Promise<any>;
     searchByBarcode(barcode: any): Promise<any>;
     searchByName(name: any): Promise<any>;
     byId(id: any, { populate, fields }?: any): Promise<any>;

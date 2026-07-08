@@ -37,6 +37,16 @@ async function create(data) {
     return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
+async function resolveBulkStock(rows) {
+    const ep = StockItemsEndpointsApi.resolveBulkStock(rows);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+}
+
+async function processBulkStock(rows) {
+    const ep = StockItemsEndpointsApi.processBulkStock(rows);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+}
+
 async function searchByBarcode(barcode) {
     const ep = StockItemsEndpointsApi.searchByBarcode(barcode);
     return authApi.fetch(ep.path, ep.params);
@@ -82,6 +92,8 @@ const endpoints = strictEndpointGuard(
         orphanGroups,
         orphanGroupItems,
         create,
+        resolveBulkStock,
+        processBulkStock,
         searchByBarcode,
         searchByName,
         byId,
@@ -91,7 +103,7 @@ const endpoints = strictEndpointGuard(
         transfer,
         meta: StockItemsEndpointsApi.meta,
     },
-    ["list","listByProduct","listByBarcode","checkBarcode","orphanGroups","orphanGroupItems","create","searchByBarcode","searchByName","byId","update","byProduct","recomputeProductStock","transfer","meta"],
+    ["list","listByProduct","listByBarcode","checkBarcode","orphanGroups","orphanGroupItems","create","resolveBulkStock","processBulkStock","searchByBarcode","searchByName","byId","update","byProduct","recomputeProductStock","transfer","meta"],
 );
 
 export default endpoints;

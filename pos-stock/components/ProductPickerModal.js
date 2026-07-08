@@ -275,7 +275,7 @@ export default function ProductPickerModal({ show, onClose, onSelect, title }) {
                                                     <td>
                                                         <button
                                                             className="btn btn-sm btn-primary"
-                                                            onClick={() => onSelect(p.documentId)}
+                                                            onClick={() => onSelect(p.documentId, p)}
                                                         >
                                                             Select
                                                         </button>
@@ -311,7 +311,7 @@ export default function ProductPickerModal({ show, onClose, onSelect, title }) {
                                                                 <td>
                                                                     <button
                                                                         className="btn btn-sm btn-outline-primary"
-                                                                        onClick={() => onSelect(v.documentId)}
+                                                                        onClick={() => onSelect(v.documentId, v)}
                                                                     >
                                                                         Select Variant
                                                                     </button>

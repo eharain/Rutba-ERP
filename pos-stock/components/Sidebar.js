@@ -6,6 +6,7 @@ const SECTIONS = [
     { href: "/purchases",           label: "Purchases",          icon: "fa-cart-shopping" },
     { href: "/orphan-stock-items",  label: "Orphan Stock",       icon: "fa-triangle-exclamation" },
     { href: "/bulk-stock-inputs",   label: "Bulk Inputs",        icon: "fa-upload" },
+    { href: "/bulk-stock-items",    label: "Stock Items Import", icon: "fa-barcode" },
     { href: "/archive-stock",       label: "Archive",            icon: "fa-box-archive" },
     {
         key: "catalog",

@@ -212,6 +212,7 @@ export default function Products() {
     const selectedTerm = qVal(router.query.terms);
     const selectedPurchase = qVal(router.query.purchases);
     const searchText = qVal(router.query.searchText);
+    const stockStatus = qVal(router.query.stockStatus); // "" | "inStock" | "outOfStock" | "low"
     const page = parseInt(router.query.page, 10) || 1;
     const pageSize = parseInt(router.query.pageSize, 10) || DEFAULT_PAGE_SIZE;
     const sortField = SORTABLE_FIELDS.has(qVal(router.query.sortField)) ? qVal(router.query.sortField) : DEFAULT_SORT_FIELD;
@@ -269,6 +270,7 @@ export default function Products() {
         if (selectedSupplier) filters.suppliers = [selectedSupplier];
         if (selectedTerm) filters.terms = [selectedTerm];
         if (selectedPurchase) filters.purchases = [selectedPurchase];
+        if (stockStatus) filters.stockStatus = stockStatus;
         applyExtraFilters(filters);
 
         let cancelled = false;
@@ -306,7 +308,7 @@ export default function Products() {
             });
 
         return () => { cancelled = true; };
-    }, [router.isReady, jwt, page, pageSize, selectedBrand, selectedCategory, selectedSupplier, selectedTerm, selectedPurchase, searchText, sortField, sortDir, applyExtraFilters]);
+    }, [router.isReady, jwt, page, pageSize, selectedBrand, selectedCategory, selectedSupplier, selectedTerm, selectedPurchase, searchText, stockStatus, sortField, sortDir, applyExtraFilters]);
 
     const setPage = (p) => updateQuery({ page: p > 1 ? p : undefined });
     const setPageSize = (s) => updateQuery({ pageSize: s, page: undefined });
@@ -361,6 +363,7 @@ export default function Products() {
         if (selectedSupplier) filters.suppliers = [selectedSupplier];
         if (selectedTerm) filters.terms = [selectedTerm];
         if (selectedPurchase) filters.purchases = [selectedPurchase];
+        if (stockStatus) filters.stockStatus = stockStatus;
         applyExtraFilters(filters);
         // Strapi caps pageSize at 100, so a PAGE > 100 quietly returns 100
         // and the loop's `arr.length < PAGE` check breaks early — that was
@@ -378,7 +381,7 @@ export default function Products() {
             if (p > 500) break; // safety stop ~50k rows
         }
         return out;
-    }, [searchText, selectedBrand, selectedCategory, selectedSupplier, selectedTerm, selectedPurchase, sortField, sortDir, applyExtraFilters]);
+    }, [searchText, selectedBrand, selectedCategory, selectedSupplier, selectedTerm, selectedPurchase, stockStatus, sortField, sortDir, applyExtraFilters]);
 
     const toggleVariants = async (product) => {
         const docId = product.documentId;
@@ -477,6 +480,19 @@ export default function Products() {
                             onPurchaseChange={(v) => updateQuery({ purchases: v || undefined, page: undefined })}
                             onSearchTextChange={(v) => updateQuery({ searchText: v || undefined, page: undefined })}
                             extra={[
+                                {
+                                    key: "stockStatus",
+                                    type: "select",
+                                    label: "Stock",
+                                    value: stockStatus || "",
+                                    onChange: (v) => updateQuery({ stockStatus: v || undefined, page: undefined }),
+                                    placeholder: "All stock",
+                                    options: [
+                                        { value: "inStock", label: "In stock" },
+                                        { value: "outOfStock", label: "Out of stock" },
+                                        { value: "low", label: "Low stock" },
+                                    ],
+                                },
                                 {
                                     key: "publishState",
                                     type: "select",

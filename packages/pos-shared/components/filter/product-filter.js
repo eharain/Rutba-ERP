@@ -184,7 +184,7 @@ export function ProductFilter({
                     <SearchBar
                         value={searchText}
                         onChange={onSearchTextChange}
-                        placeholder="Search by name, SKU, barcode, supplier code, supplier name, or PO number…"
+                        placeholder="Search by name, SKU, barcode (product or stock item), supplier code, supplier name, or PO number…"
                     />
                 </div>
             )}

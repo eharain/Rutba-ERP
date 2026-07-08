@@ -30,6 +30,9 @@ export const StockItemsEndpoints = {
                       { sku: { $containsi: term } },
                       { product: { name: { $containsi: term } } },
                       { product: { sku: { $containsi: term } } },
+                      // Manufacturer / EAN codes live on product.barcode (shared across
+                      // all units) — include it so scanning the maker's label resolves.
+                      { product: { barcode: { $containsi: term } } },
                   ],
               }
             : null;
@@ -157,6 +160,42 @@ export const StockItemsEndpoints = {
         apps: ['stock'],
         approle: ['admin', 'manager', 'staff'],
         data,
+    }),
+
+    /**
+     * Bulk Stock-Item Import — DRY RUN (no writes).
+     * For each row, resolves the target product (documentId / exact name / candidate
+     * shortlist) and computes the intended per-unit barcodes + which already exist.
+     * The server route lives at pos-strapi/src/api/stock-item/controllers/stock-item.js
+     * (resolveBulkStock).
+     *
+     * @param {Array<object>} rows
+     */
+    resolveBulkStock: (rows) => ({
+        path: '/stock-items/bulk-resolve',
+        action: 'resolveBulkStock',
+        method: 'post',
+        apps: ['stock'],
+        approle: ['admin', 'manager', 'staff'],
+        data: { rows },
+    }),
+
+    /**
+     * Bulk Stock-Item Import — COMMIT.
+     * Creates/updates stock items in bulk; the entered barcode is stored as the
+     * product barcode and each stock item gets a unique derived barcode. Returns
+     * { processed, ok, failed, results, createdStockItemDocumentIds }.
+     * Server route: stock-item.processBulkStock.
+     *
+     * @param {Array<object>} rows
+     */
+    processBulkStock: (rows) => ({
+        path: '/stock-items/bulk-process',
+        action: 'processBulkStock',
+        method: 'post',
+        apps: ['stock'],
+        approle: ['admin', 'manager'],
+        data: { rows },
     }),
 
     /**

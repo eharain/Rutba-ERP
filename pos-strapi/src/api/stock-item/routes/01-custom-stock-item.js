@@ -20,6 +20,22 @@ module.exports = {
     },
     {
       method: 'POST',
+      path: '/stock-items/bulk-resolve',
+      handler: 'stock-item.resolveBulkStock',
+      config: {
+        policies: [],
+      },
+    },
+    {
+      method: 'POST',
+      path: '/stock-items/bulk-process',
+      handler: 'stock-item.processBulkStock',
+      config: {
+        policies: [],
+      },
+    },
+    {
+      method: 'POST',
       path: '/stock-items/recompute-product-stock',
       handler: 'recompute-product-stock.run',
       config: {

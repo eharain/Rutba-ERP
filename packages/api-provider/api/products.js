@@ -105,6 +105,15 @@ export const ProductsEndpoints = {
             missingContent, missingLogo, missingGallery,
             priceMin, priceMax,
             createdFrom, createdTo, updatedFrom, updatedTo,
+            // Stock status (shared by the CMS and stock product lists). Derived
+            // from product.stock_quantity — the cached count of InStock stock-items:
+            //   'outOfStock' → no sellable stock (null or <= 0)
+            //   'inStock'    → some stock (> 0)
+            //   'low'        → positive but at/below reorder_level. That's a
+            //                  column-to-column comparison REST filters can't
+            //                  express, so it's passed through as a query hint the
+            //                  product controller's find() resolves (like publishState).
+            stockStatus,
             // Publish state (CMS only): 'published' | 'unpublished'. 'published'
             // is served purely by Strapi status; 'unpublished' (draft exists but
             // no published sibling) is a set-difference the product controller's
@@ -172,6 +181,18 @@ export const ProductsEndpoints = {
         if (updatedFrom) and.push({ updatedAt: { $gte: startOfDay(updatedFrom) } });
         if (updatedTo) and.push({ updatedAt: { $lte: endOfDay(updatedTo) } });
 
+        // Stock status. 'outOfStock' / 'inStock' are plain field filters on the
+        // cached stock_quantity; 'low' needs a column comparison and is deferred
+        // to the controller via a query hint (see stockStatusParam below).
+        let stockStatusParam;
+        if (stockStatus === 'outOfStock') {
+            and.push({ $or: [{ stock_quantity: { $null: true } }, { stock_quantity: { $lte: 0 } }] });
+        } else if (stockStatus === 'inStock') {
+            and.push({ stock_quantity: { $gt: 0 } });
+        } else if (stockStatus === 'low') {
+            stockStatusParam = 'low';
+        }
+
         if (and.length > 0) filterObj.$and = and;
 
         // Combine built-in filters with any caller-supplied raw filter object.
@@ -207,6 +228,7 @@ export const ProductsEndpoints = {
             ...(effectiveStatus ? { status: effectiveStatus } : {}),
             ...(fields ? { fields } : {}),
             ...(publishStateParam ? { publishState: publishStateParam } : {}),
+            ...(stockStatusParam ? { stockStatus: stockStatusParam } : {}),
         };
 
         return { path: '/products', params };
@@ -214,11 +236,13 @@ export const ProductsEndpoints = {
 
     /**
      * Full-text search across products. Hits, in order:
-     *   - product.name           ($containsi — partial match)
-     *   - product.barcode        ($eq — barcodes are scanned exact)
-     *   - product.sku            ($eq — SKUs are exact)
-     *   - product.supplierCode   ($containsi — the supplier's reference for THIS product)
-     *   - suppliers.name / phone ($containsi)
+     *   - product.name             ($containsi — partial match)
+     *   - product.barcode          ($eq — barcodes are scanned exact)
+     *   - product.sku              ($eq — SKUs are exact)
+     *   - product.supplierCode     ($containsi — the supplier's reference for THIS product)
+     *   - items.barcode / items.sku ($eq — find the parent product of a scanned/known
+     *                                 stock-item barcode or SKU; serialized codes are exact)
+     *   - suppliers.name / phone   ($containsi)
      *   - purchase_items.purchase.orderId ($containsi — find every product on PO X)
      *
      * @param {string} searchText
@@ -234,6 +258,8 @@ export const ProductsEndpoints = {
                     { barcode: { $eq: searchText } },
                     { sku: { $eq: searchText } },
                     { supplierCode: { $containsi: searchText } },
+                    { items: { barcode: { $eq: searchText } } },
+                    { items: { sku: { $eq: searchText } } },
                     { suppliers: { $or: [{ name: { $containsi: searchText } }, { phone: { $containsi: searchText } }] } },
                     { purchase_items: { purchase: { orderId: { $containsi: searchText } } } },
                 ],
