@@ -16,7 +16,88 @@ const EMPTY_FORM = {
     access_token: "",
     refresh_token: "",
     page_id: "",
+    platform_user_id: "",
     is_active: true,
+};
+
+// Per-platform: which credential fields to show (labelled for that provider) and
+// a help panel describing the account + API you need from the platform. The
+// underlying storage fields are the same; only the labels/visibility differ.
+const PLATFORM_FIELDS = {
+    instagram: {
+        help: {
+            account: "An Instagram Business or Creator account, linked to a Facebook Page you manage.",
+            api: "A Meta app (developers.facebook.com) using the Instagram Graph API, with instagram_basic, instagram_content_publish and instagram_manage_comments.",
+            how: "Set the App ID + Secret and click Connect (OAuth) — or paste a long-lived Page access token + the Instagram Business Account ID.",
+            docs: "https://developers.facebook.com/docs/instagram-platform",
+        },
+        fields: [
+            { key: "api_key", label: "Meta App ID", type: "password", placeholder: "for OAuth Connect" },
+            { key: "api_secret", label: "Meta App Secret", type: "password" },
+            { key: "access_token", label: "Page Access Token", type: "password", placeholder: "long-lived (or use Connect)" },
+            { key: "platform_user_id", label: "Instagram Business Account ID", type: "text" },
+            { key: "page_id", label: "Facebook Page ID", type: "text" },
+        ],
+    },
+    facebook: {
+        help: {
+            account: "A Facebook Page you are an admin of.",
+            api: "A Meta app with pages_manage_posts, pages_manage_engagement and pages_read_engagement.",
+            how: "Set the App ID + Secret and Connect (OAuth) — or paste a Page access token + Page ID.",
+            docs: "https://developers.facebook.com/docs/pages-api",
+        },
+        fields: [
+            { key: "api_key", label: "Meta App ID", type: "password", placeholder: "for OAuth Connect" },
+            { key: "api_secret", label: "Meta App Secret", type: "password" },
+            { key: "access_token", label: "Page Access Token", type: "password", placeholder: "long-lived (or use Connect)" },
+            { key: "page_id", label: "Facebook Page ID", type: "text" },
+        ],
+    },
+    x: {
+        help: {
+            account: "An X account plus an X Developer account (developer.x.com) with a Project and an App.",
+            api: "X API v2 with OAuth 2.0. Posting replies / reading mentions requires a paid tier (Basic or above).",
+            how: "Set the OAuth2 Client ID + Secret and Connect. Scopes: tweet.read, tweet.write, users.read, offline.access.",
+            docs: "https://developer.x.com/en/docs/x-api",
+        },
+        fields: [
+            { key: "api_key", label: "OAuth2 Client ID", type: "password" },
+            { key: "api_secret", label: "OAuth2 Client Secret", type: "password" },
+            { key: "access_token", label: "Access Token", type: "password", placeholder: "set by Connect" },
+            { key: "refresh_token", label: "Refresh Token", type: "password", placeholder: "set by Connect" },
+            { key: "platform_user_id", label: "X User ID", type: "text", placeholder: "set by Connect" },
+        ],
+    },
+    tiktok: {
+        help: {
+            account: "A TikTok Business account plus a TikTok for Developers app (developers.tiktok.com).",
+            api: "Content Posting API + Login Kit. Your posting domain must be URL-property verified; unaudited apps can only post privately (SELF_ONLY).",
+            how: "Set the Client Key + Secret and Connect. Scopes: user.info.basic, video.publish, video.upload.",
+            docs: "https://developers.tiktok.com/doc/content-posting-api-get-started",
+        },
+        fields: [
+            { key: "api_key", label: "Client Key", type: "password" },
+            { key: "api_secret", label: "Client Secret", type: "password" },
+            { key: "access_token", label: "Access Token", type: "password", placeholder: "set by Connect" },
+            { key: "refresh_token", label: "Refresh Token", type: "password", placeholder: "set by Connect" },
+            { key: "platform_user_id", label: "open_id", type: "text", placeholder: "set by Connect" },
+        ],
+    },
+    youtube: {
+        help: {
+            account: "A YouTube channel plus a Google account.",
+            api: "A Google Cloud project with the YouTube Data API v3 enabled and an OAuth consent screen. Uploads cost ~1600 quota units each (default 10,000/day ≈ 6 uploads).",
+            how: "Set the Google OAuth Client ID + Secret and Connect. Scopes: youtube.upload, youtube.force-ssl.",
+            docs: "https://developers.google.com/youtube/v3/getting-started",
+        },
+        fields: [
+            { key: "api_key", label: "Google OAuth Client ID", type: "password" },
+            { key: "api_secret", label: "Google OAuth Client Secret", type: "password" },
+            { key: "access_token", label: "Access Token", type: "password", placeholder: "set by Connect" },
+            { key: "refresh_token", label: "Refresh Token", type: "password", placeholder: "set by Connect" },
+            { key: "platform_user_id", label: "Channel ID", type: "text", placeholder: "set by Connect" },
+        ],
+    },
 };
 
 export default function AccountsPage() {
@@ -67,6 +148,7 @@ export default function AccountsPage() {
             access_token: account.access_token || "",
             refresh_token: account.refresh_token || "",
             page_id: account.page_id || "",
+            platform_user_id: account.platform_user_id || "",
             is_active: account.is_active !== false,
         });
         setShowForm(true);
@@ -76,7 +158,15 @@ export default function AccountsPage() {
         e.preventDefault();
         setSaving(true);
         try {
-            const payload = { data: { ...form } };
+            const data = { ...form };
+            if (editing) {
+                // Secret fields aren't returned to the client (private), so they
+                // load blank — blank must mean "keep the stored value", not wipe it.
+                for (const k of ["api_key", "api_secret", "access_token", "refresh_token", "page_id", "platform_user_id"]) {
+                    if (!data[k]) delete data[k];
+                }
+            }
+            const payload = { data };
             if (editing) {
                 await SocialAccountsEndpoints.update(editing.documentId, payload);
                 toast("Account updated.", "success");
@@ -197,30 +287,53 @@ export default function AccountsPage() {
                                             ))}
                                         </select>
                                     </div>
-                                    <div className="col-md-4">
-                                        <label className="form-label">Account Name</label>
-                                        <input className="form-control" name="account_name" value={form.account_name} onChange={handleChange} required />
+                                    <div className="col-md-8">
+                                        <label className="form-label">Account Name <span className="text-muted small">(a label for you)</span></label>
+                                        <input className="form-control" name="account_name" value={form.account_name} onChange={handleChange} required placeholder="e.g. Rutba Official" />
                                     </div>
-                                    <div className="col-md-4">
-                                        <label className="form-label">Page / Channel ID</label>
-                                        <input className="form-control" name="page_id" value={form.page_id} onChange={handleChange} placeholder="Optional" />
-                                    </div>
-                                    <div className="col-md-6">
-                                        <label className="form-label">API Key / Client ID</label>
-                                        <input className="form-control" name="api_key" value={form.api_key} onChange={handleChange} type="password" autoComplete="off" />
-                                    </div>
-                                    <div className="col-md-6">
-                                        <label className="form-label">API Secret / Client Secret</label>
-                                        <input className="form-control" name="api_secret" value={form.api_secret} onChange={handleChange} type="password" autoComplete="off" />
-                                    </div>
-                                    <div className="col-md-6">
-                                        <label className="form-label">Access Token</label>
-                                        <input className="form-control" name="access_token" value={form.access_token} onChange={handleChange} type="password" autoComplete="off" />
-                                    </div>
-                                    <div className="col-md-6">
-                                        <label className="form-label">Refresh Token</label>
-                                        <input className="form-control" name="refresh_token" value={form.refresh_token} onChange={handleChange} type="password" autoComplete="off" />
-                                    </div>
+
+                                    {/* Provider help — what account / API this platform needs */}
+                                    {(() => {
+                                        const cfg = PLATFORM_FIELDS[form.platform];
+                                        if (!cfg) return null;
+                                        return (
+                                            <div className="col-12">
+                                                <div className="alert alert-info py-2 mb-0 small">
+                                                    <div className="fw-semibold mb-1">
+                                                        <i className={`${PLATFORMS[form.platform]?.icon} me-1`}></i>
+                                                        What you need for {PLATFORMS[form.platform]?.label}
+                                                    </div>
+                                                    <div><strong>Account:</strong> {cfg.help.account}</div>
+                                                    <div><strong>API:</strong> {cfg.help.api}</div>
+                                                    <div><strong>How to connect:</strong> {cfg.help.how}</div>
+                                                    {cfg.help.docs && (
+                                                        <div className="mt-1">
+                                                            <a href={cfg.help.docs} target="_blank" rel="noopener noreferrer">
+                                                                <i className="fas fa-book me-1"></i>Provider setup docs
+                                                            </a>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })()}
+
+                                    {/* Platform-specific credential fields */}
+                                    {(PLATFORM_FIELDS[form.platform]?.fields || []).map((f) => (
+                                        <div className="col-md-6" key={f.key}>
+                                            <label className="form-label">{f.label}</label>
+                                            <input
+                                                className="form-control"
+                                                name={f.key}
+                                                value={form[f.key] || ""}
+                                                onChange={handleChange}
+                                                type={f.type || "text"}
+                                                placeholder={f.placeholder || ""}
+                                                autoComplete="off"
+                                            />
+                                        </div>
+                                    ))}
+
                                     <div className="col-12">
                                         <div className="form-check">
                                             <input className="form-check-input" type="checkbox" name="is_active" checked={form.is_active} onChange={handleChange} id="isActive" />

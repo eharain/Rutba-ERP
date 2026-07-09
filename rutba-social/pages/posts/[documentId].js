@@ -320,6 +320,22 @@ export default function PostDetailPage() {
             toast("Failed to delete.", "danger");
         }
     };
+
+    const [duplicating, setDuplicating] = useState(false);
+    const handleDuplicate = async () => {
+        setDuplicating(true);
+        try {
+            const res = await SocialPostsEndpoints.duplicate(documentId);
+            const newId = (res?.data || res)?.documentId;
+            toast("Copied to a new draft — review & publish to repost.", "success");
+            if (newId) router.push(`/posts/${newId}`);
+        } catch (err) {
+            console.error("Failed to duplicate post", err);
+            toast(err?.response?.data?.error?.message || "Failed to duplicate.", "danger");
+        } finally {
+            setDuplicating(false);
+        }
+    };
     if (loading) {
         return (<ProtectedRoute><Layout><div className="text-center py-5"><div className="spinner-border"></div></div></Layout></ProtectedRoute>);
     }
@@ -350,6 +366,9 @@ export default function PostDetailPage() {
                     </span>
                     <div className="ms-auto d-flex gap-2">
                         <button className="btn btn-sm btn-outline-danger" onClick={handleDelete}><i className="fas fa-trash me-1"></i>Delete</button>
+                        <button className="btn btn-sm btn-outline-primary" onClick={handleDuplicate} disabled={duplicating} title="Copy to a new draft to post again (repost)">
+                            {duplicating ? <span className="spinner-border spinner-border-sm me-1"></span> : <i className="fas fa-copy me-1"></i>}Repost
+                        </button>
                         {isPublished && (
                             <button className="btn btn-sm btn-outline-info" onClick={handleSyncReplies} disabled={syncing} title="Pull new comments from the platforms">
                                 {syncing ? <span className="spinner-border spinner-border-sm me-1"></span> : <i className="fas fa-sync me-1"></i>}Sync Replies

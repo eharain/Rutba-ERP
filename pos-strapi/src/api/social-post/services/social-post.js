@@ -217,6 +217,32 @@ module.exports = createCoreService(POST_UID, ({ strapi }) => ({
     return { platform_results: results };
   },
 
+  // ── repost: clone a post into a fresh draft (re-publishable) ───────────────
+
+  async duplicatePost(documentId) {
+    const src = await this._loadPost(documentId, 'draft');
+    if (!src) throw new Error('Post not found');
+    const created = await strapi.documents(POST_UID).create({
+      data: {
+        title: `${src.title || 'Post'} (repost)`,
+        body: src.body,
+        platforms: Array.isArray(src.platforms) ? src.platforms : [],
+        tags: Array.isArray(src.tags) ? src.tags : [],
+        // fresh publish state — this is a brand-new post on the platforms
+        post_status: 'draft',
+        platform_results: {},
+        published_at_social: null,
+        replies_synced_at: null,
+        scheduled_at: null,
+        cover: src.cover?.id || null,
+        video: Array.isArray(src.video) ? src.video.map((v) => v.id).filter(Boolean) : [],
+        social_accounts: Array.isArray(src.social_accounts) ? src.social_accounts.map((a) => a.id).filter(Boolean) : [],
+        products: { set: Array.isArray(src.products) ? src.products.map((p) => p.documentId).filter(Boolean) : [] },
+      },
+    });
+    return created;
+  },
+
   // ── inbound: fetch comments/replies from each platform ─────────────────────
 
   async syncRepliesForPost(documentId) {

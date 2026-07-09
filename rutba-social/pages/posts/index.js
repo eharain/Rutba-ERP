@@ -1,4 +1,5 @@
 ﻿import React, { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/router";
 import Layout from "../../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
@@ -72,6 +73,7 @@ const POST_STATUS_BADGES = {
 export default function PostsPage() {
     const { jwt } = useAuth();
     const { toast, ToastContainer } = useToast();
+    const router = useRouter();
 
     const [posts, setPosts] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -242,6 +244,19 @@ export default function PostsPage() {
         }
     };
 
+    const duplicateOne = async (post) => {
+        try {
+            const res = await SocialPostsEndpoints.duplicate(post.documentId);
+            const newId = (res?.data || res)?.documentId;
+            toast("Copied to a new draft — review & publish to repost.", "success");
+            if (newId) router.push(`/posts/${newId}`);
+            else await loadPosts();
+        } catch (err) {
+            console.error("Failed to duplicate post", err);
+            toast("Failed to duplicate.", "danger");
+        }
+    };
+
     const selectedCount = [...selectedIds].filter(id => filteredPostIds.includes(id)).length;
 
     return (
@@ -271,6 +286,9 @@ export default function PostsPage() {
                             fetchAll={fetchAllPosts}
                             onAfterImport={loadPosts}
                         />
+                        <Link className="btn btn-success btn-sm" href="/posts/from-product" title="Turn a product into a shoppable post">
+                            <i className="fas fa-tags me-1"></i>Sell a Product
+                        </Link>
                         <Link className="btn btn-primary btn-sm" href="/posts/create">
                             <i className="fas fa-plus me-1"></i>New Post
                         </Link>
@@ -378,6 +396,9 @@ export default function PostsPage() {
                                                             {publishing[post.documentId] ? <span className="spinner-border spinner-border-sm"></span> : <i className="fas fa-upload"></i>}
                                                         </button>
                                                     )}
+                                                    <button className="btn btn-sm btn-outline-primary" onClick={() => duplicateOne(post)} title="Repost — copy to a new draft">
+                                                        <i className="fas fa-copy"></i>
+                                                    </button>
                                                     <button className="btn btn-sm btn-outline-danger" onClick={() => handleDelete(post)}>
                                                         <i className="fas fa-trash"></i>
                                                     </button>

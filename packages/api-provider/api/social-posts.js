@@ -23,6 +23,8 @@ export const SocialPostsEndpoints = {
     unpublishSocial: (documentId) => ({ path: `/social-posts/${documentId}/unpublish-social`, action: 'unpublishSocial', method: 'post' }),
     syncReplies: (documentId) => ({ path: `/social-posts/${documentId}/sync-replies`, action: 'syncReplies', method: 'post' }),
     sendReply: (documentId, data) => ({ path: `/social-posts/${documentId}/reply`, action: 'sendReply', method: 'post', data }),
+    // Clone a post into a fresh draft, ready to re-publish (repost).
+    duplicate: (documentId) => ({ path: `/social-posts/${documentId}/duplicate`, action: 'duplicate', method: 'post' }),
     // todo: speculative stub — rutba-social/pages/posts/index.js uses this to mark
     // which drafts have a published counterpart. The current implementation returns
     // documentId-only list of published rows; verify the Strapi status filter is

@@ -84,6 +84,17 @@ module.exports = createCoreController(POST_UID, ({ strapi }) => ({
     }
   },
 
+  /** Clone a post into a fresh draft, ready to re-publish (repost). */
+  async duplicate(ctx) {
+    if (!await ensureUser(ctx, strapi)) return;
+    try {
+      const post = await strapi.service(POST_UID).duplicatePost(ctx.params.id);
+      return ctx.send({ data: post });
+    } catch (e) {
+      return ctx.badRequest(e.message || 'Duplicate failed');
+    }
+  },
+
   /** Return the post's replies (newest first). */
   async listReplies(ctx) {
     if (!await ensureUser(ctx, strapi)) return;

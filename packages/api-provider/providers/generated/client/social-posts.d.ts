@@ -13,6 +13,7 @@ export interface SocialPostsEndpointsType {
     unpublishSocial(documentId: any): Promise<any>;
     syncReplies(documentId: any): Promise<any>;
     sendReply(documentId: any, data: any): Promise<any>;
+    duplicate(documentId: any): Promise<any>;
     publishedMarker(): Promise<any>;
     meta: any;
 }

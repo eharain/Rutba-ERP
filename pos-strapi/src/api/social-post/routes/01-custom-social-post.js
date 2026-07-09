@@ -75,5 +75,11 @@ module.exports = {
       handler: 'social-post.listReplies',
       config: { auth: false },
     },
+    {
+      method: 'POST',
+      path: '/social-posts/:id/duplicate',
+      handler: 'social-post.duplicate',
+      config: { auth: false },
+    },
   ],
 };
