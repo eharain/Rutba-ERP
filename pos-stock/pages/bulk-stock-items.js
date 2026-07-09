@@ -172,6 +172,7 @@ export default function BulkStockItems() {
     const [uploading, setUploading] = useState(false);
     const [uploadFileName, setUploadFileName] = useState('');
     const [pickerRow, setPickerRow] = useState(null); // index of review row picking a product
+    const [addPickerOpen, setAddPickerOpen] = useState(false); // entry-stage "search & add row"
     const fileInputRef = useRef(null);
 
     // ── Entry-stage row editing ──────────────────────────────────────────────
@@ -298,6 +299,31 @@ export default function BulkStockItems() {
         });
         setPickerRow(null);
     };
+
+    // Entry-stage: pick an existing product (searched by name / barcode / sku,
+    // incl. stock-item codes) and append a prefilled row for it.
+    const onPickAddRow = (documentId, product) => {
+        if (!documentId) { setAddPickerOpen(false); return; }
+        setRows((prev) => [
+            ...prev.filter((r) => !rowIsBlank(r)),
+            newRow({
+                productName: product?.name || '',
+                productDocumentId: documentId,
+                barcode: product?.barcode || '',
+                sku: product?.sku || '',
+                barcodeMode: masterMode,
+                updateExisting: masterUpdate,
+            }),
+            ...prev.filter(rowIsBlank),
+        ]);
+        setAddPickerOpen(false);
+    };
+
+    // The single ProductPickerModal serves both the review-row pick and the
+    // entry-stage "search & add" — route by which one is open.
+    const pickerOpen = pickerRow != null || addPickerOpen;
+    const onPickerSelect = (documentId, product) => (addPickerOpen ? onPickAddRow(documentId, product) : onPickProduct(documentId, product));
+    const closePicker = () => { setAddPickerOpen(false); setPickerRow(null); };
 
     const rowReady = (rr) => (rr.createNew ? !!(rr.newName || '').trim() : !!rr.decisionDocId);
 
@@ -470,6 +496,9 @@ export default function BulkStockItems() {
                                                     checked={masterUpdate} onChange={(e) => applyMasterUpdate(e.target.checked)} />
                                                 <label className="form-check-label small" htmlFor="masterUpdate">Update existing (all)</label>
                                             </div>
+                                            <button className="btn btn-sm btn-outline-primary" onClick={() => setAddPickerOpen(true)} title="Search an existing product by name, barcode, or SKU and add it as a row">
+                                                <i className="fas fa-magnifying-glass me-1"></i>Search &amp; Add
+                                            </button>
                                             <button className="btn btn-sm btn-outline-secondary" onClick={() => addRows(5)}><i className="fas fa-plus me-1"></i>Add Rows</button>
                                             <button className="btn btn-sm btn-outline-danger" onClick={clearRows}><i className="fas fa-eraser me-1"></i>Clear</button>
                                         </div>
@@ -719,10 +748,10 @@ export default function BulkStockItems() {
                     </ListPageLayout>
 
                     <ProductPickerModal
-                        show={pickerRow != null}
-                        onClose={() => setPickerRow(null)}
-                        onSelect={onPickProduct}
-                        title="Select product to link"
+                        show={pickerOpen}
+                        onClose={closePicker}
+                        onSelect={onPickerSelect}
+                        title={addPickerOpen ? 'Search a product to add a row (name / barcode / SKU)' : 'Select product to link'}
                     />
                 </Layout>
             </PermissionCheck>

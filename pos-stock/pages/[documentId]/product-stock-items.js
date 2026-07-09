@@ -62,6 +62,8 @@ export default function EditProduct() {
     const [applyingChanges, setApplyingChanges] = useState(false);
     const [applyFields, setApplyFields] = useState({ name: true, sku: false, selling_price: true, offer_price: true, status: false });
     const [applyStatus, setApplyStatus] = useState('');
+    // When applying SKU: false = only fill items with a blank SKU; true = overwrite existing SKUs too.
+    const [skuOverwrite, setSkuOverwrite] = useState(false);
 
     // Branch assignment — moves selected items into a destination branch.
     // Used by the "Assign" sub-tab; mirrors the global stock-items page's
@@ -90,6 +92,10 @@ export default function EditProduct() {
     const [scanBarcode, setScanBarcode] = useState('');
     const [scanAdding, setScanAdding] = useState(false);
     const scanInputRef = useRef(null);
+    // Optional SKU to stamp on scan-created items (shared across single + multi scan).
+    // Many stock items can share one SKU, so this is applied verbatim when present;
+    // otherwise a unique SKU is auto-derived from the product SKU.
+    const [scanSku, setScanSku] = useState('');
 
     // Scan barcode to attach existing stock item
     const [attachBarcode, setAttachBarcode] = useState('');
@@ -262,12 +268,14 @@ export default function EditProduct() {
         try {
             const updates = {};
             if (applyFields.name) updates.name = product.name;
-            if (applyFields.sku) updates.sku = product.sku || '';
             if (applyFields.selling_price) updates.selling_price = parseFloat(product.selling_price) || 0;
             if (applyFields.offer_price) updates.offer_price = parseFloat(product.offer_price) || 0;
             if (applyFields.status && applyStatus) updates.status = applyStatus;
+            // SKU is handled per-item below: it only fills stock items whose SKU is
+            // empty (never overwrites an item that already carries one). SKUs are
+            // shared, so copying the product SKU onto blank items is expected.
 
-            if (Object.keys(updates).length === 0) {
+            if (Object.keys(updates).length === 0 && !applyFields.sku) {
                 setError('Please select at least one field to apply');
                 setApplyingChanges(false);
                 return;
@@ -297,14 +305,30 @@ export default function EditProduct() {
                 return;
             }
 
+            let skuApplied = 0;
+            let applied = 0;
             for (const id of eligibleIds) {
-                await StockItemsEndpoints.update(id, updates);
+                const perItem = { ...updates };
+                if (applyFields.sku) {
+                    const cur = itemsById.get(id)?.sku;
+                    const isBlank = cur == null || String(cur).trim() === '';
+                    if (skuOverwrite || isBlank) {
+                        perItem.sku = product.sku || '';
+                        skuApplied++;
+                    } // else (blanks-only mode): keep the item's existing SKU untouched
+                }
+                if (Object.keys(perItem).length === 0) continue; // nothing to write for this item
+                await StockItemsEndpoints.update(id, perItem);
+                applied++;
             }
 
+            const skuNote = applyFields.sku
+                ? ` SKU ${skuOverwrite ? 'applied to' : 'filled on'} ${skuApplied} ${skuOverwrite ? '' : 'blank '}item(s).`
+                : '';
             setSuccess(
                 skipped > 0
-                    ? `Applied changes to ${eligibleIds.length} stock item(s). Skipped ${skipped} not in possession (Sold, Lost, Transferred, etc.).`
-                    : `Applied changes to ${eligibleIds.length} stock item(s)`
+                    ? `Applied changes to ${applied} stock item(s).${skuNote} Skipped ${skipped} not in possession (Sold, Lost, Transferred, etc.).`
+                    : `Applied changes to ${applied} stock item(s).${skuNote}`
             );
             fetchStockItems(stockStatusFilter);
         } catch (err) {
@@ -313,6 +337,19 @@ export default function EditProduct() {
         } finally {
             setApplyingChanges(false);
         }
+    };
+
+    // Per-session counter so a same-second scan burst stays unique.
+    const autoIndexRef = useRef(0);
+
+    // Generate a SHORT, clean barcode for scan-create when the barcode field is
+    // left blank (e.g. only a shared SKU is supplied). Pure base36 (A-Z0-9),
+    // ~6 chars, globally unique: seconds-since-epoch + a per-session counter,
+    // each base36-encoded. e.g. "SVXYZ7".
+    const generateDynamicBarcode = () => {
+        autoIndexRef.current += 1;
+        const secs = Math.floor((Date.now() - Date.UTC(2025, 0, 1)) / 1000);
+        return (secs.toString(36) + autoIndexRef.current.toString(36)).toUpperCase();
     };
 
     // Helper: find the max incremental barcode suffix among existing stock items
@@ -374,11 +411,15 @@ export default function EditProduct() {
 
     // --- Method 2: Scan barcode to create a new stock item with that barcode ---
     const handleScanBarcodeAdd = async () => {
-        const code = scanBarcode.trim();
-        if (!code || !documentId || documentId === 'new') return;
+        const entered = scanBarcode.trim();
+        const skuVal = scanSku.trim();
+        // Allow creating with a blank barcode as long as a SKU is provided —
+        // a dynamic unique barcode is generated in that case.
+        if ((!entered && !skuVal) || !documentId || documentId === 'new') return;
         setScanAdding(true);
         setError('');
         try {
+            const code = entered || generateDynamicBarcode();
             const existing = await StockItemsEndpoints.checkBarcode(code);
             if (existing?.data?.length > 0) {
                 setError(`Barcode "${code}" is already in use by another stock item`);
@@ -390,7 +431,7 @@ export default function EditProduct() {
             const branch = getBranch();
 
             const data = {
-                sku: `${baseSku}-${Date.now().toString(22)}`.toUpperCase(),
+                sku: skuVal || `${baseSku}-${Date.now().toString(22)}`.toUpperCase(),
                 barcode: code,
                 name: product.name,
                 status: 'Received',
@@ -401,8 +442,9 @@ export default function EditProduct() {
             };
 
             await StockItemsEndpoints.create(data);
-            setSuccess(`Stock item created with barcode "${code}"`);
+            setSuccess(`Stock item created with barcode "${code}"${skuVal ? ` (sku "${skuVal}")` : ''}${!entered ? ' — auto barcode' : ''}`);
             setScanBarcode('');
+            setScanSku('');
             if (scanInputRef.current) scanInputRef.current.focus();
             fetchStockItems(stockStatusFilter);
         } catch (err) {
@@ -509,11 +551,14 @@ export default function EditProduct() {
 
     // --- Multi-scan: continuously scan barcodes to create stock items ---
     const handleMultiScanAdd = async () => {
-        const code = multiScanBarcode.trim();
-        if (!code || !documentId || documentId === 'new') return;
+        const entered = multiScanBarcode.trim();
+        const skuVal = scanSku.trim();
+        // Blank barcode + a SKU still creates an item (with a dynamic barcode).
+        if ((!entered && !skuVal) || !documentId || documentId === 'new') return;
         setMultiScanAdding(true);
         setError('');
         try {
+            const code = entered || generateDynamicBarcode();
             const existing = await StockItemsEndpoints.checkBarcode(code);
             if (existing?.data?.length > 0) {
                 setError(`Barcode "${code}" is already in use by another stock item`);
@@ -525,7 +570,7 @@ export default function EditProduct() {
             const branch = getBranch();
 
             const data = {
-                sku: `${baseSku}-${Date.now().toString(22)}`.toUpperCase(),
+                sku: skuVal || `${baseSku}-${Date.now().toString(22)}`.toUpperCase(),
                 barcode: code,
                 name: product.name,
                 status: 'Received',
@@ -542,6 +587,7 @@ export default function EditProduct() {
             ]);
             setSuccess(`Stock item created with barcode "${code}" (${multiScanItems.length + 1} scanned)`);
             setMultiScanBarcode('');
+            setScanSku('');
             if (multiScanInputRef.current) multiScanInputRef.current.focus();
             fetchStockItems(stockStatusFilter);
         } catch (err) {
@@ -748,10 +794,16 @@ export default function EditProduct() {
 
                                     <div className="d-flex flex-wrap gap-3 align-items-center">
                                         <span className="small fw-bold">Fields to apply:</span>
-                                        <label className="small d-inline-flex align-items-center gap-1 mb-0">
+                                        <label className="small d-inline-flex align-items-center gap-1 mb-0" title="Copy the product SKU onto selected stock items. By default only items with a blank SKU are set; tick 'overwrite existing' to replace existing SKUs too.">
                                             <input type="checkbox" checked={applyFields.sku} onChange={(e) => setApplyFields(f => ({ ...f, sku: e.target.checked }))} />
                                             SKU
                                         </label>
+                                        {applyFields.sku && (
+                                            <label className="small d-inline-flex align-items-center gap-1 mb-0 text-muted" title="On = replace existing SKUs too. Off = only fill items whose SKU is blank.">
+                                                <input type="checkbox" checked={skuOverwrite} onChange={(e) => setSkuOverwrite(e.target.checked)} />
+                                                overwrite existing
+                                            </label>
+                                        )}
                                         <label className="small d-inline-flex align-items-center gap-1 mb-0">
                                             <input type="checkbox" checked={applyFields.selling_price} onChange={(e) => setApplyFields(f => ({ ...f, selling_price: e.target.checked }))} />
                                             Selling Price
@@ -1311,17 +1363,30 @@ export default function EditProduct() {
                                                     autoComplete="off"
                                                 />
                                             </div>
+                                            <div style={{ flex: 1 }}>
+                                                <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: 'bold', color: 'black' }}>Scan or type SKU <span style={{ fontWeight: 'normal', color: '#888' }}>(optional)</span></label>
+                                                <input
+                                                    type="text"
+                                                    value={scanSku}
+                                                    onChange={(e) => setScanSku(e.target.value)}
+                                                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleScanBarcodeAdd(); } }}
+                                                    style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', fontFamily: 'monospace' }}
+                                                    placeholder="SKU (shared) — blank = auto"
+                                                    autoComplete="off"
+                                                    title="If set, this SKU is stamped on the created item (and on multi-scan items). Many stock items may share one SKU."
+                                                />
+                                            </div>
                                             <button
                                                 type="button"
                                                 onClick={handleScanBarcodeAdd}
-                                                disabled={scanAdding || !scanBarcode.trim()}
+                                                disabled={scanAdding || (!scanBarcode.trim() && !scanSku.trim())}
                                                 style={{
                                                     padding: '8px 16px',
-                                                    background: scanAdding || !scanBarcode.trim() ? '#aaa' : '#28a745',
+                                                    background: scanAdding || (!scanBarcode.trim() && !scanSku.trim()) ? '#aaa' : '#28a745',
                                                     color: 'white',
                                                     border: 'none',
                                                     borderRadius: '4px',
-                                                    cursor: scanAdding || !scanBarcode.trim() ? 'not-allowed' : 'pointer',
+                                                    cursor: scanAdding || (!scanBarcode.trim() && !scanSku.trim()) ? 'not-allowed' : 'pointer',
                                                     fontWeight: 'bold',
                                                     whiteSpace: 'nowrap'
                                                 }}
@@ -1410,7 +1475,7 @@ export default function EditProduct() {
                             {showMultiScanSection && (
                                 <div style={{ background: '#f0fff0', padding: '20px', borderRadius: '0 0 8px 8px', border: '1px solid #c3e6cb', borderTop: 'none' }}>
                                     <div style={{ marginBottom: '10px', padding: '8px 12px', background: '#e9ecef', borderRadius: '4px', fontSize: '13px', color: 'black' }}>
-                                        <strong>Continuous scan mode:</strong> Each barcode scan creates a new stock item for this product. Duplicates are checked automatically.
+                                        <strong>Continuous scan mode:</strong> Each barcode scan creates a new stock item for this product. Duplicates are checked automatically. Leave the barcode blank and set only a SKU to create items with an <em>auto-generated</em> barcode.
                                     </div>
 
                                     <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end', marginBottom: '16px' }}>
@@ -1437,17 +1502,33 @@ export default function EditProduct() {
                                                 autoComplete="off"
                                             />
                                         </div>
+                                        <div style={{ flex: 1 }}>
+                                            <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: 'bold', color: 'black' }}>
+                                                <i className="fas fa-hashtag" style={{ marginRight: '4px' }} />
+                                                SKU <span style={{ fontWeight: 'normal', color: '#888' }}>(optional, shared)</span>
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={scanSku}
+                                                onChange={(e) => setScanSku(e.target.value)}
+                                                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleMultiScanAdd(); } }}
+                                                style={{ width: '100%', padding: '12px', border: '1px solid #ccc', borderRadius: '4px', fontFamily: 'monospace', fontSize: '16px' }}
+                                                placeholder="blank = auto"
+                                                autoComplete="off"
+                                                title="Stamped on every scanned item while set. Many items may share one SKU."
+                                            />
+                                        </div>
                                         <button
                                             type="button"
                                             onClick={handleMultiScanAdd}
-                                            disabled={multiScanAdding || !multiScanBarcode.trim()}
+                                            disabled={multiScanAdding || (!multiScanBarcode.trim() && !scanSku.trim())}
                                             style={{
                                                 padding: '12px 20px',
-                                                background: multiScanAdding || !multiScanBarcode.trim() ? '#aaa' : '#28a745',
+                                                background: multiScanAdding || (!multiScanBarcode.trim() && !scanSku.trim()) ? '#aaa' : '#28a745',
                                                 color: 'white',
                                                 border: 'none',
                                                 borderRadius: '4px',
-                                                cursor: multiScanAdding || !multiScanBarcode.trim() ? 'not-allowed' : 'pointer',
+                                                cursor: multiScanAdding || (!multiScanBarcode.trim() && !scanSku.trim()) ? 'not-allowed' : 'pointer',
                                                 fontWeight: 'bold',
                                                 whiteSpace: 'nowrap',
                                                 fontSize: '16px'
