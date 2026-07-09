@@ -236,14 +236,22 @@ export const ProductsEndpoints = {
 
     /**
      * Full-text search across products. Hits, in order:
-     *   - product.name             ($containsi — partial match)
-     *   - product.barcode          ($eq — barcodes are scanned exact)
-     *   - product.sku              ($eq — SKUs are exact)
-     *   - product.supplierCode     ($containsi — the supplier's reference for THIS product)
-     *   - items.barcode / items.sku ($eq — find the parent product of a scanned/known
-     *                                 stock-item barcode or SKU; serialized codes are exact)
-     *   - suppliers.name / phone   ($containsi)
+     *   - product.name           ($containsi — partial match)
+     *   - product.barcode        ($eq — barcodes are scanned exact)
+     *   - product.sku            ($eq — SKUs are exact)
+     *   - product.supplierCode   ($containsi — the supplier's reference for THIS product)
+     *   - suppliers.name / phone ($containsi)
      *   - purchase_items.purchase.orderId ($containsi — find every product on PO X)
+     *
+     * Stock-item barcode/SKU search: we do NOT filter by the `items` reverse
+     * relation here. stock-item is only in the 'sale'/'stock' domains (CMS has
+     * no access at all) and is read via the branch-scoped /me/stock-items-search
+     * route, so `{ items: {...} }` is not a permitted filter key on /products —
+     * including it makes Strapi reject the whole query with 400 "Invalid key
+     * items". Instead we pass the term as a top-level `stockSearch` hint; the
+     * product controller resolves it to owning-product ids server-side (with
+     * Strapi privileges) and ORs them into the filter, so it works for every
+     * role. See product controller find().
      *
      * @param {string} searchText
      * @param {number} page
@@ -258,12 +266,12 @@ export const ProductsEndpoints = {
                     { barcode: { $eq: searchText } },
                     { sku: { $eq: searchText } },
                     { supplierCode: { $containsi: searchText } },
-                    { items: { barcode: { $eq: searchText } } },
-                    { items: { sku: { $eq: searchText } } },
                     { suppliers: { $or: [{ name: { $containsi: searchText } }, { phone: { $containsi: searchText } }] } },
                     { purchase_items: { purchase: { orderId: { $containsi: searchText } } } },
                 ],
             },
+            // Server-side stock-item barcode/SKU resolution (see note above).
+            stockSearch: searchText,
             populate: {
                 categories: true,
                 brands: true,

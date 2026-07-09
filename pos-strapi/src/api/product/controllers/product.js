@@ -18,6 +18,41 @@ module.exports = createCoreController('api::product.product', ({ strapi }) => ({
   // and therefore not expressible as a single field filter. Every other caller
   // — and the "Published" filter (served by status=published) — is untouched.
   async find(ctx) {
+    // Stock-item barcode/SKU search. The client can't filter products by the
+    // `items` relation (stock-item is outside most roles' domains — CMS has no
+    // access — so Strapi rejects it as an invalid filter key), so it passes the
+    // term as a `stockSearch` hint and we resolve it here with full privileges:
+    // find stock-items whose barcode or SKU matches, collect their owning
+    // products, and OR those ids into the incoming filters. Runs first so the
+    // publishState / low-stock constraints below still AND on top.
+    if (ctx.query?.stockSearch) {
+      const term = String(ctx.query.stockSearch).trim();
+      delete ctx.query.stockSearch;
+      if (term) {
+        const stockItems = await strapi.db.query('api::stock-item.stock-item').findMany({
+          where: { $or: [{ barcode: term }, { sku: term }] },
+          select: ['id'],
+          // documentId (not numeric id): products use draft & publish, so a
+          // stock-item links to both version rows and the numeric id we'd
+          // collect may differ from the one super.find() returns for the
+          // requested status. documentId is stable across versions.
+          populate: { product: { select: ['id', 'documentId'] } },
+          limit: 500,
+        });
+        const productDocIds = [...new Set(stockItems.map((si) => si.product?.documentId).filter(Boolean))];
+        if (productDocIds.length > 0) {
+          const idFilter = { documentId: { $in: productDocIds } };
+          // OR the stock-item hits with whatever product-level search the
+          // client already built (name/sku/barcode/supplier/PO).
+          ctx.query.filters = ctx.query.filters
+            ? { $or: [ctx.query.filters, idFilter] }
+            : idFilter;
+        }
+        // No stock-item matched → leave filters untouched; the product-level
+        // $or search still applies.
+      }
+    }
+
     if (ctx.query?.publishState === 'unpublished') {
       // Strip our custom hint so the core query builder doesn't see it.
       delete ctx.query.publishState;
