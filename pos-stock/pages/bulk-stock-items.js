@@ -587,8 +587,8 @@ export default function BulkStockItems() {
                                                         <th style={{ minWidth: '170px' }}>Entered Name</th>
                                                         <th style={{ minWidth: '320px' }}>Product Match</th>
                                                         <th style={{ width: '60px' }}>Qty</th>
-                                                        <th style={{ minWidth: '160px' }}>Unit Barcodes</th>
-                                                        <th style={{ minWidth: '140px' }}>Plan</th>
+                                                        <th style={{ minWidth: '160px' }}>Barcodes to write</th>
+                                                        <th style={{ minWidth: '190px' }}>What will happen</th>
                                                         <th className="text-center" style={{ width: '70px' }}>Update</th>
                                                     </tr>
                                                 </thead>
@@ -659,19 +659,22 @@ export default function BulkStockItems() {
                                                                     <div><small className="text-muted">{MODE_LABEL[rr.barcodeMode] || rr.barcodeMode}</small></div>
                                                                 </td>
                                                                 <td>
-                                                                    {rr.barcodeMode === 'product' ? (
+                                                                    {!ready ? (
+                                                                        <small className="text-danger"><i className="fas fa-triangle-exclamation me-1"></i>Pick a product or set a new-product name first</small>
+                                                                    ) : rr.barcodeMode === 'product' ? (
                                                                         <small>
-                                                                            <span className="text-primary">set product barcode</span>
-                                                                            {plan.currentInStock != null && <span className="text-muted d-block">{plan.currentInStock} in stock (untouched)</span>}
+                                                                            <span className="text-primary fw-semibold">Set manufacturer barcode on product</span>
+                                                                            {plan.currentInStock != null && <span className="text-muted d-block">{plan.currentInStock} unit(s) in stock — kept</span>}
                                                                         </small>
                                                                     ) : (
                                                                         <small>
-                                                                            <span className="text-success">+{willCreate} new</span>
+                                                                            <span className="text-success">Create {willCreate} new item{willCreate === 1 ? '' : 's'}</span>
                                                                             {(plan.existingCount || 0) > 0 && (
                                                                                 rr.updateExisting
-                                                                                    ? <span className="text-primary d-block">↻ {willUpdate} update</span>
-                                                                                    : <span className="text-danger d-block">⚠ {plan.existingCount} exist</span>
+                                                                                    ? <span className="text-primary d-block">Update {willUpdate} existing</span>
+                                                                                    : <span className="text-danger d-block">{plan.existingCount} barcode(s) already exist → will fail (tick Update)</span>
                                                                             )}
+                                                                            {rr.createNew && <span className="text-muted d-block">creates product “{rr.newName || rr.productName}”</span>}
                                                                         </small>
                                                                     )}
                                                                 </td>
@@ -724,20 +727,75 @@ export default function BulkStockItems() {
                                             <span className="badge bg-primary fs-6">Stock items created {createdIds.length}</span>
                                         </div>
                                         <div className="table-responsive">
-                                            <table className="table table-sm table-bordered mb-0">
+                                            <table className="table table-sm table-bordered mb-0 align-middle">
                                                 <thead className="table-light">
-                                                    <tr><th>#</th><th>Status</th><th>Created</th><th>Updated</th><th>Detail</th></tr>
+                                                    <tr>
+                                                        <th style={{ width: '34px' }}>#</th>
+                                                        <th style={{ width: '40px' }}></th>
+                                                        <th style={{ minWidth: '200px' }}>Product</th>
+                                                        <th style={{ minWidth: '170px' }}>Outcome</th>
+                                                        <th style={{ minWidth: '260px' }}>Stock-item barcodes</th>
+                                                    </tr>
                                                 </thead>
                                                 <tbody>
-                                                    {(results.results || []).map((r) => (
-                                                        <tr key={r.index} className={r.ok ? '' : 'table-danger'}>
-                                                            <td>{r.index + 1}</td>
-                                                            <td>{r.ok ? <span className="text-success"><i className="fas fa-check"></i></span> : <span className="text-danger"><i className="fas fa-times"></i></span>}</td>
-                                                            <td>{r.created ?? '-'}</td>
-                                                            <td>{r.updated ?? '-'}</td>
-                                                            <td><small>{r.ok ? (r.productDocumentId || '') : (r.error || '')}</small></td>
-                                                        </tr>
-                                                    ))}
+                                                    {(results.results || []).map((r) => {
+                                                        const created = r.createdBarcodes || [];
+                                                        const updated = r.updatedBarcodes || [];
+                                                        return (
+                                                            <tr key={r.index} className={r.ok ? '' : 'table-danger'}>
+                                                                <td className="text-muted text-center">{r.index + 1}</td>
+                                                                <td className="text-center">
+                                                                    {r.ok
+                                                                        ? <span className="text-success"><i className="fas fa-check-circle"></i></span>
+                                                                        : <span className="text-danger"><i className="fas fa-times-circle"></i></span>}
+                                                                </td>
+                                                                <td>
+                                                                    {r.productName || <span className="text-muted">—</span>}
+                                                                    {r.sku && <div><small className="text-muted">sku: <code>{r.sku}</code></small></div>}
+                                                                </td>
+                                                                <td>
+                                                                    {!r.ok ? (
+                                                                        <span className="text-danger small"><i className="fas fa-triangle-exclamation me-1"></i>{r.error || 'Failed'}</span>
+                                                                    ) : r.mode === 'product' ? (
+                                                                        <span className="small">
+                                                                            <span className="badge bg-primary">Manufacturer barcode set</span>
+                                                                            <div className="mt-1">code <code>{r.productBarcode}</code></div>
+                                                                            <div className="text-muted">{r.inStock} unit(s) in stock — kept</div>
+                                                                        </span>
+                                                                    ) : (
+                                                                        <span className="small d-inline-flex flex-column gap-1">
+                                                                            {r.created > 0 && <span className="badge bg-success">+{r.created} created</span>}
+                                                                            {r.updated > 0 && <span className="badge bg-info text-dark">↻ {r.updated} updated</span>}
+                                                                            {r.created === 0 && r.updated === 0 && <span className="text-muted">no change</span>}
+                                                                        </span>
+                                                                    )}
+                                                                </td>
+                                                                <td>
+                                                                    {r.mode === 'product' ? (
+                                                                        <small className="text-muted">on product (units unchanged)</small>
+                                                                    ) : (created.length || updated.length) ? (
+                                                                        <small style={{ wordBreak: 'break-all' }}>
+                                                                            {created.length > 0 && (
+                                                                                <span className="text-success" title={created.join(', ')}>
+                                                                                    {created.slice(0, 6).map((b) => <code key={b} className="me-1">{b}</code>)}
+                                                                                    {created.length > 6 && <span className="text-muted">+{created.length - 6} more</span>}
+                                                                                </span>
+                                                                            )}
+                                                                            {updated.length > 0 && (
+                                                                                <span className="text-primary d-block mt-1" title={updated.join(', ')}>
+                                                                                    <span className="text-muted">updated: </span>
+                                                                                    {updated.slice(0, 6).map((b) => <code key={b} className="me-1">{b}</code>)}
+                                                                                    {updated.length > 6 && <span className="text-muted">+{updated.length - 6} more</span>}
+                                                                                </span>
+                                                                            )}
+                                                                        </small>
+                                                                    ) : (
+                                                                        <small className="text-muted">—</small>
+                                                                    )}
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    })}
                                                 </tbody>
                                             </table>
                                         </div>

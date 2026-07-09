@@ -389,7 +389,9 @@ module.exports = createCoreController('api::stock-item.stock-item', ({ strapi })
             limit: -1,
           });
           results.push({
-            index, ok: true, productDocumentId: productObj.documentId,
+            index, ok: true, mode: 'product',
+            productDocumentId: productObj.documentId,
+            productName: productObj.name,
             created: 0, updated: 0, productBarcode, inStock: inStock.length,
             note: 'manufacturer barcode set on product',
           });
@@ -426,6 +428,8 @@ module.exports = createCoreController('api::stock-item.stock-item', ({ strapi })
         const sharedSku = sku || productObj.sku || undefined;
         let created = 0;
         let updated = 0;
+        const createdBarcodes = [];
+        const updatedBarcodes = [];
         for (const bc of unitBarcodes) {
           const existing = await strapi.documents('api::stock-item.stock-item').findMany({
             filters: { barcode: { $eq: bc } },
@@ -449,16 +453,24 @@ module.exports = createCoreController('api::stock-item.stock-item', ({ strapi })
               data: common,
             });
             updated++;
+            updatedBarcodes.push(bc);
           } else {
             const si = await strapi.documents('api::stock-item.stock-item').create({
               data: { ...common, barcode: bc, status: 'InStock', sellable_units: sellableUnits },
             });
             created++;
             createdStockItemDocumentIds.push(si.documentId);
+            createdBarcodes.push(bc);
           }
         }
 
-        results.push({ index, ok: true, productDocumentId: productObj.documentId, created, updated });
+        results.push({
+          index, ok: true, mode,
+          productDocumentId: productObj.documentId,
+          productName: productObj.name,
+          sku: sharedSku || null,
+          created, updated, createdBarcodes, updatedBarcodes,
+        });
       } catch (err) {
         results.push({ index, ok: false, error: err.message });
       }
