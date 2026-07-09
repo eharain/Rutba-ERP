@@ -46,6 +46,15 @@ export default function ProductMergeTool({ product, documentId, currency = "", o
     const [variantSelection, setVariantSelection] = useState(new Set());
     const [mergingVariants, setMergingVariants] = useState(false);
 
+    // Attach existing standalone products AS variants of this one (re-parent,
+    // non-destructive: the source keeps its own stock/data, it just becomes a
+    // child variant of this product).
+    const [attachSearch, setAttachSearch] = useState("");
+    const [attachResults, setAttachResults] = useState([]);
+    const [attachSearchLoading, setAttachSearchLoading] = useState(false);
+    const [attachSelection, setAttachSelection] = useState(new Set());
+    const [attaching, setAttaching] = useState(false);
+
     // What transfers + whether to delete sources
     const [transferItems, setTransferItems] = useState(true);
     const [transferPurchaseItems, setTransferPurchaseItems] = useState(true);
@@ -94,6 +103,36 @@ export default function ProductMergeTool({ product, documentId, currency = "", o
         return () => { isActive = false; clearTimeout(timer); };
     }, [mergeSearch, documentId]);
 
+    // Debounced search for the "attach as variant" flow. Excludes the current
+    // product and any product that is already a variant of it.
+    useEffect(() => {
+        const searchValue = attachSearch.trim();
+        if (!searchValue || searchValue.length < 2) {
+            setAttachResults([]);
+            return;
+        }
+        let isActive = true;
+        const timer = setTimeout(async () => {
+            setAttachSearchLoading(true);
+            try {
+                const res = await ProductsEndpoints.search(searchValue, 1, 20);
+                const data = res?.data ?? res;
+                const existingVariantIds = new Set(variants.map(getEntryId));
+                const filtered = (data || []).filter(p => {
+                    const pId = getEntryId(p);
+                    return pId !== documentId && !existingVariantIds.has(pId);
+                });
+                if (isActive) setAttachResults(filtered);
+            } catch (err) {
+                console.error("Attach search failed", err);
+                if (isActive) setAttachResults([]);
+            } finally {
+                if (isActive) setAttachSearchLoading(false);
+            }
+        }, 300);
+        return () => { isActive = false; clearTimeout(timer); };
+    }, [attachSearch, documentId, variants]);
+
     function toggleMergeSelection(docId) {
         setMergeSelection(prev => {
             const next = new Set(prev);
@@ -110,6 +149,29 @@ export default function ProductMergeTool({ product, documentId, currency = "", o
             else next.add(docId);
             return next;
         });
+    }
+
+    function toggleAttachSelection(docId) {
+        setAttachSelection(prev => {
+            const next = new Set(prev);
+            if (next.has(docId)) next.delete(docId);
+            else next.add(docId);
+            return next;
+        });
+    }
+
+    // Re-fetch this product's variants (after attach / inverse-merge) so the
+    // "Merge Variants Into Parent" table stays in sync.
+    async function reloadVariants() {
+        try {
+            const res = await ProductsEndpoints.byParent(documentId, {
+                pageSize: 100,
+                populate: { categories: true, brands: true, suppliers: true, terms: true, logo: true },
+            });
+            setVariants(res?.data ?? res ?? []);
+        } catch (err) {
+            console.error("Failed to reload variants", err);
+        }
     }
 
     // Shared transfer pipeline. `sourceDocId` is consumed; `targetDocId`
@@ -249,18 +311,55 @@ export default function ProductMergeTool({ product, documentId, currency = "", o
             setVariantSelection(new Set());
             setSuccess(`Merged ${variantSelection.size} variant(s) back into "${product?.name}".`);
             if (onChange) onChange();
-            // Reload variants list locally too
-            const res = await ProductsEndpoints.byParent(documentId, {
-                pageSize: 100,
-                populate: { categories: true, brands: true, suppliers: true, terms: true },
-            });
-            setVariants(res?.data ?? res ?? []);
+            await reloadVariants();
         } catch (err) {
             console.error("Variant merge failed", err);
             setError("Variant merge failed: " + (err.message || "Unknown error"));
             setMergeLog(log);
         } finally {
             setMergingVariants(false);
+        }
+    }
+
+    // Attach the selected standalone products AS variants of this product.
+    // Non-destructive: each source keeps its own stock/purchase items and data —
+    // only its `parent` is re-pointed at this product (and is_variant flagged).
+    async function handleAttachVariants() {
+        if (attachSelection.size === 0) return alert("Select at least one product to add as a variant");
+        const sourceNames = attachResults
+            .filter(p => attachSelection.has(getEntryId(p)))
+            .map(p => p.name || p.sku || getEntryId(p))
+            .join(", ");
+        if (!confirm(`Add ${attachSelection.size} product(s) (${sourceNames}) as variant(s) of "${product?.name}"?\n\nEach product keeps its own stock and data; it just becomes a child variant of this product.`)) return;
+
+        setAttaching(true);
+        setError("");
+        setSuccess("");
+        const log = [];
+        const count = attachSelection.size;
+        try {
+            for (const sourceDocId of attachSelection) {
+                const sourceProduct = attachResults.find(p => getEntryId(p) === sourceDocId);
+                const sourceName = sourceProduct?.name || sourceDocId;
+                await ProductsEndpoints.update(sourceDocId, {
+                    parent: { connect: [documentId] },
+                    is_variant: true,
+                });
+                log.push(`Attached "${sourceName}" as a variant`);
+            }
+            setMergeLog(log);
+            setAttachSelection(new Set());
+            setAttachSearch("");
+            setAttachResults([]);
+            setSuccess(`Added ${count} product(s) as variant(s) of "${product?.name}".`);
+            if (onChange) onChange();
+            await reloadVariants();
+        } catch (err) {
+            console.error("Attach as variant failed", err);
+            setError("Attach as variant failed: " + (err.message || "Unknown error"));
+            setMergeLog(log);
+        } finally {
+            setAttaching(false);
         }
     }
 
@@ -312,8 +411,92 @@ export default function ProductMergeTool({ product, documentId, currency = "", o
                     </div>
                 </div>
 
-                {/* Right column: the two merge actions */}
+                {/* Right column: the merge / re-parent actions */}
                 <div className="col-lg-8">
+                    {/* Attach existing products AS variants of this one (re-parent) */}
+                    <div className="card mb-3 border-info">
+                        <div className="card-body">
+                            <h5 className="card-title">
+                                <i className="fas fa-code-branch me-2 text-info" />
+                                Add Existing Product as a Variant
+                                {attachSelection.size > 0 && (
+                                    <span className="badge bg-info text-dark ms-2">{attachSelection.size} selected</span>
+                                )}
+                            </h5>
+                            <p className="text-muted small mb-3">
+                                Search for a standalone product and pull it in as a child variant of
+                                &quot;{product?.name}&quot;. This only re-points its parent — the product keeps
+                                its own stock, purchase items, and data (nothing is merged or deleted).
+                                The &quot;Merge Options&quot; on the left do not apply here.
+                            </p>
+                            <div className="mb-2">
+                                <input
+                                    type="text"
+                                    className="form-control"
+                                    placeholder="Search by name, SKU, barcode, supplier, purchase order…"
+                                    value={attachSearch}
+                                    onChange={e => setAttachSearch(e.target.value)}
+                                />
+                            </div>
+
+                            {attachSearchLoading && <div className="text-muted small mb-2">Searching…</div>}
+
+                            {attachSearch.trim().length >= 2 && !attachSearchLoading && (
+                                <div className="table-responsive">
+                                    <table className="table table-sm align-middle">
+                                        <thead className="table-light">
+                                            <tr>
+                                                <th style={{ width: 30 }}></th>
+                                                <th>Product</th>
+                                                <th>SKU</th>
+                                                <th>Barcode</th>
+                                                <th className="text-end">Selling</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {attachResults.map(p => {
+                                                const pId = getEntryId(p);
+                                                return (
+                                                    <tr key={pId}>
+                                                        <td>
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={attachSelection.has(pId)}
+                                                                onChange={() => toggleAttachSelection(pId)}
+                                                            />
+                                                        </td>
+                                                        <td><strong>{p.name || "—"}</strong></td>
+                                                        <td className="small">{p.sku || "—"}</td>
+                                                        <td className="small">{p.barcode || "—"}</td>
+                                                        <td className="text-end small">{currency}{parseFloat(p.selling_price || 0).toFixed(2)}</td>
+                                                    </tr>
+                                                );
+                                            })}
+                                            {attachResults.length === 0 && (
+                                                <tr><td colSpan={5} className="text-center text-muted small py-3">No matching products.</td></tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+
+                            <div className="d-flex justify-content-end mt-2">
+                                <button
+                                    type="button"
+                                    className="btn btn-info"
+                                    onClick={handleAttachVariants}
+                                    disabled={attaching || attachSelection.size === 0}
+                                >
+                                    {attaching ? (
+                                        <><span className="spinner-border spinner-border-sm me-1" />Adding…</>
+                                    ) : (
+                                        <><i className="fas fa-code-branch me-1" />Add {attachSelection.size || ""} as variant(s)</>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
                     {/* Inverse merge — variants back into parent */}
                     {variants.length > 0 && (
                         <div className="card mb-3 border-warning">

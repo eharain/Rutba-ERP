@@ -7,6 +7,7 @@ import { TermTypesEndpoints, StockItemsEndpoints, ProductsEndpoints, MediaUtilsE
 import ProductVariantManager from '@rutba/pos-shared/components/ProductVariantManager';
 import TermTypeTermDialog from '@rutba/pos-shared/components/TermTypeTermDialog';
 import ProductPageShell, { buildStockProductTabs } from '@rutba/pos-shared/components/product/ProductPageShell';
+import AddVariantsByName from '@rutba/pos-shared/components/product/AddVariantsByName';
 import { createVariant } from '@rutba/pos-shared/lib/variants';
 
 function getEntryId(entry) {
@@ -979,6 +980,16 @@ export default function ProductVariantsPage() {
                             )}
                         </div>
                     </div>
+
+                    {/* Add Variants by Name (free-text) */}
+                    {selectedProduct && (
+                        <AddVariantsByName
+                            product={selectedProduct}
+                            onCreated={() => loadProductDetails(getEntryId(selectedProduct))}
+                            onError={setError}
+                            onSuccess={setSuccess}
+                        />
+                    )}
 
                     {/* Product & Variant Terms */}
                     <div className="card mb-3">

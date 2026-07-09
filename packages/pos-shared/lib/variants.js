@@ -69,6 +69,13 @@ export function buildVariantPayload({ parent, name, sku, barcode, selling_price,
  *
  * Modes:
  *
+ *   'name'          — from a free-text variant name the user typed. No term
+ *                     required. config: { name, sku?, barcode?,
+ *                       selling_price?, offer_price?, is_active?, term?,
+ *                       moveStockItemDocIds?: string[] }. Stock items only move
+ *                     when moveStockItemDocIds is supplied (pos-stock passes it;
+ *                     the CMS gallery flow omits it).
+ *
  *   'term'          — from a term-type selection (e.g. colour = Red).
  *                     config: { baseName, term, namingMode, sku?, barcode?,
  *                       selling_price?, offer_price?, is_active?,
@@ -96,6 +103,8 @@ export async function createVariant(parentDocumentId, mode, config) {
     if (!parentDocumentId) throw new Error("createVariant requires parentDocumentId");
     if (!config || typeof config !== "object") throw new Error("createVariant requires config");
     switch (mode) {
+        case "name":
+            return _createNameVariant(parentDocumentId, config);
         case "term":
         case "term-gallery":
             return _createTermVariant(parentDocumentId, config, mode === "term");
@@ -124,6 +133,37 @@ async function _saveAndUnwrap(payload) {
     };
 }
 
+// Shared tail that moves a list of stock-items onto a freshly-created variant.
+// Sequential to keep the audit trail readable and avoid N concurrent writes.
+async function _moveStockItems(created, fallbackName, moveStockItemDocIds) {
+    if (Array.isArray(moveStockItemDocIds) && moveStockItemDocIds.length && created.documentId) {
+        for (const itemDocId of moveStockItemDocIds) {
+            await StockItemsEndpoints.update(itemDocId, {
+                product: { set: [created.documentId] },
+                name: created.name || fallbackName,
+            });
+        }
+    }
+}
+
+async function _createNameVariant(parentDocumentId, config) {
+    const name = (config.name || "").trim();
+    if (!name) throw new Error("name mode requires config.name");
+    const payload = buildVariantPayload({
+        parent: parentDocumentId,
+        name,
+        sku: config.sku,
+        barcode: config.barcode,
+        selling_price: config.selling_price,
+        offer_price: config.offer_price,
+        is_active: config.is_active,
+        term: config.term,
+    });
+    const created = await _saveAndUnwrap(payload);
+    await _moveStockItems(created, name, config.moveStockItemDocIds);
+    return created;
+}
+
 async function _createTermVariant(parentDocumentId, config, allowStockMove) {
     if (!config.term) throw new Error("term mode requires config.term");
     const name = buildVariantName(config.baseName, config.term.name, config.namingMode);
@@ -138,15 +178,8 @@ async function _createTermVariant(parentDocumentId, config, allowStockMove) {
         term: config.term,
     });
     const created = await _saveAndUnwrap(payload);
-    if (allowStockMove && Array.isArray(config.moveStockItemDocIds) && config.moveStockItemDocIds.length && created.documentId) {
-        // Sequential to keep the audit trail readable and to avoid hammering
-        // the API with N concurrent writes when N is large.
-        for (const itemDocId of config.moveStockItemDocIds) {
-            await StockItemsEndpoints.update(itemDocId, {
-                product: { set: [created.documentId] },
-                name: created.name || name,
-            });
-        }
+    if (allowStockMove) {
+        await _moveStockItems(created, name, config.moveStockItemDocIds);
     }
     return created;
 }

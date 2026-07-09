@@ -5,6 +5,7 @@ import { ProductsEndpoints, UploadEndpoints, TermTypesEndpoints, StockItemsEndpo
 import { createVariant } from '../lib/variants';
 import StrapiMediaLibrary from './StrapiMediaLibrary';
 import TermTypeTermDialog from './TermTypeTermDialog';
+import AddVariantsByName from './product/AddVariantsByName';
 
 function getEntryId(entry) {
     return entry?.documentId || entry?.id;
@@ -1239,6 +1240,14 @@ export default function ProductGalleryManager({ productId, onUpdate }) {
                     )}
                 </div>
             </div>
+
+            {/* =============== ADD VARIANTS BY NAME (free-text) =============== */}
+            <AddVariantsByName
+                product={product}
+                onCreated={() => { loadData(); if (onUpdate) onUpdate(); }}
+                onError={setError}
+                onSuccess={setSuccess}
+            />
 
             <TermTypeTermDialog
                 show={showTermTypeDialog}
