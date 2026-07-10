@@ -23,6 +23,8 @@ const PURCHASE_UID = 'api::purchase.purchase';
 const PURCHASE_ITEM_UID = 'api::purchase-item.purchase-item';
 const SUPPLIER_UID = 'api::supplier.supplier';
 const WAREHOUSE_UID = 'api::warehouse.warehouse';
+const WO_UID = 'api::mfg-work-order.mfg-work-order';
+const BOM_UID = 'api::mfg-bom.mfg-bom';
 
 // Purchases still contributing to on-order (not received/closed/cancelled).
 const OPEN_PURCHASE_STATUSES = ['Draft', 'Pending', 'Submitted', 'Partially Received'];
@@ -273,5 +275,54 @@ module.exports = factories.createCoreService(POLICY_UID, ({ strapi }) => ({
 
     strapi.log.info(`[reorder] generated ${created.length} draft purchase(s) from ${suggestions.length} suggestion(s)`);
     return { created: created.length, purchases: created };
+  },
+
+  /**
+   * Manufacture replenishment (Epic 4 P4): turn source=Manufacture suggestions
+   * into draft `mfg-work-order`(s) against each product's default active BOM
+   * (is_default first, else any Active). One WO per product. The WO still runs
+   * off its concrete BOM — this just seeds a Draft to review/release.
+   *
+   * @param {{ warehouseDocId?: string, suggestions?: Array, actorId?: number }} opts
+   * @returns {{ created: number, work_orders: Array }}
+   */
+  async generateWorkOrders(opts = {}) {
+    let suggestions = Array.isArray(opts.suggestions) && opts.suggestions.length
+      ? opts.suggestions.filter((s) => s && s.source === 'Manufacture')
+      : (await this.getReorderSuggestions({ warehouseDocId: opts.warehouseDocId })).filter((s) => s.source === 'Manufacture');
+    suggestions = suggestions.filter((s) => s && s.product && num(s.suggested_qty) > 0);
+    if (suggestions.length === 0) return { created: 0, work_orders: [] };
+
+    const stamp = opts.stamp || String(Date.now());
+    const created = [];
+    let seq = 0;
+    for (const s of suggestions) {
+      const boms = await strapi.db.query(BOM_UID).findMany({
+        where: { product: { documentId: s.product }, status: 'Active' },
+        select: ['id', 'documentId', 'is_default'],
+        orderBy: [{ is_default: 'desc' }, { id: 'asc' }],
+        limit: 1,
+      });
+      const bom = boms[0];
+      const qty = Math.max(1, Math.round(num(s.suggested_qty)));
+      seq += 1;
+      try {
+        const wo = await strapi.documents(WO_UID).create({
+          data: {
+            wo_number: `REORDER-WO-${stamp}-${seq}`,
+            product: s.product,
+            ...(bom?.documentId ? { bom: bom.documentId } : {}),
+            quantity_ordered: qty,
+            status: 'Draft',
+          },
+        });
+        created.push({ work_order: wo.documentId, wo_number: wo.wo_number, product: s.product, quantity: qty, bom: bom?.documentId || null });
+      } catch (err) {
+        strapi.log.warn(`[reorder] work-order create failed (product=${s.product}): ${err.message}`);
+      }
+    }
+
+    strapi.log.info(`[reorder] generated ${created.length} draft work-order(s)`);
+    return { created: created.length, work_orders: created };
   },
 }));

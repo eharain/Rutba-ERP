@@ -7,6 +7,7 @@ export interface ReorderPoliciesEndpointsType {
     del(documentId: any): Promise<any>;
     suggestions({ warehouseDocId }?: any): Promise<any>;
     generatePurchases(body?: any): Promise<any>;
+    generateWorkOrders(body?: any): Promise<any>;
     meta: any;
 }
 

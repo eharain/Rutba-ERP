@@ -88,4 +88,18 @@ export const ReorderPoliciesEndpoints = {
         approle: ['admin', 'manager'],
         data: body,
     }),
+
+    /**
+     * Generate draft work-orders (per product's default active BOM) from
+     * source=Manufacture suggestions. Manager/admin only; auth:false + role gate.
+     * @param {{ warehouse?: string, suggestions?: Array }} body
+     */
+    generateWorkOrders: (body = {}) => ({
+        path: '/reorder-policies/generate-work-orders',
+        action: 'create',
+        method: 'post',
+        apps: ['inventory', 'manufacturing'],
+        approle: ['admin', 'manager'],
+        data: body,
+    }),
 };

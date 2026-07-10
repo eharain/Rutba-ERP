@@ -53,4 +53,20 @@ module.exports = {
     });
     return ctx.send({ success: true, ...res });
   },
+
+  async generateWorkOrders(ctx) {
+    const user = await ensureUser(ctx, strapi);
+    if (!user) return;
+    if (!(await isReplenishManager(user.id, strapi))) {
+      return ctx.forbidden('Inventory / manufacturing manager access is required');
+    }
+
+    const body = ctx.request.body?.data ?? ctx.request.body ?? {};
+    const res = await strapi.service(POLICY_UID).generateWorkOrders({
+      warehouseDocId: body.warehouse || body.warehouseDocId || null,
+      suggestions: Array.isArray(body.suggestions) ? body.suggestions : null,
+      actorId: user.id,
+    });
+    return ctx.send({ success: true, ...res });
+  },
 };

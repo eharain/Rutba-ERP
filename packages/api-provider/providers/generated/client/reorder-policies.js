@@ -37,6 +37,11 @@ async function generatePurchases(body = {}) {
     return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
+async function generateWorkOrders(body = {}) {
+    const ep = ReorderPoliciesEndpointsApi.generateWorkOrders(body);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+}
+
 const endpoints = strictEndpointGuard(
     'ReorderPoliciesEndpoints',
     {
@@ -47,9 +52,10 @@ const endpoints = strictEndpointGuard(
         del,
         suggestions,
         generatePurchases,
+        generateWorkOrders,
         meta: ReorderPoliciesEndpointsApi.meta,
     },
-    ["list","byId","create","update","del","suggestions","generatePurchases","meta"],
+    ["list","byId","create","update","del","suggestions","generatePurchases","generateWorkOrders","meta"],
 );
 
 export default endpoints;

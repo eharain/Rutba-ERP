@@ -26,5 +26,13 @@ module.exports = {
         auth: false,
       },
     },
+    {
+      method: 'POST',
+      path: '/reorder-policies/generate-work-orders',
+      handler: 'generate.generateWorkOrders',
+      config: {
+        auth: false,
+      },
+    },
   ],
 };
