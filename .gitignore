@@ -36,3 +36,6 @@ package-lock.json
 /packages/strapi-api-pro/dist
 /.claude
 /pos-strapi/.api-pro
+
+# Strapi CLI update-check cache
+.strapi-updater.json
