@@ -71,4 +71,19 @@ export const StockBatchesEndpoints = {
         apps: ['inventory', 'stock'],
         approle: ['admin', 'manager'],
     }),
+
+    /**
+     * Admin reconcile — rebuild every product.bulk_quantity_on_hand from the live
+     * sum of Active batch quantity_remaining. Route is auth:false + admin-gated in
+     * the controller (mirrors stock-items/recompute-product-stock).
+     * Handler: pos-strapi/src/api/stock-batch/controllers/recompute-product-bulk.js
+     */
+    recomputeProductBulk: () => ({
+        path: '/stock-batches/recompute-product-bulk',
+        action: 'create',
+        method: 'post',
+        apps: ['inventory', 'stock'],
+        approle: ['admin'],
+        data: {},
+    }),
 };

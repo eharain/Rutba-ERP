@@ -5745,6 +5745,10 @@ export interface ApiStockBatchStockBatch extends Struct.CollectionTypeSchema {
       'manyToOne',
       'api::warehouse.warehouse'
     >;
+    work_order: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::mfg-work-order.mfg-work-order'
+    >;
   };
 }
 

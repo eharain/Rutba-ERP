@@ -64,6 +64,7 @@ export interface MfgBomOutput extends Struct.ComponentSchema {
     > &
       Schema.Attribute.DefaultTo<'primary'>;
     product: Schema.Attribute.Relation<'oneToOne', 'api::product.product'>;
+    track_mode_override: Schema.Attribute.Enumeration<['serialized', 'bulk']>;
   };
 }
 

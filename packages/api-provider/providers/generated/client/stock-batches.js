@@ -27,6 +27,11 @@ async function del(documentId) {
     return authApi.del(withQuery(ep.path, ep.params));
 }
 
+async function recomputeProductBulk() {
+    const ep = StockBatchesEndpointsApi.recomputeProductBulk();
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+}
+
 const endpoints = strictEndpointGuard(
     'StockBatchesEndpoints',
     {
@@ -35,9 +40,10 @@ const endpoints = strictEndpointGuard(
         create,
         update,
         del,
+        recomputeProductBulk,
         meta: StockBatchesEndpointsApi.meta,
     },
-    ["list","byId","create","update","del","meta"],
+    ["list","byId","create","update","del","recomputeProductBulk","meta"],
 );
 
 export default endpoints;

@@ -64,6 +64,11 @@
       "relation": "manyToOne",
       "target": "api::supplier.supplier"
     },
+    "work_order": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::mfg-work-order.mfg-work-order"
+    },
     "warehouse": {
       "type": "relation",
       "relation": "manyToOne",

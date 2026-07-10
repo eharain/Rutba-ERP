@@ -30,6 +30,14 @@
       "type": "decimal",
       "default": 0
     },
+    "track_mode_override": {
+      "type": "enumeration",
+      "enum": [
+        "serialized",
+        "bulk"
+      ],
+      "description": "Optional. Route this output to the serialized (stock-item) or bulk (stock-batch) ledger; falls back to the output product's track_mode."
+    },
     "notes": {
       "type": "string"
     }

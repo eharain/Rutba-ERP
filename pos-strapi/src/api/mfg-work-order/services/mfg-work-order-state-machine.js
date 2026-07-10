@@ -24,6 +24,7 @@ const TASK_UID = 'api::mfg-task.mfg-task';
 const ISSUE_UID = 'api::mfg-material-issue.mfg-material-issue';
 const LOT_UID = 'api::mfg-material-lot.mfg-material-lot';
 const STOCK_ITEM_UID = 'api::stock-item.stock-item';
+const STOCK_BATCH_UID = 'api::stock-batch.stock-batch';
 
 const workflowEngine = require('../../../utils/workflow-engine');
 const { logActivity } = require('../../../utils/work-item-activity');
@@ -96,24 +97,51 @@ module.exports = {
   },
 
   /**
-   * Create N finished-garment stock-items (status InStock) for a completed WO.
-   * Goes through the documents API so the stock-item lifecycle fires and
-   * recomputes product.stock_quantity. Idempotent: skips if the WO already has
-   * finished stock-items attached.
+   * Has this WO already produced output? True if it has finished stock-items OR
+   * finished stock-batches — the idempotency guard for both output ledgers, so a
+   * re-completion never double-produces.
    */
-  async createFinishedStockItems(workOrder, count, costPerUnit) {
-    const n = Math.max(0, Math.floor(Number(count) || 0));
-    if (n === 0) return { created: 0 };
+  async _woHasProduced(workOrder) {
+    const items = await strapi.db.query(STOCK_ITEM_UID).count({ where: { work_order: workOrder.id } });
+    if (items > 0) return items;
+    const batches = await strapi.db.query(STOCK_BATCH_UID).count({ where: { work_order: workOrder.id } });
+    return batches;
+  },
 
-    const existing = await strapi.db.query(STOCK_ITEM_UID).count({
-      where: { work_order: workOrder.id },
-    });
-    if (existing > 0) {
-      strapi.log.info(`[wo-state-machine] WO=${workOrder.documentId} already has ${existing} finished items — skipping creation`);
-      return { created: 0, skipped: existing };
+  /**
+   * Receive one output product into the correct ledger (Epic 1 P4 / Foundation F5
+   * track_mode activation):
+   *   serialized → N InStock stock-items (the stock-item lifecycle lifts
+   *                product.stock_quantity), as before.
+   *   bulk       → ONE stock-batch carrying the quantity (the stock-batch
+   *                lifecycle lifts product.bulk_quantity_on_hand).
+   * Does NOT check idempotency — callers guard once via _woHasProduced.
+   */
+  async receiveOutput(workOrder, product, count, unitCost, trackMode) {
+    const n = Math.max(0, Math.floor(Number(count) || 0));
+    if (n === 0) return { created: 0, mode: trackMode };
+
+    if (trackMode === 'bulk') {
+      try {
+        await strapi.documents(STOCK_BATCH_UID).create({
+          data: {
+            batch_code: `WO-${workOrder.wo_number || workOrder.documentId}-${product?.sku || product?.documentId || 'out'}`,
+            status: 'Active',
+            received_at: new Date(),
+            unit_cost: unitCost ?? null,
+            quantity_received: n,
+            quantity_remaining: n,
+            ...(product?.documentId ? { product: product.documentId } : {}),
+            ...(workOrder.documentId ? { work_order: workOrder.documentId } : {}),
+          },
+        });
+        return { created: n, mode: 'bulk' };
+      } catch (err) {
+        strapi.log.warn(`[wo-state-machine] WO=${workOrder.documentId} stock-batch create failed: ${err.message}`);
+        return { created: 0, mode: 'bulk' };
+      }
     }
 
-    const product = workOrder.product;
     const branch = workOrder.branch;
     let created = 0;
     for (let i = 0; i < n; i++) {
@@ -124,19 +152,40 @@ module.exports = {
             sku: product?.sku || null,
             status: 'InStock',
             sellable_units: 1,
-            cost_price: costPerUnit ?? null,
+            cost_price: unitCost ?? null,
             selling_price: product?.selling_price ?? null,
             ...(product?.documentId ? { product: product.documentId } : {}),
             ...(branch?.documentId ? { branch: branch.documentId } : {}),
             work_order: workOrder.documentId,
           },
         });
-        created++;
+        created += 1;
       } catch (err) {
         strapi.log.warn(`[wo-state-machine] WO=${workOrder.documentId} stock-item create failed: ${err.message}`);
       }
     }
-    return { created };
+    return { created, mode: 'serialized' };
+  },
+
+  /**
+   * Create finished goods for a single-output WO (no BOM `outputs` declared).
+   * Routes wo.product by its track_mode (serialized → stock-items, bulk →
+   * stock-batch). Idempotent: skips if the WO already produced.
+   */
+  async createFinishedStockItems(workOrder, count, costPerUnit) {
+    const n = Math.max(0, Math.floor(Number(count) || 0));
+    if (n === 0) return { created: 0 };
+
+    const existing = await this._woHasProduced(workOrder);
+    if (existing > 0) {
+      strapi.log.info(`[wo-state-machine] WO=${workOrder.documentId} already produced ${existing} — skipping creation`);
+      return { created: 0, skipped: existing };
+    }
+
+    const product = workOrder.product;
+    const trackMode = product?.track_mode || 'serialized';
+    const res = await this.receiveOutput(workOrder, product, n, costPerUnit, trackMode);
+    return { created: res.created, mode: res.mode };
   },
 
   /**
@@ -162,7 +211,7 @@ module.exports = {
         populate: {
           bom: {
             populate: {
-              outputs: { populate: { product: { fields: ['id', 'documentId', 'name', 'sku', 'selling_price'] } } },
+              outputs: { populate: { product: { fields: ['id', 'documentId', 'name', 'sku', 'selling_price', 'track_mode'] } } },
             },
           },
         },
@@ -181,9 +230,9 @@ module.exports = {
       return this.createFinishedStockItems(workOrder, n, costing?.cost_per_unit);
     }
 
-    const existing = await strapi.db.query(STOCK_ITEM_UID).count({ where: { work_order: workOrder.id } });
+    const existing = await this._woHasProduced(workOrder);
     if (existing > 0) {
-      strapi.log.info(`[wo-state-machine] WO=${workOrder.documentId} already has ${existing} finished items — skipping`);
+      strapi.log.info(`[wo-state-machine] WO=${workOrder.documentId} already produced ${existing} — skipping`);
       return { created: 0, skipped: existing };
     }
 
@@ -192,7 +241,6 @@ module.exports = {
     let primaryIdx = outputs.findIndex((o) => o.output_type === 'primary');
     if (primaryIdx < 0) primaryIdx = 0;
 
-    const branch = workOrder.branch;
     let created = 0;
     const perOutput = [];
     for (let idx = 0; idx < outputs.length; idx++) {
@@ -203,31 +251,15 @@ module.exports = {
         ? (Number(out.cost_share_pct) || 0) / totalShare
         : (idx === primaryIdx ? 1 : 0);
       const outUnitCost = outCount > 0 ? (totalCost * effShare) / outCount : 0;
+      // Route by the output's explicit override, else the product's track_mode.
+      const trackMode = out.track_mode_override || product?.track_mode || 'serialized';
 
-      for (let i = 0; i < outCount; i++) {
-        try {
-          await strapi.documents(STOCK_ITEM_UID).create({
-            data: {
-              name: product?.name || null,
-              sku: product?.sku || null,
-              status: 'InStock',
-              sellable_units: 1,
-              cost_price: outUnitCost,
-              selling_price: product?.selling_price ?? null,
-              ...(product?.documentId ? { product: product.documentId } : {}),
-              ...(branch?.documentId ? { branch: branch.documentId } : {}),
-              work_order: workOrder.documentId,
-            },
-          });
-          created += 1;
-        } catch (err) {
-          strapi.log.warn(`[wo-state-machine] WO=${workOrder.documentId} output stock-item create failed: ${err.message}`);
-        }
-      }
-      perOutput.push({ product: product?.documentId, type: out.output_type, count: outCount, unitCost: outUnitCost });
+      const res = await this.receiveOutput(workOrder, product, outCount, outUnitCost, trackMode);
+      created += res.created;
+      perOutput.push({ product: product?.documentId, type: out.output_type, count: outCount, unitCost: outUnitCost, mode: res.mode });
     }
 
-    strapi.log.info(`[wo-state-machine] WO=${workOrder.documentId} multi-output created ${created} across ${outputs.length} output(s)`);
+    strapi.log.info(`[wo-state-machine] WO=${workOrder.documentId} multi-output produced ${created} across ${outputs.length} output(s)`);
     return { created, perOutput };
   },
 
@@ -357,7 +389,7 @@ module.exports = {
     const wo = await strapi.documents(WO_UID).findOne({
       documentId: workOrderDocumentId,
       populate: {
-        product: { fields: ['id', 'documentId', 'name', 'sku', 'selling_price'] },
+        product: { fields: ['id', 'documentId', 'name', 'sku', 'selling_price', 'track_mode'] },
         branch: { fields: ['id', 'documentId'] },
       },
     });

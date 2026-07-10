@@ -5,6 +5,7 @@ export interface StockBatchesEndpointsType {
     create(data: any): Promise<any>;
     update(documentId: any, data: any): Promise<any>;
     del(documentId: any): Promise<any>;
+    recomputeProductBulk(): Promise<any>;
     meta: any;
 }
 
