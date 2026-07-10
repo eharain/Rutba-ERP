@@ -1084,6 +1084,10 @@ export interface ApiBranchBranch extends Struct.CollectionTypeSchema {
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    warehouses: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::warehouse.warehouse'
+    >;
     watsapp: Schema.Attribute.String;
     web: Schema.Attribute.String;
     youtube: Schema.Attribute.String;
@@ -4285,11 +4289,13 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     description: Schema.Attribute.RichText;
+    expiry_alert_days: Schema.Attribute.Integer;
     external_ids: Schema.Attribute.JSON;
     gallery: Schema.Attribute.Media<'images' | 'videos' | 'audios', true>;
     is_active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
     is_exchangeable: Schema.Attribute.Boolean &
       Schema.Attribute.DefaultTo<true>;
+    is_perishable: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     is_returnable: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
     is_variant: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     items: Schema.Attribute.Relation<'oneToMany', 'api::stock-item.stock-item'>;
@@ -4332,8 +4338,17 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
     reorder_level: Schema.Attribute.Integer;
     selling_price: Schema.Attribute.Decimal;
     seo_meta: Schema.Attribute.Relation<'oneToOne', 'api::seo-meta.seo-meta'>;
+    shelf_life_days: Schema.Attribute.Integer;
     sku: Schema.Attribute.String;
     slug: Schema.Attribute.UID<'name'>;
+    stock_batches: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::stock-batch.stock-batch'
+    >;
+    stock_levels: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::stock-level.stock-level'
+    >;
     stock_quantity: Schema.Attribute.Integer;
     summary: Schema.Attribute.RichText;
     supplierCode: Schema.Attribute.String;
@@ -5588,6 +5603,145 @@ export interface ApiSocialReplySocialReply extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiStockAdjustmentStockAdjustment
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'stock_adjustments';
+  info: {
+    description: 'Write-off / damage / loss / expiry of serialized stock-items. Post moves the selected InStock units to a loss status (dropping them from on-hand) and best-effort posts Dr SHRINKAGE_EXPENSE / Cr INVENTORY.';
+    displayName: 'Stock Adjustment';
+    pluralName: 'stock-adjustments';
+    singularName: 'stock-adjustment';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    adjustment_number: Schema.Attribute.String;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    gl_posted: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::stock-adjustment.stock-adjustment'
+    > &
+      Schema.Attribute.Private;
+    notes: Schema.Attribute.Text;
+    posted_at: Schema.Attribute.DateTime;
+    publishedAt: Schema.Attribute.DateTime;
+    reason: Schema.Attribute.String;
+    status: Schema.Attribute.Enumeration<['Draft', 'Posted', 'Cancelled']> &
+      Schema.Attribute.DefaultTo<'Draft'>;
+    stock_items: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::stock-item.stock-item'
+    >;
+    total_cost: Schema.Attribute.Decimal;
+    type: Schema.Attribute.Enumeration<
+      ['WriteOff', 'Damage', 'Lost', 'Expired']
+    > &
+      Schema.Attribute.DefaultTo<'WriteOff'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    warehouse: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::warehouse.warehouse'
+    >;
+  };
+}
+
+export interface ApiStockBatchStockBatch extends Struct.CollectionTypeSchema {
+  collectionName: 'stock_batches';
+  info: {
+    description: 'Optional batch/lot grouping for a product with manufacture/expiry dates. Groups serialized units (stock_items) and/or carries a quantity ledger for bulk products. The single batch/lot concept (finished goods + raw material).';
+    displayName: 'Stock Batch';
+    pluralName: 'stock-batches';
+    singularName: 'stock-batch';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    batch_code: Schema.Attribute.String;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    expiry_date: Schema.Attribute.Date;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::stock-batch.stock-batch'
+    > &
+      Schema.Attribute.Private;
+    manufacture_date: Schema.Attribute.Date;
+    notes: Schema.Attribute.Text;
+    product: Schema.Attribute.Relation<'manyToOne', 'api::product.product'>;
+    publishedAt: Schema.Attribute.DateTime;
+    quantity_received: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    quantity_remaining: Schema.Attribute.Decimal &
+      Schema.Attribute.DefaultTo<0>;
+    quantity_reserved: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    received_at: Schema.Attribute.DateTime;
+    status: Schema.Attribute.Enumeration<
+      ['Active', 'Expired', 'Quarantined', 'Depleted', 'Recalled']
+    > &
+      Schema.Attribute.DefaultTo<'Active'>;
+    stock_items: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::stock-item.stock-item'
+    >;
+    supplier: Schema.Attribute.Relation<'manyToOne', 'api::supplier.supplier'>;
+    unit_cost: Schema.Attribute.Decimal;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    warehouse: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::warehouse.warehouse'
+    >;
+  };
+}
+
+export interface ApiStockCountStockCount extends Struct.CollectionTypeSchema {
+  collectionName: 'stock_counts';
+  info: {
+    description: 'Physical cycle count / stock-take of a warehouse. Post compares counted vs system per product and books shortages as losses (units -> Lost).';
+    displayName: 'Stock Count';
+    pluralName: 'stock-counts';
+    singularName: 'stock-count';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    count_number: Schema.Attribute.String;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    lines: Schema.Attribute.Component<'inv.count-line', true>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::stock-count.stock-count'
+    > &
+      Schema.Attribute.Private;
+    notes: Schema.Attribute.Text;
+    posted_at: Schema.Attribute.DateTime;
+    publishedAt: Schema.Attribute.DateTime;
+    status: Schema.Attribute.Enumeration<['Draft', 'Posted', 'Cancelled']> &
+      Schema.Attribute.DefaultTo<'Draft'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    warehouse: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::warehouse.warehouse'
+    >;
+  };
+}
+
 export interface ApiStockInputStockInput extends Struct.CollectionTypeSchema {
   collectionName: 'stock_inputs';
   info: {
@@ -5665,12 +5819,17 @@ export interface ApiStockItemStockItem extends Struct.CollectionTypeSchema {
     archived: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     archived_at: Schema.Attribute.DateTime;
     barcode: Schema.Attribute.String & Schema.Attribute.Unique;
+    batch: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::stock-batch.stock-batch'
+    >;
     branch: Schema.Attribute.Relation<'manyToOne', 'api::branch.branch'>;
     cost_price: Schema.Attribute.Decimal;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     discount: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    expiry_date: Schema.Attribute.Date;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
@@ -5718,12 +5877,172 @@ export interface ApiStockItemStockItem extends Struct.CollectionTypeSchema {
       'pos.stock-status-history',
       true
     >;
+    storage_location: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::storage-location.storage-location'
+    >;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    warehouse: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::warehouse.warehouse'
+    >;
     work_order: Schema.Attribute.Relation<
       'manyToOne',
       'api::mfg-work-order.mfg-work-order'
+    >;
+  };
+}
+
+export interface ApiStockLevelStockLevel extends Struct.CollectionTypeSchema {
+  collectionName: 'stock_levels';
+  info: {
+    description: 'Denormalised per-(product, warehouse) on-hand cache. NEVER hand-written \u2014 maintained by the stock-item lifecycle. Sum of quantity_on_hand across warehouses equals product.stock_quantity.';
+    displayName: 'Stock Level';
+    pluralName: 'stock-levels';
+    singularName: 'stock-level';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    batch: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::stock-batch.stock-batch'
+    >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::stock-level.stock-level'
+    > &
+      Schema.Attribute.Private;
+    product: Schema.Attribute.Relation<'manyToOne', 'api::product.product'>;
+    publishedAt: Schema.Attribute.DateTime;
+    quantity_available: Schema.Attribute.Integer &
+      Schema.Attribute.DefaultTo<0>;
+    quantity_on_hand: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    quantity_reserved: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    storage_location: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::storage-location.storage-location'
+    >;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    warehouse: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::warehouse.warehouse'
+    >;
+  };
+}
+
+export interface ApiStockTransferStockTransfer
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'stock_transfers';
+  info: {
+    description: "Two-sided transfer of serialized stock-items between warehouses: Draft -> dispatch (InTransit) -> receive (Received). In-transit units are status='Transferred' (not counted in any warehouse on-hand).";
+    displayName: 'Stock Transfer';
+    pluralName: 'stock-transfers';
+    singularName: 'stock-transfer';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    dispatched_at: Schema.Attribute.DateTime;
+    from_warehouse: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::warehouse.warehouse'
+    >;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::stock-transfer.stock-transfer'
+    > &
+      Schema.Attribute.Private;
+    notes: Schema.Attribute.Text;
+    publishedAt: Schema.Attribute.DateTime;
+    received_at: Schema.Attribute.DateTime;
+    status: Schema.Attribute.Enumeration<
+      ['Draft', 'InTransit', 'PartiallyReceived', 'Received', 'Cancelled']
+    > &
+      Schema.Attribute.DefaultTo<'Draft'>;
+    stock_items: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::stock-item.stock-item'
+    >;
+    to_location: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::storage-location.storage-location'
+    >;
+    to_warehouse: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::warehouse.warehouse'
+    >;
+    transfer_number: Schema.Attribute.String;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiStorageLocationStorageLocation
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'storage_locations';
+  info: {
+    description: 'A bin / shelf / zone inside a warehouse. Self-referential tree: zone -> aisle -> rack -> shelf -> bin.';
+    displayName: 'Storage Location';
+    pluralName: 'storage-locations';
+    singularName: 'storage-location';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    children: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::storage-location.storage-location'
+    >;
+    code: Schema.Attribute.String;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    is_active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    is_pickable: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    is_receivable: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::storage-location.storage-location'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String;
+    parent: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::storage-location.storage-location'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    stock_items: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::stock-item.stock-item'
+    >;
+    type: Schema.Attribute.Enumeration<
+      ['zone', 'aisle', 'rack', 'shelf', 'bin', 'staging', 'quarantine']
+    > &
+      Schema.Attribute.DefaultTo<'bin'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    warehouse: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::warehouse.warehouse'
     >;
   };
 }
@@ -5838,6 +6157,52 @@ export interface ApiTermTerm extends Struct.CollectionTypeSchema {
       'manyToMany',
       'api::term-type.term-type'
     >;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiWarehouseWarehouse extends Struct.CollectionTypeSchema {
+  collectionName: 'warehouses';
+  info: {
+    description: 'A physical (or virtual) stock-holding location that belongs to a branch. Holds storage-locations (bins).';
+    displayName: 'Warehouse';
+    pluralName: 'warehouses';
+    singularName: 'warehouse';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    address: Schema.Attribute.Text;
+    branch: Schema.Attribute.Relation<'manyToOne', 'api::branch.branch'>;
+    code: Schema.Attribute.String & Schema.Attribute.Unique;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    is_active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    is_default: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::warehouse.warehouse'
+    > &
+      Schema.Attribute.Private;
+    locations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::storage-location.storage-location'
+    >;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    publishedAt: Schema.Attribute.DateTime;
+    stock_items: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::stock-item.stock-item'
+    >;
+    type: Schema.Attribute.Enumeration<
+      ['warehouse', 'store', 'transit', 'virtual', 'supplier', 'customer']
+    > &
+      Schema.Attribute.DefaultTo<'warehouse'>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -7228,11 +7593,18 @@ declare module '@strapi/strapi' {
       'api::social-account.social-account': ApiSocialAccountSocialAccount;
       'api::social-post.social-post': ApiSocialPostSocialPost;
       'api::social-reply.social-reply': ApiSocialReplySocialReply;
+      'api::stock-adjustment.stock-adjustment': ApiStockAdjustmentStockAdjustment;
+      'api::stock-batch.stock-batch': ApiStockBatchStockBatch;
+      'api::stock-count.stock-count': ApiStockCountStockCount;
       'api::stock-input.stock-input': ApiStockInputStockInput;
       'api::stock-item.stock-item': ApiStockItemStockItem;
+      'api::stock-level.stock-level': ApiStockLevelStockLevel;
+      'api::stock-transfer.stock-transfer': ApiStockTransferStockTransfer;
+      'api::storage-location.storage-location': ApiStorageLocationStorageLocation;
       'api::supplier.supplier': ApiSupplierSupplier;
       'api::term-type.term-type': ApiTermTypeTermType;
       'api::term.term': ApiTermTerm;
+      'api::warehouse.warehouse': ApiWarehouseWarehouse;
       'api::work-item-activity.work-item-activity': ApiWorkItemActivityWorkItemActivity;
       'api::work-item-comment.work-item-comment': ApiWorkItemCommentWorkItemComment;
       'api::work-item-watch.work-item-watch': ApiWorkItemWatchWorkItemWatch;

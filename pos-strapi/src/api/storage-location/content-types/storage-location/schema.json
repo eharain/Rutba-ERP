@@ -1,0 +1,71 @@
+{
+  "kind": "collectionType",
+  "collectionName": "storage_locations",
+  "info": {
+    "singularName": "storage-location",
+    "pluralName": "storage-locations",
+    "displayName": "Storage Location",
+    "description": "A bin / shelf / zone inside a warehouse. Self-referential tree: zone -> aisle -> rack -> shelf -> bin."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "code": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "type": {
+      "type": "enumeration",
+      "enum": [
+        "zone",
+        "aisle",
+        "rack",
+        "shelf",
+        "bin",
+        "staging",
+        "quarantine"
+      ],
+      "default": "bin"
+    },
+    "is_pickable": {
+      "type": "boolean",
+      "default": true
+    },
+    "is_receivable": {
+      "type": "boolean",
+      "default": true
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "warehouse": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::warehouse.warehouse",
+      "inversedBy": "locations"
+    },
+    "parent": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::storage-location.storage-location",
+      "inversedBy": "children"
+    },
+    "children": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::storage-location.storage-location",
+      "mappedBy": "parent"
+    },
+    "stock_items": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::stock-item.stock-item",
+      "mappedBy": "storage_location"
+    }
+  }
+}

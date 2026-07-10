@@ -96,6 +96,16 @@
       "type": "decimal",
       "default": 0
     },
+    "is_perishable": {
+      "type": "boolean",
+      "default": false
+    },
+    "shelf_life_days": {
+      "type": "integer"
+    },
+    "expiry_alert_days": {
+      "type": "integer"
+    },
     "is_active": {
       "type": "boolean",
       "default": true
@@ -210,6 +220,18 @@
       "type": "relation",
       "relation": "oneToMany",
       "target": "api::mfg-material-lot.mfg-material-lot",
+      "mappedBy": "product"
+    },
+    "stock_levels": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::stock-level.stock-level",
+      "mappedBy": "product"
+    },
+    "stock_batches": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::stock-batch.stock-batch",
       "mappedBy": "product"
     }
   }

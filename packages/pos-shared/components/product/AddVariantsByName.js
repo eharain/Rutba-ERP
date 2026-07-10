@@ -53,11 +53,13 @@ export default function AddVariantsByName({ product, onCreated, onError, onSucce
             }
             setNames("");
             if (onSuccess) onSuccess(`Created ${created} variant(s)`);
-            if (onCreated) onCreated();
         } catch (err) {
             console.error("Add variants by name failed", err);
             if (onError) onError(`Failed after creating ${created} variant(s)`);
         } finally {
+            // Refresh on any partial progress so created variants show even if a
+            // later name in the batch failed.
+            if (created > 0 && onCreated) onCreated();
             setBusy(false);
         }
     }

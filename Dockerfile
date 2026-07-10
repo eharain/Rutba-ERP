@@ -81,6 +81,7 @@ ARG NEXT_PUBLIC_WEB_USER_URL
 ARG NEXT_PUBLIC_ORDER_MANAGEMENT_URL
 ARG NEXT_PUBLIC_MANUFACTURING_URL
 ARG NEXT_PUBLIC_MARKETPLACE_URL
+ARG NEXT_PUBLIC_INVENTORY_URL
 ARG NEXT_PUBLIC_RIDER_URL
 ARG NEXT_PUBLIC_SOCIAL_URL
 ARG NEXT_PUBLIC_CRM_URL
@@ -107,6 +108,7 @@ ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
     NEXT_PUBLIC_ORDER_MANAGEMENT_URL=$NEXT_PUBLIC_ORDER_MANAGEMENT_URL \
     NEXT_PUBLIC_MANUFACTURING_URL=$NEXT_PUBLIC_MANUFACTURING_URL \
     NEXT_PUBLIC_MARKETPLACE_URL=$NEXT_PUBLIC_MARKETPLACE_URL \
+    NEXT_PUBLIC_INVENTORY_URL=$NEXT_PUBLIC_INVENTORY_URL \
     NEXT_PUBLIC_RIDER_URL=$NEXT_PUBLIC_RIDER_URL \
     NEXT_PUBLIC_SOCIAL_URL=$NEXT_PUBLIC_SOCIAL_URL \
     NEXT_PUBLIC_CRM_URL=$NEXT_PUBLIC_CRM_URL \
@@ -386,3 +388,17 @@ COPY --from=marketplace-build /app/packages          ./packages
 COPY --from=marketplace-build /app/rutba-marketplace ./rutba-marketplace
 WORKDIR /app/rutba-marketplace
 CMD ["node", "worker.js"]
+
+# ----------------------------------------------------------
+#  rutba-inventory (Inventory Management UI)
+# ----------------------------------------------------------
+FROM build-env AS inventory-build
+RUN mkdir -p rutba-inventory/public && npm run build --workspace=rutba-inventory
+
+FROM base AS inventory
+WORKDIR /app
+ENV NODE_ENV=production HOSTNAME=0.0.0.0
+COPY --from=inventory-build /app/rutba-inventory/.next/standalone ./
+COPY --from=inventory-build /app/rutba-inventory/.next/static     ./rutba-inventory/.next/static
+COPY --from=inventory-build /app/rutba-inventory/public            ./rutba-inventory/public
+CMD ["node", "rutba-inventory/server.js"]

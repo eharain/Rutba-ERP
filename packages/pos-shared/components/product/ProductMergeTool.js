@@ -324,34 +324,57 @@ export default function ProductMergeTool({ product, documentId, currency = "", o
     // Attach the selected standalone products AS variants of this product.
     // Non-destructive: each source keeps its own stock/purchase items and data —
     // only its `parent` is re-pointed at this product (and is_variant flagged).
+    // Look up how many child variants a product already has (0 if it's a leaf).
+    async function childVariantCount(docId) {
+        const res = await ProductsEndpoints.byParent(docId, { pageSize: 1 });
+        return res?.meta?.pagination?.total ?? (res?.data ?? res ?? []).length;
+    }
+
     async function handleAttachVariants() {
         if (attachSelection.size === 0) return alert("Select at least one product to add as a variant");
-        const sourceNames = attachResults
-            .filter(p => attachSelection.has(getEntryId(p)))
-            .map(p => p.name || p.sku || getEntryId(p))
-            .join(", ");
-        if (!confirm(`Add ${attachSelection.size} product(s) (${sourceNames}) as variant(s) of "${product?.name}"?\n\nEach product keeps its own stock and data; it just becomes a child variant of this product.`)) return;
 
         setAttaching(true);
         setError("");
         setSuccess("");
         const log = [];
-        const count = attachSelection.size;
         try {
+            // Guard against 3-level nesting: a product that is itself a parent
+            // (has its own variants) can't be pulled in — its children would
+            // become grandchildren that the flat parent→variants UI/storefront
+            // never surface. Partition selection into leaf (attachable) vs parent.
+            const attachable = [];
+            const skipped = [];
             for (const sourceDocId of attachSelection) {
                 const sourceProduct = attachResults.find(p => getEntryId(p) === sourceDocId);
                 const sourceName = sourceProduct?.name || sourceDocId;
-                await ProductsEndpoints.update(sourceDocId, {
+                if (await childVariantCount(sourceDocId) > 0) {
+                    skipped.push(sourceName);
+                } else {
+                    attachable.push({ docId: sourceDocId, name: sourceName });
+                }
+            }
+
+            if (attachable.length === 0) {
+                setError(`Nothing attached — ${skipped.length} selected product(s) already have their own variants. Merge or move those first: ${skipped.join(", ")}`);
+                return;
+            }
+            if (!confirm(`Add ${attachable.length} product(s) (${attachable.map(a => a.name).join(", ")}) as variant(s) of "${product?.name}"?\n\nEach product keeps its own stock and data; it just becomes a child variant of this product.${skipped.length ? `\n\n${skipped.length} product(s) with their own variants will be skipped.` : ""}`)) {
+                return;
+            }
+
+            for (const { docId, name } of attachable) {
+                await ProductsEndpoints.update(docId, {
                     parent: { connect: [documentId] },
                     is_variant: true,
                 });
-                log.push(`Attached "${sourceName}" as a variant`);
+                log.push(`Attached "${name}" as a variant`);
             }
+            skipped.forEach(n => log.push(`Skipped "${n}" (has its own variants)`));
             setMergeLog(log);
             setAttachSelection(new Set());
             setAttachSearch("");
             setAttachResults([]);
-            setSuccess(`Added ${count} product(s) as variant(s) of "${product?.name}".`);
+            setSuccess(`Added ${attachable.length} product(s) as variant(s) of "${product?.name}".${skipped.length ? ` Skipped ${skipped.length} with their own variants.` : ""}`);
             if (onChange) onChange();
             await reloadVariants();
         } catch (err) {

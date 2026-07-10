@@ -110,6 +110,7 @@ services:
         NEXT_PUBLIC_PAYROLL_URL: ${NEXT_PUBLIC_PAYROLL_URL}
         NEXT_PUBLIC_CMS_URL: ${NEXT_PUBLIC_CMS_URL}
         NEXT_PUBLIC_MARKETPLACE_URL: ${NEXT_PUBLIC_MARKETPLACE_URL}
+        NEXT_PUBLIC_INVENTORY_URL: ${NEXT_PUBLIC_INVENTORY_URL}
         NEXT_PUBLIC_IMAGE_HOST_PROTOCOL: ${NEXT_PUBLIC_IMAGE_HOST_PROTOCOL}
         NEXT_PUBLIC_IMAGE_HOST_NAME: ${NEXT_PUBLIC_IMAGE_HOST_NAME}
         NEXT_PUBLIC_IMAGE_HOST_PORT: ${NEXT_PUBLIC_IMAGE_HOST_PORT}
@@ -416,6 +417,23 @@ services:
       DARAZ_APP_KEY: ${RUTBA_MARKETPLACE_DARAZ_APP_KEY}
       DARAZ_APP_SECRET: ${RUTBA_MARKETPLACE_DARAZ_APP_SECRET}
       DARAZ_REGION: ${RUTBA_MARKETPLACE_DARAZ_REGION:-pk}
+
+  # --------------------------------------------------------
+  # Inventory Management
+  # --------------------------------------------------------
+  inventory:
+    build:
+      context: .
+      target: inventory
+      args: *global-build-args
+    restart: unless-stopped
+    depends_on:
+      - strapi
+    ports:
+      - "${PORT_INVENTORY:-4017}:${PORT_INVENTORY:-4017}"
+    environment:
+      PORT: ${PORT_INVENTORY:-4017}
+      HOSTNAME: 0.0.0.0
 
 volumes:
   mysql_data:

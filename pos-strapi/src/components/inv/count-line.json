@@ -1,0 +1,27 @@
+{
+  "collectionName": "components_inv_count_lines",
+  "info": {
+    "displayName": "Count Line",
+    "description": "One product line in a stock count: expected (system) vs physically counted quantity."
+  },
+  "options": {},
+  "attributes": {
+    "product_doc_id": {
+      "type": "string"
+    },
+    "product_name": {
+      "type": "string"
+    },
+    "sku": {
+      "type": "string"
+    },
+    "system_qty": {
+      "type": "integer",
+      "default": 0
+    },
+    "counted_qty": {
+      "type": "integer",
+      "default": 0
+    }
+  }
+}

@@ -1,0 +1,64 @@
+{
+  "kind": "collectionType",
+  "collectionName": "stock_adjustments",
+  "info": {
+    "singularName": "stock-adjustment",
+    "pluralName": "stock-adjustments",
+    "displayName": "Stock Adjustment",
+    "description": "Write-off / damage / loss / expiry of serialized stock-items. Post moves the selected InStock units to a loss status (dropping them from on-hand) and best-effort posts Dr SHRINKAGE_EXPENSE / Cr INVENTORY."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "adjustment_number": {
+      "type": "string"
+    },
+    "type": {
+      "type": "enumeration",
+      "enum": [
+        "WriteOff",
+        "Damage",
+        "Lost",
+        "Expired"
+      ],
+      "default": "WriteOff"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "Draft",
+        "Posted",
+        "Cancelled"
+      ],
+      "default": "Draft"
+    },
+    "reason": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "text"
+    },
+    "posted_at": {
+      "type": "datetime"
+    },
+    "total_cost": {
+      "type": "decimal"
+    },
+    "gl_posted": {
+      "type": "boolean",
+      "default": false
+    },
+    "warehouse": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::warehouse.warehouse"
+    },
+    "stock_items": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::stock-item.stock-item"
+    }
+  }
+}

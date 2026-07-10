@@ -1,5 +1,20 @@
 import type { Schema, Struct } from '@strapi/strapi';
 
+export interface InvCountLine extends Struct.ComponentSchema {
+  collectionName: 'components_inv_count_lines';
+  info: {
+    description: 'One product line in a stock count: expected (system) vs physically counted quantity.';
+    displayName: 'Count Line';
+  };
+  attributes: {
+    counted_qty: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    product_doc_id: Schema.Attribute.String;
+    product_name: Schema.Attribute.String;
+    sku: Schema.Attribute.String;
+    system_qty: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+  };
+}
+
 export interface MfgBomLine extends Struct.ComponentSchema {
   collectionName: 'components_mfg_bom_lines';
   info: {
@@ -386,6 +401,7 @@ export interface WorkflowTransition extends Struct.ComponentSchema {
 declare module '@strapi/strapi' {
   export module Public {
     export interface ComponentSchemas {
+      'inv.count-line': InvCountLine;
       'mfg.bom-line': MfgBomLine;
       'mfg.qc-defect-line': MfgQcDefectLine;
       'mfg.routing-step': MfgRoutingStep;

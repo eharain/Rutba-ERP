@@ -54,6 +54,26 @@ async function recompute(productIds) {
   }
 }
 
+// Per-location stock-level cache (Foundation F2). Kept strictly best-effort and
+// separate from the global recompute above: a failure here must NEVER break the
+// stock-item mutation or the product.stock_quantity invariant. Skipped while the
+// backfill suppresses it (it does one full rebuild at the end instead).
+async function recomputeStockLevels(productIds) {
+  const ids = Array.from(new Set((productIds || []).filter(Boolean)));
+  if (ids.length === 0) return;
+  const svc = strapi.service(STOCK_ITEM_UID);
+  if (typeof svc.isStockLevelRecomputeSuppressed === 'function' && svc.isStockLevelRecomputeSuppressed()) {
+    return;
+  }
+  for (const pid of ids) {
+    try {
+      await svc.recomputeStockLevelsForProduct(pid);
+    } catch (err) {
+      strapi.log.warn(`[stock-item] stock-level recompute product=${pid} failed: ${err.message}`);
+    }
+  }
+}
+
 module.exports = {
   async beforeUpdate(event) {
     if (_updating) return;
@@ -65,7 +85,9 @@ module.exports = {
     const wantsStatus = Object.prototype.hasOwnProperty.call(data || {}, 'status');
     const wantsProduct = Object.prototype.hasOwnProperty.call(data || {}, 'product');
     const wantsArchived = Object.prototype.hasOwnProperty.call(data || {}, 'archived');
-    if (!wantsStatus && !wantsProduct && !wantsArchived) return;
+    const wantsWarehouse = Object.prototype.hasOwnProperty.call(data || {}, 'warehouse');
+    const wantsLocation = Object.prototype.hasOwnProperty.call(data || {}, 'storage_location');
+    if (!wantsStatus && !wantsProduct && !wantsArchived && !wantsWarehouse && !wantsLocation) return;
 
     const existing = await loadCurrentState(itemId);
     if (!existing) return;
@@ -78,7 +100,13 @@ module.exports = {
     event.state = event.state || {};
     event.state.oldProductId = existing.product?.id || null;
     event.state.productRelTouched = wantsProduct;
+    // Global product.stock_quantity depends on status / product / archived only —
+    // NOT on which warehouse the unit sits in.
     event.state.recomputeNeeded = statusChanged || wantsProduct || archivedChanged;
+    // The per-warehouse stock-level cache additionally cares about warehouse /
+    // location moves (the unit changes buckets without changing the global count).
+    event.state.stockLevelNeeded =
+      statusChanged || wantsProduct || archivedChanged || wantsWarehouse || wantsLocation;
 
     if (statusChanged) {
       event.state.statusChanged = true;
@@ -128,17 +156,20 @@ module.exports = {
       }
     }
 
-    // 2. Stock cache recompute (status, product, or archived changed)
-    if (event.state?.recomputeNeeded) {
+    // 2. Stock cache recompute (status, product, archived, warehouse, or location changed)
+    if (event.state?.recomputeNeeded || event.state?.stockLevelNeeded) {
       const affected = [event.state.oldProductId];
       if (event.state.productRelTouched) {
         // The new product id isn't easily readable off `result` because
         // relations aren't populated there — re-read.
         affected.push(await loadProductId(itemId));
-      } else {
-        affected.push(event.state.oldProductId);
       }
-      await recompute(affected);
+      if (event.state?.recomputeNeeded) {
+        await recompute(affected);
+      }
+      if (event.state?.stockLevelNeeded) {
+        await recomputeStockLevels(affected);
+      }
     }
   },
 
@@ -173,9 +204,12 @@ module.exports = {
       }
     }
 
-    // 2. Recompute the parent product's cache
+    // 2. Recompute the parent product's caches (global + per-warehouse)
     const pid = await loadProductId(itemId);
-    if (pid) await recompute([pid]);
+    if (pid) {
+      await recompute([pid]);
+      await recomputeStockLevels([pid]);
+    }
   },
 
   async beforeDelete(event) {
@@ -198,5 +232,6 @@ module.exports = {
     const pid = event.state?.deletedProductId;
     if (!pid) return;
     await recompute([pid]);
+    await recomputeStockLevels([pid]);
   },
 };

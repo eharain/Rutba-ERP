@@ -1,0 +1,49 @@
+{
+  "kind": "collectionType",
+  "collectionName": "stock_levels",
+  "info": {
+    "singularName": "stock-level",
+    "pluralName": "stock-levels",
+    "displayName": "Stock Level",
+    "description": "Denormalised per-(product, warehouse) on-hand cache. NEVER hand-written — maintained by the stock-item lifecycle. Sum of quantity_on_hand across warehouses equals product.stock_quantity."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "quantity_on_hand": {
+      "type": "integer",
+      "default": 0
+    },
+    "quantity_reserved": {
+      "type": "integer",
+      "default": 0
+    },
+    "quantity_available": {
+      "type": "integer",
+      "default": 0
+    },
+    "product": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::product.product",
+      "inversedBy": "stock_levels"
+    },
+    "warehouse": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::warehouse.warehouse"
+    },
+    "storage_location": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::storage-location.storage-location"
+    },
+    "batch": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::stock-batch.stock-batch"
+    }
+  }
+}

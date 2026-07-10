@@ -25,7 +25,7 @@ export const ProductsEndpoints = {
 
     meta: {
         uid: 'api::product.product',
-        domains: ['cms', 'order-management', 'social', 'stock'],
+        domains: ['cms', 'order-management', 'social', 'stock', 'inventory'],
         roles: ['admin', 'manager', 'staff']
     },
 
@@ -39,7 +39,7 @@ export const ProductsEndpoints = {
         path: '/products',
         action: 'find',
         method: 'get',
-        apps: ['stock', 'product'],
+        apps: ['inventory', 'stock', 'product'],
         approle: ['admin', 'manager', 'staff'],
         params: {
             sort: sort ?? ['name:asc'],
@@ -64,7 +64,7 @@ export const ProductsEndpoints = {
         path: '/products',
         action: 'find',
         method: 'get',
-        apps: ['stock', 'product'],
+        apps: ['inventory', 'stock', 'product'],
         approle: ['admin', 'manager', 'staff'],
         params: {
             sort: sort ?? ['name:asc'],

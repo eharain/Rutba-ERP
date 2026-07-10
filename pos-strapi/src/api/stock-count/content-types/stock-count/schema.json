@@ -1,0 +1,44 @@
+{
+  "kind": "collectionType",
+  "collectionName": "stock_counts",
+  "info": {
+    "singularName": "stock-count",
+    "pluralName": "stock-counts",
+    "displayName": "Stock Count",
+    "description": "Physical cycle count / stock-take of a warehouse. Post compares counted vs system per product and books shortages as losses (units -> Lost)."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "count_number": {
+      "type": "string"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "Draft",
+        "Posted",
+        "Cancelled"
+      ],
+      "default": "Draft"
+    },
+    "notes": {
+      "type": "text"
+    },
+    "posted_at": {
+      "type": "datetime"
+    },
+    "warehouse": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::warehouse.warehouse"
+    },
+    "lines": {
+      "type": "component",
+      "repeatable": true,
+      "component": "inv.count-line"
+    }
+  }
+}

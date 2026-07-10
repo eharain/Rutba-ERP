@@ -115,6 +115,18 @@
     "level": "staff",
     "domain": "hr"
   },
+  "inventory_admin": {
+    "level": "admin",
+    "domain": "inventory"
+  },
+  "inventory_manager": {
+    "level": "manager",
+    "domain": "inventory"
+  },
+  "inventory_staff": {
+    "level": "staff",
+    "domain": "inventory"
+  },
   "marketplace_admin": {
     "level": "admin",
     "domain": "marketplace"

@@ -1,0 +1,79 @@
+{
+  "kind": "collectionType",
+  "collectionName": "stock_batches",
+  "info": {
+    "singularName": "stock-batch",
+    "pluralName": "stock-batches",
+    "displayName": "Stock Batch",
+    "description": "Optional batch/lot grouping for a product with manufacture/expiry dates. Groups serialized units (stock_items) and/or carries a quantity ledger for bulk products. The single batch/lot concept (finished goods + raw material)."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "batch_code": {
+      "type": "string"
+    },
+    "manufacture_date": {
+      "type": "date"
+    },
+    "expiry_date": {
+      "type": "date"
+    },
+    "received_at": {
+      "type": "datetime"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "Active",
+        "Expired",
+        "Quarantined",
+        "Depleted",
+        "Recalled"
+      ],
+      "default": "Active"
+    },
+    "unit_cost": {
+      "type": "decimal"
+    },
+    "quantity_received": {
+      "type": "decimal",
+      "default": 0
+    },
+    "quantity_remaining": {
+      "type": "decimal",
+      "default": 0
+    },
+    "quantity_reserved": {
+      "type": "decimal",
+      "default": 0
+    },
+    "notes": {
+      "type": "text"
+    },
+    "product": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::product.product",
+      "inversedBy": "stock_batches"
+    },
+    "supplier": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::supplier.supplier"
+    },
+    "warehouse": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::warehouse.warehouse"
+    },
+    "stock_items": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::stock-item.stock-item",
+      "mappedBy": "batch"
+    }
+  }
+}

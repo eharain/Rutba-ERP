@@ -1,0 +1,59 @@
+{
+  "kind": "collectionType",
+  "collectionName": "stock_transfers",
+  "info": {
+    "singularName": "stock-transfer",
+    "pluralName": "stock-transfers",
+    "displayName": "Stock Transfer",
+    "description": "Two-sided transfer of serialized stock-items between warehouses: Draft -> dispatch (InTransit) -> receive (Received). In-transit units are status='Transferred' (not counted in any warehouse on-hand)."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "transfer_number": {
+      "type": "string"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "Draft",
+        "InTransit",
+        "PartiallyReceived",
+        "Received",
+        "Cancelled"
+      ],
+      "default": "Draft"
+    },
+    "notes": {
+      "type": "text"
+    },
+    "dispatched_at": {
+      "type": "datetime"
+    },
+    "received_at": {
+      "type": "datetime"
+    },
+    "from_warehouse": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::warehouse.warehouse"
+    },
+    "to_warehouse": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::warehouse.warehouse"
+    },
+    "to_location": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::storage-location.storage-location"
+    },
+    "stock_items": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::stock-item.stock-item"
+    }
+  }
+}

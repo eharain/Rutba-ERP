@@ -57,6 +57,12 @@
       "relation": "oneToMany",
       "target": "api::stock-item.stock-item"
     },
+    "warehouses": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::warehouse.warehouse",
+      "mappedBy": "branch"
+    },
     "payments": {
       "type": "relation",
       "relation": "manyToMany",

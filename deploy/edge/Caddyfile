@@ -100,6 +100,14 @@ rider.rutba.pk {
 	}
 }
 
+# ---- Inventory management (staff) --------------------------
+inventory.rutba.pk {
+	import verif inventory.rutba.pk
+	handle {
+		reverse_proxy inventory:4017
+	}
+}
+
 # ---- Storefront: legacy staging host -----------------------
 # Apex is live, so new.rutba.pk is redundant — permanently
 # redirect it (and www) to the real apex so old links still land.

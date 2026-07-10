@@ -109,6 +109,27 @@
       "relation": "manyToOne",
       "target": "api::mfg-work-order.mfg-work-order",
       "inversedBy": "finished_stock_items"
+    },
+    "warehouse": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::warehouse.warehouse",
+      "inversedBy": "stock_items"
+    },
+    "storage_location": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::storage-location.storage-location",
+      "inversedBy": "stock_items"
+    },
+    "batch": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::stock-batch.stock-batch",
+      "inversedBy": "stock_items"
+    },
+    "expiry_date": {
+      "type": "date"
     }
   }
 }

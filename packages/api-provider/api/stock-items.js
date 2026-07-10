@@ -8,7 +8,7 @@ export const StockItemsEndpoints = {
 
     meta: {
         uid: 'api::stock-item.stock-item',
-        domains: ['sale', 'stock'],
+        domains: ['sale', 'stock', 'inventory'],
         roles: ['admin', 'manager', 'staff']
     },
 
@@ -40,7 +40,7 @@ export const StockItemsEndpoints = {
             path: '/me/stock-items-search',
             action: 'find',
             method: 'get',
-            apps: ['stock'],
+            apps: ['inventory', 'stock'],
             approle: ['admin', 'manager', 'staff'],
             params: {
                 // Populate product.logo + product.gallery so the sale-editor
@@ -157,7 +157,7 @@ export const StockItemsEndpoints = {
         path: '/stock-items',
         action: 'create',
         method: 'post',
-        apps: ['stock'],
+        apps: ['inventory', 'stock'],
         approle: ['admin', 'manager', 'staff'],
         data,
     }),
@@ -175,7 +175,7 @@ export const StockItemsEndpoints = {
         path: '/stock-items/bulk-resolve',
         action: 'resolveBulkStock',
         method: 'post',
-        apps: ['stock'],
+        apps: ['inventory', 'stock'],
         approle: ['admin', 'manager', 'staff'],
         data: { rows },
     }),
@@ -193,7 +193,7 @@ export const StockItemsEndpoints = {
         path: '/stock-items/bulk-process',
         action: 'processBulkStock',
         method: 'post',
-        apps: ['stock'],
+        apps: ['inventory', 'stock'],
         approle: ['admin', 'manager'],
         data: { rows },
     }),
@@ -230,7 +230,7 @@ export const StockItemsEndpoints = {
         path: `/stock-items/${documentId}`,
         action: 'update',
         method: 'put',
-        apps: ['stock'],
+        apps: ['inventory', 'stock'],
         approle: ['admin', 'manager'],
         data,
     }),
@@ -263,7 +263,7 @@ export const StockItemsEndpoints = {
         path: '/stock-items/recompute-product-stock',
         action: 'create',
         method: 'post',
-        apps: ['stock', 'cms'],
+        apps: ['inventory', 'stock', 'cms'],
         approle: ['admin'],
         data: {},
     }),
@@ -281,7 +281,7 @@ export const StockItemsEndpoints = {
         path: '/stock-items/transfer',
         action: 'create',
         method: 'post',
-        apps: ['stock'],
+        apps: ['inventory', 'stock'],
         approle: ['admin', 'manager'],
         data: payload,
     }),

@@ -28,11 +28,12 @@ export const APP_URLS = {
     social:    process.env.NEXT_PUBLIC_SOCIAL_URL    || 'http://localhost:4011',
     manufacturing: process.env.NEXT_PUBLIC_MANUFACTURING_URL || 'http://localhost:4014',
     marketplace:   process.env.NEXT_PUBLIC_MARKETPLACE_URL   || 'http://localhost:4016',
+    inventory:     process.env.NEXT_PUBLIC_INVENTORY_URL     || 'http://localhost:4017',
     web:       process.env.NEXT_PUBLIC_WEB_URL       || 'http://localhost:4010',
 };
 
 /** All recognised app keys */
-const VALID_APP_KEYS = ['stock', 'sale', 'auth', 'web-user', 'order-management', 'rider', 'crm', 'hr', 'ess', 'accounts', 'payroll', 'cms', 'social', 'manufacturing', 'marketplace'];
+const VALID_APP_KEYS = ['stock', 'sale', 'auth', 'web-user', 'order-management', 'rider', 'crm', 'hr', 'ess', 'accounts', 'payroll', 'cms', 'social', 'manufacturing', 'marketplace', 'inventory'];
 
 /**
  * Metadata for each app — icon (FontAwesome class), display label,
@@ -56,6 +57,7 @@ export const APP_META = {
     social:     { icon: 'fa-solid fa-share-nodes',         label: 'Social Media',       description: 'Posts, replies, multi-platform publishing',   border: 'border-info',      color: 'text-info' },
     manufacturing: { icon: 'fa-solid fa-industry',         label: 'Manufacturing',      description: 'Work orders, bundles, production, piece-rate payroll', border: 'border-primary',   color: 'text-primary' },
     marketplace:   { icon: 'fa-solid fa-store',            label: 'Marketplace',        description: 'Daraz & channel accounts, order/inventory sync', border: 'border-warning',   color: 'text-warning' },
+    inventory:  { icon: 'fa-solid fa-warehouse',          label: 'Inventory Management', description: 'Warehouses, bins, stock levels, transfers, counts, reordering', border: 'border-primary',   color: 'text-primary' },
     web:        { icon: 'fa-solid fa-globe',               label: 'Storefront',         description: 'Public customer-facing website',              border: 'border-info',      color: 'text-info', public: true },
 };
 

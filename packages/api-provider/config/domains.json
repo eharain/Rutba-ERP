@@ -68,6 +68,13 @@
       "hr_staff"
     ]
   },
+  "inventory": {
+    "roles": [
+      "inventory_admin",
+      "inventory_manager",
+      "inventory_staff"
+    ]
+  },
   "marketplace": {
     "roles": [
       "marketplace_admin",
