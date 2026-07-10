@@ -46,6 +46,7 @@ export * from './mfg-material-lots';
 export * from './mfg-operations';
 export * from './mfg-piece-rates';
 export * from './mfg-production-lines';
+export * from './mfg-production-templates';
 export * from './mfg-qc-inspections';
 export * from './mfg-tasks';
 export * from './mfg-work-orders';

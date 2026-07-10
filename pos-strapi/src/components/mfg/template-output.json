@@ -1,0 +1,41 @@
+{
+  "collectionName": "components_mfg_template_outputs",
+  "info": {
+    "displayName": "Template Output",
+    "icon": "cube",
+    "description": "A type-level output slot on a production template (output category + type + relative yield + cost share), resolved to a concrete product at instantiation."
+  },
+  "options": {},
+  "attributes": {
+    "role_label": {
+      "type": "string",
+      "description": "Stable slot key used to map a non-primary output to a concrete product when instantiating. Falls back to output_<index>. The primary output takes the instantiation's outputProduct."
+    },
+    "category": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::category.category"
+    },
+    "output_type": {
+      "type": "enumeration",
+      "enum": [
+        "primary",
+        "co_product",
+        "by_product",
+        "scrap"
+      ],
+      "default": "primary"
+    },
+    "relative_yield": {
+      "type": "decimal",
+      "default": 1
+    },
+    "cost_share_pct": {
+      "type": "decimal",
+      "default": 0
+    },
+    "notes": {
+      "type": "string"
+    }
+  }
+}

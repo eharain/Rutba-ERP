@@ -46,6 +46,7 @@ export * from './mfg-material-lots.js';
 export * from './mfg-operations.js';
 export * from './mfg-piece-rates.js';
 export * from './mfg-production-lines.js';
+export * from './mfg-production-templates.js';
 export * from './mfg-qc-inspections.js';
 export * from './mfg-tasks.js';
 export * from './mfg-work-orders.js';

@@ -1,0 +1,55 @@
+{
+  "collectionName": "components_mfg_template_inputs",
+  "info": {
+    "displayName": "Template Input",
+    "icon": "layer",
+    "description": "A type-level input slot on a production template (an input kind/category + qty + wastage), resolved to a concrete product at instantiation."
+  },
+  "options": {},
+  "attributes": {
+    "role_label": {
+      "type": "string",
+      "description": "Stable slot key used to map this input to a concrete product when instantiating (e.g. \"main_fabric\", \"lining\"). Falls back to input_<index>."
+    },
+    "kind": {
+      "type": "enumeration",
+      "enum": [
+        "raw_material",
+        "consumable",
+        "semi_finished"
+      ],
+      "default": "raw_material"
+    },
+    "category": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::category.category"
+    },
+    "quantity": {
+      "type": "decimal"
+    },
+    "uom": {
+      "type": "enumeration",
+      "enum": [
+        "piece",
+        "meter",
+        "yard",
+        "kg",
+        "gram",
+        "dozen",
+        "set",
+        "cone",
+        "roll",
+        "box"
+      ],
+      "default": "piece"
+    },
+    "wastage_pct": {
+      "type": "decimal",
+      "default": 0
+    },
+    "notes": {
+      "type": "string"
+    }
+  }
+}

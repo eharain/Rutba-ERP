@@ -154,6 +154,61 @@ export interface MfgSkillGrade extends Struct.ComponentSchema {
   };
 }
 
+export interface MfgTemplateInput extends Struct.ComponentSchema {
+  collectionName: 'components_mfg_template_inputs';
+  info: {
+    description: 'A type-level input slot on a production template (an input kind/category + qty + wastage), resolved to a concrete product at instantiation.';
+    displayName: 'Template Input';
+    icon: 'layer';
+  };
+  attributes: {
+    category: Schema.Attribute.Relation<'oneToOne', 'api::category.category'>;
+    kind: Schema.Attribute.Enumeration<
+      ['raw_material', 'consumable', 'semi_finished']
+    > &
+      Schema.Attribute.DefaultTo<'raw_material'>;
+    notes: Schema.Attribute.String;
+    quantity: Schema.Attribute.Decimal;
+    role_label: Schema.Attribute.String;
+    uom: Schema.Attribute.Enumeration<
+      [
+        'piece',
+        'meter',
+        'yard',
+        'kg',
+        'gram',
+        'dozen',
+        'set',
+        'cone',
+        'roll',
+        'box',
+      ]
+    > &
+      Schema.Attribute.DefaultTo<'piece'>;
+    wastage_pct: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+  };
+}
+
+export interface MfgTemplateOutput extends Struct.ComponentSchema {
+  collectionName: 'components_mfg_template_outputs';
+  info: {
+    description: 'A type-level output slot on a production template (output category + type + relative yield + cost share), resolved to a concrete product at instantiation.';
+    displayName: 'Template Output';
+    icon: 'cube';
+  };
+  attributes: {
+    category: Schema.Attribute.Relation<'oneToOne', 'api::category.category'>;
+    cost_share_pct: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    notes: Schema.Attribute.String;
+    output_type: Schema.Attribute.Enumeration<
+      ['primary', 'co_product', 'by_product', 'scrap']
+    > &
+      Schema.Attribute.DefaultTo<'primary'>;
+    relative_yield: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<1>;
+    role_label: Schema.Attribute.String;
+  };
+}
+
 export interface OrderOrderProductItem extends Struct.ComponentSchema {
   collectionName: 'components_order_order_product_items';
   info: {
@@ -427,6 +482,8 @@ declare module '@strapi/strapi' {
       'mfg.routing-step': MfgRoutingStep;
       'mfg.size-breakup': MfgSizeBreakup;
       'mfg.skill-grade': MfgSkillGrade;
+      'mfg.template-input': MfgTemplateInput;
+      'mfg.template-output': MfgTemplateOutput;
       'order.order-product-item': OrderOrderProductItem;
       'order.order-products': OrderOrderProducts;
       'order.return-line': OrderReturnLine;

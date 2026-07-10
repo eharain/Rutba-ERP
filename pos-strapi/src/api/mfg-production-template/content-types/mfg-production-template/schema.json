@@ -1,0 +1,62 @@
+{
+  "kind": "collectionType",
+  "collectionName": "mfg_production_templates",
+  "info": {
+    "singularName": "mfg-production-template",
+    "pluralName": "mfg-production-templates",
+    "displayName": "Mfg Production Template",
+    "description": "Reusable product-type recipe: input/output category+kind slots + routing, instantiated into concrete versioned BOMs"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "code": {
+      "type": "uid",
+      "targetField": "name"
+    },
+    "local_name": {
+      "type": "string"
+    },
+    "description": {
+      "type": "text"
+    },
+    "default_track_mode": {
+      "type": "enumeration",
+      "enum": [
+        "serialized",
+        "bulk"
+      ],
+      "default": "serialized"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "output_category": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::category.category"
+    },
+    "input_lines": {
+      "type": "component",
+      "repeatable": true,
+      "component": "mfg.template-input"
+    },
+    "output_lines": {
+      "type": "component",
+      "repeatable": true,
+      "component": "mfg.template-output"
+    },
+    "routing_steps": {
+      "type": "component",
+      "repeatable": true,
+      "component": "mfg.routing-step"
+    }
+  }
+}

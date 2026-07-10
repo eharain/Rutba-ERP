@@ -3077,6 +3077,49 @@ export interface ApiMfgProductionLineMfgProductionLine
   };
 }
 
+export interface ApiMfgProductionTemplateMfgProductionTemplate
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'mfg_production_templates';
+  info: {
+    description: 'Reusable product-type recipe: input/output category+kind slots + routing, instantiated into concrete versioned BOMs';
+    displayName: 'Mfg Production Template';
+    pluralName: 'mfg-production-templates';
+    singularName: 'mfg-production-template';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    code: Schema.Attribute.UID<'name'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    default_track_mode: Schema.Attribute.Enumeration<['serialized', 'bulk']> &
+      Schema.Attribute.DefaultTo<'serialized'>;
+    description: Schema.Attribute.Text;
+    input_lines: Schema.Attribute.Component<'mfg.template-input', true>;
+    is_active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    local_name: Schema.Attribute.String;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::mfg-production-template.mfg-production-template'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    output_category: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::category.category'
+    >;
+    output_lines: Schema.Attribute.Component<'mfg.template-output', true>;
+    publishedAt: Schema.Attribute.DateTime;
+    routing_steps: Schema.Attribute.Component<'mfg.routing-step', true>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiMfgQcInspectionMfgQcInspection
   extends Struct.CollectionTypeSchema {
   collectionName: 'mfg_qc_inspections';
@@ -7552,6 +7595,7 @@ declare module '@strapi/strapi' {
       'api::mfg-operation.mfg-operation': ApiMfgOperationMfgOperation;
       'api::mfg-piece-rate.mfg-piece-rate': ApiMfgPieceRateMfgPieceRate;
       'api::mfg-production-line.mfg-production-line': ApiMfgProductionLineMfgProductionLine;
+      'api::mfg-production-template.mfg-production-template': ApiMfgProductionTemplateMfgProductionTemplate;
       'api::mfg-qc-inspection.mfg-qc-inspection': ApiMfgQcInspectionMfgQcInspection;
       'api::mfg-task.mfg-task': ApiMfgTaskMfgTask;
       'api::mfg-work-order.mfg-work-order': ApiMfgWorkOrderMfgWorkOrder;
