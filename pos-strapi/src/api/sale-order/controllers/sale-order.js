@@ -692,6 +692,20 @@ module.exports = factories.createCoreController(
                 );
             }
 
+            // Block-expired (Epic 5): never sell a unit past its expiry. The daily
+            // sweep flips expired InStock→Expired, but a unit that expires *today*
+            // may not have been swept yet — this is the belt-and-braces guard at
+            // the point of sale.
+            if (stockItem.expiry_date) {
+                const today = new Date().toISOString().slice(0, 10);
+                if (String(stockItem.expiry_date).slice(0, 10) < today) {
+                    return ctx.badRequest(
+                        `Stock item expired on ${String(stockItem.expiry_date).slice(0, 10)} and cannot be sold`,
+                        { expiry_date: stockItem.expiry_date },
+                    );
+                }
+            }
+
             // Product binding must match. Compare on documentId since that's
             // the identifier the line stores when it's a relation.
             const lineProductDocId = targetLine.product?.documentId;
