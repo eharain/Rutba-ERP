@@ -7,6 +7,7 @@ export interface SaleOrdersEndpointsType {
     updateStatus(documentId: any, data: any): Promise<any>;
     assignRider(documentId: any, data: any): Promise<any>;
     attachStockItem(documentId: any, data: any): Promise<any>;
+    attachDivisible(documentId: any, data: any): Promise<any>;
     messages(documentId: any): Promise<any>;
     sendMessage(documentId: any, data: any): Promise<any>;
     recordPayment(documentId: any, data: any): Promise<any>;

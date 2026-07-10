@@ -195,6 +195,21 @@ module.exports = {
             }
         }
 
+        // Divisible lines have no single Reserved stock-item — their sub-units were
+        // consumed at allocation time (Divisible P2b). On a restocking status,
+        // release those allocations back to stock. Best-effort.
+        const DIVISIBLE_RESTOCK_STATUSES = ['CANCELLED', 'RETURNED'];
+        if (statusChanged && DIVISIBLE_RESTOCK_STATUSES.includes(newStatus)) {
+            try {
+                const rel = await strapi.service('api::sale-order.sale-order').releaseDivisibleForOrder(orderDocumentId);
+                if (rel?.released) {
+                    strapi.log.info(`[order-state-machine] released ${rel.released} divisible allocation(s) for order=${orderDocumentId} on ${newStatus}`);
+                }
+            } catch (err) {
+                strapi.log.warn(`[order-state-machine] divisible release failed for order=${orderDocumentId}: ${err.message}`);
+            }
+        }
+
         // Accounting side effects (best-effort; a missing mapping must never
         // unwind the order status change). DELIVERED recognises revenue + COGS;
         // CANCELLED / REFUNDED reverse the order's posted entries.

@@ -37,6 +37,11 @@ async function attachStockItem(documentId, data) {
     return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
+async function attachDivisible(documentId, data) {
+    const ep = SaleOrdersEndpointsApi.attachDivisible(documentId, data);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+}
+
 async function messages(documentId) {
     const ep = SaleOrdersEndpointsApi.messages(documentId);
     return authApi.fetch(ep.path, ep.params);
@@ -87,6 +92,7 @@ const endpoints = strictEndpointGuard(
         updateStatus,
         assignRider,
         attachStockItem,
+        attachDivisible,
         messages,
         sendMessage,
         recordPayment,
@@ -97,7 +103,7 @@ const endpoints = strictEndpointGuard(
         getReturnLabel,
         meta: SaleOrdersEndpointsApi.meta,
     },
-    ["list","byId","create","update","updateStatus","assignRider","attachStockItem","messages","sendMessage","recordPayment","verifyPayment","requestCostChangeAck","overrideCostChangeAck","getLabel","getReturnLabel","meta"],
+    ["list","byId","create","update","updateStatus","assignRider","attachStockItem","attachDivisible","messages","sendMessage","recordPayment","verifyPayment","requestCostChangeAck","overrideCostChangeAck","getLabel","getReturnLabel","meta"],
 );
 
 export default endpoints;

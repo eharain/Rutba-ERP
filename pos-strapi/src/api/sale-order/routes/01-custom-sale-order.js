@@ -180,6 +180,18 @@ const config = {
     },
     {
       method: 'POST',
+      path: '/orders/:documentId/attach-divisible',
+      handler: 'api::sale-order.sale-order.attachDivisible',
+      config: { auth: false },
+    },
+    {
+      method: 'POST',
+      path: '/sale-orders/:documentId/attach-divisible',
+      handler: 'api::sale-order.sale-order.attachDivisible',
+      config: { auth: false },
+    },
+    {
+      method: 'POST',
       path: '/orders/:documentId/cancel',
       handler: 'api::sale-order.sale-order.cancelOrder',
       config: { auth: false },

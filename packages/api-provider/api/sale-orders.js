@@ -88,6 +88,17 @@ export const SaleOrdersEndpoints = {
         scope: ROLE_SCOPES,
         data,
     }),
+    // Divisible product line: allocate `qty` sub-units across InStock items.
+    // Body: { item_index, qty, scanned_item_document_id? }
+    attachDivisible: (documentId, data) => ({
+        path: `/sale-orders/${documentId}/attach-divisible`,
+        action: 'attachDivisible',
+        method: 'post',
+        apps: ['order-management', 'sale', 'delivery'],
+        approle: ['admin', 'manager', 'staff'],
+        scope: ROLE_SCOPES,
+        data,
+    }),
     // todo: speculative stub — added so rutba-rider/pages/deliveries/[id].js
     // call site resolves at the descriptor level. Verify route path against
     // pos-strapi (order-message content type) and confirm controller action

@@ -49,6 +49,14 @@
       "type": "relation",
       "relation": "oneToOne",
       "target": "api::stock-item.stock-item"
+    },
+    "sellable_qty": {
+      "type": "decimal",
+      "description": "For a divisible product line: the number of sub-units sold on this line (e.g. yards/tablets). Whole-item lines leave this null and use quantity."
+    },
+    "allocations": {
+      "type": "json",
+      "description": "For a divisible line: the allocation breakdown [{stock_item, stock_item_id, units, unit_price, line_total, depleted}] produced by stock-item.allocateSellableUnits — the record a return releases."
     }
   }
 }

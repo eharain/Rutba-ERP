@@ -218,11 +218,13 @@ export interface OrderOrderProductItem extends Struct.ComponentSchema {
     icon: 'arrowRight';
   };
   attributes: {
+    allocations: Schema.Attribute.JSON;
     image: Schema.Attribute.Media<'images'>;
     price: Schema.Attribute.Decimal & Schema.Attribute.Required;
     product: Schema.Attribute.Relation<'oneToOne', 'api::product.product'>;
     product_name: Schema.Attribute.String;
     quantity: Schema.Attribute.Integer & Schema.Attribute.Required;
+    sellable_qty: Schema.Attribute.Decimal;
     stock_item: Schema.Attribute.Relation<
       'oneToOne',
       'api::stock-item.stock-item'

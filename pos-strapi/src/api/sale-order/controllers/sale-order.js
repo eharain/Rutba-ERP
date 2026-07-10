@@ -801,6 +801,35 @@ module.exports = factories.createCoreController(
             return ctx.send({ data: updatedOrder });
         },
 
+        // ── POST /sale-orders/:documentId/attach-divisible ─────────────────
+        // Allocate `qty` sellable sub-units of a DIVISIBLE product to a line and
+        // consume them across InStock items (Divisible P2b). Body:
+        //   item_index         which order line
+        //   qty                sub-units to sell (decimal)
+        //   scanned_item_document_id  (optional) honour this specific unit
+        async attachDivisible(ctx) {
+            const user = await ensureUser(ctx, strapi);
+            if (!user) return;
+            const staff = await requireStaffUser(ctx, strapi, user);
+            if (!staff) return;
+
+            const { documentId } = ctx.params;
+            const { item_index, qty, scanned_item_document_id } = readBody(ctx);
+            if (typeof item_index !== 'number' || item_index < 0) return ctx.badRequest('item_index (non-negative number) is required');
+            if (!(Number(qty) > 0)) return ctx.badRequest('qty (positive number) is required');
+
+            try {
+                const { order, allocation } = await strapi
+                    .service('api::sale-order.sale-order')
+                    .attachDivisibleToLine(documentId, item_index, Number(qty), { scannedItemDocId: scanned_item_document_id });
+                return ctx.send({ data: order, allocation });
+            } catch (err) {
+                if (err.status === 409) return ctx.conflict(err.message, { available: err.available });
+                strapi.log.warn(`[attachDivisible] ${documentId} line ${item_index} × ${qty} failed: ${err.message}`);
+                return ctx.throw(err.status || 500, err.message);
+            }
+        },
+
         // ── POST /orders/:documentId/assign-rider  (CMS) ───────────────────
         async assignRider(ctx) {
             const user = await ensureUser(ctx, strapi);

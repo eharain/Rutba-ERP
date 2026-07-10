@@ -130,4 +130,92 @@ module.exports = createCoreService('api::sale-order.sale-order', ({ strapi }) =>
     const savings = Math.max(0, originalSubtotal - subtotal);
     return { items: out, subtotal, originalSubtotal, savings, freeShipping, expired };
   },
+
+  /**
+   * Divisible-stock wiring (P2b): allocate `qty` sub-units for an order line whose
+   * product is divisible, consume them across InStock items (stock-item.
+   * allocateSellableUnits), and store the allocation breakdown + pro-rata price on
+   * the line. Unlike whole-item attach (Reserved), divisible units are consumed at
+   * allocation time; a return/cancel calls releaseDivisibleForOrder.
+   *
+   * @returns {{ order, allocation: { units, total, warning, lines } }}
+   */
+  async attachDivisibleToLine(documentId, item_index, qty, opts = {}) {
+    const SO = 'api::sale-order.sale-order';
+    const order = await strapi.documents(SO).findOne({
+      documentId,
+      populate: { products: { populate: { items: { populate: {
+        product: { fields: ['id', 'documentId', 'divisible'] },
+        stock_item: { fields: ['documentId'] },
+      } } } } },
+    });
+    if (!order) { const e = new Error('Order not found'); e.status = 404; throw e; }
+    const items = order.products?.items || [];
+    if (!(item_index >= 0 && item_index < items.length)) { const e = new Error(`item_index ${item_index} out of range`); e.status = 400; throw e; }
+    const productId = items[item_index].product?.id;
+    if (!productId) { const e = new Error('Line has no product'); e.status = 400; throw e; }
+
+    const result = await strapi.service('api::stock-item.stock-item').allocateSellableUnits(productId, Number(qty), { scannedItemDocId: opts.scannedItemDocId });
+    if (result.insufficient) { const e = new Error(`Only ${result.available} sub-unit(s) available`); e.status = 409; e.available = result.available; throw e; }
+
+    const nextItems = items.map((line, idx) => {
+      const base = {
+        id: line.id,
+        product: line.product?.documentId ? { documentId: line.product.documentId } : line.product,
+        quantity: line.quantity,
+        price: line.price,
+        total: line.total,
+        variant: line.variant,
+        product_name: line.product_name,
+        variant_name: line.variant_name,
+        variant_terms: line.variant_terms,
+        image: line.image?.id ?? line.image ?? undefined,
+        stock_item: line.stock_item?.documentId ? { documentId: line.stock_item.documentId } : line.stock_item,
+        sellable_qty: line.sellable_qty,
+        allocations: line.allocations,
+      };
+      if (idx === item_index) {
+        base.sellable_qty = result.totalUnits;
+        base.allocations = result.allocations;
+        base.total = result.totalPrice;
+        base.price = result.allocations[0]?.unit_price ?? line.price;
+        base.stock_item = result.allocations[0]?.stock_item ? { documentId: result.allocations[0].stock_item } : line.stock_item;
+      }
+      return base;
+    });
+
+    const updated = await strapi.documents(SO).update({
+      documentId,
+      data: { products: { items: nextItems } },
+      populate: { products: { populate: { items: true } } },
+    });
+    return { order: updated, allocation: { units: result.totalUnits, total: result.totalPrice, warning: result.warning || null, lines: result.allocations.length } };
+  },
+
+  /**
+   * Release every divisible-line allocation on an order back to stock (return /
+   * cancel). Reads each line's stored `allocations` JSON and calls
+   * stock-item.releaseSellableUnits. Best-effort; safe on orders with no
+   * divisible lines. Returns the count of items restored.
+   */
+  async releaseDivisibleForOrder(documentId) {
+    const order = await strapi.documents('api::sale-order.sale-order').findOne({
+      documentId,
+      populate: { products: { populate: { items: true } } },
+    });
+    if (!order) return { released: 0 };
+    let released = 0;
+    for (const line of (order.products?.items || [])) {
+      const allocs = Array.isArray(line.allocations) ? line.allocations : [];
+      if (allocs.length) {
+        try {
+          const r = await strapi.service('api::stock-item.stock-item').releaseSellableUnits(allocs);
+          released += r.released;
+        } catch (err) {
+          strapi.log.warn(`[sale-order] releaseDivisible line failed: ${err.message}`);
+        }
+      }
+    }
+    return { released };
+  },
 }));
