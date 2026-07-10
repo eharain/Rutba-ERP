@@ -316,6 +316,45 @@ module.exports = createCoreService(STOCK_ITEM_UID, ({ strapi }) => ({
   },
 
   /**
+   * Reverse an allocation (Divisible P3 — return/void). For each recorded
+   * allocation { stock_item(_id), units }, subtract the units from the item's
+   * units_sold (floored at 0); if the item had been depleted to 'Sold' (and isn't
+   * archived) it re-opens to 'InStock' since it now has remaining units again.
+   * The lifecycle refreshes product.sellable_quantity. Idempotent-ish: a missing
+   * item is skipped, not fatal.
+   *
+   * @param {Array<{ stock_item?: string, stock_item_id?: number, units: number }>} allocations
+   */
+  async releaseSellableUnits(allocations) {
+    const list = Array.isArray(allocations) ? allocations : [];
+    const results = [];
+    for (const a of list) {
+      let id = a.stock_item_id || null;
+      if (!id && a.stock_item) {
+        const r = await strapi.db.query(STOCK_ITEM_UID).findOne({ where: { documentId: a.stock_item }, select: ['id'] });
+        id = r?.id || null;
+      }
+      const units = Number(a.units) || 0;
+      if (!id || !(units > 0)) { results.push({ stock_item_id: id, ok: false, reason: 'no id / units' }); continue; }
+
+      const it = await strapi.db.query(STOCK_ITEM_UID).findOne({ where: { id }, select: ['id', 'sellable_units', 'units_sold', 'status', 'archived'] });
+      if (!it) { results.push({ stock_item_id: id, ok: false, reason: 'not found' }); continue; }
+      const total = Number(it.sellable_units) || 1;
+      const newSold = Math.max(0, (Number(it.units_sold) || 0) - units);
+      const reopen = it.status === 'Sold' && !it.archived && newSold + 1e-9 < total;
+      try {
+        await strapi.entityService.update(STOCK_ITEM_UID, id, {
+          data: { units_sold: Math.round(newSold * 1000) / 1000, ...(reopen ? { status: 'InStock' } : {}) },
+        });
+        results.push({ stock_item_id: id, ok: true, units_sold: Math.round(newSold * 1000) / 1000, reopened: reopen });
+      } catch (err) {
+        results.push({ stock_item_id: id, ok: false, reason: err.message });
+      }
+    }
+    return { released: results.filter((r) => r.ok).length, results };
+  },
+
+  /**
    * Recompute multiple products. Deduplicates ids and walks them serially —
    * each recompute is one COUNT + one UPDATE, so the cost is linear and the
    * sequential order keeps DB load predictable during bulk operations.
