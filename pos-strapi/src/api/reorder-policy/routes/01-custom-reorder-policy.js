@@ -18,5 +18,13 @@ module.exports = {
         auth: false,
       },
     },
+    {
+      method: 'POST',
+      path: '/reorder-policies/generate-purchases',
+      handler: 'generate.generatePurchases',
+      config: {
+        auth: false,
+      },
+    },
   ],
 };

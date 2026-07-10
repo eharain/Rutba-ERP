@@ -74,4 +74,18 @@ export const ReorderPoliciesEndpoints = {
         apps: ['inventory', 'stock'],
         approle: ['admin', 'manager', 'staff'],
     }),
+
+    /**
+     * Generate draft purchases (grouped by supplier) from reviewed suggestions.
+     * Manager/admin only; route is auth:false + manual role gate.
+     * @param {{ warehouse?: string, suggestions?: Array }} body
+     */
+    generatePurchases: (body = {}) => ({
+        path: '/reorder-policies/generate-purchases',
+        action: 'create',
+        method: 'post',
+        apps: ['inventory', 'stock'],
+        approle: ['admin', 'manager'],
+        data: body,
+    }),
 };

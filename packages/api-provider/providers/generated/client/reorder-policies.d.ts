@@ -6,6 +6,7 @@ export interface ReorderPoliciesEndpointsType {
     update(documentId: any, data: any): Promise<any>;
     del(documentId: any): Promise<any>;
     suggestions({ warehouseDocId }?: any): Promise<any>;
+    generatePurchases(body?: any): Promise<any>;
     meta: any;
 }
 

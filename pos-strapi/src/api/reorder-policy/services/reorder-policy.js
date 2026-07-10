@@ -19,7 +19,9 @@ const { factories } = require('@strapi/strapi');
 const POLICY_UID = 'api::reorder-policy.reorder-policy';
 const PRODUCT_UID = 'api::product.product';
 const STOCK_LEVEL_UID = 'api::stock-level.stock-level';
+const PURCHASE_UID = 'api::purchase.purchase';
 const PURCHASE_ITEM_UID = 'api::purchase-item.purchase-item';
+const SUPPLIER_UID = 'api::supplier.supplier';
 const WAREHOUSE_UID = 'api::warehouse.warehouse';
 
 // Purchases still contributing to on-order (not received/closed/cancelled).
@@ -176,5 +178,100 @@ module.exports = factories.createCoreService(POLICY_UID, ({ strapi }) => ({
 
     suggestions.sort((a, b) => b.deficit - a.deficit);
     return suggestions;
+  },
+
+  /**
+   * One-click replenishment (Epic 4 P3): turn Purchase-source suggestions into
+   * draft `purchase`(s) grouped by supplier, ready for the existing purchase
+   * approval + receiving flow. Does NOT post GL (that happens at receiving/bill).
+   *
+   * @param {{ warehouseDocId?: string, suggestions?: Array, actorId?: number }} opts
+   *   suggestions — reviewed rows (product docId, suggested_qty, unit_cost,
+   *   preferred_supplier docId). Omitted → compute fresh and take all source=Purchase.
+   * @returns {{ created: number, purchases: Array }}
+   */
+  async generatePurchases(opts = {}) {
+    let suggestions = Array.isArray(opts.suggestions) && opts.suggestions.length
+      ? opts.suggestions
+      : (await this.getReorderSuggestions({ warehouseDocId: opts.warehouseDocId })).filter((s) => (s.source || 'Purchase') === 'Purchase');
+    // keep only rows with a product and a positive qty
+    suggestions = suggestions.filter((s) => s && s.product && num(s.suggested_qty) > 0);
+    if (suggestions.length === 0) return { created: 0, purchases: [] };
+
+    // Resolve preferred_supplier docIds → supplier rows.
+    const prefDocIds = [...new Set(suggestions.map((s) => s.preferred_supplier).filter(Boolean))];
+    const supByDoc = new Map();
+    if (prefDocIds.length) {
+      const sups = await strapi.db.query(SUPPLIER_UID).findMany({ where: { documentId: { $in: prefDocIds } }, select: ['id', 'documentId', 'name'] });
+      for (const s of sups) supByDoc.set(s.documentId, s);
+    }
+    // For suggestions with no preferred supplier, fall back to the product's first linked supplier.
+    const noPrefProducts = [...new Set(suggestions.filter((s) => !s.preferred_supplier).map((s) => s.product))];
+    const supByProduct = new Map();
+    if (noPrefProducts.length) {
+      const prods = await strapi.db.query(PRODUCT_UID).findMany({
+        where: { documentId: { $in: noPrefProducts } },
+        select: ['id', 'documentId'],
+        populate: { suppliers: { select: ['id', 'documentId', 'name'] } },
+      });
+      for (const p of prods) { const sup = (p.suppliers || [])[0]; if (sup) supByProduct.set(p.documentId, sup); }
+    }
+
+    // Group by supplier (documentId, or 'none' when unresolved).
+    const groups = new Map();
+    for (const s of suggestions) {
+      const supplier = s.preferred_supplier ? supByDoc.get(s.preferred_supplier) : supByProduct.get(s.product);
+      const key = supplier?.documentId || 'none';
+      if (!groups.has(key)) groups.set(key, { supplier: supplier || null, lines: [] });
+      groups.get(key).lines.push(s);
+    }
+
+    const batchStamp = opts.stamp || String(Date.now());
+    const created = [];
+    let seq = 0;
+    for (const grp of groups.values()) {
+      seq += 1;
+      const total = grp.lines.reduce((t, l) => t + num(l.suggested_qty) * num(l.unit_cost), 0);
+      const purchase = await strapi.documents(PURCHASE_UID).create({
+        data: {
+          orderId: `REORDER-${batchStamp}-${seq}`,
+          status: 'Draft',
+          approval_status: 'Draft',
+          order_date: new Date(),
+          total: Math.round(total * 100) / 100,
+          ...(grp.supplier?.id ? { suppliers: [grp.supplier.id] } : {}),
+          ...(opts.actorId ? { owners: [opts.actorId] } : {}),
+        },
+      });
+      for (const l of grp.lines) {
+        const qty = Math.round(num(l.suggested_qty));
+        const unit = num(l.unit_cost);
+        try {
+          await strapi.documents(PURCHASE_ITEM_UID).create({
+            data: {
+              purchase: purchase.documentId,
+              product: l.product,
+              quantity: qty,
+              unit_price: unit,
+              total: Math.round(qty * unit * 100) / 100,
+              status: 'Draft',
+            },
+          });
+        } catch (err) {
+          strapi.log.warn(`[reorder] purchase-item create failed (product=${l.product}): ${err.message}`);
+        }
+      }
+      created.push({
+        purchase: purchase.documentId,
+        orderId: purchase.orderId,
+        supplier: grp.supplier?.documentId || null,
+        supplier_name: grp.supplier?.name || null,
+        lines: grp.lines.length,
+        total: Math.round(total * 100) / 100,
+      });
+    }
+
+    strapi.log.info(`[reorder] generated ${created.length} draft purchase(s) from ${suggestions.length} suggestion(s)`);
+    return { created: created.length, purchases: created };
   },
 }));

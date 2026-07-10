@@ -4467,7 +4467,7 @@ export interface ApiPurchaseItemPurchaseItem
         'Supplier Cancelled',
       ]
     > &
-      Schema.Attribute.DefaultTo<'pending'>;
+      Schema.Attribute.DefaultTo<'Pending'>;
     total: Schema.Attribute.Decimal;
     unit_price: Schema.Attribute.Decimal;
     updatedAt: Schema.Attribute.DateTime;

@@ -32,6 +32,11 @@ async function suggestions(arg1 = {}) {
     return authApi.fetch(ep.path, ep.params);
 }
 
+async function generatePurchases(body = {}) {
+    const ep = ReorderPoliciesEndpointsApi.generatePurchases(body);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+}
+
 const endpoints = strictEndpointGuard(
     'ReorderPoliciesEndpoints',
     {
@@ -41,9 +46,10 @@ const endpoints = strictEndpointGuard(
         update,
         del,
         suggestions,
+        generatePurchases,
         meta: ReorderPoliciesEndpointsApi.meta,
     },
-    ["list","byId","create","update","del","suggestions","meta"],
+    ["list","byId","create","update","del","suggestions","generatePurchases","meta"],
 );
 
 export default endpoints;

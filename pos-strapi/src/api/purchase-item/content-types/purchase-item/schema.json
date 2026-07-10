@@ -45,7 +45,7 @@
         "Cancelled",
         "Supplier Cancelled"
       ],
-      "default": "pending"
+      "default": "Pending"
     },
     "purchase": {
       "type": "relation",
