@@ -64,6 +64,7 @@ export * from './product-groups';
 export * from './products';
 export * from './purchase-items';
 export * from './purchases';
+export * from './reorder-policies';
 export * from './return-methods';
 export * from './return-requests';
 export * from './rider-endpoints';

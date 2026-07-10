@@ -4624,6 +4624,62 @@ export interface ApiPurchasePurchase extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiReorderPolicyReorderPolicy
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'reorder_policies';
+  info: {
+    description: 'Per-(product, warehouse) replenishment policy: min/max/safety-stock, method, and how to source the replenishment. A null warehouse is the product-wide default.';
+    displayName: 'Reorder Policy';
+    pluralName: 'reorder-policies';
+    singularName: 'reorder-policy';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    is_active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    lead_time_days: Schema.Attribute.Integer;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::reorder-policy.reorder-policy'
+    > &
+      Schema.Attribute.Private;
+    max_stock: Schema.Attribute.Decimal;
+    method: Schema.Attribute.Enumeration<
+      ['MinMax', 'ReorderPoint', 'ParLevel', 'Manual']
+    > &
+      Schema.Attribute.DefaultTo<'MinMax'>;
+    min_stock: Schema.Attribute.Decimal;
+    preferred_supplier: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::supplier.supplier'
+    >;
+    product: Schema.Attribute.Relation<'manyToOne', 'api::product.product'>;
+    publishedAt: Schema.Attribute.DateTime;
+    reorder_quantity: Schema.Attribute.Decimal;
+    safety_stock: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    source: Schema.Attribute.Enumeration<
+      ['Purchase', 'Manufacture', 'Transfer']
+    > &
+      Schema.Attribute.DefaultTo<'Purchase'>;
+    source_warehouse: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::warehouse.warehouse'
+    >;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    warehouse: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::warehouse.warehouse'
+    >;
+  };
+}
+
 export interface ApiReturnMethodReturnMethod
   extends Struct.CollectionTypeSchema {
   collectionName: 'return_methods';
@@ -7626,6 +7682,7 @@ declare module '@strapi/strapi' {
       'api::purchase-return-item.purchase-return-item': ApiPurchaseReturnItemPurchaseReturnItem;
       'api::purchase-return.purchase-return': ApiPurchaseReturnPurchaseReturn;
       'api::purchase.purchase': ApiPurchasePurchase;
+      'api::reorder-policy.reorder-policy': ApiReorderPolicyReorderPolicy;
       'api::return-method.return-method': ApiReturnMethodReturnMethod;
       'api::return-policy.return-policy': ApiReturnPolicyReturnPolicy;
       'api::return-request.return-request': ApiReturnRequestReturnRequest;

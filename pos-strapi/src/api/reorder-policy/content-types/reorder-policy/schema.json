@@ -1,0 +1,75 @@
+{
+  "kind": "collectionType",
+  "collectionName": "reorder_policies",
+  "info": {
+    "singularName": "reorder-policy",
+    "pluralName": "reorder-policies",
+    "displayName": "Reorder Policy",
+    "description": "Per-(product, warehouse) replenishment policy: min/max/safety-stock, method, and how to source the replenishment. A null warehouse is the product-wide default."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "product": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::product.product"
+    },
+    "warehouse": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::warehouse.warehouse"
+    },
+    "method": {
+      "type": "enumeration",
+      "enum": [
+        "MinMax",
+        "ReorderPoint",
+        "ParLevel",
+        "Manual"
+      ],
+      "default": "MinMax"
+    },
+    "min_stock": {
+      "type": "decimal"
+    },
+    "max_stock": {
+      "type": "decimal"
+    },
+    "safety_stock": {
+      "type": "decimal",
+      "default": 0
+    },
+    "reorder_quantity": {
+      "type": "decimal"
+    },
+    "lead_time_days": {
+      "type": "integer"
+    },
+    "preferred_supplier": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::supplier.supplier"
+    },
+    "source": {
+      "type": "enumeration",
+      "enum": [
+        "Purchase",
+        "Manufacture",
+        "Transfer"
+      ],
+      "default": "Purchase"
+    },
+    "source_warehouse": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::warehouse.warehouse"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    }
+  }
+}
