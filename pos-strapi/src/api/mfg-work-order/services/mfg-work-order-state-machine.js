@@ -22,6 +22,7 @@
 const WO_UID = 'api::mfg-work-order.mfg-work-order';
 const TASK_UID = 'api::mfg-task.mfg-task';
 const ISSUE_UID = 'api::mfg-material-issue.mfg-material-issue';
+const LOT_UID = 'api::mfg-material-lot.mfg-material-lot';
 const STOCK_ITEM_UID = 'api::stock-item.stock-item';
 
 const workflowEngine = require('../../../utils/workflow-engine');
@@ -231,6 +232,113 @@ module.exports = {
   },
 
   /**
+   * Auto-consume the BOM's material inputs when a WO completes (Epic 1 P2).
+   *
+   * For each BOM material line, required qty = quantity × (1 + wastage_pct/100)
+   * × (finishedCount / bom.output_quantity), routed by the input product's
+   * track_mode:
+   *   bulk       → consume from mfg-material-lot(s) FEFO (expiry, then received),
+   *                creating mfg-material-issue 'Issue' rows (the issue lifecycle
+   *                recomputes lot.quantity_remaining).
+   *   serialized → flip that many InStock stock-items to 'Reduced'.
+   *
+   * Best-effort (never blocks completion) and guarded: SKIPS entirely if the WO
+   * already has material issues (the manual consumption flow was used) so it can
+   * never double-consume, and does nothing when the BOM has no material lines.
+   * Shortfalls are logged, not fatal.
+   */
+  async autoConsumeInputs(workOrder, finishedCount) {
+    let materialLines = [];
+    let bomOutQty = 1;
+    try {
+      const woFull = await strapi.documents(WO_UID).findOne({
+        documentId: workOrder.documentId,
+        populate: {
+          bom: {
+            populate: {
+              material_lines: { populate: { material_product: { fields: ['id', 'documentId', 'name', 'track_mode', 'unit_of_measure'] } } },
+            },
+          },
+        },
+      });
+      const bom = woFull?.bom;
+      if (bom) {
+        bomOutQty = Number(bom.output_quantity) || 1;
+        materialLines = Array.isArray(bom.material_lines) ? bom.material_lines.filter((l) => l?.material_product) : [];
+      }
+    } catch (e) {
+      strapi.log.warn(`[wo-state-machine] WO=${workOrder.documentId} load BOM material lines failed: ${e.message}`);
+    }
+    if (materialLines.length === 0) return { consumed: 0, reason: 'no BOM material lines' };
+
+    // Never double-consume: if the WO already has issues, the manual flow ran.
+    const existingIssues = await strapi.db.query(ISSUE_UID).count({ where: { work_order: workOrder.id } });
+    if (existingIssues > 0) return { consumed: 0, skipped: true, reason: `WO already has ${existingIssues} issue(s)` };
+
+    const n = Math.max(0, Math.floor(Number(finishedCount) || 0));
+    const scale = bomOutQty > 0 ? n / bomOutQty : n;
+    const branch = workOrder.branch;
+    const results = [];
+
+    for (const line of materialLines) {
+      const product = line.material_product;
+      const reqQty = (Number(line.quantity) || 0) * (1 + (Number(line.wastage_pct) || 0) / 100) * scale;
+      if (!(reqQty > 0)) continue;
+
+      if (product.track_mode === 'serialized') {
+        const need = Math.ceil(reqQty);
+        const units = await strapi.db.query(STOCK_ITEM_UID).findMany({
+          where: { product: product.id, status: 'InStock', $or: [{ archived: false }, { archived: { $null: true } }] },
+          select: ['id'], orderBy: { createdAt: 'asc' }, limit: need,
+        });
+        let consumed = 0;
+        for (const u of units) {
+          try { await strapi.entityService.update(STOCK_ITEM_UID, u.id, { data: { status: 'Reduced' } }); consumed += 1; } catch (_) { /* noop */ }
+        }
+        results.push({ product: product.documentId, mode: 'serialized', required: need, consumed, short: Math.max(0, need - consumed) });
+      } else {
+        const lots = await strapi.db.query(LOT_UID).findMany({
+          where: {
+            product: product.id,
+            quantity_remaining: { $gt: 0 },
+            status: { $notIn: ['Quarantined', 'Scrapped', 'Returned'] },
+          },
+          select: ['id', 'quantity_remaining', 'unit_cost', 'uom'],
+          orderBy: [{ expiry: 'asc' }, { received_at: 'asc' }, { id: 'asc' }],
+          limit: 1000,
+        });
+        let need = reqQty; let consumed = 0;
+        for (const lot of lots) {
+          if (need <= 0) break;
+          const take = Math.min(Number(lot.quantity_remaining) || 0, need);
+          if (!(take > 0)) continue;
+          try {
+            await strapi.entityService.create(ISSUE_UID, {
+              data: {
+                quantity: take,
+                uom: lot.uom || product.unit_of_measure || 'piece',
+                issue_type: 'Issue',
+                unit_cost: lot.unit_cost ?? null,
+                material_lot: lot.id,
+                work_order: workOrder.id,
+                ...(branch?.id ? { branch: branch.id } : {}),
+              },
+            });
+            need -= take; consumed += take;
+          } catch (err) {
+            strapi.log.warn(`[wo-state-machine] WO=${workOrder.documentId} issue create failed: ${err.message}`);
+          }
+        }
+        results.push({ product: product.documentId, mode: 'bulk', required: reqQty, consumed, short: Math.max(0, reqQty - consumed) });
+      }
+    }
+
+    const shortLines = results.filter((r) => r.short > 0).length;
+    strapi.log.info(`[wo-state-machine] WO=${workOrder.documentId} auto-consumed ${results.length} input line(s), ${shortLines} short`);
+    return { consumed: results.length, shortLines, results };
+  },
+
+  /**
    * Execute a transition on a work order. Throws on an illegal move.
    *
    * `target` is either a canonical status (legacy) or, when a definable
@@ -359,6 +467,14 @@ module.exports = {
         strapi.log.info(`[wo-state-machine] WO=${workOrderDocumentId} created ${res.created} finished stock-items`);
       } catch (err) {
         strapi.log.warn(`[wo-state-machine] WO=${workOrderDocumentId} finished-goods creation failed: ${err.message}`);
+      }
+      // Auto-consume the BOM's material inputs (Epic 1 P2) — best-effort, skips
+      // when materials were issued manually so it can never double-consume.
+      try {
+        const consumed = await this.autoConsumeInputs(wo, finishedCount);
+        strapi.log.info(`[wo-state-machine] WO=${workOrderDocumentId} auto-consume: ${JSON.stringify(consumed)}`);
+      } catch (err) {
+        strapi.log.warn(`[wo-state-machine] WO=${workOrderDocumentId} auto-consume failed: ${err.message}`);
       }
       emitMfgEvent('WO_COMPLETED', {
         workOrderDocumentId,
