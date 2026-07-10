@@ -59,6 +59,32 @@ module.exports = createCoreService(BATCH_UID, ({ strapi }) => ({
   },
 
   /**
+   * Flip every Active batch already past its expiry_date to status 'Expired'.
+   * The stock-batch lifecycle then drops it from product.bulk_quantity_on_hand
+   * (Expired is not an on-hand status). Idempotent; returns the count flipped.
+   * The bulk analog of stock-item's expired-unit sweep.
+   */
+  async sweepExpiredBatches(asOfDate) {
+    const t = asOfDate || new Date().toISOString().slice(0, 10);
+    const batches = await strapi.db.query(BATCH_UID).findMany({
+      where: { status: 'Active', expiry_date: { $notNull: true, $lt: t } },
+      select: ['id'],
+      limit: 100000,
+    });
+    let expired = 0;
+    for (const b of batches) {
+      try {
+        await strapi.entityService.update(BATCH_UID, b.id, { data: { status: 'Expired' } });
+        expired += 1;
+      } catch (err) {
+        strapi.log.warn(`[stock-batch] sweepExpiredBatches batch=${b.id} failed: ${err.message}`);
+      }
+    }
+    if (expired > 0) strapi.log.info(`[stock-batch] sweep-expired flipped ${expired} batch(es) past ${t}`);
+    return expired;
+  },
+
+  /**
    * Recompute several products' bulk on-hand. Dedups ids, walks serially.
    */
   async recomputeProductsBulkQuantity(productIds) {

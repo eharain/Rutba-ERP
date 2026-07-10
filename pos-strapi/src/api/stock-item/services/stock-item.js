@@ -29,6 +29,52 @@ let _suppressStockLevel = false;
 
 module.exports = createCoreService(STOCK_ITEM_UID, ({ strapi }) => ({
   /**
+   * Flip every InStock unit already past its expiry_date to status 'Expired'
+   * (the lifecycle then drops it from product.stock_quantity + stock-level).
+   * Idempotent; returns the count flipped. Epic 5 block-expired driver.
+   */
+  async sweepExpiredStockItems(asOfDate) {
+    const t = asOfDate || new Date().toISOString().slice(0, 10);
+    const units = await strapi.db.query(STOCK_ITEM_UID).findMany({
+      where: {
+        status: 'InStock',
+        $or: [{ archived: false }, { archived: { $null: true } }],
+        expiry_date: { $notNull: true, $lt: t },
+      },
+      select: ['id'],
+      limit: 100000,
+    });
+    let expired = 0;
+    for (const u of units) {
+      try {
+        await strapi.entityService.update(STOCK_ITEM_UID, u.id, { data: { status: 'Expired' } });
+        expired += 1;
+      } catch (err) {
+        strapi.log.warn(`[stock-item] sweepExpiredStockItems unit=${u.id} failed: ${err.message}`);
+      }
+    }
+    if (expired > 0) strapi.log.info(`[stock-item] sweep-expired flipped ${expired} unit(s) past ${t}`);
+    return expired;
+  },
+
+  /**
+   * Coordinated expiry sweep across BOTH stock ledgers: serialized units and
+   * bulk batches past expiry → 'Expired'. Shared by the daily cron and the
+   * manual POST /stock-items/sweep-expired endpoint. Returns { items, batches, asOf }.
+   */
+  async sweepExpired(asOfDate) {
+    const t = asOfDate || new Date().toISOString().slice(0, 10);
+    const items = await this.sweepExpiredStockItems(t);
+    let batches = 0;
+    try {
+      batches = await strapi.service('api::stock-batch.stock-batch').sweepExpiredBatches(t);
+    } catch (err) {
+      strapi.log.warn(`[stock-item] batch expiry sweep failed: ${err.message}`);
+    }
+    return { items, batches, asOf: t };
+  },
+
+  /**
    * Recompute the InStock cache for one product.
    *
    * Counts live stock-item rows in status='InStock' (excluding archived) and

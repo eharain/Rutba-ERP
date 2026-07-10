@@ -1,4 +1,5 @@
 const buildSocialCronTasks = require('./cron-tasks');
+const buildInventoryCronTasks = require('./inventory-cron-tasks');
 
 module.exports = ({ env }) => ({
     host: env('HOST', '0.0.0.0'),
@@ -32,16 +33,24 @@ module.exports = ({ env }) => ({
         populateRelations: env.bool('WEBHOOKS_POPULATE_RELATIONS', false),
     },
 
-    // Social-module background jobs (scheduled publishing, reply sync, token
-    // refresh). Disable with POS_STRAPI__SOCIAL_CRON_ENABLED=false in envs where
-    // a separate worker owns them or to avoid double-publishing across instances.
+    // Background jobs. `enabled` is the master scheduler switch (STRAPI_CRON_ENABLED,
+    // falling back to the legacy SOCIAL_CRON_ENABLED). Social tasks (scheduled
+    // publishing, reply sync, token refresh) can be turned off where a separate
+    // worker owns them; the inventory expiry sweep is gated by INVENTORY_CRON_ENABLED.
     cron: {
-        enabled: env.bool('SOCIAL_CRON_ENABLED', true),
-        tasks: buildSocialCronTasks({
-            publishRule: env('SOCIAL_CRON_PUBLISH_RULE', '* * * * *'),
-            syncRule: env('SOCIAL_CRON_SYNC_RULE', '*/10 * * * *'),
-            refreshRule: env('SOCIAL_CRON_REFRESH_RULE', '0 */6 * * *'),
-        }),
+        enabled: env.bool('STRAPI_CRON_ENABLED', env.bool('SOCIAL_CRON_ENABLED', true)),
+        tasks: {
+            ...buildSocialCronTasks({
+                publishRule: env('SOCIAL_CRON_PUBLISH_RULE', '* * * * *'),
+                syncRule: env('SOCIAL_CRON_SYNC_RULE', '*/10 * * * *'),
+                refreshRule: env('SOCIAL_CRON_REFRESH_RULE', '0 */6 * * *'),
+            }),
+            ...(env.bool('INVENTORY_CRON_ENABLED', true)
+                ? buildInventoryCronTasks({
+                    expirySweepRule: env('INVENTORY_EXPIRY_SWEEP_RULE', '15 2 * * *'),
+                })
+                : {}),
+        },
     },
     logger: {
      //   config: { level: 'silly' }

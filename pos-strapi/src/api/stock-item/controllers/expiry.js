@@ -75,28 +75,10 @@ module.exports = {
     const admin = await isAdminUser(user.id, strapi);
     if (!admin) return ctx.forbidden('Only administrators can sweep expired stock');
 
-    const t = today();
-    const units = await strapi.db.query(STOCK_ITEM_UID).findMany({
-      where: {
-        status: 'InStock',
-        $or: [{ archived: false }, { archived: { $null: true } }],
-        expiry_date: { $lt: t },
-      },
-      select: ['id'],
-      limit: 100000,
-    });
-
-    let expired = 0;
-    for (const u of units) {
-      try {
-        await strapi.entityService.update(STOCK_ITEM_UID, u.id, { data: { status: 'Expired' } });
-        expired += 1;
-      } catch (err) {
-        strapi.log.warn(`[stock-item] sweepExpired unit=${u.id} failed: ${err.message}`);
-      }
-    }
-
-    strapi.log.info(`[stock-item] sweep-expired flipped ${expired} unit(s) past ${t} by ${user.email || user.id}`);
-    return ctx.send({ success: true, expired, asOf: t });
+    // Shared with the daily inventoryExpirySweep cron — sweeps serialized units
+    // AND bulk batches past expiry (see api::stock-item.sweepExpired).
+    const res = await strapi.service(STOCK_ITEM_UID).sweepExpired(today());
+    strapi.log.info(`[stock-item] sweep-expired: ${res.items} unit(s) + ${res.batches} batch(es) past ${res.asOf} by ${user.email || user.id}`);
+    return ctx.send({ success: true, expired: res.items, batchesExpired: res.batches, asOf: res.asOf });
   },
 };
