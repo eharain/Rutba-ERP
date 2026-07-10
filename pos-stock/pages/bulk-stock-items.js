@@ -31,12 +31,12 @@ const COLUMN_ALIASES = {
 const TEMPLATE_HEADERS = [
     'Product Name', 'Stock Item Name', 'Product Barcode', 'SKU', 'Quantity',
     'Barcode Mode', 'Update Existing', 'Create New Product', 'New Product Name',
-    'Manufacturer', 'Cost Price', 'Selling Price', 'Offer Price',
+    'Manufacturer', 'Cost Price', 'Selling Price', 'Offer Price', 'Expiry',
 ];
 const TEMPLATE_SAMPLES = [
     { 'Product Name': 'Acme Kettle 1.5L', 'Product Barcode': '8901234567890', 'SKU': 'KTL-15', 'Quantity': 3, 'Barcode Mode': 'manufacturer', 'Manufacturer': 'Acme Corp' },
     { 'Product Name': 'Steel Mug', 'Product Barcode': '', 'SKU': 'MUG-STL', 'Quantity': 10, 'Barcode Mode': 'indexed', 'Selling Price': 450 },
-    { 'Product Name': 'Steel Mug (Blue Edition)', 'Quantity': 5, 'Barcode Mode': 'auto', 'Create New Product': 'yes', 'New Product Name': 'Steel Mug Blue', 'Selling Price': 500 },
+    { 'Product Name': 'Fresh Milk 1L', 'SKU': 'MILK-1L', 'Quantity': 20, 'Barcode Mode': 'indexed', 'Selling Price': 220, 'Expiry': '2026-12-31' },
 ];
 
 function buildVariations(label) {

@@ -29,6 +29,9 @@
       "type": "integer",
       "default": 1
     },
+    "expiry_date": {
+      "type": "date"
+    },
     "costPrice": {
       "type": "decimal"
     },

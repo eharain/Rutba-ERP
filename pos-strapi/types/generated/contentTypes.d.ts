@@ -5868,6 +5868,7 @@ export interface ApiStockInputStockInput extends Struct.CollectionTypeSchema {
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    expiry_date: Schema.Attribute.Date;
     images: Schema.Attribute.Media<'images', true>;
     importName: Schema.Attribute.String;
     keywords: Schema.Attribute.JSON & Schema.Attribute.DefaultTo<[]>;

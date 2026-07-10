@@ -21,6 +21,7 @@ const COLUMN_ALIASES = {
     importName: ['Import Name', 'File Name'],
     offerPrice: ['Offer Price', 'Discounted Price', 'Discount Price', 'Offer'],
     sellableUnits: ['Sellable Units', 'Sellable Unit', 'Sellable', 'Sellable Qty', 'Sellable Quantity'],
+    expiry_date: ['Expiry', 'Expiry Date', 'Best Before', 'Exp', 'Exp Date'],
 };
 
 // Pre-expand every alias into many casing/separator variations
@@ -103,6 +104,7 @@ const EMPTY_ROW = {
     categoryName: '',
     orderId: '',
     supplierCode: '',
+    expiry_date: '',
 };
 
 function newRow() {
@@ -234,6 +236,7 @@ export default function BulkStockInputs() {
                         categoryName: r.categoryName ? String(r.categoryName).trim() : null,
                         orderId: r.orderId ? String(r.orderId).trim() : null,
                         supplierCode: r.supplierCode ? String(r.supplierCode).trim() : null,
+                        expiry_date: r.expiry_date ? String(r.expiry_date).trim() : null,
                         importName: r.importName || null,
                         process: false,
                         processed: false,
@@ -381,6 +384,7 @@ export default function BulkStockInputs() {
         { key: 'categoryName', label: 'Category', type: 'text', datalist: categories.map((c) => c.name), width: '150px' },
         { key: 'orderId', label: 'Order / PO #', type: 'text', width: '120px' },
         { key: 'supplierCode', label: 'Supplier Code', type: 'text', width: '120px' },
+        { key: 'expiry_date', label: 'Expiry', type: 'date', width: '150px' },
     ];
 
     return (

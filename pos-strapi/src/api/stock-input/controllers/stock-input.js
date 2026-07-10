@@ -238,6 +238,7 @@ module.exports = createCoreController('api::stock-input.stock-input', ({ strapi 
               offer_price: si.offerPrice || undefined,
               sellable_units: sellableUnits,
               barcode,
+              ...(si.expiry_date ? { expiry_date: si.expiry_date } : {}),
               ...siConnects,
             },
           });
