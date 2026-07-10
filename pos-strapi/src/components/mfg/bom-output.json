@@ -1,0 +1,37 @@
+{
+  "collectionName": "components_mfg_bom_outputs",
+  "info": {
+    "displayName": "BOM Output",
+    "icon": "cube",
+    "description": "One product a BOM produces (primary / co-product / by-product / scrap), with its yield and cost share."
+  },
+  "options": {},
+  "attributes": {
+    "product": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::product.product"
+    },
+    "output_quantity": {
+      "type": "decimal",
+      "default": 1
+    },
+    "output_type": {
+      "type": "enumeration",
+      "enum": [
+        "primary",
+        "co_product",
+        "by_product",
+        "scrap"
+      ],
+      "default": "primary"
+    },
+    "cost_share_pct": {
+      "type": "decimal",
+      "default": 0
+    },
+    "notes": {
+      "type": "string"
+    }
+  }
+}

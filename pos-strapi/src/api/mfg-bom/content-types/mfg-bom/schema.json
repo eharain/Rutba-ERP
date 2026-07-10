@@ -48,6 +48,11 @@
       "repeatable": true,
       "component": "mfg.bom-line"
     },
+    "outputs": {
+      "type": "component",
+      "repeatable": true,
+      "component": "mfg.bom-output"
+    },
     "routing_steps": {
       "type": "component",
       "repeatable": true,

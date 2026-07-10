@@ -127,6 +127,18 @@
     "level": "staff",
     "domain": "inventory"
   },
+  "manufacturing_admin": {
+    "level": "admin",
+    "domain": "manufacturing"
+  },
+  "manufacturing_manager": {
+    "level": "manager",
+    "domain": "manufacturing"
+  },
+  "manufacturing_staff": {
+    "level": "staff",
+    "domain": "manufacturing"
+  },
   "marketplace_admin": {
     "level": "admin",
     "domain": "marketplace"

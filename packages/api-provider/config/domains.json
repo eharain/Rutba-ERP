@@ -75,6 +75,13 @@
       "inventory_staff"
     ]
   },
+  "manufacturing": {
+    "roles": [
+      "manufacturing_admin",
+      "manufacturing_manager",
+      "manufacturing_staff"
+    ]
+  },
   "marketplace": {
     "roles": [
       "marketplace_admin",

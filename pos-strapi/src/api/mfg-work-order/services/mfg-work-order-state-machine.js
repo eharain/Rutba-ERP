@@ -139,6 +139,98 @@ module.exports = {
   },
 
   /**
+   * Create finished goods for a completed WO — MULTI-OUTPUT aware.
+   *
+   * If the WO's BOM declares `outputs` (co-products / by-products / scrap), it
+   * produces stock-items for EACH output: count scaled by the output's yield
+   * (output_quantity / bom.output_quantity) and unit cost = total_cost × the
+   * output's cost-share (cost_share_pct normalised across outputs; if no shares
+   * are set the primary output absorbs 100%). When the BOM has no `outputs`
+   * (the common single-output case) it falls back to createFinishedStockItems —
+   * identical behaviour to before. Idempotent (skips if the WO already produced).
+   */
+  async createFinishedGoods(workOrder, count, costing) {
+    const n = Math.max(0, Math.floor(Number(count) || 0));
+
+    // Load the BOM's outputs. Best-effort — a lookup miss falls back to single output.
+    let outputs = [];
+    let bomOutQty = 1;
+    try {
+      const woFull = await strapi.documents(WO_UID).findOne({
+        documentId: workOrder.documentId,
+        populate: {
+          bom: {
+            populate: {
+              outputs: { populate: { product: { fields: ['id', 'documentId', 'name', 'sku', 'selling_price'] } } },
+            },
+          },
+        },
+      });
+      const bom = woFull?.bom;
+      if (bom) {
+        bomOutQty = Number(bom.output_quantity) || 1;
+        outputs = Array.isArray(bom.outputs) ? bom.outputs.filter((o) => o?.product) : [];
+      }
+    } catch (e) {
+      strapi.log.warn(`[wo-state-machine] WO=${workOrder.documentId} load BOM outputs failed: ${e.message}`);
+    }
+
+    // Backward-compat: no multi-output declared → single primary output (wo.product).
+    if (outputs.length === 0) {
+      return this.createFinishedStockItems(workOrder, n, costing?.cost_per_unit);
+    }
+
+    const existing = await strapi.db.query(STOCK_ITEM_UID).count({ where: { work_order: workOrder.id } });
+    if (existing > 0) {
+      strapi.log.info(`[wo-state-machine] WO=${workOrder.documentId} already has ${existing} finished items — skipping`);
+      return { created: 0, skipped: existing };
+    }
+
+    const totalCost = Number(costing?.total_cost) || 0;
+    const totalShare = outputs.reduce((s, o) => s + (Number(o.cost_share_pct) || 0), 0);
+    let primaryIdx = outputs.findIndex((o) => o.output_type === 'primary');
+    if (primaryIdx < 0) primaryIdx = 0;
+
+    const branch = workOrder.branch;
+    let created = 0;
+    const perOutput = [];
+    for (let idx = 0; idx < outputs.length; idx++) {
+      const out = outputs[idx];
+      const product = out.product;
+      const outCount = Math.max(0, Math.round((n * (Number(out.output_quantity) || 1)) / bomOutQty));
+      const effShare = totalShare > 0
+        ? (Number(out.cost_share_pct) || 0) / totalShare
+        : (idx === primaryIdx ? 1 : 0);
+      const outUnitCost = outCount > 0 ? (totalCost * effShare) / outCount : 0;
+
+      for (let i = 0; i < outCount; i++) {
+        try {
+          await strapi.documents(STOCK_ITEM_UID).create({
+            data: {
+              name: product?.name || null,
+              sku: product?.sku || null,
+              status: 'InStock',
+              sellable_units: 1,
+              cost_price: outUnitCost,
+              selling_price: product?.selling_price ?? null,
+              ...(product?.documentId ? { product: product.documentId } : {}),
+              ...(branch?.documentId ? { branch: branch.documentId } : {}),
+              work_order: workOrder.documentId,
+            },
+          });
+          created += 1;
+        } catch (err) {
+          strapi.log.warn(`[wo-state-machine] WO=${workOrder.documentId} output stock-item create failed: ${err.message}`);
+        }
+      }
+      perOutput.push({ product: product?.documentId, type: out.output_type, count: outCount, unitCost: outUnitCost });
+    }
+
+    strapi.log.info(`[wo-state-machine] WO=${workOrder.documentId} multi-output created ${created} across ${outputs.length} output(s)`);
+    return { created, perOutput };
+  },
+
+  /**
    * Execute a transition on a work order. Throws on an illegal move.
    *
    * `target` is either a canonical status (legacy) or, when a definable
@@ -230,10 +322,13 @@ module.exports = {
         ? Math.max(0, Math.floor(Number(quantity_finished) || 0))
         : (qtyCompleted > 0 ? qtyCompleted : Math.max(0, qtyOrdered - qtyRejected));
       updateData._costPerUnit = costing.cost_per_unit; // transient, stripped below
+      updateData._totalCost = costing.total_cost; // transient, stripped below
     }
 
     const costPerUnit = updateData._costPerUnit;
     delete updateData._costPerUnit;
+    const finishedTotalCost = updateData._totalCost;
+    delete updateData._totalCost;
 
     const updated = await strapi.documents(WO_UID).update({
       documentId: workOrderDocumentId,
@@ -260,7 +355,7 @@ module.exports = {
       emitMfgEvent('WO_RELEASED', { workOrderDocumentId, wo_number: wo.wo_number });
     } else if (statusChanged && newStatus === 'Completed') {
       try {
-        const res = await this.createFinishedStockItems(wo, finishedCount, costPerUnit);
+        const res = await this.createFinishedGoods(wo, finishedCount, { total_cost: finishedTotalCost, cost_per_unit: costPerUnit });
         strapi.log.info(`[wo-state-machine] WO=${workOrderDocumentId} created ${res.created} finished stock-items`);
       } catch (err) {
         strapi.log.warn(`[wo-state-machine] WO=${workOrderDocumentId} finished-goods creation failed: ${err.message}`);

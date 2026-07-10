@@ -48,6 +48,25 @@ export interface MfgBomLine extends Struct.ComponentSchema {
   };
 }
 
+export interface MfgBomOutput extends Struct.ComponentSchema {
+  collectionName: 'components_mfg_bom_outputs';
+  info: {
+    description: 'One product a BOM produces (primary / co-product / by-product / scrap), with its yield and cost share.';
+    displayName: 'BOM Output';
+    icon: 'cube';
+  };
+  attributes: {
+    cost_share_pct: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    notes: Schema.Attribute.String;
+    output_quantity: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<1>;
+    output_type: Schema.Attribute.Enumeration<
+      ['primary', 'co_product', 'by_product', 'scrap']
+    > &
+      Schema.Attribute.DefaultTo<'primary'>;
+    product: Schema.Attribute.Relation<'oneToOne', 'api::product.product'>;
+  };
+}
+
 export interface MfgQcDefectLine extends Struct.ComponentSchema {
   collectionName: 'components_mfg_qc_defect_lines';
   info: {
@@ -403,6 +422,7 @@ declare module '@strapi/strapi' {
     export interface ComponentSchemas {
       'inv.count-line': InvCountLine;
       'mfg.bom-line': MfgBomLine;
+      'mfg.bom-output': MfgBomOutput;
       'mfg.qc-defect-line': MfgQcDefectLine;
       'mfg.routing-step': MfgRoutingStep;
       'mfg.size-breakup': MfgSizeBreakup;

@@ -2631,6 +2631,7 @@ export interface ApiMfgBomMfgBom extends Struct.CollectionTypeSchema {
     name: Schema.Attribute.String & Schema.Attribute.Required;
     notes: Schema.Attribute.Text;
     output_quantity: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<1>;
+    outputs: Schema.Attribute.Component<'mfg.bom-output', true>;
     product: Schema.Attribute.Relation<'manyToOne', 'api::product.product'>;
     production_line: Schema.Attribute.Relation<
       'manyToOne',
