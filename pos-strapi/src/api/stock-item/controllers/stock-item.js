@@ -317,6 +317,9 @@ module.exports = createCoreController('api::stock-item.stock-item', ({ strapi })
         const sellingPrice = toNum(row.sellingPrice);
         const offerPrice = toNum(row.offerPrice);
         const sellableUnits = Number(row.sellableUnits) || 1;
+        // Optional per-row expiry (Epic 5 intake). Blank → the stock-item
+        // beforeCreate lifecycle still auto-computes it for perishables.
+        const expiryDate = (row.expiryDate || row.expiry_date || '').toString().trim() || null;
 
         // 1) Resolve / create the product.
         let productObj = null;
@@ -442,6 +445,7 @@ module.exports = createCoreController('api::stock-item.stock-item', ({ strapi })
             ...(sellingPrice != null ? { selling_price: sellingPrice } : {}),
             ...(costPrice != null ? { cost_price: costPrice } : {}),
             ...(offerPrice != null ? { offer_price: offerPrice } : {}),
+            ...(expiryDate ? { expiry_date: expiryDate } : {}),
             product: { connect: [productObj.documentId] },
           };
           if (existing && existing.length) {

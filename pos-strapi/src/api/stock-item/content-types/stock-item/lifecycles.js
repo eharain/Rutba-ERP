@@ -19,6 +19,29 @@
  */
 
 const STOCK_ITEM_UID = 'api::stock-item.stock-item';
+const PRODUCT_UID = 'api::product.product';
+const STOCK_BATCH_UID = 'api::stock-batch.stock-batch';
+
+// Normalise however a relation arrives on a create payload → { id } | { documentId }.
+function relId(v) {
+  if (v == null) return null;
+  if (typeof v === 'number') return { id: v };
+  if (typeof v === 'string') return { documentId: v };
+  if (Array.isArray(v)) return v.length ? relId(v[0]) : null;
+  if (typeof v === 'object') {
+    if (v.id != null) return { id: v.id };
+    if (v.documentId != null) return { documentId: v.documentId };
+    if (v.connect != null) return relId(v.connect);
+    if (v.set != null) return relId(v.set);
+  }
+  return null;
+}
+
+async function fetchRow(uid, ref, fields) {
+  if (!ref) return null;
+  const where = ref.id != null ? { id: ref.id } : { documentId: ref.documentId };
+  return strapi.db.query(uid).findOne({ where, select: fields });
+}
 
 // Guard against the recursive afterUpdate triggered by the status_history
 // write-back. While true, both the history append and the recompute are
@@ -75,6 +98,36 @@ async function recomputeStockLevels(productIds) {
 }
 
 module.exports = {
+  // Auto-fill a unit's expiry_date at intake (Epic 5) when the caller didn't set
+  // one — the per-unit expiry_date stays authoritative. Order of precedence:
+  //   explicit data.expiry_date  >  the assigned batch's expiry_date  >
+  //   the product's shelf life (is_perishable + shelf_life_days → received + N days).
+  // Covers every create path (bulk import, generate, scan, WO finished goods)
+  // from one chokepoint. Best-effort: a lookup failure never blocks the create.
+  async beforeCreate(event) {
+    const { data } = event.params;
+    if (!data || data.expiry_date != null) return;
+
+    if (data.batch != null) {
+      try {
+        const batch = await fetchRow(STOCK_BATCH_UID, relId(data.batch), ['id', 'expiry_date']);
+        if (batch?.expiry_date) { data.expiry_date = batch.expiry_date; return; }
+      } catch (_) { /* noop */ }
+    }
+
+    if (data.product != null) {
+      try {
+        const product = await fetchRow(PRODUCT_UID, relId(data.product), ['id', 'is_perishable', 'shelf_life_days']);
+        const days = Number(product?.shelf_life_days);
+        if (product?.is_perishable && Number.isFinite(days) && days > 0) {
+          const exp = new Date();
+          exp.setDate(exp.getDate() + days);
+          data.expiry_date = exp.toISOString().slice(0, 10);
+        }
+      } catch (_) { /* noop */ }
+    }
+  },
+
   async beforeUpdate(event) {
     if (_updating) return;
 
