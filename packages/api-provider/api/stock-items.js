@@ -285,6 +285,15 @@ export const StockItemsEndpoints = {
     }),
 
     /**
+     * Inventory valuation report (serialized cost_price + bulk batch value), by
+     * warehouse. Manager/admin only; auth:false route + manual role gate.
+     */
+    valuation: ({ warehouseDocId } = {}) => ({
+        path: `/stock-items/valuation${warehouseDocId ? `?warehouse=${warehouseDocId}` : ''}`,
+        params: {},
+    }),
+
+    /**
      * Bulk-move stock items to another branch in a single round-trip.
      * Each item is set to branch=toBranch + status='InStock', and a
      * `Transferred` entry is appended to its status_history so the move

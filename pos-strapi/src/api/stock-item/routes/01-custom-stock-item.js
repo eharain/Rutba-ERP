@@ -66,5 +66,13 @@ module.exports = {
         auth: false,
       },
     },
+    {
+      method: 'GET',
+      path: '/stock-items/valuation',
+      handler: 'valuation.run',
+      config: {
+        auth: false,
+      },
+    },
   ],
 };

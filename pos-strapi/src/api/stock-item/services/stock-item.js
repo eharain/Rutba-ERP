@@ -18,6 +18,7 @@ const { createCoreService } = require('@strapi/strapi').factories;
 const PRODUCT_UID = 'api::product.product';
 const STOCK_ITEM_UID = 'api::stock-item.stock-item';
 const STOCK_LEVEL_UID = 'api::stock-level.stock-level';
+const STOCK_BATCH_UID = 'api::stock-batch.stock-batch';
 const WAREHOUSE_UID = 'api::warehouse.warehouse';
 const STORAGE_LOCATION_UID = 'api::storage-location.storage-location';
 const BRANCH_UID = 'api::branch.branch';
@@ -55,6 +56,69 @@ module.exports = createCoreService(STOCK_ITEM_UID, ({ strapi }) => ({
     }
     if (expired > 0) strapi.log.info(`[stock-item] sweep-expired flipped ${expired} unit(s) past ${t}`);
     return expired;
+  },
+
+  /**
+   * Inventory valuation (Epic 2) — specific-identification value of on-hand stock:
+   *   serialized = Σ stock-item.cost_price for InStock, non-archived units
+   *   bulk       = Σ (stock-batch.quantity_remaining × unit_cost) for Active batches
+   * Broken down by warehouse (documentId; `unassigned` when a row has no warehouse).
+   * Compute-on-read; on-demand admin report, not a hot path.
+   *
+   * @param {{ warehouseId?: number, warehouseDocId?: string }} opts
+   */
+  async computeInventoryValuation(opts = {}) {
+    let warehouseId = opts.warehouseId || null;
+    if (!warehouseId && opts.warehouseDocId) {
+      const wh = await strapi.db.query(WAREHOUSE_UID).findOne({ where: { documentId: opts.warehouseDocId }, select: ['id'] });
+      warehouseId = wh?.id || null;
+    }
+    const whFilter = warehouseId ? { warehouse: { id: warehouseId } } : {};
+    const n = (v) => { const x = Number(v); return Number.isFinite(x) ? x : 0; };
+
+    const byWh = new Map();
+    const bucket = (w) => {
+      const key = w?.documentId || 'unassigned';
+      if (!byWh.has(key)) byWh.set(key, { warehouse: w?.documentId || null, warehouse_name: w?.name || null, serialized_value: 0, serialized_units: 0, bulk_value: 0, bulk_qty: 0 });
+      return byWh.get(key);
+    };
+
+    // Serialized — InStock, non-archived units.
+    const items = await strapi.db.query(STOCK_ITEM_UID).findMany({
+      where: { status: 'InStock', $or: [{ archived: false }, { archived: { $null: true } }], ...whFilter },
+      select: ['cost_price'],
+      populate: { warehouse: { select: ['documentId', 'name'] } },
+      limit: 5000000,
+    });
+    for (const it of items) { const b = bucket(it.warehouse); b.serialized_value += n(it.cost_price); b.serialized_units += 1; }
+
+    // Bulk — Active batches, value = remaining × unit_cost.
+    const batches = await strapi.db.query(STOCK_BATCH_UID).findMany({
+      where: { status: 'Active', ...whFilter },
+      select: ['quantity_remaining', 'unit_cost'],
+      populate: { warehouse: { select: ['documentId', 'name'] } },
+      limit: 5000000,
+    });
+    for (const bt of batches) { const b = bucket(bt.warehouse); b.bulk_value += n(bt.quantity_remaining) * n(bt.unit_cost); b.bulk_qty += n(bt.quantity_remaining); }
+
+    const round2 = (x) => Math.round(x * 100) / 100;
+    const warehouses = Array.from(byWh.values()).map((w) => ({
+      ...w,
+      serialized_value: round2(w.serialized_value),
+      bulk_value: round2(w.bulk_value),
+      total_value: round2(w.serialized_value + w.bulk_value),
+    })).sort((a, b) => b.total_value - a.total_value);
+
+    const serialized_value = round2(warehouses.reduce((s, w) => s + w.serialized_value, 0));
+    const bulk_value = round2(warehouses.reduce((s, w) => s + w.bulk_value, 0));
+    return {
+      asOf: new Date().toISOString(),
+      total_value: round2(serialized_value + bulk_value),
+      serialized_value,
+      bulk_value,
+      serialized_units: warehouses.reduce((s, w) => s + w.serialized_units, 0),
+      warehouses,
+    };
   },
 
   /**
