@@ -225,6 +225,97 @@ module.exports = createCoreService(STOCK_ITEM_UID, ({ strapi }) => ({
   },
 
   /**
+   * Allocate `qty` sellable sub-units of a divisible product across its InStock
+   * items and consume them (Divisible P2). Ordering:
+   *   - a scanned item is honoured first (with a warning if a nearer-expiry item
+   *     is being skipped);
+   *   - otherwise ALREADY-OPENED items (units_sold > 0) are drawn down first so a
+   *     new full item isn't broken unnecessarily, each in FEFO order (earliest
+   *     expiry, nulls last), then createdAt.
+   * Each consumed item's units_sold grows; an item hitting its capacity flips to
+   * 'Sold'. Per-unit price = selling_price ÷ sellable_units. Returns the
+   * allocation records (for the sale line + later returns), the total units and
+   * price, and any warning. `dryRun` computes without mutating. If total remaining
+   * is below `qty` it returns { insufficient, available } and consumes nothing.
+   *
+   * @param {number} productId
+   * @param {number} qty
+   * @param {{ scannedItemDocId?: string, dryRun?: boolean }} [opts]
+   */
+  async allocateSellableUnits(productId, qty, opts = {}) {
+    const need = Number(qty);
+    if (!productId || !(need > 0)) return { allocations: [], totalUnits: 0, totalPrice: 0 };
+
+    const rows = await strapi.db.query(STOCK_ITEM_UID).findMany({
+      where: { product: productId, status: 'InStock', $or: [{ archived: false }, { archived: { $null: true } }] },
+      select: ['id', 'documentId', 'sellable_units', 'units_sold', 'selling_price', 'expiry_date', 'createdAt'],
+      limit: 100000,
+    });
+    const items = rows
+      .map((it) => ({ ...it, remaining: (Number(it.sellable_units) || 1) - (Number(it.units_sold) || 0) }))
+      .filter((it) => it.remaining > 1e-9);
+
+    const available = Math.round(items.reduce((s, it) => s + it.remaining, 0) * 1000) / 1000;
+    if (available + 1e-9 < need) {
+      return { insufficient: true, available, allocations: [], totalUnits: 0, totalPrice: 0 };
+    }
+
+    const fefoKey = (it) => (it.expiry_date ? String(it.expiry_date).slice(0, 10) : '9999-12-31');
+    const openedFirstFefo = (a, b) => {
+      const ao = (Number(a.units_sold) || 0) > 0 ? 0 : 1;
+      const bo = (Number(b.units_sold) || 0) > 0 ? 0 : 1;
+      if (ao !== bo) return ao - bo;               // opened items first
+      const ax = fefoKey(a); const bx = fefoKey(b);
+      if (ax !== bx) return ax < bx ? -1 : 1;      // FEFO
+      return (a.id || 0) - (b.id || 0);            // stable / createdAt-ish
+    };
+
+    let ordered;
+    let warning = null;
+    if (opts.scannedItemDocId) {
+      const scanned = items.find((it) => it.documentId === opts.scannedItemDocId);
+      const rest = items.filter((it) => it.documentId !== opts.scannedItemDocId).sort(openedFirstFefo);
+      ordered = scanned ? [scanned, ...rest] : rest;
+      if (scanned) {
+        const nearer = items.find((it) => it.documentId !== scanned.documentId && fefoKey(it) < fefoKey(scanned));
+        if (nearer) warning = `Selling a unit expiring ${fefoKey(scanned)} while a nearer-expiry unit (${fefoKey(nearer)}) is available.`;
+      }
+    } else {
+      ordered = [...items].sort(openedFirstFefo);
+    }
+
+    const allocations = [];
+    let remainingNeed = need;
+    let totalPrice = 0;
+    for (const it of ordered) {
+      if (remainingNeed <= 1e-9) break;
+      const take = Math.min(it.remaining, remainingNeed);
+      if (take <= 1e-9) continue;
+      const total = Number(it.sellable_units) || 1;
+      const newSold = (Number(it.units_sold) || 0) + take;
+      const depleted = newSold + 1e-9 >= total;
+      const unitPrice = this.sellableUnitPrice(it);
+      const lineTotal = Math.round(take * unitPrice * 100) / 100;
+
+      if (!opts.dryRun) {
+        await strapi.entityService.update(STOCK_ITEM_UID, it.id, {
+          data: { units_sold: depleted ? total : Math.round(newSold * 1000) / 1000, ...(depleted ? { status: 'Sold' } : {}) },
+        });
+      }
+      allocations.push({ stock_item: it.documentId, stock_item_id: it.id, units: Math.round(take * 1000) / 1000, unit_price: unitPrice, line_total: lineTotal, depleted });
+      totalPrice += lineTotal;
+      remainingNeed -= take;
+    }
+
+    return {
+      allocations,
+      totalUnits: Math.round((need - Math.max(0, remainingNeed)) * 1000) / 1000,
+      totalPrice: Math.round(totalPrice * 100) / 100,
+      ...(warning ? { warning } : {}),
+    };
+  },
+
+  /**
    * Recompute multiple products. Deduplicates ids and walks them serially —
    * each recompute is one COUNT + one UPDATE, so the cost is linear and the
    * sequential order keeps DB load predictable during bulk operations.
