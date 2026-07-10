@@ -12,6 +12,8 @@ const SECTIONS = [
     { href: "/adjustments", label: "Adjustments", icon: "fa-sliders" },
     { href: "/reorder", label: "Reorder", icon: "fa-cart-arrow-down" },
     { href: "/counts", label: "Cycle Counts", icon: "fa-clipboard-check" },
+    { href: "/batches", label: "Batches / Lots", icon: "fa-boxes-packing" },
+    { href: "/expiry", label: "Expiry", icon: "fa-hourglass-half" },
     { href: "/valuation", label: "Valuation", icon: "fa-coins" },
     { href: "/maintenance", label: "Maintenance", icon: "fa-screwdriver-wrench" },
 ];

@@ -15,6 +15,8 @@ export interface StockItemsEndpointsType {
     update(documentId: any, data: any): Promise<any>;
     byProduct(productDocId: any, { page = 1, pageSize = 100, populate, sort }?: any): Promise<any>;
     recomputeProductStock(): Promise<any>;
+    getExpiring(days?: any): Promise<any>;
+    sweepExpired(): Promise<any>;
     transfer(payload?: any): Promise<any>;
     meta: any;
 }

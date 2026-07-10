@@ -77,6 +77,16 @@ async function recomputeProductStock() {
     return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
+async function getExpiring(days = 30) {
+    const ep = StockItemsEndpointsApi.getExpiring(days);
+    return authApi.fetch(ep.path, ep.params);
+}
+
+async function sweepExpired() {
+    const ep = StockItemsEndpointsApi.sweepExpired();
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+}
+
 async function transfer(payload = {}) {
     const ep = StockItemsEndpointsApi.transfer(payload);
     return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
@@ -100,10 +110,12 @@ const endpoints = strictEndpointGuard(
         update,
         byProduct,
         recomputeProductStock,
+        getExpiring,
+        sweepExpired,
         transfer,
         meta: StockItemsEndpointsApi.meta,
     },
-    ["list","listByProduct","listByBarcode","checkBarcode","orphanGroups","orphanGroupItems","create","resolveBulkStock","processBulkStock","searchByBarcode","searchByName","byId","update","byProduct","recomputeProductStock","transfer","meta"],
+    ["list","listByProduct","listByBarcode","checkBarcode","orphanGroups","orphanGroupItems","create","resolveBulkStock","processBulkStock","searchByBarcode","searchByName","byId","update","byProduct","recomputeProductStock","getExpiring","sweepExpired","transfer","meta"],
 );
 
 export default endpoints;

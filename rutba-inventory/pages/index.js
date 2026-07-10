@@ -14,6 +14,7 @@ const FEATURES = [
     { icon: "fa-clipboard-check",  border: "border-secondary", color: "text-secondary", title: "Cycle Counts",           desc: "Physical stock-takes; shortages book unit losses. Plus cache reconcile in Maintenance.", ready: true, href: "/counts" },
     { icon: "fa-cart-arrow-down",  border: "border-danger",    color: "text-danger",    title: "Reordering",             desc: "Low-stock & out-of-stock products with reorder suggestions.", ready: true, href: "/reorder" },
     { icon: "fa-coins",            border: "border-warning",   color: "text-warning",   title: "Valuation",              desc: "Inventory value by warehouse and top products.", ready: true, href: "/valuation" },
+    { icon: "fa-hourglass-half",   border: "border-danger",    color: "text-danger",    title: "Expiry & Batches",       desc: "Batch/lot expiry tracking, expiring-soon alerts and expired sweep.", ready: true, href: "/expiry" },
 ];
 
 export default function Home() {

@@ -268,6 +268,22 @@ export const StockItemsEndpoints = {
         data: {},
     }),
 
+    /** InStock units expiring within `days` (soonest first). auth:false route + manual auth. */
+    getExpiring: (days = 30) => ({
+        path: '/stock-items/expiring',
+        params: { days },
+    }),
+
+    /** Admin: flip every InStock unit past its expiry_date to Expired. Idempotent. */
+    sweepExpired: () => ({
+        path: '/stock-items/sweep-expired',
+        action: 'create',
+        method: 'post',
+        apps: ['inventory', 'stock'],
+        approle: ['admin'],
+        data: {},
+    }),
+
     /**
      * Bulk-move stock items to another branch in a single round-trip.
      * Each item is set to branch=toBranch + status='InStock', and a

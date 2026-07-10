@@ -8,6 +8,8 @@ const SECONDARY = [
     { href: "/adjustments", label: "Adjustments", variant: "warning" },
     { href: "/reorder", label: "Reorder", variant: "danger" },
     { href: "/counts", label: "Counts", variant: "secondary" },
+    { href: "/batches", label: "Batches", variant: "info" },
+    { href: "/expiry", label: "Expiry", variant: "danger" },
     { href: "/valuation", label: "Valuation", variant: "warning" },
     { href: "/maintenance", label: "Maintenance", variant: "secondary" },
 ];

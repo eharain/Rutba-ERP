@@ -50,5 +50,21 @@ module.exports = {
         auth: false,
       },
     },
+    {
+      method: 'GET',
+      path: '/stock-items/expiring',
+      handler: 'expiry.getExpiring',
+      config: {
+        auth: false,
+      },
+    },
+    {
+      method: 'POST',
+      path: '/stock-items/sweep-expired',
+      handler: 'expiry.sweepExpired',
+      config: {
+        auth: false,
+      },
+    },
   ],
 };
