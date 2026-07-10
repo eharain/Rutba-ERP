@@ -217,32 +217,59 @@ module.exports = createCoreController('api::stock-input.stock-input', ({ strapi 
           });
         }
 
-        // 7. Create stock items
+        // 7. Create stock — one quantity batch for a BULK product (its lifecycle
+        //    lifts product.bulk_quantity_on_hand, Foundation F5), else N serialized
+        //    stock-items as before. track_mode decides which ledger; fetch it since
+        //    the product cache/create may not carry it.
         const seed = ((poItemObj?.id ?? si.id) || Date.now()).toString(36);
         const quantity = si.quantity || 0;
         const sellableUnits = si.sellableUnits || 1;
         const stockItemIds = [];
+        let batchDocId = null;
 
-        for (let i = 0; i < quantity; i++) {
-          const barcode = seed + (i + 1).toString(36).padStart(3, '0');
-          const siConnects = {};
-          if (poItemObj) siConnects.purchase_item = { connect: [poItemObj.documentId] };
-          if (productObj) siConnects.product = { connect: [productObj.documentId] };
+        let trackMode = productObj?.track_mode || 'serialized';
+        if (productObj?.id && !productObj.track_mode) {
+          const pj = await strapi.db.query('api::product.product').findOne({ where: { id: productObj.id }, select: ['track_mode'] });
+          trackMode = pj?.track_mode || 'serialized';
+        }
 
-          const stockItem = await strapi.documents('api::stock-item.stock-item').create({
+        if (trackMode === 'bulk' && quantity > 0) {
+          const batch = await strapi.documents('api::stock-batch.stock-batch').create({
             data: {
-              name: productObj.name,
-              status: 'InStock',
-              cost_price: si.costPrice || si.sellingPrice || 0,
-              selling_price: si.sellingPrice || 0,
-              offer_price: si.offerPrice || undefined,
-              sellable_units: sellableUnits,
-              barcode,
+              batch_code: `IN-${poObj?.orderId || si.orderId || si.id}-${seed}`,
+              status: 'Active',
+              received_at: new Date(),
+              unit_cost: si.costPrice || si.sellingPrice || 0,
+              quantity_received: quantity,
+              quantity_remaining: quantity,
               ...(si.expiry_date ? { expiry_date: si.expiry_date } : {}),
-              ...siConnects,
+              ...(productObj ? { product: { connect: [productObj.documentId] } } : {}),
+              ...(supObj ? { supplier: { connect: [supObj.documentId] } } : {}),
             },
           });
-          stockItemIds.push(stockItem.documentId);
+          batchDocId = batch.documentId;
+        } else {
+          for (let i = 0; i < quantity; i++) {
+            const barcode = seed + (i + 1).toString(36).padStart(3, '0');
+            const siConnects = {};
+            if (poItemObj) siConnects.purchase_item = { connect: [poItemObj.documentId] };
+            if (productObj) siConnects.product = { connect: [productObj.documentId] };
+
+            const stockItem = await strapi.documents('api::stock-item.stock-item').create({
+              data: {
+                name: productObj.name,
+                status: 'InStock',
+                cost_price: si.costPrice || si.sellingPrice || 0,
+                selling_price: si.sellingPrice || 0,
+                offer_price: si.offerPrice || undefined,
+                sellable_units: sellableUnits,
+                barcode,
+                ...(si.expiry_date ? { expiry_date: si.expiry_date } : {}),
+                ...siConnects,
+              },
+            });
+            stockItemIds.push(stockItem.documentId);
+          }
         }
 
         // 8. Mark stock-input as processed and link relations
@@ -265,7 +292,7 @@ module.exports = createCoreController('api::stock-input.stock-input', ({ strapi 
           },
         });
 
-        results.push({ documentId: si.documentId, productName: si.productName, ok: true, stockItems: stockItemIds.length });
+        results.push({ documentId: si.documentId, productName: si.productName, ok: true, stockItems: stockItemIds.length, ...(batchDocId ? { batch: batchDocId, bulkQuantity: quantity } : {}) });
 
       } catch (err) {
         // Mark as processed with error
