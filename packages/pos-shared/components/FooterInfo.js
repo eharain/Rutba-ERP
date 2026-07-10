@@ -1,11 +1,23 @@
 import dynamic from "next/dynamic";
 import { useUtil } from "../context/UtilContext";
 import { useAuth } from "../context/AuthContext";
-import { useEffect, useState } from "react";
-import { getCrossAppLinks } from "../lib/roles";
+import { useEffect, useRef, useState } from "react";
+import { getCrossAppGroups } from "../lib/roles";
 
+/**
+ * FooterInfo — slim cross-app launcher.
+ *
+ * Renders the branch/desk location on the left and, on the right, one
+ * compact menu button per app category (Sales, Inventory, People, …).
+ * Clicking a category opens an upward popover listing that category's
+ * apps. Only one popover is open at a time. Categories with no
+ * accessible apps are omitted, so the bar stays short as the app
+ * catalogue grows.
+ */
 function FooterInfo({ currentApp }) {
     const [location, setLocation] = useState("");
+    const [openGroup, setOpenGroup] = useState(null);
+    const wrapRef = useRef(null);
     const { locationString, branch, desk } = useUtil();
     const { appAccess, adminAppAccess } = useAuth();
 
@@ -13,12 +25,26 @@ function FooterInfo({ currentApp }) {
         setLocation(locationString());
     }, [branch, desk]);
 
+    // Close the open popover on outside-click or Escape.
+    useEffect(() => {
+        if (!openGroup) return undefined;
+        const onClickOutside = (e) => {
+            if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpenGroup(null);
+        };
+        const onKeyDown = (e) => { if (e.key === "Escape") setOpenGroup(null); };
+        document.addEventListener("mousedown", onClickOutside);
+        window.addEventListener("keydown", onKeyDown);
+        return () => {
+            document.removeEventListener("mousedown", onClickOutside);
+            window.removeEventListener("keydown", onKeyDown);
+        };
+    }, [openGroup]);
+
     const effectiveAccess = [...new Set([...(appAccess || []), ...(adminAppAccess || [])])];
-    const apps = getCrossAppLinks(effectiveAccess, currentApp)
-        .sort((a, b) => String(a.label || '').localeCompare(String(b.label || '')));
+    const groups = getCrossAppGroups(effectiveAccess, currentApp);
 
     return (
-        <footer className="footer-info">
+        <footer className="footer-info" ref={wrapRef}>
             <span className="footer-info-location">
                 {location || (
                     <span>
@@ -28,27 +54,56 @@ function FooterInfo({ currentApp }) {
                 )}
             </span>
 
-            {apps.length > 0 && (
-                <ul className="footer-info-apps">
-                    {apps.map((app) => {
-                        const linkProps = app.external
-                            ? { target: "_blank", rel: "noopener noreferrer" }
-                            : {};
+            {groups.length > 0 && (
+                <nav className="footer-info-cats" aria-label="Switch app">
+                    {groups.map((group) => {
+                        const isOpen = openGroup === group.key;
                         return (
-                            <li key={app.key}>
-                                <a
-                                    {...linkProps}
-                                    href={app.href}
-                                    className={`footer-info-app ${app.color || ''}`}
-                                    title={app.label}
+                            <div key={group.key} className={`footer-cat${isOpen ? ' open' : ''}`}>
+                                <button
+                                    type="button"
+                                    className="footer-cat-btn"
+                                    aria-haspopup="true"
+                                    aria-expanded={isOpen}
+                                    title={group.label}
+                                    onClick={() => setOpenGroup(isOpen ? null : group.key)}
                                 >
-                                    <i className={app.icon}></i>
-                                    <span>{app.label}</span>
-                                </a>
-                            </li>
+                                    <i className={group.icon}></i>
+                                    <span className="footer-cat-label">{group.label}</span>
+                                    <span className="footer-cat-count">{group.apps.length}</span>
+                                    <i className="fa-solid fa-chevron-up footer-cat-caret"></i>
+                                </button>
+
+                                {isOpen && (
+                                    <div className="footer-cat-menu" role="menu">
+                                        <div className="footer-cat-menu-head">{group.label}</div>
+                                        {group.apps.map((app) => {
+                                            const linkProps = app.external
+                                                ? { target: "_blank", rel: "noopener noreferrer" }
+                                                : {};
+                                            return (
+                                                <a
+                                                    key={app.key}
+                                                    {...linkProps}
+                                                    href={app.href}
+                                                    className="footer-cat-item"
+                                                    role="menuitem"
+                                                    onClick={() => setOpenGroup(null)}
+                                                >
+                                                    <i className={`${app.icon} ${app.color || ''} footer-cat-item-icon`}></i>
+                                                    <span>{app.label}</span>
+                                                    {app.external && (
+                                                        <i className="fa-solid fa-arrow-up-right-from-square ms-auto footer-cat-ext"></i>
+                                                    )}
+                                                </a>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
                         );
                     })}
-                </ul>
+                </nav>
             )}
         </footer>
     );
