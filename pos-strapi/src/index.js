@@ -8,6 +8,7 @@ const ensureSeoMetaPerEntity = require('./seed/seo-meta-backfill');
 const backfillProductSlugs = require('./seed/product-slug-backfill');
 const ensureSlugIndexes = require('./db/ensure-slug-indexes');
 const { resolveHrRolesForUser } = require('./utils/hr-role-provider');
+const { validateBomWrite, BOM_UID: MFG_BOM_UID } = require('./api/mfg-bom/bom-typing-validator');
 
 // Ensures the site-setting singleType has a published row so consumers
 // (especially rutba-web's storefront, which fetches this on every page
@@ -130,7 +131,22 @@ async function ensureUsersPermissionsDefaults(strapi) {
 }
 
 module.exports = {
-    register(/*{ strapi }*/) { },
+    register({ strapi }) {
+        // Enforce mfg-bom input/output KIND typing at the document layer, where
+        // nested component relations are visible before the write (a db lifecycle
+        // can't see them). Blocks Active BOMs with mistyped inputs/outputs; warns
+        // on Draft. See src/api/mfg-bom/bom-typing-validator.js.
+        strapi.documents.use(async (context, next) => {
+            if (context.uid === MFG_BOM_UID && (context.action === 'create' || context.action === 'update')) {
+                await validateBomWrite(strapi, {
+                    action: context.action,
+                    data: context.params?.data,
+                    documentId: context.params?.documentId,
+                });
+            }
+            return next();
+        });
+    },
 
     async bootstrap({ strapi }) {
         await ensureUsersPermissionsDefaults(strapi);
