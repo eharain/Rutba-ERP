@@ -36,29 +36,45 @@ export const APP_URLS = {
 const VALID_APP_KEYS = ['stock', 'sale', 'auth', 'web-user', 'order-management', 'rider', 'crm', 'hr', 'ess', 'accounts', 'payroll', 'cms', 'social', 'manufacturing', 'marketplace', 'inventory'];
 
 /**
+ * App categories — the ordered taxonomy used to arrange the growing
+ * app catalogue in the footer launcher and anywhere else that groups
+ * apps. Each app's `group` key (in APP_META) points at one of these.
+ * `icon` is the representative icon for the category's footer menu button.
+ */
+export const APP_CATEGORIES = [
+    { key: 'sales',     label: 'Sales & Customers',      icon: 'fa-solid fa-cart-shopping' },
+    { key: 'inventory', label: 'Inventory & Production', icon: 'fa-solid fa-warehouse' },
+    { key: 'people',    label: 'People',                 icon: 'fa-solid fa-users' },
+    { key: 'finance',   label: 'Finance & Payroll',      icon: 'fa-solid fa-coins' },
+    { key: 'content',   label: 'Content & Channels',     icon: 'fa-solid fa-bullhorn' },
+    { key: 'admin',     label: 'Administration',         icon: 'fa-solid fa-gear' },
+];
+
+/**
  * Metadata for each app — icon (FontAwesome class), display label,
- * short description, and Bootstrap border-colour class.
- * Used by the auth home page cards and anywhere else that needs
- * a consistent catalogue of apps.
+ * short description, Bootstrap border-colour class, and the `group`
+ * key (one of APP_CATEGORIES) it belongs to.
+ * Used by the auth home page cards, the footer launcher, and anywhere
+ * else that needs a consistent catalogue of apps.
  */
 export const APP_META = {
-    auth:       { icon: 'fa-solid fa-users',              label: 'User Management',    description: 'Users, roles, app access',                    border: 'border-dark',      color: 'text-dark' },
-    stock:      { icon: 'fa-solid fa-boxes-stacked',      label: 'Stock Management',   description: 'Products, purchases, inventory',              border: 'border-primary',   color: 'text-primary' },
-    sale:       { icon: 'fa-solid fa-cash-register',      label: 'Point of Sale',      description: 'Sales, cart, returns, reports',               border: 'border-success',   color: 'text-success' },
-    'web-user': { icon: 'fa-solid fa-bag-shopping',       label: 'Web Orders',         description: 'Track customer orders, delivery status, and returns', border: 'border-info',      color: 'text-info' },
-    'order-management': { icon: 'fa-solid fa-truck-fast', label: 'Order Management',   description: 'Customer orders, delivery offers, riders, and notifications', border: 'border-warning', color: 'text-warning' },
-    rider:      { icon: 'fa-solid fa-motorcycle',         label: 'Rider App',          description: 'Delivery offers, active deliveries, history, and profile', border: 'border-primary',   color: 'text-primary' },
-    crm:        { icon: 'fa-solid fa-handshake',          label: 'CRM',                description: 'Contacts, leads, activities',                 border: 'border-warning',   color: 'text-warning' },
-    hr:         { icon: 'fa-solid fa-users',              label: 'Human Resources',    description: 'Employees, departments, attendance, leave',   border: 'border-secondary', color: 'text-secondary' },
-    ess:        { icon: 'fa-solid fa-user-clock',         label: 'Employee Self-Service', description: 'My profile, attendance, leave requests, payslips', border: 'border-secondary', color: 'text-secondary' },
-    accounts:   { icon: 'fa-solid fa-chart-line',         label: 'Accounts',           description: 'Chart of accounts, journals, invoices',       border: 'border-dark',      color: 'text-dark' },
-    payroll:    { icon: 'fa-solid fa-money-check-dollar', label: 'Payroll',            description: 'Salary structures, payroll runs, payslips',   border: 'border-danger',    color: 'text-danger' },
-    cms:        { icon: 'fa-solid fa-pen-nib',            label: 'Content Management', description: 'Website content, pages, banners, and sales offers', border: 'border-purple',    color: 'text-purple' },
-    social:     { icon: 'fa-solid fa-share-nodes',         label: 'Social Media',       description: 'Posts, replies, multi-platform publishing',   border: 'border-info',      color: 'text-info' },
-    manufacturing: { icon: 'fa-solid fa-industry',         label: 'Manufacturing',      description: 'Work orders, bundles, production, piece-rate payroll', border: 'border-primary',   color: 'text-primary' },
-    marketplace:   { icon: 'fa-solid fa-store',            label: 'Marketplace',        description: 'Daraz & channel accounts, order/inventory sync', border: 'border-warning',   color: 'text-warning' },
-    inventory:  { icon: 'fa-solid fa-warehouse',          label: 'Inventory Management', description: 'Warehouses, bins, stock levels, transfers, counts, reordering', border: 'border-primary',   color: 'text-primary' },
-    web:        { icon: 'fa-solid fa-globe',               label: 'Storefront',         description: 'Public customer-facing website',              border: 'border-info',      color: 'text-info', public: true },
+    auth:       { group: 'admin',     icon: 'fa-solid fa-users',              label: 'User Management',    description: 'Users, roles, app access',                    border: 'border-dark',      color: 'text-dark' },
+    stock:      { group: 'inventory', icon: 'fa-solid fa-boxes-stacked',      label: 'Stock Management',   description: 'Products, purchases, inventory',              border: 'border-primary',   color: 'text-primary' },
+    sale:       { group: 'sales',     icon: 'fa-solid fa-cash-register',      label: 'Point of Sale',      description: 'Sales, cart, returns, reports',               border: 'border-success',   color: 'text-success' },
+    'web-user': { group: 'sales',     icon: 'fa-solid fa-bag-shopping',       label: 'Web Orders',         description: 'Track customer orders, delivery status, and returns', border: 'border-info',      color: 'text-info' },
+    'order-management': { group: 'sales', icon: 'fa-solid fa-truck-fast',     label: 'Order Management',   description: 'Customer orders, delivery offers, riders, and notifications', border: 'border-warning', color: 'text-warning' },
+    rider:      { group: 'sales',     icon: 'fa-solid fa-motorcycle',         label: 'Rider App',          description: 'Delivery offers, active deliveries, history, and profile', border: 'border-primary',   color: 'text-primary' },
+    crm:        { group: 'sales',     icon: 'fa-solid fa-handshake',          label: 'CRM',                description: 'Contacts, leads, activities',                 border: 'border-warning',   color: 'text-warning' },
+    hr:         { group: 'people',    icon: 'fa-solid fa-users',              label: 'Human Resources',    description: 'Employees, departments, attendance, leave',   border: 'border-secondary', color: 'text-secondary' },
+    ess:        { group: 'people',    icon: 'fa-solid fa-user-clock',         label: 'Employee Self-Service', description: 'My profile, attendance, leave requests, payslips', border: 'border-secondary', color: 'text-secondary' },
+    accounts:   { group: 'finance',   icon: 'fa-solid fa-chart-line',         label: 'Accounts',           description: 'Chart of accounts, journals, invoices',       border: 'border-dark',      color: 'text-dark' },
+    payroll:    { group: 'finance',   icon: 'fa-solid fa-money-check-dollar', label: 'Payroll',            description: 'Salary structures, payroll runs, payslips',   border: 'border-danger',    color: 'text-danger' },
+    cms:        { group: 'content',   icon: 'fa-solid fa-pen-nib',            label: 'Content Management', description: 'Website content, pages, banners, and sales offers', border: 'border-purple',    color: 'text-purple' },
+    social:     { group: 'content',   icon: 'fa-solid fa-share-nodes',        label: 'Social Media',       description: 'Posts, replies, multi-platform publishing',   border: 'border-info',      color: 'text-info' },
+    manufacturing: { group: 'inventory', icon: 'fa-solid fa-industry',        label: 'Manufacturing',      description: 'Work orders, bundles, production, piece-rate payroll', border: 'border-primary',   color: 'text-primary' },
+    marketplace:   { group: 'sales',  icon: 'fa-solid fa-store',              label: 'Marketplace',        description: 'Daraz & channel accounts, order/inventory sync', border: 'border-warning',   color: 'text-warning' },
+    inventory:  { group: 'inventory', icon: 'fa-solid fa-warehouse',          label: 'Inventory Management', description: 'Warehouses, bins, stock levels, transfers, counts, reordering', border: 'border-primary',   color: 'text-primary' },
+    web:        { group: 'content',   icon: 'fa-solid fa-globe',              label: 'Storefront',         description: 'Public customer-facing website',              border: 'border-info',      color: 'text-info', public: true },
 };
 
 /**
@@ -189,6 +205,34 @@ export function getCrossAppLinks(appAccess, currentApp) {
     }
 
     return links;
+}
+
+/**
+ * Build cross-app links grouped by category, in APP_CATEGORIES order.
+ * Empty categories are omitted. Used by the footer launcher to arrange
+ * the (growing) app catalogue into a small set of labelled menus.
+ * @param {string[]} appAccess
+ * @param {string} currentApp - the app key we're currently in
+ * @returns {{ key: string, label: string, icon: string, apps: object[] }[]}
+ */
+export function getCrossAppGroups(appAccess, currentApp) {
+    const links = getCrossAppLinks(appAccess, currentApp);
+
+    const byGroup = new Map();
+    for (const link of links) {
+        const groupKey = (APP_META[link.key] || {}).group || 'admin';
+        if (!byGroup.has(groupKey)) byGroup.set(groupKey, []);
+        byGroup.get(groupKey).push(link);
+    }
+
+    const groups = [];
+    for (const category of APP_CATEGORIES) {
+        const apps = byGroup.get(category.key);
+        if (!apps || apps.length === 0) continue;
+        apps.sort((a, b) => String(a.label || '').localeCompare(String(b.label || '')));
+        groups.push({ ...category, apps });
+    }
+    return groups;
 }
 
 //// Silently show a "Delete All" button only to admins
