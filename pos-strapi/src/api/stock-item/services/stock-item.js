@@ -182,6 +182,49 @@ module.exports = createCoreService(STOCK_ITEM_UID, ({ strapi }) => ({
   },
 
   /**
+   * Recompute product.sellable_quantity — the divisible-stock analog of
+   * stock_quantity: the sum of REMAINING sub-units (sellable_units − units_sold)
+   * across InStock, non-archived items. For ordinary items (sellable_units 1,
+   * units_sold 0) each contributes 1, so this equals the InStock count — a safe
+   * superset that's meaningful for divisible products (tablet box, lace roll).
+   * Writes every edition via documentId. See [[project_stock_model_invariant]].
+   */
+  async recomputeSellableQuantity(productId) {
+    if (!productId) return null;
+    const items = await strapi.db.query(STOCK_ITEM_UID).findMany({
+      where: { product: productId, status: 'InStock', $or: [{ archived: false }, { archived: { $null: true } }] },
+      select: ['sellable_units', 'units_sold'],
+      limit: 5000000,
+    });
+    const sum = items.reduce((s, it) => {
+      const total = Number(it.sellable_units);
+      const remaining = (Number.isFinite(total) ? total : 1) - (Number(it.units_sold) || 0);
+      return s + (remaining > 0 ? remaining : 0);
+    }, 0);
+    const rounded = Math.round(sum * 1000) / 1000;
+
+    const row = await strapi.db.query(PRODUCT_UID).findOne({ where: { id: productId }, select: ['id', 'documentId'] });
+    if (!row) return rounded;
+    if (row.documentId) {
+      await strapi.db.query(PRODUCT_UID).updateMany({ where: { documentId: row.documentId }, data: { sellable_quantity: rounded } });
+    } else {
+      await strapi.db.query(PRODUCT_UID).update({ where: { id: productId }, data: { sellable_quantity: rounded } });
+    }
+    return rounded;
+  },
+
+  /**
+   * Per-sub-unit price for a divisible item: the whole-item selling_price divided
+   * by its total sellable_units (the price stays fixed; portions are pro-rata).
+   * Falls back to the whole price when the item isn't divisible.
+   */
+  sellableUnitPrice(item) {
+    const total = Number(item?.sellable_units) || 1;
+    const price = Number(item?.selling_price) || 0;
+    return total > 0 ? price / total : price;
+  },
+
+  /**
    * Recompute multiple products. Deduplicates ids and walks them serially —
    * each recompute is one COUNT + one UPDATE, so the cost is linear and the
    * sequential order keeps DB load predictable during bulk operations.

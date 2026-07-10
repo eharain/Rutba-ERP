@@ -96,6 +96,14 @@
       "type": "decimal",
       "default": 0
     },
+    "divisible": {
+      "type": "boolean",
+      "default": false
+    },
+    "sellable_quantity": {
+      "type": "decimal",
+      "default": 0
+    },
     "is_perishable": {
       "type": "boolean",
       "default": false

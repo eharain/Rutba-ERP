@@ -74,6 +74,13 @@ async function recompute(productIds) {
     } catch (err) {
       strapi.log.warn(`[stock-item] recompute product=${pid} failed: ${err.message}`);
     }
+    // Divisible-stock cache (Σ remaining sub-units of InStock items). Best-effort
+    // and independent of stock_quantity above — a failure here must not break it.
+    try {
+      await svc.recomputeSellableQuantity(pid);
+    } catch (err) {
+      strapi.log.warn(`[stock-item] sellable_quantity recompute product=${pid} failed: ${err.message}`);
+    }
   }
 }
 
@@ -140,7 +147,12 @@ module.exports = {
     const wantsArchived = Object.prototype.hasOwnProperty.call(data || {}, 'archived');
     const wantsWarehouse = Object.prototype.hasOwnProperty.call(data || {}, 'warehouse');
     const wantsLocation = Object.prototype.hasOwnProperty.call(data || {}, 'storage_location');
-    if (!wantsStatus && !wantsProduct && !wantsArchived && !wantsWarehouse && !wantsLocation) return;
+    // Divisible stock: a change to remaining sub-units (units_sold) or capacity
+    // (sellable_units) must recompute product.sellable_quantity even when status
+    // doesn't change (a portion sale leaves the item InStock).
+    const wantsUnits = Object.prototype.hasOwnProperty.call(data || {}, 'units_sold')
+      || Object.prototype.hasOwnProperty.call(data || {}, 'sellable_units');
+    if (!wantsStatus && !wantsProduct && !wantsArchived && !wantsWarehouse && !wantsLocation && !wantsUnits) return;
 
     const existing = await loadCurrentState(itemId);
     if (!existing) return;
@@ -154,8 +166,10 @@ module.exports = {
     event.state.oldProductId = existing.product?.id || null;
     event.state.productRelTouched = wantsProduct;
     // Global product.stock_quantity depends on status / product / archived only —
-    // NOT on which warehouse the unit sits in.
-    event.state.recomputeNeeded = statusChanged || wantsProduct || archivedChanged;
+    // NOT on which warehouse the unit sits in. `wantsUnits` is included so a
+    // portion sale (units_sold change, status unchanged) still refreshes the
+    // divisible sellable_quantity cache (recomputing the unchanged count is cheap).
+    event.state.recomputeNeeded = statusChanged || wantsProduct || archivedChanged || wantsUnits;
     // The per-warehouse stock-level cache additionally cares about warehouse /
     // location moves (the unit changes buckets without changing the global count).
     event.state.stockLevelNeeded =

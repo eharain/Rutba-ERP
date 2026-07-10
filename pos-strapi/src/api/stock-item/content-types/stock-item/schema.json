@@ -41,8 +41,12 @@
       ]
     },
     "sellable_units": {
-      "type": "integer",
+      "type": "decimal",
       "default": 1
+    },
+    "units_sold": {
+      "type": "decimal",
+      "default": 0
     },
     "sold_units": {
       "type": "integer",

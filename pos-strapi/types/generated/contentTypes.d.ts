@@ -4333,6 +4333,7 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     description: Schema.Attribute.RichText;
+    divisible: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     expiry_alert_days: Schema.Attribute.Integer;
     external_ids: Schema.Attribute.JSON;
     gallery: Schema.Attribute.Media<'images' | 'videos' | 'audios', true>;
@@ -4380,6 +4381,7 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
       'api::purchase-item.purchase-item'
     >;
     reorder_level: Schema.Attribute.Integer;
+    sellable_quantity: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
     selling_price: Schema.Attribute.Decimal;
     seo_meta: Schema.Attribute.Relation<'oneToOne', 'api::seo-meta.seo-meta'>;
     shelf_life_days: Schema.Attribute.Integer;
@@ -5957,7 +5959,7 @@ export interface ApiStockItemStockItem extends Struct.CollectionTypeSchema {
       'manyToMany',
       'api::sale-return-item.sale-return-item'
     >;
-    sellable_units: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<1>;
+    sellable_units: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<1>;
     selling_price: Schema.Attribute.Decimal;
     sku: Schema.Attribute.String;
     sold_units: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
@@ -5986,6 +5988,7 @@ export interface ApiStockItemStockItem extends Struct.CollectionTypeSchema {
       'manyToOne',
       'api::storage-location.storage-location'
     >;
+    units_sold: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
