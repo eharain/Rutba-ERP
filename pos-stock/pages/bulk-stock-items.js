@@ -24,6 +24,7 @@ const COLUMN_ALIASES = {
     costPrice: ['Cost Price', 'Purchase Price', 'Cost'],
     sellingPrice: ['Selling Price', 'Sale Price', 'MRP', 'Price'],
     offerPrice: ['Offer Price', 'Discounted Price', 'Discount Price', 'Offer'],
+    expiryDate: ['Expiry', 'Expiry Date', 'Expiry_Date', 'Best Before', 'Exp', 'Exp Date'],
 };
 
 // Canonical headers + a couple of sample rows for the downloadable template.
@@ -102,6 +103,7 @@ const EMPTY_ROW = {
     costPrice: '',
     sellingPrice: '',
     offerPrice: '',
+    expiryDate: '',
 };
 
 function newRow(overrides = {}) {
@@ -353,6 +355,7 @@ export default function BulkStockItems() {
                 costPrice: rr.costPrice,
                 sellingPrice: rr.sellingPrice,
                 offerPrice: rr.offerPrice,
+                expiryDate: (rr.expiryDate || '').trim() || undefined,
             }));
             const res = await StockItemsEndpoints.processBulkStock(payload);
             setResults(res);
@@ -407,6 +410,7 @@ export default function BulkStockItems() {
         { key: 'costPrice', label: 'Cost', type: 'number', width: '90px' },
         { key: 'sellingPrice', label: 'Selling', type: 'number', width: '90px' },
         { key: 'offerPrice', label: 'Offer', type: 'number', width: '90px' },
+        { key: 'expiryDate', label: 'Expiry', type: 'date', width: '140px' },
     ];
 
     const validCount = rows.filter((r) => !rowIsBlank(r)).length;

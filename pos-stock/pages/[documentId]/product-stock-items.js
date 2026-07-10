@@ -96,6 +96,10 @@ export default function EditProduct() {
     // Many stock items can share one SKU, so this is applied verbatim when present;
     // otherwise a unique SKU is auto-derived from the product SKU.
     const [scanSku, setScanSku] = useState('');
+    // Optional expiry stamped on units created via generate / scan / multi-scan.
+    // A "current expiry" the operator can set once and change between scans; blank
+    // leaves it to the stock-item lifecycle (perishable shelf-life auto-compute).
+    const [intakeExpiry, setIntakeExpiry] = useState('');
 
     // Scan barcode to attach existing stock item
     const [attachBarcode, setAttachBarcode] = useState('');
@@ -393,6 +397,7 @@ export default function EditProduct() {
                     offer_price: parseFloat(product.offer_price) || 0,
                     product: documentId,
                     branch: branch?.documentId || branch?.id || undefined,
+                    ...(intakeExpiry ? { expiry_date: intakeExpiry } : {}),
                 };
 
                 await StockItemsEndpoints.create(data);
@@ -439,6 +444,7 @@ export default function EditProduct() {
                 offer_price: parseFloat(product.offer_price) || 0,
                 product: documentId,
                 branch: branch?.documentId || branch?.id || undefined,
+                ...(intakeExpiry ? { expiry_date: intakeExpiry } : {}),
             };
 
             await StockItemsEndpoints.create(data);
@@ -578,6 +584,7 @@ export default function EditProduct() {
                 offer_price: parseFloat(product.offer_price) || 0,
                 product: documentId,
                 branch: branch?.documentId || branch?.id || undefined,
+                ...(intakeExpiry ? { expiry_date: intakeExpiry } : {}),
             };
 
             const res = await StockItemsEndpoints.create(data);
@@ -1312,6 +1319,18 @@ export default function EditProduct() {
                                                     placeholder={product.barcode || generateSmartPrefix(product.name) || 'e.g. ABC'}
                                                 />
                                             </div>
+                                            <div>
+                                                <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: 'bold', color: 'black' }}>
+                                                    Expiry <span style={{ fontWeight: 'normal', color: '#888' }}>(optional)</span>
+                                                </label>
+                                                <input
+                                                    type="date"
+                                                    value={intakeExpiry}
+                                                    onChange={(e) => setIntakeExpiry(e.target.value)}
+                                                    style={{ padding: '6px 10px', border: '1px solid #ccc', borderRadius: '4px' }}
+                                                    title="Applied to every unit created here. Leave blank to auto-fill from the product's shelf life (perishables)."
+                                                />
+                                            </div>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                                 <input
                                                     type="checkbox"
@@ -1374,6 +1393,16 @@ export default function EditProduct() {
                                                     placeholder="SKU (shared) — blank = auto"
                                                     autoComplete="off"
                                                     title="If set, this SKU is stamped on the created item (and on multi-scan items). Many stock items may share one SKU."
+                                                />
+                                            </div>
+                                            <div style={{ flex: 1 }}>
+                                                <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: 'bold', color: 'black' }}>Expiry <span style={{ fontWeight: 'normal', color: '#888' }}>(optional)</span></label>
+                                                <input
+                                                    type="date"
+                                                    value={intakeExpiry}
+                                                    onChange={(e) => setIntakeExpiry(e.target.value)}
+                                                    style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}
+                                                    title="Stamped on the created item. Blank → auto from the product's shelf life (perishables)."
                                                 />
                                             </div>
                                             <button
@@ -1516,6 +1545,19 @@ export default function EditProduct() {
                                                 placeholder="blank = auto"
                                                 autoComplete="off"
                                                 title="Stamped on every scanned item while set. Many items may share one SKU."
+                                            />
+                                        </div>
+                                        <div style={{ flex: 1 }}>
+                                            <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: 'bold', color: 'black' }}>
+                                                <i className="fas fa-calendar-day" style={{ marginRight: '4px' }} />
+                                                Expiry <span style={{ fontWeight: 'normal', color: '#888' }}>(optional, shared)</span>
+                                            </label>
+                                            <input
+                                                type="date"
+                                                value={intakeExpiry}
+                                                onChange={(e) => setIntakeExpiry(e.target.value)}
+                                                style={{ width: '100%', padding: '12px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '16px' }}
+                                                title="Stamped on every scanned item while set. Blank → auto from the product's shelf life (perishables)."
                                             />
                                         </div>
                                         <button
