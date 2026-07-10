@@ -100,6 +100,9 @@ export default function EditProduct() {
     // A "current expiry" the operator can set once and change between scans; blank
     // leaves it to the stock-item lifecycle (perishable shelf-life auto-compute).
     const [intakeExpiry, setIntakeExpiry] = useState('');
+    // For a DIVISIBLE product: sellable sub-units held by each generated item
+    // (e.g. yards per roll, tablets per box). Blank/1 = an ordinary whole item.
+    const [intakeUnits, setIntakeUnits] = useState('');
 
     // Scan barcode to attach existing stock item
     const [attachBarcode, setAttachBarcode] = useState('');
@@ -398,6 +401,7 @@ export default function EditProduct() {
                     product: documentId,
                     branch: branch?.documentId || branch?.id || undefined,
                     ...(intakeExpiry ? { expiry_date: intakeExpiry } : {}),
+                    ...(Number(intakeUnits) > 1 ? { sellable_units: Number(intakeUnits) } : {}),
                 };
 
                 await StockItemsEndpoints.create(data);
@@ -445,6 +449,7 @@ export default function EditProduct() {
                 product: documentId,
                 branch: branch?.documentId || branch?.id || undefined,
                 ...(intakeExpiry ? { expiry_date: intakeExpiry } : {}),
+                ...(Number(intakeUnits) > 1 ? { sellable_units: Number(intakeUnits) } : {}),
             };
 
             await StockItemsEndpoints.create(data);
@@ -585,6 +590,7 @@ export default function EditProduct() {
                 product: documentId,
                 branch: branch?.documentId || branch?.id || undefined,
                 ...(intakeExpiry ? { expiry_date: intakeExpiry } : {}),
+                ...(Number(intakeUnits) > 1 ? { sellable_units: Number(intakeUnits) } : {}),
             };
 
             const res = await StockItemsEndpoints.create(data);
@@ -1319,6 +1325,23 @@ export default function EditProduct() {
                                                     placeholder={product.barcode || generateSmartPrefix(product.name) || 'e.g. ABC'}
                                                 />
                                             </div>
+                                            {product?.divisible && (
+                                                <div>
+                                                    <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: 'bold', color: 'black' }}>
+                                                        Sellable units / item <span style={{ fontWeight: 'normal', color: '#888' }}>(divisible)</span>
+                                                    </label>
+                                                    <input
+                                                        type="number"
+                                                        min="1"
+                                                        step="any"
+                                                        value={intakeUnits}
+                                                        onChange={(e) => setIntakeUnits(e.target.value)}
+                                                        style={{ width: '120px', padding: '6px 10px', border: '1px solid #ccc', borderRadius: '4px' }}
+                                                        placeholder="e.g. 50"
+                                                        title="Sub-units each generated item holds (yards per roll, tablets per box). Sold whole or in portions; unit price = item price ÷ this."
+                                                    />
+                                                </div>
+                                            )}
                                             <div>
                                                 <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: 'bold', color: 'black' }}>
                                                     Expiry <span style={{ fontWeight: 'normal', color: '#888' }}>(optional)</span>
