@@ -474,6 +474,16 @@ export default function ProductEditPage() {
                                                 </label>
                                             </div>
                                         </div>
+                                        <div className="col-md-3">
+                                            <div className="form-check mt-2">
+                                                <input className="form-check-input" type="checkbox"
+                                                    name="divisible" id="divisible"
+                                                    checked={product.divisible ?? false} onChange={handleChange} />
+                                                <label className="form-check-label" htmlFor="divisible" title="Each item holds multiple sellable sub-units (yards per roll, tablets per box) and can be sold whole or in portions. Set the units-per-item at intake.">
+                                                    <i className="fas fa-ruler-combined me-1 text-muted" />Divisible (sold in units)
+                                                </label>
+                                            </div>
+                                        </div>
                                         <div className="col-12 mt-3">
                                             <label className="form-label fw-bold">Summary (Markdown)</label>
                                             <MarkdownEditor

@@ -12,12 +12,14 @@ export default function StockItemPicker({
   productLabel,
   lineIndex,
   onAttach,
+  onSellUnits,
   onClose,
   attaching,
 }) {
   const [units, setUnits] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [sellQty, setSellQty] = useState("");
 
   useEffect(() => {
     if (!open || !productDocumentId) return;
@@ -26,6 +28,7 @@ export default function StockItemPicker({
       setLoading(true);
       setError("");
       setUnits([]);
+      setSellQty("");
       try {
         const res = await StockItemsEndpoints.list(1, 100, {
           statusFilter: "InStock",
@@ -62,6 +65,14 @@ export default function StockItemPicker({
   if (!open) return null;
 
   const today = new Date().toISOString().slice(0, 10);
+  // Divisible products: any unit holding more than one sellable sub-unit. Sell a
+  // quantity (the server allocates across items) rather than attaching one whole
+  // unit. Inferred from the units themselves — no dependency on the line's flag.
+  const remainingOf = (u) => (Number(u.sellable_units) || 1) - (Number(u.units_sold) || 0);
+  const unitPriceOf = (u) => { const t = Number(u.sellable_units) || 1; const p = Number(u.selling_price) || 0; return t > 0 ? p / t : p; };
+  const isDivisible = units.some((u) => (Number(u.sellable_units) || 1) > 1);
+  const canSell = isDivisible && typeof onSellUnits === "function";
+  const totalRemaining = Math.round(units.reduce((s, u) => s + Math.max(0, remainingOf(u)), 0) * 1000) / 1000;
 
   return (
     <>
@@ -94,9 +105,36 @@ export default function StockItemPicker({
             <div className="modal-body">
               <p className="text-muted small">
                 Showing InStock units for{" "}
-                <strong>{productLabel || "this product"}</strong>. Selecting one
-                transitions it to <em>Reserved</em>.
+                <strong>{productLabel || "this product"}</strong>.{" "}
+                {canSell
+                  ? "This product is sold in units — enter a quantity to sell (the server allocates across items)."
+                  : "Selecting one transitions it to Reserved."}
               </p>
+              {canSell && (
+                <div className="alert alert-info d-flex flex-wrap align-items-center gap-2 py-2">
+                  <i className="fas fa-ruler-combined" />
+                  <span className="small fw-semibold">{totalRemaining} sub-unit(s) available.</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="any"
+                    className="form-control form-control-sm"
+                    style={{ width: 110 }}
+                    value={sellQty}
+                    onChange={(e) => setSellQty(e.target.value)}
+                    placeholder="qty"
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-primary"
+                    disabled={attaching || !(Number(sellQty) > 0)}
+                    onClick={() => onSellUnits(Number(sellQty))}
+                  >
+                    {attaching ? "…" : `Sell ${Number(sellQty) > 0 ? sellQty : ""} unit(s)`}
+                  </button>
+                  <span className="text-muted small">auto-picks opened items first, then earliest expiry — or sell from a specific unit in the table.</span>
+                </div>
+              )}
               {loading && (
                 <div className="text-center py-4 text-muted">
                   <i className="fas fa-spinner fa-spin me-2" />
@@ -114,10 +152,12 @@ export default function StockItemPicker({
                         <th>SKU</th>
                         <th>Barcode</th>
                         <th>Expiry</th>
+                        {canSell && <th className="text-end">Remaining</th>}
+                        {canSell && <th className="text-end">Unit price</th>}
                         <th>Name / Note</th>
                         <th>Branch</th>
                         <th>Cost</th>
-                        <th style={{ width: 100 }} />
+                        <th style={{ width: 120 }} />
                       </tr>
                     </thead>
                     <tbody>
@@ -137,21 +177,41 @@ export default function StockItemPicker({
                               <span className="text-muted">—</span>
                             )}
                           </td>
+                          {canSell && (
+                            <td className="text-end small">
+                              {Math.round(remainingOf(u) * 1000) / 1000}
+                              <span className="text-muted"> / {Number(u.sellable_units) || 1}</span>
+                              {(Number(u.units_sold) || 0) > 0 ? <span className="badge bg-warning text-dark ms-1">open</span> : null}
+                            </td>
+                          )}
+                          {canSell && <td className="text-end small">{unitPriceOf(u).toFixed(2)}</td>}
                           <td className="small">{u.name || "—"}</td>
                           <td className="small">{u.branch?.name || "—"}</td>
                           <td className="small">
                             {u.cost_price != null ? Number(u.cost_price).toFixed(2) : "—"}
                           </td>
                           <td>
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-primary"
-                              onClick={() => onAttach(u)}
-                              disabled={attaching || expired}
-                              title={expired ? "Expired — cannot be sold" : undefined}
-                            >
-                              {attaching ? "…" : expired ? "Expired" : "Attach"}
-                            </button>
+                            {canSell ? (
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-outline-primary"
+                                onClick={() => onSellUnits(Number(sellQty), u.documentId)}
+                                disabled={attaching || expired || !(Number(sellQty) > 0)}
+                                title={expired ? "Expired — cannot be sold" : !(Number(sellQty) > 0) ? "Enter a quantity above first" : "Sell from this specific unit (warns if a nearer-expiry unit exists)"}
+                              >
+                                {attaching ? "…" : expired ? "Expired" : "Sell here"}
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-primary"
+                                onClick={() => onAttach(u)}
+                                disabled={attaching || expired}
+                                title={expired ? "Expired — cannot be sold" : undefined}
+                              >
+                                {attaching ? "…" : expired ? "Expired" : "Attach"}
+                              </button>
+                            )}
                           </td>
                         </tr>
                         );

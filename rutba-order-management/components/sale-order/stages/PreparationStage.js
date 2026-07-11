@@ -59,6 +59,31 @@ export default function PreparationStage({ order, productsCatalog, toast, onRefr
     }
   };
 
+  // Divisible product line: sell `qty` sub-units (the server allocates across
+  // InStock items). `scannedItemDocId` forces a specific unit (warns if it skips
+  // a nearer-expiry one). No whole unit is Reserved — units are consumed now.
+  const handleSellUnits = async (qty, scannedItemDocId) => {
+    if (pickerIndex == null || !(Number(qty) > 0)) return;
+    setAttaching(true);
+    try {
+      const res = await SaleOrdersEndpoints.attachDivisible(order.documentId, {
+        item_index: pickerIndex,
+        qty: Number(qty),
+        ...(scannedItemDocId ? { scanned_item_document_id: scannedItemDocId } : {}),
+      });
+      const warn = res?.allocation?.warning;
+      toast?.(`Sold ${res?.allocation?.units ?? qty} unit(s)${warn ? ` — ${warn}` : ""}.`, warn ? "warning" : "success");
+      setPickerIndex(null);
+      await onRefresh?.();
+    } catch (err) {
+      console.error("Failed to sell units", err);
+      const msg = err?.response?.data?.error?.message || err?.message || "unknown error";
+      toast?.(`Could not sell units: ${msg}`, "danger");
+    } finally {
+      setAttaching(false);
+    }
+  };
+
   const advance = async () => {
     setProcessing(true);
     try {
@@ -149,6 +174,7 @@ export default function PreparationStage({ order, productsCatalog, toast, onRefr
         lineIndex={pickerIndex ?? 0}
         attaching={attaching}
         onAttach={handleAttach}
+        onSellUnits={handleSellUnits}
         onClose={() => setPickerIndex(null)}
       />
     </>
