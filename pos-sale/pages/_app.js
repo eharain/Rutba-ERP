@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { PrimeReactProvider } from "primereact/api";
 import { useRouter } from "next/router";
 import { AuthProvider } from "@rutba/pos-shared/context/AuthContext";
 import { CartProvider } from "@rutba/pos-shared/context/CartContext";
@@ -71,6 +72,7 @@ export default function App({ Component, pageProps }) {
 
     return (
         <div className={`${geistSans.variable} ${geistMono.variable} h-100`}>
+            <PrimeReactProvider>
             <AuthProvider>
                 <CartProvider>
                     <UtilProvider>
@@ -80,6 +82,7 @@ export default function App({ Component, pageProps }) {
                     </UtilProvider>
                 </CartProvider>
             </AuthProvider>
+            </PrimeReactProvider>
         </div>
     );
 }

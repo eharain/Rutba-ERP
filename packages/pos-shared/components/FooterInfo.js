@@ -57,6 +57,31 @@ function FooterInfo({ currentApp }) {
             {groups.length > 0 && (
                 <nav className="footer-info-cats" aria-label="Switch app">
                     {groups.map((group) => {
+                        // A group with a single accessible app doesn't need a
+                        // popover — link straight to the app.
+                        if (group.apps.length === 1) {
+                            const app = group.apps[0];
+                            const linkProps = app.external
+                                ? { target: "_blank", rel: "noopener noreferrer" }
+                                : {};
+                            return (
+                                <div key={group.key} className="footer-cat">
+                                    <a
+                                        {...linkProps}
+                                        href={app.href}
+                                        className="footer-cat-btn footer-cat-solo"
+                                        title={app.label}
+                                    >
+                                        <i className={app.icon}></i>
+                                        <span className="footer-cat-label">{app.label}</span>
+                                        {app.external && (
+                                            <i className="fa-solid fa-arrow-up-right-from-square footer-cat-caret"></i>
+                                        )}
+                                    </a>
+                                </div>
+                            );
+                        }
+
                         const isOpen = openGroup === group.key;
                         return (
                             <div key={group.key} className={`footer-cat${isOpen ? ' open' : ''}`}>

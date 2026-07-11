@@ -352,6 +352,11 @@ a:hover { text-decoration: underline; }
 
 .footer-cat-btn > i:first-child { font-size: 0.82rem; opacity: 0.9; }
 
+/* Single-app group rendered as a direct link (no popover) */
+.footer-cat-solo,
+.footer-cat-solo:hover,
+.footer-cat-solo:focus { text-decoration: none; }
+
 .footer-cat-count {
     display: inline-flex;
     align-items: center;
