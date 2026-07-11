@@ -82,6 +82,7 @@ ARG NEXT_PUBLIC_ORDER_MANAGEMENT_URL
 ARG NEXT_PUBLIC_MANUFACTURING_URL
 ARG NEXT_PUBLIC_MARKETPLACE_URL
 ARG NEXT_PUBLIC_INVENTORY_URL
+ARG NEXT_PUBLIC_SEED_URL
 ARG NEXT_PUBLIC_RIDER_URL
 ARG NEXT_PUBLIC_SOCIAL_URL
 ARG NEXT_PUBLIC_CRM_URL
@@ -109,6 +110,7 @@ ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
     NEXT_PUBLIC_MANUFACTURING_URL=$NEXT_PUBLIC_MANUFACTURING_URL \
     NEXT_PUBLIC_MARKETPLACE_URL=$NEXT_PUBLIC_MARKETPLACE_URL \
     NEXT_PUBLIC_INVENTORY_URL=$NEXT_PUBLIC_INVENTORY_URL \
+    NEXT_PUBLIC_SEED_URL=$NEXT_PUBLIC_SEED_URL \
     NEXT_PUBLIC_RIDER_URL=$NEXT_PUBLIC_RIDER_URL \
     NEXT_PUBLIC_SOCIAL_URL=$NEXT_PUBLIC_SOCIAL_URL \
     NEXT_PUBLIC_CRM_URL=$NEXT_PUBLIC_CRM_URL \
@@ -402,3 +404,17 @@ COPY --from=inventory-build /app/rutba-inventory/.next/standalone ./
 COPY --from=inventory-build /app/rutba-inventory/.next/static     ./rutba-inventory/.next/static
 COPY --from=inventory-build /app/rutba-inventory/public            ./rutba-inventory/public
 CMD ["node", "rutba-inventory/server.js"]
+
+# ----------------------------------------------------------
+#  rutba-seed (Seeding control UI)
+# ----------------------------------------------------------
+FROM build-env AS seed-build
+RUN mkdir -p rutba-seed/public && npm run build --workspace=rutba-seed
+
+FROM base AS seed
+WORKDIR /app
+ENV NODE_ENV=production HOSTNAME=0.0.0.0
+COPY --from=seed-build /app/rutba-seed/.next/standalone ./
+COPY --from=seed-build /app/rutba-seed/.next/static     ./rutba-seed/.next/static
+COPY --from=seed-build /app/rutba-seed/public            ./rutba-seed/public
+CMD ["node", "rutba-seed/server.js"]

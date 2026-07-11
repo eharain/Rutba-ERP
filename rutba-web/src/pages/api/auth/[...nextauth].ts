@@ -122,8 +122,15 @@ export default NextAuth({
           }
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (error: any) {
-          // Sign In Fail
-          throw new Error(error);
+          // Sign In Fail — surface Strapi's actual message (e.g. "Your account
+          // email is not confirmed", "Invalid identifier or password") instead
+          // of axios's generic "Request failed with status code 400", so the
+          // login UI can react to it (verification prompt, etc.).
+          const message =
+            error?.response?.data?.error?.message ||
+            error?.message ||
+            "Unable to sign in. Please try again.";
+          throw new Error(message);
         }
       },
     }),

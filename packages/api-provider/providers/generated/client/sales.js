@@ -32,6 +32,21 @@ async function cancel(documentId, data) {
     return authApi.put(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
+async function checkout(documentId, data) {
+    const ep = SalesEndpointsApi.checkout(documentId, data);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+}
+
+async function markPayLater(documentId, data) {
+    const ep = SalesEndpointsApi.markPayLater(documentId, data);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+}
+
+async function unlockPayLater(documentId, data) {
+    const ep = SalesEndpointsApi.unlockPayLater(documentId, data);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+}
+
 async function saveNotes(documentId, notes) {
     const ep = SalesEndpointsApi.saveNotes(documentId, notes);
     return authApi.put(withQuery(ep.path, ep.params), wrapData(ep.data));
@@ -66,6 +81,9 @@ const endpoints = strictEndpointGuard(
         create,
         update,
         cancel,
+        checkout,
+        markPayLater,
+        unlockPayLater,
         saveNotes,
         searchByStockItem,
         searchByItemPrice,
@@ -73,7 +91,7 @@ const endpoints = strictEndpointGuard(
         saleByIdOrInvoice,
         meta: SalesEndpointsApi.meta,
     },
-    ["list","byId","exchangeReturns","create","update","cancel","saveNotes","searchByStockItem","searchByItemPrice","sales","saleByIdOrInvoice","meta"],
+    ["list","byId","exchangeReturns","create","update","cancel","checkout","markPayLater","unlockPayLater","saveNotes","searchByStockItem","searchByItemPrice","sales","saleByIdOrInvoice","meta"],
 );
 
 export default endpoints;

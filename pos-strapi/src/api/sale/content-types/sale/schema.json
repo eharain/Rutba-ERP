@@ -87,6 +87,19 @@
       "enum": ["Draft", "Completed", "Cancelled"],
       "default": "Draft"
     },
+    "pay_later": {
+      "type": "boolean",
+      "default": false
+    },
+    "pay_later_at": {
+      "type": "datetime"
+    },
+    "pay_later_by": {
+      "type": "string"
+    },
+    "pay_later_stock_status": {
+      "type": "string"
+    },
     "canceled_at": {
       "type": "datetime"
     },

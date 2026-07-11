@@ -22,7 +22,7 @@ import SaleModel from '@rutba/pos-shared/context/domain/sale/SaleModel';
 import SaleApi from '@rutba/pos-shared/lib/saleApi';
 import { recordSaleAudit, fetchSaleAudit, SALE_AUDIT_EVENT } from '@rutba/pos-shared/lib/saleAudit';
 import { useAuth } from '@rutba/pos-shared/context/AuthContext';
-import { isAppAdmin } from '@rutba/pos-shared/lib/roles';
+import { isAppAdmin, isActiveAdminRole } from '@rutba/pos-shared/lib/roles';
 import { AppContextEndpoints } from '@rutba/api-provider/endpoints';
 
 const ACTION_BADGE_CLASSES = {
@@ -51,8 +51,14 @@ export default function SalePage() {
     const router = useRouter();
     const { documentId } = router.query;
     const { currency, generateNextInvoiceNumber, ensureBranchDesk, branch, desk } = useUtil();
-    const { adminAppAccess } = useAuth();
-    const userIsAdmin = isAppAdmin(adminAppAccess, AppContextEndpoints.getAppName());
+    const { adminAppAccess, activeRoleKey } = useAuth();
+    // Admin-only chrome (Audit + Pay Later/Unlock) is gated on the user CURRENTLY
+    // acting as the sales admin role — not merely holding admin capability. This
+    // mirrors PermissionCheck showIf="admin"; the isAppAdmin fallback only covers
+    // the brief bootstrap window before activeRoleKey is set.
+    const userIsAdmin = activeRoleKey
+        ? isActiveAdminRole(activeRoleKey)
+        : isAppAdmin(adminAppAccess, AppContextEndpoints.getAppName());
     const [auditEntries, setAuditEntries] = useState([]);
     const [auditLoading, setAuditLoading] = useState(false);
     const [showAudit, setShowAudit] = useState(false);
@@ -74,6 +80,9 @@ export default function SalePage() {
     const [notesSaving, setNotesSaving] = useState(false);
     const [showLeadModal, setShowLeadModal] = useState(false);
     const [showCashDrawModal, setShowCashDrawModal] = useState(false);
+    const [showPayLaterModal, setShowPayLaterModal] = useState(false);
+    const [showUnlockModal, setShowUnlockModal] = useState(false);
+    const [payLaterSaving, setPayLaterSaving] = useState(false);
 
     /* ===============================
        Load existing sale
@@ -162,6 +171,39 @@ export default function SalePage() {
     const handleCheckoutComplete = async (payments) => {
         if (savingRef.current) return;
         const paymentsList = Array.isArray(payments) ? payments : [payments];
+
+        // Locked pay-later sale: line items are frozen, so we complete it
+        // server-side (record payment → release reserved stock → complete)
+        // instead of re-saving the cart, which the server lock would reject.
+        if (saleModel.isPayLater) {
+            savingRef.current = true;
+            setLoading(true);
+            try {
+                paymentsList.forEach((payment) => {
+                    recordSaleAudit(
+                        saleModel.documentId,
+                        'PaymentRecorded',
+                        `${payment.payment_method || 'Payment'} ${currency}${Number(payment.amount || 0).toFixed(2)}${payment.transaction_no ? ` (${payment.transaction_no})` : ''}`,
+                    );
+                });
+                await SaleApi.checkoutPayLater(saleModel.documentId, paymentsList);
+                recordSaleAudit(
+                    saleModel.documentId,
+                    'CheckedOut',
+                    `Total ${currency}${Number(saleModel.total || 0).toFixed(2)} · ${paymentsList.length} payment(s) · pay-later`,
+                );
+                await loadSale();
+            } catch (err) {
+                console.error('Pay-later checkout failed', err);
+                alert(err?.response?.data?.error?.message || 'Checkout failed');
+            } finally {
+                savingRef.current = false;
+                setLoading(false);
+                setShowCheckout(false);
+            }
+            return;
+        }
+
         paymentsList.forEach((payment) => {
             saleModel.addPayment(payment);
             recordSaleAudit(
@@ -186,6 +228,34 @@ export default function SalePage() {
     const handleSavePayments = async (payments) => {
         if (savingRef.current) return;
         const paymentsList = Array.isArray(payments) ? payments : [payments];
+
+        // Locked pay-later sale: record the payment server-side (frozen items
+        // can't be re-saved). The server keeps the sale locked on a partial
+        // payment and only completes + releases stock once fully paid.
+        if (saleModel.isPayLater) {
+            savingRef.current = true;
+            setLoading(true);
+            try {
+                paymentsList.forEach((payment) => {
+                    recordSaleAudit(
+                        saleModel.documentId,
+                        'PaymentRecorded',
+                        `${payment.payment_method || 'Payment'} ${currency}${Number(payment.amount || 0).toFixed(2)}${payment.transaction_no ? ` (${payment.transaction_no})` : ''}`,
+                    );
+                });
+                await SaleApi.checkoutPayLater(saleModel.documentId, paymentsList);
+                await loadSale();
+            } catch (err) {
+                console.error('Pay-later payment failed', err);
+                alert(err?.response?.data?.error?.message || 'Could not record payment');
+            } finally {
+                savingRef.current = false;
+                setLoading(false);
+                setShowCheckout(false);
+            }
+            return;
+        }
+
         paymentsList.forEach((payment) => {
             saleModel.addPayment(payment);
             recordSaleAudit(
@@ -240,6 +310,60 @@ export default function SalePage() {
             setLoading(false);
         }
 
+    };
+
+    /* ===============================
+       Pay Later (lock / unlock)
+    =============================== */
+
+    const handleMarkPayLater = async (stockStatus) => {
+        if (savingRef.current || payLaterSaving) return;
+        if (!saleModel.customer?.name && !saleModel.customer?.phone) {
+            alert('A customer (name or phone) is required before marking Pay Later.');
+            return;
+        }
+        if (saleModel.items.length === 0) {
+            alert('Add at least one item before marking Pay Later.');
+            return;
+        }
+        setPayLaterSaving(true);
+        try {
+            // Persist the cart first so the lock applies to saved items + customer.
+            // saveSale sets documentId on new sales (without redirecting).
+            const wasNew = !saleModel.documentId || documentId === 'new';
+            await SaleApi.saveSale(saleModel, { paid: false });
+            await SaleApi.markPayLater(saleModel.documentId, stockStatus);
+            recordSaleAudit(saleModel.documentId, 'Saved', `Marked Pay Later · stock: ${stockStatus}`);
+            setShowPayLaterModal(false);
+            // New sales still sit on the /new route — move to the real URL so the
+            // reloaded page shows the locked state; existing sales just reload.
+            if (wasNew && saleModel.documentId) {
+                await router.replace(`/${saleModel.documentId}/sale`);
+            } else {
+                await loadSale();
+            }
+        } catch (err) {
+            console.error('Mark Pay Later failed', err);
+            alert(err?.response?.data?.error?.message || 'Could not mark Pay Later');
+        } finally {
+            setPayLaterSaving(false);
+        }
+    };
+
+    const handleUnlockPayLater = async (stockStatus) => {
+        if (savingRef.current || payLaterSaving) return;
+        setPayLaterSaving(true);
+        try {
+            await SaleApi.unlockPayLater(saleModel.documentId, stockStatus);
+            recordSaleAudit(saleModel.documentId, 'Saved', `Unlocked Pay Later · stock: ${stockStatus}`);
+            setShowUnlockModal(false);
+            await loadSale();
+        } catch (err) {
+            console.error('Unlock Pay Later failed', err);
+            alert(err?.response?.data?.error?.message || 'Could not unlock');
+        } finally {
+            setPayLaterSaving(false);
+        }
     };
 
     /* ===============================
@@ -368,7 +492,12 @@ export default function SalePage() {
                             </span>
                             {saleModel.isPaid && <span className="badge bg-success">Paid</span>}
                             {saleModel.isCanceled && <span className="badge bg-danger">Cancelled</span>}
-                            {!saleModel.isPaid && !saleModel.isCanceled && saleModel.items.length > 0 && (
+                            {saleModel.isPayLater && (
+                                <span className="badge bg-warning text-dark" title={`Locked — Pay Later (stock: ${saleModel.pay_later_stock_status || 'Reserved'})`}>
+                                    <i className="fas fa-lock me-1"></i>Pay Later
+                                </span>
+                            )}
+                            {!saleModel.isPaid && !saleModel.isCanceled && !saleModel.isPayLater && saleModel.items.length > 0 && (
                                 <span className="badge bg-secondary">Draft</span>
                             )}
                             <div className="ms-auto d-flex gap-2">
@@ -398,6 +527,24 @@ export default function SalePage() {
                                         }}
                                     >
                                         <i className="fas fa-history me-1"></i>Audit
+                                    </button>
+                                )}
+                                {userIsAdmin && saleModel.isPayLater && (
+                                    <button
+                                        className="btn btn-sm btn-outline-secondary"
+                                        title="Unlock this pay-later order back to an editable draft"
+                                        onClick={() => setShowUnlockModal(true)}
+                                    >
+                                        <i className="fas fa-unlock me-1"></i>Unlock
+                                    </button>
+                                )}
+                                {userIsAdmin && !saleModel.isPayLater && saleModel.isEditable && saleModel.items.length > 0 && (
+                                    <button
+                                        className="btn btn-sm btn-outline-warning"
+                                        title="Lock this order and let the customer pay later"
+                                        onClick={() => setShowPayLaterModal(true)}
+                                    >
+                                        <i className="fas fa-clock me-1"></i>Pay Later
                                     </button>
                                 )}
                                 {saleModel.customer?.name && (
@@ -717,9 +864,9 @@ export default function SalePage() {
                             );
                         })()}
 
-                        {/* Checkout Modal */}
+                        {/* Checkout Modal — allowed for locked pay-later sales too */}
                         <CheckoutModal
-                            isOpen={showCheckout && saleModel.isEditable}
+                            isOpen={showCheckout && saleModel.isCheckoutable}
                             onClose={() => setShowCheckout(false)}
                             total={saleModel.total}
                             exchangeReturnCredit={saleModel.exchangeReturnTotal}
@@ -814,6 +961,38 @@ export default function SalePage() {
                             onClose={() => setShowCashDrawModal(false)}
                             saleRegister={saleModel.cashRegister}
                         />
+
+                        {/* ── Pay Later: lock the order + choose stock treatment ── */}
+                        <StockStatusModal
+                            isOpen={showPayLaterModal}
+                            title="Mark as Pay Later"
+                            intro="Locks this order and its items — no further changes except checkout. Choose what happens to the stock for this order:"
+                            confirmLabel="Lock — Pay Later"
+                            confirmClass="btn-warning"
+                            defaultStatus="Reserved"
+                            saving={payLaterSaving}
+                            currency={currency}
+                            total={saleModel.total}
+                            customer={saleModel.customer}
+                            onClose={() => setShowPayLaterModal(false)}
+                            onConfirm={handleMarkPayLater}
+                        />
+
+                        {/* ── Unlock a pay-later order back to an editable draft ── */}
+                        <StockStatusModal
+                            isOpen={showUnlockModal}
+                            title="Unlock Pay Later"
+                            intro="Returns this order to an editable draft. Choose where to move its stock:"
+                            confirmLabel="Unlock"
+                            confirmClass="btn-primary"
+                            defaultStatus="InStock"
+                            saving={payLaterSaving}
+                            currency={currency}
+                            total={saleModel.total}
+                            customer={saleModel.customer}
+                            onClose={() => setShowUnlockModal(false)}
+                            onConfirm={handleUnlockPayLater}
+                        />
                         </div>{/* /flex-grow-1 main content */}
 
                         {/* ── Right-rail Quick Add (sticky, collapsible) ── */}
@@ -901,7 +1080,7 @@ function SaleButtons({ handlePrint, handleSave, saleModel, setShowCheckout, isDi
                 <button
                     className={`btn ${canCheckout ? 'btn-success' : 'btn-outline-secondary'}`}
                     onClick={handleCheckoutClick}
-                    disabled={itemsCount === 0 || !saleModel.isEditable || (!deskHasCashRegister)}
+                    disabled={itemsCount === 0 || !saleModel.isCheckoutable || (!deskHasCashRegister)}
                     title={checkoutTooltip}
                     style={{ minWidth: 160 }}
                 >
@@ -910,5 +1089,71 @@ function SaleButtons({ handlePrint, handleSave, saleModel, setShowCheckout, isDi
                 </button>
             </PermissionCheck>
         </div>)
+}
+
+// Choice of what happens to a pay-later order's stock. The admin picks the
+// intention for THIS order: hold it (Reserved), hand it over now (Sold), or
+// leave it available (InStock).
+const STOCK_STATUS_OPTIONS = [
+    { value: 'Reserved', label: 'Reserve stock', icon: 'fa-lock', desc: 'Hold these items for this customer — no one else can sell them until payment.' },
+    { value: 'Sold', label: 'Mark as sold now', icon: 'fa-box-open', desc: 'Goods leave now, customer pays later (credit sale). Removes items from stock.' },
+    { value: 'InStock', label: 'Leave in stock', icon: 'fa-warehouse', desc: 'Only lock the order lines — inventory stays available to others.' },
+];
+
+function StockStatusModal({ isOpen, title, intro, confirmLabel, confirmClass = 'btn-primary', defaultStatus = 'Reserved', saving, currency, total, customer, onClose, onConfirm }) {
+    const [status, setStatus] = useState(defaultStatus);
+    useEffect(() => { if (isOpen) setStatus(defaultStatus); }, [isOpen, defaultStatus]);
+    if (!isOpen) return null;
+
+    return (
+        <div className="modal d-block" tabIndex={-1} style={{ background: 'rgba(0,0,0,0.5)' }} role="dialog">
+            <div className="modal-dialog modal-dialog-centered" role="document">
+                <div className="modal-content">
+                    <div className="modal-header py-2">
+                        <h6 className="modal-title"><i className="fas fa-clock me-2 text-warning"></i>{title}</h6>
+                        <button type="button" className="btn-close" onClick={onClose} disabled={saving}></button>
+                    </div>
+                    <div className="modal-body">
+                        {(customer?.name || customer?.phone) && (
+                            <div className="alert alert-light border py-2 mb-3 small">
+                                <i className="fas fa-user me-1"></i>
+                                <strong>{customer?.name || 'Customer'}</strong>
+                                {customer?.phone ? <span className="text-muted"> · {customer.phone}</span> : null}
+                                <span className="float-end fw-semibold">{currency}{Number(total || 0).toFixed(2)}</span>
+                            </div>
+                        )}
+                        <p className="small text-muted mb-2">{intro}</p>
+                        <div className="d-flex flex-column gap-2">
+                            {STOCK_STATUS_OPTIONS.map((opt) => (
+                                <label
+                                    key={opt.value}
+                                    className={`border rounded p-2 d-flex align-items-start gap-2 ${status === opt.value ? 'border-primary bg-light' : ''}`}
+                                    style={{ cursor: 'pointer' }}
+                                >
+                                    <input
+                                        type="radio"
+                                        name="stock-status"
+                                        className="form-check-input mt-1"
+                                        checked={status === opt.value}
+                                        onChange={() => setStatus(opt.value)}
+                                    />
+                                    <span>
+                                        <span className="fw-semibold"><i className={`fas ${opt.icon} me-2`}></i>{opt.label}</span>
+                                        <span className="d-block small text-muted">{opt.desc}</span>
+                                    </span>
+                                </label>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="modal-footer py-2">
+                        <button type="button" className="btn btn-outline-secondary" onClick={onClose} disabled={saving}>Cancel</button>
+                        <button type="button" className={`btn ${confirmClass}`} onClick={() => onConfirm(status)} disabled={saving}>
+                            {saving ? <><span className="spinner-border spinner-border-sm me-1"></span>Working…</> : confirmLabel}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
 }
 

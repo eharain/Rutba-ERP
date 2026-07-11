@@ -10,6 +10,7 @@
     "dev": "strapi develop",
     "develop": "strapi develop",
     "backfill:inventory-foundation": "node scripts/backfill-inventory-foundation.js",
+    "seed": "node scripts/seed.js",
     "build-start": "strapi build && strapi start",
     "start": "strapi start",
     "startjs": "node server.js",

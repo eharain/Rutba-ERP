@@ -76,6 +76,7 @@ export * from './sale-orders.js';
 export * from './sale-return-items.js';
 export * from './sale-returns.js';
 export * from './sales.js';
+export * from './seed.js';
 export * from './seo-metas.js';
 export * from './site-setting.js';
 export * from './social-accounts.js';

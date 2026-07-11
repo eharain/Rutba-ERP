@@ -28,6 +28,10 @@ export default class SaleModel {
         sale_date = new Date(),
         payment_status = "Unpaid",
         status = "Draft",
+        pay_later = false,
+        pay_later_at = null,
+        pay_later_by = null,
+        pay_later_stock_status = null,
         canceled_at = null,
         canceled_by = null,
         notes = "",
@@ -43,6 +47,10 @@ export default class SaleModel {
         this.sale_date = Date.parse(sale_date) > new Date(1, 1, 2025).getTime() ? new Date(sale_date) : new Date();
         this.payment_status = payment_status || 'Unpaid';
         this.status = status || 'Draft';
+        this.pay_later = pay_later === true;
+        this.pay_later_at = pay_later_at;
+        this.pay_later_by = pay_later_by;
+        this.pay_later_stock_status = pay_later_stock_status;
         this.canceled_at = canceled_at;
         this.canceled_by = canceled_by;
         this.notes = notes || '';
@@ -163,7 +171,21 @@ export default class SaleModel {
         return this.status === 'Cancelled';
     }
 
+    // A "pay later" sale is locked: its line items and customer can't be
+    // changed. Its only exits are checkout (take payment) or an admin unlock.
+    get isPayLater() {
+        return this.pay_later === true;
+    }
+
+    // Can the line items / customer be modified? Locked once paid, cancelled,
+    // or marked pay-later.
     get isEditable() {
+        return !this.isPaid && !this.isCanceled && !this.isPayLater;
+    }
+
+    // Can the sale still be checked out (take payment)? A pay-later sale is
+    // NOT editable but IS still checkout-able — that's the whole point.
+    get isCheckoutable() {
         return !this.isPaid && !this.isCanceled;
     }
 

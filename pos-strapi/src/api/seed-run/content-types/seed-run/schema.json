@@ -1,0 +1,81 @@
+{
+  "kind": "collectionType",
+  "collectionName": "seed_runs",
+  "info": {
+    "singularName": "seed-run",
+    "pluralName": "seed-runs",
+    "displayName": "Seed Run",
+    "description": "Audit trail of seed engine runs (full/partial), and the anchor content-type for api-pro seed endpoint policies."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "mode": {
+      "type": "enumeration",
+      "enum": [
+        "full",
+        "partial"
+      ],
+      "default": "partial",
+      "required": true
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "running",
+        "ok",
+        "failed"
+      ],
+      "default": "running"
+    },
+    "ok_count": {
+      "type": "integer",
+      "default": 0
+    },
+    "failed_count": {
+      "type": "integer",
+      "default": 0
+    },
+    "skipped_count": {
+      "type": "integer",
+      "default": 0
+    },
+    "created_count": {
+      "type": "integer",
+      "default": 0
+    },
+    "updated_count": {
+      "type": "integer",
+      "default": 0
+    },
+    "triggered_by": {
+      "type": "string"
+    },
+    "source": {
+      "type": "enumeration",
+      "enum": [
+        "cli",
+        "ui",
+        "deploy"
+      ],
+      "default": "cli"
+    },
+    "only_keys": {
+      "type": "json"
+    },
+    "error": {
+      "type": "text"
+    },
+    "results": {
+      "type": "json"
+    },
+    "started_at": {
+      "type": "datetime"
+    },
+    "finished_at": {
+      "type": "datetime"
+    }
+  }
+}

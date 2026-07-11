@@ -6,6 +6,9 @@ export interface SalesEndpointsType {
     create(data: any): Promise<any>;
     update(documentId: any, data: any): Promise<any>;
     cancel(documentId: any, data: any): Promise<any>;
+    checkout(documentId: any, data: any): Promise<any>;
+    markPayLater(documentId: any, data: any): Promise<any>;
+    unlockPayLater(documentId: any, data: any): Promise<any>;
     saveNotes(documentId: any, notes: any): Promise<any>;
     searchByStockItem(term: any): Promise<any>;
     searchByItemPrice({ min, max }?: any): Promise<any>;

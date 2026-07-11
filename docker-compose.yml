@@ -51,7 +51,7 @@ services:
         condition: service_healthy
     ports:
       - "${PORT_STRAPI}:${PORT_STRAPI}"
-    environment:
+    environment: &strapi-env
       HOST: ${STRAPI_HOST}
       PORT: ${PORT_STRAPI}
       DATABASE_CLIENT: ${STRAPI_DATABASE_CLIENT}
@@ -85,6 +85,33 @@ services:
       - strapi_uploads:/app/pos-strapi/public/uploads
 
   # --------------------------------------------------------
+  # Seed one-shot (deploy-time seeding)
+  # --------------------------------------------------------
+  # Runs the standalone seed engine once against the DB, then exits. Seeding is
+  # NO LONGER done inside the strapi server bootstrap — this service is the
+  # deploy-time seeder. Reuses the strapi image + env (same DB/secrets/uploads)
+  # via the &strapi-env anchor. Kept independent of the `strapi` service (no
+  # depends_on: service_completed_successfully) so a seed failure never blocks
+  # the API. Run explicitly:
+  #   docker compose --profile seed run --rm strapi-seed
+  # Or, for a full re-apply:
+  #   docker compose --profile seed run --rm strapi-seed npm run seed -- --mode=full
+  strapi-seed:
+    build:
+      context: .
+      target: strapi
+    profiles: ["seed"]
+    restart: "no"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      <<: *strapi-env
+    volumes:
+      - strapi_uploads:/app/pos-strapi/public/uploads
+    command: ["npm", "run", "seed"]
+
+  # --------------------------------------------------------
   # Auth Portal
   # --------------------------------------------------------
   auth:
@@ -111,6 +138,7 @@ services:
         NEXT_PUBLIC_CMS_URL: ${NEXT_PUBLIC_CMS_URL}
         NEXT_PUBLIC_MARKETPLACE_URL: ${NEXT_PUBLIC_MARKETPLACE_URL}
         NEXT_PUBLIC_INVENTORY_URL: ${NEXT_PUBLIC_INVENTORY_URL}
+        NEXT_PUBLIC_SEED_URL: ${NEXT_PUBLIC_SEED_URL}
         NEXT_PUBLIC_IMAGE_HOST_PROTOCOL: ${NEXT_PUBLIC_IMAGE_HOST_PROTOCOL}
         NEXT_PUBLIC_IMAGE_HOST_NAME: ${NEXT_PUBLIC_IMAGE_HOST_NAME}
         NEXT_PUBLIC_IMAGE_HOST_PORT: ${NEXT_PUBLIC_IMAGE_HOST_PORT}
@@ -433,6 +461,23 @@ services:
       - "${PORT_INVENTORY:-4017}:${PORT_INVENTORY:-4017}"
     environment:
       PORT: ${PORT_INVENTORY:-4017}
+      HOSTNAME: 0.0.0.0
+
+  # --------------------------------------------------------
+  # Seeding Control
+  # --------------------------------------------------------
+  seed:
+    build:
+      context: .
+      target: seed
+      args: *global-build-args
+    restart: unless-stopped
+    depends_on:
+      - strapi
+    ports:
+      - "${PORT_SEED:-4018}:${PORT_SEED:-4018}"
+    environment:
+      PORT: ${PORT_SEED:-4018}
       HOSTNAME: 0.0.0.0
 
 volumes:

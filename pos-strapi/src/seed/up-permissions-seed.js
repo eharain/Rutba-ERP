@@ -29,6 +29,7 @@ const STANDARD_ACTIONS = ['find', 'findOne', 'create', 'update', 'delete'];
 // authorization (e.g. crm-lead.assignees checks the caller holds a CRM
 // app-role itself, because a UP grant alone admits every app user).
 const CUSTOM_ACTIONS = {
+  'api::sale.sale': ['checkout', 'markPayLater', 'unlockPayLater'],
   'api::crm-lead.crm-lead': ['assignees'],
   'api::stock-item.stock-item': ['resolveBulkStock', 'processBulkStock'],
   'api::hr-leave-request.hr-leave-request': ['myRequests', 'teamQueue', 'approve', 'reject', 'cancel'],
@@ -38,6 +39,7 @@ const CUSTOM_ACTIONS = {
   'api::purchase.purchase': ['generateBill'],
   'api::pay-payroll-run.pay-payroll-run': ['preview', 'process', 'cancel'],
   'api::pay-payslip.pay-payslip': ['myPayslips', 'markPaid'],
+  'api::seed-run.seed-run': ['runSeed', 'getStatus', 'listRuns'],
 };
 
 function resolveApiProviderRoot(strapi) {

@@ -5,6 +5,7 @@ export interface WebAuthEndpointsType {
     providerCallback(provider: any, accessToken: any): Promise<any>;
     forgotPassword(data: any): Promise<any>;
     resetPassword(data: any): Promise<any>;
+    sendEmailConfirmation(data: any): Promise<any>;
     meta: any;
 }
 

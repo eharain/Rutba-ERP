@@ -13,4 +13,8 @@ export const WebAuthEndpoints = {
   forgotPassword: (data) => ({ path: '/auth/forgot-password', method: 'post', data }),
   // Consumes the `code` query param from the reset email plus the new password.
   resetPassword: (data) => ({ path: '/auth/reset-password', method: 'post', data }),
+  // Re-send the account-verification email for an as-yet unconfirmed address.
+  // Body: { email }. Requires email_confirmation enabled + the public role
+  // granted `auth.sendEmailConfirmation` (see pos-strapi bootstrap).
+  sendEmailConfirmation: (data) => ({ path: '/auth/send-email-confirmation', method: 'post', data }),
 };

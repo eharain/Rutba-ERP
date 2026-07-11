@@ -27,6 +27,11 @@ async function resetPassword(data) {
     return webApi.post(withQuery(ep.path, ep.params), ep.data);
 }
 
+async function sendEmailConfirmation(data) {
+    const ep = WebAuthEndpointsApi.sendEmailConfirmation(data);
+    return webApi.post(withQuery(ep.path, ep.params), ep.data);
+}
+
 const endpoints = strictEndpointGuard(
     'WebAuthEndpoints',
     {
@@ -35,9 +40,10 @@ const endpoints = strictEndpointGuard(
         providerCallback,
         forgotPassword,
         resetPassword,
+        sendEmailConfirmation,
         meta: WebAuthEndpointsApi.meta,
     },
-    ["localSignIn","localRegister","providerCallback","forgotPassword","resetPassword","meta"],
+    ["localSignIn","localRegister","providerCallback","forgotPassword","resetPassword","sendEmailConfirmation","meta"],
 );
 
 export default endpoints;

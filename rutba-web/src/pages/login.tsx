@@ -14,6 +14,7 @@ export default function LoginPage() {
   const router = useRouter();
   const settings = useSiteSettings();
   const redirect = router.query.redirect as string | undefined;
+  const justConfirmed = router.query.confirmed === "1";
 
   useEffect(() => {
     if (session.data?.jwt && !redirect) {
@@ -118,6 +119,12 @@ export default function LoginPage() {
                   Enter your details and we&apos;ll get you back in.
                 </p>
               </div>
+
+              {justConfirmed && (
+                <div className="rounded-md border border-green-600/40 bg-green-600/10 px-4 py-3 text-sm text-green-700 dark:text-green-400">
+                  Your email is verified — you can now log in.
+                </div>
+              )}
 
               <FormLogin />
 

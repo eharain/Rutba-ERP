@@ -76,6 +76,7 @@ export * from './sale-orders';
 export * from './sale-return-items';
 export * from './sale-returns';
 export * from './sales';
+export * from './seed';
 export * from './seo-metas';
 export * from './site-setting';
 export * from './social-accounts';

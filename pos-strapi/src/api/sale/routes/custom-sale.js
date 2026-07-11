@@ -3,12 +3,22 @@ module.exports = {
     {
       method: 'POST',
       path: '/sales/:id/checkout',
-      handler: 'checkout.checkout',
+      handler: 'sale.checkout',
     },
     {
       method: 'POST',
       path: '/sales/:id/record-payment',
       handler: 'record-payment.recordPayment',
+    },
+    {
+      method: 'POST',
+      path: '/sales/:id/pay-later/unlock',
+      handler: 'sale.unlockPayLater',
+    },
+    {
+      method: 'POST',
+      path: '/sales/:id/pay-later',
+      handler: 'sale.markPayLater',
     },
     {
       method: 'PUT',

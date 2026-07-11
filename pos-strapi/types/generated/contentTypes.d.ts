@@ -5404,6 +5404,10 @@ export interface ApiSaleSale extends Struct.CollectionTypeSchema {
       'manyToMany',
       'plugin::users-permissions.user'
     >;
+    pay_later: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    pay_later_at: Schema.Attribute.DateTime;
+    pay_later_by: Schema.Attribute.String;
+    pay_later_stock_status: Schema.Attribute.String;
     payment_status: Schema.Attribute.Enumeration<
       ['Paid', 'Partial', 'Unpaid']
     > &
@@ -5424,6 +5428,52 @@ export interface ApiSaleSale extends Struct.CollectionTypeSchema {
     subtotal: Schema.Attribute.Decimal;
     tax: Schema.Attribute.Decimal;
     total: Schema.Attribute.Decimal & Schema.Attribute.Required;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiSeedRunSeedRun extends Struct.CollectionTypeSchema {
+  collectionName: 'seed_runs';
+  info: {
+    description: 'Audit trail of seed engine runs (full/partial), and the anchor content-type for api-pro seed endpoint policies.';
+    displayName: 'Seed Run';
+    pluralName: 'seed-runs';
+    singularName: 'seed-run';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    created_count: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    error: Schema.Attribute.Text;
+    failed_count: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    finished_at: Schema.Attribute.DateTime;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::seed-run.seed-run'
+    > &
+      Schema.Attribute.Private;
+    mode: Schema.Attribute.Enumeration<['full', 'partial']> &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'partial'>;
+    ok_count: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    only_keys: Schema.Attribute.JSON;
+    publishedAt: Schema.Attribute.DateTime;
+    results: Schema.Attribute.JSON;
+    skipped_count: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    source: Schema.Attribute.Enumeration<['cli', 'ui', 'deploy']> &
+      Schema.Attribute.DefaultTo<'cli'>;
+    started_at: Schema.Attribute.DateTime;
+    status: Schema.Attribute.Enumeration<['running', 'ok', 'failed']> &
+      Schema.Attribute.DefaultTo<'running'>;
+    triggered_by: Schema.Attribute.String;
+    updated_count: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -7700,6 +7750,7 @@ declare module '@strapi/strapi' {
       'api::sale-return-item.sale-return-item': ApiSaleReturnItemSaleReturnItem;
       'api::sale-return.sale-return': ApiSaleReturnSaleReturn;
       'api::sale.sale': ApiSaleSale;
+      'api::seed-run.seed-run': ApiSeedRunSeedRun;
       'api::seo-meta.seo-meta': ApiSeoMetaSeoMeta;
       'api::site-setting.site-setting': ApiSiteSettingSiteSetting;
       'api::social-account.social-account': ApiSocialAccountSocialAccount;

@@ -366,6 +366,49 @@ async function applyRecord(strapi, uid, record, fileName) {
     return 'updated';
 }
 
+/**
+ * Run a single seed file by name and return a normalized summary. This is the
+ * per-dataset entrypoint the seed registry uses so each JSON file (cms-page,
+ * delivery-method, notification-template, site-setting) appears as its own
+ * tailorable/runnable item in the control app — rather than one opaque
+ * "run all JSON" step. Throws if the file fails to parse; per-record failures
+ * are counted, and the function throws at the end if any record failed so the
+ * engine marks the entry failed.
+ */
+async function runJsonSeedFile(strapi, fileName) {
+    const seedFile = parseSeedFile(fileName);
+    if (!seedFile.enabled) {
+        return { created: 0, updated: 0, skipped: 0, disabled: true };
+    }
+
+    let created = 0;
+    let updated = 0;
+    let kept = 0;
+    const errors = [];
+
+    for (const record of seedFile.records) {
+        try {
+            const result = await applyRecord(strapi, seedFile.uid, record, fileName);
+            if (result === 'created') created += 1;
+            else if (result === 'updated') updated += 1;
+            else if (result === 'kept') kept += 1;
+        } catch (error) {
+            errors.push(toErrorMessage(error));
+        }
+    }
+
+    if (errors.length > 0) {
+        const shown = errors.slice(0, MAX_REPORTED_ERRORS);
+        for (const err of shown) strapi.log.error(`[json-seed] ${fileName}: ${err}`);
+        if (errors.length > shown.length) {
+            strapi.log.error(`[json-seed] ...and ${errors.length - shown.length} more error(s).`);
+        }
+        throw new Error(`[json-seed] ${fileName}: ${errors.length} record error(s).`);
+    }
+
+    return { created, updated, skipped: kept };
+}
+
 async function runJsonSeeds(strapi) {
     const files = listSeedFiles();
 
@@ -452,3 +495,5 @@ async function runJsonSeeds(strapi) {
 }
 
 module.exports = runJsonSeeds;
+module.exports.runJsonSeeds = runJsonSeeds;
+module.exports.runJsonSeedFile = runJsonSeedFile;

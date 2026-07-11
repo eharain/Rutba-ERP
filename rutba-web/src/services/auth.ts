@@ -34,6 +34,10 @@ export function createWebAuthService(config = {}) {
         return WebAuthEndpoints.resetPassword(data);
     };
 
+    const resendConfirmation = async (email: string) => {
+        return WebAuthEndpoints.sendEmailConfirmation({ email });
+    };
+
     return {
         endpoints: WebAuthEndpoints,
         signInWithCredential,
@@ -41,6 +45,7 @@ export function createWebAuthService(config = {}) {
         signUpWithCredential,
         forgotPassword,
         resetPassword,
+        resendConfirmation,
     };
 }
 

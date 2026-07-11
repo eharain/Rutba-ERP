@@ -108,6 +108,14 @@ inventory.rutba.pk {
 	}
 }
 
+# ---- Seeding control (admin) -------------------------------
+seed.rutba.pk {
+	import verif seed.rutba.pk
+	handle {
+		reverse_proxy seed:4018
+	}
+}
+
 # ---- Storefront: legacy staging host -----------------------
 # Apex is live, so new.rutba.pk is redundant — permanently
 # redirect it (and www) to the real apex so old links still land.

@@ -17,12 +17,26 @@ import {
 import { useRouter } from "next/router";
 // import GoogleAuthButton from "./google-auth-button";
 import { useState } from "react";
+import { createWebAuthService } from "@/services/";
+import { BASE_URL } from "@/static/const";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+
+const authService = createWebAuthService({ baseURL: BASE_URL });
+
+// Strapi returns this message from /auth/local when email_confirmation is on
+// and the account hasn't been verified yet.
+const isUnconfirmedError = (err: unknown) =>
+  typeof err === "string" && /email is not confirmed/i.test(err);
 
 export default function FormLogin() {
   const router = useRouter();
   const { handleRejection } = useErrorHandler();
 
   const [isLoading, setIsLoading] = useState(false);
+  const [unconfirmedEmail, setUnconfirmedEmail] = useState<string | null>(null);
+  const [resendState, setResendState] = useState<"idle" | "sending" | "sent">(
+    "idle"
+  );
 
   const {
     register,
@@ -37,6 +51,7 @@ export default function FormLogin() {
   > = async (data) => {
     try {
       setIsLoading(true);
+      setUnconfirmedEmail(null);
 
       const result = await signIn("credentials", {
         redirect: false,
@@ -56,12 +71,57 @@ export default function FormLogin() {
       }
     } catch (error) {
       setIsLoading(false);
+      if (isUnconfirmedError(error)) {
+        setResendState("idle");
+        setUnconfirmedEmail(data.email);
+        return;
+      }
+      handleRejection(error);
+    }
+  };
+
+  const onResendConfirmation = async () => {
+    if (!unconfirmedEmail) return;
+    try {
+      setResendState("sending");
+      await authService.resendConfirmation(unconfirmedEmail);
+      setResendState("sent");
+    } catch (error) {
+      setResendState("idle");
       handleRejection(error);
     }
   };
 
   return (
     <>
+      {unconfirmedEmail && (
+        <Alert variant={"default"} className="mb-4 border-amber-500/50">
+          <AlertTitle>Verify your email to continue</AlertTitle>
+          <AlertDescription className="text-sm">
+            Your account isn&apos;t verified yet. Check{" "}
+            <strong>{unconfirmedEmail}</strong> for the verification link.
+          </AlertDescription>
+          <div className="mt-2 text-sm">
+            {resendState === "sent" ? (
+              <span className="text-muted-foreground">
+                Verification email re-sent.
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={onResendConfirmation}
+                disabled={resendState === "sending"}
+                className="text-brand font-semibold underline disabled:opacity-60"
+              >
+                {resendState === "sending"
+                  ? "Resending…"
+                  : "Resend verification email"}
+              </button>
+            )}
+          </div>
+        </Alert>
+      )}
+
       <form
         onSubmit={handleSubmit(onLoginWithCredential)}
         className="space-y-4"

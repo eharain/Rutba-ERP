@@ -117,6 +117,13 @@
       "sale_staff"
     ]
   },
+  "seed": {
+    "roles": [
+      "seed_admin",
+      "seed_manager",
+      "seed_staff"
+    ]
+  },
   "social": {
     "roles": [
       "social_admin",

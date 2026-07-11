@@ -34,6 +34,10 @@ export default function FormRegister() {
   });
 
   const [showRegisteredAlert, setShowRegisteredAlert] = useState(false);
+  const [registeredEmail, setRegisteredEmail] = useState("");
+  const [resendState, setResendState] = useState<"idle" | "sending" | "sent">(
+    "idle"
+  );
 
   const onRegisterWithCredential: SubmitHandler<
     ValidationFormRegisterSchema
@@ -48,6 +52,8 @@ export default function FormRegister() {
 
       resetFormRegister();
 
+      setRegisteredEmail(data.email);
+      setResendState("idle");
       setShowRegisteredAlert(true);
       setIsLoading(false);
     } catch (error) {
@@ -56,15 +62,48 @@ export default function FormRegister() {
     }
   };
 
+  const onResendConfirmation = async () => {
+    if (!registeredEmail) return;
+    try {
+      setResendState("sending");
+      await authService.resendConfirmation(registeredEmail);
+      setResendState("sent");
+    } catch (error) {
+      setResendState("idle");
+      handleRejection(error);
+    }
+  };
+
   return (
     <>
       {showRegisteredAlert && (
         <Alert variant={"default"} className="bg-green-600 text-white">
-          <AlertTitle>Account created 🎉</AlertTitle>
+          <AlertTitle>Almost there — verify your email 📧</AlertTitle>
           <AlertDescription className="text-sm">
-            You&apos;re all set — log in to start shopping.
+            We&apos;ve sent a verification link to{" "}
+            <strong>{registeredEmail}</strong>. Click it to activate your
+            account, then log in to start shopping.
           </AlertDescription>
-          <Link href="/login" className="text-blue-500">Login</Link>
+          <div className="mt-2 flex items-center gap-3 text-sm">
+            <Link href="/login" className="underline">
+              Go to login
+            </Link>
+            <span aria-hidden>·</span>
+            {resendState === "sent" ? (
+              <span className="opacity-90">Verification email re-sent.</span>
+            ) : (
+              <button
+                type="button"
+                onClick={onResendConfirmation}
+                disabled={resendState === "sending"}
+                className="underline disabled:opacity-60"
+              >
+                {resendState === "sending"
+                  ? "Resending…"
+                  : "Didn't get it? Resend"}
+              </button>
+            )}
+          </div>
         </Alert>
       )}
 

@@ -77,6 +77,40 @@ export default class SaleApi {
     }
 
     /* =====================================================
+       PAY LATER (lock / unlock) — admin/manager only
+    ===================================================== */
+
+    // Lock a sale as "pay later" and move its stock to `stockStatus`
+    // ('Reserved' | 'Sold' | 'InStock'). The sale must already be saved.
+    static async markPayLater(documentId, stockStatus = 'Reserved') {
+        const res = await SalesEndpoints.markPayLater(documentId, { stock_status: stockStatus });
+        return res?.data ?? res;
+    }
+
+    // Unlock a pay-later sale back to an editable draft, moving its stock to
+    // `stockStatus` (default 'InStock').
+    static async unlockPayLater(documentId, stockStatus = 'InStock') {
+        const res = await SalesEndpoints.unlockPayLater(documentId, { stock_status: stockStatus });
+        return res?.data ?? res;
+    }
+
+    // Check out a LOCKED pay-later sale server-side. The line items are frozen,
+    // so this never rewrites them — it just records the payments and, once the
+    // sale is fully paid, releases the reserved stock (→ Sold) and completes it.
+    static async checkoutPayLater(documentId, payments = []) {
+        const list = (Array.isArray(payments) ? payments : [payments]).map((p) => ({
+            payment_method: p.payment_method,
+            amount: p.amount,
+            transaction_no: p.transaction_no || undefined,
+            cash_received: p.cash_received,
+            change: p.change,
+            due: p.due,
+        }));
+        const res = await SalesEndpoints.checkout(documentId, { payments: list });
+        return res?.data ?? res;
+    }
+
+    /* =====================================================
        SALE SAVE (CREATE / UPDATE)
     ===================================================== */
 

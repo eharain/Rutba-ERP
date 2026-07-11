@@ -199,6 +199,18 @@
     "level": "staff",
     "domain": "sale"
   },
+  "seed_admin": {
+    "level": "admin",
+    "domain": "seed"
+  },
+  "seed_manager": {
+    "level": "manager",
+    "domain": "seed"
+  },
+  "seed_staff": {
+    "level": "staff",
+    "domain": "seed"
+  },
   "social_admin": {
     "level": "admin",
     "domain": "social"

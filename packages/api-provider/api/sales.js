@@ -145,6 +145,53 @@ export const SalesEndpoints = {
         data,
     }),
 
+    /**
+     * Server-side checkout. Records payments and — only when the sale becomes
+     * fully paid — releases stock (→ Sold), completes the sale, and posts
+     * accounting. Used to check out a locked pay-later sale without rewriting
+     * its (frozen) line items.
+     */
+    checkout: (documentId, data) => ({
+        path: `/sales/${documentId}/checkout`,
+        action: 'checkout',
+        method: 'post',
+        apps: ['sale'],
+        approle: ['admin', 'manager', 'staff'],
+        scope: ROLE_SCOPES,
+        data,
+    }),
+
+    /**
+     * Mark a sale "pay later": lock its line items and move its stock to the
+     * chosen status for this order (Reserved / Sold / InStock). Requires a
+     * customer. Admin/manager only.
+     * Body: { stock_status: 'Reserved' | 'Sold' | 'InStock' }
+     */
+    markPayLater: (documentId, data) => ({
+        path: `/sales/${documentId}/pay-later`,
+        action: 'markPayLater',
+        method: 'post',
+        apps: ['sale'],
+        approle: ['admin', 'manager'],
+        scope: ROLE_SCOPES,
+        data,
+    }),
+
+    /**
+     * Unlock a pay-later sale back to an editable draft and move its stock to
+     * the chosen status (default InStock). Admin/manager only.
+     * Body: { stock_status?: 'Reserved' | 'Sold' | 'InStock' }
+     */
+    unlockPayLater: (documentId, data) => ({
+        path: `/sales/${documentId}/pay-later/unlock`,
+        action: 'unlockPayLater',
+        method: 'post',
+        apps: ['sale'],
+        approle: ['admin', 'manager'],
+        scope: ROLE_SCOPES,
+        data,
+    }),
+
     /** Save notes on a sale. Caller passes the raw notes string; the
      * descriptor shapes it into the field-update payload Strapi expects. */
     saveNotes: (documentId, notes) => ({
