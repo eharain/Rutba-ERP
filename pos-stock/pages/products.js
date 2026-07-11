@@ -258,6 +258,15 @@ export default function Products() {
         if (selectedPurchase) params.set('purchases', selectedPurchase);
         if (searchText) params.set('searchText', searchText);
         if (stockStatus) params.set('stockStatus', stockStatus);
+        if (missingContent) params.set('missingContent', '1');
+        if (missingLogo) params.set('missingLogo', '1');
+        if (missingGallery) params.set('missingGallery', '1');
+        if (priceRange.min) params.set('priceMin', priceRange.min);
+        if (priceRange.max) params.set('priceMax', priceRange.max);
+        if (createdRange.from) params.set('createdFrom', createdRange.from);
+        if (createdRange.to) params.set('createdTo', createdRange.to);
+        if (updatedRange.from) params.set('updatedFrom', updatedRange.from);
+        if (updatedRange.to) params.set('updatedTo', updatedRange.to);
         const qs = params.toString();
         return qs ? '?' + qs : '';
     })()}`;

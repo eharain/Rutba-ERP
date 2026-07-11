@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, Fragment } from "react";
+import { useEffect, useState, useCallback, useRef, Fragment } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import {
@@ -12,6 +12,17 @@ import { fetchProducts, saveProduct, MediaUtilsEndpoints, StockItemsEndpoints, B
 import { ProductFilter } from "@rutba/pos-shared/components/filter/product-filter";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
 import { getBranch } from "@rutba/pos-shared/lib/utils";
+
+// Product boolean fields exposed as checkbox columns in the bulk editor.
+// (Structural `is_variant` is intentionally excluded.)
+const BOOL_FIELDS = [
+    { key: 'is_active',       label: 'Active',      title: 'Active' },
+    { key: 'divisible',       label: 'Divisible',   title: 'Divisible (sell by portion)' },
+    { key: 'is_perishable',   label: 'Perishable',  title: 'Perishable / expiry tracked' },
+    { key: 'is_returnable',   label: 'Returnable',  title: 'Returnable' },
+    { key: 'is_exchangeable', label: 'Exchange',    title: 'Exchangeable' },
+    { key: 'non_returnable',  label: 'Non-Ret.',    title: 'Non-returnable' },
+];
 
 function SortableHeader({ label, field, sortField, sortOrder, onSort, align }) {
     const isActive = sortField === field;
@@ -47,6 +58,14 @@ export default function ProductsBulkEdit() {
     const [selectedTerm, setSelectedTerm] = useState("");
     const [selectedPurchase, setSelectedPurchase] = useState("");
     const [searchText, setSearchText] = useState("");
+    // Extra filters — kept in sync with /products so they carry across via the URL.
+    const [stockStatus, setStockStatus] = useState(false);
+    const [missingContent, setMissingContent] = useState(false);
+    const [missingLogo, setMissingLogo] = useState(false);
+    const [missingGallery, setMissingGallery] = useState(false);
+    const [priceRange, setPriceRange] = useState({ min: "", max: "" });
+    const [createdRange, setCreatedRange] = useState({ from: "", to: "" });
+    const [updatedRange, setUpdatedRange] = useState({ from: "", to: "" });
     const [filtersInitialized, setFiltersInitialized] = useState(false);
     const [sortField, setSortField] = useState('id');
     const [sortOrder, setSortOrder] = useState('desc');
@@ -54,7 +73,13 @@ export default function ProductsBulkEdit() {
     // Bulk edit state: keyed by product documentId
     const [edits, setEdits] = useState({});
     const [saving, setSaving] = useState({});
+    // Tracks rows with an in-flight save so auto-save (blur / checkbox) can't
+    // fire a second concurrent save for the same row.
+    const savingRef = useRef(new Set());
     const [savingAll, setSavingAll] = useState(false);
+    // When on, a row saves itself on blur / checkbox toggle; when off, the user
+    // saves manually via the row button or Save All.
+    const [autoSave, setAutoSave] = useState(false);
     const [stockItemStatus, setStockItemStatus] = useState('Received');
     const [messages, setMessages] = useState({});
     const [globalMessage, setGlobalMessage] = useState({ type: '', text: '' });
@@ -137,7 +162,8 @@ export default function ProductsBulkEdit() {
         if (!router.isReady || filtersInitialized) return;
 
         const getQueryValue = (value) => (Array.isArray(value) ? value[0] : value);
-        const { brands, categories, suppliers, terms, purchases, searchText, stockStatus } = router.query;
+        const q = router.query;
+        const { brands, categories, suppliers, terms, purchases, searchText, stockStatus } = q;
 
         if (brands) setSelectedBrand(getQueryValue(brands));
         if (categories) setSelectedCategory(getQueryValue(categories));
@@ -145,6 +171,13 @@ export default function ProductsBulkEdit() {
         if (terms) setSelectedTerm(getQueryValue(terms));
         if (purchases) setSelectedPurchase(getQueryValue(purchases));
         if (searchText) setSearchText(getQueryValue(searchText));
+        if (stockStatus) setStockStatus(getQueryValue(stockStatus));
+        if (getQueryValue(q.missingContent) === "1") setMissingContent(true);
+        if (getQueryValue(q.missingLogo) === "1") setMissingLogo(true);
+        if (getQueryValue(q.missingGallery) === "1") setMissingGallery(true);
+        if (q.priceMin || q.priceMax) setPriceRange({ min: getQueryValue(q.priceMin) || "", max: getQueryValue(q.priceMax) || "" });
+        if (q.createdFrom || q.createdTo) setCreatedRange({ from: getQueryValue(q.createdFrom) || "", to: getQueryValue(q.createdTo) || "" });
+        if (q.updatedFrom || q.updatedTo) setUpdatedRange({ from: getQueryValue(q.updatedFrom) || "", to: getQueryValue(q.updatedTo) || "" });
 
         setFiltersInitialized(true);
     }, [router.isReady, router.query, filtersInitialized]);
@@ -159,9 +192,19 @@ export default function ProductsBulkEdit() {
             suppliers: [selectedSupplier],
             terms: [selectedTerm],
             purchases: [selectedPurchase],
+            stockStatus,
             searchText,
             parentOnly: true
         };
+        if (missingContent) updatedFilters.missingContent = true;
+        if (missingLogo) updatedFilters.missingLogo = true;
+        if (missingGallery) updatedFilters.missingGallery = true;
+        if (priceRange.min) updatedFilters.priceMin = priceRange.min;
+        if (priceRange.max) updatedFilters.priceMax = priceRange.max;
+        if (createdRange.from) updatedFilters.createdFrom = createdRange.from;
+        if (createdRange.to) updatedFilters.createdTo = createdRange.to;
+        if (updatedRange.from) updatedFilters.updatedFrom = updatedRange.from;
+        if (updatedRange.to) updatedFilters.updatedTo = updatedRange.to;
 
         const query = {};
         if (selectedBrand) query.brands = selectedBrand;
@@ -170,6 +213,16 @@ export default function ProductsBulkEdit() {
         if (selectedTerm) query.terms = selectedTerm;
         if (selectedPurchase) query.purchases = selectedPurchase;
         if (searchText) query.searchText = searchText;
+        if (stockStatus) query.stockStatus = stockStatus;
+        if (missingContent) query.missingContent = "1";
+        if (missingLogo) query.missingLogo = "1";
+        if (missingGallery) query.missingGallery = "1";
+        if (priceRange.min) query.priceMin = priceRange.min;
+        if (priceRange.max) query.priceMax = priceRange.max;
+        if (createdRange.from) query.createdFrom = createdRange.from;
+        if (createdRange.to) query.createdTo = createdRange.to;
+        if (updatedRange.from) query.updatedFrom = updatedRange.from;
+        if (updatedRange.to) query.updatedTo = updatedRange.to;
         router.replace({ pathname: router.pathname, query }, undefined, { shallow: true });
 
         for (const [key, value] of Object.entries(updatedFilters)) {
@@ -181,7 +234,7 @@ export default function ProductsBulkEdit() {
 
         setFilters(updatedFilters);
         setPage(0);
-    }, [selectedBrand, selectedCategory, selectedSupplier, selectedTerm, selectedPurchase, searchText, filtersInitialized]);
+    }, [selectedBrand, selectedCategory, selectedSupplier, selectedTerm, selectedPurchase, stockStatus, searchText, missingContent, missingLogo, missingGallery, priceRange, createdRange, updatedRange, filtersInitialized]);
 
     const handleChangePage = (event, newPage) => setPage(newPage);
 
@@ -224,15 +277,29 @@ export default function ProductsBulkEdit() {
         if (selectedTerm) params.set('terms', selectedTerm);
         if (selectedPurchase) params.set('purchases', selectedPurchase);
         if (searchText) params.set('searchText', searchText);
+        if (stockStatus) params.set('stockStatus', stockStatus);
+        if (missingContent) params.set('missingContent', '1');
+        if (missingLogo) params.set('missingLogo', '1');
+        if (missingGallery) params.set('missingGallery', '1');
+        if (priceRange.min) params.set('priceMin', priceRange.min);
+        if (priceRange.max) params.set('priceMax', priceRange.max);
+        if (createdRange.from) params.set('createdFrom', createdRange.from);
+        if (createdRange.to) params.set('createdTo', createdRange.to);
+        if (updatedRange.from) params.set('updatedFrom', updatedRange.from);
+        if (updatedRange.to) params.set('updatedTo', updatedRange.to);
         const qs = params.toString();
         return qs ? `?${qs}` : '';
     };
 
-    // Save a single product
-    const handleSaveOne = async (product) => {
+    // Save a single product. `editArg` lets callers (e.g. a checkbox toggle)
+    // pass the just-changed edit object without waiting for state to flush.
+    const handleSaveOne = async (product, editArg) => {
         const docId = product.documentId;
-        const edit = edits[docId];
+        const edit = editArg || edits[docId];
         if (!edit || Object.keys(edit).length === 0) return;
+        // Guard against a blur + toggle firing two saves for the same row at once.
+        if (savingRef.current.has(docId)) return;
+        savingRef.current.add(docId);
 
         setSaving(prev => ({ ...prev, [docId]: true }));
         setMessages(prev => ({ ...prev, [docId]: null }));
@@ -241,11 +308,15 @@ export default function ProductsBulkEdit() {
             // 1. Save product field changes
             const payload = {};
             if (edit.name !== undefined) payload.name = edit.name;
+            if (edit.barcode !== undefined) payload.barcode = edit.barcode;
             if (edit.selling_price !== undefined) payload.selling_price = parseFloat(edit.selling_price) || 0;
             if (edit.offer_price !== undefined) payload.offer_price = parseFloat(edit.offer_price) || 0;
             if (edit.stock_quantity !== undefined) payload.stock_quantity = parseInt(edit.stock_quantity, 10) || 0;
+            for (const bf of BOOL_FIELDS) {
+                if (edit[bf.key] !== undefined) payload[bf.key] = !!edit[bf.key];
+            }
 
-            if (payload.name !== undefined || payload.selling_price !== undefined || payload.offer_price !== undefined || payload.stock_quantity !== undefined) {
+            if (Object.keys(payload).length > 0) {
                 await saveProduct(docId, payload);
             }
 
@@ -281,8 +352,19 @@ export default function ProductsBulkEdit() {
                 [docId]: { type: 'error', text: 'Failed to save: ' + (err?.response?.data?.error?.message || err.message) }
             }));
         } finally {
+            savingRef.current.delete(docId);
             setSaving(prev => ({ ...prev, [docId]: false }));
         }
+    };
+
+    // Auto-save a row as soon as it's edited (text/number on blur, checkbox on
+    // toggle). No-op when the row has no pending edits. `editArg` carries the
+    // fresh value for the checkbox path.
+    const autoSaveRow = (product, editArg) => {
+        if (!autoSave) return;
+        const edit = editArg || edits[product.documentId];
+        if (!edit || Object.keys(edit).length === 0) return;
+        handleSaveOne(product, editArg);
     };
 
     // Reconcile stock items for a product
@@ -423,6 +505,63 @@ export default function ProductsBulkEdit() {
                             onTermChange={setSelectedTerm}
                             onPurchaseChange={setSelectedPurchase}
                             onSearchTextChange={setSearchText}
+                            extra={[
+                                {
+                                    key: "stockStatus",
+                                    type: "select",
+                                    label: "Stock",
+                                    value: stockStatus || "",
+                                    onChange: (v) => setStockStatus(v || false),
+                                    placeholder: "All stock",
+                                    options: [
+                                        { value: "inStock", label: "In stock" },
+                                        { value: "outOfStock", label: "Out of stock" },
+                                        { value: "low", label: "Low stock" },
+                                    ],
+                                },
+                                {
+                                    key: "price",
+                                    type: "number-range",
+                                    label: "Price",
+                                    value: priceRange,
+                                    onChange: setPriceRange,
+                                },
+                                {
+                                    key: "created",
+                                    type: "date-range",
+                                    label: "Created",
+                                    value: createdRange,
+                                    onChange: setCreatedRange,
+                                },
+                                {
+                                    key: "modified",
+                                    type: "date-range",
+                                    label: "Modified",
+                                    value: updatedRange,
+                                    onChange: setUpdatedRange,
+                                },
+                                {
+                                    key: "missingContent",
+                                    type: "toggle",
+                                    label: "Missing content",
+                                    value: missingContent,
+                                    onChange: setMissingContent,
+                                },
+                                {
+                                    key: "missingLogo",
+                                    type: "toggle",
+                                    label: "Missing logo",
+                                    value: missingLogo,
+                                    onChange: setMissingLogo,
+                                },
+                                {
+                                    key: "missingGallery",
+                                    type: "toggle",
+                                    label: "Missing gallery",
+                                    value: missingGallery,
+                                    onChange: setMissingGallery,
+                                },
+                            ]}
                         />
 
                         {/* Stock item status selector and save all button */}
@@ -439,10 +578,23 @@ export default function ProductsBulkEdit() {
                                     <option value="InStock">InStock</option>
                                 </select>
                             </div>
-                            <div className="d-flex align-items-center gap-2 ms-auto">
+                            <div className="d-flex align-items-center gap-3 ms-auto">
                                 {editedCount > 0 && (
                                     <span className="badge bg-warning text-dark">{editedCount} product(s) modified</span>
                                 )}
+                                <div className="form-check form-switch mb-0">
+                                    <input
+                                        className="form-check-input"
+                                        type="checkbox"
+                                        role="switch"
+                                        id="autoSaveToggle"
+                                        checked={autoSave}
+                                        onChange={(e) => setAutoSave(e.target.checked)}
+                                    />
+                                    <label className="form-check-label small" htmlFor="autoSaveToggle" title="Save each row automatically on edit">
+                                        Auto-save
+                                    </label>
+                                </div>
                                 <button
                                     className="btn btn-primary btn-sm"
                                     onClick={handleSaveAll}
@@ -473,23 +625,27 @@ export default function ProductsBulkEdit() {
                                     <TableCell>Logo</TableCell>
                                     <TableCell style={{ minWidth: 220 }}>Product Name</TableCell>
                                     <SortableHeader label="SKU" field="sku" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />
-                                    <TableCell align="right" style={{ minWidth: 130 }}>Offer Price</TableCell>
-                                    <TableCell align="right" style={{ minWidth: 130 }}>Selling Price</TableCell>
-                                    <TableCell align="right" style={{ minWidth: 120 }}>Quantity</TableCell>
+                                    <TableCell style={{ minWidth: 150 }}>Barcode</TableCell>
+                                    <TableCell align="right" style={{ width: 110 }}>Offer Price</TableCell>
+                                    <TableCell align="right" style={{ width: 110 }}>Selling Price</TableCell>
+                                    <TableCell align="right" style={{ width: 80 }}>Quantity</TableCell>
                                     <TableCell align="right">Stock Items</TableCell>
+                                    {BOOL_FIELDS.map((bf) => (
+                                        <TableCell key={bf.key} align="center" title={bf.title} style={{ width: 72 }}>{bf.label}</TableCell>
+                                    ))}
                                     <TableCell style={{ width: 140 }}>Actions</TableCell>
                                 </TableRow>
                             </TableHead>
                             <TableBody>
                                 {loading ? (
                                     <TableRow>
-                                        <TableCell colSpan={9} align="center">
+                                        <TableCell colSpan={16} align="center">
                                             <CircularProgress size={24} />
                                         </TableCell>
                                     </TableRow>
                                 ) : products.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={9} align="center">
+                                        <TableCell colSpan={16} align="center">
                                             No products found.
                                         </TableCell>
                                     </TableRow>
@@ -522,9 +678,19 @@ export default function ProductsBulkEdit() {
                                                             className="form-control form-control-sm"
                                                             value={getEditValue(product, 'name')}
                                                             onChange={(e) => setEditValue(product, 'name', e.target.value)}
+                                                            onBlur={() => autoSaveRow(product)}
                                                         />
                                                     </TableCell>
                                                     <TableCell>{product.sku}</TableCell>
+                                                    <TableCell>
+                                                        <input
+                                                            type="text"
+                                                            className="form-control form-control-sm"
+                                                            value={getEditValue(product, 'barcode')}
+                                                            onChange={(e) => setEditValue(product, 'barcode', e.target.value)}
+                                                            onBlur={() => autoSaveRow(product)}
+                                                        />
+                                                    </TableCell>
                                                     <TableCell>
                                                         <div className="input-group input-group-sm">
                                                             <span className="input-group-text">{currency}</span>
@@ -535,6 +701,7 @@ export default function ProductsBulkEdit() {
                                                                 min="0"
                                                                 value={getEditValue(product, 'offer_price')}
                                                                 onChange={(e) => setEditValue(product, 'offer_price', e.target.value)}
+                                                                onBlur={() => autoSaveRow(product)}
                                                             />
                                                         </div>
                                                     </TableCell>
@@ -548,6 +715,7 @@ export default function ProductsBulkEdit() {
                                                                 min="0"
                                                                 value={getEditValue(product, 'selling_price')}
                                                                 onChange={(e) => setEditValue(product, 'selling_price', e.target.value)}
+                                                                onBlur={() => autoSaveRow(product)}
                                                             />
                                                         </div>
                                                     </TableCell>
@@ -556,13 +724,32 @@ export default function ProductsBulkEdit() {
                                                             type="number"
                                                             className="form-control form-control-sm"
                                                             min="0"
+                                                            style={{ maxWidth: 72 }}
                                                             value={getEditValue(product, 'stock_quantity')}
                                                             onChange={(e) => setEditValue(product, 'stock_quantity', e.target.value)}
+                                                            onBlur={() => autoSaveRow(product)}
                                                         />
                                                     </TableCell>
                                                     <TableCell align="right">
                                                         <span className="badge bg-secondary">{siCount}</span>
                                                     </TableCell>
+                                                    {BOOL_FIELDS.map((bf) => (
+                                                        <TableCell key={bf.key} align="center">
+                                                            <input
+                                                                type="checkbox"
+                                                                className="form-check-input"
+                                                                checked={!!getEditValue(product, bf.key)}
+                                                                onChange={(e) => {
+                                                                    const value = e.target.checked;
+                                                                    setEditValue(product, bf.key, value);
+                                                                    // Save immediately with the fresh value (a checkbox
+                                                                    // has no blur commit moment).
+                                                                    const merged = { ...(edits[docId] || {}), [bf.key]: value };
+                                                                    autoSaveRow(product, merged);
+                                                                }}
+                                                            />
+                                                        </TableCell>
+                                                    ))}
                                                     <TableCell>
                                                         <div className="d-flex gap-1">
                                                             <button
@@ -588,7 +775,7 @@ export default function ProductsBulkEdit() {
                                                 </TableRow>
                                                 {msg && (
                                                     <TableRow>
-                                                        <TableCell colSpan={9}>
+                                                        <TableCell colSpan={16}>
                                                             <small className={msg.type === 'success' ? 'text-success' : 'text-danger'}>
                                                                 <i className={`fas ${msg.type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'} me-1`}></i>
                                                                 {msg.text}
