@@ -1,5 +1,13 @@
 # Epic 3 — Stock Reconciliation & Cycle Counts
 
+> 🟡 **Status: PARTIALLY BUILT** — branch `inventory-mfg-foundation`. Cache reconcile + drift
+> jobs (the `rutba-inventory` maintenance screen) are done, and a **v1 `stock-count`** exists
+> (Draft/Posted/Cancelled; `inv.count-line` = product/system_qty/counted_qty; Post flips shortages
+> directly to `Lost`). **Not built:** the richer count lifecycle (freeze/snapshot/blind/scan-tally/
+> review/recount), batch/location-aware count lines, posting variances **as stock-adjustments**
+> with count-side GL, and the orphan/duplicate reconcile UI. See the overview's
+> [as-built status](00-overview-and-roadmap.md#implementation-status-as-built).
+
 > Reconcile the product↔stock-item picture so recorded stock matches physical reality:
 > a cache-vs-rows reconcile (extend what exists), orphan/duplicate cleanup, and — the real
 > new capability — **physical cycle counts / stock-takes** that book variances as adjustments

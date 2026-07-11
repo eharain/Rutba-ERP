@@ -1,5 +1,15 @@
 # Epic 2 — Inventory Management App (`rutba-inventory`, port 4017)
 
+> ✅ **Status: BUILT (core; deferrals)** — branch `inventory-mfg-foundation`. Foundation
+> (warehouse, storage-location bin tree, `stock-level` cache, `track_mode`) + two-sided
+> `stock-transfer` (Draft→InTransit→Received) + `stock-adjustment` (posts loss GL
+> Dr `SHRINKAGE_EXPENSE` / Cr INVENTORY, idempotent) + specific-identification valuation report
+> + the full `rutba-inventory` app (screens: warehouses, stock-levels, transfers, adjustments,
+> valuation, counts, batches, expiry, reorder, maintenance). **Deferred:** transfer-line CT +
+> `from_location`, adjustment approval workflow + reason-code CT + bulk signed-qty path,
+> movement/ageing reports, put-away screen. See the overview's
+> [as-built status](00-overview-and-roadmap.md#implementation-status-as-built).
+
 > The flagship epic. Introduces the shared **Foundation** (warehouse/bin locations,
 > per-location stock-level cache, batch/expiry fields, `track_mode` activation) that Epics
 > 1, 3, 4, 5 all build on, then delivers the full inventory-control feature set in a new

@@ -1,5 +1,15 @@
 # Epic 1 — Manufacturing: Product-Types, Recipes, Multi-Output & Auto-Consume
 
+> ✅ **Status: BUILT (backend)** — branch `inventory-mfg-foundation`. The recipe layer is
+> `product.kind` (classifier) + `mfg-bom.outputs[]` (multi-output co/by-products/scrap with
+> `cost_share_pct`) + `mfg-production-template` (reusable product-type recipe, instantiated to a
+> versioned BOM via `POST /mfg-production-templates/:id/instantiate`) — there is deliberately
+> **no** `mfg-product-type`/`mfg-recipe` CT. The WO state machine does multi-output receipt
+> (cost-share normalized), `autoConsumeInputs` on completion (serialized→`Reduced`, bulk→FEFO
+> `mfg-material-issue`), and `track_mode` routing; kind-typing is enforced by the
+> `bom-typing-validator.js` document middleware. **Deferred:** a dedicated `rutba-manufacturing`
+> template/BOM builder UI. See the overview's [as-built status](00-overview-and-roadmap.md#implementation-status-as-built).
+
 > Elevate manufacturing from per-product BOMs into a reusable **product-type / recipe**
 > layer that defines inputs and output products, produces **multiple outputs** (co-products
 > & by-products), **auto-consumes** BOM inputs on completion, and lands every output in
@@ -16,7 +26,10 @@ See [00-overview-and-roadmap.md](00-overview-and-roadmap.md) and
 
 ---
 
-## Current state (verified)
+## Starting state — pre-build baseline (verified at authoring)
+
+> ⚠️ **Historical.** Describes the state *before* this epic was built. It is now superseded —
+> see the ✅ status banner at the top of this doc. Kept for context on the starting point.
 
 - `mfg-bom` = per-product recipe: **single** output (`mfg-bom.product` + `output_quantity`),
   inputs as `material_lines[]` (`mfg.bom-line.material_product`), routing as

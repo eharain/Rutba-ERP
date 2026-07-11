@@ -10,7 +10,8 @@ Key directories:
 - `packages/pos-shared/` — shared library (components, context, utilities)
 - `pos-auth/`, `pos-stock/`, `pos-sale/` — core POS apps
 - `rutba-web/` — customer-facing storefront (TypeScript, Tailwind CSS)
-- `rutba-crm/`, `rutba-hr/`, `rutba-ess/`, `rutba-accounts/`, `rutba-payroll/`, `rutba-manufacturing/` — business management apps
+- `rutba-crm/`, `rutba-hr/`, `rutba-ess/`, `rutba-accounts/`, `rutba-payroll/`, `rutba-manufacturing/`, `rutba-inventory/` — business management apps
+- `rutba-order-management/`, `rutba-rider/`, `rutba-cms/`, `rutba-social/`, `rutba-web-user/`, `rutba-marketplace/` — operations, content & channel apps
 - `pos-strapi/` — Strapi 5 API backend
 
 ## How to Contribute

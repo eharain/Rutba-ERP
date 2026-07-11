@@ -1,5 +1,14 @@
 # Epic 4 — Reordering & Replenishment
 
+> ✅ **Status: BUILT (core; deferrals)** — branch `inventory-mfg-foundation`. `reorder-policy` CT
+> (MinMax/ReorderPoint/ParLevel/Manual; min/max/safety; source Purchase/Manufacture/Transfer) +
+> `getReorderSuggestions` engine (on-hand/on-order/projected, `product.reorder_level` fallback for
+> policy-less products, pack rounding) + `generatePurchases`/`generateWorkOrders` + the reorder
+> dashboard. **Not built:** `generateTransfers` (source=Transfer), a persisted `reorder-suggestion`
+> CT (compute-on-read only), a scheduled low-stock alert cron (the only inventory cron is the
+> expiry sweep), and folding open-WO remaining into projected. See the overview's
+> [as-built status](00-overview-and-roadmap.md#implementation-status-as-built).
+
 > Turn the single, passive `product.reorder_level` low-stock flag into a real replenishment
 > engine: per-product (and per-warehouse) min/max/safety-stock policies, a low-stock alert
 > surface, reorder suggestions with recommended quantities, and one-click generation of

@@ -15,9 +15,9 @@ An open-source, modular business management system built as an **npm workspaces 
  :4003   :4001   :4002  :4000   user    :4009   :4011    mgmt
                                 :4004                     :4013
 
- rutba-  rutba-  rutba-  rutba-  rutba-  rutba-  rutba-
- rider   crm     hr      ess     acct    payroll mfg
- :4012   :4005   :4006   :4015   :4007   :4008   :4014
+ rutba-  rutba-  rutba-  rutba-  rutba-  rutba-  rutba-  rutba-
+ rider   crm     hr      ess     acct    payroll mfg     inventory
+ :4012   :4005   :4006   :4015   :4007   :4008   :4014   :4017
 
  Shared:  packages/pos-shared  (UI + context)
           packages/api-provider (descriptor-driven Strapi clients)
@@ -46,7 +46,8 @@ An open-source, modular business management system built as an **npm workspaces 
 | `rutba-ess/` | **Employee Self-Service** | 4015 | Employee portal — own profile, attendance, leave requests, payslips |
 | `rutba-accounts/` | **Accounting** | 4007 | Chart of accounts, journal entries, invoices, expenses |
 | `rutba-payroll/` | **Payroll** | 4008 | Salary structures, payroll runs, payslips, deduction rules, employee profiles, adjustments |
-| `rutba-manufacturing/` | **Manufacturing** | 4014 | Tailoring production — work orders, tasks/piece-rate, BOM, bundles, operations, material lots/issues, QC |
+| `rutba-manufacturing/` | **Manufacturing** | 4014 | Tailoring production — work orders, tasks/piece-rate, BOM (multi-output + auto-consume), bundles, operations, material lots/issues, QC, reusable production templates |
+| `rutba-inventory/` | **Inventory Management** | 4017 | Warehouses/bins, stock levels, transfers, adjustments, cycle counts, batch/expiry, reorder/replenishment, inventory valuation |
 
 > Ports above are the workspace defaults; `process.env.PORT` (set by Hostinger / Passenger / Docker) always overrides. See [.env.example](.env.example) for the `<APP_PREFIX>__PORT=` overrides.
 
@@ -102,6 +103,7 @@ npm run dev:ess              # Employee Self-Service → http://localhost:4015
 npm run dev:accounts         # Accounts        → http://localhost:4007
 npm run dev:payroll          # Payroll         → http://localhost:4008
 npm run dev:manufacturing    # Manufacturing   → http://localhost:4014
+npm run dev:inventory        # Inventory Mgmt   → http://localhost:4017
 npm run dev:all              # Strapi + every app (Linux/macOS friendly)
 ```
 
@@ -156,6 +158,7 @@ docker compose down
 | Rider App | http://localhost:4012 |
 | Order Management | http://localhost:4013 |
 | Manufacturing | http://localhost:4014 |
+| Inventory Management | http://localhost:4017 |
 
 ## Scripts Directory
 
@@ -212,15 +215,18 @@ Key domain groupings:
 | Domain | Content Types |
 |---|---|
 | **Catalog** | Product (with `slug` as canonical URL key), Variant, Category, Category Group, Brand, Brand Group, Product Group |
-| **Inventory** | Stock Item (state machine: InStock → Reserved → Sold), Purchase, Purchase Item, Supplier |
-| **Sales (POS)** | Sale, Sale Item, Sale Return, Sale Return Item, Cash Register, Cash Register Transaction |
+| **Inventory** | Stock Item (state machine: Received → InStock → Reserved → Sold/Returned/Expired/…; three stock models — **serialized**, **bulk** via `track_mode`, **divisible** via `sellable_units`/`units_sold`), Purchase, Purchase Item, Supplier |
+| **Warehousing** | Warehouse (branch → warehouse; type warehouse/store/transit/virtual/supplier/customer), Storage Location (self-referential bin tree: zone → aisle → rack → shelf → bin), Stock Level (per product/warehouse/location on-hand cache) |
+| **Batch / Expiry** | Stock Batch (batch_code, manufacture/expiry dates, status Active/Expired/Quarantined/Depleted/Recalled, quantity ledger for bulk); per-unit `stock_item.expiry_date`; FEFO at sale + daily expiry sweep |
+| **Reordering** | Reorder Policy (per product/warehouse; method MinMax/ReorderPoint/ParLevel/Manual; min/max/safety stock; source Purchase/Manufacture/Transfer; suggestion engine + generate-purchases/work-orders) |
+| **Sales (POS)** | Sale, Sale Item (+ `sellable_qty`/`allocations` for divisible portions), Sale Return, Sale Return Item, Cash Register, Cash Register Transaction |
 | **Orders (Web)** | Sale Order (state machine with returns detour, COD + payment verification, stock-item attach, label cache), Sale Offer, Delivery Method, Delivery Zone, Order Message, Order Parcel (planned) |
 | **Returns** | Return Request (state machine with restock-decision walk), Return Method (own_rider_pickup / courier_dropoff / walk_in), Return Policy (window + scope), Return Line component |
 | **People** | Person (canonical contact identity), Address, Person Dedup Audit, Customer, Customer Address (legacy), Contact Ticket |
 | **CRM** | CRM Contact, CRM Lead, CRM Activity |
 | **HR** | HR Employee, HR Department, HR Team, HR Attendance, HR Leave Request |
 | **Payroll** | Salary Structure, Payroll Run, Payslip, Pay Adjustment, Pay Employee Profile, Pay Deduction Rule (configurable statutory engine) |
-| **Manufacturing** | Mfg Work Order, Mfg Task (piece-rate), Mfg BOM, Mfg Bundle, Mfg Operation, Mfg Piece Rate, Mfg Material Lot, Mfg Material Issue, Mfg QC Inspection, Mfg Production Line, Mfg Worker Profile, Mfg Defect Type (tailoring) |
+| **Manufacturing** | Mfg Work Order (auto-consume inputs + finished-goods receipt on completion), Mfg BOM (versioned; **multi-output** co/by-products via `outputs[]`), Mfg Production Template (reusable product-type recipe → instantiates versioned BOMs), Mfg Task (piece-rate), Mfg Bundle, Mfg Operation, Mfg Piece Rate, Mfg Material Lot, Mfg Material Issue, Mfg QC Inspection, Mfg Production Line, Mfg Worker Profile, Mfg Defect Type (tailoring) |
 | **Accounting** | Acc Account (CoA), Acc Account Mapping, Acc Journal Entry, Acc Journal Line, Acc Fiscal Period, Acc Invoice, Acc Bill, Acc Bank Account, Acc Expense, Acc Tax Rate |
 | **Delivery** | Rider, Delivery Offer, Delivery Method, Delivery Zone |
 | **CMS** | CMS Page, CMS Page Group, CMS Menu, CMS Menu Item, CMS Footer |
@@ -241,6 +247,17 @@ Key domain groupings:
 
 - [docs/accounting-architecture.md](docs/accounting-architecture.md) — accounting overview (paired with the engine implementation guide below)
 - [docs/rutba-notification-system-design.md](docs/rutba-notification-system-design.md) — template-driven notifications
+
+### Features
+
+- [docs/features/divisible-stock.md](docs/features/divisible-stock.md) — sell one physical item in many sellable sub-units (tablet box, lace roll); allocation/release engine, FEFO, POS wiring on both sale surfaces.
+- [docs/todo/inventory-manufacturing-program/](docs/todo/inventory-manufacturing-program/00-overview-and-roadmap.md) — 5-epic inventory & manufacturing program (warehouses/bins, batch/expiry/FEFO, reconciliation, reordering, mfg recipes + multi-output). See the overview's **Implementation status (as-built)** section for what has shipped.
+
+### Strategy & roadmap
+
+- [docs/todo/ROADMAP.md](docs/todo/ROADMAP.md) — product roadmap.
+- [docs/todo/market-strategy/](docs/todo/market-strategy/README.md) — productization strategy (SME commerce ERP SaaS), competitor benchmark, phased roadmap.
+- [docs/todo/rightapp-gap-analysis/](docs/todo/rightapp-gap-analysis/README.md) — legacy RightApp ERP vs. current Rutba gap analysis + carry-over plan.
 
 ### Active planning docs (`docs/todo/`)
 

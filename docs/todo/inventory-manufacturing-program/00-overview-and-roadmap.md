@@ -9,7 +9,10 @@
 > foundation they all sit on, the dependency graph, the recommended sequencing, and the
 > cross-cutting conventions every epic must honour.
 
-Authored: 2026-07-10. Status: planning. Decisions locked with the user (2026-07-10):
+Authored: 2026-07-10. **Status: largely BUILT** (backends + the `rutba-inventory` app
+shell) on branch `inventory-mfg-foundation` — see [Implementation status
+(as-built)](#implementation-status-as-built) below. Decisions locked with the user
+(2026-07-10):
 
 1. **Inventory app packaging** → new dedicated `rutba-inventory` app (port **4017**), own
    `inventory` domain. `pos-stock` (4001) stays for POS-adjacent stock entry.
@@ -24,17 +27,54 @@ Authored: 2026-07-10. Status: planning. Decisions locked with the user (2026-07-
 
 ## The five epics
 
-| # | Epic | Owning app(s) | Spec |
-|---|------|---------------|------|
-| 1 | Manufacturing product-types, recipes, multi-output, auto-consume | `rutba-manufacturing` + `pos-strapi/mfg-*` | [epic-1-manufacturing-product-types.md](epic-1-manufacturing-product-types.md) |
-| 2 | Inventory Management app (warehouses/bins, stock ledger, transfers, adjustments, valuation) | **new `rutba-inventory`** + `pos-strapi/inventory-*` | [epic-2-inventory-management-app.md](epic-2-inventory-management-app.md) |
-| 3 | Stock reconciliation + cycle counts | `rutba-inventory` + `pos-strapi/stock-item` | [epic-3-stock-reconciliation-cycle-counts.md](epic-3-stock-reconciliation-cycle-counts.md) |
-| 4 | Reordering / replenishment | `rutba-inventory` + `pos-strapi` | [epic-4-reordering-replenishment.md](epic-4-reordering-replenishment.md) |
-| 5 | Product expiry / batch / FEFO | `pos-strapi` + `pos-sale`/`rutba-web` + `rutba-inventory` | [epic-5-product-expiry-batch-fefo.md](epic-5-product-expiry-batch-fefo.md) |
+| # | Epic | Owning app(s) | Status | Spec |
+|---|------|---------------|--------|------|
+| 1 | Manufacturing product-types, recipes, multi-output, auto-consume | `rutba-manufacturing` + `pos-strapi/mfg-*` | ✅ **Built** (backend) | [epic-1-manufacturing-product-types.md](epic-1-manufacturing-product-types.md) |
+| 2 | Inventory Management app (warehouses/bins, stock ledger, transfers, adjustments, valuation) | **new `rutba-inventory`** + `pos-strapi/inventory-*` | ✅ **Built** (core; deferrals) | [epic-2-inventory-management-app.md](epic-2-inventory-management-app.md) |
+| 3 | Stock reconciliation + cycle counts | `rutba-inventory` + `pos-strapi/stock-item` | 🟡 **Partial** | [epic-3-stock-reconciliation-cycle-counts.md](epic-3-stock-reconciliation-cycle-counts.md) |
+| 4 | Reordering / replenishment | `rutba-inventory` + `pos-strapi` | ✅ **Built** (core; deferrals) | [epic-4-reordering-replenishment.md](epic-4-reordering-replenishment.md) |
+| 5 | Product expiry / batch / FEFO | `pos-strapi` + `pos-sale`/`rutba-web` + `rutba-inventory` | ✅ **Built** | [epic-5-product-expiry-batch-fefo.md](epic-5-product-expiry-batch-fefo.md) |
 
 ---
 
-## Current state (verified against live code, 2026-07-10)
+## Implementation status (as-built)
+
+> Verified against live code on branch `inventory-mfg-foundation` (2026-07-11). This
+> section supersedes the "Starting state" baseline further down, which records the
+> *pre-build* state at program authoring. A ✅ here means the **backend** is built and
+> load-only verified; frontends are the `rutba-inventory` app shell (screens below) and
+> are esbuild-verified but not all click-through-verified.
+
+### Foundation (F1–F5)
+
+| Item | Status | Notes |
+|---|---|---|
+| **F1** Location model (`warehouse`, `storage-location` bin tree) | ✅ Built | + backfill controller `warehouse/controllers/backfill.js` |
+| **F2** Per-location `stock-level` cache | ✅ Built | `recomputeStockLevelsForProduct(s)` / `recomputeAllStockLevels` + `suppressStockLevelRecompute` batch guard; invariant `Σ stock-level.quantity_on_hand === product.stock_quantity` preserved |
+| **F3** Batch/lot + per-unit expiry (`stock-batch`, `stock_item.expiry_date`/`batch`) | ✅ Built | `mfg-material-lot` kept for raw material; `stock-batch` is the finished-goods lot ("keep both" convergence option) |
+| **F4** Unified append-only `stock-transaction` ledger | ⬜ Not built | Was flagged *optional / retrofit-later*. The stock-item lifecycle is the single writer, so it can still be introduced without rewriting call-sites |
+| **F5** Activate `track_mode` (serialized vs bulk) | ✅ Built | WO state machine + reorder engine branch on it; `bulk_quantity_on_hand` maintained by the stock-batch lifecycle |
+
+### Per-epic
+
+- **Epic 1 — Manufacturing (✅ built, backend).** No `mfg-product-type`/`mfg-recipe` CT — the recipe layer is `product.kind` (classifier) + `mfg-bom` with a repeatable **`outputs[]`** component (`mfg.bom-output`: primary/co_product/by_product/scrap + `cost_share_pct`) + **`mfg-production-template`** (reusable product-type recipe → instantiated into a versioned BOM via `POST /mfg-production-templates/:id/instantiate`). WO state machine does multi-output receipt with cost-share normalization, `autoConsumeInputs` on completion (serialized→`Reduced`, bulk→FEFO `mfg-material-issue`), and track_mode routing. Kind-typing enforced by document-service middleware `bom-typing-validator.js`. *Deferred:* dedicated `rutba-manufacturing` template/BOM builder UI.
+- **Epic 2 — Inventory app (✅ built core; deferrals).** Foundation + two-sided `stock-transfer` (Draft→InTransit→Received, `transitions.js`), `stock-adjustment` (posts loss GL Dr `SHRINKAGE_EXPENSE` / Cr INVENTORY, idempotent), specific-identification valuation report, and the full `rutba-inventory` app. *Deferred:* transfer-line CT + `from_location`, adjustment approval workflow + reason-code CT + bulk signed-qty path, movement/ageing reports, put-away screen.
+- **Epic 3 — Reconciliation & cycle counts (🟡 partial).** Cache reconcile + drift jobs (maintenance screen) done. `stock-count` exists but v1: Draft/Posted/Cancelled only, `inv.count-line` component (product/system_qty/counted_qty — no batch/location/variance fields), Post flips shortages directly to `Lost` (not via stock-adjustment, no count-side GL). *Not built:* freeze/snapshot/blind/scan-tally/review lifecycle, batch/location-aware lines, post-as-adjustment, orphan-reconcile UI.
+- **Epic 4 — Reordering (✅ built core; deferrals).** `reorder-policy` CT (MinMax/ReorderPoint/ParLevel/Manual, min/max/safety, source Purchase/Manufacture/Transfer), `getReorderSuggestions` engine (on-hand/on-order/projected + `product.reorder_level` fallback + pack rounding), `generatePurchases`/`generateWorkOrders`, and the reorder dashboard. *Not built:* `generateTransfers` (source=Transfer), persisted `reorder-suggestion` CT, scheduled low-stock alert cron, open-WO qty folded into projected.
+- **Epic 5 — Expiry/batch/FEFO (✅ built).** `stock-batch` + per-unit `expiry_date`/`batch`, product `is_perishable`/`shelf_life_days`/`expiry_alert_days`, FEFO in `allocateSellableUnits` (opened-first → earliest-expiry, nulls last), daily `inventoryExpirySweep` cron + `POST /stock-items/sweep-expired`, `GET /stock-items/expiring`, and the expiry/batches screens. *Gap:* no independent hard checkout block-expired guard beyond the sweep having flipped units out of `InStock`.
+- **Divisible stock** (added on top of this program) — one discrete item sold in N sub-units; see [../../features/divisible-stock.md](../../features/divisible-stock.md).
+
+### `rutba-inventory` app screens (`rutba-inventory/pages/`)
+
+`index` (landing) · `warehouses` (warehouse + bin-tree editor) · `stock-levels` (per-product/warehouse on-hand grid) · `transfers` (two-sided dispatch/receive) · `adjustments` (write-off/damage/lost/expired + GL) · `valuation` (by warehouse) · `counts` (cycle counts) · `batches` (batch CRUD + status) · `expiry` (expiring-soon + run sweep) · `reorder` (suggestions → generate purchases/WOs) · `maintenance` (idempotent reconcile jobs).
+
+---
+
+## Starting state — pre-build baseline (verified against live code, 2026-07-10)
+
+> ⚠️ **Historical.** This records the state *before* the program was built. Most of the
+> gaps below are now closed — see [Implementation status (as-built)](#implementation-status-as-built)
+> above for what actually shipped. Kept for context on the starting point.
 
 - **Serialized stock** is the canonical model. `stock-item` = one physical unit, unique
   `barcode`, `status` enum (InStock/Reserved/Sold/Damaged/Lost/Expired/Transferred/…),

@@ -47,7 +47,7 @@ This guide covers deploying Rutba ERP: full-stack on a Linux server with systemd
             │  from /etc/systemd/system/rutba_*.service
             ▼
 ┌──────────────────────────────────────────────────────────────────┐
-│  16 systemd services  (each runs: node scripts/js/load-env.js --)│
+│  17 systemd services  (each runs: node scripts/js/load-env.js --)│
 │                                                                  │
 │  rutba_pos_strapi   :4010  ─── MySQL 8                          │
 │  rutba_pos_auth     :4003                                        │
@@ -65,6 +65,7 @@ This guide covers deploying Rutba ERP: full-stack on a Linux server with systemd
 │  rutba_cms          :4009                                        │
 │  rutba_social       :4011                                        │
 │  rutba_manufacturing :4014                                       │
+│  rutba_inventory    :4017                                        │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
@@ -263,6 +264,7 @@ NEXT_PUBLIC_PAYROLL_URL=https://payroll.rutba.pk
 NEXT_PUBLIC_CMS_URL=https://cms.rutba.pk
 NEXT_PUBLIC_SOCIAL_URL=https://social.rutba.pk
 NEXT_PUBLIC_MANUFACTURING_URL=https://manufacturing.rutba.pk
+NEXT_PUBLIC_INVENTORY_URL=https://inventory.rutba.pk
 
 # ── Image host (mirrors api.rutba.pk) ──────────────────────────────
 NEXT_PUBLIC_IMAGE_HOST_PROTOCOL=https
@@ -314,6 +316,7 @@ RUTBA_PAYROLL__PORT=4008
 RUTBA_CMS__PORT=4009
 RUTBA_SOCIAL__PORT=4011
 RUTBA_MANUFACTURING__PORT=4014
+RUTBA_INVENTORY__PORT=4017
 ```
 
 > **Generate all Strapi secrets at once:**
@@ -470,6 +473,7 @@ sudo journalctl -fu rutba_pos_strapi
 | `rutba_cms` | Content editor | `rutba-cms/` | 4009 |
 | `rutba_social` | Social media | `rutba-social/` | 4011 |
 | `rutba_manufacturing` | Manufacturing | `rutba-manufacturing/` | 4014 |
+| `rutba_inventory` | Inventory management | `rutba-inventory/` | 4017 |
 
 ### systemd Unit File Structure
 

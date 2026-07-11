@@ -1,5 +1,14 @@
 # Epic 5 — Product Expiry, Batch/Lot & FEFO
 
+> ✅ **Status: BUILT** — branch `inventory-mfg-foundation`. `stock-batch` CT + per-unit
+> `stock_item.expiry_date`/`batch` + product `is_perishable`/`shelf_life_days`/`expiry_alert_days`;
+> FEFO in `stock-item.allocateSellableUnits` (opened-first → earliest expiry, nulls last); daily
+> `inventoryExpirySweep` cron + `POST /stock-items/sweep-expired` (flips past-expiry InStock units
+> and Active batches to `Expired`); `GET /stock-items/expiring`; and the expiry + batches screens.
+> **Gap:** no independent hard checkout block-expired guard beyond the sweep having flipped units
+> out of `InStock`. See the overview's
+> [as-built status](00-overview-and-roadmap.md#implementation-status-as-built).
+
 > Make products manageable with expiry dates: introduce batch/lot tracking with expiry,
 > denormalise expiry onto stock units for fast querying, allocate stock **first-expiry-
 > first-out** at sale, alert on expiring stock, and block selling expired units.
