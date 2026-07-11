@@ -74,5 +74,13 @@ module.exports = {
         auth: false,
       },
     },
+    {
+      method: 'POST',
+      path: '/stock-items/sell-units',
+      handler: 'sell-units.run',
+      config: {
+        auth: false,
+      },
+    },
   ],
 };

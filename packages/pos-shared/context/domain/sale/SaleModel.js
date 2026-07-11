@@ -235,6 +235,33 @@ export default class SaleModel {
     =============================== */
 
     addStockItem(stockItem) {
+        // DIVISIBLE stock (Divisible P2c): a unit holding many sub-units (a lace
+        // roll, a tablet box) is sold as a PORTION, not one-physical-unit-per-add.
+        // Keep a single representative item per product line and let repeated adds
+        // bump the sub-unit portion; the server allocates across physical items
+        // (FEFO) at checkout. Detected by capacity > 1 or the product's flag.
+        const incomingDivisible =
+            (Number(stockItem?.sellable_units) || 1) > 1 || stockItem?.product?.divisible === true;
+        if (incomingDivisible) {
+            const productId = stockItem.product?.id || stockItem.product?.documentId;
+            const existing = productId
+                ? this.items.find(i => {
+                    const fp = i.first()?.product;
+                    return i.isDivisible && (fp?.id === productId || fp?.documentId === productId);
+                })
+                : null;
+            if (existing) {
+                existing.sellableQty = (Number(existing.sellableQty) || 0) + 1;
+                existing.quantity = existing.sellableQty;
+                return;
+            }
+            const line = new SaleItem({ price: stockItem.selling_price, stockItem });
+            line.sellableQty = 1;
+            line.quantity = 1;
+            this.items.push(line);
+            return;
+        }
+
         // Collect all stock-item documentIds already used in this sale
         const usedIds = new Set();
         for (const si of this.items) {

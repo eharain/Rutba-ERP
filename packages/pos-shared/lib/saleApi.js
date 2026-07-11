@@ -279,6 +279,33 @@ export default class SaleApi {
 
             activeItemIds.push(saleItemId);
 
+            // DIVISIBLE line (Divisible P2c): sell a fractional sub-unit portion
+            // via the server allocator instead of connecting whole units. Only
+            // consume stock when the sale is paid — drafts reserve nothing, exactly
+            // like the whole-unit path below. The server allocates across InStock
+            // items (opened-first → FEFO), prices per sub-unit, flips depleted items
+            // to Sold, and links the touched units back to this sale-item.
+            if (item.isDivisibleSale) {
+                if (paid) {
+                    const baseProductDocId = baseStockItem?.product?.documentId || baseStockItem?.product?.id;
+                    if (baseProductDocId) {
+                        try {
+                            await StockItemsEndpoints.sellUnits({
+                                productDocId: baseProductDocId,
+                                qty: Number(item.sellableQty),
+                                saleItemDocId: saleItemId,
+                            });
+                        } catch (err) {
+                            const detail = err?.response?.data?.error;
+                            const available = detail?.details?.available;
+                            const msg = detail?.message || err?.message || 'allocation failed';
+                            throw new Error(`Could not sell ${item.name}: ${msg}${available != null ? ` (only ${available} available)` : ''}`);
+                        }
+                    }
+                }
+                continue; // skip the whole-unit connect / Sold path for divisible lines
+            }
+
             // STOCK ITEMS
             if (!Array.isArray(item.items)) continue;
 

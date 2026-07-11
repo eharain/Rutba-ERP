@@ -5008,6 +5008,7 @@ export interface ApiSaleItemSaleItem extends Struct.CollectionTypeSchema {
     draftAndPublish: false;
   };
   attributes: {
+    allocations: Schema.Attribute.JSON;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -5028,6 +5029,7 @@ export interface ApiSaleItemSaleItem extends Struct.CollectionTypeSchema {
     publishedAt: Schema.Attribute.DateTime;
     quantity: Schema.Attribute.Integer;
     sale: Schema.Attribute.Relation<'manyToOne', 'api::sale.sale'>;
+    sellable_qty: Schema.Attribute.Decimal;
     subtotal: Schema.Attribute.Decimal;
     tax: Schema.Attribute.Decimal;
     total: Schema.Attribute.Decimal;

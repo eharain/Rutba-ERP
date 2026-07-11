@@ -355,6 +355,48 @@ module.exports = createCoreService(STOCK_ITEM_UID, ({ strapi }) => ({
   },
 
   /**
+   * POS immediate-sale entry point (Divisible P2c): sell `qty` sub-units of a
+   * divisible product by documentId. Resolves the product, allocates+consumes via
+   * allocateSellableUnits (opened-first → FEFO, depleted→Sold), and — when a
+   * sale-item documentId is supplied — connects every touched stock-item to it so
+   * the sale keeps a traceable link back to the physical units (needed for later
+   * returns). Throws { status:409, available } when short. Returns the allocation
+   * result verbatim ({ allocations, totalUnits, totalPrice, warning }).
+   *
+   * @param {string} productDocId
+   * @param {number} qty
+   * @param {{ scannedItemDocId?: string, saleItemDocId?: string }} [opts]
+   */
+  async sellDivisibleUnits(productDocId, qty, opts = {}) {
+    if (!productDocId) { const e = new Error('product_document_id is required'); e.status = 400; throw e; }
+    const product = await strapi.db.query('api::product.product').findOne({
+      where: { documentId: productDocId }, select: ['id'],
+    });
+    if (!product) { const e = new Error('Product not found'); e.status = 404; throw e; }
+
+    const result = await this.allocateSellableUnits(product.id, Number(qty), { scannedItemDocId: opts.scannedItemDocId });
+    if (result.insufficient) { const e = new Error(`Only ${result.available} sub-unit(s) available`); e.status = 409; e.available = result.available; throw e; }
+
+    // Traceability: link the consumed units to the sale-item (append). A unit may
+    // be sold in portions across several sale-items over its life, so we connect
+    // (never replace). Best-effort — a link failure must not void a completed sale.
+    if (opts.saleItemDocId && result.allocations.length) {
+      const ids = result.allocations.map((a) => a.stock_item).filter(Boolean);
+      if (ids.length) {
+        try {
+          await strapi.documents('api::sale-item.sale-item').update({
+            documentId: opts.saleItemDocId,
+            data: { items: { connect: ids } },
+          });
+        } catch (err) {
+          strapi.log.warn(`[sellDivisibleUnits] linking units to sale-item ${opts.saleItemDocId} failed: ${err.message}`);
+        }
+      }
+    }
+    return result;
+  },
+
+  /**
    * Recompute multiple products. Deduplicates ids and walks them serially —
    * each recompute is one COUNT + one UPDATE, so the cost is linear and the
    * sequential order keeps DB load predictable during bulk operations.

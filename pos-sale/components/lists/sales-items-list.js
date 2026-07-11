@@ -172,14 +172,18 @@ export default function SalesItemsList({
                             <td>
                                 {(() => {
                                     const isCustom = !item.isDynamicStock;
+                                    // Divisible lines sell a fractional sub-unit portion (e.g. 10.5
+                                    // yards) — allow decimals, no custom cap, and hint the per-item
+                                    // capacity so the teller sees how a roll/box is being drawn down.
+                                    const isDivisible = item.isDivisible;
                                     const qtyWarn = isCustom && item.quantity > CUSTOM_QTY_WARN;
                                     return (
                                         <>
                                             <NumberCell
                                                 className="form-control form-control-sm text-center"
                                                 value={item.quantity}
-                                                min={1}
-                                                step={1}
+                                                min={isDivisible ? 0 : 1}
+                                                step={isDivisible ? 'any' : 1}
                                                 max={isCustom ? MAX_CUSTOM_QTY : undefined}
                                                 invalid={qtyWarn}
                                                 onCommit={n =>
@@ -189,6 +193,11 @@ export default function SalesItemsList({
                                                 }
                                                 disabled={disabled}
                                             />
+                                            {isDivisible && (
+                                                <div className="text-muted text-center mt-1" style={{ fontSize: 10, lineHeight: 1.1 }}>
+                                                    units · {item.subUnitCapacity}/item
+                                                </div>
+                                            )}
                                             {qtyWarn && (
                                                 <div className="text-danger text-center mt-1" style={{ fontSize: 10, lineHeight: 1.1 }}>
                                                     {item.quantity >= MAX_CUSTOM_QTY ? `Max ${MAX_CUSTOM_QTY} reached` : `Max ${MAX_CUSTOM_QTY}`}

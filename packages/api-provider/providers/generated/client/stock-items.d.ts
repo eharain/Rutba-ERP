@@ -19,6 +19,7 @@ export interface StockItemsEndpointsType {
     sweepExpired(): Promise<any>;
     valuation({ warehouseDocId }?: any): Promise<any>;
     transfer(payload?: any): Promise<any>;
+    sellUnits({ productDocId, qty, scannedItemDocId, saleItemDocId }?: any): Promise<any>;
     meta: any;
 }
 

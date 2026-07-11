@@ -310,5 +310,29 @@ export const StockItemsEndpoints = {
         approle: ['admin', 'manager'],
         data: payload,
     }),
+
+    /**
+     * Sell `qty` sub-units of a DIVISIBLE product at POS (Divisible P2c). Consumes
+     * units across the product's InStock items (opened-first → FEFO; depleting
+     * units flip to Sold) and, when `saleItemDocId` is given, links them to that
+     * sale-item. Server allocates + prices per sub-unit; never trust the client for
+     * that math. auth:false route + manual auth. Returns
+     * { success, allocations, totalUnits, totalPrice, warning? }; 409 when short.
+     *
+     * @param {{ productDocId: string, qty: number, scannedItemDocId?: string, saleItemDocId?: string }} payload
+     */
+    sellUnits: ({ productDocId, qty, scannedItemDocId, saleItemDocId } = {}) => ({
+        path: '/stock-items/sell-units',
+        action: 'create',
+        method: 'post',
+        apps: ['sale', 'inventory', 'stock'],
+        approle: ['admin', 'manager', 'staff'],
+        data: {
+            product_document_id: productDocId,
+            qty,
+            ...(scannedItemDocId ? { scanned_item_document_id: scannedItemDocId } : {}),
+            ...(saleItemDocId ? { sale_item_document_id: saleItemDocId } : {}),
+        },
+    }),
 };
 
