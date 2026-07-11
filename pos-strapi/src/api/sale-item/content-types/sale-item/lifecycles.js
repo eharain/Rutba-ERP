@@ -36,10 +36,17 @@ async function saleIsLocked(saleRef) {
   return !!sale?.pay_later;
 }
 
-async function saleLockedForSaleItem(saleItemId) {
-  if (!saleItemId) return false;
+// Resolve the sale-item from whatever key the update/delete arrives with
+// (query engine → `id`, but be robust to `documentId`) and report whether its
+// parent sale is locked.
+async function saleLockedForSaleItem(where) {
+  if (!where) return false;
+  const lookup = {};
+  if (where.id != null) lookup.id = where.id;
+  else if (where.documentId != null) lookup.documentId = where.documentId;
+  else return false;
   const row = await strapi.db.query('api::sale-item.sale-item').findOne({
-    where: { id: saleItemId },
+    where: lookup,
     populate: { sale: { select: ['id', 'pay_later'] } },
   });
   return !!row?.sale?.pay_later;
@@ -52,12 +59,12 @@ module.exports = {
   },
 
   async beforeUpdate(event) {
-    const locked = await saleLockedForSaleItem(event.params?.where?.id);
+    const locked = await saleLockedForSaleItem(event.params?.where);
     if (locked) throw new errors.ApplicationError(LOCK_MESSAGE);
   },
 
   async beforeDelete(event) {
-    const locked = await saleLockedForSaleItem(event.params?.where?.id);
+    const locked = await saleLockedForSaleItem(event.params?.where);
     if (locked) throw new errors.ApplicationError(LOCK_MESSAGE);
   },
 };
