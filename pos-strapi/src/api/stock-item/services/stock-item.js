@@ -370,9 +370,13 @@ module.exports = createCoreService(STOCK_ITEM_UID, ({ strapi }) => ({
   async sellDivisibleUnits(productDocId, qty, opts = {}) {
     if (!productDocId) { const e = new Error('product_document_id is required'); e.status = 400; throw e; }
     const product = await strapi.db.query('api::product.product').findOne({
-      where: { documentId: productDocId }, select: ['id'],
+      where: { documentId: productDocId }, select: ['id', 'divisible'],
     });
     if (!product) { const e = new Error('Product not found'); e.status = 404; throw e; }
+    // Portion-selling is only valid for divisible products. Without this check,
+    // qty N against an ordinary product (sellable_units defaults to 1) silently
+    // flips N whole items to Sold with no sale attached to most of them.
+    if (product.divisible !== true) { const e = new Error('Product is not divisible — portion selling is not allowed'); e.status = 400; throw e; }
 
     const result = await this.allocateSellableUnits(product.id, Number(qty), { scannedItemDocId: opts.scannedItemDocId });
     if (result.insufficient) { const e = new Error(`Only ${result.available} sub-unit(s) available`); e.status = 409; e.available = result.available; throw e; }

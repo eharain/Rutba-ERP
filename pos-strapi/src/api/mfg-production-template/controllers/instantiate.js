@@ -9,6 +9,8 @@
  * concrete BOM — the template is a convenience/consistency layer above it.
  *
  * Auth: manual (route is auth:false), mirroring the WO transition controller.
+ * Minting BOMs shapes production costing, so it requires a manufacturing
+ * manager/admin app-role — not just any authenticated user.
  *
  * Body:
  *   outputProduct   (required) documentId of the primary output product
@@ -17,11 +19,14 @@
  *   name, version, production_line, activate
  */
 
-const { ensureUser } = require('../../../utils/mfg-auth');
+const { requireAppRole } = require('../../../utils/require-admin');
 
 module.exports = {
   async instantiate(ctx) {
-    const user = await ensureUser(ctx, strapi);
+    const user = await requireAppRole(ctx, strapi, {
+      domains: ['manufacturing'],
+      levels: ['admin', 'manager'],
+    });
     if (!user) return;
 
     const { documentId } = ctx.params;

@@ -323,7 +323,7 @@ export const StockItemsEndpoints = {
      */
     sellUnits: ({ productDocId, qty, scannedItemDocId, saleItemDocId } = {}) => ({
         path: '/stock-items/sell-units',
-        action: 'create',
+        action: 'run',
         method: 'post',
         apps: ['sale', 'inventory', 'stock'],
         approle: ['admin', 'manager', 'staff'],

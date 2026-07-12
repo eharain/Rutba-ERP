@@ -24,28 +24,8 @@ function horizon(days) {
   return d.toISOString().slice(0, 10);
 }
 
-async function ensureUser(ctx, strapi) {
-  if (ctx.state?.user) return ctx.state.user;
-  try {
-    const token = await strapi.plugin('users-permissions').service('jwt').getToken(ctx);
-    if (token?.id) {
-      const user = await strapi.plugin('users-permissions').service('user').fetchAuthenticatedUser(token.id);
-      if (user && !user.blocked) { ctx.state.user = user; return user; }
-    }
-  } catch (_) { /* invalid / missing token */ }
-  ctx.unauthorized('Authentication required');
-  return null;
-}
-
-async function isAdminUser(userId, strapi) {
-  const user = await strapi.query('plugin::users-permissions.user').findOne({
-    where: { id: userId },
-    populate: { role: { select: ['type'] }, app_roles: { select: ['key'] } },
-  });
-  if (user?.role?.type === 'admin') return true;
-  const keys = (user?.app_roles || []).map((r) => r?.key).filter(Boolean);
-  return keys.some((k) => /(?:^|_)admin$/.test(String(k)));
-}
+const { ensureUser } = require('../../../utils/ensure-user');
+const { requireAppRole } = require('../../../utils/require-admin');
 
 module.exports = {
   // GET /stock-items/expiring
@@ -70,10 +50,14 @@ module.exports = {
 
   // POST /stock-items/sweep-expired
   async sweepExpired(ctx) {
-    const user = await ensureUser(ctx, strapi);
+    // Scoped to inventory/stock admins — a broad "any *_admin" match would let
+    // hr_admin / cms_admin etc. sweep stock.
+    const user = await requireAppRole(ctx, strapi, {
+      domains: ['inventory', 'stock'],
+      levels: ['admin'],
+      message: 'Only inventory/stock administrators can sweep expired stock',
+    });
     if (!user) return;
-    const admin = await isAdminUser(user.id, strapi);
-    if (!admin) return ctx.forbidden('Only administrators can sweep expired stock');
 
     // Shared with the daily inventoryExpirySweep cron — sweeps serialized units
     // AND bulk batches past expiry (see api::stock-item.sweepExpired).

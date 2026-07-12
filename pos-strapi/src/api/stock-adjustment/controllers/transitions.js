@@ -12,7 +12,11 @@
  * Cancel: reverts the units to InStock and reverses any posted GL.
  *
  * Auth is manual (auth:false routes) — same pattern as stock-items/transfer.
+ * Posting/cancelling books losses and GL, so it requires an inventory/stock
+ * manager or admin app-role (not just any authenticated user).
  */
+
+const { requireAppRole } = require('../../../utils/require-admin');
 
 const ADJ_UID = 'api::stock-adjustment.stock-adjustment';
 const STOCK_ITEM_UID = 'api::stock-item.stock-item';
@@ -21,18 +25,10 @@ const SOURCE_TYPE = 'Inventory Adjustment';
 // Adjustment type -> the stock-item status the unit moves to on post.
 const TYPE_TO_STATUS = { WriteOff: 'Reduced', Damage: 'Damaged', Lost: 'Lost', Expired: 'Expired' };
 
-async function ensureUser(ctx, strapi) {
-  if (ctx.state?.user) return ctx.state.user;
-  try {
-    const token = await strapi.plugin('users-permissions').service('jwt').getToken(ctx);
-    if (token?.id) {
-      const user = await strapi.plugin('users-permissions').service('user').fetchAuthenticatedUser(token.id);
-      if (user && !user.blocked) { ctx.state.user = user; return user; }
-    }
-  } catch (_) { /* invalid / missing token */ }
-  ctx.unauthorized('Authentication required');
-  return null;
-}
+const requireAdjustmentManager = (ctx, strapi) => requireAppRole(ctx, strapi, {
+  domains: ['inventory', 'stock'],
+  levels: ['admin', 'manager'],
+});
 
 async function loadAdjustment(strapi, ref) {
   if (ref == null || ref === '') return null;
@@ -94,7 +90,7 @@ async function postLossGL(strapi, adj, units, user) {
 module.exports = {
   // POST /stock-adjustments/:id/post
   async post(ctx) {
-    const user = await ensureUser(ctx, strapi);
+    const user = await requireAdjustmentManager(ctx, strapi);
     if (!user) return;
 
     const adj = await loadAdjustment(strapi, ctx.params.id);
@@ -126,7 +122,7 @@ module.exports = {
 
   // POST /stock-adjustments/:id/cancel
   async cancel(ctx) {
-    const user = await ensureUser(ctx, strapi);
+    const user = await requireAdjustmentManager(ctx, strapi);
     if (!user) return;
 
     const adj = await loadAdjustment(strapi, ctx.params.id);

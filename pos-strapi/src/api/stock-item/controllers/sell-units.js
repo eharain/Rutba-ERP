@@ -18,25 +18,19 @@
  *                              skips a nearer-expiry one
  *   sale_item_document_id      (optional) connect consumed units to this sale-item
  *
- * auth:false route + manual auth (mirrors valuation/transfer/expiry). Any
- * authenticated, non-blocked user (POS teller) may sell — the same access they
- * already have to mutate stock via /stock-items/:id.
+ * auth:false route + manual auth (mirrors valuation/transfer/expiry). Selling
+ * consumes stock with no payment step on this endpoint, so it requires a
+ * sale/stock/inventory app-role (any level — POS tellers are sale_staff);
+ * a bare storefront JWT is rejected.
  */
+
+const { requireAppRole } = require('../../../utils/require-admin');
 
 const STOCK_ITEM_UID = 'api::stock-item.stock-item';
 
-async function ensureUser(ctx, strapi) {
-  if (ctx.state?.user) return ctx.state.user;
-  try {
-    const token = await strapi.plugin('users-permissions').service('jwt').getToken(ctx);
-    if (token?.id) {
-      const user = await strapi.plugin('users-permissions').service('user').fetchAuthenticatedUser(token.id);
-      if (user && !user.blocked) { ctx.state.user = user; return user; }
-    }
-  } catch (_) { /* invalid / missing token */ }
-  ctx.unauthorized('Authentication required');
-  return null;
-}
+const requireSeller = (ctx, strapi) => requireAppRole(ctx, strapi, {
+  domains: ['sale', 'stock', 'inventory'],
+});
 
 function readBody(ctx) {
   const b = ctx.request?.body;
@@ -45,7 +39,7 @@ function readBody(ctx) {
 
 module.exports = {
   async run(ctx) {
-    const user = await ensureUser(ctx, strapi);
+    const user = await requireSeller(ctx, strapi);
     if (!user) return;
 
     const { product_document_id, qty, scanned_item_document_id, sale_item_document_id } = readBody(ctx);

@@ -154,6 +154,10 @@ module.exports = createCoreService('api::sale-order.sale-order', ({ strapi }) =>
     if (!(item_index >= 0 && item_index < items.length)) { const e = new Error(`item_index ${item_index} out of range`); e.status = 400; throw e; }
     const productId = items[item_index].product?.id;
     if (!productId) { const e = new Error('Line has no product'); e.status = 400; throw e; }
+    if (items[item_index].product?.divisible !== true) {
+      const e = new Error('Product is not divisible — portion allocation is not allowed');
+      e.status = 400; throw e;
+    }
 
     const result = await strapi.service('api::stock-item.stock-item').allocateSellableUnits(productId, Number(qty), { scannedItemDocId: opts.scannedItemDocId });
     if (result.insufficient) { const e = new Error(`Only ${result.available} sub-unit(s) available`); e.status = 409; e.available = result.available; throw e; }

@@ -13,25 +13,20 @@
  * Cancel is allowed only from Draft (a posted count's losses aren't reverted
  * because the specific units aren't tracked back to the count in v1).
  *
- * Auth is manual (auth:false routes).
+ * Auth is manual (auth:false routes). Posting a count books stock losses, so
+ * it requires an inventory/stock manager or admin app-role.
  */
+
+const { requireAppRole } = require('../../../utils/require-admin');
 
 const COUNT_UID = 'api::stock-count.stock-count';
 const STOCK_ITEM_UID = 'api::stock-item.stock-item';
 const PRODUCT_UID = 'api::product.product';
 
-async function ensureUser(ctx, strapi) {
-  if (ctx.state?.user) return ctx.state.user;
-  try {
-    const token = await strapi.plugin('users-permissions').service('jwt').getToken(ctx);
-    if (token?.id) {
-      const user = await strapi.plugin('users-permissions').service('user').fetchAuthenticatedUser(token.id);
-      if (user && !user.blocked) { ctx.state.user = user; return user; }
-    }
-  } catch (_) { /* invalid / missing token */ }
-  ctx.unauthorized('Authentication required');
-  return null;
-}
+const requireCountManager = (ctx, strapi) => requireAppRole(ctx, strapi, {
+  domains: ['inventory', 'stock'],
+  levels: ['admin', 'manager'],
+});
 
 async function loadCount(strapi, ref) {
   if (ref == null || ref === '') return null;
@@ -64,7 +59,7 @@ async function inStockUnits(strapi, productDocId, warehouseId) {
 module.exports = {
   // POST /stock-counts/:id/post
   async post(ctx) {
-    const user = await ensureUser(ctx, strapi);
+    const user = await requireCountManager(ctx, strapi);
     if (!user) return;
 
     const count = await loadCount(strapi, ctx.params.id);
@@ -112,7 +107,7 @@ module.exports = {
 
   // POST /stock-counts/:id/cancel
   async cancel(ctx) {
-    const user = await ensureUser(ctx, strapi);
+    const user = await requireCountManager(ctx, strapi);
     if (!user) return;
 
     const count = await loadCount(strapi, ctx.params.id);

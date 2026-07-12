@@ -84,9 +84,11 @@ module.exports = createCoreController(POST_UID, ({ strapi }) => ({
     }
   },
 
-  /** Clone a post into a fresh draft, ready to re-publish (repost). */
+  /** Clone a post into a fresh draft, ready to re-publish (repost). Writes
+   *  brand content, so it needs a social app-role like the other brand-acting
+   *  operations — authentication alone admits storefront customers. */
   async duplicate(ctx) {
-    if (!await ensureUser(ctx, strapi)) return;
+    if (!await requireSocialMember(ctx, strapi)) return;
     try {
       const post = await strapi.service(POST_UID).duplicatePost(ctx.params.id);
       return ctx.send({ data: post });

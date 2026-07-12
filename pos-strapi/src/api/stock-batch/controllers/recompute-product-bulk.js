@@ -13,50 +13,18 @@
  * the custom action name. Mirrors stock-items/recompute-product-stock.
  */
 
-async function ensureUser(ctx, strapi) {
-  if (ctx.state?.user) return ctx.state.user;
-  try {
-    const token = await strapi
-      .plugin('users-permissions')
-      .service('jwt')
-      .getToken(ctx);
-    if (token?.id) {
-      const user = await strapi
-        .plugin('users-permissions')
-        .service('user')
-        .fetchAuthenticatedUser(token.id);
-      if (user && !user.blocked) {
-        ctx.state.user = user;
-        return user;
-      }
-    }
-  } catch (_) { /* invalid / missing token */ }
-  ctx.unauthorized('Authentication required');
-  return null;
-}
-
-async function isAdminUser(userId, strapi) {
-  const user = await strapi.query('plugin::users-permissions.user').findOne({
-    where: { id: userId },
-    populate: {
-      role: { select: ['type'] },
-      app_roles: { select: ['key'] },
-    },
-  });
-  if (user?.role?.type === 'admin') return true;
-  const appRoleKeys = (user?.app_roles || []).map((r) => r?.key).filter(Boolean);
-  return appRoleKeys.some((k) => /(?:^|_)admin$/.test(String(k)));
-}
+const { requireAppRole } = require('../../../utils/require-admin');
 
 module.exports = {
   async run(ctx) {
-    const user = await ensureUser(ctx, strapi);
+    // Scoped to inventory/stock admins — a broad "any *_admin" match would let
+    // hr_admin / cms_admin etc. trigger stock reconciliation.
+    const user = await requireAppRole(ctx, strapi, {
+      domains: ['inventory', 'stock'],
+      levels: ['admin'],
+      message: 'Only inventory/stock administrators can recompute bulk stock',
+    });
     if (!user) return;
-
-    const admin = await isAdminUser(user.id, strapi);
-    if (!admin) {
-      return ctx.forbidden('Only administrators can recompute bulk stock');
-    }
 
     const summary = await strapi
       .service('api::stock-batch.stock-batch')

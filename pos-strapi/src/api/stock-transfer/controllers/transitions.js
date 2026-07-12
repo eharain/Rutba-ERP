@@ -12,27 +12,19 @@
  * per-warehouse stock-level cache.
  *
  * Auth is manual (auth:false on the routes) so Strapi doesn't reject the custom
- * action names — same pattern as stock-items/transfer.
+ * action names — same pattern as stock-items/transfer. Transitions require an
+ * inventory/stock app-role (any level — warehouse staff dispatch and receive);
+ * unrelated authenticated users (e.g. storefront customers) are rejected.
  */
+
+const { requireAppRole } = require('../../../utils/require-admin');
 
 const STOCK_TRANSFER_UID = 'api::stock-transfer.stock-transfer';
 const STOCK_ITEM_UID = 'api::stock-item.stock-item';
 
-async function ensureUser(ctx, strapi) {
-  if (ctx.state?.user) return ctx.state.user;
-  try {
-    const token = await strapi.plugin('users-permissions').service('jwt').getToken(ctx);
-    if (token?.id) {
-      const user = await strapi.plugin('users-permissions').service('user').fetchAuthenticatedUser(token.id);
-      if (user && !user.blocked) {
-        ctx.state.user = user;
-        return user;
-      }
-    }
-  } catch (_) { /* invalid / missing token */ }
-  ctx.unauthorized('Authentication required');
-  return null;
-}
+const requireTransferMember = (ctx, strapi) => requireAppRole(ctx, strapi, {
+  domains: ['inventory', 'stock'],
+});
 
 async function loadTransfer(strapi, ref) {
   if (ref == null || ref === '') return null;
@@ -54,7 +46,7 @@ async function loadTransfer(strapi, ref) {
 module.exports = {
   // POST /stock-transfers/:id/dispatch
   async dispatch(ctx) {
-    const user = await ensureUser(ctx, strapi);
+    const user = await requireTransferMember(ctx, strapi);
     if (!user) return;
 
     const t = await loadTransfer(strapi, ctx.params.id);
@@ -82,7 +74,7 @@ module.exports = {
 
   // POST /stock-transfers/:id/receive
   async receive(ctx) {
-    const user = await ensureUser(ctx, strapi);
+    const user = await requireTransferMember(ctx, strapi);
     if (!user) return;
 
     const t = await loadTransfer(strapi, ctx.params.id);
@@ -115,7 +107,7 @@ module.exports = {
 
   // POST /stock-transfers/:id/cancel
   async cancel(ctx) {
-    const user = await ensureUser(ctx, strapi);
+    const user = await requireTransferMember(ctx, strapi);
     if (!user) return;
 
     const t = await loadTransfer(strapi, ctx.params.id);
