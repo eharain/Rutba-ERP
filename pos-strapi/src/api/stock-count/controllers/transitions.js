@@ -28,6 +28,49 @@ const requireCountManager = (ctx, strapi) => requireAppRole(ctx, strapi, {
   levels: ['admin', 'manager'],
 });
 
+const COUNT_SOURCE_TYPE = 'Stock Count';
+
+// Best-effort loss GL for count shrinkage: Dr SHRINKAGE_EXPENSE / Cr INVENTORY,
+// mirroring the stock-adjustment path so a count-driven loss and an
+// adjustment-driven loss hit the books identically. Idempotent (findBySource);
+// never throws — a missing COA mapping just skips it with a log.
+async function postCountLossGL(strapi, count, totalCost, user) {
+  try {
+    if (!(Number(totalCost) > 0)) return { posted: false, reason: 'zero cost basis' };
+    const accounting = strapi.service('api::acc-journal-entry.accounting');
+    const resolver = strapi.service('api::acc-journal-entry.account-resolver');
+    if (!accounting || !resolver) return { posted: false, reason: 'accounting engine unavailable' };
+
+    const existing = await accounting.findBySource(COUNT_SOURCE_TYPE, count.id);
+    if (existing && existing.length) return { posted: true, reason: 'already posted' };
+
+    let invAcc, expAcc;
+    try {
+      invAcc = await resolver.resolve('INVENTORY', null);
+      expAcc = await resolver.resolve('SHRINKAGE_EXPENSE', null);
+    } catch (e) {
+      return { posted: false, reason: `account mapping missing (${e.message})` };
+    }
+
+    await accounting.createAndPost({
+      date: new Date(),
+      description: `Stock count shrinkage — ${count.count_number}`,
+      source_type: COUNT_SOURCE_TYPE,
+      source_id: count.id,
+      source_ref: count.count_number,
+      posted_by: user.email || String(user.id),
+      lines: [
+        { account: expAcc, debit: totalCost, credit: 0, description: 'Count shrinkage' },
+        { account: invAcc, debit: 0, credit: totalCost, description: 'Inventory reduction' },
+      ],
+    });
+    return { posted: true, total: totalCost };
+  } catch (e) {
+    strapi.log.warn(`[stock-count] GL post failed (best-effort): ${e.message}`);
+    return { posted: false, reason: e.message };
+  }
+}
+
 async function loadCount(strapi, ref) {
   if (ref == null || ref === '') return null;
   const where = (typeof ref === 'number' || /^\d+$/.test(String(ref)))
@@ -44,6 +87,9 @@ async function loadCount(strapi, ref) {
 }
 
 // Count InStock units of a product-document at a warehouse, oldest first.
+// Dedupe by item id: filtering on the product's documentId joins across BOTH
+// draft and published product editions, so a single stock-item can surface
+// twice — which would double the system qty and flag good units as Lost.
 async function inStockUnits(strapi, productDocId, warehouseId) {
   const where = {
     status: 'InStock',
@@ -51,9 +97,11 @@ async function inStockUnits(strapi, productDocId, warehouseId) {
     warehouse: warehouseId,
   };
   if (productDocId) where.product = { documentId: productDocId };
-  return strapi.db.query(STOCK_ITEM_UID).findMany({
-    where, select: ['id', 'documentId'], orderBy: { createdAt: 'asc' }, limit: 100000,
+  const rows = await strapi.db.query(STOCK_ITEM_UID).findMany({
+    where, select: ['id', 'documentId', 'cost_price'], orderBy: { createdAt: 'asc' }, limit: 100000,
   });
+  const seen = new Set();
+  return rows.filter((r) => (seen.has(r.id) ? false : (seen.add(r.id), true)));
 }
 
 module.exports = {
@@ -71,7 +119,7 @@ module.exports = {
     const lines = count.lines || [];
     if (lines.length === 0) return ctx.badRequest('Count has no lines');
 
-    let shortageUnits = 0, overageUnits = 0, linesWithVariance = 0;
+    let shortageUnits = 0, overageUnits = 0, linesWithVariance = 0, shortageCost = 0;
     const results = [];
     const newLines = [];
 
@@ -85,6 +133,7 @@ module.exports = {
         const toLose = units.slice(0, system - counted);
         for (const u of toLose) {
           await strapi.entityService.update(STOCK_ITEM_UID, u.id, { data: { status: 'Lost' } });
+          shortageCost += Number(u.cost_price) || 0;
         }
         shortageUnits += (system - counted);
         linesWithVariance += 1;
@@ -97,12 +146,15 @@ module.exports = {
       newLines.push({ product_doc_id: line.product_doc_id, product_name: line.product_name, sku: line.sku, system_qty: system, counted_qty: counted });
     }
 
+    // Book the shrinkage loss to the GL (same treatment as a stock-adjustment).
+    const gl = await postCountLossGL(strapi, count, Math.round(shortageCost * 100) / 100, user);
+
     await strapi.entityService.update(COUNT_UID, count.id, {
       data: { status: 'Posted', posted_at: new Date().toISOString(), lines: newLines },
     });
 
-    strapi.log.info(`[stock-count] ${count.count_number} posted — shortage ${shortageUnits}, overage ${overageUnits} by ${user.email || user.id}`);
-    return ctx.send({ success: true, status: 'Posted', linesWithVariance, shortageUnits, overageUnits, results });
+    strapi.log.info(`[stock-count] ${count.count_number} posted — shortage ${shortageUnits}, overage ${overageUnits} (gl=${gl.posted}) by ${user.email || user.id}`);
+    return ctx.send({ success: true, status: 'Posted', linesWithVariance, shortageUnits, overageUnits, shortageCost: Math.round(shortageCost * 100) / 100, gl, results });
   },
 
   // POST /stock-counts/:id/cancel

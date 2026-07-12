@@ -50,6 +50,9 @@
       "type": "boolean",
       "default": false
     },
+    "adjusted_item_ids": {
+      "type": "json"
+    },
     "warehouse": {
       "type": "relation",
       "relation": "manyToOne",

@@ -28,6 +28,9 @@ const BOM_UID = 'api::mfg-bom.mfg-bom';
 
 // Purchases still contributing to on-order (not received/closed/cancelled).
 const OPEN_PURCHASE_STATUSES = ['Draft', 'Pending', 'Submitted', 'Partially Received'];
+// Work orders still expected to produce output (not completed/cancelled).
+const OPEN_WO_STATUSES = ['Draft', 'Released', 'InProgress'];
+const STOCK_BATCH_UID = 'api::stock-batch.stock-batch';
 
 const num = (v) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
 const roundUpToPack = (qty, pack) => {
@@ -54,6 +57,47 @@ module.exports = factories.createCoreService(POLICY_UID, ({ strapi }) => ({
       if (!pid) continue;
       const open = num(r.quantity) - num(r.received_quantity);
       if (open > 0) map.set(pid, (map.get(pid) || 0) + open);
+    }
+    return map;
+  },
+
+  /** open-WO output = Σ quantity_ordered across open work orders → Map<productId, qty>.
+   *  A draft/released WO producing a product raises its incoming supply, so
+   *  repeatedly generating work-orders for the same deficit no longer duplicates. */
+  async _onOrderWOByProduct(productIds) {
+    const ids = Array.from(new Set((productIds || []).filter(Boolean)));
+    const map = new Map();
+    if (ids.length === 0) return map;
+    const rows = await strapi.db.query(WO_UID).findMany({
+      where: { product: { id: { $in: ids } }, status: { $in: OPEN_WO_STATUSES } },
+      select: ['quantity_ordered'],
+      populate: { product: { select: ['id'] } },
+      limit: 100000,
+    });
+    for (const r of rows) {
+      const pid = r.product?.id;
+      if (!pid) continue;
+      const q = num(r.quantity_ordered);
+      if (q > 0) map.set(pid, (map.get(pid) || 0) + q);
+    }
+    return map;
+  },
+
+  /** per-(product, warehouse) Active-batch remaining for BULK products → Map<`pid:whid`, qty>. */
+  async _bulkLevelByProductWarehouse(pairs) {
+    const map = new Map();
+    const productIds = Array.from(new Set(pairs.map((p) => p.productId).filter(Boolean)));
+    const warehouseIds = Array.from(new Set(pairs.map((p) => p.warehouseId).filter(Boolean)));
+    if (productIds.length === 0 || warehouseIds.length === 0) return map;
+    const rows = await strapi.db.query(STOCK_BATCH_UID).findMany({
+      where: { product: { id: { $in: productIds } }, warehouse: { id: { $in: warehouseIds } }, status: 'Active' },
+      select: ['quantity_remaining'],
+      populate: { product: { select: ['id'] }, warehouse: { select: ['id'] } },
+      limit: 100000,
+    });
+    for (const r of rows) {
+      const key = `${r.product?.id}:${r.warehouse?.id}`;
+      map.set(key, (map.get(key) || 0) + num(r.quantity_remaining));
     }
     return map;
   },
@@ -126,17 +170,43 @@ module.exports = factories.createCoreService(POLICY_UID, ({ strapi }) => ({
 
     if (targets.length === 0) return [];
 
-    // 3) batch the two expensive reads
-    const onOrder = await this._onOrderByProduct(targets.map((t) => t.product.id));
-    const levels = await this._levelByProductWarehouse(
-      targets.filter((t) => t.warehouse?.id).map((t) => ({ productId: t.product.id, warehouseId: t.warehouse.id })),
-    );
+    // Dedupe by (product, warehouse) so duplicate active policies can't produce
+    // duplicate suggestions (and downstream duplicate orders). First one wins.
+    const seenTargets = new Set();
+    const dedupedTargets = [];
+    for (const t of targets) {
+      const key = `${t.product.id}:${t.warehouse?.id || 'all'}`;
+      if (seenTargets.has(key)) continue;
+      seenTargets.add(key);
+      dedupedTargets.push(t);
+    }
+
+    // 3) batch the expensive reads
+    const onOrder = await this._onOrderByProduct(dedupedTargets.map((t) => t.product.id));
+    const woOnOrder = await this._onOrderWOByProduct(dedupedTargets.map((t) => t.product.id));
+    const serializedPairs = dedupedTargets.filter((t) => t.warehouse?.id && t.product.track_mode !== 'bulk')
+      .map((t) => ({ productId: t.product.id, warehouseId: t.warehouse.id }));
+    const bulkPairs = dedupedTargets.filter((t) => t.warehouse?.id && t.product.track_mode === 'bulk')
+      .map((t) => ({ productId: t.product.id, warehouseId: t.warehouse.id }));
+    const levels = await this._levelByProductWarehouse(serializedPairs);
+    const bulkLevels = await this._bulkLevelByProductWarehouse(bulkPairs);
 
     // 4) compute per target
     const suggestions = [];
-    for (const { policy, product, warehouse } of targets) {
-      const on_hand = warehouse?.id ? (levels.get(`${product.id}:${warehouse.id}`) || 0) : this._productOnHand(product);
-      const on_order = onOrder.get(product.id) || 0;
+    for (const { policy, product, warehouse } of dedupedTargets) {
+      // On-hand: serialized products read the per-warehouse stock-level cache;
+      // bulk products read their Active-batch sum (the stock-level cache is built
+      // only from serialized items, so a warehouse-scoped bulk policy would
+      // otherwise read 0 forever and trigger perpetual false suggestions).
+      let on_hand;
+      if (warehouse?.id) {
+        on_hand = product.track_mode === 'bulk'
+          ? (bulkLevels.get(`${product.id}:${warehouse.id}`) || 0)
+          : (levels.get(`${product.id}:${warehouse.id}`) || 0);
+      } else {
+        on_hand = this._productOnHand(product);
+      }
+      const on_order = (onOrder.get(product.id) || 0) + (woOnOrder.get(product.id) || 0);
       const projected = on_hand + on_order;
 
       const method = policy?.method || 'ReorderPoint';
@@ -192,6 +262,43 @@ module.exports = factories.createCoreService(POLICY_UID, ({ strapi }) => ({
    *   preferred_supplier docId). Omitted → compute fresh and take all source=Purchase.
    * @returns {{ created: number, purchases: Array }}
    */
+  /** Product docIds that already have an open REORDER-* draft purchase → Set. */
+  async _productsWithOpenReorderPurchase(productDocIds) {
+    const ids = [...new Set((productDocIds || []).filter(Boolean))];
+    const set = new Set();
+    if (ids.length === 0) return set;
+    const rows = await strapi.db.query(PURCHASE_ITEM_UID).findMany({
+      where: {
+        product: { documentId: { $in: ids } },
+        purchase: { status: { $in: OPEN_PURCHASE_STATUSES }, orderId: { $startsWith: 'REORDER-' } },
+      },
+      populate: { product: { select: ['documentId'] } },
+      select: ['id'],
+      limit: 100000,
+    });
+    for (const r of rows) if (r.product?.documentId) set.add(r.product.documentId);
+    return set;
+  },
+
+  /** Product docIds that already have an open REORDER-WO-* work order → Set. */
+  async _productsWithOpenReorderWO(productDocIds) {
+    const ids = [...new Set((productDocIds || []).filter(Boolean))];
+    const set = new Set();
+    if (ids.length === 0) return set;
+    const rows = await strapi.db.query(WO_UID).findMany({
+      where: {
+        product: { documentId: { $in: ids } },
+        status: { $in: OPEN_WO_STATUSES },
+        wo_number: { $startsWith: 'REORDER-WO-' },
+      },
+      populate: { product: { select: ['documentId'] } },
+      select: ['id'],
+      limit: 100000,
+    });
+    for (const r of rows) if (r.product?.documentId) set.add(r.product.documentId);
+    return set;
+  },
+
   async generatePurchases(opts = {}) {
     let suggestions = Array.isArray(opts.suggestions) && opts.suggestions.length
       ? opts.suggestions
@@ -199,6 +306,14 @@ module.exports = factories.createCoreService(POLICY_UID, ({ strapi }) => ({
     // keep only rows with a product and a positive qty
     suggestions = suggestions.filter((s) => s && s.product && num(s.suggested_qty) > 0);
     if (suggestions.length === 0) return { created: 0, purchases: [] };
+
+    // Idempotency: skip products that already have an open REORDER-generated
+    // draft purchase (guards a double-click / re-submit of the same suggestions).
+    const already = await this._productsWithOpenReorderPurchase(suggestions.map((s) => s.product));
+    const skipped = suggestions.filter((s) => already.has(s.product)).map((s) => s.product);
+    suggestions = suggestions.filter((s) => !already.has(s.product));
+    if (skipped.length) strapi.log.info(`[reorder] skipped ${skipped.length} product(s) with an existing open REORDER purchase`);
+    if (suggestions.length === 0) return { created: 0, purchases: [], skipped };
 
     // Resolve preferred_supplier docIds → supplier rows.
     const prefDocIds = [...new Set(suggestions.map((s) => s.preferred_supplier).filter(Boolean))];
@@ -292,6 +407,13 @@ module.exports = factories.createCoreService(POLICY_UID, ({ strapi }) => ({
       : (await this.getReorderSuggestions({ warehouseDocId: opts.warehouseDocId })).filter((s) => s.source === 'Manufacture');
     suggestions = suggestions.filter((s) => s && s.product && num(s.suggested_qty) > 0);
     if (suggestions.length === 0) return { created: 0, work_orders: [] };
+
+    // Idempotency: skip products that already have an open REORDER-WO draft.
+    const already = await this._productsWithOpenReorderWO(suggestions.map((s) => s.product));
+    const skipped = suggestions.filter((s) => already.has(s.product)).map((s) => s.product);
+    suggestions = suggestions.filter((s) => !already.has(s.product));
+    if (skipped.length) strapi.log.info(`[reorder] skipped ${skipped.length} product(s) with an existing open REORDER work-order`);
+    if (suggestions.length === 0) return { created: 0, work_orders: [], skipped };
 
     const stamp = opts.stamp || String(Date.now());
     const created = [];

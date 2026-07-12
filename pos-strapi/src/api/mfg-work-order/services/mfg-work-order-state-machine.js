@@ -321,11 +321,37 @@ module.exports = {
         const need = Math.ceil(reqQty);
         const units = await strapi.db.query(STOCK_ITEM_UID).findMany({
           where: { product: product.id, status: 'InStock', $or: [{ archived: false }, { archived: { $null: true } }] },
-          select: ['id'], orderBy: { createdAt: 'asc' }, limit: need,
+          select: ['id', 'cost_price'], orderBy: { createdAt: 'asc' }, limit: need,
         });
         let consumed = 0;
+        let consumedCost = 0;
         for (const u of units) {
-          try { await strapi.entityService.update(STOCK_ITEM_UID, u.id, { data: { status: 'Reduced' } }); consumed += 1; } catch (_) { /* noop */ }
+          try {
+            await strapi.entityService.update(STOCK_ITEM_UID, u.id, { data: { status: 'Reduced' } });
+            consumed += 1;
+            consumedCost += Number(u.cost_price) || 0;
+          } catch (_) { /* noop */ }
+        }
+        // Record the consumed serialized units' cost as a lot-less material-issue
+        // so it enters WO costing (computeCosting sums every issue's total_cost).
+        // Without this, serialized-input cost never reaches the finished goods.
+        if (consumed > 0 && consumedCost > 0) {
+          try {
+            await strapi.entityService.create(ISSUE_UID, {
+              data: {
+                quantity: consumed,
+                uom: product.unit_of_measure || 'piece',
+                issue_type: 'Issue',
+                unit_cost: consumedCost / consumed,
+                total_cost: consumedCost,
+                work_order: workOrder.id,
+                notes: `Auto-consumed ${consumed} serialized unit(s) of ${product.name || product.documentId}`,
+                ...(branch?.id ? { branch: branch.id } : {}),
+              },
+            });
+          } catch (err) {
+            strapi.log.warn(`[wo-state-machine] WO=${workOrder.documentId} serialized cost-issue create failed: ${err.message}`);
+          }
         }
         results.push({ product: product.documentId, mode: 'serialized', required: need, consumed, short: Math.max(0, need - consumed) });
       } else {
@@ -452,8 +478,6 @@ module.exports = {
     let finishedCount = 0;
     if (statusChanged && newStatus === 'Completed') {
       if (!wo.completed_at && !restExtra.completed_at) updateData.completed_at = new Date();
-      const costing = await this.computeCosting(wo);
-      Object.assign(updateData, costing);
 
       const qtyCompleted = Number(wo.quantity_completed) || 0;
       const qtyOrdered = Number(wo.quantity_ordered) || 0;
@@ -461,6 +485,22 @@ module.exports = {
       finishedCount = quantity_finished != null
         ? Math.max(0, Math.floor(Number(quantity_finished) || 0))
         : (qtyCompleted > 0 ? qtyCompleted : Math.max(0, qtyOrdered - qtyRejected));
+
+      // Consume the BOM inputs BEFORE costing. In the auto-consume flow there are
+      // no pre-existing material issues, so computing costing first would always
+      // read material_cost 0 and capitalize the finished goods at labor+overhead
+      // only. Best-effort: a consume failure must not block completion (it will
+      // correctly leave material_cost 0). Idempotent via its own existing-issues
+      // guard, so it runs exactly once here (removed from the side-effects below).
+      try {
+        const consumed = await this.autoConsumeInputs(wo, finishedCount);
+        strapi.log.info(`[wo-state-machine] WO=${workOrderDocumentId} auto-consume: ${JSON.stringify(consumed)}`);
+      } catch (err) {
+        strapi.log.warn(`[wo-state-machine] WO=${workOrderDocumentId} auto-consume failed: ${err.message}`);
+      }
+
+      const costing = await this.computeCosting(wo);
+      Object.assign(updateData, costing);
       updateData._costPerUnit = costing.cost_per_unit; // transient, stripped below
       updateData._totalCost = costing.total_cost; // transient, stripped below
     }
@@ -494,19 +534,13 @@ module.exports = {
     if (statusChanged && newStatus === 'Released') {
       emitMfgEvent('WO_RELEASED', { workOrderDocumentId, wo_number: wo.wo_number });
     } else if (statusChanged && newStatus === 'Completed') {
+      // Inputs were already consumed above (before costing). Now materialise the
+      // finished goods at the correctly-costed unit price.
       try {
         const res = await this.createFinishedGoods(wo, finishedCount, { total_cost: finishedTotalCost, cost_per_unit: costPerUnit });
         strapi.log.info(`[wo-state-machine] WO=${workOrderDocumentId} created ${res.created} finished stock-items`);
       } catch (err) {
         strapi.log.warn(`[wo-state-machine] WO=${workOrderDocumentId} finished-goods creation failed: ${err.message}`);
-      }
-      // Auto-consume the BOM's material inputs (Epic 1 P2) — best-effort, skips
-      // when materials were issued manually so it can never double-consume.
-      try {
-        const consumed = await this.autoConsumeInputs(wo, finishedCount);
-        strapi.log.info(`[wo-state-machine] WO=${workOrderDocumentId} auto-consume: ${JSON.stringify(consumed)}`);
-      } catch (err) {
-        strapi.log.warn(`[wo-state-machine] WO=${workOrderDocumentId} auto-consume failed: ${err.message}`);
       }
       emitMfgEvent('WO_COMPLETED', {
         workOrderDocumentId,

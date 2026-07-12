@@ -37,7 +37,7 @@ async function loadAdjustment(strapi, ref) {
     : { documentId: String(ref) };
   return strapi.db.query(ADJ_UID).findOne({
     where,
-    select: ['id', 'documentId', 'status', 'type', 'adjustment_number', 'gl_posted'],
+    select: ['id', 'documentId', 'status', 'type', 'adjustment_number', 'gl_posted', 'adjusted_item_ids'],
     populate: {
       warehouse: { select: ['id', 'documentId', 'name'], populate: { branch: { select: ['id'] } } },
       stock_items: { select: ['id', 'documentId', 'status', 'cost_price'] },
@@ -113,7 +113,13 @@ module.exports = {
     const gl = await postLossGL(strapi, adj, adjusted, user);
 
     await strapi.entityService.update(ADJ_UID, adj.id, {
-      data: { status: 'Posted', posted_at: new Date().toISOString(), total_cost, gl_posted: !!gl.posted },
+      data: {
+        status: 'Posted', posted_at: new Date().toISOString(), total_cost, gl_posted: !!gl.posted,
+        // Record exactly which units this adjustment moved so cancel reverts only
+        // those — not every attached unit that happens to be in a loss status
+        // (which may have been moved by a different adjustment/count/consumption).
+        adjusted_item_ids: adjusted.map((u) => u.id),
+      },
     });
 
     strapi.log.info(`[stock-adjustment] ${adj.adjustment_number} posted ${adjusted.length} -> ${target} (gl=${gl.posted}) by ${user.email || user.id}`);
@@ -134,9 +140,16 @@ module.exports = {
     let reverted = 0;
     let glReversed = false;
     if (adj.status === 'Posted') {
-      const lossStatuses = new Set(Object.values(TYPE_TO_STATUS));
+      // Revert ONLY the units this adjustment actually moved at post time.
+      // Fall back to the legacy heuristic (any attached unit in this type's loss
+      // status) for adjustments posted before adjusted_item_ids was recorded.
+      const recordedIds = Array.isArray(adj.adjusted_item_ids) ? new Set(adj.adjusted_item_ids) : null;
+      const targetStatus = TYPE_TO_STATUS[adj.type] || 'Reduced';
       for (const u of (adj.stock_items || [])) {
-        if (!lossStatuses.has(u.status)) continue; // only revert units this adjustment moved
+        const shouldRevert = recordedIds
+          ? recordedIds.has(u.id)
+          : u.status === targetStatus;
+        if (!shouldRevert) continue;
         await strapi.entityService.update(STOCK_ITEM_UID, u.id, { data: { status: 'InStock' } });
         reverted += 1;
       }
