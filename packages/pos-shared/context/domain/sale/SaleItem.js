@@ -103,7 +103,7 @@ export default class SaleItem {
 
     // expose a `price` property used by UI components
     get price() {
-        if (this.isDivisibleSale) return this.perSubUnitPrice;
+        if (this.isDivisible) return this.perSubUnitPrice;
         return this.sellingPrice || this._price || this.unitPrice || 0;
     }
 
@@ -130,6 +130,15 @@ export default class SaleItem {
     // In divisible-sale mode once a positive portion has been chosen.
     get isDivisibleSale() {
         return this.isDivisible && Number(this.sellableQty) > 0;
+    }
+
+    // Portion count, clamped to a non-negative number. A divisible line whose
+    // portion is 0/blank prices at ZERO — never falling back to the whole-roll
+    // price (which would silently charge a full roll when a teller zeroes the qty
+    // intending to clear the line).
+    get effectiveSellableQty() {
+        const n = Number(this.sellableQty);
+        return Number.isFinite(n) && n > 0 ? n : 0;
     }
 
     // Price of a single sub-unit = whole selling_price ÷ capacity (price stays
@@ -299,7 +308,7 @@ export default class SaleItem {
 
     get unitPrice() {
         if (this.items?.length == 0) return 0;
-        if (this.isDivisibleSale) return this.perSubUnitPrice;
+        if (this.isDivisible) return this.perSubUnitPrice;
         let sum = this.sumBy('selling_price');
         return sum / this.items.length;
     }
@@ -356,7 +365,7 @@ export default class SaleItem {
      * Discount amount (number ≥ 0)
      */
     get row_discount() {
-        const sp = this.isDivisibleSale ? (this.perSubUnitPrice * this.sellableQty) : this.sumBy('selling_price');
+        const sp = this.isDivisible ? (this.perSubUnitPrice * this.effectiveSellableQty) : this.sumBy('selling_price');
         const cp = this.sumBy('cost_price');
 
         const discount = sp * (this.discount_percentage / 100);
@@ -369,7 +378,7 @@ export default class SaleItem {
         
     get subtotal() {
         if (this.items?.length == 0) return 0;
-        if (this.isDivisibleSale) return this.perSubUnitPrice * this.sellableQty;
+        if (this.isDivisible) return this.perSubUnitPrice * this.effectiveSellableQty;
         let sum = this.sumBy('selling_price');
         let subTotal = sum || 0;
 
@@ -393,10 +402,10 @@ export default class SaleItem {
         // Divisible line: sale-item.quantity is an integer (kept at 1 — one line),
         // and the real fractional portion lives in sellable_qty. Price is per
         // sub-unit; totals come from the divisible-aware getters above.
-        if (this.isDivisibleSale) {
+        if (this.isDivisible) {
             return {
                 quantity: 1,
-                sellable_qty: this.sellableQty,
+                sellable_qty: this.effectiveSellableQty,
                 price: this.perSubUnitPrice,
                 discount: this.row_discount,
                 discount_percentage: this.discount_percentage,

@@ -13,15 +13,17 @@
  * stock-items/recompute-product-stock and transfer.
  */
 
+const { localDateISO } = require('../../../utils/local-date');
+
 const STOCK_ITEM_UID = 'api::stock-item.stock-item';
 
 function today() {
-  return new Date().toISOString().slice(0, 10);
+  return localDateISO();
 }
 function horizon(days) {
   const d = new Date();
   d.setDate(d.getDate() + (Number.isFinite(Number(days)) ? Number(days) : 30));
-  return d.toISOString().slice(0, 10);
+  return localDateISO(d);
 }
 
 const { ensureUser } = require('../../../utils/ensure-user');

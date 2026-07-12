@@ -6,6 +6,7 @@
 const { factories } = require("@strapi/strapi");
 const { ensureUser } = require("../../../utils/ensure-user");
 const { roleLevelsFor } = require("../../../utils/app-roles");
+const { localDateISO } = require("../../../utils/local-date");
 const deliveryCostCalculator = require('../services/delivery-cost-calculator');
 const stateMachine           = require('../services/sale-order-state-machine');
 const notificationService    = require('../services/notification-service');
@@ -697,7 +698,7 @@ module.exports = factories.createCoreController(
             // may not have been swept yet — this is the belt-and-braces guard at
             // the point of sale.
             if (stockItem.expiry_date) {
-                const today = new Date().toISOString().slice(0, 10);
+                const today = localDateISO();
                 if (String(stockItem.expiry_date).slice(0, 10) < today) {
                     return ctx.badRequest(
                         `Stock item expired on ${String(stockItem.expiry_date).slice(0, 10)} and cannot be sold`,

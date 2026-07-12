@@ -38,7 +38,7 @@ module.exports = {
       populate: {
         items: {
           populate: {
-            items: { fields: ['id', 'documentId', 'status', 'cost_price'] },
+            items: { fields: ['id', 'documentId', 'status', 'cost_price', 'sellable_units'] },
           },
         },
         payments: true,
@@ -93,6 +93,11 @@ module.exports = {
       for (const item of sale.items || []) {
         for (const stock of item.items || []) {
           if (!stock?.documentId || stock.status === 'Sold') continue;
+          // Divisible rolls are consumed by the allocation engine (units_sold),
+          // NOT by flipping the whole roll to Sold — a partially-sold roll must
+          // stay InStock with its remaining sub-units. Skip them here (also
+          // avoids the divisible whole-flip guard in the stock-item lifecycle).
+          if ((Number(stock.sellable_units) || 1) > 1) continue;
           await strapi.documents('api::stock-item.stock-item').update({
             documentId: stock.documentId,
             data: {
@@ -172,13 +177,30 @@ module.exports = {
           });
         }
 
-        // 4b. COGS: debit COGS, credit inventory for total cost of sold items
+        // 4b. COGS: debit COGS, credit inventory for total cost of sold items.
+        // Divisible lines sold N sub-units of a roll: pro-rate each allocation as
+        // units × (roll cost_price / roll capacity), not the whole roll cost.
         let totalCost = 0;
         for (const item of sale.items || []) {
-          for (const stock of item.items || []) {
-            totalCost += Number(stock.cost_price || 0);
+          const allocs = Array.isArray(item.allocations) ? item.allocations : [];
+          if (allocs.length) {
+            const byDoc = new Map((item.items || []).map((s) => [s.documentId, s]));
+            const byId = new Map((item.items || []).map((s) => [s.id, s]));
+            for (const a of allocs) {
+              const units = Number(a.units) || 0;
+              if (units <= 0) continue;
+              const roll = (a.stock_item_id && byId.get(a.stock_item_id)) || (a.stock_item && byDoc.get(a.stock_item));
+              const rollCost = Number(roll?.cost_price || 0);
+              const cap = Number(roll?.sellable_units) || 1;
+              if (rollCost > 0 && cap > 0) totalCost += units * (rollCost / cap);
+            }
+          } else {
+            for (const stock of item.items || []) {
+              totalCost += Number(stock.cost_price || 0);
+            }
           }
         }
+        totalCost = Math.round(totalCost * 100) / 100;
         if (totalCost > 0) {
           const cogsAccountId = await resolver.resolve('COGS', branchId);
           const inventoryAccountId = await resolver.resolve('INVENTORY', branchId);

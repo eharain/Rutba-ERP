@@ -252,7 +252,10 @@ module.exports = {
             documentId: returnDocumentId,
             populate: {
                 items: {
-                    populate: { stock_item: { fields: ['documentId', 'status'] } },
+                    populate: {
+                        stock_item: { fields: ['documentId', 'status', 'sellable_units'] },
+                        product: { fields: ['divisible'] },
+                    },
                 },
             },
         });
@@ -262,6 +265,15 @@ module.exports = {
         let skipped      = 0;
 
         for (const line of ret.items || []) {
+            // Divisible lines are restocked by the order's RETURNED hook
+            // (releaseDivisibleForOrder → releaseSellableUnits, which decrements
+            // units_sold and reopens depleted rolls). Whole-flipping a roll's
+            // status here would corrupt the sellable cache and double-handle, so
+            // skip them.
+            const isDivisible = line.product?.divisible === true
+                || (Number(line.stock_item?.sellable_units) || 1) > 1;
+            if (isDivisible) { skipped++; continue; }
+
             const si = line.stock_item;
             if (!si?.documentId) continue;
             const target = STOCK_TRANSITIONS_ON_RESTOCK_DECISION[line.restock_decision];

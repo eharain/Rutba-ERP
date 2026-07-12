@@ -65,7 +65,7 @@ module.exports = createCoreService(BATCH_UID, ({ strapi }) => ({
    * The bulk analog of stock-item's expired-unit sweep.
    */
   async sweepExpiredBatches(asOfDate) {
-    const t = asOfDate || new Date().toISOString().slice(0, 10);
+    const t = asOfDate || require('../../../utils/local-date').localDateISO();
     const batches = await strapi.db.query(BATCH_UID).findMany({
       where: { status: 'Active', expiry_date: { $notNull: true, $lt: t } },
       select: ['id'],

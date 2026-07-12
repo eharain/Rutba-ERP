@@ -48,7 +48,7 @@ async function loadSaleForLock(id) {
       items: {
         populate: {
           product: { fields: ['id', 'documentId', 'divisible'] },
-          items: { fields: ['id', 'documentId', 'status'] },
+          items: { fields: ['id', 'documentId', 'status', 'sellable_units'] },
         },
       },
     },
@@ -109,7 +109,15 @@ module.exports = {
 
     // Sold-by-portion (divisible) lines don't reserve whole units and are
     // allocated across the pool at checkout — not supported for pay-later yet.
-    const hasDivisible = (sale.items || []).some((it) => it?.product?.divisible === true);
+    // Detect by the product flag OR the line's actual shape: a recorded
+    // sellable_qty / allocations, or a linked roll with capacity > 1 (the client
+    // enters portion mode on sellable_units > 1 even when the flag is off).
+    const hasDivisible = (sale.items || []).some((it) =>
+      it?.product?.divisible === true
+      || (Number(it?.sellable_qty) || 0) > 0
+      || (Array.isArray(it?.allocations) && it.allocations.length > 0)
+      || (Array.isArray(it?.items) && it.items.some((s) => (Number(s?.sellable_units) || 1) > 1))
+    );
     if (hasDivisible) {
       return ctx.badRequest('Pay Later is not supported for sold-by-portion (divisible) items');
     }

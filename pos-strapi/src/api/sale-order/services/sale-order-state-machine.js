@@ -201,7 +201,7 @@ module.exports = {
         const DIVISIBLE_RESTOCK_STATUSES = ['CANCELLED', 'RETURNED'];
         if (statusChanged && DIVISIBLE_RESTOCK_STATUSES.includes(newStatus)) {
             try {
-                const rel = await strapi.service('api::sale-order.sale-order').releaseDivisibleForOrder(orderDocumentId);
+                const rel = await strapi.service('api::sale-order.sale-order').releaseDivisibleForOrder(orderDocumentId, { status: newStatus });
                 if (rel?.released) {
                     strapi.log.info(`[order-state-machine] released ${rel.released} divisible allocation(s) for order=${orderDocumentId} on ${newStatus}`);
                 }
@@ -396,12 +396,30 @@ module.exports = {
         // --- COGS entry ---
         // Cost basis = the cost_price of the specific stock-items attached to the
         // order lines (the same units the stock walk just moved Reserved → Sold).
+        // Divisible lines sold N sub-units of a roll: pro-rate each allocation as
+        // units × (roll cost_price / roll capacity) — NOT the whole roll cost.
         const lineItems = order.products?.items || [];
         let totalCost = 0;
         for (const li of lineItems) {
-            const cost = Number(li?.stock_item?.cost_price || 0);
-            if (cost > 0) totalCost += cost;
+            const allocs = Array.isArray(li?.allocations) ? li.allocations : [];
+            if (allocs.length) {
+                for (const a of allocs) {
+                    const units = Number(a.units) || 0;
+                    if (units <= 0) continue;
+                    const where = a.stock_item_id ? { id: a.stock_item_id }
+                        : a.stock_item ? { documentId: a.stock_item } : null;
+                    if (!where) continue;
+                    const roll = await strapi.db.query(STOCK_ITEM_UID).findOne({ where, select: ['cost_price', 'sellable_units'] });
+                    const rollCost = Number(roll?.cost_price || 0);
+                    const cap = Number(roll?.sellable_units) || 1;
+                    if (rollCost > 0 && cap > 0) totalCost += units * (rollCost / cap);
+                }
+            } else {
+                const cost = Number(li?.stock_item?.cost_price || 0);
+                if (cost > 0) totalCost += cost;
+            }
         }
+        totalCost = Math.round(totalCost * 100) / 100;
         if (totalCost > 0) {
             const cogsAccountId = await resolver.resolve('COGS', branchId);
             const inventoryAccountId = await resolver.resolve('INVENTORY', branchId);

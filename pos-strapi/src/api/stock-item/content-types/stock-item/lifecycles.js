@@ -18,6 +18,8 @@
  * write-back triggers — both history and recompute are skipped when set.
  */
 
+const { errors } = require('@strapi/utils');
+
 const STOCK_ITEM_UID = 'api::stock-item.stock-item';
 const PRODUCT_UID = 'api::product.product';
 const STOCK_BATCH_UID = 'api::stock-batch.stock-batch';
@@ -51,7 +53,7 @@ let _updating = false;
 async function loadCurrentState(itemId) {
   return strapi.db.query(STOCK_ITEM_UID).findOne({
     where: { id: itemId },
-    select: ['id', 'status', 'cost_price', 'selling_price', 'archived'],
+    select: ['id', 'status', 'cost_price', 'selling_price', 'archived', 'sellable_units', 'units_sold'],
     populate: { product: { select: ['id'] } },
   });
 }
@@ -161,6 +163,22 @@ module.exports = {
     const newArchived = wantsArchived ? data.archived : existing.archived;
     const statusChanged = wantsStatus && newStatus !== existing.status;
     const archivedChanged = wantsArchived && newArchived !== existing.archived;
+
+    // Guard: never let a whole-roll status flip corrupt a partially-sold
+    // divisible item. The allocate/release engine always changes units_sold
+    // alongside status; a status-only flip (e.g. a return UI PUTting
+    // status:'InStock'/'Returned' on the whole roll) would strand the remaining
+    // sub-units — the roll would count +1 in stock_quantity but 0 sellable.
+    // Divisible returns must go through stock-item.releaseSellableUnits.
+    const isDivisible = (Number(existing.sellable_units) || 1) > 1;
+    const soldPortions = (Number(existing.units_sold) || 0) > 0;
+    if (statusChanged && isDivisible && soldPortions && !wantsUnits) {
+      throw new errors.ApplicationError(
+        `Cannot change status of a partially-sold divisible stock-item (id=${itemId}, ` +
+        `units_sold=${existing.units_sold}) without adjusting its units. Use the divisible ` +
+        `release path (releaseSellableUnits) so the remaining sub-units are preserved.`
+      );
+    }
 
     event.state = event.state || {};
     event.state.oldProductId = existing.product?.id || null;

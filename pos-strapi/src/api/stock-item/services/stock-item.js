@@ -14,6 +14,7 @@
  */
 
 const { createCoreService } = require('@strapi/strapi').factories;
+const { localDateISO } = require('../../../utils/local-date');
 
 const PRODUCT_UID = 'api::product.product';
 const STOCK_ITEM_UID = 'api::stock-item.stock-item';
@@ -28,6 +29,39 @@ const BRANCH_UID = 'api::branch.branch';
 // do a single full rebuild at the end instead of one recompute per item.
 let _suppressStockLevel = false;
 
+// ── Per-product allocation mutex ────────────────────────────────────────────
+// Divisible allocate/release is read-modify-write on stock-item.units_sold with
+// no DB row lock; two concurrent sales of the same product would both read the
+// old units_sold and overwrite each other (oversell — the customer is charged
+// but stock never drops). Serialize allocate + release per product so each sees
+// the previous one's committed writes.
+//
+// This is an IN-PROCESS lock: it protects one Strapi instance (the current
+// deployment — single container, no compose replicas). If Strapi is ever scaled
+// horizontally, promote this to a DB advisory lock (MySQL GET_LOCK keyed by
+// product) so the guarantee holds across instances.
+const _productLocks = new Map(); // productKey -> tail Promise
+
+function withProductLock(productKey, fn) {
+  const key = String(productKey ?? '');
+  if (!key) return fn();
+  const prev = _productLocks.get(key) || Promise.resolve();
+  let release;
+  const mine = new Promise((res) => { release = res; });
+  // Chain synchronously (no await between get and set) so concurrent callers
+  // queue deterministically behind each other.
+  const tail = prev.then(() => mine);
+  _productLocks.set(key, tail);
+  return prev.catch(() => {}).then(async () => {
+    try {
+      return await fn();
+    } finally {
+      release();
+      if (_productLocks.get(key) === tail) _productLocks.delete(key);
+    }
+  });
+}
+
 module.exports = createCoreService(STOCK_ITEM_UID, ({ strapi }) => ({
   /**
    * Flip every InStock unit already past its expiry_date to status 'Expired'
@@ -35,7 +69,7 @@ module.exports = createCoreService(STOCK_ITEM_UID, ({ strapi }) => ({
    * Idempotent; returns the count flipped. Epic 5 block-expired driver.
    */
   async sweepExpiredStockItems(asOfDate) {
-    const t = asOfDate || new Date().toISOString().slice(0, 10);
+    const t = asOfDate || localDateISO();
     const units = await strapi.db.query(STOCK_ITEM_UID).findMany({
       where: {
         status: 'InStock',
@@ -127,7 +161,7 @@ module.exports = createCoreService(STOCK_ITEM_UID, ({ strapi }) => ({
    * manual POST /stock-items/sweep-expired endpoint. Returns { items, batches, asOf }.
    */
   async sweepExpired(asOfDate) {
-    const t = asOfDate || new Date().toISOString().slice(0, 10);
+    const t = asOfDate || localDateISO();
     const items = await this.sweepExpiredStockItems(t);
     let batches = 0;
     try {
@@ -245,15 +279,26 @@ module.exports = createCoreService(STOCK_ITEM_UID, ({ strapi }) => ({
   async allocateSellableUnits(productId, qty, opts = {}) {
     const need = Number(qty);
     if (!productId || !(need > 0)) return { allocations: [], totalUnits: 0, totalPrice: 0 };
+    // A real allocation mutates units_sold — serialize per product so concurrent
+    // sales don't lose updates. dryRun only reads, so it needs no lock.
+    if (opts.dryRun) return this._allocateSellableUnitsUnlocked(productId, need, opts);
+    return withProductLock(productId, () => this._allocateSellableUnitsUnlocked(productId, need, opts));
+  },
 
+  async _allocateSellableUnitsUnlocked(productId, need, opts = {}) {
     const rows = await strapi.db.query(STOCK_ITEM_UID).findMany({
       where: { product: productId, status: 'InStock', $or: [{ archived: false }, { archived: { $null: true } }] },
       select: ['id', 'documentId', 'sellable_units', 'units_sold', 'selling_price', 'expiry_date', 'createdAt'],
       limit: 100000,
     });
+    // Exclude already-expired units — the daily sweep flips them to 'Expired'
+    // but between expiry and the next sweep they'd otherwise sort FIRST (nearest
+    // expiry) and be sold. A null expiry_date never expires.
+    const today = localDateISO();
     const items = rows
       .map((it) => ({ ...it, remaining: (Number(it.sellable_units) || 1) - (Number(it.units_sold) || 0) }))
-      .filter((it) => it.remaining > 1e-9);
+      .filter((it) => it.remaining > 1e-9)
+      .filter((it) => !it.expiry_date || String(it.expiry_date).slice(0, 10) >= today);
 
     const available = Math.round(items.reduce((s, it) => s + it.remaining, 0) * 1000) / 1000;
     if (available + 1e-9 < need) {
@@ -325,8 +370,26 @@ module.exports = createCoreService(STOCK_ITEM_UID, ({ strapi }) => ({
    *
    * @param {Array<{ stock_item?: string, stock_item_id?: number, units: number }>} allocations
    */
-  async releaseSellableUnits(allocations) {
+  async releaseSellableUnits(allocations, opts = {}) {
     const list = Array.isArray(allocations) ? allocations : [];
+    if (list.length === 0) return { released: 0, results: [] };
+
+    // Lock on the same key as allocate (the product) so a release can't
+    // interleave with a concurrent sale of the same product. Resolve the product
+    // from the caller (preferred) or the first allocation's stock-item.
+    let productKey = opts.productId || null;
+    if (!productKey) {
+      const first = list.find((a) => a.stock_item_id || a.stock_item);
+      if (first) {
+        const where = first.stock_item_id ? { id: first.stock_item_id } : { documentId: first.stock_item };
+        const it = await strapi.db.query(STOCK_ITEM_UID).findOne({ where, populate: { product: { select: ['id'] } } });
+        productKey = it?.product?.id || null;
+      }
+    }
+    return withProductLock(productKey, () => this._releaseSellableUnitsUnlocked(list));
+  },
+
+  async _releaseSellableUnitsUnlocked(list) {
     const results = [];
     for (const a of list) {
       let id = a.stock_item_id || null;
@@ -363,6 +426,13 @@ module.exports = createCoreService(STOCK_ITEM_UID, ({ strapi }) => ({
    * returns). Throws { status:409, available } when short. Returns the allocation
    * result verbatim ({ allocations, totalUnits, totalPrice, warning }).
    *
+   * Idempotent-by-target when a sale-item is supplied: `qty` is the TOTAL the
+   * line should have consumed, not an increment. A retry (e.g. checkout replays
+   * after a mid-batch failure) that passes the same qty consumes nothing and
+   * returns the already-recorded allocations, so stock is never double-sold. If
+   * the line needs more than it has, only the difference is allocated and the
+   * line's `allocations` JSON is extended (this record is what returns replay).
+   *
    * @param {string} productDocId
    * @param {number} qty
    * @param {{ scannedItemDocId?: string, saleItemDocId?: string }} [opts]
@@ -378,26 +448,63 @@ module.exports = createCoreService(STOCK_ITEM_UID, ({ strapi }) => ({
     // flips N whole items to Sold with no sale attached to most of them.
     if (product.divisible !== true) { const e = new Error('Product is not divisible — portion selling is not allowed'); e.status = 400; throw e; }
 
-    const result = await this.allocateSellableUnits(product.id, Number(qty), { scannedItemDocId: opts.scannedItemDocId });
+    const want = Number(qty);
+    const round3 = (n) => Math.round(n * 1000) / 1000;
+    const round2 = (n) => Math.round(n * 100) / 100;
+
+    // Idempotency: reconcile the line to `want` total units. Read what it has
+    // already consumed from its recorded allocations.
+    let existing = [];
+    if (opts.saleItemDocId) {
+      try {
+        const si = await strapi.documents('api::sale-item.sale-item').findOne({
+          documentId: opts.saleItemDocId, fields: ['allocations'],
+        });
+        existing = Array.isArray(si?.allocations) ? si.allocations : [];
+      } catch (_) { /* line not found yet — treat as none */ }
+    }
+    const existingUnits = round3(existing.reduce((s, a) => s + (Number(a.units) || 0), 0));
+    const toSell = round3(want - existingUnits);
+
+    if (toSell <= 1e-9) {
+      // Already satisfied (a retry, or a request to reduce which we don't
+      // over-release here). Consume nothing; report the current state.
+      const totalPrice = round2(existing.reduce((s, a) => s + (Number(a.line_total) || 0), 0));
+      return { allocations: existing, totalUnits: existingUnits, totalPrice, idempotent: true };
+    }
+
+    const result = await this.allocateSellableUnits(product.id, toSell, { scannedItemDocId: opts.scannedItemDocId });
     if (result.insufficient) { const e = new Error(`Only ${result.available} sub-unit(s) available`); e.status = 409; e.available = result.available; throw e; }
 
-    // Traceability: link the consumed units to the sale-item (append). A unit may
-    // be sold in portions across several sale-items over its life, so we connect
-    // (never replace). Best-effort — a link failure must not void a completed sale.
-    if (opts.saleItemDocId && result.allocations.length) {
+    const merged = [...existing, ...result.allocations];
+
+    // Persist the allocation record + link the consumed units to the sale-item.
+    // The `allocations` JSON is the source of truth for a later return (which
+    // sub-units, from which rolls) — without it, returns cannot restore units.
+    // Best-effort: a link failure must not void a completed sale, but a persist
+    // failure would break returns, so it is logged loudly.
+    if (opts.saleItemDocId) {
       const ids = result.allocations.map((a) => a.stock_item).filter(Boolean);
-      if (ids.length) {
-        try {
-          await strapi.documents('api::sale-item.sale-item').update({
-            documentId: opts.saleItemDocId,
-            data: { items: { connect: ids } },
-          });
-        } catch (err) {
-          strapi.log.warn(`[sellDivisibleUnits] linking units to sale-item ${opts.saleItemDocId} failed: ${err.message}`);
-        }
+      try {
+        await strapi.documents('api::sale-item.sale-item').update({
+          documentId: opts.saleItemDocId,
+          data: {
+            allocations: merged,
+            sellable_qty: round3(existingUnits + result.totalUnits),
+            ...(ids.length ? { items: { connect: ids } } : {}),
+          },
+        });
+      } catch (err) {
+        strapi.log.error(`[sellDivisibleUnits] persisting allocations to sale-item ${opts.saleItemDocId} failed — returns for this line will not restore units: ${err.message}`);
       }
     }
-    return result;
+
+    return {
+      allocations: merged,
+      totalUnits: round3(existingUnits + result.totalUnits),
+      totalPrice: round2(existing.reduce((s, a) => s + (Number(a.line_total) || 0), 0) + result.totalPrice),
+      ...(result.warning ? { warning: result.warning } : {}),
+    };
   },
 
   /**
