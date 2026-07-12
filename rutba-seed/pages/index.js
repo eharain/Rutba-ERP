@@ -102,8 +102,11 @@ function SeedControl() {
                     <h2 className="mb-0">Seeding <i className="fa-solid fa-seedling text-success" /></h2>
                     <p className="text-muted mb-0">
                         Run system, reference and backfill seeds on demand. Every seeder is
-                        idempotent — <strong>partial</strong> only writes new/changed data,
-                        <strong> full</strong> re-applies everything.
+                        idempotent. <strong>Partial</strong> adds anything missing and
+                        re-applies seed-managed records — this reverts manual edits to any
+                        record not marked editable (e.g. CMS/content defaults), so avoid it
+                        after tenant customisation. <strong>Full</strong> additionally forces
+                        re-application for seeders that support it (see the “full ✓” badge).
                     </p>
                 </div>
                 <button className="btn btn-outline-secondary btn-sm" onClick={loadStatus} disabled={loading || running}>

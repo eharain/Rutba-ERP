@@ -42,15 +42,22 @@ module.exports = createCoreController('api::seed-run.seed-run', ({ strapi }) => 
         const body = raw && typeof raw.data === 'object' && raw.data !== null ? raw.data : raw;
         const mode = body.mode === 'full' ? 'full' : 'partial';
 
-        const report = await runSeeds(strapi, {
-            mode,
-            only: body.only,
-            skip: body.skip,
-            categories: body.categories,
-            essentialOnly: Boolean(body.essentialOnly),
-            source: 'ui',
-            triggeredBy: actorLabel(ctx),
-        });
+        let report;
+        try {
+            report = await runSeeds(strapi, {
+                mode,
+                only: body.only,
+                skip: body.skip,
+                categories: body.categories,
+                essentialOnly: Boolean(body.essentialOnly),
+                source: 'ui',
+                triggeredBy: actorLabel(ctx),
+            });
+        } catch (err) {
+            // Single-flight rejection → 409 so the UI can tell the operator to wait.
+            if (err.status === 409 || err.blocked) return ctx.conflict(err.message);
+            throw err;
+        }
 
         // A seeder failure is a partial-success, not an HTTP error — the report
         // carries per-entry status so the UI can show exactly what failed.

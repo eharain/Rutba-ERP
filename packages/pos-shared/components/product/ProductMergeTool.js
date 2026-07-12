@@ -120,7 +120,13 @@ export default function ProductMergeTool({ product, documentId, currency = "", o
                 const existingVariantIds = new Set(variants.map(getEntryId));
                 const filtered = (data || []).filter(p => {
                     const pId = getEntryId(p);
-                    return pId !== documentId && !existingVariantIds.has(pId);
+                    if (pId === documentId || existingVariantIds.has(pId)) return false;
+                    // Best-effort hide of ineligible products (the server enforces
+                    // the real cycle/hierarchy guard): already a variant of another
+                    // product, or a product that has its own variants.
+                    if (p?.is_variant === true || p?.parent) return false;
+                    if (Array.isArray(p?.variants) && p.variants.length > 0) return false;
+                    return true;
                 });
                 if (isActive) setAttachResults(filtered);
             } catch (err) {

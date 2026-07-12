@@ -17,6 +17,16 @@ const { REGISTRY } = require('./registry');
 
 const SEED_RUN_UID = 'api::seed-run.seed-run';
 
+// A run older than this while still 'running' is treated as interrupted (a
+// crashed process / container restart between createRunRow and updateRunRow).
+const STALE_RUN_MS = 10 * 60 * 1000;
+
+// In-process guard: coordinates concurrent HTTP runs on the single Strapi
+// instance. The DB freshness check below additionally covers the CLI-vs-server
+// case (separate processes). Both are best-effort — seeding is idempotent, so
+// the worst case of the tiny remaining race is duplicate work, not corruption.
+let _inFlight = false;
+
 function toArray(v) {
     if (Array.isArray(v)) return v.filter(Boolean);
     if (typeof v === 'string') {
@@ -80,6 +90,49 @@ async function updateRunRow(strapi, id, data) {
     }
 }
 
+// Mark any 'running' row older than STALE_RUN_MS as failed('interrupted') so a
+// crash between create and finalize can't leave a run stuck 'running' forever
+// (which would also wedge the single-flight check). Returns the count reaped.
+async function reapStaleRuns(strapi) {
+    if (!hasSeedRunModel(strapi)) return 0;
+    try {
+        const cutoff = new Date(Date.now() - STALE_RUN_MS);
+        const stale = await strapi.db.query(SEED_RUN_UID).findMany({
+            where: { status: 'running', started_at: { $lt: cutoff } },
+            select: ['id'],
+            limit: 1000,
+        });
+        for (const row of stale) {
+            await strapi.db.query(SEED_RUN_UID).update({
+                where: { id: row.id },
+                data: { status: 'failed', error: 'interrupted (process ended before completion)', finished_at: new Date() },
+            });
+        }
+        if (stale.length) strapi.log.warn(`[seed] reaped ${stale.length} stale 'running' seed-run row(s)`);
+        return stale.length;
+    } catch (err) {
+        strapi.log.warn(`[seed] stale-run reap failed: ${err.message}`);
+        return 0;
+    }
+}
+
+// Is a (fresh) run already in progress? DB check for the cross-process case.
+async function hasActiveRun(strapi) {
+    if (!hasSeedRunModel(strapi)) return false;
+    try {
+        const cutoff = new Date(Date.now() - STALE_RUN_MS);
+        const active = await strapi.db.query(SEED_RUN_UID).findMany({
+            where: { status: 'running', started_at: { $gte: cutoff } },
+            select: ['id'],
+            limit: 1,
+        });
+        return active.length > 0;
+    } catch (err) {
+        strapi.log.warn(`[seed] active-run check failed: ${err.message}`);
+        return false;
+    }
+}
+
 /**
  * Run the selected seeders.
  * @param {any} strapi
@@ -90,6 +143,27 @@ async function updateRunRow(strapi, id, data) {
 async function runSeeds(strapi, opts = {}) {
     const mode = opts.mode === 'full' ? 'full' : 'partial';
     const entries = selectEntries(opts);
+
+    // Single-flight (in-process): claim the flag SYNCHRONOUSLY before any await,
+    // so two concurrent calls on this instance can't both pass the check.
+    if (_inFlight) {
+        const e = new Error('A seed run is already in progress — wait for it to finish before starting another.');
+        e.status = 409;
+        e.blocked = true;
+        throw e;
+    }
+    _inFlight = true;
+    try {
+
+    // Now that we hold the in-process flag: reap stuck rows, then guard against a
+    // run from ANOTHER process (CLI vs server) via a fresh DB 'running' row.
+    await reapStaleRuns(strapi);
+    if (await hasActiveRun(strapi)) {
+        const e = new Error('A seed run is already in progress — wait for it to finish before starting another.');
+        e.status = 409;
+        e.blocked = true;
+        throw e;
+    }
 
     const startedAt = new Date();
     strapi.log.info(
@@ -113,7 +187,9 @@ async function runSeeds(strapi, opts = {}) {
     for (const entry of entries) {
         const t0 = Date.now();
         try {
-            const ret = await entry.run(strapi, { mode });
+            // `force` lets a seeder that supports full mode bypass its
+            // fingerprint/short-circuit. Seeders that ignore it are unaffected.
+            const ret = await entry.run(strapi, { mode, force: mode === 'full' });
             const summary = normalizeSummary(ret);
             totals.created += summary.created;
             totals.updated += summary.updated;
@@ -154,6 +230,9 @@ async function runSeeds(strapi, opts = {}) {
     );
 
     return { ok, runId, results, summary: { ...totals, okCount, failedCount } };
+    } finally {
+        _inFlight = false;
+    }
 }
 
 /**
