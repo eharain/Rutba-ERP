@@ -293,12 +293,17 @@ export default function ProductsBulkEdit() {
 
     // Save a single product. `editArg` lets callers (e.g. a checkbox toggle)
     // pass the just-changed edit object without waiting for state to flush.
+    // Returns { ok, skipped?, noop? } so callers (Save All) can count real
+    // outcomes — it never rethrows, so per-row errors stay on the row.
     const handleSaveOne = async (product, editArg) => {
         const docId = product.documentId;
         const edit = editArg || edits[docId];
-        if (!edit || Object.keys(edit).length === 0) return;
+        if (!edit || Object.keys(edit).length === 0) return { ok: true, noop: true };
         // Guard against a blur + toggle firing two saves for the same row at once.
-        if (savingRef.current.has(docId)) return;
+        if (savingRef.current.has(docId)) return { ok: false, skipped: true };
+        // Snapshot exactly which fields this save is committing, so on success we
+        // clear only those — a field edited WHILE the save is in flight survives.
+        const savedKeys = Object.keys(edit);
         savingRef.current.add(docId);
 
         setSaving(prev => ({ ...prev, [docId]: true }));
@@ -333,11 +338,17 @@ export default function ProductsBulkEdit() {
                 return { ...p, ...payload };
             }));
 
-            // Clear edits for this product
+            // Clear ONLY the fields this save committed — keep any keys added
+            // while the request was in flight so a concurrent edit isn't lost.
             setEdits(prev => {
-                const copy = { ...prev };
-                delete copy[docId];
-                return copy;
+                const cur = prev[docId];
+                if (!cur) return prev;
+                const remaining = { ...cur };
+                for (const k of savedKeys) delete remaining[k];
+                const next = { ...prev };
+                if (Object.keys(remaining).length === 0) delete next[docId];
+                else next[docId] = remaining;
+                return next;
             });
 
             const msg = `Saved${stockMsg ? '. ' + stockMsg : ''}`;
@@ -345,12 +356,14 @@ export default function ProductsBulkEdit() {
 
             // Refresh stock counts
             fetchStockCounts(products, stockItemStatus);
+            return { ok: true };
         } catch (err) {
             console.error('Error saving product:', err);
             setMessages(prev => ({
                 ...prev,
                 [docId]: { type: 'error', text: 'Failed to save: ' + (err?.response?.data?.error?.message || err.message) }
             }));
+            return { ok: false, error: err };
         } finally {
             savingRef.current.delete(docId);
             setSaving(prev => ({ ...prev, [docId]: false }));
@@ -446,23 +459,26 @@ export default function ProductsBulkEdit() {
 
         let successCount = 0;
         let failCount = 0;
+        let skippedCount = 0;
 
         for (const docId of editedDocIds) {
             const product = products.find(p => p.documentId === docId);
             if (!product) continue;
-            try {
-                await handleSaveOne(product);
-                successCount++;
-            } catch {
-                failCount++;
-            }
+            // handleSaveOne reports outcome via its return value (it never throws).
+            const res = await handleSaveOne(product);
+            if (res?.ok) { if (!res.noop) successCount++; }
+            else if (res?.skipped) skippedCount++;
+            else failCount++;
         }
 
         setSavingAll(false);
-        if (failCount === 0) {
+        if (failCount === 0 && skippedCount === 0) {
             setGlobalMessage({ type: 'success', text: `All ${successCount} product(s) saved successfully.` });
         } else {
-            setGlobalMessage({ type: 'warning', text: `${successCount} saved, ${failCount} failed. Check individual rows for details.` });
+            const parts = [`${successCount} saved`];
+            if (failCount) parts.push(`${failCount} failed`);
+            if (skippedCount) parts.push(`${skippedCount} skipped (already saving)`);
+            setGlobalMessage({ type: failCount ? 'warning' : 'info', text: `${parts.join(', ')}. Check individual rows for details.` });
         }
     };
 

@@ -305,6 +305,14 @@ module.exports = createCoreController('api::stock-item.stock-item', ({ strapi })
 
     for (let index = 0; index < rows.length; index++) {
       const row = rows[index];
+      // Partial-progress accumulators live at row scope so a throw mid-row (e.g.
+      // a barcode collision on unit 4 of 10) still reports the units already
+      // written — otherwise the row reads as fully failed and a re-run collides
+      // on the already-created units.
+      let created = 0;
+      let updated = 0;
+      const createdBarcodes = [];
+      const updatedBarcodes = [];
       try {
         const productName = (row.productName || '').toString().trim();
         const quantity = Math.max(1, Number(row.quantity) || 1);
@@ -428,11 +436,9 @@ module.exports = createCoreController('api::stock-item.stock-item', ({ strapi })
         }
 
         // 3) Upsert stock items (update-if-exists-and-updateExisting, else create).
+        // created/updated/*Barcodes are declared at row scope (above the try) so a
+        // mid-loop throw still surfaces the partial writes.
         const sharedSku = sku || productObj.sku || undefined;
-        let created = 0;
-        let updated = 0;
-        const createdBarcodes = [];
-        const updatedBarcodes = [];
         for (const bc of unitBarcodes) {
           const existing = await strapi.documents('api::stock-item.stock-item').findMany({
             filters: { barcode: { $eq: bc } },
@@ -476,7 +482,13 @@ module.exports = createCoreController('api::stock-item.stock-item', ({ strapi })
           created, updated, createdBarcodes, updatedBarcodes,
         });
       } catch (err) {
-        results.push({ index, ok: false, error: err.message });
+        // Report any units already written before the throw so the operator sees
+        // the real per-row outcome and a re-run doesn't collide on them.
+        results.push({
+          index, ok: false, error: err.message,
+          created, updated, createdBarcodes, updatedBarcodes,
+          partial: created > 0 || updated > 0,
+        });
       }
     }
 

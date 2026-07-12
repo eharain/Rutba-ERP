@@ -42,11 +42,21 @@ module.exports = createCoreController('api::product.product', ({ strapi }) => ({
         const productDocIds = [...new Set(stockItems.map((si) => si.product?.documentId).filter(Boolean))];
         if (productDocIds.length > 0) {
           const idFilter = { documentId: { $in: productDocIds } };
-          // OR the stock-item hits with whatever product-level search the
-          // client already built (name/sku/barcode/supplier/PO).
-          ctx.query.filters = ctx.query.filters
-            ? { $or: [ctx.query.filters, idFilter] }
-            : idFilter;
+          const f = ctx.query.filters;
+          // Broaden the client's text-search OR with the barcode-hit ids, but do
+          // NOT demote the whole filter into one arm of an $or — that would let a
+          // barcode hit bypass any api-pro policy filter injected as a sibling
+          // AND key. The client's search is a top-level `$or` array, so push the
+          // id filter into it; sibling (policy) keys keep ANDing on top.
+          if (f && Array.isArray(f.$or)) {
+            f.$or = [...f.$or, idFilter];
+          } else if (f) {
+            // No text OR present (e.g. filters got restructured) — AND the hit on
+            // top so injected constraints are preserved (safe, never broadens).
+            ctx.query.filters = { $and: [f, idFilter] };
+          } else {
+            ctx.query.filters = idFilter;
+          }
         }
         // No stock-item matched → leave filters untouched; the product-level
         // $or search still applies.
