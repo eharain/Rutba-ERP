@@ -334,5 +334,24 @@ export const StockItemsEndpoints = {
             ...(saleItemDocId ? { sale_item_document_id: saleItemDocId } : {}),
         },
     }),
+
+    /**
+     * Return `qty` sub-units of a DIVISIBLE sale-item back to stock (the reverse of
+     * sellUnits). Releases them against the line's recorded allocations; the refund
+     * is recorded by the sale-return flow. auth:false route + manual auth.
+     *
+     * @param {{ saleItemDocId: string, qty: number }} payload
+     */
+    returnUnits: ({ saleItemDocId, qty } = {}) => ({
+        path: '/stock-items/return-units',
+        action: 'run',
+        method: 'post',
+        apps: ['sale', 'inventory', 'stock'],
+        approle: ['admin', 'manager', 'staff'],
+        data: {
+            sale_item_document_id: saleItemDocId,
+            units: qty,
+        },
+    }),
 };
 

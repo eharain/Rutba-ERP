@@ -82,5 +82,13 @@ module.exports = {
         auth: false,
       },
     },
+    {
+      method: 'POST',
+      path: '/stock-items/return-units',
+      handler: 'return-units.run',
+      config: {
+        auth: false,
+      },
+    },
   ],
 };

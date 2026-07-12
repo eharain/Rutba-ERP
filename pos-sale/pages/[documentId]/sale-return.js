@@ -422,6 +422,53 @@ function NewSaleReturn() {
         );
     }
 
+    // ── Divisible (sold-by-portion) lines ──
+    // A line sold N sub-units of a roll carries sellable_qty > 0. It can't be
+    // returned via the per-stock-item checkboxes (the server blocks whole-roll
+    // flips of partially-sold rolls); the operator returns a sub-unit count that
+    // is released against the line's recorded allocations.
+    function isDivisibleLine(saleItem) {
+        return Number(saleItem?.sellable_qty) > 0;
+    }
+    function divisibleUnitPrice(saleItem) {
+        const units = Number(saleItem?.sellable_qty) || 0;
+        const total = Number(saleItem?.total) || 0;
+        if (units > 0 && total > 0) return total / units;
+        return Number(saleItem?.price) || 0; // sellUnits stores per-sub-unit price on `price`
+    }
+    function setDivisibleReturnUnits(saleItem, unitsRaw) {
+        const saleItemDocId = getEntryId(saleItem);
+        const sold = Number(saleItem.sellable_qty) || 0;
+        let units = Number(unitsRaw);
+        if (isNaN(units) || units < 0) units = 0;
+        if (units > sold) units = sold;
+        const unitPrice = divisibleUnitPrice(saleItem);
+        setReturnItems(prev => {
+            const rest = prev.filter(r => r.saleItemDocId !== saleItemDocId);
+            if (units <= 0) return rest;
+            return [...rest, {
+                divisible: true,
+                saleItemDocId,
+                saleItemId: saleItem.id,
+                productDocId: getEntryId(saleItem.product),
+                productName: saleItem.product?.name || "N/A",
+                soldUnits: sold,
+                units,
+                unitPrice,
+                price: unitPrice,
+                refundPrice: Math.round(units * unitPrice * 100) / 100,
+                status: "Returned",
+            }];
+        });
+    }
+    function setDivisibleRefund(saleItemDocId, value) {
+        const num = value === "" ? 0 : Number(value);
+        if (isNaN(num) || num < 0) return;
+        setReturnItems(prev => prev.map(r =>
+            (r.saleItemDocId === saleItemDocId && r.divisible) ? { ...r, refundPrice: num } : r
+        ));
+    }
+
     function selectAllFromSaleItem(saleItem) {
         const product = saleItem.product;
         if (product && product.is_returnable === false) return;
@@ -508,9 +555,14 @@ function NewSaleReturn() {
                 }
             }
 
-            // 2) Group return items by sale item
+            // Divisible (sub-unit) returns are handled separately — they release
+            // units against the line's allocations rather than flipping rolls.
+            const wholeEntries = returnItems.filter(r => !r.divisible);
+            const divisibleEntries = returnItems.filter(r => r.divisible);
+
+            // 2) Group WHOLE-ITEM return items by sale item
             const bySaleItem = {};
-            for (const ri of returnItems) {
+            for (const ri of wholeEntries) {
                 if (!bySaleItem[ri.saleItemDocId]) {
                     bySaleItem[ri.saleItemDocId] = [];
                 }
@@ -543,6 +595,20 @@ function NewSaleReturn() {
                             : undefined
                     });
                 }
+            }
+
+            // 3b) Divisible lines: record the refund line, then release the
+            // sub-units back to stock (server adjusts the roll's units_sold and
+            // the sale-item's allocations — no whole-roll status flip).
+            for (const d of divisibleEntries) {
+                await SaleReturnItemsEndpoints.create({
+                    quantity: Math.max(1, Math.round(Number(d.units) || 0)),
+                    price: d.unitPrice,
+                    total: d.refundPrice ?? (d.units * d.unitPrice),
+                    sale_return: { connect: [saleReturnDocId] },
+                    product: d.productDocId ? { connect: [d.productDocId] } : undefined,
+                });
+                await StockItemsEndpoints.returnUnits({ saleItemDocId: d.saleItemDocId, qty: Number(d.units) });
             }
 
             // 5) Create payout payment linked to the sale return and cash register
@@ -743,6 +809,10 @@ function NewSaleReturn() {
                                 const selectedCount = isReturnable ? soldStockItems.filter(si =>
                                     returnItems.some(r => r.stockItemDocId === getEntryId(si))
                                 ).length : 0;
+                                const divisible = isDivisibleLine(saleItem);
+                                const divisibleEntry = divisible
+                                    ? returnItems.find(r => r.saleItemDocId === getEntryId(saleItem) && r.divisible)
+                                    : null;
 
                                 return (
                                     <div key={getEntryId(saleItem)} className="card mb-2">
@@ -765,21 +835,63 @@ function NewSaleReturn() {
                                                     )}
                                                 </div>
                                                 <div className="d-flex gap-2 align-items-center">
-                                                    {isReturnable && soldStockItems.length > 0 && (
-                                                        <button
-                                                            className={`btn btn-sm ${selectedCount === soldStockItems.length ? "btn-outline-secondary" : "btn-outline-primary"}`}
-                                                            onClick={() => selectAllFromSaleItem(saleItem)}
-                                                        >
-                                                            {selectedCount === soldStockItems.length ? "Deselect All" : "Select All"}
-                                                        </button>
+                                                    {divisible ? (
+                                                        <span className="badge bg-info text-dark">
+                                                            Sold {Number(saleItem.sellable_qty)} unit(s) by portion
+                                                        </span>
+                                                    ) : (
+                                                        <>
+                                                            {isReturnable && soldStockItems.length > 0 && (
+                                                                <button
+                                                                    className={`btn btn-sm ${selectedCount === soldStockItems.length ? "btn-outline-secondary" : "btn-outline-primary"}`}
+                                                                    onClick={() => selectAllFromSaleItem(saleItem)}
+                                                                >
+                                                                    {selectedCount === soldStockItems.length ? "Deselect All" : "Select All"}
+                                                                </button>
+                                                            )}
+                                                            <span className="badge bg-secondary">
+                                                                {selectedCount}/{soldStockItems.length} returnable
+                                                            </span>
+                                                        </>
                                                     )}
-                                                    <span className="badge bg-secondary">
-                                                        {selectedCount}/{soldStockItems.length} returnable
-                                                    </span>
                                                 </div>
                                             </div>
 
-                                            {stockItems.length === 0 ? (
+                                            {divisible ? (
+                                                !isReturnable ? (
+                                                    <div className="text-muted small">This product is non-returnable.</div>
+                                                ) : (
+                                                    <div className="d-flex align-items-center gap-2 flex-wrap">
+                                                        <label className="form-label small mb-0">Return units:</label>
+                                                        <input
+                                                            type="number"
+                                                            className="form-control form-control-sm"
+                                                            style={{ width: 110 }}
+                                                            min="0"
+                                                            max={Number(saleItem.sellable_qty)}
+                                                            step="0.001"
+                                                            value={divisibleEntry?.units ?? ""}
+                                                            placeholder={`0 – ${Number(saleItem.sellable_qty)}`}
+                                                            onChange={e => setDivisibleReturnUnits(saleItem, e.target.value)}
+                                                        />
+                                                        <span className="small text-muted">of {Number(saleItem.sellable_qty)}</span>
+                                                        {divisibleEntry && (
+                                                            <div className="d-flex align-items-center gap-1 ms-2">
+                                                                <span className="small text-muted">Refund {currency}</span>
+                                                                <input
+                                                                    type="number"
+                                                                    className="form-control form-control-sm text-end"
+                                                                    style={{ width: 100 }}
+                                                                    min="0"
+                                                                    step="0.01"
+                                                                    value={divisibleEntry.refundPrice}
+                                                                    onChange={e => setDivisibleRefund(getEntryId(saleItem), e.target.value)}
+                                                                />
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )
+                                            ) : stockItems.length === 0 ? (
                                                 <div className="text-muted small">No stock items linked to this sale item.</div>
                                             ) : (
                                                 <div className="table-responsive">

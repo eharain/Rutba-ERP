@@ -508,6 +508,75 @@ module.exports = createCoreService(STOCK_ITEM_UID, ({ strapi }) => ({
   },
 
   /**
+   * Return `units` sub-units of a DIVISIBLE sale-item back to stock. Reads the
+   * sale-item's recorded allocations, peels `units` off the tail (splitting a
+   * straddling entry proportionally), releases them via releaseSellableUnits
+   * (decrementing units_sold and reopening depleted rolls), and rewrites the
+   * sale-item's allocations/sellable_qty to what remains. This is the divisible
+   * counterpart of a whole-item return — the roll is NOT status-flipped (which
+   * the stock-item lifecycle guard blocks for partially-sold rolls).
+   *
+   * @param {string} saleItemDocId
+   * @param {number} units
+   * @returns {{ released:number, units:number, remaining:number, refundBasis:number }}
+   */
+  async returnDivisibleUnits(saleItemDocId, units) {
+    if (!saleItemDocId) { const e = new Error('sale_item_document_id is required'); e.status = 400; throw e; }
+    const want = Number(units);
+    if (!(want > 0)) { const e = new Error('units (positive number) is required'); e.status = 400; throw e; }
+
+    const round3 = (n) => Math.round(n * 1000) / 1000;
+    const round2 = (n) => Math.round(n * 100) / 100;
+
+    const si = await strapi.documents('api::sale-item.sale-item').findOne({
+      documentId: saleItemDocId, fields: ['allocations', 'sellable_qty'],
+      populate: { product: { fields: ['id'] } },
+    });
+    if (!si) { const e = new Error('Sale item not found'); e.status = 404; throw e; }
+    const existing = Array.isArray(si.allocations) ? si.allocations : [];
+    const soldUnits = round3(existing.reduce((s, a) => s + (Number(a.units) || 0), 0));
+    if (soldUnits <= 1e-9) { const e = new Error('This line has no divisible units to return'); e.status = 400; throw e; }
+    if (want - soldUnits > 1e-9) { const e = new Error(`Cannot return ${want} — only ${soldUnits} sub-unit(s) were sold on this line`); e.status = 400; throw e; }
+
+    // Peel `want` units off the tail of the allocations.
+    let toRelease = round3(want);
+    const keep = [];
+    const releasedAllocs = [];
+    for (let i = existing.length - 1; i >= 0; i--) {
+      const a = existing[i];
+      const u = Number(a.units) || 0;
+      if (toRelease <= 1e-9) { keep.unshift(a); continue; }
+      if (u <= toRelease + 1e-9) {
+        releasedAllocs.push(a);
+        toRelease = round3(toRelease - u);
+      } else {
+        const rel = round3(toRelease);
+        const remain = round3(u - rel);
+        const unitPrice = Number(a.unit_price) || 0;
+        keep.unshift({ ...a, units: remain, line_total: round2(remain * unitPrice), depleted: false });
+        releasedAllocs.push({ ...a, units: rel, line_total: round2(rel * unitPrice) });
+        toRelease = 0;
+      }
+    }
+
+    const productId = si.product?.id || null;
+    const rel = await this.releaseSellableUnits(releasedAllocs, { productId });
+
+    const remainingUnits = round3(keep.reduce((s, a) => s + (Number(a.units) || 0), 0));
+    const refundBasis = round2(releasedAllocs.reduce((s, a) => s + (Number(a.line_total) || 0), 0));
+    try {
+      await strapi.documents('api::sale-item.sale-item').update({
+        documentId: saleItemDocId,
+        data: { allocations: keep, sellable_qty: remainingUnits },
+      });
+    } catch (err) {
+      strapi.log.warn(`[returnDivisibleUnits] updating sale-item ${saleItemDocId} after release failed: ${err.message}`);
+    }
+
+    return { released: rel.released, units: round3(want), remaining: remainingUnits, refundBasis };
+  },
+
+  /**
    * Recompute multiple products. Deduplicates ids and walks them serially —
    * each recompute is one COUNT + one UPDATE, so the cost is linear and the
    * sequential order keeps DB load predictable during bulk operations.
