@@ -3,6 +3,8 @@
 const { createCoreController } = require('@strapi/strapi').factories;
 const { ensureUser } = require('../../../utils/ensure-user');
 const { requireApp } = require('../../../utils/require-app');
+const { isServiceToken } = require('../../../utils/is-service-token');
+const catalogIngest = require('../../../utils/marketplace-catalog-ingest');
 
 function clampInt(value, fallback, min, max) {
   const n = Number.parseInt(value, 10);
@@ -205,5 +207,33 @@ module.exports = createCoreController('api::product.product', ({ strapi }) => ({
     if (!await ensureUser(ctx, strapi)) return;
     const result = await strapi.documents('api::product.product').discardDraft({ documentId: ctx.params.id });
     return ctx.send(result);
+  },
+
+  // ── Rutba↔Rutba integration (service token only) ─────────────────────────────
+  // Called by a peer instance's marketplace worker (the `rutba` provider). Gated
+  // to a Strapi API token with no UP user — a logged-in operator can't reach these.
+
+  // Liveness/credential probe — the source's validateConnection hits this.
+  integrationPing(ctx) {
+    if (!isServiceToken(ctx)) return ctx.forbidden('Service token required');
+    return ctx.send({ data: { ok: true, ts: new Date().toISOString() } });
+  },
+
+  // Full catalog upsert (products + variants + media + taxonomy).
+  async ingestCatalog(ctx) {
+    if (!isServiceToken(ctx)) return ctx.forbidden('Service token required');
+    const body = ctx.request.body || {};
+    if (!Array.isArray(body.products)) return ctx.badRequest('products[] is required');
+    const out = await catalogIngest.ingestCatalog(strapi, { origin_account_id: body.origin_account_id, products: body.products });
+    return ctx.send({ data: out });
+  },
+
+  // Price + stock refresh for products already synced (match by SKU).
+  async updateInventory(ctx) {
+    if (!isServiceToken(ctx)) return ctx.forbidden('Service token required');
+    const body = ctx.request.body || {};
+    if (!Array.isArray(body.updates)) return ctx.badRequest('updates[] is required');
+    const out = await catalogIngest.updateInventory(strapi, body.updates);
+    return ctx.send({ data: out });
   },
 }));

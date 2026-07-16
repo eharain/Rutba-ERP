@@ -29,6 +29,7 @@ function main() {
 
   runner.defineJob('orders', () => engine.syncAllOrders());
   runner.defineJob('inventory', () => engine.syncAllInventory());
+  runner.defineJob('catalog', () => engine.syncAllCatalog());
   runner.defineJob('refreshTokens', () => engine.refreshExpiringTokens());
 
   // initialDelayMs is staggered minutes apart so a worker (re)start doesn't fire
@@ -36,6 +37,7 @@ function main() {
   // poll of each job, and they don't pile onto each other.
   runner.scheduleRecurring('orders', config.worker.ordersRule, { fallbackMs: 15 * 60 * 1000, initialDelayMs: 2 * 60 * 1000 });
   runner.scheduleRecurring('inventory', config.worker.inventoryRule, { fallbackMs: 60 * 60 * 1000, initialDelayMs: 4 * 60 * 1000 });
+  runner.scheduleRecurring('catalog', config.worker.catalogRule, { fallbackMs: 6 * 60 * 60 * 1000, initialDelayMs: 8 * 60 * 1000 });
   runner.scheduleRecurring('refreshTokens', config.worker.refreshRule, { fallbackMs: 4 * 60 * 60 * 1000, initialDelayMs: 6 * 60 * 1000 });
 
   console.log(`[marketplace worker] up (backend=${runner.backend}); Strapi=${config.strapi.apiUrl}`);

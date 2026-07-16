@@ -30,6 +30,10 @@ module.exports = {
     backend: process.env.JOBS_BACKEND || 'inproc',
     ordersRule: process.env.CRON_ORDERS_RULE || '*/15 * * * *',
     inventoryRule: process.env.CRON_INVENTORY_RULE || '*/60 * * * *',
+    // Full-catalog push (create/update products + variants + media on Rutba
+    // targets). Heavier than the price/stock inventory push, so it runs less
+    // often; the inventory job keeps price+stock fresh in between.
+    catalogRule: process.env.CRON_CATALOG_RULE || '0 */6 * * *',
     refreshRule: process.env.CRON_REFRESH_RULE || '0 */4 * * *',
   },
 
@@ -42,6 +46,14 @@ module.exports = {
       region: (process.env.DARAZ_REGION || 'pk').toLowerCase(),
       apiHost: process.env.DARAZ_API_HOST || '',
       authUrl: process.env.DARAZ_AUTH_URL || '',
+    },
+    // A second Rutba ERP instance treated as a marketplace. Unlike Daraz there is
+    // no OAuth: the connection is a Strapi API token + the online instance's API
+    // base URL, both stored per-account (api_key + extra_config.base_url). The env
+    // values here are only optional fallbacks for a single-target setup/dev.
+    rutba: {
+      apiUrl: stripSlash(process.env.RUTBA_TARGET_API_URL || ''),
+      token: process.env.RUTBA_TARGET_TOKEN || '',
     },
   },
 };

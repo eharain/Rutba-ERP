@@ -2392,7 +2392,9 @@ export interface ApiMarketplaceAccountMarketplaceAccount
       'api::marketplace-account.marketplace-account'
     > &
       Schema.Attribute.Private;
-    platform: Schema.Attribute.Enumeration<['daraz', 'amazon', 'shopify']> &
+    platform: Schema.Attribute.Enumeration<
+      ['daraz', 'amazon', 'shopify', 'rutba']
+    > &
       Schema.Attribute.Required;
     price_adjust_pct: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
     product_groups: Schema.Attribute.Relation<
@@ -2576,7 +2578,7 @@ export interface ApiMarketplaceSyncLogMarketplaceSyncLog
     fetched: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
     finished_at: Schema.Attribute.DateTime;
     kind: Schema.Attribute.Enumeration<
-      ['orders', 'inventory', 'oauth', 'fulfillment']
+      ['orders', 'inventory', 'catalog', 'oauth', 'fulfillment']
     > &
       Schema.Attribute.Required;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
@@ -5116,7 +5118,7 @@ export interface ApiSaleOrderSaleOrder extends Struct.CollectionTypeSchema {
       'api::hr-employee.hr-employee'
     >;
     channel: Schema.Attribute.Enumeration<
-      ['web', 'pos', 'manual', 'daraz', 'amazon', 'shopify']
+      ['web', 'pos', 'manual', 'daraz', 'amazon', 'shopify', 'rutba']
     > &
       Schema.Attribute.DefaultTo<'web'>;
     channel_meta: Schema.Attribute.JSON;

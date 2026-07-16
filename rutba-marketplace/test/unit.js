@@ -172,6 +172,164 @@ async function test(name, fn) {
     assert.throws(() => createJobRunner({ backend: 'bullmq' }).scheduleRecurring('y', '*/5 * * * *', {}));
   });
 
+  console.log('— rutba adapter: registry + capabilities —');
+  const rutba = providers.getAdapter('rutba');
+  await test('rutba registered, no-oauth, catalog+orders+inventory', () => {
+    assert.strictEqual(providers.hasAdapter('rutba'), true);
+    assert.strictEqual(rutba.key, 'rutba');
+    assert.deepStrictEqual(rutba.capabilities, { oauth: false, orders: true, inventory: true, fulfillment: false, catalog: true });
+    assert.strictEqual(typeof rutba.pushCatalog, 'function');
+    assert.strictEqual(typeof rutba.fetchOrders, 'function');
+  });
+
+  console.log('— catalog transforms —');
+  const CT = engine.__test;
+  await test('mediaOut maps fields; null/urlless => null', () => {
+    assert.strictEqual(CT.mediaOut(null), null);
+    assert.strictEqual(CT.mediaOut({ name: 'x' }), null); // no url
+    assert.deepStrictEqual(
+      CT.mediaOut({ url: '/u.jpg', name: 'u', alternativeText: 'a', mime: 'image/jpeg', width: 10, height: 20, formats: { thumbnail: {} } }),
+      { url: '/u.jpg', name: 'u', alternativeText: 'a', mime: 'image/jpeg', width: 10, height: 20, formats: { thumbnail: {} } },
+    );
+  });
+  await test('taxonomyOut keeps name+slug pairs, drops empty', () => {
+    assert.deepStrictEqual(
+      CT.taxonomyOut([{ name: 'Shoes', slug: 'shoes' }, { documentId: 'x' }, { slug: 'bags' }]),
+      [{ name: 'Shoes', slug: 'shoes' }, { name: null, slug: 'bags' }],
+    );
+  });
+  await test('buildCatalogProduct: identity=origin docId, price adjusted, offer>0 only', () => {
+    const p = { documentId: 'D1', sku: 'S1', barcode: 'B1', name: 'N', selling_price: 100, offer_price: 0, stock_quantity: 5, is_active: true };
+    const out = CT.buildCatalogProduct(p, { pct: 10, fixed: 0 });
+    assert.strictEqual(out.origin_document_id, 'D1');
+    assert.strictEqual(out.selling_price, 110);
+    assert.strictEqual(out.offer_price, null); // offer_price 0 => not applied
+    assert.strictEqual(out.stock_quantity, 5);
+  });
+
+  console.log('— catalog payload assembly (variants) —');
+  const acct = { price_adjust_pct: 0 };
+  await test('parentDocIdOf: variant->parent, simple->self', () => {
+    assert.strictEqual(CT.parentDocIdOf({ documentId: 'v1', is_variant: true, parent: { documentId: 'p1' } }), 'p1');
+    assert.strictEqual(CT.parentDocIdOf({ documentId: 's1' }), 's1');
+    // variant with missing parent falls back to its own id (won't be orphaned silently)
+    assert.strictEqual(CT.parentDocIdOf({ documentId: 'v2', is_variant: true }), 'v2');
+  });
+  await test('groupVariantsByParent groups on parent.documentId', () => {
+    const g = CT.groupVariantsByParent([
+      { documentId: 'v1', parent: { documentId: 'p1' } },
+      { documentId: 'v2', parent: { documentId: 'p1' } },
+      { documentId: 'v3', parent: null },
+    ]);
+    assert.strictEqual(g.get('p1').length, 2);
+    assert.strictEqual(g.has('v3'), false);
+  });
+  await test('assemble: variant nested, positive-or-parent price fallback', () => {
+    const parents = [{ documentId: 'p1', sku: 'PSKU', name: 'Parent', selling_price: 200, offer_price: 150, is_active: true }];
+    const variantsByParent = new Map([['p1', [
+      { documentId: 'v1', sku: 'V1', selling_price: 250, is_active: true },   // own price
+      { documentId: 'v2', sku: 'V2', selling_price: 0, is_active: true },     // falls back to parent 200
+    ]]]);
+    const { payload, metaByOrigin, skipped } = CT.assembleCatalogPayload({ parents, variantsByParent, listingByProduct: new Map(), account: acct, rules: [] });
+    assert.strictEqual(skipped, 0);
+    assert.strictEqual(payload.length, 1);
+    assert.strictEqual(payload[0].variants.length, 2);
+    assert.strictEqual(payload[0].variants[0].selling_price, 250);
+    assert.strictEqual(payload[0].variants[1].selling_price, 200); // parent fallback
+    assert.strictEqual(payload[0].variants[1].offer_price, 150);   // parent offer fallback
+    assert.strictEqual(payload[0].variants[0].variants, undefined); // no nested variants field
+    assert.strictEqual(metaByOrigin.get('p1').product.documentId, 'p1');
+  });
+  await test('assemble: skip inactive, no-sku, and is_variant-parent anomaly', () => {
+    const parents = [
+      { documentId: 'a', sku: 'A', is_active: false },                 // inactive
+      { documentId: 'b', is_active: true },                            // no sku
+      { documentId: 'c', sku: 'C', is_variant: true, parent: { documentId: 'x' } }, // anomaly
+      { documentId: 'd', sku: 'D', selling_price: 10, is_active: true }, // ok
+    ];
+    const { payload, skipped } = CT.assembleCatalogPayload({ parents, variantsByParent: new Map(), listingByProduct: new Map(), account: acct, rules: [] });
+    assert.strictEqual(skipped, 3);
+    assert.strictEqual(payload.length, 1);
+    assert.strictEqual(payload[0].sku, 'D');
+  });
+  await test('assemble: inactive variant is dropped from the nested set', () => {
+    const parents = [{ documentId: 'p', sku: 'P', selling_price: 100, is_active: true }];
+    const variantsByParent = new Map([['p', [
+      { documentId: 'v1', sku: 'V1', selling_price: 100, is_active: true },
+      { documentId: 'v2', sku: 'V2', selling_price: 100, is_active: false },
+      { documentId: 'v3', selling_price: 100, is_active: true }, // no sku
+    ]]]);
+    const { payload } = CT.assembleCatalogPayload({ parents, variantsByParent, listingByProduct: new Map(), account: acct, rules: [] });
+    assert.strictEqual(payload[0].variants.length, 1);
+    assert.strictEqual(payload[0].variants[0].sku, 'V1');
+  });
+
+  console.log('— rutba adapter: transport (mocked fetch) —');
+  const ACCOUNT = { documentId: 'ACC1', api_key: 'tok_123', extra_config: { base_url: 'https://api.online.test/api' } };
+  function withMockFetch(handler, fn) {
+    const orig = global.fetch;
+    const calls = [];
+    global.fetch = async (url, opts) => {
+      calls.push({ url, opts });
+      const { status = 200, body } = handler({ url, opts }) || {};
+      return { ok: status >= 200 && status < 300, status, statusText: 'x', text: async () => (body === undefined ? '' : JSON.stringify(body)) };
+    };
+    return Promise.resolve(fn(calls)).finally(() => { global.fetch = orig; });
+  }
+  await test('validateConnection GETs the integration ping with bearer token', async () => {
+    await withMockFetch(() => ({ body: { data: { ok: true, ts: 'now' } } }), async (calls) => {
+      const r = await rutba.validateConnection({ account: ACCOUNT });
+      assert.strictEqual(r.ok, true);
+      assert.ok(calls[0].url.endsWith('/products/integration/ping'));
+      assert.strictEqual(calls[0].opts.headers.Authorization, 'Bearer tok_123');
+    });
+  });
+  await test('pushCatalog POSTs origin_account_id+products, returns results', async () => {
+    await withMockFetch(() => ({ body: { data: { results: [{ origin_document_id: 'D1', sku: 'S1', ok: true, external_id: 'X1', action: 'created' }] } } }), async (calls) => {
+      const r = await rutba.pushCatalog({ account: ACCOUNT, products: [{ origin_document_id: 'D1', sku: 'S1' }] });
+      assert.strictEqual(r.results[0].external_id, 'X1');
+      assert.ok(calls[0].url.endsWith('/products/integration/ingest-catalog'));
+      const sent = JSON.parse(calls[0].opts.body);
+      assert.strictEqual(sent.origin_account_id, 'ACC1');
+      assert.strictEqual(sent.products.length, 1);
+    });
+  });
+  await test('pushCatalog empty products => no fetch, empty results', async () => {
+    let called = 0;
+    await withMockFetch(() => { called += 1; return { body: {} }; }, async () => {
+      const r = await rutba.pushCatalog({ account: ACCOUNT, products: [] });
+      assert.deepStrictEqual(r, { results: [] });
+    });
+    assert.strictEqual(called, 0);
+  });
+  await test('pushCatalog network error => per-row ok:false (no throw)', async () => {
+    const orig = global.fetch;
+    global.fetch = async () => { throw new Error('ECONNREFUSED'); };
+    try {
+      const r = await rutba.pushCatalog({ account: ACCOUNT, products: [{ origin_document_id: 'D1', sku: 'S1' }] });
+      assert.strictEqual(r.results[0].ok, false);
+      assert.ok(/ECONNREFUSED/.test(r.results[0].error));
+    } finally { global.fetch = orig; }
+  });
+  await test('pushInventory POSTs updates; fetchOrders GETs export with since', async () => {
+    await withMockFetch(() => ({ body: { data: { results: [{ sku: 'S1', ok: true }] } } }), async (calls) => {
+      const r = await rutba.pushInventory({ account: ACCOUNT, updates: [{ sku: 'S1', quantity: 3, price: 9 }] });
+      assert.strictEqual(r.results[0].ok, true);
+      assert.ok(calls[0].url.endsWith('/products/integration/update-inventory'));
+    });
+    await withMockFetch(() => ({ body: { data: { orders: [{ externalOrderId: 'O1', items: [] }] } } }), async (calls) => {
+      const orders = await rutba.fetchOrders({ account: ACCOUNT, since: '2026-01-01T00:00:00.000Z', limit: 50 });
+      assert.strictEqual(orders.length, 1);
+      assert.strictEqual(orders[0].externalOrderId, 'O1');
+      assert.ok(calls[0].url.includes('/sale-orders/integration/export'));
+      assert.ok(calls[0].url.includes('since='));
+    });
+  });
+  await test('rutba connection missing base_url/token throws ProviderError', async () => {
+    await assert.rejects(() => rutba.validateConnection({ account: { documentId: 'A', api_key: 't' } }), /not configured/);
+    await assert.rejects(() => rutba.validateConnection({ account: { documentId: 'A', extra_config: { base_url: 'https://x/api' } } }), /token is missing/);
+  });
+
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed ? 1 : 0);
 })();

@@ -60,5 +60,26 @@ module.exports = {
       handler: 'product.discardDraft',
       config: { auth: false },
     },
+
+    // ── Rutba↔Rutba integration (service token only) ───────────────────────────
+    // NOT auth:false — Strapi must authenticate the API token so ctx.state.auth
+    // is set and the handler's isServiceToken() gate can fire (a no-user token is
+    // skipped by api-pro). Two-segment `/integration/*` paths so they never
+    // shadow, or get shadowed by, the core /products/:id route.
+    {
+      method: 'GET',
+      path: '/products/integration/ping',
+      handler: 'product.integrationPing',
+    },
+    {
+      method: 'POST',
+      path: '/products/integration/ingest-catalog',
+      handler: 'product.ingestCatalog',
+    },
+    {
+      method: 'POST',
+      path: '/products/integration/update-inventory',
+      handler: 'product.updateInventory',
+    },
   ],
 };

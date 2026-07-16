@@ -14,6 +14,24 @@ const config = require('./config');
 
 const BASE = config.strapi.apiUrl;
 
+// Shared shape for the full catalog push (parents + variants use the same set).
+const CATALOG_PRODUCT_FIELDS = [
+  'name', 'slug', 'sku', 'barcode', 'summary', 'description',
+  'cost_price', 'offer_price', 'selling_price', 'tax_rate', 'stock_quantity',
+  'is_active', 'is_variant', 'unit_of_measure', 'kind', 'keywords', 'external_ids',
+];
+const CATALOG_MEDIA_FIELDS = ['url', 'name', 'alternativeText', 'mime', 'width', 'height', 'formats'];
+function catalogPopulate() {
+  return {
+    categories: { fields: ['documentId', 'name', 'slug'] },
+    brands: { fields: ['documentId', 'name', 'slug'] },
+    terms: { fields: ['name', 'slug'] },
+    logo: { fields: CATALOG_MEDIA_FIELDS },
+    gallery: { fields: CATALOG_MEDIA_FIELDS },
+    parent: { fields: ['documentId'] },
+  };
+}
+
 function authHeaders() {
   const h = { 'Content-Type': 'application/json' };
   if (config.strapi.token) h.Authorization = `Bearer ${config.strapi.token}`;
@@ -182,6 +200,63 @@ module.exports = {
           fields: ['name', 'sku', 'selling_price', 'offer_price', 'stock_quantity', 'is_active'],
           populate: { categories: { fields: ['documentId'] } },
           pagination: { pageSize: 100 },
+        },
+      });
+      out.push(...(r.data || []));
+    }
+    return out;
+  },
+
+  /**
+   * Rich PUBLISHED product data for a full catalog push (Rutba-target only):
+   * the fields the online instance needs to CREATE a product, not just update
+   * price/stock — barcode, descriptions, unit/kind, categories+brands (by slug,
+   * so the target find-or-creates them), media (logo+gallery URLs — synced as
+   * references, the binaries already live on the shared media host), and the
+   * `parent` link (documentId) so a selected variant can be resolved back to the
+   * product that owns it. Published-only (status='published'): a direct find
+   * excludes drafts, so a draft product/variant never reaches the marketplace.
+   * Variants themselves are fetched separately via getPublishedVariants — a
+   * nested relation populate would leak DRAFT variants, which this avoids.
+   */
+  async getCatalogProducts(documentIds) {
+    const ids = [...new Set((documentIds || []).filter(Boolean))];
+    if (!ids.length) return [];
+    const out = [];
+    for (let i = 0; i < ids.length; i += 50) {
+      const batch = ids.slice(i, i + 50);
+      const r = await sreq('GET', '/products', {
+        query: {
+          filters: { documentId: { $in: batch } },
+          status: 'published',
+          fields: CATALOG_PRODUCT_FIELDS,
+          populate: catalogPopulate(),
+          pagination: { pageSize: 50 },
+        },
+      });
+      out.push(...(r.data || []));
+    }
+    return out;
+  },
+
+  /**
+   * PUBLISHED variants (own product rows) whose parent is in the given set —
+   * fetched directly (not via a parent populate) so drafts are excluded. Used to
+   * push a parent's full, live variant set nested under it.
+   */
+  async getPublishedVariants(parentDocumentIds) {
+    const ids = [...new Set((parentDocumentIds || []).filter(Boolean))];
+    if (!ids.length) return [];
+    const out = [];
+    for (let i = 0; i < ids.length; i += 50) {
+      const batch = ids.slice(i, i + 50);
+      const r = await sreq('GET', '/products', {
+        query: {
+          filters: { parent: { documentId: { $in: batch } } },
+          status: 'published',
+          fields: CATALOG_PRODUCT_FIELDS,
+          populate: catalogPopulate(),
+          pagination: { pageSize: 500 },
         },
       });
       out.push(...(r.data || []));

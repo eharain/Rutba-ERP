@@ -5,6 +5,7 @@
 
 const { factories } = require("@strapi/strapi");
 const { ensureUser } = require("../../../utils/ensure-user");
+const { isServiceToken } = require("../../../utils/is-service-token");
 const { roleLevelsFor } = require("../../../utils/app-roles");
 const { localDateISO } = require("../../../utils/local-date");
 const deliveryCostCalculator = require('../services/delivery-cost-calculator');
@@ -159,9 +160,78 @@ async function requireStaffUser(ctx, strapi, user) {
     return fullUser;
 }
 
+// Normalize a local web sale-order into the shape a peer Rutba instance's
+// marketplace ingest (ingestOne) consumes. externalOrderId is THIS order's
+// documentId — the stable key the source dedups on (channel='rutba').
+function normalizeExportOrder(o) {
+    const snap = (o.delivery_snapshot && typeof o.delivery_snapshot === 'object') ? o.delivery_snapshot : {};
+    const items = ((o.products && o.products.items) || []).map((it) => ({
+        sku: (it.product && it.product.sku) || null,
+        name: it.product_name || (it.product && it.product.name) || null,
+        quantity: Number(it.quantity) || 1,
+        unitPrice: it.price != null ? Number(it.price) : undefined,
+        total: it.total != null ? Number(it.total) : undefined,
+        variant: it.variant_name || it.variant || undefined,
+    }));
+    return {
+        externalOrderId: o.documentId,
+        externalOrderNumber: o.order_id || undefined,
+        placedAt: o.createdAt,
+        status: o.order_status,
+        paymentMethod: o.payment_method,
+        paid: String(o.payment_status || '').toUpperCase() === 'PAID',
+        currency: 'PKR',
+        buyer: {
+            name: (o.customer_person && o.customer_person.name) || snap.name || undefined,
+            email: (o.customer_person && o.customer_person.email) || snap.email || undefined,
+            phone: (o.customer_person && o.customer_person.phone) || snap.phone || undefined,
+        },
+        shipping: {
+            name: snap.name || undefined,
+            phone: snap.phone || undefined,
+            line1: snap.line1 || undefined,
+            line2: snap.line2 || undefined,
+            city: snap.city || undefined,
+            state: snap.state || undefined,
+            country: snap.country || undefined,
+            zip_code: snap.zip_code || undefined,
+        },
+        totals: {
+            itemsTotal: o.subtotal != null ? Number(o.subtotal) : undefined,
+            shippingFee: o.shipping_price != null ? Number(o.shipping_price)
+                : (o.delivery_cost != null ? Number(o.delivery_cost) : undefined),
+            total: o.total != null ? Number(o.total) : undefined,
+        },
+        items,
+        raw: { order_id: o.order_id, documentId: o.documentId, channel: o.channel },
+    };
+}
+
 module.exports = factories.createCoreController(
     "api::sale-order.sale-order",
     ({ strapi }) => ({
+
+        // ── GET /sale-orders/integration/export (service token only) ────────
+        // A peer Rutba instance (the in-house store) pulls this instance's own
+        // web orders since a watermark, to process them locally. Gated to an API
+        // token with no UP user — never reachable by a logged-in shopper.
+        async exportMarketplace(ctx) {
+            if (!isServiceToken(ctx)) return ctx.forbidden('Service token required');
+            const limit = Math.min(Number(ctx.query.limit) || 100, 200);
+            const filters = { channel: { $eq: 'web' } };
+            const since = ctx.query.since ? new Date(ctx.query.since) : null;
+            if (since && !Number.isNaN(since.getTime())) filters.updatedAt = { $gte: since.toISOString() };
+            const rows = await strapi.documents('api::sale-order.sale-order').findMany({
+                filters,
+                sort: ['updatedAt:asc'],
+                limit,
+                populate: {
+                    customer_person: { fields: ['name', 'email', 'phone'] },
+                    products: { populate: { items: { populate: { product: { fields: ['sku', 'name'] } } } } },
+                },
+            });
+            return ctx.send({ data: { orders: rows.map(normalizeExportOrder) } });
+        },
 
         // ── POST /orders/calculate-delivery ────────────────────────────────
         async calculateDelivery(ctx) {

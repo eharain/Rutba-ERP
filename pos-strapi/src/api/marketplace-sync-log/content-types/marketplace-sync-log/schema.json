@@ -26,6 +26,7 @@
       "enum": [
         "orders",
         "inventory",
+        "catalog",
         "oauth",
         "fulfillment"
       ],

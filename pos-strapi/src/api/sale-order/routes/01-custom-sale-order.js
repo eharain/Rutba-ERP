@@ -8,6 +8,16 @@ const config = {
     //   path: '/orders/checkout/count-price',
     //   handler: 'api::sale-order.sale-order.countPrice',
     // },
+    // ── Rutba↔Rutba integration: export this instance's web orders ──────────
+    // Service token only (handler runs isServiceToken); NOT auth:false, so the
+    // token is authenticated and ctx.state.auth is populated. Two-segment path
+    // so it never collides with /sale-orders/:documentId.
+    {
+      method: 'GET',
+      path: '/sale-orders/integration/export',
+      handler: 'api::sale-order.sale-order.exportMarketplace',
+    },
+
     {
       method: 'POST',
       path: '/orders/checkout/validate-address',

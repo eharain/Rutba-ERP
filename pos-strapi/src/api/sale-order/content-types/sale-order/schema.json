@@ -230,7 +230,8 @@
         "manual",
         "daraz",
         "amazon",
-        "shopify"
+        "shopify",
+        "rutba"
       ],
       "default": "web"
     },

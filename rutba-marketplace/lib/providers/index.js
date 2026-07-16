@@ -6,8 +6,9 @@
 // handle (adapters take `{ account, ... }` and read config from lib/config.js).
 
 const daraz = require('./daraz');
+const rutba = require('./rutba');
 
-const ADAPTERS = { daraz };
+const ADAPTERS = { daraz, rutba };
 
 function getAdapter(platform) {
   const adapter = ADAPTERS[platform];
