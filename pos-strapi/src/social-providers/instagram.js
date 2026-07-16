@@ -108,20 +108,22 @@ async function createImageContainer(strapi, account, { imageUrl, caption, isCaro
 }
 
 /**
- * Create a REELS (video) container and wait for server-side processing.
- * POST /{ig-user-id}/media  { media_type: REELS, video_url, caption } -> { id }
- * then GET /{id}?fields=status_code until FINISHED.
+ * Create a video container and wait for server-side processing.
+ * Standalone video → media_type=REELS. A carousel video child → media_type=VIDEO
+ * with is_carousel_item. Then GET /{id}?fields=status_code until FINISHED.
  */
-async function createVideoContainer(strapi, account, { videoUrl, caption }) {
+async function createVideoContainer(strapi, account, { videoUrl, caption, isCarouselItem }) {
+  const form = {
+    media_type: isCarouselItem ? 'VIDEO' : 'REELS',
+    video_url: videoUrl,
+    caption: caption || '',
+    access_token: tokenFor(account),
+  };
+  if (isCarouselItem) form.is_carousel_item = 'true';
   const res = await base.httpRequest(`${graphBase(strapi)}/${igUserId(account)}/media`, {
     method: 'POST',
     platform: PLATFORM,
-    form: {
-      media_type: 'REELS',
-      video_url: videoUrl,
-      caption: caption || '',
-      access_token: tokenFor(account),
-    },
+    form,
   });
   if (!res || !res.id) {
     throw new base.ProviderError('Instagram did not return a video container id', { platform: PLATFORM, raw: res });
@@ -163,6 +165,27 @@ async function publishContainer(strapi, account, creationId) {
   });
   if (!res || !res.id) {
     throw new base.ProviderError('Instagram media_publish did not return a media id', { platform: PLATFORM, raw: res });
+  }
+  return res.id;
+}
+
+/**
+ * Create a CAROUSEL parent container from already-created child container ids.
+ * POST /{ig-user-id}/media { media_type: CAROUSEL, children, caption } -> { id }
+ */
+async function createCarouselContainer(strapi, account, { childIds, caption }) {
+  const res = await base.httpRequest(`${graphBase(strapi)}/${igUserId(account)}/media`, {
+    method: 'POST',
+    platform: PLATFORM,
+    form: {
+      media_type: 'CAROUSEL',
+      children: childIds.join(','),
+      caption: caption || '',
+      access_token: tokenFor(account),
+    },
+  });
+  if (!res || !res.id) {
+    throw new base.ProviderError('Instagram did not return a carousel container id', { platform: PLATFORM, raw: res });
   }
   return res.id;
 }
@@ -328,14 +351,30 @@ async function publishPost({ strapi, account, post, media }) {
   tokenFor(account);
 
   const caption = (post && post.body) || '';
-  const videoUrl = (media && Array.isArray(media.videoUrls) && media.videoUrls[0]) || null;
-  const imageUrl = (media && media.coverUrl) || null;
+  const imageUrls = (media && Array.isArray(media.imageUrls)) ? media.imageUrls : [];
+  const videoUrls = (media && Array.isArray(media.videoUrls)) ? media.videoUrls : [];
+  // Ordered feed: images first, then videos. Instagram carousels allow 2–10 items.
+  const items = [
+    ...imageUrls.map((url) => ({ type: 'image', url })),
+    ...videoUrls.map((url) => ({ type: 'video', url })),
+  ];
 
   let creationId;
-  if (videoUrl) {
-    creationId = await createVideoContainer(strapi, account, { videoUrl, caption });
-  } else if (imageUrl) {
-    creationId = await createImageContainer(strapi, account, { imageUrl, caption });
+  if (items.length >= 2) {
+    // Carousel: create a child container per item, then the parent.
+    const childIds = [];
+    for (const it of items.slice(0, 10)) {
+      const childId = it.type === 'video'
+        ? await createVideoContainer(strapi, account, { videoUrl: it.url, caption: '', isCarouselItem: true })
+        : await createImageContainer(strapi, account, { imageUrl: it.url, caption: '', isCarouselItem: true });
+      childIds.push(childId);
+    }
+    creationId = await createCarouselContainer(strapi, account, { childIds, caption });
+  } else if (items.length === 1) {
+    const it = items[0];
+    creationId = it.type === 'video'
+      ? await createVideoContainer(strapi, account, { videoUrl: it.url, caption })
+      : await createImageContainer(strapi, account, { imageUrl: it.url, caption });
   } else {
     throw new base.ProviderError('Instagram requires an image or video to publish a post', { platform: PLATFORM });
   }
