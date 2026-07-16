@@ -43,12 +43,12 @@ const VALID_APP_KEYS = ['stock', 'sale', 'auth', 'web-user', 'order-management',
  * `icon` is the representative icon for the category's footer menu button.
  */
 export const APP_CATEGORIES = [
-    { key: 'sales',     label: 'Sales & Customers',      icon: 'fa-solid fa-cart-shopping' },
-    { key: 'inventory', label: 'Inventory & Production', icon: 'fa-solid fa-warehouse' },
-    { key: 'people',    label: 'People',                 icon: 'fa-solid fa-users' },
-    { key: 'finance',   label: 'Finance & Payroll',      icon: 'fa-solid fa-coins' },
-    { key: 'content',   label: 'Content & Channels',     icon: 'fa-solid fa-bullhorn' },
-    { key: 'admin',     label: 'Administration',         icon: 'fa-solid fa-gear' },
+    { key: 'sales',     label: 'Sales & Customers',      icon: 'fa-solid fa-cart-shopping', color: '#10b981' }, // emerald
+    { key: 'inventory', label: 'Inventory & Production', icon: 'fa-solid fa-warehouse',     color: '#3b82f6' }, // blue
+    { key: 'people',    label: 'People',                 icon: 'fa-solid fa-users',         color: '#ec4899' }, // pink
+    { key: 'finance',   label: 'Finance & Payroll',      icon: 'fa-solid fa-coins',         color: '#f59e0b' }, // amber
+    { key: 'content',   label: 'Content & Channels',     icon: 'fa-solid fa-bullhorn',      color: '#8b5cf6' }, // violet
+    { key: 'admin',     label: 'Administration',         icon: 'fa-solid fa-gear',          color: '#64748b' }, // slate
 ];
 
 /**

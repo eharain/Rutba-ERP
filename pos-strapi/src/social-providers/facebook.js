@@ -247,28 +247,55 @@ module.exports = {
     const api = graphBase(strapi);
     const message = (post && post.body) || '';
 
-    let endpoint;
-    let form;
-
     const videoUrl = media && Array.isArray(media.videoUrls) && media.videoUrls[0];
-    const coverUrl = media && media.coverUrl;
+    const imageUrls = (media && Array.isArray(media.imageUrls) && media.imageUrls.length)
+      ? media.imageUrls
+      : (media && media.coverUrl ? [media.coverUrl] : []);
 
+    let raw;
     if (videoUrl) {
-      endpoint = `${api}/${encodeURIComponent(id)}/videos`;
-      form = { file_url: videoUrl, description: message, access_token: token };
-    } else if (coverUrl) {
-      endpoint = `${api}/${encodeURIComponent(id)}/photos`;
-      form = { url: coverUrl, caption: message, access_token: token };
+      raw = await base.httpRequest(`${api}/${encodeURIComponent(id)}/videos`, {
+        method: 'POST',
+        platform: PLATFORM,
+        form: { file_url: videoUrl, description: message, access_token: token },
+      });
+    } else if (imageUrls.length > 1) {
+      // Multi-photo: upload each image unpublished, then attach them all to one
+      // feed story (Facebook's native album/multi-photo post).
+      const attached = [];
+      for (const url of imageUrls.slice(0, 10)) {
+        try {
+          const photo = await base.httpRequest(`${api}/${encodeURIComponent(id)}/photos`, {
+            method: 'POST',
+            platform: PLATFORM,
+            form: { url, published: 'false', access_token: token },
+          });
+          if (photo && photo.id) attached.push({ media_fbid: photo.id });
+        } catch (e) {
+          strapi && strapi.log && strapi.log.warn(`[social:facebook] album photo upload failed for one image, skipping it: ${e.message}`);
+        }
+      }
+      if (attached.length === 0) {
+        throw new base.ProviderError('Facebook rejected every album photo', { platform: PLATFORM });
+      }
+      raw = await base.httpRequest(`${api}/${encodeURIComponent(id)}/feed`, {
+        method: 'POST',
+        platform: PLATFORM,
+        form: { message, access_token: token, attached_media: JSON.stringify(attached) },
+      });
+    } else if (imageUrls.length === 1) {
+      raw = await base.httpRequest(`${api}/${encodeURIComponent(id)}/photos`, {
+        method: 'POST',
+        platform: PLATFORM,
+        form: { url: imageUrls[0], caption: message, access_token: token },
+      });
     } else {
-      endpoint = `${api}/${encodeURIComponent(id)}/feed`;
-      form = { message, access_token: token };
+      raw = await base.httpRequest(`${api}/${encodeURIComponent(id)}/feed`, {
+        method: 'POST',
+        platform: PLATFORM,
+        form: { message, access_token: token },
+      });
     }
-
-    const raw = await base.httpRequest(endpoint, {
-      method: 'POST',
-      platform: PLATFORM,
-      form,
-    });
 
     // Photos return both `id` (photo) and `post_id` (the feed story). Prefer the
     // story id so deletes/comments target the post. The public URL is built from

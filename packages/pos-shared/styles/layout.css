@@ -344,13 +344,11 @@ a:hover { text-decoration: underline; }
     transition: background-color 120ms ease, color 120ms ease;
 }
 
-.footer-cat-btn:hover,
-.footer-cat.open .footer-cat-btn {
-    background: var(--rutba-nav-bg-hover);
-    color: #fff;
-}
+/* Per-category chip colour is applied inline; hover just brightens it. */
+.footer-cat-btn { color: #fff; }
+.footer-cat-btn:hover { filter: brightness(1.18); }
 
-.footer-cat-btn > i:first-child { font-size: 0.82rem; opacity: 0.9; }
+.footer-cat-btn > i:first-child { font-size: 0.82rem; }
 
 /* Single-app group rendered as a direct link (no popover) */
 .footer-cat-solo,

@@ -171,6 +171,18 @@ function extra(account, key, fallback = null) {
   return fallback;
 }
 
+/** True when a Strapi file entity is an image (by mime). */
+function isImageFile(file) {
+  const mime = (file && (file.mime || file.type)) || '';
+  return typeof mime === 'string' && mime.startsWith('image/');
+}
+
+/** True when a Strapi file entity is a video (by mime). */
+function isVideoFile(file) {
+  const mime = (file && (file.mime || file.type)) || '';
+  return typeof mime === 'string' && mime.startsWith('video/');
+}
+
 module.exports = {
   ProviderError,
   getSocialConfig,
@@ -183,4 +195,6 @@ module.exports = {
   tokenExpired,
   expiryFromTtl,
   extra,
+  isImageFile,
+  isVideoFile,
 };

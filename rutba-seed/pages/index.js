@@ -4,11 +4,12 @@ import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { SeedEndpoints } from "@rutba/api-provider/endpoints";
 
-const CATEGORY_ORDER = ["system", "reference", "regional", "workflow", "backfill", "demo"];
+const CATEGORY_ORDER = ["system", "reference", "regional", "industry", "workflow", "backfill", "demo"];
 const CATEGORY_LABEL = {
     system: "System",
     reference: "Reference data",
     regional: "Regional (tax & shipping)",
+    industry: "Industry packs (catalog + attributes)",
     backfill: "Backfills",
     workflow: "Workflows",
     demo: "Demo / tenant",

@@ -59,6 +59,8 @@ function FooterInfo({ currentApp }) {
                     {groups.map((group) => {
                         // A group with a single accessible app doesn't need a
                         // popover — link straight to the app.
+                        const color = group.color || '#64748b';
+
                         if (group.apps.length === 1) {
                             const app = group.apps[0];
                             const linkProps = app.external
@@ -71,8 +73,9 @@ function FooterInfo({ currentApp }) {
                                         href={app.href}
                                         className="footer-cat-btn footer-cat-solo"
                                         title={app.label}
+                                        style={{ backgroundColor: `${color}26` }}
                                     >
-                                        <i className={app.icon}></i>
+                                        <i className={app.icon} style={{ color }}></i>
                                         <span className="footer-cat-label">{app.label}</span>
                                         {app.external && (
                                             <i className="fa-solid fa-arrow-up-right-from-square footer-cat-caret"></i>
@@ -92,16 +95,17 @@ function FooterInfo({ currentApp }) {
                                     aria-expanded={isOpen}
                                     title={group.label}
                                     onClick={() => setOpenGroup(isOpen ? null : group.key)}
+                                    style={{ backgroundColor: isOpen ? `${color}40` : `${color}26` }}
                                 >
-                                    <i className={group.icon}></i>
+                                    <i className={group.icon} style={{ color }}></i>
                                     <span className="footer-cat-label">{group.label}</span>
-                                    <span className="footer-cat-count">{group.apps.length}</span>
+                                    <span className="footer-cat-count" style={{ backgroundColor: color, color: '#fff' }}>{group.apps.length}</span>
                                     <i className="fa-solid fa-chevron-up footer-cat-caret"></i>
                                 </button>
 
                                 {isOpen && (
-                                    <div className="footer-cat-menu" role="menu">
-                                        <div className="footer-cat-menu-head">{group.label}</div>
+                                    <div className="footer-cat-menu" role="menu" style={{ borderTop: `3px solid ${color}` }}>
+                                        <div className="footer-cat-menu-head" style={{ color }}>{group.label}</div>
                                         {group.apps.map((app) => {
                                             const linkProps = app.external
                                                 ? { target: "_blank", rel: "noopener noreferrer" }
@@ -115,7 +119,7 @@ function FooterInfo({ currentApp }) {
                                                     role="menuitem"
                                                     onClick={() => setOpenGroup(null)}
                                                 >
-                                                    <i className={`${app.icon} ${app.color || ''} footer-cat-item-icon`}></i>
+                                                    <i className={`${app.icon} footer-cat-item-icon`} style={{ color }}></i>
                                                     <span>{app.label}</span>
                                                     {app.external && (
                                                         <i className="fa-solid fa-arrow-up-right-from-square ms-auto footer-cat-ext"></i>

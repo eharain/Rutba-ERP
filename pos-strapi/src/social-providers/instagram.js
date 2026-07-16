@@ -89,15 +89,17 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
  * Create an image media container.
  * POST /{ig-user-id}/media  { image_url, caption } -> { id }
  */
-async function createImageContainer(strapi, account, { imageUrl, caption }) {
+async function createImageContainer(strapi, account, { imageUrl, caption, isCarouselItem }) {
+  const form = {
+    image_url: imageUrl,
+    caption: caption || '',
+    access_token: tokenFor(account),
+  };
+  if (isCarouselItem) form.is_carousel_item = 'true';
   const res = await base.httpRequest(`${graphBase(strapi)}/${igUserId(account)}/media`, {
     method: 'POST',
     platform: PLATFORM,
-    form: {
-      image_url: imageUrl,
-      caption: caption || '',
-      access_token: tokenFor(account),
-    },
+    form,
   });
   if (!res || !res.id) {
     throw new base.ProviderError('Instagram did not return an image container id', { platform: PLATFORM, raw: res });

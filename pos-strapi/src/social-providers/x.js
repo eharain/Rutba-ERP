@@ -248,15 +248,19 @@ module.exports = {
     const text = truncateTweet(post && post.body);
 
     const mediaIds = [];
-    const coverUrl = media && (media.coverUrl || base.absoluteMediaUrl(strapi, media.cover, { preferFormat: 'large' }));
-    if (coverUrl) {
+    // X allows up to 4 images per tweet. Prefer the full gallery (cover +
+    // attached media images), falling back to just the cover.
+    const imageUrls = (media && Array.isArray(media.imageUrls) && media.imageUrls.length)
+      ? media.imageUrls
+      : (media && media.coverUrl ? [media.coverUrl] : []);
+    for (const imageUrl of imageUrls.slice(0, 4)) {
       try {
-        const id = await uploadImage(account, bearer, coverUrl);
+        const id = await uploadImage(account, bearer, imageUrl);
         if (id) mediaIds.push(id);
       } catch (e) {
         strapi &&
           strapi.log &&
-          strapi.log.warn(`[social:x] media upload failed, posting text-only: ${e.message}`);
+          strapi.log.warn(`[social:x] media upload failed for one image, skipping it: ${e.message}`);
       }
     }
 

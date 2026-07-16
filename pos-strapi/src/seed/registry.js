@@ -44,6 +44,19 @@ const { backfillInventoryFoundation } = require('./seeders/inventory-foundation'
 const { seedTailoringUnit } = require('./seeders/tailoring-unit-demo');
 const tax = require('./seeders/tax-profiles');
 const shipping = require('./seeders/shipping');
+const { applyIndustry, INDUSTRY_KEYS } = require('./seeders/industry-packs');
+
+// Display labels for the industry onboarding packs (category trees + attributes).
+const INDUSTRY_LABELS = {
+    apparel: 'Apparel & Tailoring',
+    pharmacy: 'Pharmacy',
+    grocery: 'Grocery & FMCG',
+    restaurant: 'Restaurant & Café',
+    electronics: 'Electronics & Mobile',
+    jewellery: 'Jewellery',
+    autoparts: 'Auto Parts & Workshop',
+    wholesale: 'Distribution & Wholesale',
+};
 
 /** @type {Array<{key:string,title:string,category:string,essential:boolean,supportsPartial:boolean,supportsFull:boolean,hasMigration:boolean,run:(strapi:any,opts:{mode:string})=>any}>} */
 const REGISTRY = [
@@ -308,6 +321,21 @@ const REGISTRY = [
         hasMigration: false,
         run: (strapi) => backfillInventoryFoundation(strapi),
     },
+    // ── Industry onboarding packs ────────────────────────────────────────
+    // A tenant runs the ONE pack for their trade: a starter category tree +
+    // the attributes (variant term-types/terms) that trade sells on. Non-
+    // essential, idempotent. Category slugs are pack-prefixed so packs don't
+    // collide; shared attributes (Size, Colour) are reused across packs.
+    ...INDUSTRY_KEYS.map((key) => ({
+        key: `industry-${key}`,
+        title: `Industry pack — ${INDUSTRY_LABELS[key] || key}`,
+        category: 'industry',
+        essential: false,
+        supportsPartial: true,
+        supportsFull: false,
+        hasMigration: false,
+        run: (strapi) => applyIndustry(strapi, key),
+    })),
     // Demo dataset — never essential; run explicitly with --only=tailoring-unit
     // on a clean/dev DB. Guards against re-running (skips if mfg-operations exist).
     {

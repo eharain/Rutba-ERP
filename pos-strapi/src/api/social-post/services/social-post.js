@@ -61,16 +61,44 @@ module.exports = createCoreService(POST_UID, ({ strapi }) => ({
     return strapi.documents(POST_UID).findOne({
       documentId,
       status,
-      populate: ['cover', 'video', 'social_accounts'],
+      populate: ['cover', 'video', 'media', 'social_accounts'],
     });
   },
 
+  /**
+   * Flatten the post's media into what adapters consume. The `media` gallery
+   * (images + videos) is merged on top of the dedicated `cover` (single image)
+   * and `video` (videos) fields:
+   *   - images   = cover first, then gallery images (deduped) → carousels/albums
+   *   - videos   = video field, then gallery videos (deduped)
+   * coverUrl/videoUrls stay for adapters that only take a single item.
+   */
   _prepareMedia(post) {
     const cover = post.cover || null;
-    const videos = Array.isArray(post.video) ? post.video : (post.video ? [post.video] : []);
+    const videoField = Array.isArray(post.video) ? post.video : (post.video ? [post.video] : []);
+    const gallery = Array.isArray(post.media) ? post.media : (post.media ? [post.media] : []);
+
+    const dedupe = (files) => {
+      const out = [];
+      const seen = new Set();
+      for (const f of files) {
+        if (!f) continue;
+        const k = f.id != null ? `id:${f.id}` : `url:${f.url || ''}`;
+        if (seen.has(k)) continue;
+        seen.add(k);
+        out.push(f);
+      }
+      return out;
+    };
+
+    const images = dedupe([cover, ...gallery.filter((f) => base.isImageFile(f))]);
+    const videos = dedupe([...videoField, ...gallery.filter((f) => base.isVideoFile(f))]);
+
     return {
       cover,
       coverUrl: base.absoluteMediaUrl(strapi, cover, { preferFormat: 'large' }),
+      images,
+      imageUrls: images.map((f) => base.absoluteMediaUrl(strapi, f, { preferFormat: 'large' })).filter(Boolean),
       videos,
       videoUrls: videos.map((v) => base.absoluteMediaUrl(strapi, v)).filter(Boolean),
     };
