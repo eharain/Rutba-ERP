@@ -13,6 +13,8 @@ import ListPageLayout, { AddButton } from "@rutba/pos-shared/components/ListPage
 import ListPagination from "@rutba/pos-shared/components/ListPagination";
 
 const PAYMENT_STATUSES = ["Paid", "Partial", "Unpaid"];
+// Sentinel filter value for "not fully paid" (Unpaid + Partial).
+const OUTSTANDING = "__outstanding__";
 const RETURN_STATUSES = ["None", "Returned", "PartiallyReturned"];
 
 const SEARCH_FIELDS = [
@@ -126,7 +128,13 @@ export default function Sales() {
 
     const buildFilters = useCallback(() => {
         const filters = {};
-        if (paymentStatus) filters.payment_status = { $eq: paymentStatus };
+        // "Outstanding" = anything still owing money (Unpaid OR Partial) — the
+        // set of sales awaiting collection, incl. pay-later orders.
+        if (paymentStatus === OUTSTANDING) {
+            filters.payment_status = { $in: ['Unpaid', 'Partial'] };
+        } else if (paymentStatus) {
+            filters.payment_status = { $eq: paymentStatus };
+        }
         if (returnStatus) filters.return_status = { $eq: returnStatus };
 
         // Text search — route based on selected field (stock_item handled in useEffect)
@@ -326,6 +334,7 @@ export default function Sales() {
         </div>,
         <select key="payment" className="form-select form-select-sm" value={paymentStatus} onChange={e => { setPaymentStatus(e.target.value); setPage(1); }} title="Payment">
             <option value="">Payment: All</option>
+            <option value={OUTSTANDING}>Unpaid / Outstanding</option>
             {PAYMENT_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
         </select>,
         <select key="return" className="form-select form-select-sm" value={returnStatus} onChange={e => { setReturnStatus(e.target.value); setPage(1); }} title="Return">
