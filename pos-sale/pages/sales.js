@@ -460,7 +460,8 @@ export default function Sales() {
                                                         <Link href={`/${s.documentId}/sale`} className="btn btn-sm btn-outline-primary" style={{ textDecoration: "none" }}>
                                                             <i className="fas fa-edit me-1"></i>Edit
                                                         </Link>
-                                                        {elevated && s.payment_status !== 'Paid' && s.status !== 'Cancelled' && (
+                                                        {elevated && s.payment_status !== 'Paid' && s.status !== 'Cancelled'
+                                                            && !(s.pay_later && s.pay_later_stock_status === 'Sold') && (
                                                             <button
                                                                 className="btn btn-sm btn-outline-danger"
                                                                 onClick={() => handleCancelSale(s)}
@@ -471,6 +472,14 @@ export default function Sales() {
                                                                     : <><i className="fas fa-ban me-1"></i>Cancel</>
                                                                 }
                                                             </button>
+                                                        )}
+                                                        {s.pay_later && s.pay_later_stock_status === 'Sold' && s.status !== 'Cancelled' && (
+                                                            <span
+                                                                className="badge bg-warning text-dark"
+                                                                title="Pay-later credit sale — goods released as Sold. Cannot be cancelled; process a return instead."
+                                                            >
+                                                                <i className="fas fa-lock me-1"></i>Credit
+                                                            </span>
                                                         )}
                                                     </div>
                                                 </td>

@@ -101,6 +101,15 @@ module.exports = {
       return ctx.badRequest('Cannot cancel a fully paid sale. Process a return instead.');
     }
 
+    // A pay-later CREDIT sale (stock released as Sold when locked) cannot be
+    // cancelled: the goods are already with the customer, so restoring them to
+    // stock and wiping the receivable would be wrong. Process a return instead.
+    if (sale.pay_later && sale.pay_later_stock_status === 'Sold') {
+      return ctx.badRequest(
+        'Cannot cancel a pay-later credit sale — its goods were already released as Sold. Process a return instead.'
+      );
+    }
+
     // ── 1) Restore stock items to InStock ────────────────────
     for (const saleItem of (sale.items || [])) {
       for (const stockItem of (saleItem.items || [])) {
