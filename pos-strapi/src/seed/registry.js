@@ -42,6 +42,8 @@ const { applyCostChangeApprovalTemplate } = require('./seeders/cost-change-appro
 const { seedDefaultWorkflows } = require('./seeders/default-workflows');
 const { backfillInventoryFoundation } = require('./seeders/inventory-foundation');
 const { seedTailoringUnit } = require('./seeders/tailoring-unit-demo');
+const tax = require('./seeders/tax-profiles');
+const shipping = require('./seeders/shipping');
 
 /** @type {Array<{key:string,title:string,category:string,essential:boolean,supportsPartial:boolean,supportsFull:boolean,hasMigration:boolean,run:(strapi:any,opts:{mode:string})=>any}>} */
 const REGISTRY = [
@@ -126,6 +128,74 @@ const REGISTRY = [
         supportsFull: true,
         hasMigration: false,
         run: (strapi) => seedAccounting(strapi),
+    },
+    // ── Regional / compliance ────────────────────────────────────────────
+    // Country/region-scoped tax profiles and shipping lanes. NOT essential — a
+    // tenant runs only the profile(s) for the market(s) they operate in (a
+    // Karachi shop doesn't want US state sales tax). All idempotent by unique
+    // key (tax `code`, zone/method `name`).
+    {
+        key: 'tax-pakistan',
+        title: 'Tax profile — Pakistan (GST + provincial)',
+        category: 'regional',
+        essential: false, supportsPartial: true, supportsFull: false, hasMigration: false,
+        run: (strapi) => tax.applyTaxPakistan(strapi),
+    },
+    {
+        key: 'tax-uk',
+        title: 'Tax profile — United Kingdom (VAT)',
+        category: 'regional',
+        essential: false, supportsPartial: true, supportsFull: false, hasMigration: false,
+        run: (strapi) => tax.applyTaxUK(strapi),
+    },
+    {
+        key: 'tax-us',
+        title: 'Tax profile — United States (state sales tax)',
+        category: 'regional',
+        essential: false, supportsPartial: true, supportsFull: false, hasMigration: false,
+        run: (strapi) => tax.applyTaxUS(strapi),
+    },
+    {
+        key: 'tax-eu',
+        title: 'Tax profile — European Union (VAT, 27 states)',
+        category: 'regional',
+        essential: false, supportsPartial: true, supportsFull: false, hasMigration: false,
+        run: (strapi) => tax.applyTaxEU(strapi),
+    },
+    {
+        key: 'tax-mena',
+        title: 'Tax profile — Middle East (VAT)',
+        category: 'regional',
+        essential: false, supportsPartial: true, supportsFull: false, hasMigration: false,
+        run: (strapi) => tax.applyTaxMena(strapi),
+    },
+    {
+        key: 'tax-apac',
+        title: 'Tax profile — Asia-Pacific (GST/VAT)',
+        category: 'regional',
+        essential: false, supportsPartial: true, supportsFull: false, hasMigration: false,
+        run: (strapi) => tax.applyTaxApac(strapi),
+    },
+    {
+        key: 'tax-canada',
+        title: 'Tax profile — Canada (GST/HST/PST)',
+        category: 'regional',
+        essential: false, supportsPartial: true, supportsFull: false, hasMigration: false,
+        run: (strapi) => tax.applyTaxCanada(strapi),
+    },
+    {
+        key: 'shipping-pakistan',
+        title: 'Shipping — Pakistan (own rider + couriers, COD)',
+        category: 'regional',
+        essential: false, supportsPartial: true, supportsFull: false, hasMigration: false,
+        run: (strapi) => shipping.applyShippingPakistan(strapi),
+    },
+    {
+        key: 'shipping-international',
+        title: 'Shipping — International (DHL/FedEx/UPS/Aramex lanes)',
+        category: 'regional',
+        essential: false, supportsPartial: true, supportsFull: false, hasMigration: false,
+        run: (strapi) => shipping.applyShippingInternational(strapi),
     },
     // Reference data backed by a first-boot Strapi migration; the same
     // idempotent body is exposed here so it can be re-run on demand from the

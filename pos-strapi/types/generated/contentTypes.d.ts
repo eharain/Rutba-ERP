@@ -5674,6 +5674,7 @@ export interface ApiSocialPostSocialPost extends Struct.CollectionTypeSchema {
       'api::social-post.social-post'
     > &
       Schema.Attribute.Private;
+    media: Schema.Attribute.Media<'images' | 'videos', true>;
     platform_results: Schema.Attribute.JSON;
     platforms: Schema.Attribute.JSON & Schema.Attribute.Required;
     post_status: Schema.Attribute.Enumeration<

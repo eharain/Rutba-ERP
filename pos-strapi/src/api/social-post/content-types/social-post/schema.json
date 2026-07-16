@@ -62,6 +62,14 @@
         "videos"
       ]
     },
+    "media": {
+      "type": "media",
+      "multiple": true,
+      "allowedTypes": [
+        "images",
+        "videos"
+      ]
+    },
     "social_accounts": {
       "type": "relation",
       "relation": "oneToMany",

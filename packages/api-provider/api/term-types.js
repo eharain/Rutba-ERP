@@ -32,7 +32,7 @@ export const TermTypesEndpoints = {
         path: '/term-types',
         action: 'find',
         method: 'get',
-        apps: ['stock', 'sale'],
+        apps: ['stock', 'sale', 'social'],
         approle: ['admin', 'manager', 'staff'],
         params: listParams(
             { page, pageSize, sort, populate, filters, fields },

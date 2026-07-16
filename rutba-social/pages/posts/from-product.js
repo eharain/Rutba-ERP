@@ -6,6 +6,7 @@ import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { MediaUtilsEndpoints, SocialPostsEndpoints, ProductsEndpoints } from "@rutba/api-provider/endpoints";
 import { useToast } from "../../components/Toast";
 import PLATFORMS from "../../components/PlatformBadge";
+import FileView from "@rutba/pos-shared/components/FileView";
 import Link from "next/link";
 
 // Turn products into a shoppable social post: a caption generated from the
@@ -82,6 +83,10 @@ export default function FromProductPage() {
     const [caption, setCaption] = useState("");
     const [captionDirty, setCaptionDirty] = useState(false);
     const [coverProductId, setCoverProductId] = useState(null);
+    // Media the user embeds/attaches on top of the product-derived cover.
+    const [coverFile, setCoverFile] = useState(null);   // effective cover (product logo or user override)
+    const [coverDirty, setCoverDirty] = useState(false); // user overrode the product's cover
+    const [mediaFiles, setMediaFiles] = useState([]);    // extra images/videos attached to the post
     const [saving, setSaving] = useState(false);
 
     // ── product search ──
@@ -164,6 +169,13 @@ export default function FromProductPage() {
 
     const coverProduct = selected.find((p) => p.documentId === coverProductId) || null;
 
+    // Keep the cover synced to the starred product's image until the user
+    // overrides it (uploads/browses a different cover in the FileView below).
+    useEffect(() => {
+        if (coverDirty) return;
+        setCoverFile(coverProduct?.logo || null);
+    }, [coverProductId, coverProduct, coverDirty]);
+
     const handleCreate = async () => {
         if (selected.length === 0) { toast("Pick at least one product.", "warning"); return; }
         if (platforms.length === 0) { toast("Select at least one platform.", "warning"); return; }
@@ -180,8 +192,10 @@ export default function FromProductPage() {
                     products: { set: selected.map((p) => p.documentId) },
                 },
             };
-            const coverId = coverProduct?.logo?.id;
+            const coverId = coverFile?.id || coverProduct?.logo?.id;
             if (coverId) payload.data.cover = coverId;
+            const mediaIds = mediaFiles.map((f) => f?.id).filter(Boolean);
+            if (mediaIds.length > 0) payload.data.media = mediaIds;
             const res = await SocialPostsEndpoints.create(payload);
             toast("Draft created from product(s).", "success");
             router.push(`/posts/${res.data?.documentId}`);
@@ -290,14 +304,39 @@ export default function FromProductPage() {
                                     <textarea className="form-control" rows={10} value={caption} onChange={(e) => { setCaption(e.target.value); setCaptionDirty(true); }} placeholder="Pick a product to generate a caption…" />
                                     <div className="form-text">The <strong>Shop now</strong> link points to the product page on your storefront ({WEB_URL.replace(/^https?:\/\//, "")}) — that's what turns the post into a sale.</div>
                                 </div>
-                                <div className="d-flex align-items-center gap-3">
-                                    <div>
-                                        <label className="form-label d-block">Cover image</label>
-                                        {coverProduct?.logo?.url
-                                            ? <img src={MediaUtilsEndpoints.strapiImageUrl(coverProduct.logo)} alt="" style={{ width: 96, height: 96, objectFit: "cover", borderRadius: 6, border: "1px solid #dee2e6" }} />
-                                            : <div className="bg-light border rounded d-flex align-items-center justify-content-center text-muted" style={{ width: 96, height: 96 }}><i className="fas fa-image fa-2x"></i></div>}
-                                        <div className="form-text">{coverProduct ? "from " + coverProduct.name : "no image — add one in the editor"}</div>
+                                <div className="mb-3">
+                                    <label className="form-label d-block">Cover image</label>
+                                    <FileView
+                                        single={coverFile}
+                                        field="cover"
+                                        name={title}
+                                        autoUpload
+                                        uploadWithoutRef
+                                        onFileChange={(f, file) => { setCoverFile(file || null); setCoverDirty(true); }}
+                                    />
+                                    <div className="form-text">
+                                        {coverDirty
+                                            ? "Custom cover — upload a new image or Browse Gallery to pick an existing one."
+                                            : coverProduct
+                                                ? `Defaulting to ${coverProduct.name}'s image — star another product on the left, or override it here.`
+                                                : "Upload a new image or Browse Gallery to attach an existing one."}
                                     </div>
+                                </div>
+
+                                <div className="mb-1">
+                                    <label className="form-label d-block">Media gallery</label>
+                                    <FileView
+                                        gallery={mediaFiles}
+                                        multiple
+                                        field="media"
+                                        name={title}
+                                        autoUpload
+                                        uploadWithoutRef
+                                        accept="image/*,video/*"
+                                        buttonLabel="Upload Images/Videos"
+                                        onFileChange={(f, files) => setMediaFiles(files || [])}
+                                    />
+                                    <div className="form-text">Embed extra images/videos, or Browse Gallery to attach existing media to the post.</div>
                                 </div>
                             </div>
                             <div className="card-footer d-flex gap-2">

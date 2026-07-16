@@ -55,7 +55,25 @@ function FileView({
     single = null, gallery = [], multiple = false,
     refName = null, refId = null, refDocumentId = null, refPlural = null, refDraft = false, refIsSingleType = false,
     field = null, autoUpload = true, name = null, accept = null, buttonLabel = null,
+    // Opt-in: upload NEW files to the media library even when there's no entity
+    // to attach to yet (no refName/refId) — the uploaded files come back with
+    // real ids so the caller can persist the relation itself on save. Used by
+    // compose screens (e.g. social from-product) that create the entity after
+    // the user has already picked/embedded media.
+    uploadWithoutRef = false,
 }) {
+    // When a real entity ref is available we attach on upload; otherwise, if
+    // uploadWithoutRef is set, we still upload to the library (unattached).
+    const attachMode = !!(refName && refId && field);
+    const canUpload = autoUpload && (attachMode || uploadWithoutRef);
+    const runUpload = (selected) =>
+        uploadToStrapiFiles(
+            selected,
+            attachMode ? refName : null,
+            attachMode ? field : null,
+            attachMode ? refId : null,
+            { name, alt: name, caption: name }
+        );
     const [singleFile, setSingleFile] = useState(single);
     const [galleryFiles, setGalleryFiles] = useState(Array.isArray(gallery) ? gallery : []);
     // Sync internal state when the parent's prop CONTENT changes — not on
@@ -92,10 +110,10 @@ function FileView({
         if (multiple) {
             const current = (galleryFiles ?? []).map((f) => ({ ...f }));
 
-            if (autoUpload && refName && refId && field) {
+            if (canUpload) {
                 setUploading(true);
                 try {
-                    const uploaded = await uploadToStrapiFiles(selected, refName, field, refId, { name, alt: name, caption: name });
+                    const uploaded = await runUpload(selected);
                     const newFiles = Array.isArray(uploaded) ? uploaded : [uploaded];
                     const all = [...current, ...newFiles].filter(f => f);
                     setGalleryFiles(all);
@@ -119,10 +137,10 @@ function FileView({
             }
         } else {
 
-            if (autoUpload && refName && refId && field) {
+            if (canUpload) {
                 setUploading(true);
                 try {
-                    const uploaded = await uploadToStrapiFiles([selected[0]], refName, field, refId, { name, alt: name, caption: name });
+                    const uploaded = await runUpload([selected[0]]);
                     setSingleFile(uploaded[0]);
                     onFileChange(field, uploaded[0], multiple);
 
@@ -244,10 +262,10 @@ function FileView({
         e.stopImmediatePropagation();
         setUploadError(null);
         const filesToUpload = multiple ? imageFiles : [imageFiles[0]];
-        if (autoUpload && refName && refId && field) {
+        if (canUpload) {
             setUploading(true);
             try {
-                const uploaded = await uploadToStrapiFiles(filesToUpload, refName, field, refId, { name, alt: name, caption: name });
+                const uploaded = await runUpload(filesToUpload);
                 const newFiles = Array.isArray(uploaded) ? uploaded : [uploaded];
                 if (multiple) {
                     const current = (galleryFiles ?? []).map(f => ({ ...f }));
@@ -282,7 +300,7 @@ function FileView({
                 onFileChange(field, preview, multiple);
             }
         }
-    }, [isFocused, multiple, autoUpload, refName, refId, field, name, galleryFiles, onFileChange]);
+    }, [isFocused, multiple, autoUpload, refName, refId, field, name, galleryFiles, onFileChange, uploadWithoutRef]);
 
     useEffect(() => {
         document.addEventListener('paste', handlePasteUpload);

@@ -48,6 +48,7 @@ export default function PostDetailPage() {
 
     const [coverId, setCoverId] = useState(null);
     const [videoIds, setVideoIds] = useState([]);
+    const [mediaIds, setMediaIds] = useState([]);
 
     const [selectedAccountIds, setSelectedAccountIds] = useState([]);
     const [selectedProductIds, setSelectedProductIds] = useState([]);
@@ -65,7 +66,7 @@ export default function PostDetailPage() {
             const [draftRes, pubRes] = await Promise.all([
                 SocialPostsEndpoints.byId(documentId, {
                     status: 'draft',
-                    populate: ['cover', 'video', 'social_accounts', 'social_replies', 'products'],
+                    populate: ['cover', 'video', 'media', 'social_accounts', 'social_replies', 'products'],
                 }),
                 SocialPostsEndpoints.byId(documentId, { status: 'published', fields: ['documentId'] }).catch(() => ({ data: null })),
             ]);
@@ -80,6 +81,7 @@ export default function PostDetailPage() {
             setPostStatus(p.post_status || "draft");
             setCoverId(p.cover?.id || null);
             setVideoIds((p.video || []).map(v => v.id));
+            setMediaIds((p.media || []).map(m => m.id));
             setSelectedAccountIds((p.social_accounts || []).map(a => a.id));
             setSelectedProductIds((p.products || []).map(pr => pr.documentId));
             setConnectedProducts(p.products || []);
@@ -162,6 +164,8 @@ export default function PostDetailPage() {
         else payload.data.cover = null;
         if (videoIds.length > 0) payload.data.video = videoIds;
         else payload.data.video = null;
+        if (mediaIds.length > 0) payload.data.media = mediaIds;
+        else payload.data.media = null;
         return payload;
     };
 
@@ -285,7 +289,7 @@ export default function PostDetailPage() {
             await SocialPostsEndpoints.updateDraft(documentId, buildPayload());
             const res = await SocialPostsEndpoints.byId(documentId, {
                 status: 'published',
-                populate: ['cover', 'video', 'social_accounts', 'social_replies', 'products'],
+                populate: ['cover', 'video', 'media', 'social_accounts', 'social_replies', 'products'],
             });
             const p = res.data || res;
             if (!p) { toast("No published version found.", "warning"); return; }
@@ -296,6 +300,7 @@ export default function PostDetailPage() {
             setPostStatus(p.post_status || "draft");
             setCoverId(p.cover?.id || null);
             setVideoIds((p.video || []).map(v => v.id));
+            setMediaIds((p.media || []).map(m => m.id));
             setSelectedAccountIds((p.social_accounts || []).map(a => a.id));
             setSelectedProductIds((p.products || []).map(pr => pr.documentId));
             setConnectedProducts(p.products || []);
@@ -445,6 +450,26 @@ export default function PostDetailPage() {
                                     onFileChange={(f, files) => setVideoIds((files || []).map(v => v.id).filter(Boolean))}
                                 />
                                 <div className="form-text">Attach videos for the post.</div>
+                            </div>
+                        </div>
+
+                        <div className="card mb-3">
+                            <div className="card-header"><i className="fas fa-images me-2"></i>Media Gallery</div>
+                            <div className="card-body">
+                                <FileView
+                                    gallery={post.media || []}
+                                    multiple
+                                    refName="social-post"
+                                    refId={post.id}
+                                    refDocumentId={documentId}
+                                    refDraft
+                                    field="media"
+                                    name={title}
+                                    accept="image/*,video/*"
+                                    buttonLabel="Upload Images/Videos"
+                                    onFileChange={(f, files) => setMediaIds((files || []).map(m => m.id).filter(Boolean))}
+                                />
+                                <div className="form-text">Embed new images/videos or Browse Gallery to attach existing media to this post.</div>
                             </div>
                         </div>
                         <div className="card mb-3">

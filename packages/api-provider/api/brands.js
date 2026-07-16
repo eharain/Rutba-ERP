@@ -43,7 +43,7 @@ export const BrandsEndpoints = {
         path: '/brands',
         action: 'find',
         method: 'get',
-        apps: ['stock', 'brand'],
+        apps: ['stock', 'brand', 'social'],
         approle: ['admin', 'manager', 'staff'],
         params: {
             sort: sort ?? ['name:asc'],

@@ -1,19 +1,18 @@
-import { useState, useEffect, useCallback, useMemo, Fragment } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/router";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { MediaUtilsEndpoints, ProductsEndpoints, StockItemsEndpoints, fetchProducts } from "@rutba/api-provider/endpoints";
+import { ProductsEndpoints, StockItemsEndpoints, fetchProducts } from "@rutba/api-provider/endpoints";
 import PermissionCheck from "@rutba/pos-shared/components/PermissionCheck";
 import { useProductLookups } from "@rutba/pos-shared/hooks/useProductLookups";
 import { useUtil } from "@rutba/pos-shared/context/UtilContext";
 import { ProductFilter } from "@rutba/pos-shared/components/filter/product-filter";
-import Link from "next/link";
 import { useToast } from "../components/Toast";
 import BulkProductActions from "@rutba/pos-shared/components/BulkProductActions";
 import ListPageLayout, { AddButton } from "@rutba/pos-shared/components/ListPageLayout";
 import ListPagination from "@rutba/pos-shared/components/ListPagination";
-import { SortableTh } from "@rutba/pos-shared/components/Table";
+import ProductListTable from "@rutba/pos-shared/components/ProductListTable";
 import ExcelIO from "../components/ExcelIO";
 import { SEO_EXCEL_COLUMNS, SEO_POPULATE, makeSeoUpsert } from "../components/seoExcel";
 import { buildProductWebUrl } from "../lib/cmsPageWebUrl";
@@ -577,176 +576,26 @@ export default function Products() {
                     }
                     emptyState={<div>No products found.</div>}
                 >
-                    {products.length > 0 && (
-                    <div className="table-responsive">
-                        <table className="table table-hover list-table">
-                            <thead>
-                                <tr>
-                                    <th style={{ width: 30 }}>
-                                        <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} title="Select all" />
-                                    </th>
-                                    <th style={{ width: 30 }}></th>
-                                    <th style={{ width: 50 }}></th>
-                                    <SortableTh label="ID" field="id" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
-                                    <SortableTh label="Name" field="name" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
-                                    <SortableTh label="SKU" field="sku" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
-                                    <SortableTh label="Price" field="selling_price" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
-                                    <SortableTh label="Stock" field="stock_quantity" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
-                                    <th>Categories</th>
-                                    <th>Brands</th>
-                                    <th>Purchase #</th>
-                                    <SortableTh label="Created" field="createdAt" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
-                                    <SortableTh label="Modified" field="updatedAt" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
-                                    <th>Published</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {products.map(p => (
-                                    <Fragment key={p.id}>
-                                        <tr>
-                                            <td>
-                                                <input type="checkbox" checked={selectedIds.has(p.documentId)} onChange={() => toggleSelected(p.documentId)} />
-                                            </td>
-                                            <td>
-                                                <button
-                                                    className="btn btn-sm btn-link p-0"
-                                                    onClick={() => toggleVariants(p)}
-                                                    title="Show/hide variants"
-                                                >
-                                                    <i className={`fas fa-chevron-${expandedProducts[p.documentId] ? 'down' : 'right'}`}></i>
-                                                </button>
-                                            </td>
-                                            <td>
-                                                {p.logo?.url ? (
-                                                    <img
-                                                        src={MediaUtilsEndpoints.strapiImageUrl(p.logo)}
-                                                        alt={p.name}
-                                                        style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 4 }}
-                                                    />
-                                                ) : (
-                                                    <span className="text-muted"><i className="fas fa-image"></i></span>
-                                                )}
-                                            </td>
-                                            <td className="small text-muted">{p.id}</td>
-                                            <td><strong>{p.name}</strong></td>
-                                            <td>{p.sku || "—"}</td>
-                                            <td>{currency}{parseFloat(p.selling_price || 0).toFixed(2)}</td>
-                                            <td>{p.stock_quantity ?? "—"}</td>
-                                            <td>{(p.categories || []).map(c => c.name).join(", ") || "—"}</td>
-                                            <td>{(p.brands || []).map(b => b.name).join(", ") || "—"}</td>
-                                            <td>{(p.purchase_items || []).map(pi => pi.purchase?.orderId).filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(", ") || "—"}</td>
-                                            <td className="small text-nowrap">{p.createdAt ? new Date(p.createdAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "—"}</td>
-                                            <td className="small text-nowrap">{p.updatedAt ? new Date(p.updatedAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "—"}</td>
-                                            <td className="small text-nowrap">
-                                                {p._isPublished
-                                                    ? <button className="list-status btn border-0" style={{ background: '#198754', color: '#fff' }} onClick={() => unpublishOne(p.documentId)} disabled={publishing[p.documentId]} title="Click to unpublish">
-                                                        {publishing[p.documentId] ? <i className="fas fa-spinner fa-spin"></i> : <><i className="fas fa-check me-1"></i>{p._publishedAt ? new Date(p._publishedAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "Published"}</>}
-                                                    </button>
-                                                    : <button className="list-status btn border-0" style={{ background: '#e9ecef', color: '#495057' }} onClick={() => publishOne(p.documentId)} disabled={publishing[p.documentId]} title="Click to publish">
-                                                        {publishing[p.documentId] ? <i className="fas fa-spinner fa-spin"></i> : "Draft"}
-                                                    </button>
-                                                }
-                                            </td>
-                                            <td>
-                                                <div className="list-actions">
-                                                    <Link className="btn btn-outline-primary" href={`/${p.documentId}/product`}>
-                                                        Edit
-                                                    </Link>
-                                                    {buildProductWebUrl(p) && (
-                                                        <a
-                                                            className="btn btn-outline-secondary"
-                                                            href={buildProductWebUrl(p)}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            title="Open on the storefront"
-                                                        >
-                                                            <i className="fas fa-eye me-1"></i>View
-                                                        </a>
-                                                    )}
-                                                </div>
-                                            </td>
-                                        </tr>
-                                        {expandedProducts[p.documentId] && (
-                                            loadingVariants[p.documentId] ? (
-                                                <tr>
-                                                    <td colSpan={15} className="text-center text-muted">
-                                                        Loading variants...
-                                                    </td>
-                                                </tr>
-                                            ) : (variantsMap[p.documentId] || []).length === 0 ? (
-                                                <tr>
-                                                    <td colSpan={15} className="text-center text-muted">
-                                                        No variants
-                                                    </td>
-                                                </tr>
-                                            ) : (
-                                                (variantsMap[p.documentId] || []).map(v => (
-                                                    <tr key={`variant-${v.id}`} className="table-light">
-                                                        <td></td>
-                                                        <td></td>
-                                                        <td>
-                                                            {v.logo?.url ? (
-                                                                <img
-                                                                    src={MediaUtilsEndpoints.strapiImageUrl(v.logo)}
-                                                                    alt={v.name}
-                                                                    style={{ width: 30, height: 30, objectFit: "cover", borderRadius: 4 }}
-                                                                />
-                                                            ) : (
-                                                                <span className="text-muted"><i className="fas fa-image" style={{ fontSize: '0.8em' }}></i></span>
-                                                            )}
-                                                        </td>
-                                                        <td className="small text-muted">{v.id}</td>
-                                                        <td className="ps-4">
-                                                            <i className="fas fa-level-up-alt fa-rotate-90 me-1 text-muted" style={{ fontSize: '0.8em' }}></i>
-                                                            {v.name}
-                                                        </td>
-                                                        <td>{v.sku || "—"}</td>
-                                                        <td>{currency}{parseFloat(v.selling_price || 0).toFixed(2)}</td>
-                                                        <td>{v.stock_quantity ?? "—"}</td>
-                                                        <td>{(v.categories || []).map(c => c.name).join(", ") || "—"}</td>
-                                                        <td>{(v.brands || []).map(b => b.name).join(", ") || "—"}</td>
-                                                        <td>{(v.purchase_items || []).map(pi => pi.purchase?.orderId).filter(Boolean).filter((val, i, a) => a.indexOf(val) === i).join(", ") || "—"}</td>
-                                                        <td className="small text-nowrap">{v.createdAt ? new Date(v.createdAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "—"}</td>
-                                                        <td className="small text-nowrap">{v.updatedAt ? new Date(v.updatedAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "—"}</td>
-                                                        <td className="small text-nowrap">
-                                                            {v._isPublished
-                                                                ? <button className="list-status btn border-0" style={{ background: '#198754', color: '#fff' }} onClick={() => unpublishOne(v.documentId)} disabled={publishing[v.documentId]} title="Click to unpublish">
-                                                                    {publishing[v.documentId] ? <i className="fas fa-spinner fa-spin"></i> : <><i className="fas fa-check me-1"></i>{v._publishedAt ? new Date(v._publishedAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "Published"}</>}
-                                                                </button>
-                                                                : <button className="list-status btn border-0" style={{ background: '#e9ecef', color: '#495057' }} onClick={() => publishOne(v.documentId)} disabled={publishing[v.documentId]} title="Click to publish">
-                                                                    {publishing[v.documentId] ? <i className="fas fa-spinner fa-spin"></i> : "Draft"}
-                                                                </button>
-                                                            }
-                                                        </td>
-                                                        <td>
-                                                            <div className="list-actions">
-                                                                <Link className="btn btn-outline-primary" href={`/${v.documentId}/product`}>
-                                                                    Edit
-                                                                </Link>
-                                                                {buildProductWebUrl(v) && (
-                                                                    <a
-                                                                        className="btn btn-outline-secondary"
-                                                                        href={buildProductWebUrl(v)}
-                                                                        target="_blank"
-                                                                        rel="noopener noreferrer"
-                                                                        title="Open on the storefront"
-                                                                    >
-                                                                        <i className="fas fa-eye me-1"></i>View
-                                                                    </a>
-                                                                )}
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                ))
-                                            )
-                                        )}
-                                    </Fragment>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                    )}
+                    {products.length > 0 && <ProductListTable
+                        products={products}
+                        currency={currency}
+                        sortField={sortField}
+                        sortDir={sortDir}
+                        onSort={handleSort}
+                        selectedIds={selectedIds}
+                        onToggleSelect={toggleSelected}
+                        allSelected={allSelected}
+                        onToggleSelectAll={toggleSelectAll}
+                        expandable
+                        expandedProducts={expandedProducts}
+                        onToggleExpand={toggleVariants}
+                        variantChildren={(p) => ({ loading: loadingVariants[p.documentId], items: variantsMap[p.documentId] || [] })}
+                        publishing={publishing}
+                        onPublish={publishOne}
+                        onUnpublish={unpublishOne}
+                        editHref={(p) => `/${p.documentId}/product`}
+                        buildWebUrl={buildProductWebUrl}
+                    />}
                 </ListPageLayout>
             </Layout>
         </ProtectedRoute>

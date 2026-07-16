@@ -45,7 +45,7 @@ export const CategoriesEndpoints = {
         path: '/categories',
         action: 'find',
         method: 'get',
-        apps: ['stock', 'sale', 'cms'],
+        apps: ['stock', 'sale', 'cms', 'social'],
         approle: ['admin', 'manager', 'staff'],
         params: {
             sort: sort ?? ['name:asc'],
