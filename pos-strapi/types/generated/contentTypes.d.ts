@@ -5770,6 +5770,7 @@ export interface ApiStockAdjustmentStockAdjustment
     draftAndPublish: false;
   };
   attributes: {
+    adjusted_item_ids: Schema.Attribute.JSON;
     adjustment_number: Schema.Attribute.String;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &

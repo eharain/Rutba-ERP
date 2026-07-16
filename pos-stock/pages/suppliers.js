@@ -58,10 +58,7 @@ export default function SuppliersPage() {
         const timer = setTimeout(async () => {
             setProductSearchLoading(true);
             try {
-                const res = await ProductsEndpoints.search(searchValue, {
-                    pageSize: 20,
-                    populate: { suppliers: true },
-                });
+                const res = await ProductsEndpoints.search(searchValue, 1, 20);
                 const data = res?.data ?? res;
                 if (isActive) setProductSearchResults(data || []);
             } catch (error) {
@@ -89,7 +86,7 @@ export default function SuppliersPage() {
             let page = 1;
             let totalPages = 1;
             do {
-                const res = await SuppliersEndpoints.list({ page, pageSize: 100 });
+                const res = await SuppliersEndpoints.list({ page, pageSize: 100, populate: { logo: true, gallery: true } });
                 const data = res?.data ?? res;
                 allSuppliers = [...allSuppliers, ...(data || [])];
                 totalPages = res?.meta?.pagination?.pageCount || 1;

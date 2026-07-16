@@ -58,10 +58,7 @@ export default function CategoriesPage() {
         const timer = setTimeout(async () => {
             setProductSearchLoading(true);
             try {
-                const res = await ProductsEndpoints.search(searchValue, {
-                    pageSize: 20,
-                    populate: { categories: true },
-                });
+                const res = await ProductsEndpoints.search(searchValue, 1, 20);
                 const data = res?.data ?? res;
                 if (isActive) setProductSearchResults(data || []);
             } catch (error) {
@@ -89,7 +86,11 @@ export default function CategoriesPage() {
             let page = 1;
             let totalPages = 1;
             do {
-                const res = await CategoriesEndpoints.list({ page, pageSize: 100 });
+                const res = await CategoriesEndpoints.list({
+                    page,
+                    pageSize: 100,
+                    populate: { logo: true, gallery: true, parent: true, childern: true },
+                });
                 const data = res?.data ?? res;
                 allCategories = [...allCategories, ...(data || [])];
                 totalPages = res?.meta?.pagination?.pageCount || 1;
@@ -165,7 +166,7 @@ export default function CategoriesPage() {
                 name: categoryForm.name.trim(),
                 slug: categoryForm.slug.trim() || undefined,
                 summary: categoryForm.summary.trim() || undefined,
-                parent: categoryForm.parent ? { connect: [categoryForm.parent] } : { disconnect: true }
+                parent: categoryForm.parent ? { connect: [categoryForm.parent] } : null
             };
             if (isEditing && selectedCategoryId) {
                 await CategoriesEndpoints.update(selectedCategoryId, payload);

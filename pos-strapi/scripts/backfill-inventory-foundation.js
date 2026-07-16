@@ -3,17 +3,16 @@
 /**
  * Inventory Foundation backfill (Epic 2 Phase 1) — CLI runner + self-check.
  *
- * Boots Strapi load-only (no HTTP listen — safe to run while the dev server is
- * up) and runs the same idempotent backfill exposed at
- * POST /warehouses/backfill-default-locations:
+ * The backfill itself now lives in the seed registry
+ * (src/seed/seeders/inventory-foundation.js) so it survives a DB refresh and is
+ * runnable from the control app / CLI:
  *
- *   1. Ensure every branch has a default warehouse + receiving location.
- *   2. Place every stock-item that lacks a warehouse into its branch defaults.
- *   3. Rebuild the per-(product, warehouse) stock-level cache.
+ *   node scripts/seed.js --only=inventory-foundation
  *
- * Then verifies the load-bearing invariant on the products carrying the most
- * stock:  Σ stock-level.quantity_on_hand  ===  count(InStock stock-items).
- * Non-destructive (no deletes, no status changes). Prints a JSON report.
+ * This script is kept as a direct entrypoint that ALSO runs the load-bearing
+ * self-check (Σ stock-level.quantity_on_hand === count(eligible InStock items))
+ * and prints a JSON report. Boots Strapi load-only (no HTTP listen — safe while
+ * the dev server is up).
  *
  * Run from pos-strapi:  DATABASE_NAME=pos_db node scripts/backfill-inventory-foundation.js
  * Or via the workspace env loader:
@@ -21,6 +20,7 @@
  */
 
 const { createStrapi, compileStrapi } = require('@strapi/strapi');
+const { backfillInventoryFoundation } = require('../src/seed/seeders/inventory-foundation');
 
 const STOCK_ITEM = 'api::stock-item.stock-item';
 const STOCK_LEVEL = 'api::stock-level.stock-level';
@@ -44,7 +44,9 @@ async function main() {
       products: await app.db.query(PRODUCT).count(),
     };
 
-    out.backfill = await svc.backfillDefaultLocations();
+    // Shared registry seeder does the actual backfill.
+    const seeded = await backfillInventoryFoundation(app);
+    out.backfill = seeded.backfill;
 
     out.after = {
       warehouses: await app.db.query(WAREHOUSE).count(),

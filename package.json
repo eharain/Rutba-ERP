@@ -26,6 +26,8 @@
   ],
   "scripts": {
     "dev:strapi": "node scripts/js/load-env.js -- npm --prefix pos-strapi run develop",
+    "seed": "node scripts/js/load-env.js -- npm --prefix pos-strapi run seed --",
+    "seed:essential": "node scripts/js/load-env.js -- npm --prefix pos-strapi run seed -- --essential",
     "dev:auth": "node scripts/js/load-env.js -- npm run dev --workspace=pos-auth",
     "dev:stock": "node scripts/js/load-env.js -- npm run dev --workspace=pos-stock",
     "dev:sale": "node scripts/js/load-env.js -- npm run dev --workspace=pos-sale",

@@ -20,6 +20,7 @@ export interface StockItemsEndpointsType {
     valuation({ warehouseDocId }?: any): Promise<any>;
     transfer(payload?: any): Promise<any>;
     sellUnits({ productDocId, qty, scannedItemDocId, saleItemDocId }?: any): Promise<any>;
+    returnUnits({ saleItemDocId, qty }?: any): Promise<any>;
     meta: any;
 }
 

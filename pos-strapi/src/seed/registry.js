@@ -39,6 +39,9 @@ const ensureSeoMetaPerEntity = require('./seo-meta-backfill');
 const backfillProductSlugs = require('./product-slug-backfill');
 const { applyReturnPolicy } = require('./seeders/return-policy');
 const { applyCostChangeApprovalTemplate } = require('./seeders/cost-change-approval-template');
+const { seedDefaultWorkflows } = require('./seeders/default-workflows');
+const { backfillInventoryFoundation } = require('./seeders/inventory-foundation');
+const { seedTailoringUnit } = require('./seeders/tailoring-unit-demo');
 
 /** @type {Array<{key:string,title:string,category:string,essential:boolean,supportsPartial:boolean,supportsFull:boolean,hasMigration:boolean,run:(strapi:any,opts:{mode:string})=>any}>} */
 const REGISTRY = [
@@ -148,6 +151,20 @@ const REGISTRY = [
         hasMigration: true,
         run: (strapi) => applyCostChangeApprovalTemplate(strapi.db.connection),
     },
+    // Definable workflows for manufacturing (work orders) + order management
+    // (sale orders, return requests). Essential so a fresh DB comes up with the
+    // default workflows instead of falling back to the state machines' hardcoded
+    // maps. Idempotent: skips an entity that already has a workflow.
+    {
+        key: 'default-workflows',
+        title: 'Default workflows (work order, sale order, return request)',
+        category: 'workflow',
+        essential: true,
+        supportsPartial: true,
+        supportsFull: true,
+        hasMigration: false,
+        run: (strapi) => seedDefaultWorkflows(strapi),
+    },
     // Per-file JSON content seeds (src/seed/data/*.json). Each dataset is its own
     // tailorable entry — media ($seedMedia) and relation ($seedLink) resolution
     // is handled by the shared json-seed runner.
@@ -210,6 +227,28 @@ const REGISTRY = [
         supportsFull: true,
         hasMigration: false,
         run: (strapi) => backfillProductSlugs(strapi),
+    },
+    {
+        key: 'inventory-foundation',
+        title: 'Inventory foundation backfill (default warehouses/locations + stock-level cache)',
+        category: 'backfill',
+        essential: false,
+        supportsPartial: true,
+        supportsFull: true,
+        hasMigration: false,
+        run: (strapi) => backfillInventoryFoundation(strapi),
+    },
+    // Demo dataset — never essential; run explicitly with --only=tailoring-unit
+    // on a clean/dev DB. Guards against re-running (skips if mfg-operations exist).
+    {
+        key: 'tailoring-unit',
+        title: 'Demo: tailoring & stitching unit (mfg dataset)',
+        category: 'demo',
+        essential: false,
+        supportsPartial: true,
+        supportsFull: false,
+        hasMigration: false,
+        run: (strapi) => seedTailoringUnit(strapi),
     },
 ];
 

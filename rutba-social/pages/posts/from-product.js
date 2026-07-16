@@ -76,6 +76,7 @@ export default function FromProductPage() {
     const [results, setResults] = useState([]);
     const [searching, setSearching] = useState(false);
     const [selected, setSelected] = useState([]); // full product objects
+    const [preselecting, setPreselecting] = useState(false);
     const [platforms, setPlatforms] = useState([]);
     const [title, setTitle] = useState("");
     const [caption, setCaption] = useState("");
@@ -88,7 +89,7 @@ export default function FromProductPage() {
         if (!jwt || !search.trim()) { setResults([]); return; }
         setSearching(true);
         try {
-            const res = await ProductsEndpoints.search(search.trim(), { pageSize: 20, populate: ["logo"] });
+            const res = await ProductsEndpoints.search(search.trim(), 1, 20);
             setResults(res.data || []);
         } catch (err) {
             console.error("Product search failed", err);
@@ -101,6 +102,35 @@ export default function FromProductPage() {
         const t = setTimeout(runSearch, 400);
         return () => clearTimeout(t);
     }, [runSearch]);
+
+    // Preselect products passed in from the catalog (/products → Create Post).
+    // Supports ?product=<docId> (single) and ?products=<id,id,...> (multi).
+    useEffect(() => {
+        if (!router.isReady || !jwt) return;
+        const raw = router.query.products || router.query.product;
+        if (!raw) return;
+        const ids = String(raw).split(",").map((s) => s.trim()).filter(Boolean);
+        if (ids.length === 0) return;
+        let cancelled = false;
+        (async () => {
+            setPreselecting(true);
+            try {
+                const loaded = await Promise.all(
+                    ids.map((id) =>
+                        ProductsEndpoints.byId(id, { populate: { logo: true } })
+                            .then((r) => r.data)
+                            .catch(() => null)
+                    )
+                );
+                if (!cancelled) setSelected(loaded.filter(Boolean));
+            } finally {
+                if (!cancelled) setPreselecting(false);
+            }
+        })();
+        return () => { cancelled = true; };
+        // Run once when the router hydrates the query params.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [router.isReady, jwt]);
 
     const isSelected = (docId) => selected.some((p) => p.documentId === docId);
     const toggleProduct = (p) => {
@@ -183,6 +213,7 @@ export default function FromProductPage() {
                             <div className="card-body">
                                 <input className="form-control form-control-sm mb-2" placeholder="Search products by name…" value={search} onChange={(e) => setSearch(e.target.value)} />
                                 {searching && <div className="spinner-border spinner-border-sm mb-2"></div>}
+                                {preselecting && <div className="text-muted small mb-2"><span className="spinner-border spinner-border-sm me-1"></span>Loading selected product(s)…</div>}
 
                                 {selected.length > 0 && (
                                     <div className="mb-2">

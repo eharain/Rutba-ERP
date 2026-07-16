@@ -102,6 +102,11 @@ async function sellUnits(arg1 = {}) {
     return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
+async function returnUnits(arg1 = {}) {
+    const ep = StockItemsEndpointsApi.returnUnits(arg1);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+}
+
 const endpoints = strictEndpointGuard(
     'StockItemsEndpoints',
     {
@@ -125,9 +130,10 @@ const endpoints = strictEndpointGuard(
         valuation,
         transfer,
         sellUnits,
+        returnUnits,
         meta: StockItemsEndpointsApi.meta,
     },
-    ["list","listByProduct","listByBarcode","checkBarcode","orphanGroups","orphanGroupItems","create","resolveBulkStock","processBulkStock","searchByBarcode","searchByName","byId","update","byProduct","recomputeProductStock","getExpiring","sweepExpired","valuation","transfer","sellUnits","meta"],
+    ["list","listByProduct","listByBarcode","checkBarcode","orphanGroups","orphanGroupItems","create","resolveBulkStock","processBulkStock","searchByBarcode","searchByName","byId","update","byProduct","recomputeProductStock","getExpiring","sweepExpired","valuation","transfer","sellUnits","returnUnits","meta"],
 );
 
 export default endpoints;
