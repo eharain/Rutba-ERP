@@ -26,6 +26,10 @@ const EMPTY_FORM = {
     // Rutba target only: the online instance's API base URL. Stored in the
     // account's (private) extra_config.base_url; blank on edit keeps existing.
     base_url: "",
+    // Rutba target only: admin credentials used ONCE to auto-provision an API
+    // token on the online instance (never stored — only the resulting token is).
+    admin_email: "",
+    admin_password: "",
     is_active: true,
     sync_orders_enabled: true,
     sync_inventory_enabled: true,
@@ -45,6 +49,7 @@ export default function AccountsPage() {
     const [form, setForm] = useState({ ...EMPTY_FORM });
     const [saving, setSaving] = useState(false);
     const [busyId, setBusyId] = useState(null);
+    const [generating, setGenerating] = useState(false);
 
     const loadAccounts = useCallback(async () => {
         if (!jwt) return;
@@ -93,6 +98,25 @@ export default function AccountsPage() {
         });
     };
 
+    // Auto-provision an API token on the online instance from admin credentials
+    // (mirrors the content-sync-pro setup). Fills api_key; password is not kept.
+    const generateToken = async () => {
+        if (!form.base_url) { toast("Enter the online instance API base URL first.", "warning"); return; }
+        if (!form.admin_email || !form.admin_password) { toast("Enter the online instance admin email + password.", "warning"); return; }
+        setGenerating(true);
+        try {
+            const res = await appPost("/api/provision-rutba-token", jwt, {
+                base_url: form.base_url, email: form.admin_email, password: form.admin_password,
+            });
+            setForm((prev) => ({ ...prev, api_key: res.token || "", admin_password: "" }));
+            toast("API token generated on the online instance. Click Save to store it.", "success");
+        } catch (err) {
+            toast(`Token generation failed: ${err.message}`, "danger");
+        } finally {
+            setGenerating(false);
+        }
+    };
+
     const openCreate = () => { setEditing(null); setForm({ ...EMPTY_FORM }); setShowForm(true); };
     const openEdit = (acc) => {
         setEditing(acc);
@@ -104,6 +128,7 @@ export default function AccountsPage() {
             price_adjust_pct: acc.price_adjust_pct ?? 0,
             product_groups: (acc.product_groups || []).map((g) => g.documentId),
             api_key: "", api_secret: "", access_token: "", refresh_token: "", base_url: "",
+            admin_email: "", admin_password: "",
             is_active: acc.is_active !== false,
             sync_orders_enabled: acc.sync_orders_enabled !== false,
             sync_inventory_enabled: acc.sync_inventory_enabled !== false,
@@ -124,6 +149,9 @@ export default function AccountsPage() {
             // stored value; never send the raw field (not a schema attribute).
             if (data.base_url) data.extra_config = { base_url: String(data.base_url).trim().replace(/\/+$/, "") };
             delete data.base_url;
+            // Admin credentials are for token provisioning only — never persisted.
+            delete data.admin_email;
+            delete data.admin_password;
             data.price_adjust_pct = data.price_adjust_pct === "" || data.price_adjust_pct == null ? 0 : Number(data.price_adjust_pct);
             const payload = { data };
             if (editing) {
@@ -236,20 +264,42 @@ export default function AccountsPage() {
                                     <div className="col-12">
                                         <hr className="my-1" />
                                         {form.platform === "rutba" ? (
-                                            <small className="text-muted">Rutba target — paste an API token issued by the <strong>online</strong> instance into API Token, and its API base URL below. No OAuth/Connect. Blank on edit keeps the stored value.</small>
+                                            <small className="text-muted">Rutba target — enter the <strong>online</strong> instance API base URL, then either <strong>generate a token from its admin login</strong> below, or paste an existing API Token. No OAuth/Connect. Blank on edit keeps the stored value.</small>
                                         ) : (
                                             <small className="text-muted">Credentials — optional. Daraz uses a server-level app key/secret + Connect (OAuth); enter here only for a per-account override. Blank on edit keeps the stored value.</small>
                                         )}
                                     </div>
                                     {form.platform === "rutba" && (
-                                        <div className="col-md-6">
-                                            <label className="form-label">Online instance API base URL</label>
-                                            <input className="form-control" name="base_url" value={form.base_url} onChange={handleChange} placeholder="https://api.rutba.pk/api — blank on edit keeps existing" />
-                                        </div>
+                                        <>
+                                            <div className="col-md-6">
+                                                <label className="form-label">Online instance API base URL</label>
+                                                <input className="form-control" name="base_url" value={form.base_url} onChange={handleChange} placeholder="https://api.rutba.pk/api — blank on edit keeps existing" />
+                                            </div>
+                                            <div className="col-12">
+                                                <div className="border rounded p-2 bg-light">
+                                                    <div className="small text-muted mb-2"><i className="fas fa-key me-1"></i>Generate an API token from the online instance's <strong>admin login</strong> (used once — the password is never stored, only the resulting token).</div>
+                                                    <div className="row g-2 align-items-end">
+                                                        <div className="col-md-5">
+                                                            <label className="form-label mb-1 small">Admin email</label>
+                                                            <input className="form-control form-control-sm" name="admin_email" value={form.admin_email} onChange={handleChange} type="email" autoComplete="off" placeholder="admin@rutba.pk" />
+                                                        </div>
+                                                        <div className="col-md-5">
+                                                            <label className="form-label mb-1 small">Admin password</label>
+                                                            <input className="form-control form-control-sm" name="admin_password" value={form.admin_password} onChange={handleChange} type="password" autoComplete="new-password" />
+                                                        </div>
+                                                        <div className="col-md-2">
+                                                            <button type="button" className="btn btn-outline-primary btn-sm w-100" disabled={generating} onClick={generateToken}>
+                                                                {generating ? <span className="spinner-border spinner-border-sm"></span> : <><i className="fas fa-bolt me-1"></i>Generate</>}
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </>
                                     )}
                                     <div className="col-md-6">
                                         <label className="form-label">{form.platform === "rutba" ? "API Token" : "App Key / API Key"}</label>
-                                        <input className="form-control" name="api_key" value={form.api_key} onChange={handleChange} type="password" autoComplete="off" placeholder={form.platform === "rutba" ? "Strapi API token from the online instance" : ""} />
+                                        <input className="form-control" name="api_key" value={form.api_key} onChange={handleChange} type="password" autoComplete="off" placeholder={form.platform === "rutba" ? "generated above, or paste an existing token" : ""} />
                                     </div>
                                     {form.platform !== "rutba" && (
                                         <>

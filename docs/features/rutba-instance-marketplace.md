@@ -123,26 +123,33 @@ user** (`isServiceToken`) — a browser session can never reach them.
 - The `rutba-marketplace` **worker** process must be running for automatic
   cron (orders + catalog): `npm run worker:marketplace` from the repo root.
 
-### Step 1 — Create an API token on the ONLINE instance
+### Step 1 — Get an API token for the ONLINE instance
 
-On the **online** Strapi admin: **Settings → API Tokens → Create new API Token**.
+Two ways:
 
-- **Name:** `in-house-marketplace-sync`
-- **Token type:** Full access (or a custom token with access to
-  `product` + `sale-order` custom routes and read/write on products, categories,
-  brands, upload).
-- Copy the token value now (shown once).
+**A. Auto-generate from admin credentials (recommended).** In the marketplace
+app's **Add Account** form (Step 2), pick platform **Rutba**, enter the online
+API base URL, then enter the online instance's **admin email + password** and
+click **Generate**. This logs into the remote `/admin/login`, mints a
+non-expiring **full-access** token (`rutba-marketplace-sync`) via
+`/admin/api-tokens`, and fills the API Token field. The password is used only for
+that exchange — **never stored**; only the resulting token is saved. (Same
+approach as the content-sync-pro setup wizard.)
+
+**B. Manual.** On the **online** Strapi admin: **Settings → API Tokens → Create
+new API Token** → Full access → copy the value (shown once) → paste it into the
+API Token field.
 
 ### Step 2 — Create the marketplace account on the IN-HOUSE instance
 
-Marketplace accounts are admin-managed. In the marketplace app (or via the
-in-house Strapi admin), create a **Marketplace Account**:
+Marketplace accounts are admin-managed. In the marketplace app's **Add Account**
+form (or via the in-house Strapi admin), create a **Marketplace Account**:
 
 | Field | Value |
 |---|---|
 | `platform` | `rutba` |
 | `account_name` | e.g. `rutba.pk online store` |
-| `api_key` | the API token from Step 1 (stored **private**) |
+| `api_key` | the API token from Step 1 — auto-**Generate**d or pasted (stored **private**) |
 | `extra_config` | `{ "base_url": "https://api.rutba.pk/api" }` — the online instance's API base (…/api) |
 | `is_active` | `true` |
 | `sync_inventory_enabled` | `true` (also the master switch for the catalog cron) |
