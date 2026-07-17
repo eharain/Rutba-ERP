@@ -23,6 +23,9 @@ const EMPTY_FORM = {
     api_secret: "",
     access_token: "",
     refresh_token: "",
+    // Rutba target only: the online instance's API base URL. Stored in the
+    // account's (private) extra_config.base_url; blank on edit keeps existing.
+    base_url: "",
     is_active: true,
     sync_orders_enabled: true,
     sync_inventory_enabled: true,
@@ -100,7 +103,7 @@ export default function AccountsPage() {
             seller_id: acc.seller_id || "",
             price_adjust_pct: acc.price_adjust_pct ?? 0,
             product_groups: (acc.product_groups || []).map((g) => g.documentId),
-            api_key: "", api_secret: "", access_token: "", refresh_token: "",
+            api_key: "", api_secret: "", access_token: "", refresh_token: "", base_url: "",
             is_active: acc.is_active !== false,
             sync_orders_enabled: acc.sync_orders_enabled !== false,
             sync_inventory_enabled: acc.sync_inventory_enabled !== false,
@@ -116,6 +119,11 @@ export default function AccountsPage() {
             // on an edit (they never read back, so the form shows them blank).
             const data = { ...form };
             for (const k of CRED_FIELDS) { if (!data[k]) delete data[k]; }
+            // base_url is a UI-only field mapped into extra_config (private, like
+            // credentials): send it only when provided so a blank edit keeps the
+            // stored value; never send the raw field (not a schema attribute).
+            if (data.base_url) data.extra_config = { base_url: String(data.base_url).trim().replace(/\/+$/, "") };
+            delete data.base_url;
             data.price_adjust_pct = data.price_adjust_pct === "" || data.price_adjust_pct == null ? 0 : Number(data.price_adjust_pct);
             const payload = { data };
             if (editing) {
@@ -204,6 +212,7 @@ export default function AccountsPage() {
                                         <label className="form-label">Platform</label>
                                         <select className="form-select" name="platform" value={form.platform} onChange={handleChange}>
                                             <option value="daraz">Daraz</option>
+                                            <option value="rutba">Rutba (online instance)</option>
                                         </select>
                                     </div>
                                     <div className="col-md-5">
@@ -226,24 +235,38 @@ export default function AccountsPage() {
                                     </div>
                                     <div className="col-12">
                                         <hr className="my-1" />
-                                        <small className="text-muted">Credentials — optional. Daraz uses a server-level app key/secret + Connect (OAuth); enter here only for a per-account override. Blank on edit keeps the stored value.</small>
+                                        {form.platform === "rutba" ? (
+                                            <small className="text-muted">Rutba target — paste an API token issued by the <strong>online</strong> instance into API Token, and its API base URL below. No OAuth/Connect. Blank on edit keeps the stored value.</small>
+                                        ) : (
+                                            <small className="text-muted">Credentials — optional. Daraz uses a server-level app key/secret + Connect (OAuth); enter here only for a per-account override. Blank on edit keeps the stored value.</small>
+                                        )}
                                     </div>
+                                    {form.platform === "rutba" && (
+                                        <div className="col-md-6">
+                                            <label className="form-label">Online instance API base URL</label>
+                                            <input className="form-control" name="base_url" value={form.base_url} onChange={handleChange} placeholder="https://api.rutba.pk/api — blank on edit keeps existing" />
+                                        </div>
+                                    )}
                                     <div className="col-md-6">
-                                        <label className="form-label">App Key / API Key</label>
-                                        <input className="form-control" name="api_key" value={form.api_key} onChange={handleChange} type="password" autoComplete="off" />
+                                        <label className="form-label">{form.platform === "rutba" ? "API Token" : "App Key / API Key"}</label>
+                                        <input className="form-control" name="api_key" value={form.api_key} onChange={handleChange} type="password" autoComplete="off" placeholder={form.platform === "rutba" ? "Strapi API token from the online instance" : ""} />
                                     </div>
-                                    <div className="col-md-6">
-                                        <label className="form-label">App Secret / API Secret</label>
-                                        <input className="form-control" name="api_secret" value={form.api_secret} onChange={handleChange} type="password" autoComplete="off" />
-                                    </div>
-                                    <div className="col-md-6">
-                                        <label className="form-label">Access Token</label>
-                                        <input className="form-control" name="access_token" value={form.access_token} onChange={handleChange} type="password" autoComplete="off" placeholder="usually obtained via Connect" />
-                                    </div>
-                                    <div className="col-md-6">
-                                        <label className="form-label">Refresh Token</label>
-                                        <input className="form-control" name="refresh_token" value={form.refresh_token} onChange={handleChange} type="password" autoComplete="off" />
-                                    </div>
+                                    {form.platform !== "rutba" && (
+                                        <>
+                                            <div className="col-md-6">
+                                                <label className="form-label">App Secret / API Secret</label>
+                                                <input className="form-control" name="api_secret" value={form.api_secret} onChange={handleChange} type="password" autoComplete="off" />
+                                            </div>
+                                            <div className="col-md-6">
+                                                <label className="form-label">Access Token</label>
+                                                <input className="form-control" name="access_token" value={form.access_token} onChange={handleChange} type="password" autoComplete="off" placeholder="usually obtained via Connect" />
+                                            </div>
+                                            <div className="col-md-6">
+                                                <label className="form-label">Refresh Token</label>
+                                                <input className="form-control" name="refresh_token" value={form.refresh_token} onChange={handleChange} type="password" autoComplete="off" />
+                                            </div>
+                                        </>
+                                    )}
                                     <div className="col-12">
                                         <label className="form-label">Publish product-groups <span className="text-muted small">— every product in a checked group is published to this marketplace (∪ products you pick on the Listings page)</span></label>
                                         <div className="border rounded p-2" style={{ maxHeight: 160, overflow: "auto" }}>
@@ -326,12 +349,19 @@ export default function AccountsPage() {
                                         <td className="small">{acc.last_orders_synced_at ? new Date(acc.last_orders_synced_at).toLocaleString() : "—"}</td>
                                         <td>
                                             <div className="d-flex gap-1 flex-wrap">
-                                                <button className="btn btn-sm btn-outline-success" title="Connect via OAuth" disabled={busy(acc, "/connect-url")} onClick={() => runAction(acc, "/connect-url", "Connect", true)}>
-                                                    {busy(acc, "/connect-url") ? <span className="spinner-border spinner-border-sm"></span> : <><i className="fas fa-plug me-1"></i>Connect</>}
-                                                </button>
+                                                {acc.platform !== "rutba" && (
+                                                    <button className="btn btn-sm btn-outline-success" title="Connect via OAuth" disabled={busy(acc, "/connect-url")} onClick={() => runAction(acc, "/connect-url", "Connect", true)}>
+                                                        {busy(acc, "/connect-url") ? <span className="spinner-border spinner-border-sm"></span> : <><i className="fas fa-plug me-1"></i>Connect</>}
+                                                    </button>
+                                                )}
                                                 <button className="btn btn-sm btn-outline-secondary" title="Test connection" disabled={busy(acc, "/validate")} onClick={() => runAction(acc, "/validate", "Validate")}>
                                                     <i className="fas fa-heartbeat"></i>
                                                 </button>
+                                                {acc.platform === "rutba" && (
+                                                    <button className="btn btn-sm btn-outline-info" title={invOn ? "Push full catalog now (products + variants + media)" : "Enable Active + Sync inventory first"} disabled={busy(acc, "/sync-catalog") || !invOn} onClick={() => runAction(acc, "/sync-catalog", "Catalog sync")}>
+                                                        {busy(acc, "/sync-catalog") ? <span className="spinner-border spinner-border-sm"></span> : <><i className="fas fa-box me-1"></i>Catalog</>}
+                                                    </button>
+                                                )}
                                                 <button className="btn btn-sm btn-outline-info" title={ordersOn ? "Sync orders now" : "Enable Active + Sync orders first"} disabled={busy(acc, "/sync-orders") || !ordersOn} onClick={() => runAction(acc, "/sync-orders", "Order sync")}>
                                                     {busy(acc, "/sync-orders") ? <span className="spinner-border spinner-border-sm"></span> : <><i className="fas fa-download me-1"></i>Orders</>}
                                                 </button>
