@@ -84,7 +84,7 @@ export default function ExpiryPage() {
                 ) : (
                     <div className="table-responsive">
                         <table className="table table-sm table-hover align-middle">
-                            <thead><tr><th>Product</th><th>Barcode</th><th>Batch</th><th>Warehouse</th><th>Expiry</th><th className="text-end">Days left</th></tr></thead>
+                            <thead><tr><th>Product</th><th>Barcode</th><th>Batch</th><th>Branch</th><th>Expiry</th><th className="text-end">Days left</th></tr></thead>
                             <tbody>
                                 {rows.map((r) => {
                                     const dl = daysLeft(r.expiry_date);
@@ -93,7 +93,7 @@ export default function ExpiryPage() {
                                             <td>{r.product?.name || <span className="text-muted">(unnamed)</span>}</td>
                                             <td><code>{r.barcode || "—"}</code></td>
                                             <td>{r.batch?.batch_code || "—"}</td>
-                                            <td>{r.warehouse?.name || "—"}</td>
+                                            <td>{r.branch?.name || "—"}</td>
                                             <td>{r.expiry_date || "—"}</td>
                                             <td className="text-end">
                                                 <span className={dl == null ? "" : dl < 0 ? "text-danger fw-semibold" : dl <= 7 ? "text-warning fw-semibold" : ""}>{dl == null ? "—" : dl}</span>

@@ -5,6 +5,8 @@ export interface BranchesEndpointsType {
     list({ page, pageSize, sort, populate, filters, fields }?: any): Promise<any>;
     byId(documentId: any, { populate, fields }?: any): Promise<any>;
     update(documentId: any, data: any): Promise<any>;
+    create(data: any): Promise<any>;
+    del(documentId: any): Promise<any>;
     archiveStats(branchDocumentId: any): Promise<any>;
     archiveStock(branchDocumentId: any): Promise<any>;
     unarchiveStock(branchDocumentId: any): Promise<any>;

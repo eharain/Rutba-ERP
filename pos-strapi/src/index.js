@@ -2,6 +2,7 @@
 
 const { resolveHrRolesForUser } = require('./utils/hr-role-provider');
 const { validateBomWrite, BOM_UID: MFG_BOM_UID } = require('./api/mfg-bom/bom-typing-validator');
+const { runPhase2: runWarehouseBranchPhase2 } = require('./utils/warehouse-branch-migration');
 
 // ─── Seeding is decoupled from server startup ────────────────────────────
 // All seeding — system data, reference data, backfills, and the former
@@ -33,6 +34,17 @@ module.exports = {
     },
 
     async bootstrap({ strapi }) {
+        // ─── Warehouse → Branch consolidation, Phase 2 ───────────────
+        // Copies the (entity, branch) links + branch location fields stashed by
+        // database/migrations/2026.07.17…warehouse-to-branch-merge.js into the
+        // new *_branch_lnk tables that schema sync just created, then drops the
+        // temps. Guarded + idempotent — a no-op on steady-state boots.
+        try {
+            await runWarehouseBranchPhase2(strapi);
+        } catch (err) {
+            strapi.log.error('[wh2br] Phase 2 failed (temps left for retry on next boot): ' + err.message);
+        }
+
         // ─── Register HR team-role provider with api-pro ─────────────
         // Runtime wiring (NOT seeding): api-pro merges these into
         // /me/permissions per request. api-pro's bootstrap runs before this

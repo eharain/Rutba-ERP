@@ -52,15 +52,39 @@
       "component": "pos.sales-desks",
       "repeatable": true
     },
+    "location_code": {
+      "type": "string"
+    },
+    "location_type": {
+      "type": "enumeration",
+      "enum": [
+        "warehouse",
+        "store",
+        "transit",
+        "virtual",
+        "supplier",
+        "customer"
+      ],
+      "default": "warehouse"
+    },
+    "is_default_location": {
+      "type": "boolean",
+      "default": false
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
     "items": {
       "type": "relation",
       "relation": "oneToMany",
-      "target": "api::stock-item.stock-item"
+      "target": "api::stock-item.stock-item",
+      "mappedBy": "branch"
     },
-    "warehouses": {
+    "locations": {
       "type": "relation",
       "relation": "oneToMany",
-      "target": "api::warehouse.warehouse",
+      "target": "api::storage-location.storage-location",
       "mappedBy": "branch"
     },
     "payments": {

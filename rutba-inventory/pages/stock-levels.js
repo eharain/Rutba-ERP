@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { StockLevelsEndpoints, WarehousesEndpoints } from "@rutba/api-provider/endpoints";
+import { StockLevelsEndpoints, BranchesEndpoints } from "@rutba/api-provider/endpoints";
 
 const PAGE_SIZE = 50;
 
@@ -11,21 +11,21 @@ export default function StockLevelsPage() {
 
     const [rows, setRows] = useState([]);
     const [meta, setMeta] = useState(null);
-    const [warehouses, setWarehouses] = useState([]);
+    const [branches, setBranches] = useState([]);
     const [loading, setLoading] = useState(false);
     const [err, setErr] = useState(null);
 
-    const [warehouseDocId, setWarehouseDocId] = useState("");
+    const [branchDocId, setBranchDocId] = useState("");
     const [inStockOnly, setInStockOnly] = useState(true);
     const [search, setSearch] = useState("");
     const [page, setPage] = useState(1);
 
-    const loadWarehouses = useCallback(async () => {
+    const loadBranches = useCallback(async () => {
         if (!jwt) return;
         try {
-            const res = await WarehousesEndpoints.list(1, 200, { sort: ["name:asc"] });
-            setWarehouses(res?.data || []);
-        } catch (e) { console.error("Failed to load warehouses", e); }
+            const res = await BranchesEndpoints.list({ pageSize: 200, sort: ["name:asc"] });
+            setBranches(res?.data || []);
+        } catch (e) { console.error("Failed to load branches", e); }
     }, [jwt]);
 
     const load = useCallback(async () => {
@@ -34,7 +34,7 @@ export default function StockLevelsPage() {
         setErr(null);
         try {
             const res = await StockLevelsEndpoints.list(page, PAGE_SIZE, {
-                ...(warehouseDocId ? { warehouseDocId } : {}),
+                ...(branchDocId ? { branchDocId } : {}),
                 inStockOnly,
                 sort: ["quantity_on_hand:desc"],
             });
@@ -46,13 +46,13 @@ export default function StockLevelsPage() {
         } finally {
             setLoading(false);
         }
-    }, [jwt, page, warehouseDocId, inStockOnly]);
+    }, [jwt, page, branchDocId, inStockOnly]);
 
-    useEffect(() => { loadWarehouses(); }, [loadWarehouses]);
+    useEffect(() => { loadBranches(); }, [loadBranches]);
     useEffect(() => { load(); }, [load]);
 
     // Reset to page 1 when filters change.
-    useEffect(() => { setPage(1); }, [warehouseDocId, inStockOnly]);
+    useEffect(() => { setPage(1); }, [branchDocId, inStockOnly]);
 
     const term = search.trim().toLowerCase();
     const visible = term
@@ -75,17 +75,17 @@ export default function StockLevelsPage() {
                 </div>
 
                 <p className="text-muted small mb-3">
-                    Per-(product, warehouse) on-hand from the stock-level cache. On-hand = count of InStock units;
-                    reserved = Reserved units. This is the denormalised cache — the sum across warehouses equals
+                    Per-(product, branch) on-hand from the stock-level cache. On-hand = count of InStock units;
+                    reserved = Reserved units. This is the denormalised cache — the sum across branches equals
                     each product&apos;s global stock quantity.
                 </p>
 
                 <div className="row g-2 align-items-end mb-3">
                     <div className="col-md-3">
-                        <label className="form-label small mb-1">Warehouse</label>
-                        <select className="form-select form-select-sm" value={warehouseDocId} onChange={(e) => setWarehouseDocId(e.target.value)}>
-                            <option value="">All warehouses</option>
-                            {warehouses.map((w) => <option key={w.documentId} value={w.documentId}>{w.name}</option>)}
+                        <label className="form-label small mb-1">Branch</label>
+                        <select className="form-select form-select-sm" value={branchDocId} onChange={(e) => setBranchDocId(e.target.value)}>
+                            <option value="">All branches</option>
+                            {branches.map((w) => <option key={w.documentId} value={w.documentId}>{w.name}</option>)}
                         </select>
                     </div>
                     <div className="col-md-4">
@@ -114,7 +114,7 @@ export default function StockLevelsPage() {
                                     <tr>
                                         <th>Product</th>
                                         <th>SKU</th>
-                                        <th>Warehouse</th>
+                                        <th>Branch</th>
                                         <th className="text-end">On hand</th>
                                         <th className="text-end">Reserved</th>
                                         <th className="text-end">Available</th>
@@ -125,7 +125,7 @@ export default function StockLevelsPage() {
                                         <tr key={r.documentId || r.id}>
                                             <td>{r.product?.name || r.product?.sku || <span className="text-muted">{r.product ? "(unnamed product)" : "(no product)"}</span>}</td>
                                             <td><code>{r.product?.sku || "—"}</code></td>
-                                            <td>{r.warehouse?.name || "—"}{r.batch?.batch_code ? <span className="badge bg-light text-dark border ms-2">{r.batch.batch_code}</span> : null}</td>
+                                            <td>{r.branch?.name || "—"}{r.batch?.batch_code ? <span className="badge bg-light text-dark border ms-2">{r.batch.batch_code}</span> : null}</td>
                                             <td className="text-end fw-semibold">{r.quantity_on_hand ?? 0}</td>
                                             <td className="text-end">{r.quantity_reserved ?? 0}</td>
                                             <td className="text-end">{r.quantity_available ?? r.quantity_on_hand ?? 0}</td>

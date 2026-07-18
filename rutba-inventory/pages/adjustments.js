@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { StockAdjustmentsEndpoints, WarehousesEndpoints, StockItemsEndpoints } from "@rutba/api-provider/endpoints";
+import { StockAdjustmentsEndpoints, BranchesEndpoints, StockItemsEndpoints } from "@rutba/api-provider/endpoints";
 
 const TYPES = [
     { value: "WriteOff", label: "Write-off", to: "Reduced" },
@@ -20,14 +20,14 @@ function unitCount(a) {
     return 0;
 }
 
-const EMPTY_FORM = { type: "WriteOff", warehouse: "", reason: "", notes: "" };
+const EMPTY_FORM = { type: "WriteOff", branch: "", reason: "", notes: "" };
 
 export default function AdjustmentsPage() {
     const { jwt } = useAuth();
 
     const [adjustments, setAdjustments] = useState([]);
     const [meta, setMeta] = useState(null);
-    const [warehouses, setWarehouses] = useState([]);
+    const [branches, setBranches] = useState([]);
     const [loading, setLoading] = useState(false);
     const [msg, setMsg] = useState(null);
     const [busy, setBusy] = useState(null);
@@ -42,12 +42,12 @@ export default function AdjustmentsPage() {
 
     const notify = (text, variant = "success") => setMsg({ text, variant });
 
-    const loadWarehouses = useCallback(async () => {
+    const loadBranches = useCallback(async () => {
         if (!jwt) return;
         try {
-            const res = await WarehousesEndpoints.list(1, 200, { sort: ["name:asc"] });
-            setWarehouses(res?.data || []);
-        } catch (e) { console.error("warehouses", e); }
+            const res = await BranchesEndpoints.list({ pageSize: 200, sort: ["name:asc"] });
+            setBranches(res?.data || []);
+        } catch (e) { console.error("branches", e); }
     }, [jwt]);
 
     const loadAdjustments = useCallback(async () => {
@@ -65,7 +65,7 @@ export default function AdjustmentsPage() {
         }
     }, [jwt, page]);
 
-    useEffect(() => { loadWarehouses(); }, [loadWarehouses]);
+    useEffect(() => { loadBranches(); }, [loadBranches]);
     useEffect(() => { loadAdjustments(); }, [loadAdjustments]);
 
     const changeForm = (e) => setForm((p) => ({ ...p, [e.target.name]: e.target.value }));
@@ -105,7 +105,7 @@ export default function AdjustmentsPage() {
         try {
             const data = {
                 type: form.type,
-                warehouse: form.warehouse || null,
+                branch: form.branch || null,
                 reason: form.reason || null,
                 notes: form.notes || null,
                 status: "Draft",
@@ -191,10 +191,10 @@ export default function AdjustmentsPage() {
                                         {currentType && <div className="form-text">Units → <code>{currentType.to}</code></div>}
                                     </div>
                                     <div className="col-md-3">
-                                        <label className="form-label">Warehouse <span className="text-muted small">(optional)</span></label>
-                                        <select className="form-select" name="warehouse" value={form.warehouse} onChange={changeForm}>
+                                        <label className="form-label">Branch <span className="text-muted small">(optional)</span></label>
+                                        <select className="form-select" name="branch" value={form.branch} onChange={changeForm}>
                                             <option value="">— none —</option>
-                                            {warehouses.map((w) => <option key={w.documentId} value={w.documentId}>{w.name}</option>)}
+                                            {branches.map((w) => <option key={w.documentId} value={w.documentId}>{w.name}</option>)}
                                         </select>
                                     </div>
                                     <div className="col-md-3">
@@ -254,7 +254,7 @@ export default function AdjustmentsPage() {
                     <div className="table-responsive">
                         <table className="table table-hover align-middle">
                             <thead>
-                                <tr><th>Number</th><th>Type</th><th>Warehouse</th><th className="text-center">Units</th><th className="text-end">Cost</th><th>Status</th><th>Actions</th></tr>
+                                <tr><th>Number</th><th>Type</th><th>Branch</th><th className="text-center">Units</th><th className="text-end">Cost</th><th>Status</th><th>Actions</th></tr>
                             </thead>
                             <tbody>
                                 {adjustments.map((a) => {
@@ -263,7 +263,7 @@ export default function AdjustmentsPage() {
                                         <tr key={a.documentId}>
                                             <td><code>{a.adjustment_number}</code></td>
                                             <td>{TYPES.find((t) => t.value === a.type)?.label || a.type}</td>
-                                            <td>{a.warehouse?.name || "—"}</td>
+                                            <td>{a.branch?.name || "—"}</td>
                                             <td className="text-center">{unitCount(a)}</td>
                                             <td className="text-end">{a.total_cost != null ? a.total_cost : "—"}{a.gl_posted ? <i className="fas fa-book ms-1 text-success" title="GL posted"></i> : null}</td>
                                             <td><span className={`badge ${STATUS_BADGE[a.status] || "bg-secondary"}`}>{a.status}</span></td>

@@ -5,7 +5,7 @@
     "singularName": "stock-level",
     "pluralName": "stock-levels",
     "displayName": "Stock Level",
-    "description": "Denormalised per-(product, warehouse) on-hand cache. NEVER hand-written — maintained by the stock-item lifecycle. Sum of quantity_on_hand across warehouses equals product.stock_quantity."
+    "description": "Denormalised per-(product, branch) on-hand cache. NEVER hand-written — maintained by the stock-item lifecycle. Sum of quantity_on_hand across branches equals product.stock_quantity."
   },
   "options": {
     "draftAndPublish": false
@@ -30,10 +30,10 @@
       "target": "api::product.product",
       "inversedBy": "stock_levels"
     },
-    "warehouse": {
+    "branch": {
       "type": "relation",
       "relation": "manyToOne",
-      "target": "api::warehouse.warehouse"
+      "target": "api::branch.branch"
     },
     "storage_location": {
       "type": "relation",

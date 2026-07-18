@@ -27,6 +27,16 @@ async function update(documentId, data) {
     return authApi.put(withQuery(ep.path, ep.params), wrapData(ep.data));
 }
 
+async function create(data) {
+    const ep = BranchesEndpointsApi.create(data);
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+}
+
+async function del(documentId) {
+    const ep = BranchesEndpointsApi.del(documentId);
+    return authApi.del(withQuery(ep.path, ep.params));
+}
+
 async function archiveStats(branchDocumentId) {
     const ep = BranchesEndpointsApi.archiveStats(branchDocumentId);
     return authApi.fetch(ep.path, ep.params);
@@ -50,12 +60,14 @@ const endpoints = strictEndpointGuard(
         list,
         byId,
         update,
+        create,
+        del,
         archiveStats,
         archiveStock,
         unarchiveStock,
         meta: BranchesEndpointsApi.meta,
     },
-    ["searchBranches","listWithDesks","list","byId","update","archiveStats","archiveStock","unarchiveStock","meta"],
+    ["searchBranches","listWithDesks","list","byId","update","create","del","archiveStats","archiveStock","unarchiveStock","meta"],
 );
 
 export default endpoints;

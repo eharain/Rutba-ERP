@@ -92,6 +92,11 @@ async function valuation(arg1 = {}) {
     return authApi.fetch(ep.path, ep.params);
 }
 
+async function backfillDefaultLocations() {
+    const ep = StockItemsEndpointsApi.backfillDefaultLocations();
+    return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
+}
+
 async function transfer(payload = {}) {
     const ep = StockItemsEndpointsApi.transfer(payload);
     return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
@@ -128,12 +133,13 @@ const endpoints = strictEndpointGuard(
         getExpiring,
         sweepExpired,
         valuation,
+        backfillDefaultLocations,
         transfer,
         sellUnits,
         returnUnits,
         meta: StockItemsEndpointsApi.meta,
     },
-    ["list","listByProduct","listByBarcode","checkBarcode","orphanGroups","orphanGroupItems","create","resolveBulkStock","processBulkStock","searchByBarcode","searchByName","byId","update","byProduct","recomputeProductStock","getExpiring","sweepExpired","valuation","transfer","sellUnits","returnUnits","meta"],
+    ["list","listByProduct","listByBarcode","checkBarcode","orphanGroups","orphanGroupItems","create","resolveBulkStock","processBulkStock","searchByBarcode","searchByName","byId","update","byProduct","recomputeProductStock","getExpiring","sweepExpired","valuation","backfillDefaultLocations","transfer","sellUnits","returnUnits","meta"],
 );
 
 export default endpoints;

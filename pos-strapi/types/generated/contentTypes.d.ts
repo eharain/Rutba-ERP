@@ -1053,6 +1053,9 @@ export interface ApiBranchBranch extends Struct.CollectionTypeSchema {
     >;
     instagram: Schema.Attribute.String;
     invoiceTerms: Schema.Attribute.RichText;
+    is_active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    is_default_location: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<false>;
     items: Schema.Attribute.Relation<'oneToMany', 'api::stock-item.stock-item'>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
@@ -1060,6 +1063,15 @@ export interface ApiBranchBranch extends Struct.CollectionTypeSchema {
       'api::branch.branch'
     > &
       Schema.Attribute.Private;
+    location_code: Schema.Attribute.String;
+    location_type: Schema.Attribute.Enumeration<
+      ['warehouse', 'store', 'transit', 'virtual', 'supplier', 'customer']
+    > &
+      Schema.Attribute.DefaultTo<'warehouse'>;
+    locations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::storage-location.storage-location'
+    >;
     logo: Schema.Attribute.Media<'images' | 'files' | 'videos' | 'audios'>;
     name: Schema.Attribute.String;
     payments: Schema.Attribute.Relation<'manyToMany', 'api::payment.payment'>;
@@ -1084,10 +1096,6 @@ export interface ApiBranchBranch extends Struct.CollectionTypeSchema {
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
-    warehouses: Schema.Attribute.Relation<
-      'oneToMany',
-      'api::warehouse.warehouse'
-    >;
     watsapp: Schema.Attribute.String;
     web: Schema.Attribute.String;
     youtube: Schema.Attribute.String;
@@ -4632,7 +4640,7 @@ export interface ApiReorderPolicyReorderPolicy
   extends Struct.CollectionTypeSchema {
   collectionName: 'reorder_policies';
   info: {
-    description: 'Per-(product, warehouse) replenishment policy: min/max/safety-stock, method, and how to source the replenishment. A null warehouse is the product-wide default.';
+    description: 'Per-(product, branch) replenishment policy: min/max/safety-stock, method, and how to source the replenishment. A null branch is the product-wide default.';
     displayName: 'Reorder Policy';
     pluralName: 'reorder-policies';
     singularName: 'reorder-policy';
@@ -4641,6 +4649,7 @@ export interface ApiReorderPolicyReorderPolicy
     draftAndPublish: false;
   };
   attributes: {
+    branch: Schema.Attribute.Relation<'manyToOne', 'api::branch.branch'>;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -4670,17 +4679,10 @@ export interface ApiReorderPolicyReorderPolicy
       ['Purchase', 'Manufacture', 'Transfer']
     > &
       Schema.Attribute.DefaultTo<'Purchase'>;
-    source_warehouse: Schema.Attribute.Relation<
-      'manyToOne',
-      'api::warehouse.warehouse'
-    >;
+    source_branch: Schema.Attribute.Relation<'manyToOne', 'api::branch.branch'>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
-    warehouse: Schema.Attribute.Relation<
-      'manyToOne',
-      'api::warehouse.warehouse'
-    >;
   };
 }
 
@@ -5775,6 +5777,7 @@ export interface ApiStockAdjustmentStockAdjustment
   attributes: {
     adjusted_item_ids: Schema.Attribute.JSON;
     adjustment_number: Schema.Attribute.String;
+    branch: Schema.Attribute.Relation<'manyToOne', 'api::branch.branch'>;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -5803,10 +5806,6 @@ export interface ApiStockAdjustmentStockAdjustment
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
-    warehouse: Schema.Attribute.Relation<
-      'manyToOne',
-      'api::warehouse.warehouse'
-    >;
   };
 }
 
@@ -5823,6 +5822,7 @@ export interface ApiStockBatchStockBatch extends Struct.CollectionTypeSchema {
   };
   attributes: {
     batch_code: Schema.Attribute.String;
+    branch: Schema.Attribute.Relation<'manyToOne', 'api::branch.branch'>;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -5855,10 +5855,6 @@ export interface ApiStockBatchStockBatch extends Struct.CollectionTypeSchema {
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
-    warehouse: Schema.Attribute.Relation<
-      'manyToOne',
-      'api::warehouse.warehouse'
-    >;
     work_order: Schema.Attribute.Relation<
       'manyToOne',
       'api::mfg-work-order.mfg-work-order'
@@ -5869,7 +5865,7 @@ export interface ApiStockBatchStockBatch extends Struct.CollectionTypeSchema {
 export interface ApiStockCountStockCount extends Struct.CollectionTypeSchema {
   collectionName: 'stock_counts';
   info: {
-    description: 'Physical cycle count / stock-take of a warehouse. Post compares counted vs system per product and books shortages as losses (units -> Lost).';
+    description: 'Physical cycle count / stock-take of a branch. Post compares counted vs system per product and books shortages as losses (units -> Lost).';
     displayName: 'Stock Count';
     pluralName: 'stock-counts';
     singularName: 'stock-count';
@@ -5878,6 +5874,7 @@ export interface ApiStockCountStockCount extends Struct.CollectionTypeSchema {
     draftAndPublish: false;
   };
   attributes: {
+    branch: Schema.Attribute.Relation<'manyToOne', 'api::branch.branch'>;
     count_number: Schema.Attribute.String;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
@@ -5897,10 +5894,6 @@ export interface ApiStockCountStockCount extends Struct.CollectionTypeSchema {
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
-    warehouse: Schema.Attribute.Relation<
-      'manyToOne',
-      'api::warehouse.warehouse'
-    >;
   };
 }
 
@@ -6048,10 +6041,6 @@ export interface ApiStockItemStockItem extends Struct.CollectionTypeSchema {
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
-    warehouse: Schema.Attribute.Relation<
-      'manyToOne',
-      'api::warehouse.warehouse'
-    >;
     work_order: Schema.Attribute.Relation<
       'manyToOne',
       'api::mfg-work-order.mfg-work-order'
@@ -6062,7 +6051,7 @@ export interface ApiStockItemStockItem extends Struct.CollectionTypeSchema {
 export interface ApiStockLevelStockLevel extends Struct.CollectionTypeSchema {
   collectionName: 'stock_levels';
   info: {
-    description: 'Denormalised per-(product, warehouse) on-hand cache. NEVER hand-written \u2014 maintained by the stock-item lifecycle. Sum of quantity_on_hand across warehouses equals product.stock_quantity.';
+    description: 'Denormalised per-(product, branch) on-hand cache. NEVER hand-written \u2014 maintained by the stock-item lifecycle. Sum of quantity_on_hand across branches equals product.stock_quantity.';
     displayName: 'Stock Level';
     pluralName: 'stock-levels';
     singularName: 'stock-level';
@@ -6075,6 +6064,7 @@ export interface ApiStockLevelStockLevel extends Struct.CollectionTypeSchema {
       'manyToOne',
       'api::stock-batch.stock-batch'
     >;
+    branch: Schema.Attribute.Relation<'manyToOne', 'api::branch.branch'>;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -6097,10 +6087,6 @@ export interface ApiStockLevelStockLevel extends Struct.CollectionTypeSchema {
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
-    warehouse: Schema.Attribute.Relation<
-      'manyToOne',
-      'api::warehouse.warehouse'
-    >;
   };
 }
 
@@ -6108,7 +6094,7 @@ export interface ApiStockTransferStockTransfer
   extends Struct.CollectionTypeSchema {
   collectionName: 'stock_transfers';
   info: {
-    description: "Two-sided transfer of serialized stock-items between warehouses: Draft -> dispatch (InTransit) -> receive (Received). In-transit units are status='Transferred' (not counted in any warehouse on-hand).";
+    description: "Two-sided transfer of serialized stock-items between branches: Draft -> dispatch (InTransit) -> receive (Received). In-transit units are status='Transferred' (not counted in any branch on-hand).";
     displayName: 'Stock Transfer';
     pluralName: 'stock-transfers';
     singularName: 'stock-transfer';
@@ -6121,10 +6107,7 @@ export interface ApiStockTransferStockTransfer
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     dispatched_at: Schema.Attribute.DateTime;
-    from_warehouse: Schema.Attribute.Relation<
-      'manyToOne',
-      'api::warehouse.warehouse'
-    >;
+    from_branch: Schema.Attribute.Relation<'manyToOne', 'api::branch.branch'>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
@@ -6142,13 +6125,10 @@ export interface ApiStockTransferStockTransfer
       'manyToMany',
       'api::stock-item.stock-item'
     >;
+    to_branch: Schema.Attribute.Relation<'manyToOne', 'api::branch.branch'>;
     to_location: Schema.Attribute.Relation<
       'manyToOne',
       'api::storage-location.storage-location'
-    >;
-    to_warehouse: Schema.Attribute.Relation<
-      'manyToOne',
-      'api::warehouse.warehouse'
     >;
     transfer_number: Schema.Attribute.String;
     updatedAt: Schema.Attribute.DateTime;
@@ -6161,7 +6141,7 @@ export interface ApiStorageLocationStorageLocation
   extends Struct.CollectionTypeSchema {
   collectionName: 'storage_locations';
   info: {
-    description: 'A bin / shelf / zone inside a warehouse. Self-referential tree: zone -> aisle -> rack -> shelf -> bin.';
+    description: 'A bin / shelf / zone inside a branch. Self-referential tree: zone -> aisle -> rack -> shelf -> bin.';
     displayName: 'Storage Location';
     pluralName: 'storage-locations';
     singularName: 'storage-location';
@@ -6170,6 +6150,7 @@ export interface ApiStorageLocationStorageLocation
     draftAndPublish: false;
   };
   attributes: {
+    branch: Schema.Attribute.Relation<'manyToOne', 'api::branch.branch'>;
     children: Schema.Attribute.Relation<
       'oneToMany',
       'api::storage-location.storage-location'
@@ -6204,10 +6185,6 @@ export interface ApiStorageLocationStorageLocation
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
-    warehouse: Schema.Attribute.Relation<
-      'manyToOne',
-      'api::warehouse.warehouse'
-    >;
   };
 }
 
@@ -6321,52 +6298,6 @@ export interface ApiTermTerm extends Struct.CollectionTypeSchema {
       'manyToMany',
       'api::term-type.term-type'
     >;
-    updatedAt: Schema.Attribute.DateTime;
-    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
-      Schema.Attribute.Private;
-  };
-}
-
-export interface ApiWarehouseWarehouse extends Struct.CollectionTypeSchema {
-  collectionName: 'warehouses';
-  info: {
-    description: 'A physical (or virtual) stock-holding location that belongs to a branch. Holds storage-locations (bins).';
-    displayName: 'Warehouse';
-    pluralName: 'warehouses';
-    singularName: 'warehouse';
-  };
-  options: {
-    draftAndPublish: false;
-  };
-  attributes: {
-    address: Schema.Attribute.Text;
-    branch: Schema.Attribute.Relation<'manyToOne', 'api::branch.branch'>;
-    code: Schema.Attribute.String & Schema.Attribute.Unique;
-    createdAt: Schema.Attribute.DateTime;
-    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
-      Schema.Attribute.Private;
-    is_active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
-    is_default: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
-    locale: Schema.Attribute.String & Schema.Attribute.Private;
-    localizations: Schema.Attribute.Relation<
-      'oneToMany',
-      'api::warehouse.warehouse'
-    > &
-      Schema.Attribute.Private;
-    locations: Schema.Attribute.Relation<
-      'oneToMany',
-      'api::storage-location.storage-location'
-    >;
-    name: Schema.Attribute.String & Schema.Attribute.Required;
-    publishedAt: Schema.Attribute.DateTime;
-    stock_items: Schema.Attribute.Relation<
-      'oneToMany',
-      'api::stock-item.stock-item'
-    >;
-    type: Schema.Attribute.Enumeration<
-      ['warehouse', 'store', 'transit', 'virtual', 'supplier', 'customer']
-    > &
-      Schema.Attribute.DefaultTo<'warehouse'>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -7771,7 +7702,6 @@ declare module '@strapi/strapi' {
       'api::supplier.supplier': ApiSupplierSupplier;
       'api::term-type.term-type': ApiTermTypeTermType;
       'api::term.term': ApiTermTerm;
-      'api::warehouse.warehouse': ApiWarehouseWarehouse;
       'api::work-item-activity.work-item-activity': ApiWorkItemActivityWorkItemActivity;
       'api::work-item-comment.work-item-comment': ApiWorkItemCommentWorkItemComment;
       'api::work-item-watch.work-item-watch': ApiWorkItemWatchWorkItemWatch;

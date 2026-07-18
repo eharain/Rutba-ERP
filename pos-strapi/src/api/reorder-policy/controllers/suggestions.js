@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * GET /reorder-policies/suggestions?warehouse=<documentId>
+ * GET /reorder-policies/suggestions?branch=<documentId>
  *
  * Compute-on-read replenishment suggestions (Epic 4). Any authenticated user
  * (inventory staff); auth enforced manually since the route is auth:false so
@@ -26,10 +26,10 @@ module.exports = {
     const user = await ensureUser(ctx, strapi);
     if (!user) return;
 
-    const warehouseDocId = ctx.query?.warehouse || null;
+    const branchDocId = ctx.query?.branch || null;
     const rows = await strapi
       .service('api::reorder-policy.reorder-policy')
-      .getReorderSuggestions({ warehouseDocId });
+      .getReorderSuggestions({ branchDocId });
 
     return ctx.send({ data: rows, count: rows.length });
   },

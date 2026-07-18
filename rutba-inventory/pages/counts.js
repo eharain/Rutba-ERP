@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { StockCountsEndpoints, WarehousesEndpoints, StockItemsEndpoints, StockLevelsEndpoints } from "@rutba/api-provider/endpoints";
+import { StockCountsEndpoints, BranchesEndpoints, StockItemsEndpoints, StockLevelsEndpoints } from "@rutba/api-provider/endpoints";
 
 const STATUS_BADGE = { Draft: "bg-secondary", Posted: "bg-success", Cancelled: "bg-light text-muted border" };
 
@@ -10,13 +10,13 @@ export default function CountsPage() {
     const { jwt } = useAuth();
 
     const [counts, setCounts] = useState([]);
-    const [warehouses, setWarehouses] = useState([]);
+    const [branches, setBranches] = useState([]);
     const [loading, setLoading] = useState(false);
     const [msg, setMsg] = useState(null);
     const [busy, setBusy] = useState(null);
 
     const [showForm, setShowForm] = useState(false);
-    const [warehouse, setWarehouse] = useState("");
+    const [branch, setBranch] = useState("");
     const [notes, setNotes] = useState("");
     const [lines, setLines] = useState([]);
     const [barcode, setBarcode] = useState("");
@@ -25,9 +25,9 @@ export default function CountsPage() {
 
     const notify = (text, variant = "success") => setMsg({ text, variant });
 
-    const loadWarehouses = useCallback(async () => {
+    const loadBranches = useCallback(async () => {
         if (!jwt) return;
-        try { const res = await WarehousesEndpoints.list(1, 200, { sort: ["name:asc"] }); setWarehouses(res?.data || []); }
+        try { const res = await BranchesEndpoints.list({ pageSize: 200, sort: ["name:asc"] }); setBranches(res?.data || []); }
         catch (e) { console.error(e); }
     }, [jwt]);
 
@@ -39,15 +39,15 @@ export default function CountsPage() {
         finally { setLoading(false); }
     }, [jwt]);
 
-    useEffect(() => { loadWarehouses(); }, [loadWarehouses]);
+    useEffect(() => { loadBranches(); }, [loadBranches]);
     useEffect(() => { loadCounts(); }, [loadCounts]);
 
-    const openCreate = () => { setWarehouse(""); setNotes(""); setLines([]); setBarcode(""); setShowForm(true); };
+    const openCreate = () => { setBranch(""); setNotes(""); setLines([]); setBarcode(""); setShowForm(true); };
 
     const addLine = async () => {
         const code = barcode.trim();
         if (!code) return;
-        if (!warehouse) { notify("Pick a warehouse first.", "warning"); return; }
+        if (!branch) { notify("Pick a branch first.", "warning"); return; }
         setAdding(true);
         try {
             const res = await StockItemsEndpoints.listByBarcode(code);
@@ -56,10 +56,10 @@ export default function CountsPage() {
             const pDoc = item.product?.documentId;
             if (!pDoc) { notify("That unit has no product — can't count it.", "warning"); return; }
             if (lines.some((l) => l.product_doc_id === pDoc)) { notify("Product already on the count.", "warning"); setBarcode(""); return; }
-            // System qty = on-hand of this product at the warehouse (from the stock-level cache).
+            // System qty = on-hand of this product at the branch (from the stock-level cache).
             let system = 0;
             try {
-                const lv = await StockLevelsEndpoints.list(1, 5, { productDocId: pDoc, warehouseDocId: warehouse });
+                const lv = await StockLevelsEndpoints.list(1, 5, { productDocId: pDoc, branchDocId: branch });
                 system = (lv?.data || []).reduce((s, r) => s + (Number(r.quantity_on_hand) || 0), 0);
             } catch (e) { console.error("system qty", e); }
             setLines((prev) => [...prev, {
@@ -81,12 +81,12 @@ export default function CountsPage() {
 
     const submitCreate = async (e) => {
         e.preventDefault();
-        if (!warehouse) { notify("Pick a warehouse.", "warning"); return; }
+        if (!branch) { notify("Pick a branch.", "warning"); return; }
         if (lines.length === 0) { notify("Add at least one product to count.", "warning"); return; }
         setSaving(true);
         try {
             const data = {
-                warehouse,
+                branch,
                 notes: notes || null,
                 status: "Draft",
                 lines: lines.map((l) => ({
@@ -135,7 +135,7 @@ export default function CountsPage() {
                     <button className="btn btn-primary btn-sm" onClick={openCreate}><i className="fas fa-plus me-1"></i>New Count</button>
                 </div>
                 <p className="text-muted small mb-3">
-                    Physical stock-take of a warehouse. Add each product (scan a unit), enter what you physically
+                    Physical stock-take of a branch. Add each product (scan a unit), enter what you physically
                     counted, then Post — shortages book the missing units as <code>Lost</code>. Overages are reported.
                 </p>
 
@@ -153,10 +153,10 @@ export default function CountsPage() {
                             <form onSubmit={submitCreate}>
                                 <div className="row g-3">
                                     <div className="col-md-4">
-                                        <label className="form-label">Warehouse</label>
-                                        <select className="form-select" value={warehouse} onChange={(e) => { setWarehouse(e.target.value); setLines([]); }} required>
+                                        <label className="form-label">Branch</label>
+                                        <select className="form-select" value={branch} onChange={(e) => { setBranch(e.target.value); setLines([]); }} required>
                                             <option value="">— select —</option>
-                                            {warehouses.map((w) => <option key={w.documentId} value={w.documentId}>{w.name}</option>)}
+                                            {branches.map((w) => <option key={w.documentId} value={w.documentId}>{w.name}</option>)}
                                         </select>
                                     </div>
                                     <div className="col-md-8">
@@ -169,8 +169,8 @@ export default function CountsPage() {
                                         <div className="input-group" style={{ maxWidth: 420 }}>
                                             <input className="form-control" value={barcode} onChange={(e) => setBarcode(e.target.value)}
                                                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addLine(); } }}
-                                                placeholder="scan/type a stock-item barcode" disabled={!warehouse} />
-                                            <button className="btn btn-outline-secondary" type="button" onClick={addLine} disabled={adding || !warehouse}>
+                                                placeholder="scan/type a stock-item barcode" disabled={!branch} />
+                                            <button className="btn btn-outline-secondary" type="button" onClick={addLine} disabled={adding || !branch}>
                                                 {adding ? <span className="spinner-border spinner-border-sm"></span> : <><i className="fas fa-plus me-1"></i>Add</>}
                                             </button>
                                         </div>
@@ -216,14 +216,14 @@ export default function CountsPage() {
                 ) : (
                     <div className="table-responsive">
                         <table className="table table-hover align-middle">
-                            <thead><tr><th>Number</th><th>Warehouse</th><th>Status</th><th>Posted</th><th>Actions</th></tr></thead>
+                            <thead><tr><th>Number</th><th>Branch</th><th>Status</th><th>Posted</th><th>Actions</th></tr></thead>
                             <tbody>
                                 {counts.map((c) => {
                                     const b = `${c.documentId}`;
                                     return (
                                         <tr key={c.documentId}>
                                             <td><code>{c.count_number}</code></td>
-                                            <td>{c.warehouse?.name || "—"}</td>
+                                            <td>{c.branch?.name || "—"}</td>
                                             <td><span className={`badge ${STATUS_BADGE[c.status] || "bg-secondary"}`}>{c.status}</span></td>
                                             <td className="small text-muted">{c.posted_at ? new Date(c.posted_at).toLocaleString() : "—"}</td>
                                             <td>

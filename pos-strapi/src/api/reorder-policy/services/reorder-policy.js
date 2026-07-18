@@ -3,9 +3,9 @@
 /**
  * reorder-policy service — the replenishment suggestion engine (Epic 4 P1+2).
  *
- * getReorderSuggestions computes, on read, which (product, warehouse) targets are
+ * getReorderSuggestions computes, on read, which (product, branch) targets are
  * at/below their reorder trigger and how much to order. It reads available on-hand
- * (per-warehouse from the stock-level cache F2, else product-level routed by
+ * (per-branch from the stock-level cache F2, else product-level routed by
  * track_mode — serialized stock_quantity vs bulk bulk_quantity_on_hand F5),
  * subtracts nothing but ADDS open on-order, and applies the policy's min/max/ROP
  * math with supplier-pack rounding. Products with only the legacy
@@ -22,7 +22,7 @@ const STOCK_LEVEL_UID = 'api::stock-level.stock-level';
 const PURCHASE_UID = 'api::purchase.purchase';
 const PURCHASE_ITEM_UID = 'api::purchase-item.purchase-item';
 const SUPPLIER_UID = 'api::supplier.supplier';
-const WAREHOUSE_UID = 'api::warehouse.warehouse';
+const BRANCH_UID = 'api::branch.branch';
 const WO_UID = 'api::mfg-work-order.mfg-work-order';
 const BOM_UID = 'api::mfg-bom.mfg-bom';
 
@@ -83,39 +83,39 @@ module.exports = factories.createCoreService(POLICY_UID, ({ strapi }) => ({
     return map;
   },
 
-  /** per-(product, warehouse) Active-batch remaining for BULK products → Map<`pid:whid`, qty>. */
-  async _bulkLevelByProductWarehouse(pairs) {
+  /** per-(product, branch) Active-batch remaining for BULK products → Map<`pid:brid`, qty>. */
+  async _bulkLevelByProductBranch(pairs) {
     const map = new Map();
     const productIds = Array.from(new Set(pairs.map((p) => p.productId).filter(Boolean)));
-    const warehouseIds = Array.from(new Set(pairs.map((p) => p.warehouseId).filter(Boolean)));
-    if (productIds.length === 0 || warehouseIds.length === 0) return map;
+    const branchIds = Array.from(new Set(pairs.map((p) => p.branchId).filter(Boolean)));
+    if (productIds.length === 0 || branchIds.length === 0) return map;
     const rows = await strapi.db.query(STOCK_BATCH_UID).findMany({
-      where: { product: { id: { $in: productIds } }, warehouse: { id: { $in: warehouseIds } }, status: 'Active' },
+      where: { product: { id: { $in: productIds } }, branch: { id: { $in: branchIds } }, status: 'Active' },
       select: ['quantity_remaining'],
-      populate: { product: { select: ['id'] }, warehouse: { select: ['id'] } },
+      populate: { product: { select: ['id'] }, branch: { select: ['id'] } },
       limit: 100000,
     });
     for (const r of rows) {
-      const key = `${r.product?.id}:${r.warehouse?.id}`;
+      const key = `${r.product?.id}:${r.branch?.id}`;
       map.set(key, (map.get(key) || 0) + num(r.quantity_remaining));
     }
     return map;
   },
 
-  /** per-(product, warehouse) available on-hand from the stock-level cache → Map<`pid:whid`, qty>. */
-  async _levelByProductWarehouse(pairs) {
+  /** per-(product, branch) available on-hand from the stock-level cache → Map<`pid:brid`, qty>. */
+  async _levelByProductBranch(pairs) {
     const map = new Map();
     const productIds = Array.from(new Set(pairs.map((p) => p.productId).filter(Boolean)));
-    const warehouseIds = Array.from(new Set(pairs.map((p) => p.warehouseId).filter(Boolean)));
-    if (productIds.length === 0 || warehouseIds.length === 0) return map;
+    const branchIds = Array.from(new Set(pairs.map((p) => p.branchId).filter(Boolean)));
+    if (productIds.length === 0 || branchIds.length === 0) return map;
     const rows = await strapi.db.query(STOCK_LEVEL_UID).findMany({
-      where: { product: { id: { $in: productIds } }, warehouse: { id: { $in: warehouseIds } } },
+      where: { product: { id: { $in: productIds } }, branch: { id: { $in: branchIds } } },
       select: ['quantity_available', 'quantity_on_hand'],
-      populate: { product: { select: ['id'] }, warehouse: { select: ['id'] } },
+      populate: { product: { select: ['id'] }, branch: { select: ['id'] } },
       limit: 100000,
     });
     for (const r of rows) {
-      const key = `${r.product?.id}:${r.warehouse?.id}`;
+      const key = `${r.product?.id}:${r.branch?.id}`;
       const avail = r.quantity_available != null ? num(r.quantity_available) : num(r.quantity_on_hand);
       map.set(key, (map.get(key) || 0) + avail);
     }
@@ -129,23 +129,23 @@ module.exports = factories.createCoreService(POLICY_UID, ({ strapi }) => ({
 
   /**
    * Compute reorder suggestions. Triggered rows only, most-deficient first.
-   * @param {{ warehouseId?: number, warehouseDocId?: string }} opts
+   * @param {{ branchId?: number, branchDocId?: string }} opts
    */
   async getReorderSuggestions(opts = {}) {
-    let warehouseId = opts.warehouseId || null;
-    if (!warehouseId && opts.warehouseDocId) {
-      const wh = await strapi.db.query(WAREHOUSE_UID).findOne({ where: { documentId: opts.warehouseDocId }, select: ['id'] });
-      warehouseId = wh?.id || null;
+    let branchId = opts.branchId || null;
+    if (!branchId && opts.branchDocId) {
+      const br = await strapi.db.query(BRANCH_UID).findOne({ where: { documentId: opts.branchDocId }, select: ['id'] });
+      branchId = br?.id || null;
     }
 
-    // 1) active policies (optionally scoped to a warehouse, incl. product-wide defaults)
+    // 1) active policies (optionally scoped to a branch, incl. product-wide defaults)
     const policyWhere = { is_active: true };
-    if (warehouseId) policyWhere.$or = [{ warehouse: { id: warehouseId } }, { warehouse: { id: { $null: true } } }];
+    if (branchId) policyWhere.$or = [{ branch: { id: branchId } }, { branch: { id: { $null: true } } }];
     const policies = await strapi.db.query(POLICY_UID).findMany({
       where: policyWhere,
       populate: {
         product: { select: PROD_FIELDS },
-        warehouse: { select: ['id', 'documentId', 'name'] },
+        branch: { select: ['id', 'documentId', 'name'] },
         preferred_supplier: { select: ['id', 'documentId', 'name'] },
       },
       limit: 100000,
@@ -156,7 +156,7 @@ module.exports = factories.createCoreService(POLICY_UID, ({ strapi }) => ({
     for (const pol of policies) {
       if (!pol.product?.id) continue;
       policyProductIds.add(pol.product.id);
-      targets.push({ policy: pol, product: pol.product, warehouse: pol.warehouse || null });
+      targets.push({ policy: pol, product: pol.product, branch: pol.branch || null });
     }
 
     // 2) legacy fallback: products with reorder_level>0 and NO policy row
@@ -166,16 +166,16 @@ module.exports = factories.createCoreService(POLICY_UID, ({ strapi }) => ({
       select: PROD_FIELDS,
       limit: 100000,
     });
-    for (const product of fallbackProducts) targets.push({ policy: null, product, warehouse: null });
+    for (const product of fallbackProducts) targets.push({ policy: null, product, branch: null });
 
     if (targets.length === 0) return [];
 
-    // Dedupe by (product, warehouse) so duplicate active policies can't produce
+    // Dedupe by (product, branch) so duplicate active policies can't produce
     // duplicate suggestions (and downstream duplicate orders). First one wins.
     const seenTargets = new Set();
     const dedupedTargets = [];
     for (const t of targets) {
-      const key = `${t.product.id}:${t.warehouse?.id || 'all'}`;
+      const key = `${t.product.id}:${t.branch?.id || 'all'}`;
       if (seenTargets.has(key)) continue;
       seenTargets.add(key);
       dedupedTargets.push(t);
@@ -184,25 +184,25 @@ module.exports = factories.createCoreService(POLICY_UID, ({ strapi }) => ({
     // 3) batch the expensive reads
     const onOrder = await this._onOrderByProduct(dedupedTargets.map((t) => t.product.id));
     const woOnOrder = await this._onOrderWOByProduct(dedupedTargets.map((t) => t.product.id));
-    const serializedPairs = dedupedTargets.filter((t) => t.warehouse?.id && t.product.track_mode !== 'bulk')
-      .map((t) => ({ productId: t.product.id, warehouseId: t.warehouse.id }));
-    const bulkPairs = dedupedTargets.filter((t) => t.warehouse?.id && t.product.track_mode === 'bulk')
-      .map((t) => ({ productId: t.product.id, warehouseId: t.warehouse.id }));
-    const levels = await this._levelByProductWarehouse(serializedPairs);
-    const bulkLevels = await this._bulkLevelByProductWarehouse(bulkPairs);
+    const serializedPairs = dedupedTargets.filter((t) => t.branch?.id && t.product.track_mode !== 'bulk')
+      .map((t) => ({ productId: t.product.id, branchId: t.branch.id }));
+    const bulkPairs = dedupedTargets.filter((t) => t.branch?.id && t.product.track_mode === 'bulk')
+      .map((t) => ({ productId: t.product.id, branchId: t.branch.id }));
+    const levels = await this._levelByProductBranch(serializedPairs);
+    const bulkLevels = await this._bulkLevelByProductBranch(bulkPairs);
 
     // 4) compute per target
     const suggestions = [];
-    for (const { policy, product, warehouse } of dedupedTargets) {
-      // On-hand: serialized products read the per-warehouse stock-level cache;
+    for (const { policy, product, branch } of dedupedTargets) {
+      // On-hand: serialized products read the per-branch stock-level cache;
       // bulk products read their Active-batch sum (the stock-level cache is built
-      // only from serialized items, so a warehouse-scoped bulk policy would
+      // only from serialized items, so a branch-scoped bulk policy would
       // otherwise read 0 forever and trigger perpetual false suggestions).
       let on_hand;
-      if (warehouse?.id) {
+      if (branch?.id) {
         on_hand = product.track_mode === 'bulk'
-          ? (bulkLevels.get(`${product.id}:${warehouse.id}`) || 0)
-          : (levels.get(`${product.id}:${warehouse.id}`) || 0);
+          ? (bulkLevels.get(`${product.id}:${branch.id}`) || 0)
+          : (levels.get(`${product.id}:${branch.id}`) || 0);
       } else {
         on_hand = this._productOnHand(product);
       }
@@ -228,8 +228,8 @@ module.exports = factories.createCoreService(POLICY_UID, ({ strapi }) => ({
         product: product.documentId,
         product_name: product.name,
         sku: product.sku,
-        warehouse: warehouse?.documentId || null,
-        warehouse_name: warehouse?.name || null,
+        branch: branch?.documentId || null,
+        branch_name: branch?.name || null,
         method,
         source: policy?.source || 'Purchase',
         on_hand,
@@ -257,7 +257,7 @@ module.exports = factories.createCoreService(POLICY_UID, ({ strapi }) => ({
    * draft `purchase`(s) grouped by supplier, ready for the existing purchase
    * approval + receiving flow. Does NOT post GL (that happens at receiving/bill).
    *
-   * @param {{ warehouseDocId?: string, suggestions?: Array, actorId?: number }} opts
+   * @param {{ branchDocId?: string, suggestions?: Array, actorId?: number }} opts
    *   suggestions — reviewed rows (product docId, suggested_qty, unit_cost,
    *   preferred_supplier docId). Omitted → compute fresh and take all source=Purchase.
    * @returns {{ created: number, purchases: Array }}
@@ -302,7 +302,7 @@ module.exports = factories.createCoreService(POLICY_UID, ({ strapi }) => ({
   async generatePurchases(opts = {}) {
     let suggestions = Array.isArray(opts.suggestions) && opts.suggestions.length
       ? opts.suggestions
-      : (await this.getReorderSuggestions({ warehouseDocId: opts.warehouseDocId })).filter((s) => (s.source || 'Purchase') === 'Purchase');
+      : (await this.getReorderSuggestions({ branchDocId: opts.branchDocId })).filter((s) => (s.source || 'Purchase') === 'Purchase');
     // keep only rows with a product and a positive qty
     suggestions = suggestions.filter((s) => s && s.product && num(s.suggested_qty) > 0);
     if (suggestions.length === 0) return { created: 0, purchases: [] };
@@ -398,13 +398,13 @@ module.exports = factories.createCoreService(POLICY_UID, ({ strapi }) => ({
    * (is_default first, else any Active). One WO per product. The WO still runs
    * off its concrete BOM — this just seeds a Draft to review/release.
    *
-   * @param {{ warehouseDocId?: string, suggestions?: Array, actorId?: number }} opts
+   * @param {{ branchDocId?: string, suggestions?: Array, actorId?: number }} opts
    * @returns {{ created: number, work_orders: Array }}
    */
   async generateWorkOrders(opts = {}) {
     let suggestions = Array.isArray(opts.suggestions) && opts.suggestions.length
       ? opts.suggestions.filter((s) => s && s.source === 'Manufacture')
-      : (await this.getReorderSuggestions({ warehouseDocId: opts.warehouseDocId })).filter((s) => s.source === 'Manufacture');
+      : (await this.getReorderSuggestions({ branchDocId: opts.branchDocId })).filter((s) => s.source === 'Manufacture');
     suggestions = suggestions.filter((s) => s && s.product && num(s.suggested_qty) > 0);
     if (suggestions.length === 0) return { created: 0, work_orders: [] };
 

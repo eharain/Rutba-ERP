@@ -1,7 +1,7 @@
 /**
  * StockLevelsEndpoints
  * Pure endpoint descriptors for the /stock-levels resource — the denormalised
- * per-(product, warehouse) on-hand cache (Inventory Foundation F2).
+ * per-(product, branch) on-hand cache (Inventory Foundation F2).
  *
  * Read-only from the client's perspective: the rows are maintained by the
  * stock-item lifecycle, never hand-written. Only a full-rebuild recompute is
@@ -15,7 +15,7 @@ export const StockLevelsEndpoints = {
         roles: ['admin', 'manager', 'staff'],
     },
 
-    list: (page = 1, pageSize = 100, { productDocId, warehouseDocId, inStockOnly, sort } = {}) => ({
+    list: (page = 1, pageSize = 100, { productDocId, branchDocId, inStockOnly, sort } = {}) => ({
         path: '/stock-levels',
         action: 'find',
         method: 'get',
@@ -24,10 +24,10 @@ export const StockLevelsEndpoints = {
         params: {
             filters: {
                 ...(productDocId ? { product: { documentId: productDocId } } : {}),
-                ...(warehouseDocId ? { warehouse: { documentId: warehouseDocId } } : {}),
+                ...(branchDocId ? { branch: { documentId: branchDocId } } : {}),
                 ...(inStockOnly ? { quantity_on_hand: { $gt: 0 } } : {}),
             },
-            populate: { product: true, warehouse: true, storage_location: true, batch: true },
+            populate: { product: true, branch: true, storage_location: true, batch: true },
             sort: sort ?? ['id:asc'],
             pagination: { page, pageSize },
         },
@@ -41,7 +41,7 @@ export const StockLevelsEndpoints = {
         approle: ['admin', 'manager', 'staff'],
         params: {
             filters: { product: { documentId: productDocId } },
-            populate: { warehouse: true, storage_location: true, batch: true },
+            populate: { branch: true, storage_location: true, batch: true },
             pagination: { page, pageSize },
         },
     }),

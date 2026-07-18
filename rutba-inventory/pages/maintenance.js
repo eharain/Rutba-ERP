@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
-import { StockLevelsEndpoints, StockItemsEndpoints, WarehousesEndpoints } from "@rutba/api-provider/endpoints";
+import { StockLevelsEndpoints, StockItemsEndpoints } from "@rutba/api-provider/endpoints";
 
 // Admin maintenance jobs — each is an idempotent, server-side reconcile exposed
 // by the Foundation. They post to auth:false routes that enforce admin manually,
@@ -12,7 +12,7 @@ const JOBS = [
         icon: "fa-layer-group",
         border: "border-info",
         title: "Rebuild stock-level cache",
-        desc: "Recompute the per-(product, warehouse) on-hand cache from live stock-items. Run after suspected drift.",
+        desc: "Recompute the per-(product, branch) on-hand cache from live stock-items. Run after suspected drift.",
         run: () => StockLevelsEndpoints.recompute(),
         confirm: "Rebuild the entire stock-level cache now?",
     },
@@ -30,8 +30,8 @@ const JOBS = [
         icon: "fa-warehouse",
         border: "border-success",
         title: "Backfill default locations",
-        desc: "Ensure every branch has a default warehouse + receiving bin, place any unplaced stock-items, and rebuild levels. Idempotent.",
-        run: () => WarehousesEndpoints.backfillDefaultLocations(),
+        desc: "Ensure every branch has a default receiving bin, place any unplaced stock-items, and rebuild levels. Idempotent.",
+        run: () => StockItemsEndpoints.backfillDefaultLocations(),
         confirm: "Run the default-location backfill now? (Idempotent — only touches unplaced items.)",
     },
 ];

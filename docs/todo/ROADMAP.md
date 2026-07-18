@@ -38,8 +38,10 @@ _Date: 2026-07-10. Consolidates [market-strategy](./market-strategy/README.md) (
 ④Platform       (design tenancy)    (tenancy spike)       multi-tenancy,        app marketplace,
  (SaaS)                                                   onboarding, billing,  per-tenant theming,
                                                           tenant admin          white-label
-⑤Growth         CRM core buildout   rutba-campaigns,      private Drive/        agent-commerce (MCP),
- modules        (timeline+segments) CRM pipeline          sharing               social/marketplace depth
+⑤Growth         CRM core buildout   rutba-campaigns,      +more channels/       PLM + SRM (apparel),
+ modules        (timeline+segments) CRM pipeline,         regions, private      agent-commerce (MCP),
+                                    Amazon+eBay           Drive/sharing         social/marketplace depth
+                                    marketplace conn.
 ```
 
 ---
@@ -67,12 +69,13 @@ Close the gaps every competitor already fills (AI, analytics) and turn on the Wh
 
 | # | Item | Track | Why / gate | Depends on | Size |
 |---|------|-------|-----------|-----------|------|
-| 1.1 | **AI copilot MVP** — NL query over sales/inventory/finance; draft descriptions; smart reorder hints. Claude-first, model-agnostic layer, **AI included (not paywalled)** | ③ | Rutba ships zero AI while every rival ships copilots — the single biggest competitive gap | pos-strapi data, analytics (1.2) | L |
+| 1.1 | **AI copilot MVP** — NL query over sales/inventory/finance; draft descriptions; smart reorder hints. Claude-first, model-agnostic layer, **AI included (not paywalled)**. Aim for automated **synthesis** (generate the report/plan), not just Q&A — the "AI-OS" frame (cf. KeychainOS) | ③ | Rutba ships zero AI while every rival ships copilots — the single biggest competitive gap | pos-strapi data, analytics (1.2) | L |
 | 1.2 | **Analytics / BI layer** (`rutba-analytics`) — cross-module dashboards, replenishment forecast, financial-exception detection | ③ | No analytics app exists (RANALYTICS gap); also powers CRM dashboards & the copilot | Strapi data | L |
 | 1.3 | **WhatsApp commerce** — catalog, order-taking, order/shipping notifications, post-sale funnels | ②/⑤ | Core South-Asia channel, not a side feature | notification svc, rutba-social | M |
 | 1.4 | **`rutba-campaigns`** — email template studio + audiences + campaigns over Rutba-MTA | ⑤ | Rutba-MTA (send engine) already ported; this is the tenant UI | Rutba-MTA, CRM segments (0.6) | M |
 | 1.5 | **CRM pipeline** — opportunity/deal/stage/kanban (net-new; RightApp only faked it) | ⑤ | Completes CRM to competitive standard | CRM core (0.6) | M |
 | 1.6 | **Tracked email-on-activity** — CRM ↔ Rutba-MTA opens/clicks | ⑤ | Ties CRM + campaigns + analytics together | 1.2, 1.4 | S |
+| 1.7 | **Marketplace connector framework + Amazon + eBay** — generalize the existing provider-adapter (Daraz done) into a channel-connector layer; add **Amazon SP-API** and **eBay Sell API**: listing/catalog sync, order ingest, inventory + price push, settlement reconciliation, per-account region config | ②/⑤ | Omnichannel selling is table stakes (Cin7/Shopify lead with it); multiplies reach per region and rides the multi-country/regional seeding layer already being built | rutba-marketplace + worker (exist), product catalog, marketplace-* CTs | L |
 
 **H1 exit gate:** a demo of Rutba shows an AI copilot, live dashboards, and WhatsApp+email marketing — i.e. it no longer looks a generation behind Odoo/Zoho/Shopify.
 
@@ -99,13 +102,15 @@ rutba.pk works single-tenant; selling to tenant #2 needs the platform layer. Thi
 | # | Item | Track | Why | Depends on | Size |
 |---|------|-------|-----|-----------|------|
 | 3.1 | **Native commerce⇄manufacturing unification** — one ledger raw-material → production → stock → POS/online sale | ② | The seam Katana/Cin7/Fishbowl leave (they bolt onto Shopify/QuickBooks) — Rutba's genuine differentiator | mfg-*, stock-*, sale-* | L |
-| 3.2 | **Vertical starter packs** — apparel/tailoring (flagship), grocery, pharmacy, restaurant | ② | Candela & Odoo sell by vertical edition; cuts onboarding time | 2.2 | M |
+| 3.2 | **Vertical starter packs** — **apparel/tailoring = _the_ flagship** (go deep, don't spread thin — cf. Keychain's CPG-food depth), then grocery, pharmacy, restaurant | ② | Candela & Odoo sell by vertical edition; depth in one vertical beats breadth; cuts onboarding time; leverages the industry-onboarding-pack seeding | 2.2, seeding packs | M |
 | 3.3 | **App / module marketplace + per-tenant theming** — installable catalog, white-label for resellers | ④ | Monetizes the breadth; enables reseller channel | 2.1, 2.4 | L |
 | 3.4 | **B2B / wholesale** — company accounts, price lists, payment terms | ② | Shopify made B2B standard in 2026; Rutba has buy-side, extend to sell-side | 2.1 | M |
 | 3.5 | **Agentic AI actions** — auto-reorder, auto-reconcile, month-end assist | ③ | Buyers now ask for an agentic roadmap (NetSuite/Shopify set the expectation) | 1.1, 1.2 | L |
 | 3.6 | **Embedded finance / BNPL** — installments at checkout (KalPay/Alfa-style) | ① | Early-mover edge for higher-ticket apparel | 0.2 | M |
 | 3.7 | **Private Drive + sharing** — user file storage + PIN/signed share links | ⑤ | RSTORAGE-style capability; build on Rutba-Media-FileServer's visibility primitives | Rutba-Media-FileServer | M |
 | 3.8 | **Agent-facing commerce (MCP)** — catalog into ChatGPT/Perplexity/Copilot | ⑤ | Watch/keep catalog MCP-exportable; act when the channel matures | catalog | S (watch) |
+| 3.9 | **PLM / product-development + SRM** — design→tech-pack/spec→sample→BOM→sourcing→launch lifecycle, upstream of production; supplier relationship management (discovery, scorecards, source-of-truth) beyond transactional purchase | ② | The upstream Rutba lacks (today = production execution only); a real differentiator for made-to-order **apparel** (cf. Keychain 360's private-label PLM); pull earlier if apparel is the flagship | mfg-*, purchase/supplier, product | L |
+| 3.10 | **Channel & region expansion** — more marketplaces on the 1.7 framework (Shopify, WooCommerce, Walmart, Etsy) + **per-region Amazon marketplaces** (US/UK/EU/GCC…); per-tenant channel accounts | ②/⑤ | Turns the connector layer into a multi-region omnichannel selling story for the SaaS; rides the regional tax/shipping seeding layer | 1.7, 2.1 (multi-tenancy), regional seeding | M |
 
 ---
 
@@ -122,7 +127,8 @@ Everything else sequences around these three spines.
 - **Why H0 before selling:** shipping a half-built payroll/GL or non-compliant invoices to a paying tenant is reputational risk; fix on your own operation first.
 - **Why AI/analytics (H1) before multi-tenancy (H2):** parity features are smaller, demoable, and de-risk the value proposition before the expensive tenancy rebuild.
 - **Multi-tenancy is the long pole (XL):** design it in H0/H1 (a spike) even though you build it in H2 — retrofitting isolation is far costlier than designing for it. Keep [[project_erp_generic_vs_rutba_pk_implementation]] discipline (generic product vs tenant data) — it's the pre-work that makes 2.1 tractable.
-- **Keep PK specifics pluggable (2.5):** or the beachhead moat becomes a global-expansion anchor.
+- **Keep PK specifics pluggable (2.5):** or the beachhead moat becomes a global-expansion anchor. The **multi-country/regional seeding layer** (tax profiles + shipping) + industry-onboarding packs already in the repo are the substrate for this — per-region marketplace accounts (1.7/3.10) plug into the same regional model.
+- **Marketplace connectors are a wedge, not an afterthought:** omnichannel (own store + POS + Amazon + eBay + Daraz) is a headline SME-ERP feature the specialists (Cin7) lead with. Build the **framework once** (1.7) so each new channel/region is config, not a rewrite — this is what makes the global multi-region SaaS story real. Start with Amazon + eBay; fan out in 3.10.
 - **Don't chase up-market depth:** the story is "start in minutes, grow for years," not "enterprise ERP." Resist scope that pulls toward NetSuite/SAP territory.
 
 ## Cross-references

@@ -78,5 +78,4 @@ export { SuppliersEndpoints } from './suppliers.js';
 export { TermsEndpoints } from './terms.js';
 export { TermTypesEndpoints } from './term-types.js';
 export { UploadEndpoints } from './upload.js';
-export { WarehousesEndpoints } from './warehouses.js';
 export { WebOrdersEndpoints } from './web-orders.js';

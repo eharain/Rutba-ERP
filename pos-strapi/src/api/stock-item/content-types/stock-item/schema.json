@@ -114,12 +114,6 @@
       "target": "api::mfg-work-order.mfg-work-order",
       "inversedBy": "finished_stock_items"
     },
-    "warehouse": {
-      "type": "relation",
-      "relation": "manyToOne",
-      "target": "api::warehouse.warehouse",
-      "inversedBy": "stock_items"
-    },
     "storage_location": {
       "type": "relation",
       "relation": "manyToOne",

@@ -25,7 +25,6 @@ const { backfillInventoryFoundation } = require('../src/seed/seeders/inventory-f
 const STOCK_ITEM = 'api::stock-item.stock-item';
 const STOCK_LEVEL = 'api::stock-level.stock-level';
 const PRODUCT = 'api::product.product';
-const WAREHOUSE = 'api::warehouse.warehouse';
 const LOCATION = 'api::storage-location.storage-location';
 
 async function main() {
@@ -37,7 +36,6 @@ async function main() {
     const svc = app.service(STOCK_ITEM);
 
     out.before = {
-      warehouses: await app.db.query(WAREHOUSE).count(),
       locations: await app.db.query(LOCATION).count(),
       stockLevels: await app.db.query(STOCK_LEVEL).count(),
       stockItems: await app.db.query(STOCK_ITEM).count(),
@@ -49,21 +47,20 @@ async function main() {
     out.backfill = seeded.backfill;
 
     out.after = {
-      warehouses: await app.db.query(WAREHOUSE).count(),
       locations: await app.db.query(LOCATION).count(),
       stockLevels: await app.db.query(STOCK_LEVEL).count(),
     };
 
     out.unplacedItemsRemaining = await app.db.query(STOCK_ITEM).count({
-      where: { warehouse: null },
+      where: { storage_location: null },
     });
 
     // Edition-proof invariant: Σ stock-level.quantity_on_hand must equal the
-    // count of InStock units that CAN belong to a (product, warehouse) bucket —
-    // excluding orphan (no product) and unplaced (no warehouse) items, which are
-    // likewise absent from product.stock_quantity.
+    // count of InStock units that CAN belong to a (product, branch) bucket —
+    // excluding orphan (no product) and branch-less items, which are likewise
+    // absent from the per-branch stock-level cache.
     const prodLnk = svc._relJoinInfo(STOCK_ITEM, 'product');
-    const whLnk = svc._relJoinInfo(STOCK_ITEM, 'warehouse');
+    const brLnk = svc._relJoinInfo(STOCK_ITEM, 'branch');
     const stockTable = app.db.metadata.get(STOCK_ITEM).tableName;
     const knex = app.db.connection;
 
@@ -77,7 +74,7 @@ async function main() {
         .whereRaw("si.status = 'InStock'")
         .andWhereRaw('(si.archived = 0 or si.archived is null)')
         .whereExists(function () { this.select(1).from(`${prodLnk.table} as p`).whereRaw(`p.${prodLnk.itemCol} = si.id`); })
-        .whereExists(function () { this.select(1).from(`${whLnk.table} as w`).whereRaw(`w.${whLnk.itemCol} = si.id`); })
+        .whereExists(function () { this.select(1).from(`${brLnk.table} as b`).whereRaw(`b.${brLnk.itemCol} = si.id`); })
         .count({ c: '*' }).first();
       eligibleInStock = Number(row.c);
     } catch (err) {
@@ -95,13 +92,13 @@ async function main() {
       match: eligibleInStock === globalSumLevels,
     };
 
-    // Duplicate detection (edition-proof): at most one warehouse-level
-    // stock-level row per (product-document, warehouse).
+    // Duplicate detection (edition-proof): at most one branch-level
+    // stock-level row per (product-document, branch).
     const levelRows = await app.db.query(STOCK_LEVEL).findMany({
       select: ['id'],
       populate: {
         product: { select: ['documentId'] },
-        warehouse: { select: ['id'] },
+        branch: { select: ['id'] },
         storage_location: { select: ['id'] },
         batch: { select: ['id'] },
       },
@@ -111,13 +108,13 @@ async function main() {
     let finerGrainedRows = 0;
     for (const r of levelRows || []) {
       if (r.storage_location?.id || r.batch?.id) { finerGrainedRows += 1; continue; }
-      const k = `${r.product?.documentId || '?'}|${r.warehouse?.id || 0}`;
+      const k = `${r.product?.documentId || '?'}|${r.branch?.id || 0}`;
       if (keys.has(k)) duplicateRows += 1;
       else keys.add(k);
     }
     out.stockLevelRows = {
       total: (levelRows || []).length,
-      warehouseLevelDistinct: keys.size,
+      branchLevelDistinct: keys.size,
       duplicateRows,
       finerGrainedRows,
     };

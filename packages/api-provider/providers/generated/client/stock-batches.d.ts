@@ -1,6 +1,6 @@
 // AUTO-GENERATED — do not edit. Source: scaffold-endpoint-providers.mjs
 export interface StockBatchesEndpointsType {
-    list(page?: any, pageSize?: any, { productDocId, statusFilter, warehouseDocId, expiringBefore, searchTerm, sort }?: any): Promise<any>;
+    list(page?: any, pageSize?: any, { productDocId, statusFilter, branchDocId, expiringBefore, searchTerm, sort }?: any): Promise<any>;
     byId(documentId: any): Promise<any>;
     create(data: any): Promise<any>;
     update(documentId: any, data: any): Promise<any>;

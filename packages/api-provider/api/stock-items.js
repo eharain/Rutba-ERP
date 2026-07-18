@@ -286,11 +286,27 @@ export const StockItemsEndpoints = {
 
     /**
      * Inventory valuation report (serialized cost_price + bulk batch value), by
-     * warehouse. Manager/admin only; auth:false route + manual role gate.
+     * branch. Manager/admin only; auth:false route + manual role gate.
      */
-    valuation: ({ warehouseDocId } = {}) => ({
-        path: `/stock-items/valuation${warehouseDocId ? `?warehouse=${warehouseDocId}` : ''}`,
+    valuation: ({ branchDocId } = {}) => ({
+        path: `/stock-items/valuation${branchDocId ? `?branch=${branchDocId}` : ''}`,
         params: {},
+    }),
+
+    /**
+     * Admin backfill: ensure every branch has a default receiving storage-location
+     * and place every unplaced stock-item into it, then rebuild the stock-level
+     * cache. Idempotent. (auth:false route + manual admin check; action:'create'
+     * satisfies the api-pro verb whitelist like recomputeProductStock.) Relocated
+     * here when warehouse merged into branch.
+     */
+    backfillDefaultLocations: () => ({
+        path: '/stock-items/backfill-default-locations',
+        action: 'create',
+        method: 'post',
+        apps: ['inventory', 'stock'],
+        approle: ['admin'],
+        data: {},
     }),
 
     /**

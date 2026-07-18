@@ -5,7 +5,7 @@
     "singularName": "reorder-policy",
     "pluralName": "reorder-policies",
     "displayName": "Reorder Policy",
-    "description": "Per-(product, warehouse) replenishment policy: min/max/safety-stock, method, and how to source the replenishment. A null warehouse is the product-wide default."
+    "description": "Per-(product, branch) replenishment policy: min/max/safety-stock, method, and how to source the replenishment. A null branch is the product-wide default."
   },
   "options": {
     "draftAndPublish": false
@@ -17,10 +17,10 @@
       "relation": "manyToOne",
       "target": "api::product.product"
     },
-    "warehouse": {
+    "branch": {
       "type": "relation",
       "relation": "manyToOne",
-      "target": "api::warehouse.warehouse"
+      "target": "api::branch.branch"
     },
     "method": {
       "type": "enumeration",
@@ -62,10 +62,10 @@
       ],
       "default": "Purchase"
     },
-    "source_warehouse": {
+    "source_branch": {
       "type": "relation",
       "relation": "manyToOne",
-      "target": "api::warehouse.warehouse"
+      "target": "api::branch.branch"
     },
     "is_active": {
       "type": "boolean",

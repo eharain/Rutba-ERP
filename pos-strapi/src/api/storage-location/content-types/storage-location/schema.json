@@ -5,7 +5,7 @@
     "singularName": "storage-location",
     "pluralName": "storage-locations",
     "displayName": "Storage Location",
-    "description": "A bin / shelf / zone inside a warehouse. Self-referential tree: zone -> aisle -> rack -> shelf -> bin."
+    "description": "A bin / shelf / zone inside a branch. Self-referential tree: zone -> aisle -> rack -> shelf -> bin."
   },
   "options": {
     "draftAndPublish": false
@@ -43,10 +43,10 @@
       "type": "boolean",
       "default": true
     },
-    "warehouse": {
+    "branch": {
       "type": "relation",
       "relation": "manyToOne",
-      "target": "api::warehouse.warehouse",
+      "target": "api::branch.branch",
       "inversedBy": "locations"
     },
     "parent": {

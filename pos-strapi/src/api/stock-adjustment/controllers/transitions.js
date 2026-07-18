@@ -39,7 +39,7 @@ async function loadAdjustment(strapi, ref) {
     where,
     select: ['id', 'documentId', 'status', 'type', 'adjustment_number', 'gl_posted', 'adjusted_item_ids'],
     populate: {
-      warehouse: { select: ['id', 'documentId', 'name'], populate: { branch: { select: ['id'] } } },
+      branch: { select: ['id', 'documentId', 'name'] },
       stock_items: { select: ['id', 'documentId', 'status', 'cost_price'] },
     },
   });
@@ -58,7 +58,7 @@ async function postLossGL(strapi, adj, units, user) {
     const total = units.reduce((s, u) => s + (Number(u.cost_price) || 0), 0);
     if (!(total > 0)) return { posted: false, reason: 'zero cost basis' };
 
-    const branchId = adj.warehouse?.branch?.id || null;
+    const branchId = adj.branch?.id || null;
     let invAcc, expAcc;
     try {
       invAcc = await resolver.resolve('INVENTORY', branchId);

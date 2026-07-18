@@ -5,7 +5,7 @@
     "singularName": "stock-count",
     "pluralName": "stock-counts",
     "displayName": "Stock Count",
-    "description": "Physical cycle count / stock-take of a warehouse. Post compares counted vs system per product and books shortages as losses (units -> Lost)."
+    "description": "Physical cycle count / stock-take of a branch. Post compares counted vs system per product and books shortages as losses (units -> Lost)."
   },
   "options": {
     "draftAndPublish": false
@@ -30,10 +30,10 @@
     "posted_at": {
       "type": "datetime"
     },
-    "warehouse": {
+    "branch": {
       "type": "relation",
       "relation": "manyToOne",
-      "target": "api::warehouse.warehouse"
+      "target": "api::branch.branch"
     },
     "lines": {
       "type": "component",

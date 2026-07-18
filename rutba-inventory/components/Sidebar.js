@@ -6,7 +6,7 @@ import SharedSidebar from "@rutba/pos-shared/components/Sidebar";
 // / stock-levels / stock-batches) is live and reachable via the API.
 const SECTIONS = [
     { href: "/", label: "Dashboard", icon: "fa-gauge" },
-    { href: "/warehouses", label: "Warehouses & Locations", icon: "fa-warehouse" },
+    { href: "/branches", label: "Branches & Locations", icon: "fa-warehouse" },
     { href: "/stock-levels", label: "Stock by Location", icon: "fa-layer-group" },
     { href: "/transfers", label: "Transfers", icon: "fa-right-left" },
     { href: "/adjustments", label: "Adjustments", icon: "fa-sliders" },

@@ -44,6 +44,14 @@ module.exports = {
     },
     {
       method: 'POST',
+      path: '/stock-items/backfill-default-locations',
+      handler: 'backfill.run',
+      config: {
+        auth: false,
+      },
+    },
+    {
+      method: 'POST',
       path: '/stock-items/transfer',
       handler: 'transfer.run',
       config: {

@@ -7,13 +7,13 @@ import Link from "next/link";
 // stock-level cache) is live; these feature screens ship across the Inventory
 // epics. Cards are informational until their screen lands.
 const FEATURES = [
-    { icon: "fa-warehouse",        border: "border-primary",   color: "text-primary",   title: "Warehouses & Locations", desc: "Manage warehouses and the storage-location (bin) hierarchy.", ready: true, href: "/warehouses" },
-    { icon: "fa-layer-group",      border: "border-info",      color: "text-info",      title: "Stock by Location",      desc: "Per-(product, warehouse) on-hand levels, drilling into units.", ready: true, href: "/stock-levels" },
-    { icon: "fa-right-left",       border: "border-success",   color: "text-success",   title: "Transfers",              desc: "Two-sided stock transfers between warehouses with in-transit tracking.", ready: true, href: "/transfers" },
+    { icon: "fa-warehouse",        border: "border-primary",   color: "text-primary",   title: "Branches & Locations",   desc: "Manage branches and the storage-location (bin) hierarchy.", ready: true, href: "/branches" },
+    { icon: "fa-layer-group",      border: "border-info",      color: "text-info",      title: "Stock by Location",      desc: "Per-(product, branch) on-hand levels, drilling into units.", ready: true, href: "/stock-levels" },
+    { icon: "fa-right-left",       border: "border-success",   color: "text-success",   title: "Transfers",              desc: "Two-sided stock transfers between branches with in-transit tracking.", ready: true, href: "/transfers" },
     { icon: "fa-sliders",          border: "border-warning",   color: "text-warning",   title: "Adjustments",            desc: "Write-offs, damage, loss and expiry with best-effort GL posting.", ready: true, href: "/adjustments" },
     { icon: "fa-clipboard-check",  border: "border-secondary", color: "text-secondary", title: "Cycle Counts",           desc: "Physical stock-takes; shortages book unit losses. Plus cache reconcile in Maintenance.", ready: true, href: "/counts" },
     { icon: "fa-cart-arrow-down",  border: "border-danger",    color: "text-danger",    title: "Reordering",             desc: "Low-stock & out-of-stock products with reorder suggestions.", ready: true, href: "/reorder" },
-    { icon: "fa-coins",            border: "border-warning",   color: "text-warning",   title: "Valuation",              desc: "Inventory value by warehouse and top products.", ready: true, href: "/valuation" },
+    { icon: "fa-coins",            border: "border-warning",   color: "text-warning",   title: "Valuation",              desc: "Inventory value by branch and top products.", ready: true, href: "/valuation" },
     { icon: "fa-hourglass-half",   border: "border-danger",    color: "text-danger",    title: "Expiry & Batches",       desc: "Batch/lot expiry tracking, expiring-soon alerts and expired sweep.", ready: true, href: "/expiry" },
 ];
 
@@ -23,7 +23,7 @@ export default function Home() {
             <Layout>
                 <h2>Welcome to Rutba Inventory 📦</h2>
                 <p className="text-muted mb-4">
-                    Warehouses and bins, per-location stock levels, transfers, adjustments,
+                    Branches and bins, per-location stock levels, transfers, adjustments,
                     cycle counts, batch/expiry and reordering — the control centre for inventory.
                 </p>
 

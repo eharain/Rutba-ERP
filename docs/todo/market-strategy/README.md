@@ -36,6 +36,16 @@ The one thing 2025-26 market research makes clear: **no single vendor cleanly ow
 
 **Market meta-trend every one of them is chasing (and Rutba isn't yet):** embedded AI → **agentic AI**. Copilots became table stakes in 2025; by late 2025 the frontier is autonomous multi-step agents (NetSuite Autonomous Close, Shopify agentic storefronts, Zoho Agent Studio, Odoo AI agents). Gartner: ~80% of ERPs bundle GenAI by 2028. **This is the race Rutba most needs a credible entry in.**
 
+### Reference class — AI-native vertical ecosystems (Keychain)
+Not a competitor (US/India **enterprise CPG**, $30M+ raised) but strong **validation + ambition-setting** for Rutba's bets. Keychain ships a three-product ecosystem: **Search & Discovery** (brand↔manufacturer marketplace), **KeychainOS** (AI-native OS to _run_ manufacturing — food-safety/compliance, procurement, inventory, planning), and **Keychain 360** (retailer-side **PLM** to develop/manage private-label brands). What it validates:
+- **AI-native "OS" that _replaces_ legacy ERP** ("deploys in days vs months," "automated synthesis," natural-language-first) — reframe Rutba's AI copilot from a Q&A bot to an automated-synthesis layer.
+- **Go deep on one vertical** (Keychain = CPG food) → Rutba's analog is **apparel/made-to-order as the flagship**, not one of four.
+- **Compliance-as-AI** (quant data → audit-ready report) maps onto Rutba's **FBR** opportunity — AI-generated tax/compliance reports, a differentiator not a checkbox.
+- **PLM / product-development + SRM** (Keychain 360) is a capability class Rutba lacks (it has production execution, not design→spec→sample→launch) — a real edge for apparel. _Park_ the two-sided sourcing marketplace (different, capital-heavy game).
+
+### Omnichannel / marketplace as a wedge
+Multichannel selling (own store + POS + **Amazon + eBay + Daraz** + more) is a headline SME-ERP feature the inventory specialists (Cin7, 700+ integrations) lead with, and it's the natural expression of the **multi-country/regional** ambition. Rutba already has a Daraz connector + provider-adapter architecture; generalizing it into a **channel-connector framework** (build once, each channel/region is config) turns breadth into the global omnichannel story. Amazon (SP-API, per-region marketplaces) + eBay (Sell API) are the priority additions — see roadmap 1.7 / 3.10.
+
 ---
 
 ## 3. What to build — Tier 0: Pakistan entry tickets (non-negotiable for the beachhead)

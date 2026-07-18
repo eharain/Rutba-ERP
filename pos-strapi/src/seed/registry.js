@@ -313,7 +313,7 @@ const REGISTRY = [
     },
     {
         key: 'inventory-foundation',
-        title: 'Inventory foundation backfill (default warehouses/locations + stock-level cache)',
+        title: 'Inventory foundation backfill (default branch locations + stock-level cache)',
         category: 'backfill',
         essential: false,
         supportsPartial: true,

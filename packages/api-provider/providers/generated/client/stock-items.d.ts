@@ -17,7 +17,8 @@ export interface StockItemsEndpointsType {
     recomputeProductStock(): Promise<any>;
     getExpiring(days?: any): Promise<any>;
     sweepExpired(): Promise<any>;
-    valuation({ warehouseDocId }?: any): Promise<any>;
+    valuation({ branchDocId }?: any): Promise<any>;
+    backfillDefaultLocations(): Promise<any>;
     transfer(payload?: any): Promise<any>;
     sellUnits({ productDocId, qty, scannedItemDocId, saleItemDocId }?: any): Promise<any>;
     returnUnits({ saleItemDocId, qty }?: any): Promise<any>;

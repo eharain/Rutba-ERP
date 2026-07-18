@@ -43,7 +43,7 @@ module.exports = {
         expiry_date: { $notNull: true, $lte: horizon(days) },
       },
       fields: ['id', 'documentId', 'barcode', 'sku', 'expiry_date', 'status'],
-      populate: { product: { fields: ['name', 'sku'] }, warehouse: { fields: ['name'] }, batch: { fields: ['batch_code'] } },
+      populate: { product: { fields: ['name', 'sku'] }, branch: { fields: ['name'] }, batch: { fields: ['batch_code'] } },
       sort: { expiry_date: 'asc' },
       limit: 500,
     });

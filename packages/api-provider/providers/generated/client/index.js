@@ -95,7 +95,6 @@ export * from './suppliers.js';
 export * from './term-types.js';
 export * from './terms.js';
 export * from './upload.js';
-export * from './warehouses.js';
 export * from './web-orders.js';
 export * from './work-item-activities.js';
 export * from './work-item-comments.js';

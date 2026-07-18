@@ -1,11 +1,11 @@
 'use strict';
 
 /**
- * GET /stock-items/valuation?warehouse=<documentId>
+ * GET /stock-items/valuation?branch=<documentId>
  *
  * Inventory valuation report (Epic 2) — specific-identification on-hand value:
  * serialized (Σ InStock cost_price) + bulk (Σ Active batch remaining × unit_cost),
- * broken down by warehouse. Financial data → admin/manager only. Auth enforced
+ * broken down by branch. Financial data → admin/manager only. Auth enforced
  * manually (auth:false route).
  */
 
@@ -43,10 +43,10 @@ module.exports = {
       return ctx.forbidden('Inventory / accounts manager access is required');
     }
 
-    const warehouseDocId = ctx.query?.warehouse || null;
+    const branchDocId = ctx.query?.branch || null;
     const report = await strapi
       .service(STOCK_ITEM_UID)
-      .computeInventoryValuation({ warehouseDocId });
+      .computeInventoryValuation({ branchDocId });
 
     return ctx.send({ success: true, ...report });
   },

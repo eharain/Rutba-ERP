@@ -1,18 +1,20 @@
 'use strict';
 
 /**
- * POST /warehouses/backfill-default-locations
+ * POST /stock-items/backfill-default-locations
  *
- * Admin-triggered one-time job that gives every branch a default warehouse +
- * receiving location, places every unplaced stock-item into its branch's
- * defaults, then rebuilds the stock-level cache. Idempotent — safe to re-run;
- * it only touches stock-items that lack a warehouse.
+ * Admin-triggered one-time job that gives every branch a default receiving
+ * storage-location, places every stock-item that lacks a location into its
+ * branch's receiving loc (branch-less items also get a fallback branch), then
+ * rebuilds the stock-level cache. Idempotent — safe to re-run; it only touches
+ * stock-items that lack a location.
  *
- * This is the Foundation backfill (Epic 2 Phase 1). It runs on demand rather
- * than at boot so a large catalog isn't migrated during startup, and so it can
- * be re-triggered after suspected drift. Auth is enforced manually (auth: false
- * on the route) so Strapi doesn't reject the custom action name — same pattern
- * as stock-items/recompute-product-stock and stock-items/transfer.
+ * This is the Foundation backfill (Epic 2 Phase 1), relocated off the retired
+ * /warehouses resource when warehouse merged into branch. It runs on demand
+ * rather than at boot so a large catalog isn't migrated during startup, and so
+ * it can be re-triggered after suspected drift. Auth is enforced manually
+ * (auth: false on the route) so Strapi doesn't reject the custom action name —
+ * same pattern as stock-items/recompute-product-stock and stock-items/transfer.
  */
 
 async function ensureUser(ctx, strapi) {
@@ -65,8 +67,8 @@ module.exports = {
       .backfillDefaultLocations();
 
     strapi.log.info(
-      `[warehouses/backfill-default-locations] triggered by ${user.email || user.username || user.id} — ` +
-      `warehousesCreated=${summary.warehousesCreated} locationsCreated=${summary.locationsCreated} ` +
+      `[stock-items/backfill-default-locations] triggered by ${user.email || user.username || user.id} — ` +
+      `branchesCreated=${summary.branchesCreated} locationsCreated=${summary.locationsCreated} ` +
       `itemsPlaced=${summary.itemsPlaced} ms=${summary.durationMs}`
     );
 

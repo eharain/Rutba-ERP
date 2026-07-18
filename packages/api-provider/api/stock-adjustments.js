@@ -11,7 +11,7 @@ export const StockAdjustmentsEndpoints = {
         roles: ['admin', 'manager', 'staff'],
     },
 
-    list: (page = 1, pageSize = 50, { statusFilter, typeFilter, warehouseDocId, searchTerm, sort } = {}) => {
+    list: (page = 1, pageSize = 50, { statusFilter, typeFilter, branchDocId, searchTerm, sort } = {}) => {
         const term = typeof searchTerm === 'string' ? searchTerm.trim() : '';
         return {
             path: '/stock-adjustments',
@@ -23,10 +23,10 @@ export const StockAdjustmentsEndpoints = {
                 filters: {
                     ...(statusFilter ? { status: statusFilter } : {}),
                     ...(typeFilter ? { type: typeFilter } : {}),
-                    ...(warehouseDocId ? { warehouse: { documentId: warehouseDocId } } : {}),
+                    ...(branchDocId ? { branch: { documentId: branchDocId } } : {}),
                     ...(term ? { $or: [{ adjustment_number: { $containsi: term } }, { reason: { $containsi: term } }] } : {}),
                 },
-                populate: { warehouse: true, stock_items: { count: true } },
+                populate: { branch: true, stock_items: { count: true } },
                 sort: sort ?? ['createdAt:desc'],
                 pagination: { page, pageSize },
             },
@@ -40,7 +40,7 @@ export const StockAdjustmentsEndpoints = {
         apps: ['inventory', 'stock'],
         approle: ['admin', 'manager', 'staff'],
         params: {
-            populate: { warehouse: true, stock_items: { populate: { product: true } } },
+            populate: { branch: true, stock_items: { populate: { product: true } } },
         },
     }),
 

@@ -53,10 +53,10 @@
     "adjusted_item_ids": {
       "type": "json"
     },
-    "warehouse": {
+    "branch": {
       "type": "relation",
       "relation": "manyToOne",
-      "target": "api::warehouse.warehouse"
+      "target": "api::branch.branch"
     },
     "stock_items": {
       "type": "relation",

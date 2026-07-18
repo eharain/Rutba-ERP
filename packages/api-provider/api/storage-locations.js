@@ -1,7 +1,7 @@
 /**
  * StorageLocationsEndpoints
  * Pure endpoint descriptors for the /storage-locations resource — the bin /
- * shelf / zone tree inside a warehouse (Inventory Foundation F1).
+ * shelf / zone tree inside a branch (Inventory Foundation F1).
  */
 export const StorageLocationsEndpoints = {
 
@@ -11,7 +11,7 @@ export const StorageLocationsEndpoints = {
         roles: ['admin', 'manager', 'staff'],
     },
 
-    list: (page = 1, pageSize = 200, { warehouseDocId, parentDocId, typeFilter, activeOnly, searchTerm, sort } = {}) => {
+    list: (page = 1, pageSize = 200, { branchDocId, parentDocId, typeFilter, activeOnly, searchTerm, sort } = {}) => {
         const term = typeof searchTerm === 'string' ? searchTerm.trim() : '';
         return {
             path: '/storage-locations',
@@ -21,13 +21,13 @@ export const StorageLocationsEndpoints = {
             approle: ['admin', 'manager', 'staff'],
             params: {
                 filters: {
-                    ...(warehouseDocId ? { warehouse: { documentId: warehouseDocId } } : {}),
+                    ...(branchDocId ? { branch: { documentId: branchDocId } } : {}),
                     ...(parentDocId ? { parent: { documentId: parentDocId } } : {}),
                     ...(typeFilter ? { type: typeFilter } : {}),
                     ...(activeOnly ? { is_active: true } : {}),
                     ...(term ? { $or: [{ name: { $containsi: term } }, { code: { $containsi: term } }] } : {}),
                 },
-                populate: { warehouse: true, parent: true },
+                populate: { branch: true, parent: true },
                 sort: sort ?? ['code:asc'],
                 pagination: { page, pageSize },
             },
@@ -41,7 +41,7 @@ export const StorageLocationsEndpoints = {
         apps: ['inventory', 'stock'],
         approle: ['admin', 'manager', 'staff'],
         params: {
-            populate: { warehouse: true, parent: true, children: true },
+            populate: { branch: true, parent: true, children: true },
         },
     }),
 

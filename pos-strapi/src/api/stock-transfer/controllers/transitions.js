@@ -4,16 +4,16 @@
  * Stock-transfer state transitions — dispatch / receive / cancel.
  *
  * Serialized model: a transfer holds a set of stock-items. On dispatch each unit
- * goes InStock -> Transferred (in-transit; not counted in any warehouse on-hand).
+ * goes InStock -> Transferred (in-transit; not counted in any branch on-hand).
  * On receive each in-transit unit goes Transferred -> InStock at the destination
- * warehouse (+ optional destination bin). On cancel, in-transit units revert to
+ * branch (+ optional destination bin). On cancel, in-transit units revert to
  * InStock (they stay at the origin). Every unit mutation is a documents/entity
  * update so the stock-item lifecycle recomputes product.stock_quantity + the
- * per-warehouse stock-level cache.
+ * per-branch stock-level cache.
  *
  * Auth is manual (auth:false on the routes) so Strapi doesn't reject the custom
  * action names — same pattern as stock-items/transfer. Transitions require an
- * inventory/stock app-role (any level — warehouse staff dispatch and receive);
+ * inventory/stock app-role (any level — branch staff dispatch and receive);
  * unrelated authenticated users (e.g. storefront customers) are rejected.
  */
 
@@ -35,8 +35,8 @@ async function loadTransfer(strapi, ref) {
     where,
     select: ['id', 'documentId', 'status', 'transfer_number'],
     populate: {
-      from_warehouse: { select: ['id', 'documentId', 'name'] },
-      to_warehouse: { select: ['id', 'documentId', 'name'] },
+      from_branch: { select: ['id', 'documentId', 'name'] },
+      to_branch: { select: ['id', 'documentId', 'name'] },
       to_location: { select: ['id', 'documentId'] },
       stock_items: { select: ['id', 'documentId', 'status'] },
     },
@@ -82,12 +82,12 @@ module.exports = {
     if (!['InTransit', 'PartiallyReceived'].includes(t.status)) {
       return ctx.badRequest(`Cannot receive a transfer in status ${t.status}`);
     }
-    if (!t.to_warehouse?.id) return ctx.badRequest('Transfer has no destination warehouse');
+    if (!t.to_branch?.id) return ctx.badRequest('Transfer has no destination branch');
 
     let received = 0;
     for (const u of (t.stock_items || [])) {
       if (u.status !== 'Transferred') continue; // only in-transit units
-      const data = { status: 'InStock', warehouse: t.to_warehouse.id };
+      const data = { status: 'InStock', branch: t.to_branch.id };
       if (t.to_location?.id) data.storage_location = t.to_location.id;
       await strapi.entityService.update(STOCK_ITEM_UID, u.id, { data });
       received += 1;

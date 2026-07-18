@@ -69,10 +69,10 @@
       "relation": "manyToOne",
       "target": "api::mfg-work-order.mfg-work-order"
     },
-    "warehouse": {
+    "branch": {
       "type": "relation",
       "relation": "manyToOne",
-      "target": "api::warehouse.warehouse"
+      "target": "api::branch.branch"
     },
     "stock_items": {
       "type": "relation",

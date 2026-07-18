@@ -5,11 +5,11 @@ import { useAuth } from "@rutba/pos-shared/context/AuthContext";
 import { StockLevelsEndpoints } from "@rutba/api-provider/endpoints";
 
 // Inventory valuation v1 — value = Σ (stock-level on-hand × product.cost_price),
-// grouped by warehouse. Approximate: it uses the product's reference cost_price
+// grouped by branch. Approximate: it uses the product's reference cost_price
 // (not per-unit stock_item.cost_price). Rows with a null cost contribute nothing.
 export default function ValuationPage() {
     const { jwt } = useAuth();
-    const [byWarehouse, setByWarehouse] = useState([]);
+    const [byBranch, setByBranch] = useState([]);
     const [topProducts, setTopProducts] = useState([]);
     const [totals, setTotals] = useState({ value: 0, units: 0, rows: 0, missingCost: 0 });
     const [loading, setLoading] = useState(false);
@@ -31,7 +31,7 @@ export default function ValuationPage() {
                 page += 1;
             } while (page <= pageCount && page <= 40); // hard cap 20k rows
 
-            const whMap = new Map();  // warehouse name -> { value, units }
+            const brMap = new Map();  // branch name -> { value, units }
             const prodMap = new Map(); // product key -> { name, sku, units, value }
             let totalValue = 0, totalUnits = 0, missingCost = 0;
 
@@ -44,16 +44,16 @@ export default function ValuationPage() {
                 const value = hasCost ? oh * cost : 0;
                 totalValue += value; totalUnits += oh;
 
-                const whName = r.warehouse?.name || "(unassigned)";
-                const w = whMap.get(whName) || { value: 0, units: 0 };
-                w.value += value; w.units += oh; whMap.set(whName, w);
+                const brName = r.branch?.name || "(unassigned)";
+                const w = brMap.get(brName) || { value: 0, units: 0 };
+                w.value += value; w.units += oh; brMap.set(brName, w);
 
                 const pk = r.product?.documentId || r.product?.id || `row:${r.id}`;
                 const p = prodMap.get(pk) || { name: r.product?.name || "(unnamed)", sku: r.product?.sku || "", units: 0, value: 0 };
                 p.units += oh; p.value += value; prodMap.set(pk, p);
             }
 
-            setByWarehouse([...whMap.entries()].map(([name, v]) => ({ name, ...v })).sort((a, b) => b.value - a.value));
+            setByBranch([...brMap.entries()].map(([name, v]) => ({ name, ...v })).sort((a, b) => b.value - a.value));
             setTopProducts([...prodMap.values()].sort((a, b) => b.value - a.value).slice(0, 25));
             setTotals({ value: totalValue, units: totalUnits, rows: rows.length, missingCost });
         } catch (e) {
@@ -109,12 +109,12 @@ export default function ValuationPage() {
 
                         <div className="row g-4">
                             <div className="col-md-5">
-                                <h6>By warehouse</h6>
+                                <h6>By branch</h6>
                                 <div className="table-responsive">
                                     <table className="table table-sm align-middle">
-                                        <thead><tr><th>Warehouse</th><th className="text-end">Units</th><th className="text-end">Value</th></tr></thead>
+                                        <thead><tr><th>Branch</th><th className="text-end">Units</th><th className="text-end">Value</th></tr></thead>
                                         <tbody>
-                                            {byWarehouse.map((w) => (
+                                            {byBranch.map((w) => (
                                                 <tr key={w.name}><td>{w.name}</td><td className="text-end">{w.units.toLocaleString()}</td><td className="text-end fw-semibold">{money(w.value)}</td></tr>
                                             ))}
                                         </tbody>

@@ -1,6 +1,6 @@
 /**
  * ReorderPoliciesEndpoints
- * Pure endpoint descriptors for /reorder-policies — per-(product, warehouse)
+ * Pure endpoint descriptors for /reorder-policies — per-(product, branch)
  * replenishment policy CRUD + the compute-on-read suggestion engine (Epic 4).
  */
 export const ReorderPoliciesEndpoints = {
@@ -11,7 +11,7 @@ export const ReorderPoliciesEndpoints = {
         roles: ['admin', 'manager', 'staff'],
     },
 
-    list: (page = 1, pageSize = 50, { productDocId, warehouseDocId, sort } = {}) => ({
+    list: (page = 1, pageSize = 50, { productDocId, branchDocId, sort } = {}) => ({
         path: '/reorder-policies',
         action: 'find',
         method: 'get',
@@ -20,9 +20,9 @@ export const ReorderPoliciesEndpoints = {
         params: {
             filters: {
                 ...(productDocId ? { product: { documentId: productDocId } } : {}),
-                ...(warehouseDocId ? { warehouse: { documentId: warehouseDocId } } : {}),
+                ...(branchDocId ? { branch: { documentId: branchDocId } } : {}),
             },
-            populate: { product: true, warehouse: true, preferred_supplier: true, source_warehouse: true },
+            populate: { product: true, branch: true, preferred_supplier: true, source_branch: true },
             sort: sort ?? ['createdAt:desc'],
             pagination: { page, pageSize },
         },
@@ -34,7 +34,7 @@ export const ReorderPoliciesEndpoints = {
         method: 'get',
         apps: ['inventory', 'stock'],
         approle: ['admin', 'manager', 'staff'],
-        params: { populate: { product: true, warehouse: true, preferred_supplier: true, source_warehouse: true } },
+        params: { populate: { product: true, branch: true, preferred_supplier: true, source_branch: true } },
     }),
 
     create: (data) => ({
@@ -67,8 +67,8 @@ export const ReorderPoliciesEndpoints = {
      * Compute-on-read replenishment suggestions (triggered targets, most-deficient
      * first). Route is auth:false + manual auth; handler suggestions.getReorderSuggestions.
      */
-    suggestions: ({ warehouseDocId } = {}) => ({
-        path: `/reorder-policies/suggestions${warehouseDocId ? `?warehouse=${warehouseDocId}` : ''}`,
+    suggestions: ({ branchDocId } = {}) => ({
+        path: `/reorder-policies/suggestions${branchDocId ? `?branch=${branchDocId}` : ''}`,
         action: 'find',
         method: 'get',
         apps: ['inventory', 'stock'],
@@ -78,7 +78,7 @@ export const ReorderPoliciesEndpoints = {
     /**
      * Generate draft purchases (grouped by supplier) from reviewed suggestions.
      * Manager/admin only; route is auth:false + manual role gate.
-     * @param {{ warehouse?: string, suggestions?: Array }} body
+     * @param {{ branch?: string, suggestions?: Array }} body
      */
     generatePurchases: (body = {}) => ({
         path: '/reorder-policies/generate-purchases',
@@ -92,7 +92,7 @@ export const ReorderPoliciesEndpoints = {
     /**
      * Generate draft work-orders (per product's default active BOM) from
      * source=Manufacture suggestions. Manager/admin only; auth:false + role gate.
-     * @param {{ warehouse?: string, suggestions?: Array }} body
+     * @param {{ branch?: string, suggestions?: Array }} body
      */
     generateWorkOrders: (body = {}) => ({
         path: '/reorder-policies/generate-work-orders',

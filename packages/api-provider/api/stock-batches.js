@@ -12,7 +12,7 @@ export const StockBatchesEndpoints = {
         roles: ['admin', 'manager', 'staff'],
     },
 
-    list: (page = 1, pageSize = 50, { productDocId, statusFilter, warehouseDocId, expiringBefore, searchTerm, sort } = {}) => {
+    list: (page = 1, pageSize = 50, { productDocId, statusFilter, branchDocId, expiringBefore, searchTerm, sort } = {}) => {
         const term = typeof searchTerm === 'string' ? searchTerm.trim() : '';
         return {
             path: '/stock-batches',
@@ -23,12 +23,12 @@ export const StockBatchesEndpoints = {
             params: {
                 filters: {
                     ...(productDocId ? { product: { documentId: productDocId } } : {}),
-                    ...(warehouseDocId ? { warehouse: { documentId: warehouseDocId } } : {}),
+                    ...(branchDocId ? { branch: { documentId: branchDocId } } : {}),
                     ...(statusFilter ? { status: statusFilter } : {}),
                     ...(expiringBefore ? { expiry_date: { $lte: expiringBefore } } : {}),
                     ...(term ? { $or: [{ batch_code: { $containsi: term } }] } : {}),
                 },
-                populate: { product: true, supplier: true, warehouse: true },
+                populate: { product: true, supplier: true, branch: true },
                 sort: sort ?? ['expiry_date:asc'],
                 pagination: { page, pageSize },
             },
@@ -42,7 +42,7 @@ export const StockBatchesEndpoints = {
         apps: ['inventory', 'stock'],
         approle: ['admin', 'manager', 'staff'],
         params: {
-            populate: { product: true, supplier: true, warehouse: true, stock_items: true },
+            populate: { product: true, supplier: true, branch: true, stock_items: true },
         },
     }),
 

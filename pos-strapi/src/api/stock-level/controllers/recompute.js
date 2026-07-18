@@ -3,7 +3,7 @@
 /**
  * POST /stock-levels/recompute
  *
- * Admin-triggered job that rebuilds the per-(product, warehouse) stock-level
+ * Admin-triggered job that rebuilds the per-(product, branch) stock-level
  * cache from the live stock-item rows. Idempotent — run after the location
  * backfill, after suspected drift, or as an ad-hoc reconcile. The stock-item
  * lifecycle keeps stock-levels fresh during normal operation; this is the

@@ -11,7 +11,7 @@ export const StockCountsEndpoints = {
         roles: ['admin', 'manager', 'staff'],
     },
 
-    list: (page = 1, pageSize = 50, { statusFilter, warehouseDocId, searchTerm, sort } = {}) => {
+    list: (page = 1, pageSize = 50, { statusFilter, branchDocId, searchTerm, sort } = {}) => {
         const term = typeof searchTerm === 'string' ? searchTerm.trim() : '';
         return {
             path: '/stock-counts',
@@ -22,10 +22,10 @@ export const StockCountsEndpoints = {
             params: {
                 filters: {
                     ...(statusFilter ? { status: statusFilter } : {}),
-                    ...(warehouseDocId ? { warehouse: { documentId: warehouseDocId } } : {}),
+                    ...(branchDocId ? { branch: { documentId: branchDocId } } : {}),
                     ...(term ? { count_number: { $containsi: term } } : {}),
                 },
-                populate: { warehouse: true },
+                populate: { branch: true },
                 sort: sort ?? ['createdAt:desc'],
                 pagination: { page, pageSize },
             },
@@ -38,7 +38,7 @@ export const StockCountsEndpoints = {
         method: 'get',
         apps: ['inventory', 'stock'],
         approle: ['admin', 'manager', 'staff'],
-        params: { populate: { warehouse: true, lines: true } },
+        params: { populate: { branch: true, lines: true } },
     }),
 
     create: (data) => ({

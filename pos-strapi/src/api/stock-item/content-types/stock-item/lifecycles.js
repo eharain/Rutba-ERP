@@ -147,14 +147,14 @@ module.exports = {
     const wantsStatus = Object.prototype.hasOwnProperty.call(data || {}, 'status');
     const wantsProduct = Object.prototype.hasOwnProperty.call(data || {}, 'product');
     const wantsArchived = Object.prototype.hasOwnProperty.call(data || {}, 'archived');
-    const wantsWarehouse = Object.prototype.hasOwnProperty.call(data || {}, 'warehouse');
+    const wantsBranch = Object.prototype.hasOwnProperty.call(data || {}, 'branch');
     const wantsLocation = Object.prototype.hasOwnProperty.call(data || {}, 'storage_location');
     // Divisible stock: a change to remaining sub-units (units_sold) or capacity
     // (sellable_units) must recompute product.sellable_quantity even when status
     // doesn't change (a portion sale leaves the item InStock).
     const wantsUnits = Object.prototype.hasOwnProperty.call(data || {}, 'units_sold')
       || Object.prototype.hasOwnProperty.call(data || {}, 'sellable_units');
-    if (!wantsStatus && !wantsProduct && !wantsArchived && !wantsWarehouse && !wantsLocation && !wantsUnits) return;
+    if (!wantsStatus && !wantsProduct && !wantsArchived && !wantsBranch && !wantsLocation && !wantsUnits) return;
 
     const existing = await loadCurrentState(itemId);
     if (!existing) return;
@@ -184,14 +184,14 @@ module.exports = {
     event.state.oldProductId = existing.product?.id || null;
     event.state.productRelTouched = wantsProduct;
     // Global product.stock_quantity depends on status / product / archived only —
-    // NOT on which warehouse the unit sits in. `wantsUnits` is included so a
+    // NOT on which branch the unit sits in. `wantsUnits` is included so a
     // portion sale (units_sold change, status unchanged) still refreshes the
     // divisible sellable_quantity cache (recomputing the unchanged count is cheap).
     event.state.recomputeNeeded = statusChanged || wantsProduct || archivedChanged || wantsUnits;
-    // The per-warehouse stock-level cache additionally cares about warehouse /
+    // The per-branch stock-level cache additionally cares about branch /
     // location moves (the unit changes buckets without changing the global count).
     event.state.stockLevelNeeded =
-      statusChanged || wantsProduct || archivedChanged || wantsWarehouse || wantsLocation;
+      statusChanged || wantsProduct || archivedChanged || wantsBranch || wantsLocation;
 
     if (statusChanged) {
       event.state.statusChanged = true;
@@ -241,7 +241,7 @@ module.exports = {
       }
     }
 
-    // 2. Stock cache recompute (status, product, archived, warehouse, or location changed)
+    // 2. Stock cache recompute (status, product, archived, branch, or location changed)
     if (event.state?.recomputeNeeded || event.state?.stockLevelNeeded) {
       const affected = [event.state.oldProductId];
       if (event.state.productRelTouched) {
@@ -289,7 +289,7 @@ module.exports = {
       }
     }
 
-    // 2. Recompute the parent product's caches (global + per-warehouse)
+    // 2. Recompute the parent product's caches (global + per-branch)
     const pid = await loadProductId(itemId);
     if (pid) {
       await recompute([pid]);

@@ -31,6 +31,15 @@ export default function Home() {
                         </div>
                     </div>
                     <div className="col-md-4">
+                        <div className="card border-primary h-100">
+                            <div className="card-body">
+                                <h5 className="card-title"><i className="fas fa-store me-2 text-primary"></i>Branches</h5>
+                                <p className="card-text text-muted">Manage branches, their sales desks, and the storage-location (bin) hierarchy.</p>
+                                <Link className="btn btn-outline-primary btn-sm" href="/branches">Manage Branches</Link>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="col-md-4">
                         <div className="card border-success h-100">
                             <div className="card-body">
                                 <h5 className="card-title"><i className="fas fa-shopping-basket me-2 text-success"></i>Purchases</h5>

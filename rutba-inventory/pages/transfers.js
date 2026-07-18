@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import Layout from "../components/Layout";
 import ProtectedRoute from "@rutba/pos-shared/components/ProtectedRoute";
 import { useAuth } from "@rutba/pos-shared/context/AuthContext";
-import { StockTransfersEndpoints, WarehousesEndpoints, StorageLocationsEndpoints, StockItemsEndpoints } from "@rutba/api-provider/endpoints";
+import { StockTransfersEndpoints, BranchesEndpoints, StorageLocationsEndpoints, StockItemsEndpoints } from "@rutba/api-provider/endpoints";
 
 const STATUS_BADGE = {
     Draft: "bg-secondary",
@@ -27,7 +27,7 @@ export default function TransfersPage() {
 
     const [transfers, setTransfers] = useState([]);
     const [meta, setMeta] = useState(null);
-    const [warehouses, setWarehouses] = useState([]);
+    const [branches, setBranches] = useState([]);
     const [loading, setLoading] = useState(false);
     const [msg, setMsg] = useState(null);
     const [busy, setBusy] = useState(null);
@@ -43,12 +43,12 @@ export default function TransfersPage() {
 
     const notify = (text, variant = "success") => setMsg({ text, variant });
 
-    const loadWarehouses = useCallback(async () => {
+    const loadBranches = useCallback(async () => {
         if (!jwt) return;
         try {
-            const res = await WarehousesEndpoints.list(1, 200, { sort: ["name:asc"] });
-            setWarehouses(res?.data || []);
-        } catch (e) { console.error("warehouses", e); }
+            const res = await BranchesEndpoints.list({ pageSize: 200, sort: ["name:asc"] });
+            setBranches(res?.data || []);
+        } catch (e) { console.error("branches", e); }
     }, [jwt]);
 
     const loadTransfers = useCallback(async () => {
@@ -66,16 +66,16 @@ export default function TransfersPage() {
         }
     }, [jwt, page]);
 
-    useEffect(() => { loadWarehouses(); }, [loadWarehouses]);
+    useEffect(() => { loadBranches(); }, [loadBranches]);
     useEffect(() => { loadTransfers(); }, [loadTransfers]);
 
-    // Load destination bins whenever the to-warehouse changes.
+    // Load destination bins whenever the to-branch changes.
     useEffect(() => {
         let alive = true;
         (async () => {
             if (!form.toWh) { setToLocations([]); return; }
             try {
-                const res = await StorageLocationsEndpoints.list(1, 1000, { warehouseDocId: form.toWh, sort: ["code:asc"] });
+                const res = await StorageLocationsEndpoints.list(1, 1000, { branchDocId: form.toWh, sort: ["code:asc"] });
                 if (alive) setToLocations(res?.data || []);
             } catch (e) { console.error("to-locations", e); }
         })();
@@ -114,14 +114,14 @@ export default function TransfersPage() {
 
     const submitCreate = async (e) => {
         e.preventDefault();
-        if (!form.fromWh || !form.toWh) { notify("Pick both source and destination warehouses.", "warning"); return; }
+        if (!form.fromWh || !form.toWh) { notify("Pick both source and destination branches.", "warning"); return; }
         if (form.fromWh === form.toWh) { notify("Source and destination must differ.", "warning"); return; }
         if (units.length === 0) { notify("Add at least one unit (scan a barcode).", "warning"); return; }
         setSaving(true);
         try {
             const data = {
-                from_warehouse: form.fromWh,
-                to_warehouse: form.toWh,
+                from_branch: form.fromWh,
+                to_branch: form.toWh,
                 to_location: form.toLoc || null,
                 notes: form.notes || null,
                 status: "Draft",
@@ -193,17 +193,17 @@ export default function TransfersPage() {
                             <form onSubmit={submitCreate}>
                                 <div className="row g-3">
                                     <div className="col-md-3">
-                                        <label className="form-label">From warehouse</label>
+                                        <label className="form-label">From branch</label>
                                         <select className="form-select" name="fromWh" value={form.fromWh} onChange={changeForm} required>
                                             <option value="">— select —</option>
-                                            {warehouses.map((w) => <option key={w.documentId} value={w.documentId}>{w.name}</option>)}
+                                            {branches.map((w) => <option key={w.documentId} value={w.documentId}>{w.name}</option>)}
                                         </select>
                                     </div>
                                     <div className="col-md-3">
-                                        <label className="form-label">To warehouse</label>
+                                        <label className="form-label">To branch</label>
                                         <select className="form-select" name="toWh" value={form.toWh} onChange={changeForm} required>
                                             <option value="">— select —</option>
-                                            {warehouses.map((w) => <option key={w.documentId} value={w.documentId}>{w.name}</option>)}
+                                            {branches.map((w) => <option key={w.documentId} value={w.documentId}>{w.name}</option>)}
                                         </select>
                                     </div>
                                     <div className="col-md-3">
@@ -260,7 +260,7 @@ export default function TransfersPage() {
                 {loading ? (
                     <div className="text-center py-5"><div className="spinner-border"></div></div>
                 ) : transfers.length === 0 ? (
-                    <div className="alert alert-info">No transfers yet. Click "New Transfer" to move stock between warehouses.</div>
+                    <div className="alert alert-info">No transfers yet. Click "New Transfer" to move stock between branches.</div>
                 ) : (
                     <div className="table-responsive">
                         <table className="table table-hover align-middle">
@@ -273,8 +273,8 @@ export default function TransfersPage() {
                                     return (
                                         <tr key={t.documentId}>
                                             <td><code>{t.transfer_number}</code></td>
-                                            <td>{whName(t.from_warehouse)}</td>
-                                            <td>{whName(t.to_warehouse)}{t.to_location ? <span className="text-muted small ms-1">/ {t.to_location.code || ""}</span> : null}</td>
+                                            <td>{whName(t.from_branch)}</td>
+                                            <td>{whName(t.to_branch)}{t.to_location ? <span className="text-muted small ms-1">/ {t.to_location.code || ""}</span> : null}</td>
                                             <td className="text-center">{unitCount(t)}</td>
                                             <td><span className={`badge ${STATUS_BADGE[t.status] || "bg-secondary"}`}>{t.status}</span></td>
                                             <td>

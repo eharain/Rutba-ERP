@@ -4,7 +4,7 @@
  * Stock-count transitions — post / cancel.
  *
  * Post compares each line's counted quantity against the current system on-hand
- * (live count of InStock units of that product at the count's warehouse). A
+ * (live count of InStock units of that product at the count's branch). A
  * shortage (counted < system) books a loss: the surplus units go to status
  * 'Lost' (the stock-item lifecycle recomputes the caches). Overages are reported
  * but not auto-created in v1 (which specific found units to add is ambiguous).
@@ -80,21 +80,21 @@ async function loadCount(strapi, ref) {
     where,
     select: ['id', 'documentId', 'status', 'count_number'],
     populate: {
-      warehouse: { select: ['id', 'documentId', 'name'] },
+      branch: { select: ['id', 'documentId', 'name'] },
       lines: true,
     },
   });
 }
 
-// Count InStock units of a product-document at a warehouse, oldest first.
+// Count InStock units of a product-document at a branch, oldest first.
 // Dedupe by item id: filtering on the product's documentId joins across BOTH
 // draft and published product editions, so a single stock-item can surface
 // twice — which would double the system qty and flag good units as Lost.
-async function inStockUnits(strapi, productDocId, warehouseId) {
+async function inStockUnits(strapi, productDocId, branchId) {
   const where = {
     status: 'InStock',
     $or: [{ archived: false }, { archived: { $null: true } }],
-    warehouse: warehouseId,
+    branch: branchId,
   };
   if (productDocId) where.product = { documentId: productDocId };
   const rows = await strapi.db.query(STOCK_ITEM_UID).findMany({
@@ -113,8 +113,8 @@ module.exports = {
     const count = await loadCount(strapi, ctx.params.id);
     if (!count) return ctx.notFound('Count not found');
     if (count.status !== 'Draft') return ctx.badRequest(`Cannot post a count in status ${count.status}`);
-    const whId = count.warehouse?.id;
-    if (!whId) return ctx.badRequest('Count has no warehouse');
+    const branchId = count.branch?.id;
+    if (!branchId) return ctx.badRequest('Count has no branch');
 
     const lines = count.lines || [];
     if (lines.length === 0) return ctx.badRequest('Count has no lines');
@@ -125,7 +125,7 @@ module.exports = {
 
     for (const line of lines) {
       const counted = Number(line.counted_qty) || 0;
-      const units = line.product_doc_id ? await inStockUnits(strapi, line.product_doc_id, whId) : [];
+      const units = line.product_doc_id ? await inStockUnits(strapi, line.product_doc_id, branchId) : [];
       const system = units.length;
       const variance = counted - system;
 

@@ -20,7 +20,6 @@ const PRODUCT_UID = 'api::product.product';
 const STOCK_ITEM_UID = 'api::stock-item.stock-item';
 const STOCK_LEVEL_UID = 'api::stock-level.stock-level';
 const STOCK_BATCH_UID = 'api::stock-batch.stock-batch';
-const WAREHOUSE_UID = 'api::warehouse.warehouse';
 const STORAGE_LOCATION_UID = 'api::storage-location.storage-location';
 const BRANCH_UID = 'api::branch.branch';
 
@@ -96,62 +95,62 @@ module.exports = createCoreService(STOCK_ITEM_UID, ({ strapi }) => ({
    * Inventory valuation (Epic 2) — specific-identification value of on-hand stock:
    *   serialized = Σ stock-item.cost_price for InStock, non-archived units
    *   bulk       = Σ (stock-batch.quantity_remaining × unit_cost) for Active batches
-   * Broken down by warehouse (documentId; `unassigned` when a row has no warehouse).
+   * Broken down by branch (documentId; `unassigned` when a row has no branch).
    * Compute-on-read; on-demand admin report, not a hot path.
    *
-   * @param {{ warehouseId?: number, warehouseDocId?: string }} opts
+   * @param {{ branchId?: number, branchDocId?: string }} opts
    */
   async computeInventoryValuation(opts = {}) {
-    let warehouseId = opts.warehouseId || null;
-    if (!warehouseId && opts.warehouseDocId) {
-      const wh = await strapi.db.query(WAREHOUSE_UID).findOne({ where: { documentId: opts.warehouseDocId }, select: ['id'] });
-      warehouseId = wh?.id || null;
+    let branchId = opts.branchId || null;
+    if (!branchId && opts.branchDocId) {
+      const br = await strapi.db.query(BRANCH_UID).findOne({ where: { documentId: opts.branchDocId }, select: ['id'] });
+      branchId = br?.id || null;
     }
-    const whFilter = warehouseId ? { warehouse: { id: warehouseId } } : {};
+    const branchFilter = branchId ? { branch: { id: branchId } } : {};
     const n = (v) => { const x = Number(v); return Number.isFinite(x) ? x : 0; };
 
-    const byWh = new Map();
-    const bucket = (w) => {
-      const key = w?.documentId || 'unassigned';
-      if (!byWh.has(key)) byWh.set(key, { warehouse: w?.documentId || null, warehouse_name: w?.name || null, serialized_value: 0, serialized_units: 0, bulk_value: 0, bulk_qty: 0 });
-      return byWh.get(key);
+    const byBranch = new Map();
+    const bucket = (b) => {
+      const key = b?.documentId || 'unassigned';
+      if (!byBranch.has(key)) byBranch.set(key, { branch: b?.documentId || null, branch_name: b?.name || null, serialized_value: 0, serialized_units: 0, bulk_value: 0, bulk_qty: 0 });
+      return byBranch.get(key);
     };
 
     // Serialized — InStock, non-archived units.
     const items = await strapi.db.query(STOCK_ITEM_UID).findMany({
-      where: { status: 'InStock', $or: [{ archived: false }, { archived: { $null: true } }], ...whFilter },
+      where: { status: 'InStock', $or: [{ archived: false }, { archived: { $null: true } }], ...branchFilter },
       select: ['cost_price'],
-      populate: { warehouse: { select: ['documentId', 'name'] } },
+      populate: { branch: { select: ['documentId', 'name'] } },
       limit: 5000000,
     });
-    for (const it of items) { const b = bucket(it.warehouse); b.serialized_value += n(it.cost_price); b.serialized_units += 1; }
+    for (const it of items) { const b = bucket(it.branch); b.serialized_value += n(it.cost_price); b.serialized_units += 1; }
 
     // Bulk — Active batches, value = remaining × unit_cost.
     const batches = await strapi.db.query(STOCK_BATCH_UID).findMany({
-      where: { status: 'Active', ...whFilter },
+      where: { status: 'Active', ...branchFilter },
       select: ['quantity_remaining', 'unit_cost'],
-      populate: { warehouse: { select: ['documentId', 'name'] } },
+      populate: { branch: { select: ['documentId', 'name'] } },
       limit: 5000000,
     });
-    for (const bt of batches) { const b = bucket(bt.warehouse); b.bulk_value += n(bt.quantity_remaining) * n(bt.unit_cost); b.bulk_qty += n(bt.quantity_remaining); }
+    for (const bt of batches) { const b = bucket(bt.branch); b.bulk_value += n(bt.quantity_remaining) * n(bt.unit_cost); b.bulk_qty += n(bt.quantity_remaining); }
 
     const round2 = (x) => Math.round(x * 100) / 100;
-    const warehouses = Array.from(byWh.values()).map((w) => ({
-      ...w,
-      serialized_value: round2(w.serialized_value),
-      bulk_value: round2(w.bulk_value),
-      total_value: round2(w.serialized_value + w.bulk_value),
+    const branches = Array.from(byBranch.values()).map((b) => ({
+      ...b,
+      serialized_value: round2(b.serialized_value),
+      bulk_value: round2(b.bulk_value),
+      total_value: round2(b.serialized_value + b.bulk_value),
     })).sort((a, b) => b.total_value - a.total_value);
 
-    const serialized_value = round2(warehouses.reduce((s, w) => s + w.serialized_value, 0));
-    const bulk_value = round2(warehouses.reduce((s, w) => s + w.bulk_value, 0));
+    const serialized_value = round2(branches.reduce((s, b) => s + b.serialized_value, 0));
+    const bulk_value = round2(branches.reduce((s, b) => s + b.bulk_value, 0));
     return {
       asOf: new Date().toISOString(),
       total_value: round2(serialized_value + bulk_value),
       serialized_value,
       bulk_value,
-      serialized_units: warehouses.reduce((s, w) => s + w.serialized_units, 0),
-      warehouses,
+      serialized_units: branches.reduce((s, b) => s + b.serialized_units, 0),
+      branches,
     };
   },
 
@@ -660,16 +659,16 @@ module.exports = createCoreService(STOCK_ITEM_UID, ({ strapi }) => ({
   // ---------------------------------------------------------------------------
   // Per-location stock-level cache (Foundation F2).
   //
-  // stock-level is a denormalised per-(product, warehouse) twin of
+  // stock-level is a denormalised per-(product, branch) twin of
   // product.stock_quantity. The global invariant is preserved:
-  //   Σ stock-level.quantity_on_hand across warehouses === product.stock_quantity
+  //   Σ stock-level.quantity_on_hand across branches === product.stock_quantity
   // (both count InStock, non-archived units). recomputeProductStock still owns
-  // the global cache untouched; these methods maintain the per-warehouse split.
+  // the global cache untouched; these methods maintain the per-branch split.
   //
-  // The auto-maintained rows are warehouse-level (storage_location & batch NULL).
-  // Finer-grained bin/batch rows are a later refinement. Units with no warehouse
+  // The auto-maintained rows are branch-level (storage_location & batch NULL).
+  // Finer-grained bin/batch rows are a later refinement. Units with no branch
   // (not yet placed) are excluded from stock-level but still counted globally, so
-  // Σ stock-level can be < product.stock_quantity until the backfill places them.
+  // Σ stock-level can be < product.stock_quantity until every unit has a branch.
   // ---------------------------------------------------------------------------
 
   suppressStockLevelRecompute(value = true) {
@@ -681,7 +680,7 @@ module.exports = createCoreService(STOCK_ITEM_UID, ({ strapi }) => ({
   },
 
   /**
-   * Rebuild the warehouse-level stock-level rows for one product from live
+   * Rebuild the branch-level stock-level rows for one product from live
    * stock-item rows. Idempotent. Returns the number of rows written.
    */
   async recomputeStockLevelsForProduct(productId) {
@@ -690,8 +689,8 @@ module.exports = createCoreService(STOCK_ITEM_UID, ({ strapi }) => ({
     // Work at documentId granularity, not per product-edition-id: a stock-item
     // (not draft/published itself) is linked to BOTH the draft and the published
     // edition of its product, so counting per edition would double it. Count each
-    // item once (by documentId, deduped) and keep exactly one warehouse-level
-    // stock-level row per (document, warehouse).
+    // item once (by documentId, deduped) and keep exactly one branch-level
+    // stock-level row per (document, branch).
     const prod = await strapi.db.query(PRODUCT_UID).findOne({
       where: { id: productId }, select: ['id', 'documentId'],
     });
@@ -713,68 +712,68 @@ module.exports = createCoreService(STOCK_ITEM_UID, ({ strapi }) => ({
     const items = await strapi.db.query(STOCK_ITEM_UID).findMany({
       where: { ...scopeWhere, $or: [{ archived: false }, { archived: { $null: true } }] },
       select: ['id', 'status'],
-      populate: { warehouse: { select: ['id'] } },
+      populate: { branch: { select: ['id'] } },
     });
     // Dedupe by item id — the doc-level join can surface an item once per linked edition.
     const byItem = new Map();
     for (const it of items || []) if (!byItem.has(it.id)) byItem.set(it.id, it);
 
-    const onHand = new Map();   // warehouseId -> count of InStock units
-    const reserved = new Map(); // warehouseId -> count of Reserved units
+    const onHand = new Map();   // branchId -> count of InStock units
+    const reserved = new Map(); // branchId -> count of Reserved units
     for (const it of byItem.values()) {
-      const whId = it.warehouse?.id;
-      if (!whId) continue; // unplaced units aren't bucketed into a stock-level
-      if (it.status === 'InStock') onHand.set(whId, (onHand.get(whId) || 0) + 1);
-      else if (it.status === 'Reserved') reserved.set(whId, (reserved.get(whId) || 0) + 1);
+      const brId = it.branch?.id;
+      if (!brId) continue; // unplaced units aren't bucketed into a stock-level
+      if (it.status === 'InStock') onHand.set(brId, (onHand.get(brId) || 0) + 1);
+      else if (it.status === 'Reserved') reserved.set(brId, (reserved.get(brId) || 0) + 1);
     }
 
-    // Existing warehouse-level rows (storage_location & batch NULL) for this
-    // document — keep one per warehouse, delete duplicates a prior per-edition
+    // Existing branch-level rows (storage_location & batch NULL) for this
+    // document — keep one per branch, delete duplicates a prior per-edition
     // pass may have created.
     const existingRows = await strapi.db.query(STOCK_LEVEL_UID).findMany({
       where: scopeWhere,
       select: ['id'],
       populate: {
-        warehouse: { select: ['id'] },
+        branch: { select: ['id'] },
         storage_location: { select: ['id'] },
         batch: { select: ['id'] },
       },
     });
-    const keptByWh = new Map();
+    const keptByBranch = new Map();
     const dupIds = [];
     for (const row of existingRows || []) {
-      if (row.storage_location?.id || row.batch?.id) continue; // only warehouse-level rows
-      const w = row.warehouse?.id;
-      if (!w) { dupIds.push(row.id); continue; }
-      if (keptByWh.has(w)) dupIds.push(row.id);
-      else keptByWh.set(w, row.id);
+      if (row.storage_location?.id || row.batch?.id) continue; // only branch-level rows
+      const b = row.branch?.id;
+      if (!b) { dupIds.push(row.id); continue; }
+      if (keptByBranch.has(b)) dupIds.push(row.id);
+      else keptByBranch.set(b, row.id);
     }
     for (const id of dupIds) {
       try { await strapi.db.query(STOCK_LEVEL_UID).delete({ where: { id } }); } catch (_) { /* noop */ }
     }
 
-    const warehouseIds = new Set([
+    const branchIds = new Set([
       ...onHand.keys(),
       ...reserved.keys(),
-      ...keptByWh.keys(),
+      ...keptByBranch.keys(),
     ]);
 
     let written = 0;
-    for (const whId of warehouseIds) {
-      const oh = onHand.get(whId) || 0;
-      const rv = reserved.get(whId) || 0;
+    for (const brId of branchIds) {
+      const oh = onHand.get(brId) || 0;
+      const rv = reserved.get(brId) || 0;
       const data = {
         quantity_on_hand: oh,
         quantity_reserved: rv,
         quantity_available: oh,
       };
-      const rowId = keptByWh.get(whId);
+      const rowId = keptByBranch.get(brId);
       if (rowId) {
         await strapi.db.query(STOCK_LEVEL_UID).update({ where: { id: rowId }, data });
         written += 1;
       } else if (oh > 0 || rv > 0) {
         await strapi.db.query(STOCK_LEVEL_UID).create({
-          data: { product: canonicalPid, warehouse: whId, ...data },
+          data: { product: canonicalPid, branch: brId, ...data },
         });
         written += 1;
       }
@@ -894,38 +893,39 @@ module.exports = createCoreService(STOCK_ITEM_UID, ({ strapi }) => ({
 
   /**
    * Foundation backfill (Epic 2 Phase 1). Idempotent one-time job:
-   *   1. Ensure every branch has a default warehouse + receiving location.
-   *   2. Place every stock-item that lacks a warehouse into its branch's
-   *      defaults (branch-less / stray items go to a fallback warehouse).
+   *   1. Ensure every branch has a default receiving storage-location.
+   *   2. Place every stock-item that lacks a storage_location into its branch's
+   *      receiving location. Branch-less / stray items get a fallback branch too
+   *      so the Σ stock-level == on-hand invariant holds.
    *   3. Rebuild the stock-level cache.
    *
    * Placement is set-based SQL against the relation join tables (one INSERT…
    * SELECT per branch + a catch-all), so a 30k+ item table backfills in
    * seconds. If the join-table shape can't be resolved from metadata (or the
    * bulk SQL throws), it falls back to a correct-but-slow per-row ORM loop.
-   * Only touches items that lack a warehouse, so re-running is safe.
+   * Only touches items that lack a location, so re-running is safe.
    */
   async backfillDefaultLocations() {
     const started = Date.now();
-    let warehousesCreated = 0;
+    let branchesCreated = 0;
     let locationsCreated = 0;
     let itemsPlaced = 0;
     let mode = 'bulk';
 
-    const branchDefaults = new Map(); // branchId -> { whId, locId }
-    let fallback = null;
+    const branchDefaults = new Map(); // branchId -> { locId }
+    let fallback = null;              // { branchId, locId }
 
-    // --- 1. Ensure a default warehouse + receiving location per branch (ORM; small N).
-    const ensureReceiving = async (whId) => {
+    // --- 1. Ensure a default receiving storage-location per branch (ORM; small N).
+    const ensureReceiving = async (branchId) => {
       let loc = await strapi.db.query(STORAGE_LOCATION_UID).findOne({
-        where: { warehouse: whId, is_receivable: true },
+        where: { branch: branchId, is_receivable: true },
         select: ['id'],
       });
       if (!loc) {
         loc = await strapi.db.query(STORAGE_LOCATION_UID).create({
           data: {
             code: 'RECV', name: 'Receiving', type: 'staging',
-            is_receivable: true, is_pickable: true, is_active: true, warehouse: whId,
+            is_receivable: true, is_pickable: true, is_active: true, branch: branchId,
           },
         });
         locationsCreated += 1;
@@ -933,43 +933,28 @@ module.exports = createCoreService(STOCK_ITEM_UID, ({ strapi }) => ({
       return loc.id;
     };
 
-    const branches = await strapi.db.query(BRANCH_UID).findMany({ select: ['id', 'name'] });
-    for (const b of (branches || [])) {
-      let wh = await strapi.db.query(WAREHOUSE_UID).findOne({
-        where: { branch: b.id, is_default: true }, select: ['id'],
+    let branches = await strapi.db.query(BRANCH_UID).findMany({ select: ['id', 'name'] });
+    if (!branches || branches.length === 0) {
+      // No branch exists — create a fallback so every unit can be placed.
+      const b = await strapi.db.query(BRANCH_UID).create({
+        data: { name: 'Main Branch', location_code: 'MAIN', location_type: 'warehouse', is_default_location: true, is_active: true },
       });
-      if (!wh) {
-        wh = await strapi.db.query(WAREHOUSE_UID).create({
-          data: {
-            code: `WH-${b.id}`, name: `${b.name || 'Branch ' + b.id} Warehouse`,
-            type: 'warehouse', is_default: true, is_active: true, branch: b.id,
-          },
-        });
-        warehousesCreated += 1;
-      }
-      const locId = await ensureReceiving(wh.id);
-      branchDefaults.set(b.id, { whId: wh.id, locId });
-      if (!fallback) fallback = { whId: wh.id, locId };
+      branchesCreated += 1;
+      branches = [b];
     }
-
-    if (!fallback) {
-      const wh = await strapi.db.query(WAREHOUSE_UID).create({
-        data: { code: 'WH-DEFAULT', name: 'Main Warehouse', type: 'warehouse', is_default: true, is_active: true },
-      });
-      warehousesCreated += 1;
-      const locId = await ensureReceiving(wh.id);
-      fallback = { whId: wh.id, locId };
+    for (const b of branches) {
+      const locId = await ensureReceiving(b.id);
+      branchDefaults.set(b.id, { locId });
+      if (!fallback) fallback = { branchId: b.id, locId };
     }
 
     // --- 2. Placement.
     const knex = strapi.db.connection;
     let stockTable = null;
     try { stockTable = strapi.db.metadata.get(STOCK_ITEM_UID).tableName; } catch (_) { /* noop */ }
-    const whJt = this._relJoinInfo(STOCK_ITEM_UID, 'warehouse');
     const locJt = this._relJoinInfo(STOCK_ITEM_UID, 'storage_location');
     const brJt = this._relJoinInfo(STOCK_ITEM_UID, 'branch');
     const canBulk = !!(knex && stockTable
-      && whJt?.table && whJt.itemCol && whJt.targetCol
       && locJt?.table && locJt.itemCol && locJt.targetCol
       && brJt?.table && brJt.itemCol && brJt.targetCol);
 
@@ -983,16 +968,17 @@ module.exports = createCoreService(STOCK_ITEM_UID, ({ strapi }) => ({
         while (guard < 100000) {
           guard += 1;
           const batch = await strapi.db.query(STOCK_ITEM_UID).findMany({
-            where: { warehouse: null }, select: ['id'],
+            where: { storage_location: null }, select: ['id'],
             populate: { branch: { select: ['id'] } }, limit: PAGE,
           });
           if (!batch || batch.length === 0) break;
           for (const it of batch) {
             const bId = it.branch?.id;
             const def = (bId && branchDefaults.get(bId)) || fallback;
+            const data = { storage_location: def.locId };
+            if (!bId) data.branch = fallback.branchId; // give branch-less items a branch
             await strapi.db.query(STOCK_ITEM_UID).update({
-              where: { id: it.id },
-              data: { warehouse: def.whId, storage_location: def.locId },
+              where: { id: it.id }, data,
             });
             placed += 1;
           }
@@ -1011,8 +997,9 @@ module.exports = createCoreService(STOCK_ITEM_UID, ({ strapi }) => ({
           const res = Array.isArray(r) ? r[0] : r;
           return (res && (res.affectedRows ?? res.rowCount)) || 0;
         };
-        // Insert links for items of a given branch that aren't already linked.
-        const placeBranch = async (link, targetId, branchId) => {
+        // Insert a link for items of a given branch that aren't already linked,
+        // sourcing the item set from the branch join table.
+        const placeByBranch = async (link, targetId, branchId) => {
           const cols = [q(link.itemCol), q(link.targetCol)];
           const sels = ['b.' + q(brJt.itemCol), '?'];
           if (link.ordCol) { cols.push(q(link.ordCol)); sels.push('b.' + q(brJt.itemCol)); }
@@ -1035,11 +1022,12 @@ module.exports = createCoreService(STOCK_ITEM_UID, ({ strapi }) => ({
           return affected(await knex.raw(sql, [targetId]));
         };
 
+        // Give branch-less items a branch first so per-branch loc placement covers them.
+        await placeRemaining(brJt, fallback.branchId);
         for (const [branchId, def] of branchDefaults) {
-          itemsPlaced += await placeBranch(whJt, def.whId, branchId);
-          await placeBranch(locJt, def.locId, branchId);
+          itemsPlaced += await placeByBranch(locJt, def.locId, branchId);
         }
-        itemsPlaced += await placeRemaining(whJt, fallback.whId);
+        // Safety net: any item still without a location -> fallback receiving loc.
         await placeRemaining(locJt, fallback.locId);
       } catch (err) {
         strapi.log.warn(`[stock-item] bulk placement failed (${err.message}); falling back to ORM loop`);
@@ -1056,7 +1044,7 @@ module.exports = createCoreService(STOCK_ITEM_UID, ({ strapi }) => ({
 
     return {
       mode,
-      warehousesCreated,
+      branchesCreated,
       locationsCreated,
       itemsPlaced,
       levelsWritten: levels.levelsWritten,

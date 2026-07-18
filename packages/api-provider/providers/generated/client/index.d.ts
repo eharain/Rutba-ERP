@@ -95,7 +95,6 @@ export * from './suppliers';
 export * from './term-types';
 export * from './terms';
 export * from './upload';
-export * from './warehouses';
 export * from './web-orders';
 export * from './work-item-activities';
 export * from './work-item-comments';

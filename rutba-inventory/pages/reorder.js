@@ -9,7 +9,7 @@ import { ReorderPoliciesEndpoints } from "@rutba/api-provider/endpoints";
 // are triggered targets with on-hand / on-order / projected and a suggested
 // quantity; select rows to generate draft purchases (by supplier) or draft
 // work-orders (for made-in-house goods).
-const keyOf = (r) => `${r.product}|${r.warehouse || ""}`;
+const keyOf = (r) => `${r.product}|${r.branch || ""}`;
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 
 export default function ReorderPage() {
@@ -158,7 +158,7 @@ export default function ReorderPage() {
                                                 <td><input type="checkbox" className="form-check-input" checked={selected.has(k)} onChange={() => toggleRow(r)} /></td>
                                                 <td>
                                                     {r.product_name || <span className="text-muted">(unnamed)</span>}
-                                                    {r.warehouse_name ? <span className="text-muted small"> · {r.warehouse_name}</span> : null}
+                                                    {r.branch_name ? <span className="text-muted small"> · {r.branch_name}</span> : null}
                                                     {r.fallback ? <span className="badge bg-light text-dark ms-1" title="No policy — using legacy reorder_level">legacy</span> : null}
                                                 </td>
                                                 <td><code>{r.sku || "—"}</code></td>

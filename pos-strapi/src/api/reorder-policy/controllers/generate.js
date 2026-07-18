@@ -8,7 +8,7 @@
  * auth:false so Strapi doesn't reject the custom action name — auth + role gate
  * are enforced here.
  *
- * Body: { warehouse?: docId, suggestions?: [{ product, suggested_qty, unit_cost, preferred_supplier }] }
+ * Body: { branch?: docId, suggestions?: [{ product, suggested_qty, unit_cost, preferred_supplier }] }
  */
 
 const POLICY_UID = 'api::reorder-policy.reorder-policy';
@@ -47,7 +47,7 @@ module.exports = {
 
     const body = ctx.request.body?.data ?? ctx.request.body ?? {};
     const res = await strapi.service(POLICY_UID).generatePurchases({
-      warehouseDocId: body.warehouse || body.warehouseDocId || null,
+      branchDocId: body.branch || body.branchDocId || null,
       suggestions: Array.isArray(body.suggestions) ? body.suggestions : null,
       actorId: user.id,
     });
@@ -63,7 +63,7 @@ module.exports = {
 
     const body = ctx.request.body?.data ?? ctx.request.body ?? {};
     const res = await strapi.service(POLICY_UID).generateWorkOrders({
-      warehouseDocId: body.warehouse || body.warehouseDocId || null,
+      branchDocId: body.branch || body.branchDocId || null,
       suggestions: Array.isArray(body.suggestions) ? body.suggestions : null,
       actorId: user.id,
     });

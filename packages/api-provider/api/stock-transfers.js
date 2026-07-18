@@ -1,7 +1,7 @@
 /**
  * StockTransfersEndpoints
  * Pure endpoint descriptors for the /stock-transfers resource — two-sided
- * warehouse-to-warehouse transfers of serialized stock (Inventory Epic 2 P2).
+ * branch-to-branch transfers of serialized stock (Inventory Epic 2 P2).
  */
 export const StockTransfersEndpoints = {
 
@@ -11,7 +11,7 @@ export const StockTransfersEndpoints = {
         roles: ['admin', 'manager', 'staff'],
     },
 
-    list: (page = 1, pageSize = 50, { statusFilter, fromWarehouseDocId, toWarehouseDocId, searchTerm, sort } = {}) => {
+    list: (page = 1, pageSize = 50, { statusFilter, fromBranchDocId, toBranchDocId, searchTerm, sort } = {}) => {
         const term = typeof searchTerm === 'string' ? searchTerm.trim() : '';
         return {
             path: '/stock-transfers',
@@ -22,11 +22,11 @@ export const StockTransfersEndpoints = {
             params: {
                 filters: {
                     ...(statusFilter ? { status: statusFilter } : {}),
-                    ...(fromWarehouseDocId ? { from_warehouse: { documentId: fromWarehouseDocId } } : {}),
-                    ...(toWarehouseDocId ? { to_warehouse: { documentId: toWarehouseDocId } } : {}),
+                    ...(fromBranchDocId ? { from_branch: { documentId: fromBranchDocId } } : {}),
+                    ...(toBranchDocId ? { to_branch: { documentId: toBranchDocId } } : {}),
                     ...(term ? { transfer_number: { $containsi: term } } : {}),
                 },
-                populate: { from_warehouse: true, to_warehouse: true, to_location: true, stock_items: { count: true } },
+                populate: { from_branch: true, to_branch: true, to_location: true, stock_items: { count: true } },
                 sort: sort ?? ['createdAt:desc'],
                 pagination: { page, pageSize },
             },
@@ -41,8 +41,8 @@ export const StockTransfersEndpoints = {
         approle: ['admin', 'manager', 'staff'],
         params: {
             populate: {
-                from_warehouse: true,
-                to_warehouse: true,
+                from_branch: true,
+                to_branch: true,
                 to_location: true,
                 stock_items: { populate: { product: true } },
             },
