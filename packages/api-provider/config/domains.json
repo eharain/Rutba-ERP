@@ -1,5 +1,7 @@
 {
   "accounts": {
+    "name": "Accounts",
+    "description": "General accounting: the finance ledger, journals, and financial reports.",
     "roles": [
       "accounts_admin",
       "accounts_manager",
@@ -7,6 +9,8 @@
     ]
   },
   "accounts-ap": {
+    "name": "Accounts Payable",
+    "description": "Supplier bills, purchase invoices, and outgoing payments.",
     "roles": [
       "ap_admin",
       "ap_manager",
@@ -14,6 +18,8 @@
     ]
   },
   "accounts-ar": {
+    "name": "Accounts Receivable",
+    "description": "Customer invoices, receipts, and incoming payments.",
     "roles": [
       "ar_admin",
       "ar_manager",
@@ -21,6 +27,8 @@
     ]
   },
   "accounts-viewer": {
+    "name": "Accounts Viewer",
+    "description": "Read-only access to financial records and accounting reports.",
     "roles": [
       "accounts_viewer_admin",
       "accounts_viewer_manager",
@@ -28,6 +36,8 @@
     ]
   },
   "auth": {
+    "name": "Authentication & Access",
+    "description": "User accounts, roles, and access assignment across all apps.",
     "roles": [
       "auth_admin",
       "auth_manager",
@@ -35,6 +45,8 @@
     ]
   },
   "cms": {
+    "name": "Content Management",
+    "description": "Storefront pages, navigation menus, and marketing content.",
     "roles": [
       "cms_admin",
       "cms_manager",
@@ -42,6 +54,8 @@
     ]
   },
   "crm": {
+    "name": "Customer Relationship Management",
+    "description": "Contacts, leads, and customer relationship management.",
     "roles": [
       "crm_admin",
       "crm_manager",
@@ -49,6 +63,8 @@
     ]
   },
   "delivery": {
+    "name": "Delivery",
+    "description": "Order fulfillment and delivery operations.",
     "roles": [
       "delivery_admin",
       "delivery_manager",
@@ -56,12 +72,16 @@
     ]
   },
   "ess": {
+    "name": "Employee Self Service",
+    "description": "Employee self-service: leave requests, attendance, and personal records.",
     "roles": [
       "ess_employee",
       "ess_manager"
     ]
   },
   "hr": {
+    "name": "Human Resources",
+    "description": "Employees, leave approvals, and HR administration.",
     "roles": [
       "hr_admin",
       "hr_manager",
@@ -69,6 +89,8 @@
     ]
   },
   "inventory": {
+    "name": "Inventory",
+    "description": "Warehouse stock, bins, batches, expiry, and reconciliation.",
     "roles": [
       "inventory_admin",
       "inventory_manager",
@@ -76,6 +98,8 @@
     ]
   },
   "manufacturing": {
+    "name": "Manufacturing",
+    "description": "Production work orders, recipes, and shop-floor operations.",
     "roles": [
       "manufacturing_admin",
       "manufacturing_manager",
@@ -83,6 +107,8 @@
     ]
   },
   "marketplace": {
+    "name": "Marketplace",
+    "description": "Third-party marketplace integrations: catalog, stock, and orders.",
     "roles": [
       "marketplace_admin",
       "marketplace_manager",
@@ -90,6 +116,8 @@
     ]
   },
   "order-management": {
+    "name": "Order Management",
+    "description": "Sales order processing, status tracking, and fulfillment.",
     "roles": [
       "order_admin",
       "order_manager",
@@ -97,6 +125,8 @@
     ]
   },
   "payroll": {
+    "name": "Payroll",
+    "description": "Salary runs, payslips, and payroll processing.",
     "roles": [
       "payroll_admin",
       "payroll_manager",
@@ -104,6 +134,8 @@
     ]
   },
   "rider": {
+    "name": "Rider",
+    "description": "Delivery rider assignments and cash-on-delivery collection.",
     "roles": [
       "rider_admin",
       "rider_manager",
@@ -111,6 +143,8 @@
     ]
   },
   "sale": {
+    "name": "Point of Sale",
+    "description": "In-store POS sales, checkout, and the cash register.",
     "roles": [
       "sale_admin",
       "sale_manager",
@@ -118,6 +152,8 @@
     ]
   },
   "seed": {
+    "name": "Seeding & Setup",
+    "description": "Data seeding and reference-data setup controls.",
     "roles": [
       "seed_admin",
       "seed_manager",
@@ -125,6 +161,8 @@
     ]
   },
   "social": {
+    "name": "Social",
+    "description": "Social media publishing, syncing, and engagement.",
     "roles": [
       "social_admin",
       "social_manager",
@@ -132,6 +170,8 @@
     ]
   },
   "stock": {
+    "name": "Stock",
+    "description": "Product stock items, barcodes, and stock movement.",
     "roles": [
       "stock_admin",
       "stock_manager",
@@ -139,12 +179,16 @@
     ]
   },
   "web": {
+    "name": "Storefront",
+    "description": "Public online storefront browsing and checkout.",
     "roles": [
       "web_public",
       "web_user"
     ]
   },
   "web-user": {
+    "name": "Web Users",
+    "description": "Management of registered storefront customer accounts and profiles.",
     "roles": [
       "webuser_admin",
       "webuser_manager",

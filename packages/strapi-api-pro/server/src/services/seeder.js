@@ -247,7 +247,7 @@ async function seedDomains(strapi, domainsConfig) {
     await upsertByKey(strapi, APP_DOMAIN_UID, key, {
       key,
       name: humanize(value?.name || key),
-      description: value?.description || `Auto-seeded domain '${key}' from api-provider/config`,
+      description: value?.description || `Access domain '${key}' (seeded from platform config)`,
       isActive: true,
     });
     count += 1;
