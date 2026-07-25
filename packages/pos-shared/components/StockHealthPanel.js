@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/router";
 import { useAuth } from "../context/AuthContext";
 import { StockItemsEndpoints, BranchesEndpoints } from "@rutba/api-provider/endpoints";
@@ -162,9 +162,22 @@ export default function StockHealthPanel() {
     }, [jwt, from, to, branchDocId, minPct, maxPct, minSoldPct, maxSoldPct, includeReserved, sort, selectedCategory, selectedBrand, selectedSupplier, selectedTerm, selectedPurchase, search, page]);
 
     useEffect(() => { loadBranches(); }, [loadBranches]);
-    // Fetch only after URL hydration so the first load already has the shared filters.
-    useEffect(() => { if (hydrated) load(); }, [load, hydrated]);
-    useEffect(() => { if (hydrated) setPage(1); }, [from, to, branchDocId, minPct, maxPct, minSoldPct, maxSoldPct, includeReserved, sort, selectedCategory, selectedBrand, selectedSupplier, selectedTerm, selectedPurchase, search]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Single fetch driver (runs only after URL hydration). `load` closes over the
+    // filters + page. When a filter changes while not on page 1, jump to page 1
+    // first and SKIP the stale-page fetch, so exactly one request runs per change
+    // (page is intentionally left out of the URL, matching the purchases list).
+    const filtersKey = [from, to, branchDocId, minPct, maxPct, minSoldPct, maxSoldPct, includeReserved ? 1 : 0, sort, selectedCategory, selectedBrand, selectedSupplier, selectedTerm, selectedPurchase, search].join("|");
+    const lastFetchedKey = useRef(null);
+    useEffect(() => {
+        if (!hydrated) return;
+        if (lastFetchedKey.current !== null && lastFetchedKey.current !== filtersKey && page !== 1) {
+            setPage(1); // the page change re-runs this effect → single fetch at page 1
+            return;
+        }
+        lastFetchedKey.current = filtersKey;
+        load();
+    }, [load, filtersKey, page, hydrated]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Reflect the active filters in the URL (shallow — no navigation / refetch loop).
     // Page is intentionally omitted (resets to 1 on any filter change), matching the

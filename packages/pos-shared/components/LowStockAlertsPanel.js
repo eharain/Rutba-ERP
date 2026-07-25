@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "../context/AuthContext";
 import { StockAlertsEndpoints, BranchesEndpoints } from "@rutba/api-provider/endpoints";
 import { ProductFilter } from "./filter/product-filter";
@@ -88,8 +88,19 @@ export default function LowStockAlertsPanel() {
     }, [jwt, page, statusFilter, severityFilter, branchDocId, selectedCategory, selectedBrand, selectedSupplier, search]);
 
     useEffect(() => { loadBranches(); }, [loadBranches]);
-    useEffect(() => { load(); }, [load]);
-    useEffect(() => { setPage(1); }, [statusFilter, severityFilter, branchDocId, selectedCategory, selectedBrand, selectedSupplier, search]);
+
+    // Single fetch driver — filter change while not on page 1 jumps to page 1 first
+    // and skips the stale-page fetch, so exactly one request runs per change.
+    const filtersKey = [statusFilter, severityFilter, branchDocId, selectedCategory, selectedBrand, selectedSupplier, search].join("|");
+    const lastFetchedKey = useRef(null);
+    useEffect(() => {
+        if (lastFetchedKey.current !== null && lastFetchedKey.current !== filtersKey && page !== 1) {
+            setPage(1);
+            return;
+        }
+        lastFetchedKey.current = filtersKey;
+        load();
+    }, [load, filtersKey, page]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const runScan = async () => {
         setBusy(true); setErr(null); setResult(null);

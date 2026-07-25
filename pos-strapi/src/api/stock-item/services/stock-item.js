@@ -175,7 +175,8 @@ module.exports = createCoreService(STOCK_ITEM_UID, ({ strapi }) => ({
    * @param {{ from?, to?, branchId?, branchDocId?, minPct?, maxPct?, includeReserved?, sort?,
    *   categoryDocId?, brandDocId?, supplierDocId?, termDocId?, purchaseDocId?, search?,
    *   page?, pageSize? }} opts
-   *   from/to — createdAt cohort range (ISO date, inclusive days). Default: last 90 days.
+   *   from/to — createdAt cohort range (ISO date, inclusive days). Each bound is
+   *   optional and independent; omitting both leaves the cohort UNBOUNDED (all created stock).
    *   minPct/maxPct — filter on pct_remaining (0–100). minSoldPct/maxSoldPct — filter on
    *   pct_sold (tested directly, NOT 100−remaining). sort — 'asc'|'desc' on pct_remaining
    *   (default 'asc' = most-depleted first). page/pageSize — post-aggregation paging.

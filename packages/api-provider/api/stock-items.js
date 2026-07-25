@@ -303,7 +303,7 @@ export const StockItemsEndpoints = {
      * auth:false route + manual ensureUser (any authenticated inventory user).
      *
      * @param {{ from?, to?, branchDocId?, minPct?, maxPct?, includeReserved?, sort?, page?, pageSize? }} opts
-     *   from/to — createdAt cohort range (ISO date); default = last 90 days.
+     *   from/to — createdAt cohort range (ISO date); optional — omit both for all-time.
      *   minPct/maxPct — filter on pct_remaining (0–100). sort — 'asc'|'desc' on pct_remaining.
      */
     stockHealth: ({ from, to, branchDocId, minPct, maxPct, minSoldPct, maxSoldPct, includeReserved, sort, categoryDocId, brandDocId, supplierDocId, termDocId, purchaseDocId, search, page = 1, pageSize = 50 } = {}) => ({
