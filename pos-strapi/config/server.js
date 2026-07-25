@@ -48,6 +48,7 @@ module.exports = ({ env }) => ({
             ...(env.bool('INVENTORY_CRON_ENABLED', true)
                 ? buildInventoryCronTasks({
                     expirySweepRule: env('INVENTORY_EXPIRY_SWEEP_RULE', '15 2 * * *'),
+                    lowStockAlertRule: env('INVENTORY_LOW_STOCK_ALERT_RULE', '30 2 * * *'),
                 })
                 : {}),
         },

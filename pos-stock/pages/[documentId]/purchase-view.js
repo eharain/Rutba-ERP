@@ -65,6 +65,10 @@ export default function PurchaseViewPage() {
         router.push('/purchases');
     };
 
+    const handlePrint = () => {
+        window.open(`/print-purchase?documentId=${documentId}`, '_blank', 'width=920,height=1040');
+    };
+
     if (loading) {
         return (
             <ProtectedRoute>
@@ -110,6 +114,10 @@ export default function PurchaseViewPage() {
                                     Receive Items
                                 </button>
                             )}
+
+                            <button onClick={handlePrint} className="btn btn-outline-secondary ms-2">
+                                <i className="fas fa-print me-1"></i>Print PO
+                            </button>
                         </div>
 
                         {/* Purchase Header */}

@@ -1,0 +1,124 @@
+{
+  "kind": "collectionType",
+  "collectionName": "stock_alerts",
+  "info": {
+    "singularName": "stock-alert",
+    "pluralName": "stock-alerts",
+    "displayName": "Stock Alert",
+    "description": "Persisted low-stock alerts upserted daily from the reorder suggestion engine. One row per (product, branch) triggered — idempotent by trigger_key; re-checked daily and auto-resolved when no longer low; user-acknowledgeable / dismissible."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "trigger_key": {
+      "type": "string"
+    },
+    "alert_number": {
+      "type": "string"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "Open",
+        "Acknowledged",
+        "Resolved",
+        "Dismissed"
+      ],
+      "default": "Open"
+    },
+    "severity": {
+      "type": "enumeration",
+      "enum": [
+        "Low",
+        "Medium",
+        "High",
+        "Critical"
+      ],
+      "default": "Medium"
+    },
+    "on_hand": {
+      "type": "decimal",
+      "default": 0
+    },
+    "on_order": {
+      "type": "decimal",
+      "default": 0
+    },
+    "projected": {
+      "type": "decimal",
+      "default": 0
+    },
+    "deficit": {
+      "type": "decimal",
+      "default": 0
+    },
+    "suggested_qty": {
+      "type": "decimal",
+      "default": 0
+    },
+    "min_stock": {
+      "type": "decimal"
+    },
+    "max_stock": {
+      "type": "decimal"
+    },
+    "safety_stock": {
+      "type": "decimal"
+    },
+    "method": {
+      "type": "string"
+    },
+    "source": {
+      "type": "string"
+    },
+    "fallback": {
+      "type": "boolean",
+      "default": false
+    },
+    "first_detected_at": {
+      "type": "datetime"
+    },
+    "last_checked_at": {
+      "type": "datetime"
+    },
+    "resolved_at": {
+      "type": "datetime"
+    },
+    "acknowledged_at": {
+      "type": "datetime"
+    },
+    "dismissed_at": {
+      "type": "datetime"
+    },
+    "notes": {
+      "type": "text"
+    },
+    "product": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::product.product"
+    },
+    "branch": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::branch.branch"
+    },
+    "policy": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::reorder-policy.reorder-policy"
+    },
+    "acknowledged_by": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "dismissed_by": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

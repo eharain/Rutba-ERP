@@ -4,6 +4,7 @@ const SECTIONS = [
     { href: "/products",            label: "Products",           icon: "fa-tag" },
     { href: "/stock-items",         label: "Stock Items",        icon: "fa-boxes-stacked" },
     { href: "/purchases",           label: "Purchases",          icon: "fa-cart-shopping" },
+    { href: "/stock-health",        label: "Stock Health",       icon: "fa-heart-pulse" },
     { href: "/orphan-stock-items",  label: "Orphan Stock",       icon: "fa-triangle-exclamation" },
     { href: "/bulk-stock-inputs",   label: "Bulk Inputs",        icon: "fa-upload" },
     { href: "/bulk-stock-items",    label: "Stock Items Import", icon: "fa-barcode" },

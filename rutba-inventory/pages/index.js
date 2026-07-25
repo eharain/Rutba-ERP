@@ -13,6 +13,8 @@ const FEATURES = [
     { icon: "fa-sliders",          border: "border-warning",   color: "text-warning",   title: "Adjustments",            desc: "Write-offs, damage, loss and expiry with best-effort GL posting.", ready: true, href: "/adjustments" },
     { icon: "fa-clipboard-check",  border: "border-secondary", color: "text-secondary", title: "Cycle Counts",           desc: "Physical stock-takes; shortages book unit losses. Plus cache reconcile in Maintenance.", ready: true, href: "/counts" },
     { icon: "fa-cart-arrow-down",  border: "border-danger",    color: "text-danger",    title: "Reordering",             desc: "Low-stock & out-of-stock products with reorder suggestions.", ready: true, href: "/reorder" },
+    { icon: "fa-heart-pulse",      border: "border-danger",    color: "text-danger",    title: "Stock Health",           desc: "% of created-in-range stock still on hand vs sold, filter by %.", ready: true, href: "/stock-health" },
+    { icon: "fa-bell",             border: "border-danger",    color: "text-danger",    title: "Low-Stock Alerts",       desc: "Persisted reorder alerts — acknowledge, dismiss, run scan now.", ready: true, href: "/alerts" },
     { icon: "fa-coins",            border: "border-warning",   color: "text-warning",   title: "Valuation",              desc: "Inventory value by branch and top products.", ready: true, href: "/valuation" },
     { icon: "fa-hourglass-half",   border: "border-danger",    color: "text-danger",    title: "Expiry & Batches",       desc: "Batch/lot expiry tracking, expiring-soon alerts and expired sweep.", ready: true, href: "/expiry" },
 ];

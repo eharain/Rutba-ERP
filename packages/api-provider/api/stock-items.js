@@ -294,6 +294,42 @@ export const StockItemsEndpoints = {
     }),
 
     /**
+     * Cohort stock-health report — for stock CREATED in a date range (the cohort's
+     * peak at creation), how much of that cohort is still in stock vs sold, per
+     * product. Returns { rows: [{ product, product_name, sku, track_mode, created,
+     * in_stock, reserved, sold, other, pct_remaining, pct_sold }], count, page, ... }.
+     * Serialized products count per-unit stock-items (deduped at product documentId);
+     * bulk products use stock-batches created in range (received vs remaining).
+     * auth:false route + manual ensureUser (any authenticated inventory user).
+     *
+     * @param {{ from?, to?, branchDocId?, minPct?, maxPct?, includeReserved?, sort?, page?, pageSize? }} opts
+     *   from/to — createdAt cohort range (ISO date); default = last 90 days.
+     *   minPct/maxPct — filter on pct_remaining (0–100). sort — 'asc'|'desc' on pct_remaining.
+     */
+    stockHealth: ({ from, to, branchDocId, minPct, maxPct, minSoldPct, maxSoldPct, includeReserved, sort, categoryDocId, brandDocId, supplierDocId, termDocId, purchaseDocId, search, page = 1, pageSize = 50 } = {}) => ({
+        path: '/stock-items/stock-health',
+        params: {
+            ...(from ? { from } : {}),
+            ...(to ? { to } : {}),
+            ...(branchDocId ? { branch: branchDocId } : {}),
+            ...(minPct != null ? { minPct } : {}),
+            ...(maxPct != null ? { maxPct } : {}),
+            ...(minSoldPct != null ? { minSold: minSoldPct } : {}),
+            ...(maxSoldPct != null ? { maxSold: maxSoldPct } : {}),
+            ...(includeReserved ? { includeReserved: 1 } : {}),
+            ...(sort ? { sort } : {}),
+            ...(categoryDocId ? { category: categoryDocId } : {}),
+            ...(brandDocId ? { brand: brandDocId } : {}),
+            ...(supplierDocId ? { supplier: supplierDocId } : {}),
+            ...(termDocId ? { term: termDocId } : {}),
+            ...(purchaseDocId ? { purchase: purchaseDocId } : {}),
+            ...(search ? { search } : {}),
+            page,
+            pageSize,
+        },
+    }),
+
+    /**
      * Admin backfill: ensure every branch has a default receiving storage-location
      * and place every unplaced stock-item into it, then rebuild the stock-level
      * cache. Idempotent. (auth:false route + manual admin check; action:'create'

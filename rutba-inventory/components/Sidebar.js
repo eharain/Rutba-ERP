@@ -11,6 +11,8 @@ const SECTIONS = [
     { href: "/transfers", label: "Transfers", icon: "fa-right-left" },
     { href: "/adjustments", label: "Adjustments", icon: "fa-sliders" },
     { href: "/reorder", label: "Reorder", icon: "fa-cart-arrow-down" },
+    { href: "/stock-health", label: "Stock Health", icon: "fa-heart-pulse" },
+    { href: "/alerts", label: "Low-Stock Alerts", icon: "fa-bell" },
     { href: "/counts", label: "Cycle Counts", icon: "fa-clipboard-check" },
     { href: "/batches", label: "Batches / Lots", icon: "fa-boxes-packing" },
     { href: "/expiry", label: "Expiry", icon: "fa-hourglass-half" },

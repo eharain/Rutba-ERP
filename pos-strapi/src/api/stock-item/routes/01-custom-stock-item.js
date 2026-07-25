@@ -83,6 +83,14 @@ module.exports = {
       },
     },
     {
+      method: 'GET',
+      path: '/stock-items/stock-health',
+      handler: 'cohort.getStockHealth',
+      config: {
+        auth: false,
+      },
+    },
+    {
       method: 'POST',
       path: '/stock-items/sell-units',
       handler: 'sell-units.run',

@@ -66,6 +66,7 @@ export { SocialAccountsEndpoints } from './social-accounts.js';
 export { SocialPostsEndpoints } from './social-posts.js';
 export { SocialRepliesEndpoints } from './social-replies.js';
 export { StockAdjustmentsEndpoints } from './stock-adjustments.js';
+export { StockAlertsEndpoints } from './stock-alerts.js';
 export { StockBatchesEndpoints } from './stock-batches.js';
 export { StockCountsEndpoints } from './stock-counts.js';
 export { StockHelpersEndpoints } from './stock-helpers.js';

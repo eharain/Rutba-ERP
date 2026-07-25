@@ -18,6 +18,7 @@ export interface StockItemsEndpointsType {
     getExpiring(days?: any): Promise<any>;
     sweepExpired(): Promise<any>;
     valuation({ branchDocId }?: any): Promise<any>;
+    stockHealth({ from, to, branchDocId, minPct, maxPct, minSoldPct, maxSoldPct, includeReserved, sort, categoryDocId, brandDocId, supplierDocId, termDocId, purchaseDocId, search, page = 1, pageSize = 50 }?: any): Promise<any>;
     backfillDefaultLocations(): Promise<any>;
     transfer(payload?: any): Promise<any>;
     sellUnits({ productDocId, qty, scannedItemDocId, saleItemDocId }?: any): Promise<any>;

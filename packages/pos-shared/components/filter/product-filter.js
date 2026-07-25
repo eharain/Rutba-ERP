@@ -160,6 +160,9 @@ export function ProductFilter({
     onTermChange,
     onPurchaseChange,
     onSearchTextChange,
+    // Placeholder for the built-in search box. Defaults to the product-list
+    // copy; non-product surfaces (e.g. purchases) pass their own.
+    searchPlaceholder = "Search by name, SKU, barcode (product or stock item), supplier code, supplier name, or PO number…",
     // Hide individual built-in filter cells when the calling page doesn't
     // surface them (e.g. a per-product stock page only wants stock-status).
     // Pass any of: 'brand' | 'category' | 'supplier' | 'term' | 'purchase' | 'search'
@@ -184,7 +187,7 @@ export function ProductFilter({
                     <SearchBar
                         value={searchText}
                         onChange={onSearchTextChange}
-                        placeholder="Search by name, SKU, barcode (product or stock item), supplier code, supplier name, or PO number…"
+                        placeholder={searchPlaceholder}
                     />
                 </div>
             )}

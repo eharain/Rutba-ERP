@@ -83,6 +83,7 @@ export * from './social-accounts';
 export * from './social-posts';
 export * from './social-replies';
 export * from './stock-adjustments';
+export * from './stock-alerts';
 export * from './stock-batches';
 export * from './stock-counts';
 export * from './stock-helpers';

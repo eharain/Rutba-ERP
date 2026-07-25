@@ -83,6 +83,7 @@ export * from './social-accounts.js';
 export * from './social-posts.js';
 export * from './social-replies.js';
 export * from './stock-adjustments.js';
+export * from './stock-alerts.js';
 export * from './stock-batches.js';
 export * from './stock-counts.js';
 export * from './stock-helpers.js';

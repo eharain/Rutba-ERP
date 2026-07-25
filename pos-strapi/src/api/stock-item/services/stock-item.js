@@ -155,6 +155,282 @@ module.exports = createCoreService(STOCK_ITEM_UID, ({ strapi }) => ({
   },
 
   /**
+   * Cohort stock-health report (compute-on-read). For stock CREATED within a
+   * date range — the cohort's peak at creation time — how much of that cohort is
+   * still in stock vs already sold, per product. This is the "what % of this
+   * batch is left / sold" metric: it is anchored to a creation window, NOT a
+   * lifetime count (which blends every restock cycle and always trends to 100%).
+   *
+   *   serialized products → count per-unit stock-items created in range, grouped
+   *     by current status. created = all statuses; in_stock = InStock (+Reserved
+   *     when includeReserved); sold = Sold. COUNT(DISTINCT stock_item.id) grouped
+   *     by product.document_id dedupes the draft+published edition link rows (a
+   *     stock-item links to BOTH editions ~2× — see recomputeStockLevelsForProduct).
+   *   bulk products (track_mode='bulk') → stock-batches created in range;
+   *     created = Σ quantity_received, in_stock = Σ quantity_remaining, sold = diff.
+   *
+   * pct_remaining = in_stock/created·100, pct_sold = sold/created·100. Set-based
+   * knex GROUP BY (one SQL per ledger) so it scales over tens of thousands of rows.
+   *
+   * @param {{ from?, to?, branchId?, branchDocId?, minPct?, maxPct?, includeReserved?, sort?,
+   *   categoryDocId?, brandDocId?, supplierDocId?, termDocId?, purchaseDocId?, search?,
+   *   page?, pageSize? }} opts
+   *   from/to — createdAt cohort range (ISO date, inclusive days). Default: last 90 days.
+   *   minPct/maxPct — filter on pct_remaining (0–100). minSoldPct/maxSoldPct — filter on
+   *   pct_sold (tested directly, NOT 100−remaining). sort — 'asc'|'desc' on pct_remaining
+   *   (default 'asc' = most-depleted first). page/pageSize — post-aggregation paging.
+   *   categoryDocId/brandDocId/supplierDocId/termDocId — product-taxonomy filters (documentId).
+   *   purchaseDocId — restrict to serialized units received on that purchase order.
+   *   search — case-insensitive product name/sku contains.
+   */
+  async computeCohortStockHealth(opts = {}) {
+    const num = (v) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
+    const round4 = (x) => Math.round(x * 10000) / 10000;
+
+    // --- Resolve the OPTIONAL creation-cohort window (inclusive days). Each bound
+    //     is independent; when neither is given the cohort is unrestricted (all
+    //     created stock — the default "free" view). ---
+    const fromDate = opts.from ? new Date(opts.from) : null;
+    const toDate = opts.to ? new Date(opts.to) : null;
+    const fromSql = fromDate ? `${localDateISO(fromDate)} 00:00:00` : null;
+    let toExclusiveSql = null;
+    if (toDate) {
+      const toPlus = new Date(toDate); toPlus.setDate(toPlus.getDate() + 1);
+      toExclusiveSql = `${localDateISO(toPlus)} 00:00:00`; // < next-day-start → whole `to` day included
+    }
+
+    // --- Resolve optional branch documentId → id. ---
+    let branchId = opts.branchId || null;
+    if (!branchId && opts.branchDocId) {
+      const br = await strapi.db.query(BRANCH_UID).findOne({ where: { documentId: opts.branchDocId }, select: ['id'] });
+      branchId = br?.id || null;
+    }
+
+    const knex = strapi.db.connection;
+    const colOf = (uid, attr, dflt) => {
+      try { return strapi.db.metadata.get(uid).attributes?.[attr]?.columnName || dflt; } catch (_) { return dflt; }
+    };
+    const tableOf = (uid) => strapi.db.metadata.get(uid).tableName;
+
+    const siTable = tableOf(STOCK_ITEM_UID);
+    const prodTable = tableOf(PRODUCT_UID);
+    const prodDocCol = colOf(PRODUCT_UID, 'documentId', 'document_id');
+    const siCreatedCol = colOf(STOCK_ITEM_UID, 'createdAt', 'created_at');
+    const siProdJt = this._relJoinInfo(STOCK_ITEM_UID, 'product');
+    const siBrJt = this._relJoinInfo(STOCK_ITEM_UID, 'branch');
+
+    // --- Resolve product-taxonomy + purchase filters → numeric id LISTS. ---
+    // A documentId can have both a draft and a published row; product↔brand (etc.)
+    // links point at edition-specific ids, so we match ALL editions of the picked
+    // documentId. Returns null when no filter, or [-1] (matches nothing) when a
+    // filter was given but its documentId resolved to no rows.
+    const idsOf = async (uid, docId) => {
+      if (!docId) return null;
+      const rows = await strapi.db.query(uid).findMany({ where: { documentId: String(docId) }, select: ['id'] });
+      const ids = (rows || []).map((r) => r.id).filter((n) => Number.isFinite(n));
+      return ids.length ? ids : [-1];
+    };
+    const catIds = await idsOf('api::category.category', opts.categoryDocId);
+    const brandIds = await idsOf('api::brand.brand', opts.brandDocId);
+    const supIds = await idsOf('api::supplier.supplier', opts.supplierDocId);
+    const termIds = await idsOf('api::term.term', opts.termDocId);
+    const purchaseIds = await idsOf('api::purchase.purchase', opts.purchaseDocId);
+    const searchTerm = (opts.search || '').trim().toLowerCase();
+
+    const catJt = this._relJoinInfo(PRODUCT_UID, 'categories');
+    const brandJt = this._relJoinInfo(PRODUCT_UID, 'brands');
+    const supJt = this._relJoinInfo(PRODUCT_UID, 'suppliers');
+    const termJt = this._relJoinInfo(PRODUCT_UID, 'terms');
+    const siPiJt = this._relJoinInfo(STOCK_ITEM_UID, 'purchase_item');
+    const piPurchaseJt = this._relJoinInfo('api::purchase-item.purchase-item', 'purchase');
+
+    // Apply product-taxonomy joins (category/brand/supplier/term) + name/sku search
+    // to a query whose product table is aliased `p`. Each relation joins its link
+    // table filtered to the matching edition-id list; COUNT(DISTINCT si.id)
+    // (serialized) and one-row-per-edition grouping (bulk) keep aggregates correct.
+    const applyProductFilters = (qb) => {
+      const relJoin = (jt, ids, alias) => {
+        if (!ids || !jt?.table || !jt.itemCol || !jt.targetCol) return;
+        qb.join({ [alias]: jt.table }, function relOn() {
+          this.on(`${alias}.${jt.itemCol}`, '=', 'p.id')
+            .andOn(knex.raw(`?? in (${ids.map(() => '?').join(',')})`, [`${alias}.${jt.targetCol}`, ...ids]));
+        });
+      };
+      relJoin(catJt, catIds, '_cat');
+      relJoin(brandJt, brandIds, '_brand');
+      relJoin(supJt, supIds, '_sup');
+      relJoin(termJt, termIds, '_term');
+      if (searchTerm) {
+        const like = `%${searchTerm}%`;
+        qb.where((b) => b.whereRaw('LOWER(p.name) LIKE ?', [like]).orWhereRaw('LOWER(p.sku) LIKE ?', [like]));
+      }
+    };
+    // Restrict serialized units to those received on a specific purchase order
+    // (stock-item → purchase_item → purchase). Serialized-only (bulk batches carry
+    // no purchase link), applied as a subquery on si.id.
+    const applyPurchaseFilter = (qb) => {
+      if (!purchaseIds || !siPiJt?.table || !piPurchaseJt?.table) return;
+      qb.whereIn('si.id', (sub) => {
+        sub.select(siPiJt.itemCol).from(siPiJt.table).whereIn(siPiJt.targetCol, (sub2) => {
+          sub2.select(piPurchaseJt.itemCol).from(piPurchaseJt.table).whereIn(piPurchaseJt.targetCol, purchaseIds);
+        });
+      });
+    };
+
+    // --- Serialized ledger: COUNT(DISTINCT stock_item.id) per (product doc, status). ---
+    const serByDoc = new Map(); // doc -> { created, in_stock, reserved, sold }
+    if (siProdJt?.table && siProdJt.itemCol && siProdJt.targetCol) {
+      const serRows = await knex({ si: siTable })
+        .join({ pl: siProdJt.table }, `pl.${siProdJt.itemCol}`, 'si.id')
+        .join({ p: prodTable }, 'p.id', `pl.${siProdJt.targetCol}`)
+        .modify((qb) => {
+          if (branchId && siBrJt?.table && siBrJt.itemCol && siBrJt.targetCol) {
+            qb.join({ bl: siBrJt.table }, function joinBranch() {
+              this.on(`bl.${siBrJt.itemCol}`, '=', 'si.id').andOnVal(`bl.${siBrJt.targetCol}`, '=', branchId);
+            });
+          }
+        })
+        .modify(applyProductFilters)
+        .modify(applyPurchaseFilter)
+        .modify((qb) => {
+          if (fromSql) qb.where(`si.${siCreatedCol}`, '>=', fromSql);
+          if (toExclusiveSql) qb.where(`si.${siCreatedCol}`, '<', toExclusiveSql);
+        })
+        .groupBy(`p.${prodDocCol}`, 'si.status')
+        .select(`p.${prodDocCol} as product_doc`, 'si.status as status')
+        .countDistinct({ cnt: 'si.id' });
+      for (const r of serRows) {
+        const doc = r.product_doc; if (!doc) continue;
+        const cnt = num(r.cnt);
+        let e = serByDoc.get(doc);
+        if (!e) { e = { created: 0, in_stock: 0, reserved: 0, sold: 0 }; serByDoc.set(doc, e); }
+        e.created += cnt;
+        if (r.status === 'InStock') e.in_stock += cnt;
+        else if (r.status === 'Reserved') e.reserved += cnt;
+        else if (r.status === 'Sold') e.sold += cnt;
+      }
+    }
+
+    // --- Bulk ledger: stock-batches created in range (dedupe each batch → one edition, then SUM). ---
+    const bulkByDoc = new Map(); // doc -> { received, remaining }
+    try {
+      const sbTable = tableOf(STOCK_BATCH_UID);
+      const sbCreatedCol = colOf(STOCK_BATCH_UID, 'createdAt', 'created_at');
+      const sbProdJt = this._relJoinInfo(STOCK_BATCH_UID, 'product');
+      const sbBrJt = this._relJoinInfo(STOCK_BATCH_UID, 'branch');
+      // A purchase-order filter is serialized-only (batches carry no purchase
+      // link) → skip the bulk ledger entirely when one is set.
+      if (!purchaseIds && sbProdJt?.table && sbProdJt.itemCol && sbProdJt.targetCol) {
+        const batchEdition = knex({ jt: sbProdJt.table })
+          .select(`${sbProdJt.itemCol} as batch_id`)
+          .min({ prod_id: sbProdJt.targetCol })
+          .whereNotNull(sbProdJt.targetCol)
+          .groupBy(sbProdJt.itemCol);
+        const bulkRows = await knex({ b: sbTable })
+          .join(batchEdition.as('l'), 'l.batch_id', 'b.id')
+          .join({ p: prodTable }, 'p.id', 'l.prod_id')
+          .modify((qb) => {
+            if (branchId && sbBrJt?.table && sbBrJt.itemCol && sbBrJt.targetCol) {
+              qb.join({ bl: sbBrJt.table }, function joinBranch() {
+                this.on(`bl.${sbBrJt.itemCol}`, '=', 'b.id').andOnVal(`bl.${sbBrJt.targetCol}`, '=', branchId);
+              });
+            }
+          })
+          .modify(applyProductFilters)
+          .modify((qb) => {
+            if (fromSql) qb.where(`b.${sbCreatedCol}`, '>=', fromSql);
+            if (toExclusiveSql) qb.where(`b.${sbCreatedCol}`, '<', toExclusiveSql);
+          })
+          .groupBy(`p.${prodDocCol}`)
+          .select(`p.${prodDocCol} as product_doc`)
+          .sum({ received: 'b.quantity_received' })
+          .sum({ remaining: 'b.quantity_remaining' });
+        for (const r of bulkRows) {
+          if (!r.product_doc) continue;
+          bulkByDoc.set(r.product_doc, { received: num(r.received), remaining: num(r.remaining) });
+        }
+      }
+    } catch (err) {
+      strapi.log.warn(`[stock-item] cohort bulk-batch scan failed (${err.message}); serialized-only results`);
+    }
+
+    // --- Product display fields + track_mode routing. ---
+    const allDocs = new Set([...serByDoc.keys(), ...bulkByDoc.keys()]);
+    const prodByDoc = new Map();
+    if (allDocs.size) {
+      const prods = await strapi.db.query(PRODUCT_UID).findMany({
+        where: { documentId: { $in: [...allDocs] } },
+        select: ['id', 'documentId', 'name', 'sku', 'track_mode'],
+      });
+      for (const p of prods) if (!prodByDoc.has(p.documentId)) prodByDoc.set(p.documentId, p);
+    }
+
+    const includeReserved = !!opts.includeReserved;
+    let rows = [];
+    for (const doc of allDocs) {
+      const p = prodByDoc.get(doc) || {};
+      let created; let in_stock; let sold; let reserved; let other;
+      if (p.track_mode === 'bulk') {
+        const b = bulkByDoc.get(doc) || { received: 0, remaining: 0 };
+        created = b.received; in_stock = b.remaining; reserved = 0;
+        sold = Math.max(0, created - in_stock); other = 0;
+      } else {
+        const s = serByDoc.get(doc) || { created: 0, in_stock: 0, reserved: 0, sold: 0 };
+        created = s.created; reserved = s.reserved;
+        in_stock = s.in_stock + (includeReserved ? s.reserved : 0);
+        sold = s.sold;
+        other = Math.max(0, created - s.in_stock - s.reserved - s.sold);
+      }
+      rows.push({
+        product: doc,
+        product_name: p.name || null,
+        sku: p.sku || null,
+        track_mode: p.track_mode || 'serialized',
+        created: Math.round(created * 1000) / 1000,
+        in_stock: Math.round(in_stock * 1000) / 1000,
+        reserved: Math.round(reserved * 1000) / 1000,
+        sold: Math.round(sold * 1000) / 1000,
+        other: Math.round(other * 1000) / 1000,
+        pct_remaining: created > 0 ? round4((in_stock / created) * 100) : 0,
+        pct_sold: created > 0 ? round4((sold / created) * 100) : 0,
+      });
+    }
+
+    // --- Filter by pct_remaining AND/OR pct_sold, sort, paginate. ---
+    // pct_sold is filtered on its OWN value, not 100−pct_remaining: with any
+    // `other` disposition (returns/damage/loss/expiry) the two are NOT complements,
+    // so a "sold ≥ X%" filter must test pct_sold directly.
+    const minPct = opts.minPct != null ? num(opts.minPct) : null;
+    const maxPct = opts.maxPct != null ? num(opts.maxPct) : null;
+    const minSold = opts.minSoldPct != null ? num(opts.minSoldPct) : null;
+    const maxSold = opts.maxSoldPct != null ? num(opts.maxSoldPct) : null;
+    if (minPct != null) rows = rows.filter((r) => r.pct_remaining >= minPct);
+    if (maxPct != null) rows = rows.filter((r) => r.pct_remaining <= maxPct);
+    if (minSold != null) rows = rows.filter((r) => r.pct_sold >= minSold);
+    if (maxSold != null) rows = rows.filter((r) => r.pct_sold <= maxSold);
+
+    const dir = String(opts.sort || 'asc').toLowerCase() === 'desc' ? -1 : 1;
+    rows.sort((a, b) => ((a.pct_remaining - b.pct_remaining) * dir) || (b.created - a.created));
+
+    const count = rows.length;
+    const page = Math.max(1, parseInt(opts.page, 10) || 1);
+    const pageSize = Math.min(500, Math.max(1, parseInt(opts.pageSize, 10) || 50));
+    const start = (page - 1) * pageSize;
+
+    return {
+      asOf: new Date().toISOString(),
+      from: fromDate ? localDateISO(fromDate) : null,
+      to: toDate ? localDateISO(toDate) : null,
+      branch: opts.branchDocId || null,
+      count,
+      page,
+      pageSize,
+      pageCount: Math.max(1, Math.ceil(count / pageSize)),
+      rows: rows.slice(start, start + pageSize),
+    };
+  },
+
+  /**
    * Coordinated expiry sweep across BOTH stock ledgers: serialized units and
    * bulk batches past expiry → 'Expired'. Shared by the daily cron and the
    * manual POST /stock-items/sweep-expired endpoint. Returns { items, batches, asOf }.
