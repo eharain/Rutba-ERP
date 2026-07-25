@@ -22,6 +22,11 @@ async function del(documentId) {
     return authApi.del(withQuery(ep.path, ep.params));
 }
 
+async function providerStatus() {
+    const ep = SocialAccountsEndpointsApi.providerStatus();
+    return authApi.fetch(ep.path, ep.params);
+}
+
 async function getConnectUrl(documentId) {
     const ep = SocialAccountsEndpointsApi.getConnectUrl(documentId);
     return authApi.post(withQuery(ep.path, ep.params), wrapData(ep.data));
@@ -44,12 +49,13 @@ const endpoints = strictEndpointGuard(
         create,
         update,
         del,
+        providerStatus,
         getConnectUrl,
         validateConnection,
         syncToken,
         meta: SocialAccountsEndpointsApi.meta,
     },
-    ["list","create","update","del","getConnectUrl","validateConnection","syncToken","meta"],
+    ["list","create","update","del","providerStatus","getConnectUrl","validateConnection","syncToken","meta"],
 );
 
 export default endpoints;

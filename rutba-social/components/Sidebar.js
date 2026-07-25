@@ -2,6 +2,7 @@ import SharedSidebar from "@rutba/pos-shared/components/Sidebar";
 
 const SECTIONS = [
     { href: "/posts",    label: "Posts",    icon: "fa-pen-to-square" },
+    { href: "/products", label: "Products", icon: "fa-box" },
     { href: "/replies",  label: "Replies",  icon: "fa-reply" },
     { href: "/accounts", label: "Accounts", icon: "fa-share-nodes" },
     { href: "/media",    label: "Media",    icon: "fa-photo-film" },

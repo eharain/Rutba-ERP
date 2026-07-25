@@ -112,6 +112,32 @@ module.exports = createCoreController('api::product.product', ({ strapi }) => ({
         ? { $and: [ctx.query.filters, lowFilter] }
         : lowFilter;
     }
+
+    // "Without social posts" filter (rutba-social's product browser uses it to
+    // surface products that haven't been turned into a social post yet). The
+    // link isn't a field on product — it lives on social-post.products
+    // (manyToMany) — so it can't be expressed as a REST filter. We collect the
+    // documentIds that already have at least one linked post and exclude them.
+    // Resolved here with full privileges (social-post is outside most roles'
+    // domains). Only runs when the hint is present, so other callers are
+    // untouched.
+    if (ctx.query?.noSocialPosts) {
+      delete ctx.query.noSocialPosts;
+      const posts = await strapi.db.query('api::social-post.social-post').findMany({
+        select: ['id'],
+        populate: { products: { select: ['documentId'] } },
+      });
+      const withPostDocIds = [
+        ...new Set(posts.flatMap((p) => (p.products || []).map((pr) => pr.documentId)).filter(Boolean)),
+      ];
+      // Nothing has a post yet → no exclusion needed (every product qualifies).
+      if (withPostDocIds.length > 0) {
+        const exclude = { documentId: { $notIn: withPostDocIds } };
+        ctx.query.filters = ctx.query.filters
+          ? { $and: [ctx.query.filters, exclude] }
+          : exclude;
+      }
+    }
     return await super.find(ctx);
   },
 

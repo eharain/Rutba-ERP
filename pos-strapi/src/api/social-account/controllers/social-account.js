@@ -45,6 +45,23 @@ module.exports = createCoreController('api::social-account.social-account', ({ s
     return super.delete(ctx);
   },
 
+  /**
+   * Report which platforms have a server-level OAuth app configured (client
+   * id + secret set in config/social.js via env). Lets the account form
+   * collapse to one-click Connect instead of asking the user to paste keys.
+   * Never returns the secrets themselves — only a per-platform boolean.
+   */
+  async providerStatus(ctx) {
+    if (!await requireAdmin(ctx, strapi)) return;
+    const social = strapi.config.get('social', {}) || {};
+    const providers = social.providers || {};
+    const platforms = {};
+    for (const [key, cfg] of Object.entries(providers)) {
+      platforms[key] = Boolean(cfg && cfg.clientId && cfg.clientSecret);
+    }
+    return ctx.send({ publicUrl: Boolean(social.publicUrl), platforms });
+  },
+
   /** Build the provider OAuth consent URL for this account. */
   async getConnectUrl(ctx) {
     if (!await requireAdmin(ctx, strapi)) return;

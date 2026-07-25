@@ -119,6 +119,11 @@ export const ProductsEndpoints = {
             // no published sibling) is a set-difference the product controller's
             // find() override resolves via the `publishState` query param.
             publishState,
+            // "Without social posts" (rutba-social only): products not yet linked
+            // to any social-post. The link lives on social-post.products, so it's
+            // resolved by the product controller's find() via a `noSocialPosts`
+            // query hint (like publishState / low stock).
+            noSocialPosts,
         } = filters;
 
         const filterObj = {};
@@ -229,6 +234,7 @@ export const ProductsEndpoints = {
             ...(fields ? { fields } : {}),
             ...(publishStateParam ? { publishState: publishStateParam } : {}),
             ...(stockStatusParam ? { stockStatus: stockStatusParam } : {}),
+            ...(noSocialPosts ? { noSocialPosts: 1 } : {}),
         };
 
         return { path: '/products', params };

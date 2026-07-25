@@ -8,6 +8,7 @@ import { useToast } from "../../components/Toast";
 import PLATFORMS from "../../components/PlatformBadge";
 import FileView from "@rutba/pos-shared/components/FileView";
 import Link from "next/link";
+import { useStorefrontBaseUrl, productStorefrontUrl } from "../../lib/storefront-url";
 
 // Turn products into a shoppable social post: a caption generated from the
 // product's name/price/summary + a "Shop now" deep-link to the storefront
@@ -15,10 +16,8 @@ import Link from "next/link";
 // The user reviews/edits the generated caption, picks platforms, and creates a
 // draft they then publish from the editor.
 
-const WEB_URL = process.env.NEXT_PUBLIC_WEB_URL || "http://localhost:4000";
 const CURRENCY = process.env.NEXT_PUBLIC_CURRENCY || "Rs";
 
-const productUrl = (p) => `${WEB_URL}/product/${encodeURIComponent(p.slug || p.documentId)}`;
 const money = (n) => `${CURRENCY} ${Number(n || 0).toLocaleString()}`;
 
 function priceInfo(p) {
@@ -43,7 +42,10 @@ function deriveTags(products) {
     return [...set].slice(0, 10);
 }
 
-function buildCaption(products) {
+// The "Shop now" link is built against `baseUrl` — the storefront base resolved
+// from site-settings.site_url (env fallback) — using the same product path the
+// storefront itself uses (slug || documentId).
+function buildCaption(products, baseUrl) {
     if (products.length === 0) return "";
     if (products.length === 1) {
         const p = products[0];
@@ -52,7 +54,7 @@ function buildCaption(products) {
         const desc = String(p.summary || p.description || "").trim();
         if (desc) { lines.push(desc.length > 300 ? desc.slice(0, 297) + "…" : desc, ""); }
         lines.push(was ? `💰 ${money(price)}  (was ${money(was)})` : `💰 ${money(price)}`);
-        lines.push(`🛒 Shop now: ${productUrl(p)}`);
+        lines.push(`🛒 Shop now: ${productStorefrontUrl(baseUrl, p)}`);
         const tags = deriveTags([p]).map((t) => `#${t}`).join(" ");
         if (tags) lines.push("", tags);
         return lines.join("\n");
@@ -62,7 +64,7 @@ function buildCaption(products) {
         const { price } = priceInfo(p);
         lines.push(`• ${p.name} — ${money(price)}`);
     }
-    lines.push("", `🛒 Shop the collection: ${WEB_URL}/shop`);
+    lines.push("", `🛒 Shop the collection: ${baseUrl}/shop`);
     const tags = deriveTags(products).map((t) => `#${t}`).join(" ");
     if (tags) lines.push("", tags);
     return lines.join("\n");
@@ -72,6 +74,10 @@ export default function FromProductPage() {
     const { jwt } = useAuth();
     const { toast, ToastContainer } = useToast();
     const router = useRouter();
+
+    // Storefront base for the "Shop now" deep-link — site-settings.site_url
+    // preferred, NEXT_PUBLIC_WEB_URL fallback.
+    const storefrontBase = useStorefrontBaseUrl();
 
     const [search, setSearch] = useState("");
     const [results, setResults] = useState([]);
@@ -153,16 +159,16 @@ export default function FromProductPage() {
             setCoverProductId(null);
             return;
         }
-        if (!captionDirty) setCaption(buildCaption(selected));
+        if (!captionDirty) setCaption(buildCaption(selected, storefrontBase));
         setTitle(selected.length === 1
             ? selected[0].name
             : `Featured: ${selected[0].name}${selected.length > 1 ? ` +${selected.length - 1} more` : ""}`);
         // default cover = first selected product that has an image
         const withImg = selected.find((p) => p.logo?.id);
         setCoverProductId((prev) => (prev && selected.some((p) => p.documentId === prev) ? prev : (withImg?.documentId || null)));
-    }, [selected, captionDirty]);
+    }, [selected, captionDirty, storefrontBase]);
 
-    const regenerate = () => { setCaption(buildCaption(selected)); setCaptionDirty(false); };
+    const regenerate = () => { setCaption(buildCaption(selected, storefrontBase)); setCaptionDirty(false); };
 
     const togglePlatform = (key) =>
         setPlatforms((prev) => (prev.includes(key) ? prev.filter((p) => p !== key) : [...prev, key]));
@@ -302,7 +308,7 @@ export default function FromProductPage() {
                                         <span className="text-muted small">{caption.length} chars{captionDirty ? " · edited" : ""}</span>
                                     </label>
                                     <textarea className="form-control" rows={10} value={caption} onChange={(e) => { setCaption(e.target.value); setCaptionDirty(true); }} placeholder="Pick a product to generate a caption…" />
-                                    <div className="form-text">The <strong>Shop now</strong> link points to the product page on your storefront ({WEB_URL.replace(/^https?:\/\//, "")}) — that's what turns the post into a sale.</div>
+                                    <div className="form-text">The <strong>Shop now</strong> link points to the product page on your storefront ({storefrontBase.replace(/^https?:\/\//, "")}) — that's what turns the post into a sale.</div>
                                 </div>
                                 <div className="mb-3">
                                     <label className="form-label d-block">Cover image</label>

@@ -10,15 +10,21 @@ import PLATFORMS, { PlatformBadge } from "../components/PlatformBadge";
 
 const EMPTY_FORM = {
     platform: "instagram",
+    connection_type: "api",
     account_name: "",
     api_key: "",
     api_secret: "",
     access_token: "",
     refresh_token: "",
     page_id: "",
+    target_name: "",
     platform_user_id: "",
     is_active: true,
 };
+
+// Platforms posted to by browser automation (the Rutba Social Poster desktop
+// app) rather than a Cloud/Graph API — no OAuth, no keys, just a destination name.
+const BROWSER_PLATFORMS = new Set(["whatsapp"]);
 
 // Per-platform: which credential fields to show (labelled for that provider) and
 // a help panel describing the account + API you need from the platform. The
@@ -26,9 +32,11 @@ const EMPTY_FORM = {
 const PLATFORM_FIELDS = {
     instagram: {
         help: {
-            account: "An Instagram Business or Creator account, linked to a Facebook Page you manage.",
+            accountType: "Instagram Professional account — Business or Creator. A personal Instagram account cannot post through the API.",
+            account: "The Professional account must be linked to a Facebook Page you manage; you sign in through that Facebook login, not directly with Instagram.",
             api: "A Meta app (developers.facebook.com) using the Instagram Graph API, with instagram_basic, instagram_content_publish and instagram_manage_comments.",
-            how: "Set the App ID + Secret and click Connect (OAuth) — or paste a long-lived Page access token + the Instagram Business Account ID.",
+            how: "Click Connect and sign in with the Facebook account that manages the Page — or paste a long-lived Page access token + the Instagram Business Account ID.",
+            note: "To convert a personal account: Instagram app → Settings → Account type and tools → Switch to professional account.",
             docs: "https://developers.facebook.com/docs/instagram-platform",
         },
         fields: [
@@ -41,11 +49,16 @@ const PLATFORM_FIELDS = {
     },
     facebook: {
         help: {
-            account: "A Facebook Page you are an admin of.",
+            accountType: "A Facebook Page (business/brand page). The API cannot post to a personal profile or timeline.",
+            account: "You must be an admin of the Page — or hold a role that grants posting access — for the account you connect.",
             api: "A Meta app with pages_manage_posts, pages_manage_engagement and pages_read_engagement.",
-            how: "Set the App ID + Secret and Connect (OAuth) — or paste a Page access token + Page ID.",
+            how: "Click Connect and sign in as the Page admin, then pick the Page — or paste a long-lived Page access token + the Page ID.",
+            note: "One Meta app + one login can manage every Page you admin; you choose which Page during Connect.",
             docs: "https://developers.facebook.com/docs/pages-api",
         },
+        // The Page this account publishes to (always shown — it's the destination,
+        // not a secret). page_id below is the technical id set by Connect.
+        destination: { key: "target_name", label: "Page name", placeholder: "the Facebook Page this posts to" },
         fields: [
             { key: "api_key", label: "Meta App ID", type: "password", placeholder: "for OAuth Connect" },
             { key: "api_secret", label: "Meta App Secret", type: "password" },
@@ -55,9 +68,11 @@ const PLATFORM_FIELDS = {
     },
     x: {
         help: {
-            account: "An X account plus an X Developer account (developer.x.com) with a Project and an App.",
-            api: "X API v2 with OAuth 2.0. Posting replies / reading mentions requires a paid tier (Basic or above).",
-            how: "Set the OAuth2 Client ID + Secret and Connect. Scopes: tweet.read, tweet.write, users.read, offline.access.",
+            accountType: "A standard X (Twitter) account — the handle you want to post from. No special account tier is needed to hold the account.",
+            account: "You also need an X Developer account (developer.x.com) with a Project and an App to obtain API access for that handle.",
+            api: "X API v2 with OAuth 2.0. Writing posts / reading mentions requires a paid tier (Basic or above); the free tier is heavily read-limited.",
+            how: "Set the OAuth2 Client ID + Secret and click Connect. Scopes: tweet.read, tweet.write, users.read, offline.access.",
+            note: "The free API tier cannot reliably auto-post — budget for at least the Basic tier if you want scheduled posting.",
             docs: "https://developer.x.com/en/docs/x-api",
         },
         fields: [
@@ -70,9 +85,11 @@ const PLATFORM_FIELDS = {
     },
     tiktok: {
         help: {
-            account: "A TikTok Business account plus a TikTok for Developers app (developers.tiktok.com).",
-            api: "Content Posting API + Login Kit. Your posting domain must be URL-property verified; unaudited apps can only post privately (SELF_ONLY).",
-            how: "Set the Client Key + Secret and Connect. Scopes: user.info.basic, video.publish, video.upload.",
+            accountType: "A TikTok account to post from — a TikTok Business account is recommended for content publishing.",
+            account: "You also need a TikTok for Developers app (developers.tiktok.com) with the Content Posting API + Login Kit added.",
+            api: "Content Posting API + Login Kit. Your posting domain must be URL-property verified; before your app passes TikTok's audit it can only post privately (SELF_ONLY).",
+            how: "Set the Client Key + Secret and click Connect. Scopes: user.info.basic, video.publish, video.upload.",
+            note: "Public auto-posting requires submitting the app for TikTok review; until it's approved, use it for private/self posts only.",
             docs: "https://developers.tiktok.com/doc/content-posting-api-get-started",
         },
         fields: [
@@ -85,9 +102,11 @@ const PLATFORM_FIELDS = {
     },
     youtube: {
         help: {
-            account: "A YouTube channel plus a Google account.",
-            api: "A Google Cloud project with the YouTube Data API v3 enabled and an OAuth consent screen. Uploads cost ~1600 quota units each (default 10,000/day ≈ 6 uploads).",
-            how: "Set the Google OAuth Client ID + Secret and Connect. Scopes: youtube.upload, youtube.force-ssl.",
+            accountType: "A YouTube channel owned by a Google account (a Brand-account channel works too).",
+            account: "Set up a Google Cloud project with the YouTube Data API v3 enabled and an OAuth consent screen for that Google account.",
+            api: "YouTube Data API v3. Uploads cost ~1600 quota units each; the default 10,000/day quota is roughly 6 uploads per day.",
+            how: "Set the Google OAuth Client ID + Secret and click Connect, then choose the channel. Scopes: youtube.upload, youtube.force-ssl.",
+            note: "Request a quota increase in Google Cloud if you plan to upload more than a few videos per day.",
             docs: "https://developers.google.com/youtube/v3/getting-started",
         },
         fields: [
@@ -97,6 +116,19 @@ const PLATFORM_FIELDS = {
             { key: "refresh_token", label: "Refresh Token", type: "password", placeholder: "set by Connect" },
             { key: "platform_user_id", label: "Channel ID", type: "text", placeholder: "set by Connect" },
         ],
+    },
+    whatsapp: {
+        help: {
+            accountType: "A WhatsApp Channel you administer (the one-to-many broadcast feed). Selling via a WhatsApp Business catalog is a separate integration.",
+            account: "You must be an admin of the Channel, signed in on the device that runs the Rutba Social Poster desktop app.",
+            api: "Meta has no public API to post to WhatsApp Channels — posting is done through the Social Poster app (browser automation), not the Cloud API.",
+            how: "Enter the Channel's exact name below and Save. Publish from the Social Poster app, which opens WhatsApp and posts to that named channel.",
+            note: "The name must match the Channel exactly (spelling, case, spacing) so the poster targets the right one.",
+            docs: "https://www.whatsapp.com/channels",
+        },
+        // WhatsApp posts via browser automation — the channel name IS the routing key.
+        destination: { key: "target_name", label: "Channel name", placeholder: "exact WhatsApp Channel name" },
+        fields: [],
     },
 };
 
@@ -110,6 +142,9 @@ export default function AccountsPage() {
     const [editing, setEditing] = useState(null);
     const [form, setForm] = useState({ ...EMPTY_FORM });
     const [saving, setSaving] = useState(false);
+    // Which platforms have a server-level OAuth app (→ hide key fields, one-click Connect).
+    const [providerStatus, setProviderStatus] = useState(null);
+    const [showAdvanced, setShowAdvanced] = useState(false);
 
     const loadAccounts = useCallback(async () => {
         if (!jwt) return;
@@ -127,14 +162,35 @@ export default function AccountsPage() {
 
     useEffect(() => { loadAccounts(); }, [loadAccounts]);
 
+    // Learn which platforms are already configured on the server so the form can
+    // drop the key-entry fields and offer a plain "Save → Connect" instead.
+    useEffect(() => {
+        if (!jwt) return;
+        SocialAccountsEndpoints.providerStatus()
+            .then((res) => setProviderStatus(res?.data || res || null))
+            .catch(() => setProviderStatus(null));
+    }, [jwt]);
+
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
+        if (name === "platform") {
+            setShowAdvanced(false);
+            setForm((prev) => ({
+                ...prev,
+                platform: value,
+                // Browser-automation platforms carry no API creds; tag them so the
+                // Social Poster app can pick them out and the UI hides OAuth.
+                connection_type: BROWSER_PLATFORMS.has(value) ? "browser" : "api",
+            }));
+            return;
+        }
         setForm((prev) => ({ ...prev, [name]: type === "checkbox" ? checked : value }));
     };
 
     const openCreate = () => {
         setEditing(null);
         setForm({ ...EMPTY_FORM });
+        setShowAdvanced(false);
         setShowForm(true);
     };
 
@@ -142,15 +198,18 @@ export default function AccountsPage() {
         setEditing(account);
         setForm({
             platform: account.platform || "instagram",
+            connection_type: account.connection_type || (BROWSER_PLATFORMS.has(account.platform) ? "browser" : "api"),
             account_name: account.account_name || "",
             api_key: account.api_key || "",
             api_secret: account.api_secret || "",
             access_token: account.access_token || "",
             refresh_token: account.refresh_token || "",
             page_id: account.page_id || "",
+            target_name: account.target_name || "",
             platform_user_id: account.platform_user_id || "",
             is_active: account.is_active !== false,
         });
+        setShowAdvanced(false);
         setShowForm(true);
     };
 
@@ -292,47 +351,116 @@ export default function AccountsPage() {
                                         <input className="form-control" name="account_name" value={form.account_name} onChange={handleChange} required placeholder="e.g. Rutba Official" />
                                     </div>
 
-                                    {/* Provider help — what account / API this platform needs */}
+                                    {/* Provider help + credential fields. When this platform's OAuth
+                                        app is already configured on the server, we hide the key fields
+                                        and collapse to a plain Save → Connect (keys stay behind Advanced,
+                                        for tenants who bring their own app or paste a long-lived token). */}
                                     {(() => {
                                         const cfg = PLATFORM_FIELDS[form.platform];
                                         if (!cfg) return null;
+                                        const label = PLATFORMS[form.platform]?.label;
+                                        const isBrowser = BROWSER_PLATFORMS.has(form.platform);
+                                        const serverReady = !isBrowser && !!providerStatus?.platforms?.[form.platform];
                                         return (
-                                            <div className="col-12">
-                                                <div className="alert alert-info py-2 mb-0 small">
-                                                    <div className="fw-semibold mb-1">
-                                                        <i className={`${PLATFORMS[form.platform]?.icon} me-1`}></i>
-                                                        What you need for {PLATFORMS[form.platform]?.label}
-                                                    </div>
-                                                    <div><strong>Account:</strong> {cfg.help.account}</div>
-                                                    <div><strong>API:</strong> {cfg.help.api}</div>
-                                                    <div><strong>How to connect:</strong> {cfg.help.how}</div>
-                                                    {cfg.help.docs && (
-                                                        <div className="mt-1">
-                                                            <a href={cfg.help.docs} target="_blank" rel="noopener noreferrer">
-                                                                <i className="fas fa-book me-1"></i>Provider setup docs
-                                                            </a>
+                                            <>
+                                                <div className="col-12">
+                                                    <div className="alert alert-info py-2 mb-0 small">
+                                                        <div className="fw-semibold mb-2">
+                                                            <i className={`${PLATFORMS[form.platform]?.icon} me-1`}></i>
+                                                            What you need for {label}
                                                         </div>
-                                                    )}
+                                                        {cfg.help.accountType && (
+                                                            <div className="mb-1 d-flex align-items-start">
+                                                                <span className="badge bg-primary me-2 flex-shrink-0">Account type</span>
+                                                                <span>{cfg.help.accountType}</span>
+                                                            </div>
+                                                        )}
+                                                        <div><strong>Account setup:</strong> {cfg.help.account}</div>
+                                                        <div><strong>API access:</strong> {cfg.help.api}</div>
+                                                        <div><strong>How to connect:</strong> {serverReady
+                                                            ? "This platform is already set up on the server — just Save, then click Connect to sign in. No keys to enter."
+                                                            : cfg.help.how}</div>
+                                                        {cfg.help.note && (
+                                                            <div className="mt-1 text-body-secondary">
+                                                                <i className="fas fa-circle-info me-1"></i>{cfg.help.note}
+                                                            </div>
+                                                        )}
+                                                        {cfg.help.docs && (
+                                                            <div className="mt-1">
+                                                                <a href={cfg.help.docs} target="_blank" rel="noopener noreferrer">
+                                                                    <i className="fas fa-book me-1"></i>Provider setup docs
+                                                                </a>
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                            </div>
+
+                                                {/* Destination (Page / Channel name) — always shown; it's
+                                                    where this account posts to, not a secret. */}
+                                                {cfg.destination && (
+                                                    <div className="col-md-6">
+                                                        <label className="form-label">
+                                                            {cfg.destination.label}
+                                                            <span className="text-muted small ms-1">(where this account posts)</span>
+                                                        </label>
+                                                        <input
+                                                            className="form-control"
+                                                            name={cfg.destination.key}
+                                                            value={form[cfg.destination.key] || ""}
+                                                            onChange={handleChange}
+                                                            placeholder={cfg.destination.placeholder || ""}
+                                                            autoComplete="off"
+                                                        />
+                                                    </div>
+                                                )}
+
+                                                {isBrowser ? (
+                                                    <div className="col-12">
+                                                        <div className="alert alert-secondary py-2 mb-0 small">
+                                                            <i className={`${PLATFORMS[form.platform]?.icon} me-1`}></i>
+                                                            Posts to {label} are published by the <strong>Rutba Social Poster</strong> desktop app (browser automation) — there are no API keys or OAuth. Enter the {cfg.destination?.label?.toLowerCase() || "destination"} above and Save; the app posts to that destination.
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <>
+                                                        {serverReady ? (
+                                                            <div className="col-12">
+                                                                <div className="alert alert-success py-2 mb-0 small">
+                                                                    <i className="fas fa-check-circle me-1"></i>
+                                                                    {label}&apos;s app is configured on the server. Name this account, click <strong>Save</strong>, then hit <strong>Connect</strong> on its row to sign in — nothing to paste.
+                                                                </div>
+                                                                <button type="button" className="btn btn-link btn-sm px-0 mt-1"
+                                                                    onClick={() => setShowAdvanced((v) => !v)}>
+                                                                    {showAdvanced ? "Hide advanced options" : "Advanced — use my own app / paste a token"}
+                                                                </button>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="col-12">
+                                                                <div className="alert alert-warning py-2 mb-0 small">
+                                                                    No server-level app is set for {label}. Enter your own developer-app credentials below — or set the <code>SOCIAL_…</code> env vars on the server once, and adding accounts becomes one-click.
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {(!serverReady || showAdvanced) && cfg.fields.map((f) => (
+                                                            <div className="col-md-6" key={f.key}>
+                                                                <label className="form-label">{f.label}</label>
+                                                                <input
+                                                                    className="form-control"
+                                                                    name={f.key}
+                                                                    value={form[f.key] || ""}
+                                                                    onChange={handleChange}
+                                                                    type={f.type || "text"}
+                                                                    placeholder={f.placeholder || ""}
+                                                                    autoComplete="off"
+                                                                />
+                                                            </div>
+                                                        ))}
+                                                    </>
+                                                )}
+                                            </>
                                         );
                                     })()}
-
-                                    {/* Platform-specific credential fields */}
-                                    {(PLATFORM_FIELDS[form.platform]?.fields || []).map((f) => (
-                                        <div className="col-md-6" key={f.key}>
-                                            <label className="form-label">{f.label}</label>
-                                            <input
-                                                className="form-control"
-                                                name={f.key}
-                                                value={form[f.key] || ""}
-                                                onChange={handleChange}
-                                                type={f.type || "text"}
-                                                placeholder={f.placeholder || ""}
-                                                autoComplete="off"
-                                            />
-                                        </div>
-                                    ))}
 
                                     <div className="col-12">
                                         <div className="form-check">
@@ -372,18 +500,29 @@ export default function AccountsPage() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {accounts.map((acc) => (
+                                {accounts.map((acc) => {
+                                  const isBrowserAcc = acc.connection_type === "browser" || BROWSER_PLATFORMS.has(acc.platform);
+                                  return (
                                     <tr key={acc.id}>
                                         <td><PlatformBadge platform={acc.platform} /></td>
-                                        <td>{acc.account_name}</td>
-                                        <td><code>{acc.page_id || "—"}</code></td>
+                                        <td>
+                                            {acc.account_name}
+                                            {acc.target_name && (
+                                                <div className="small text-muted"><i className="fas fa-bullseye me-1"></i>{acc.target_name}</div>
+                                            )}
+                                        </td>
+                                        <td><code>{acc.page_id || acc.target_name || "—"}</code></td>
                                         <td>
                                             {acc.is_active
                                                 ? <span className="badge bg-success">Active</span>
                                                 : <span className="badge bg-secondary">Inactive</span>}
                                         </td>
                                         <td>
-                                            {acc.last_connected_at ? (
+                                            {isBrowserAcc ? (
+                                                <span className="badge bg-secondary" title="Published by the Rutba Social Poster desktop app">
+                                                    <i className="fas fa-desktop me-1"></i>Desktop app
+                                                </span>
+                                            ) : acc.last_connected_at ? (
                                                 <span className="badge bg-success" title={new Date(acc.last_connected_at).toLocaleString()}>
                                                     <i className="fas fa-link me-1"></i>Connected
                                                 </span>
@@ -393,12 +532,20 @@ export default function AccountsPage() {
                                         </td>
                                         <td>
                                             <div className="d-flex gap-1">
-                                                <button className="btn btn-sm btn-outline-success" title="Connect via OAuth" disabled={busyId === acc.documentId} onClick={() => handleConnect(acc)}>
-                                                    {busyId === acc.documentId ? <span className="spinner-border spinner-border-sm"></span> : <><i className="fas fa-plug me-1"></i>Connect</>}
-                                                </button>
-                                                <button className="btn btn-sm btn-outline-secondary" title="Test connection" disabled={busyId === acc.documentId} onClick={() => handleTest(acc)}>
-                                                    <i className="fas fa-heartbeat"></i>
-                                                </button>
+                                                {isBrowserAcc ? (
+                                                    <span className="badge bg-light text-dark border align-self-center" title="Posts via the Rutba Social Poster desktop app">
+                                                        <i className="fas fa-desktop me-1"></i>Via Social Poster
+                                                    </span>
+                                                ) : (
+                                                    <>
+                                                        <button className="btn btn-sm btn-outline-success" title="Connect via OAuth" disabled={busyId === acc.documentId} onClick={() => handleConnect(acc)}>
+                                                            {busyId === acc.documentId ? <span className="spinner-border spinner-border-sm"></span> : <><i className="fas fa-plug me-1"></i>Connect</>}
+                                                        </button>
+                                                        <button className="btn btn-sm btn-outline-secondary" title="Test connection" disabled={busyId === acc.documentId} onClick={() => handleTest(acc)}>
+                                                            <i className="fas fa-heartbeat"></i>
+                                                        </button>
+                                                    </>
+                                                )}
                                                 <button className="btn btn-sm btn-outline-primary" title="Edit" onClick={() => openEdit(acc)}>
                                                     <i className="fas fa-pen"></i>
                                                 </button>
@@ -408,7 +555,8 @@ export default function AccountsPage() {
                                             </div>
                                         </td>
                                     </tr>
-                                ))}
+                                  );
+                                })}
                             </tbody>
                         </table>
                     </div>

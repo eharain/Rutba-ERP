@@ -5628,6 +5628,8 @@ export interface ApiSocialAccountSocialAccount
     account_name: Schema.Attribute.String & Schema.Attribute.Required;
     api_key: Schema.Attribute.Text & Schema.Attribute.Private;
     api_secret: Schema.Attribute.Text & Schema.Attribute.Private;
+    connection_type: Schema.Attribute.Enumeration<['api', 'browser']> &
+      Schema.Attribute.DefaultTo<'api'>;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -5642,12 +5644,13 @@ export interface ApiSocialAccountSocialAccount
       Schema.Attribute.Private;
     page_id: Schema.Attribute.String;
     platform: Schema.Attribute.Enumeration<
-      ['instagram', 'facebook', 'x', 'tiktok', 'youtube']
+      ['instagram', 'facebook', 'x', 'tiktok', 'youtube', 'whatsapp']
     > &
       Schema.Attribute.Required;
     platform_user_id: Schema.Attribute.String;
     publishedAt: Schema.Attribute.DateTime;
     refresh_token: Schema.Attribute.Text & Schema.Attribute.Private;
+    target_name: Schema.Attribute.String;
     token_expires_at: Schema.Attribute.DateTime & Schema.Attribute.Private;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
@@ -5803,6 +5806,75 @@ export interface ApiStockAdjustmentStockAdjustment
       ['WriteOff', 'Damage', 'Lost', 'Expired']
     > &
       Schema.Attribute.DefaultTo<'WriteOff'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiStockAlertStockAlert extends Struct.CollectionTypeSchema {
+  collectionName: 'stock_alerts';
+  info: {
+    description: 'Persisted low-stock alerts upserted daily from the reorder suggestion engine. One row per (product, branch) triggered \u2014 idempotent by trigger_key; re-checked daily and auto-resolved when no longer low; user-acknowledgeable / dismissible.';
+    displayName: 'Stock Alert';
+    pluralName: 'stock-alerts';
+    singularName: 'stock-alert';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    acknowledged_at: Schema.Attribute.DateTime;
+    acknowledged_by: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    alert_number: Schema.Attribute.String;
+    branch: Schema.Attribute.Relation<'manyToOne', 'api::branch.branch'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    deficit: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    dismissed_at: Schema.Attribute.DateTime;
+    dismissed_by: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    fallback: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    first_detected_at: Schema.Attribute.DateTime;
+    last_checked_at: Schema.Attribute.DateTime;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::stock-alert.stock-alert'
+    > &
+      Schema.Attribute.Private;
+    max_stock: Schema.Attribute.Decimal;
+    method: Schema.Attribute.String;
+    min_stock: Schema.Attribute.Decimal;
+    notes: Schema.Attribute.Text;
+    on_hand: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    on_order: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    policy: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::reorder-policy.reorder-policy'
+    >;
+    product: Schema.Attribute.Relation<'manyToOne', 'api::product.product'>;
+    projected: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    publishedAt: Schema.Attribute.DateTime;
+    resolved_at: Schema.Attribute.DateTime;
+    safety_stock: Schema.Attribute.Decimal;
+    severity: Schema.Attribute.Enumeration<
+      ['Low', 'Medium', 'High', 'Critical']
+    > &
+      Schema.Attribute.DefaultTo<'Medium'>;
+    source: Schema.Attribute.String;
+    status: Schema.Attribute.Enumeration<
+      ['Open', 'Acknowledged', 'Resolved', 'Dismissed']
+    > &
+      Schema.Attribute.DefaultTo<'Open'>;
+    suggested_qty: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    trigger_key: Schema.Attribute.String;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -7692,6 +7764,7 @@ declare module '@strapi/strapi' {
       'api::social-post.social-post': ApiSocialPostSocialPost;
       'api::social-reply.social-reply': ApiSocialReplySocialReply;
       'api::stock-adjustment.stock-adjustment': ApiStockAdjustmentStockAdjustment;
+      'api::stock-alert.stock-alert': ApiStockAlertStockAlert;
       'api::stock-batch.stock-batch': ApiStockBatchStockBatch;
       'api::stock-count.stock-count': ApiStockCountStockCount;
       'api::stock-input.stock-input': ApiStockInputStockInput;

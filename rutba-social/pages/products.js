@@ -12,14 +12,13 @@ import ListPageLayout, { AddButton } from "@rutba/pos-shared/components/ListPage
 import ListPagination from "@rutba/pos-shared/components/ListPagination";
 import ProductListTable from "@rutba/pos-shared/components/ProductListTable";
 import { useToast } from "../components/Toast";
+import { useStorefrontBaseUrl, productStorefrontUrl } from "../lib/storefront-url";
 
 // Products browser for rutba-social. Same list + filters as the CMS (shared
 // ProductListTable + ProductFilter), parents only. Expanding a product shows
 // the social posts already made for it; a post can be started from a product
 // row (or from several selected products), so every social post originates
 // from a real product and links back to the storefront.
-
-const WEB_URL = process.env.NEXT_PUBLIC_WEB_URL || "http://localhost:4000";
 
 const DEFAULT_PAGE_SIZE = 25;
 const PAGE_SIZE_OPTIONS = [5, 10, 25, 50, 100, 150, 200];
@@ -36,13 +35,15 @@ const POST_STATUS_BADGE = {
     failed: "bg-danger",
 };
 
-const storefrontUrl = (p) => `${WEB_URL}/product/${encodeURIComponent(p.slug || p.documentId)}`;
-
 export default function SocialProducts() {
     const router = useRouter();
     const { jwt } = useAuth();
     const { currency } = useUtil();
     const { toast, ToastContainer } = useToast();
+
+    // Storefront base — site-settings.site_url preferred, env fallback.
+    const storefrontBase = useStorefrontBaseUrl();
+    const storefrontUrl = (p) => productStorefrontUrl(storefrontBase, p);
 
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -74,6 +75,7 @@ export default function SocialProducts() {
     const missingContent = qVal(router.query.missingContent) === "1";
     const missingLogo = qVal(router.query.missingLogo) === "1";
     const missingGallery = qVal(router.query.missingGallery) === "1";
+    const noSocialPosts = qVal(router.query.noSocialPosts) === "1";
     const priceMin = qVal(router.query.priceMin);
     const priceMax = qVal(router.query.priceMax);
     const createdFrom = qVal(router.query.createdFrom);
@@ -104,6 +106,7 @@ export default function SocialProducts() {
         if (missingContent) filters.missingContent = true;
         if (missingLogo) filters.missingLogo = true;
         if (missingGallery) filters.missingGallery = true;
+        if (noSocialPosts) filters.noSocialPosts = true;
         if (priceMin) filters.priceMin = priceMin;
         if (priceMax) filters.priceMax = priceMax;
         if (createdFrom) filters.createdFrom = createdFrom;
@@ -112,7 +115,7 @@ export default function SocialProducts() {
         if (updatedTo) filters.updatedTo = updatedTo;
         if (publishState) filters.publishState = publishState;
         return filters;
-    }, [missingContent, missingLogo, missingGallery, priceMin, priceMax, createdFrom, createdTo, updatedFrom, updatedTo, publishState]);
+    }, [missingContent, missingLogo, missingGallery, noSocialPosts, priceMin, priceMax, createdFrom, createdTo, updatedFrom, updatedTo, publishState]);
 
     useEffect(() => {
         if (!router.isReady || !jwt) return;
@@ -342,6 +345,11 @@ export default function SocialProducts() {
                                     key: "missingGallery", type: "toggle", label: "Missing gallery",
                                     value: missingGallery,
                                     onChange: (checked) => updateQuery({ missingGallery: checked ? "1" : undefined, page: undefined }),
+                                },
+                                {
+                                    key: "noSocialPosts", type: "toggle", label: "Without social posts",
+                                    value: noSocialPosts,
+                                    onChange: (checked) => updateQuery({ noSocialPosts: checked ? "1" : undefined, page: undefined }),
                                 },
                             ]}
                         />

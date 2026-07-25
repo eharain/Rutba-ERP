@@ -19,9 +19,18 @@
         "facebook",
         "x",
         "tiktok",
-        "youtube"
+        "youtube",
+        "whatsapp"
       ],
       "required": true
+    },
+    "connection_type": {
+      "type": "enumeration",
+      "enum": [
+        "api",
+        "browser"
+      ],
+      "default": "api"
     },
     "account_name": {
       "type": "string",
@@ -44,6 +53,9 @@
       "private": true
     },
     "page_id": {
+      "type": "string"
+    },
+    "target_name": {
       "type": "string"
     },
     "platform_user_id": {

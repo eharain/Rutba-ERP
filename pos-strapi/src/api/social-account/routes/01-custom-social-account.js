@@ -17,6 +17,14 @@ module.exports = {
       config: { auth: false },
     },
     {
+      // Literal path — declared before the core `/social-accounts/:id` GET so
+      // first-match koa-router doesn't treat "provider-status" as an :id.
+      method: 'GET',
+      path: '/social-accounts/provider-status',
+      handler: 'social-account.providerStatus',
+      config: { auth: false },
+    },
+    {
       method: 'POST',
       path: '/social-accounts/:id/connect-url',
       handler: 'social-account.getConnectUrl',

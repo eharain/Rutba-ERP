@@ -4,6 +4,7 @@ const PLATFORMS = {
     x:         { label: 'X',         icon: 'fa-brands fa-x-twitter', color: '#000000' },
     tiktok:    { label: 'TikTok',    icon: 'fa-brands fa-tiktok',    color: '#010101' },
     youtube:   { label: 'YouTube',   icon: 'fa-brands fa-youtube',   color: '#FF0000' },
+    whatsapp:  { label: 'WhatsApp',  icon: 'fa-brands fa-whatsapp',  color: '#25D366' },
 };
 
 export default PLATFORMS;

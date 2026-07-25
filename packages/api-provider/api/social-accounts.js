@@ -14,6 +14,9 @@ export const SocialAccountsEndpoints = {
     update: (documentId, data) => ({ path: `/social-accounts/${documentId}`, action: 'update', method: 'put', data }),
     del: (documentId) => ({ path: `/social-accounts/${documentId}`, action: 'delete', method: 'delete' }),
 
+    // Which platforms have a server-level OAuth app (→ one-click Connect, no keys).
+    providerStatus: () => ({ path: '/social-accounts/provider-status', action: 'providerStatus', method: 'get' }),
+
     // ── OAuth connect + connection health ──
     getConnectUrl: (documentId) => ({ path: `/social-accounts/${documentId}/connect-url`, action: 'getConnectUrl', method: 'post' }),
     validateConnection: (documentId) => ({ path: `/social-accounts/${documentId}/validate-connection`, action: 'validateConnection', method: 'post' }),
