@@ -244,11 +244,11 @@ const SaleInvoice = ({ sale, items, totals, printerSettings, branchPrintOverride
                         const showDetail = qty > 1 || rowDiscount > 0;
                         const itemName = item?.items?.[0]?.name || item.product?.name || 'Item';
                         return (
-                            <tr key={index} style={{ borderBottom: '1px dotted #bbb' }}>
-                                <td className="text-start" style={{ padding: '3px 4px 3px 0', verticalAlign: 'top', wordBreak: 'break-word' }}>
+                            <tr key={index} style={{ borderBottom: '1px dotted #999' }}>
+                                <td className="text-start" style={{ padding: '5px 6px 5px 0', verticalAlign: 'top', wordBreak: 'break-word', lineHeight: 1.35 }}>
                                     <div>{itemName}</div>
                                     {showDetail && (
-                                        <div style={{ fontSize: `${detailFontSize}px`, color: '#333' }}>
+                                        <div style={{ fontSize: `${detailFontSize}px`, color: '#000', marginTop: '3px', lineHeight: 1.4 }}>
                                             {qty} × {currency}{unitPrice.toFixed(2)}
                                             {rowDiscount > 0 && (
                                                 <> &nbsp;·&nbsp; −{rowDiscountPct ? `${rowDiscountPct}%` : `${currency}${rowDiscount.toFixed(2)}`}</>
@@ -256,7 +256,7 @@ const SaleInvoice = ({ sale, items, totals, printerSettings, branchPrintOverride
                                         </div>
                                     )}
                                 </td>
-                                <td className="text-end" style={{ padding: '3px 0', verticalAlign: 'top', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+                                <td className="text-end" style={{ padding: '5px 0', verticalAlign: 'top', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
                                     {currency}{rowTotal.toFixed(2)}
                                 </td>
                             </tr>
@@ -273,7 +273,7 @@ const SaleInvoice = ({ sale, items, totals, printerSettings, branchPrintOverride
                         if (!er.returnItems?.length) return null;
                         return (
                             <div key={erIdx} style={erIdx > 0 ? { borderTop: '1px dotted #ccc', paddingTop: '2px', marginTop: '2px' } : undefined}>
-                                <div className="text-start" style={{ fontSize: `${detailFontSize}px`, marginBottom: '2px', color: '#333' }}>
+                                <div className="text-start" style={{ fontSize: `${detailFontSize}px`, marginBottom: '2px', color: '#000' }}>
                                     From Invoice #{er.sale?.invoice_no || 'N/A'}
                                     {er.returnNo ? ` (${er.returnNo})` : ''}
                                 </div>

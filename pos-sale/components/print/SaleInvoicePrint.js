@@ -57,8 +57,9 @@ const SaleInvoicePrint = ({ sale, items, totals, onClose  }) => {
         setLocalBranch({ ...localBranch, [field]: clampPrintSetting(field, localBranch[field]) });
     }
 
-    // Restore factory defaults. Only applied to the local copies — the
-    // operator still has to hit Print (or Close to abandon the reset).
+    // Apply the recommended best-print settings (BRANCH/INVOICE_PRINT_DEFAULTS
+    // are tuned for clear thermal output). Only applied to the local copies —
+    // the operator still has to hit Save/Print (or Close to abandon the reset).
     function resetDefaults() {
         setLocalPrinter({ ...INVOICE_PRINT_DEFAULTS });
         setLocalBranch({ ...BRANCH_PRINT_DEFAULTS });
@@ -382,8 +383,8 @@ const SaleInvoicePrint = ({ sale, items, totals, onClose  }) => {
                     <button
                         onClick={resetDefaults}
                         className="btn btn-outline-warning btn-sm flex-fill"
-                        title="Reset — restore default print settings (applied when you Save or Print)"
-                        aria-label="Reset to defaults"
+                        title="Reset — apply the recommended best-print settings (takes effect when you Save or Print)"
+                        aria-label="Reset to recommended settings"
                         style={{ fontSize: '16px' }}
                     >
                         <i className="fas fa-undo"></i>

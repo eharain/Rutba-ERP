@@ -5,18 +5,22 @@ import { useAuth } from "./AuthContext";
 
 const UtilContext = createContext(null);
 
-// Branch-level print settings defaults — stored on the branch entity.
-// Exported so print-settings panels can offer a "Reset to defaults".
+// Branch-level print settings defaults — stored on the branch entity. These
+// are the *recommended* values tuned for clear thermal output, so the settings
+// panel's "Reset" restores the best-known configuration (not a bare minimum).
 export const BRANCH_PRINT_DEFAULTS = {
-    fontSize: 11,
-    itemsFontSize: 11,
+    // Base body size. 12px reads cleanly on an 80mm thermal head without
+    // wrapping the common item lines; smaller starts to look cramped in print.
+    fontSize: 12,
+    itemsFontSize: 12,
     // How many px smaller the secondary lines (original unit price, discount,
-    // sub-labels) render compared to their parent line. Kept small so the
-    // original-price line stays readable on thermal paper.
+    // sub-labels) render compared to their parent line. Just 1px keeps the
+    // discount line clearly legible while still reading as secondary.
     detailFontDelta: 1,
     // Hard floor for any computed font size — nothing on the receipt is
-    // allowed to shrink below this, however the deltas stack up.
-    minFontSize: 9,
+    // allowed to shrink below this, however the deltas stack up. 10px is about
+    // the smallest that stays sharp on a 203dpi thermal printer.
+    minFontSize: 10,
     // Left/right inset of the receipt body, in px. Keeps text off the paper
     // edge without leaving the wide margin a fixed-width layout produces.
     sideMargin: 5,
