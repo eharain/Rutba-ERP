@@ -5,6 +5,67 @@ import { useAuth } from "./AuthContext";
 
 const UtilContext = createContext(null);
 
+// Branch-level print settings defaults — stored on the branch entity.
+// Exported so print-settings panels can offer a "Reset to defaults".
+export const BRANCH_PRINT_DEFAULTS = {
+    fontSize: 11,
+    itemsFontSize: 11,
+    // How many px smaller the secondary lines (original unit price, discount,
+    // sub-labels) render compared to their parent line. Kept small so the
+    // original-price line stays readable on thermal paper.
+    detailFontDelta: 1,
+    // Hard floor for any computed font size — nothing on the receipt is
+    // allowed to shrink below this, however the deltas stack up.
+    minFontSize: 9,
+    // Left/right inset of the receipt body, in px. Keeps text off the paper
+    // edge without leaving the wide margin a fixed-width layout produces.
+    sideMargin: 5,
+    fontFamily: 'sans-serif',
+    showTax: true,
+    showCustomer: true,
+    showBranch: true,
+    branchFields: ['name', 'companyName', 'web'],
+    socialFields: [],
+    socialQRFields: [],
+    showTerms: false
+};
+
+// Printer-level settings defaults — stored in localStorage per device.
+export const INVOICE_PRINT_DEFAULTS = {
+    paperWidth: '80mm'
+};
+
+// Allowed ranges for the numeric print controls. Shared by the settings UI
+// (input min/max + clamping) so a typed value can't produce an unprintable
+// receipt.
+export const PRINT_SETTING_LIMITS = {
+    fontSize: { min: 8, max: 24 },
+    itemsFontSize: { min: 8, max: 24 },
+    detailFontDelta: { min: 0, max: 6 },
+    minFontSize: { min: 6, max: 20 },
+    sideMargin: { min: 0, max: 20 }
+};
+
+export function clampPrintSetting(field, value) {
+    const limits = PRINT_SETTING_LIMITS[field];
+    const num = Number(value);
+    if (!limits) return num;
+    // Empty / non-numeric falls back to the default rather than the floor —
+    // clearing the box shouldn't silently pick the smallest legal value.
+    if (value === '' || value == null || !Number.isFinite(num)) return BRANCH_PRINT_DEFAULTS[field];
+    return Math.min(limits.max, Math.max(limits.min, Math.round(num)));
+}
+
+// Clamp every numeric field at once — used before persisting so an
+// out-of-range value typed into a box can never reach the branch record.
+export function clampPrintSettings(settings) {
+    const next = { ...settings };
+    for (const field of Object.keys(PRINT_SETTING_LIMITS)) {
+        next[field] = clampPrintSetting(field, next[field]);
+    }
+    return next;
+}
+
 export function UtilProvider({ children }) {
     const { jwt: authJwt, loading: authLoading } = useAuth() || {};
     // State variables for branch, branch-desk, and user
@@ -22,25 +83,6 @@ export function UtilProvider({ children }) {
     const [cashRegister, setCashRegisterState] = useState(null);
     const [showBranchDeskModal, setShowBranchDeskModal] = useState(false);
     const [hydrated, setHydrated] = useState(false);
-
-    // Branch-level print settings defaults — stored on the branch entity.
-    const BRANCH_PRINT_DEFAULTS = {
-        fontSize: 11,
-        itemsFontSize: 11,
-        fontFamily: 'sans-serif',
-        showTax: true,
-        showCustomer: true,
-        showBranch: true,
-        branchFields: ['name', 'companyName', 'web'],
-        socialFields: [],
-        socialQRFields: [],
-        showTerms: false
-    };
-
-    // Printer-level settings defaults — stored in localStorage per device.
-    const INVOICE_PRINT_DEFAULTS = {
-        paperWidth: '80mm'
-    };
 
     const [invoicePrintSettings, setInvoicePrintSettingsState] = useState(INVOICE_PRINT_DEFAULTS);
 

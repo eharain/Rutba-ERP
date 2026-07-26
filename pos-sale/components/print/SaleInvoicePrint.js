@@ -1,6 +1,13 @@
 import React, { useEffect, useState, useRef } from 'react';
 import SaleInvoice from './SaleInvoice';
-import { useUtil } from '@rutba/pos-shared/context/UtilContext';
+import {
+    useUtil,
+    BRANCH_PRINT_DEFAULTS,
+    INVOICE_PRINT_DEFAULTS,
+    PRINT_SETTING_LIMITS,
+    clampPrintSetting,
+    clampPrintSettings
+} from '@rutba/pos-shared/context/UtilContext';
 
 const SaleInvoicePrint = ({ sale, items, totals, onClose  }) => {
     const { invoicePrintSettings, setInvoicePrintSettings, getBranchPrintSettings, saveBranchPrintSettings } = useUtil();
@@ -39,6 +46,24 @@ const SaleInvoicePrint = ({ sale, items, totals, onClose  }) => {
         setLocalBranch({ ...localBranch, socialQRFields: Array.from(next) });
     }
 
+    // Keep whatever is typed while the box has focus — clamping on every
+    // keystroke fights the user (typing "12" would clamp at "1"). The value is
+    // clamped on blur, and again before it is persisted.
+    function setNum(field, value) {
+        setLocalBranch({ ...localBranch, [field]: value === '' ? '' : Number(value) });
+    }
+
+    function commitNum(field) {
+        setLocalBranch({ ...localBranch, [field]: clampPrintSetting(field, localBranch[field]) });
+    }
+
+    // Restore factory defaults. Only applied to the local copies — the
+    // operator still has to hit Print (or Close to abandon the reset).
+    function resetDefaults() {
+        setLocalPrinter({ ...INVOICE_PRINT_DEFAULTS });
+        setLocalBranch({ ...BRANCH_PRINT_DEFAULTS });
+    }
+
     const [showControls, setShowControls] = useState(false);
 
     function openControls() {
@@ -59,13 +84,27 @@ const SaleInvoicePrint = ({ sale, items, totals, onClose  }) => {
         setShowControls(false);
     }
 
-    function handlePrint() {
-        // Persist both printer and branch settings, then print.
+    // Persist both printer and branch settings (fonts clamped here too, in case
+    // a box is still holding a typed value) and refresh the snapshots so a later
+    // Close won't revert what was just saved. Shared by Save and Print.
+    function persistSettings() {
+        const branchToSave = clampPrintSettings(localBranch);
         setInvoicePrintSettings(localPrinter);
-        saveBranchPrintSettings(localBranch);
-        // Update snapshots so a subsequent Close won't revert the saved values.
+        saveBranchPrintSettings(branchToSave);
+        setLocalBranch(branchToSave);
         snapshotPrinter.current = { ...localPrinter };
-        snapshotBranch.current = { ...localBranch };
+        snapshotBranch.current = { ...branchToSave };
+        return branchToSave;
+    }
+
+    // Exclusive Save — persist the print settings and close the panel (no print).
+    function handleSave() {
+        persistSettings();
+        setShowControls(false);
+    }
+
+    function handlePrint() {
+        persistSettings();
         window.print();
     }
 
@@ -136,21 +175,78 @@ const SaleInvoicePrint = ({ sale, items, totals, onClose  }) => {
                         <div className="mb-2">
                             <label className="form-label text-white small mb-1">Font Size</label>
                             <input
-                                type="number" min="8" max="18"
+                                type="number"
+                                min={PRINT_SETTING_LIMITS.fontSize.min}
+                                max={PRINT_SETTING_LIMITS.fontSize.max}
                                 className="form-control form-control-sm"
                                 value={localBranch.fontSize}
-                                onChange={(e) => setLocalBranch({ ...localBranch, fontSize: Number(e.target.value) })}
+                                onChange={(e) => setNum('fontSize', e.target.value)}
+                                onBlur={() => commitNum('fontSize')}
                             />
                         </div>
 
                         <div className="mb-2">
                             <label className="form-label text-white small mb-1">Items Font Size</label>
                             <input
-                                type="number" min="7" max="16"
+                                type="number"
+                                min={PRINT_SETTING_LIMITS.itemsFontSize.min}
+                                max={PRINT_SETTING_LIMITS.itemsFontSize.max}
                                 className="form-control form-control-sm"
                                 value={localBranch.itemsFontSize ?? localBranch.fontSize}
-                                onChange={(e) => setLocalBranch({ ...localBranch, itemsFontSize: Number(e.target.value) })}
+                                onChange={(e) => setNum('itemsFontSize', e.target.value)}
+                                onBlur={() => commitNum('itemsFontSize')}
                             />
+                        </div>
+
+                        <div className="mb-2">
+                            <label className="form-label text-white small mb-1" title="How many px smaller the original price / discount line prints compared to the item line">
+                                Detail Line Step (px)
+                            </label>
+                            <input
+                                type="number"
+                                min={PRINT_SETTING_LIMITS.detailFontDelta.min}
+                                max={PRINT_SETTING_LIMITS.detailFontDelta.max}
+                                className="form-control form-control-sm"
+                                value={localBranch.detailFontDelta ?? BRANCH_PRINT_DEFAULTS.detailFontDelta}
+                                onChange={(e) => setNum('detailFontDelta', e.target.value)}
+                                onBlur={() => commitNum('detailFontDelta')}
+                            />
+                            <div className="text-secondary" style={{ fontSize: '11px' }}>
+                                Gap between the item line and the original-price / discount line. 0 = same size.
+                            </div>
+                        </div>
+
+                        <div className="mb-2">
+                            <label className="form-label text-white small mb-1" title="No text on the receipt prints smaller than this">
+                                Min Font Size
+                            </label>
+                            <input
+                                type="number"
+                                min={PRINT_SETTING_LIMITS.minFontSize.min}
+                                max={PRINT_SETTING_LIMITS.minFontSize.max}
+                                className="form-control form-control-sm"
+                                value={localBranch.minFontSize ?? BRANCH_PRINT_DEFAULTS.minFontSize}
+                                onChange={(e) => setNum('minFontSize', e.target.value)}
+                                onBlur={() => commitNum('minFontSize')}
+                            />
+                        </div>
+
+                        <div className="mb-2">
+                            <label className="form-label text-white small mb-1" title="Blank space kept on the left and right edges of the receipt">
+                                Side Margin (px)
+                            </label>
+                            <input
+                                type="number"
+                                min={PRINT_SETTING_LIMITS.sideMargin.min}
+                                max={PRINT_SETTING_LIMITS.sideMargin.max}
+                                className="form-control form-control-sm"
+                                value={localBranch.sideMargin ?? BRANCH_PRINT_DEFAULTS.sideMargin}
+                                onChange={(e) => setNum('sideMargin', e.target.value)}
+                                onBlur={() => commitNum('sideMargin')}
+                            />
+                            <div className="text-secondary" style={{ fontSize: '11px' }}>
+                                Left/right inset of the printed body. 0 = edge to edge.
+                            </div>
                         </div>
 
                         <div className="mb-2">
@@ -264,20 +360,42 @@ const SaleInvoicePrint = ({ sale, items, totals, onClose  }) => {
                 </div>
 
                 {/* ── Buttons spanning full width below both columns ── */}
-                <div className="d-flex gap-2 mt-3">
+                <div className="d-flex gap-2 mt-3 flex-wrap">
+                    <button
+                        onClick={handleSave}
+                        className="btn btn-success btn-sm flex-fill"
+                        title="Save & Close — save these print settings and close (no printing)"
+                        aria-label="Save and close"
+                        style={{ fontSize: '16px' }}
+                    >
+                        <i className="fas fa-save"></i>
+                    </button>
                     <button
                         onClick={handlePrint}
                         className="btn btn-primary btn-sm flex-fill"
-                        style={{ fontSize: '14px', fontWeight: 'bold' }}
+                        title="Print — save these settings and print"
+                        aria-label="Print"
+                        style={{ fontSize: '16px' }}
                     >
-                        <i className="fas fa-print me-1"></i>Print
+                        <i className="fas fa-print"></i>
+                    </button>
+                    <button
+                        onClick={resetDefaults}
+                        className="btn btn-outline-warning btn-sm flex-fill"
+                        title="Reset — restore default print settings (applied when you Save or Print)"
+                        aria-label="Reset to defaults"
+                        style={{ fontSize: '16px' }}
+                    >
+                        <i className="fas fa-undo"></i>
                     </button>
                     <button
                         onClick={closeControls}
                         className="btn btn-secondary btn-sm flex-fill"
-                        style={{ fontSize: '14px', fontWeight: 'bold' }}
+                        title="Close — discard unsaved changes and close the panel"
+                        aria-label="Close without saving"
+                        style={{ fontSize: '16px' }}
                     >
-                        <i className="fas fa-times me-1"></i>Close
+                        <i className="fas fa-times"></i>
                     </button>
                 </div>
             </div>

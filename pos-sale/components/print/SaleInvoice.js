@@ -63,8 +63,21 @@ const SaleInvoice = ({ sale, items, totals, printerSettings, branchPrintOverride
     const paperWidth = effectivePrinter?.paperWidth || '80mm';
 
     const branchPrint = branchPrintOverrides || getBranchPrintSettings();
-    const fontSize = branchPrint.fontSize || 11;
-    const itemsFontSize = branchPrint.itemsFontSize ?? fontSize;
+    // Coerced with Number(...) — the settings panel can hold a transient
+    // empty string while the operator is retyping a size.
+    const fontSize = Number(branchPrint.fontSize) || 11;
+    const itemsFontSize = Number(branchPrint.itemsFontSize) || fontSize;
+    // Secondary lines (original unit price, discount, sub-labels) step down by
+    // this many px instead of a hard-coded 2, and never fall below minFontSize.
+    const rawDelta = Number(branchPrint.detailFontDelta);
+    const detailFontDelta = Number.isFinite(rawDelta) && branchPrint.detailFontDelta !== '' ? rawDelta : 1;
+    const minFontSize = Number(branchPrint.minFontSize) || 9;
+    // Left/right inset, applied as horizontal padding on the receipt body.
+    const rawSideMargin = Number(branchPrint.sideMargin);
+    const sideMargin = Number.isFinite(rawSideMargin) && branchPrint.sideMargin !== '' ? rawSideMargin : 5;
+    // Step a base size down by n × delta, floored at the configured minimum.
+    const stepDown = (base, steps = 1) => Math.max(base - (detailFontDelta * steps), minFontSize);
+    const detailFontSize = stepDown(itemsFontSize);
     const fontFamily = branchPrint.fontFamily || 'sans-serif';
     const showTax = branchPrint.showTax ?? true;
     const showBranch = branchPrint.showBranch ?? true;
@@ -91,7 +104,7 @@ const SaleInvoice = ({ sale, items, totals, printerSettings, branchPrintOverride
     };
 
     return (
-        <div className="sale-invoice-container" style={{ fontFamily: fontFamily, width: paperWidth, margin: '10px auto', padding: '5px', textAlign: 'center', fontSize: `${fontSize}px`, lineHeight: 1.3, WebkitFontSmoothing: 'none', color: '#000' }}>
+        <div className="sale-invoice-container" style={{ fontFamily: fontFamily, width: paperWidth, margin: '10px auto', padding: `5px ${sideMargin}px`, boxSizing: 'border-box', textAlign: 'center', fontSize: `${fontSize}px`, lineHeight: 1.3, WebkitFontSmoothing: 'none', color: '#000' }}>
             <style jsx global>{`
                 @media print {
                     body * {
@@ -102,13 +115,23 @@ const SaleInvoice = ({ sale, items, totals, printerSettings, branchPrintOverride
                         visibility: visible;
                     }
 
+                    /* The inline width/margin/padding on the container are for
+                       the on-screen preview only. They must be overridden here
+                       (hence !important — inline styles otherwise win), so the
+                       receipt fills the actual paper. A fixed-mm box that
+                       overflows horizontally makes the browser shrink the whole
+                       page to fit, which shows up as a right margin that grows
+                       with the font size. */
                     .sale-invoice-container {
                         position: absolute;
                         left: 0;
                         top: 0;
-                        width: 100%;
-                        margin: 0;
-                        padding: 2px;
+                        width: 100% !important;
+                        max-width: 100% !important;
+                        margin: 0 !important;
+                        padding: 2px ${sideMargin}px !important;
+                        box-sizing: border-box;
+                        overflow-x: hidden;
                         background: white !important;
                         color: #000 !important;
                         -webkit-print-color-adjust: exact;
@@ -117,6 +140,15 @@ const SaleInvoice = ({ sale, items, totals, printerSettings, branchPrintOverride
 
                     .sale-invoice-container table {
                         border-collapse: collapse;
+                        width: 100%;
+                        max-width: 100%;
+                    }
+
+                    /* Long product names / codes must wrap rather than push the
+                       table wider than the paper. */
+                    .sale-invoice-container td {
+                        overflow-wrap: anywhere;
+                        word-break: break-word;
                     }
 
                     .sale-invoice-container td,
@@ -124,16 +156,20 @@ const SaleInvoice = ({ sale, items, totals, printerSettings, branchPrintOverride
                         padding: 1px 0;
                     }
 
+                    /* Page width follows the selected paper so the receipt body
+                       always equals the roll width — with size:auto the page
+                       could end up wider than the content box, and the leftover
+                       showed as a right-hand margin. */
                     @page {
                         margin: 0;
-                        size: auto;
+                        size: ${paperWidth} auto;
                     }
                 }
             `}</style>
 
             <div className="invoice-header mb-2 pb-2" style={{ borderBottom: '1px solid #000' }}>
                 <div className="company-name fw-bold text-uppercase" style={{ fontSize: `${fontSize + 6}px`, letterSpacing: 0.5 }}>{companyName}</div>
-                <div className="invoice-meta mt-1" style={{ lineHeight: 1.35, fontSize: `${fontSize - 1}px` }}>
+                <div className="invoice-meta mt-1" style={{ lineHeight: 1.35, fontSize: `${stepDown(fontSize)}px` }}>
                     {showBranch && renderBranchFields()}
                 </div>
 
@@ -154,7 +190,7 @@ const SaleInvoice = ({ sale, items, totals, printerSettings, branchPrintOverride
 
                 {/* Invoice metadata block: invoice #, date, time, user — laid out
                     as a tight key/value table so it's scannable on thermal print. */}
-                <table className="w-100 mt-2" style={{ fontSize: `${fontSize - 1}px`, borderCollapse: 'collapse', textAlign: 'left' }}>
+                <table className="w-100 mt-2" style={{ fontSize: `${stepDown(fontSize)}px`, borderCollapse: 'collapse', textAlign: 'left' }}>
                     <tbody>
                         <tr>
                             <td style={{ padding: '1px 0', whiteSpace: 'nowrap' }}><strong>Invoice</strong></td>
@@ -174,7 +210,7 @@ const SaleInvoice = ({ sale, items, totals, printerSettings, branchPrintOverride
                                 <td style={{ padding: '1px 0', textAlign: 'right' }}>
                                     <div>{customerName}</div>
                                     {(sale?.customer?.phone || sale?.customer?.email) && (
-                                        <div style={{ fontSize: `${fontSize - 2}px` }}>
+                                        <div style={{ fontSize: `${stepDown(fontSize, 2)}px` }}>
                                             {[sale?.customer?.phone, sale?.customer?.email].filter(Boolean).join(' · ')}
                                         </div>
                                     )}
@@ -212,7 +248,7 @@ const SaleInvoice = ({ sale, items, totals, printerSettings, branchPrintOverride
                                 <td className="text-start" style={{ padding: '3px 4px 3px 0', verticalAlign: 'top', wordBreak: 'break-word' }}>
                                     <div>{itemName}</div>
                                     {showDetail && (
-                                        <div style={{ fontSize: `${Math.max(itemsFontSize - 2, 8)}px`, color: '#555' }}>
+                                        <div style={{ fontSize: `${detailFontSize}px`, color: '#333' }}>
                                             {qty} × {currency}{unitPrice.toFixed(2)}
                                             {rowDiscount > 0 && (
                                                 <> &nbsp;·&nbsp; −{rowDiscountPct ? `${rowDiscountPct}%` : `${currency}${rowDiscount.toFixed(2)}`}</>
@@ -237,7 +273,7 @@ const SaleInvoice = ({ sale, items, totals, printerSettings, branchPrintOverride
                         if (!er.returnItems?.length) return null;
                         return (
                             <div key={erIdx} style={erIdx > 0 ? { borderTop: '1px dotted #ccc', paddingTop: '2px', marginTop: '2px' } : undefined}>
-                                <div className="text-start" style={{ fontSize: `${Math.max(itemsFontSize - 1, 8)}px`, marginBottom: '2px', color: '#555' }}>
+                                <div className="text-start" style={{ fontSize: `${detailFontSize}px`, marginBottom: '2px', color: '#333' }}>
                                     From Invoice #{er.sale?.invoice_no || 'N/A'}
                                     {er.returnNo ? ` (${er.returnNo})` : ''}
                                 </div>
@@ -308,11 +344,11 @@ const SaleInvoice = ({ sale, items, totals, printerSettings, branchPrintOverride
                             </tr>
                             {actualPayments.map((p, i) => (
                                 <tr key={i}>
-                                    <td className="text-start" style={{ padding: '1px 0 1px 4px', fontSize: `${fontSize - 1}px` }}>
+                                    <td className="text-start" style={{ padding: '1px 0 1px 4px', fontSize: `${stepDown(fontSize)}px` }}>
                                         {p.payment_method || 'Payment'}
                                         {p.sale_return?.return_no ? ` ← ${p.sale_return.return_no}` : (p.transaction_no ? ` (${p.transaction_no})` : '')}
                                     </td>
-                                    <td className="text-end" style={{ padding: '1px 0', fontSize: `${fontSize - 1}px` }}>
+                                    <td className="text-end" style={{ padding: '1px 0', fontSize: `${stepDown(fontSize)}px` }}>
                                         {currency}{Number(p.amount || 0).toFixed(2)}
                                         {p.change > 0 ? ` (Chg: ${currency}${Number(p.change).toFixed(2)})` : ''}
                                     </td>
@@ -349,7 +385,7 @@ const SaleInvoice = ({ sale, items, totals, printerSettings, branchPrintOverride
                     letterSpacing: 1,
                     fontWeight: 700,
                 }}>{invoiceNo}</div>
-                <div style={{ fontSize: `${fontSize - 2}px`, color: '#555', marginTop: '2px' }}>
+                <div style={{ fontSize: `${stepDown(fontSize, 2)}px`, color: '#555', marginTop: '2px' }}>
                     Scan to view sale
                 </div>
             </div>
@@ -359,7 +395,7 @@ const SaleInvoice = ({ sale, items, totals, printerSettings, branchPrintOverride
             </div>
 
             {showTerms && branch?.invoiceTerms && (
-                <div className="invoice-terms mt-2" style={{ borderTop: '1px dashed #555', paddingTop: '4px', fontSize: `${fontSize - 2}px`, lineHeight: 1.4 }}>
+                <div className="invoice-terms mt-2" style={{ borderTop: '1px dashed #555', paddingTop: '4px', fontSize: `${stepDown(fontSize, 2)}px`, lineHeight: 1.4 }}>
                     <div dangerouslySetInnerHTML={{ __html: marked(branch.invoiceTerms) }} />
                 </div>
             )}
@@ -380,7 +416,7 @@ const SaleInvoice = ({ sale, items, totals, printerSettings, branchPrintOverride
                 const colWidth = paperWidth === '210mm' ? '33.33%' : '50%';
                 return (
                     <div className="social-links mt-1" style={{ borderTop: '1px dashed #555', paddingTop: '4px' }}>
-                        <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: `${fontSize - 1}px`, marginBottom: '4px' }}>Follow Us</div>
+                        <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: `${stepDown(fontSize)}px`, marginBottom: '4px' }}>Follow Us</div>
                         <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center' }}>
                             {visible.map(s => {
                                 const showLink = socialFields.includes(s.key);
@@ -391,7 +427,7 @@ const SaleInvoice = ({ sale, items, totals, printerSettings, branchPrintOverride
                                         boxSizing: 'border-box',
                                         padding: '3px 2px',
                                         textAlign: 'center',
-                                        fontSize: `${fontSize - 1}px`,
+                                        fontSize: `${stepDown(fontSize)}px`,
                                         lineHeight: 1.3
                                     }}>
                                         {showQR && (
