@@ -101,27 +101,27 @@
     "postinstall": "node scripts/js/postinstall.js"
   },
   "dependencies": {
-    "@fortawesome/fontawesome-free": "^7.2.0",
+    "@fortawesome/fontawesome-free": "^7.3.1",
     "@rutba/pos-shared": "file://packages/pos-shared",
     "@rutba/api-provider": "file://packages/api-provider",
-    "@xyflow/react": "^12.3.5",
-    "axios": "^1.14.0",
+    "@xyflow/react": "^12.11.2",
+    "axios": "^1.18.1",
     "bootstrap": "^5.3.8",
-    "marked": "^18.0.5",
-    "next": "16.2.9",
-    "primereact": "^10.9.7",
+    "marked": "^18.0.7",
+    "next": "16.2.12",
+    "primereact": "^10.9.8",
     "qrcode.react": "^4.2.0",
-    "qs": "^6.15.0",
-    "react": "19.2.7",
+    "qs": "^6.15.3",
+    "react": "19.2.8",
     "react-barcode": "^1.6.1",
-    "react-dom": "19.2.7",
+    "react-dom": "19.2.8",
     "sonner": "^2.0.7",
     "xlsx": "^0.18.5",
-    "pdfjs-dist": "^4.10.38"
+    "pdfjs-dist": "^6.1.200"
   },
   "devDependencies": {
-    "@eslint/eslintrc": "^3.3.5",
-    "eslint": "^10.6.0",
-    "eslint-config-next": "16.2.9"
+    "@eslint/eslintrc": "^3.3.6",
+    "eslint": "^10.8.0",
+    "eslint-config-next": "16.2.12"
   }
 }

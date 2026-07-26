@@ -20,7 +20,7 @@ async function renderPageToBlob(pdfDoc, pageNum, scale = 1.5) {
     canvas.width = viewport.width;
     canvas.height = viewport.height;
     const ctx = canvas.getContext('2d');
-    await page.render({ canvasContext: ctx, viewport }).promise;
+    await page.render({ canvas, canvasContext: ctx, viewport }).promise;
     return new Promise((resolve) => {
         canvas.toBlob((blob) => resolve(blob), 'image/png');
     });
@@ -36,7 +36,7 @@ async function renderPageToDataUrl(pdfDoc, pageNum, scale = 0.5) {
     canvas.width = viewport.width;
     canvas.height = viewport.height;
     const ctx = canvas.getContext('2d');
-    await page.render({ canvasContext: ctx, viewport }).promise;
+    await page.render({ canvas, canvasContext: ctx, viewport }).promise;
     return canvas.toDataURL('image/png');
 }
 
@@ -131,7 +131,10 @@ export default function CatalogueImportPage() {
 
         try {
             const pdfjsLib = await import('pdfjs-dist');
-            pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+            // jsDelivr mirrors the npm package verbatim, so the worker is always
+            // the exact build matching the pdfjs-dist we just imported. cdnjs
+            // republishes pdf.js under its own paths and lags behind releases.
+            pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
             const arrayBuffer = await file.arrayBuffer();
             const doc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
