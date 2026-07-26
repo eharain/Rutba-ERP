@@ -476,7 +476,7 @@ export interface WorkflowTransition extends Struct.ComponentSchema {
 }
 
 declare module '@strapi/strapi' {
-  export module Public {
+  export namespace Public {
     export interface ComponentSchemas {
       'inv.count-line': InvCountLine;
       'mfg.bom-line': MfgBomLine;

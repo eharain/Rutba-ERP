@@ -44,7 +44,7 @@
     "./package.json": "./package.json"
   },
   "scripts": {
-    "build": "strapi-plugin build && node scripts/ensure-dist-package-json.cjs",
+    "build": "node scripts/prebuild-clean.cjs && strapi-plugin build && node scripts/ensure-dist-package-json.cjs && node scripts/verify-dist-bundle.cjs",
     "watch": "strapi-plugin watch",
     "clean": "rimraf dist",
     "prepare": "npm run build",
