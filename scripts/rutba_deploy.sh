@@ -67,6 +67,24 @@ cleanup_legacy_wrapper_scripts() {
     fi
 }
 
+# Install dependencies for one project directory.
+#
+# `npm ci` is preferred over `npm install` because it installs the exact tree
+# recorded in package-lock.json:
+#   * no peer-dependency resolution pass  -> ERESOLVE is impossible
+#   * no packument lookup for semver ranges -> a stale --prefer-offline cache
+#     cannot produce ETARGET for a version that was published after the cache
+#     was last warmed
+# Both failure modes bit us on the 5.51 dependency bump: the cached metadata
+# predated @easypost/api 8.9.0, and the retry then tripped over a
+# styled-components/react-native peer graph left behind in the copied
+# node_modules by the *previous* build.
+#
+# `npm ci` wipes node_modules before installing, so callers must not bother
+# pre-seeding it (see the copy block below).  It also hard-fails when
+# package.json and package-lock.json have drifted, which is what we want on a
+# deploy box — but we keep an `npm install` fallback so a lockfile that was
+# forgotten in a commit degrades to a slow deploy rather than a failed one.
 run_npm_install() {
     local workdir="$1"
     local mode="${2:-offline}"
@@ -78,6 +96,16 @@ run_npm_install() {
 
     (
         cd "$workdir"
+
+        if [ -f package-lock.json ]; then
+            if npm ci --include=dev "$prefer_flag" --cache "$NPM_CACHE_DIR" --registry "$NPM_REGISTRY"; then
+                exit 0
+            fi
+            log_warn "npm ci failed in ${workdir} — falling back to npm install (lockfile may have drifted from package.json)."
+        else
+            log_warn "No package-lock.json in ${workdir} — using npm install (non-reproducible)."
+        fi
+
         npm install --production=false "$prefer_flag" --cache "$NPM_CACHE_DIR" --registry "$NPM_REGISTRY"
     )
 }
@@ -305,33 +333,56 @@ NPM_CACHE_DIR="${BUILDS_DIR}/.npm_cache"
 NPM_REGISTRY="${RUTBA_NPM_REGISTRY:-https://registry.npmjs.org/}"
 mkdir -p "$NPM_CACHE_DIR"
 
-# Copy node_modules from the previous active build so npm install
-# only needs to reconcile the diff instead of extracting everything
-# from scratch.  This is the single biggest time-saver.
+# Seed node_modules from the previous active build so npm only has to
+# reconcile the diff instead of extracting everything from scratch.
+#
+# This is only worth doing for a project that will go down the `npm install`
+# path.  `npm ci` deletes node_modules before it installs, so pre-copying a
+# tree it is about to throw away costs minutes of `cp -a` for nothing — and,
+# worse, a stale copy is exactly what fed npm the phantom react-native /
+# styled-components peer graph that produced ERESOLVE on the 5.51 bump.
+seed_node_modules() {
+    local label="$1" src="$2" dest="$3" project="$4"
+
+    [ -d "$src" ] || return 0
+    if [ -f "$project/package-lock.json" ]; then
+        log "Skipping ${label} node_modules copy (npm ci installs from the lockfile)."
+        return 0
+    fi
+
+    log "Copying node_modules from previous build (${label})..."
+    cp -a "$src" "$dest"
+    log_ok "Copied ${label} node_modules."
+}
+
 if [ -n "$CURRENT_ACTIVE" ] && [ -d "$CURRENT_ACTIVE" ]; then
-    if [ -d "$CURRENT_ACTIVE/node_modules" ]; then
-        log "Copying node_modules from previous build (monorepo root)..."
-        cp -a "$CURRENT_ACTIVE/node_modules" "$BUILD_DIR/node_modules"
-        log_ok "Copied root node_modules."
-    fi
-    if [ -d "$CURRENT_ACTIVE/pos-strapi/node_modules" ]; then
-        log "Copying node_modules from previous build (pos-strapi)..."
-        cp -a "$CURRENT_ACTIVE/pos-strapi/node_modules" "$BUILD_DIR/pos-strapi/node_modules"
-        log_ok "Copied pos-strapi node_modules."
-    fi
+    seed_node_modules "monorepo root" \
+        "$CURRENT_ACTIVE/node_modules" "$BUILD_DIR/node_modules" "$BUILD_DIR"
+    seed_node_modules "pos-strapi" \
+        "$CURRENT_ACTIVE/pos-strapi/node_modules" "$BUILD_DIR/pos-strapi/node_modules" "$BUILD_DIR/pos-strapi"
 fi
 
-log "Installing monorepo dependencies (npm install)..."
-# Set RUTBA_POSTINSTALL=1 so the root postinstall hook (scripts/js/postinstall.js)
-# skips installing pos-strapi — we handle it explicitly below with --prefer-offline.
-RUTBA_POSTINSTALL=1 run_npm_install "$BUILD_DIR" offline
+# A cache warmed before a dependency bump has no tarball for the new version,
+# so an offline install can legitimately fail.  Retry online before giving up —
+# for both projects, not just pos-strapi.
+install_project_deps() {
+    local label="$1" dir="$2"
 
-log "Installing pos-strapi dependencies..."
-if ! run_npm_install "$BUILD_DIR/pos-strapi" offline; then
-    log_warn "pos-strapi npm install failed in offline mode. Retrying with online metadata refresh from ${NPM_REGISTRY} ..."
-    npm cache verify >/dev/null 2>&1 || true
-    run_npm_install "$BUILD_DIR/pos-strapi" online
-fi
+    log "Installing ${label} dependencies..."
+    if ! run_npm_install "$dir" offline; then
+        log_warn "${label} install failed in offline mode. Retrying with online metadata refresh from ${NPM_REGISTRY} ..."
+        npm cache verify >/dev/null 2>&1 || true
+        run_npm_install "$dir" online
+    fi
+}
+
+# RUTBA_POSTINSTALL=1 makes the root postinstall hook (scripts/js/postinstall.js)
+# skip pos-strapi — we install it explicitly below with the same cache settings.
+export RUTBA_POSTINSTALL=1
+install_project_deps "monorepo" "$BUILD_DIR"
+unset RUTBA_POSTINSTALL
+
+install_project_deps "pos-strapi" "$BUILD_DIR/pos-strapi"
 
 ###########################################
 # BUILD EVERYTHING

@@ -11,13 +11,18 @@ node
 /pos-strapi/types/generated/*
 /pos-strapi/src/.vs
 /data
-/pos-strapi/package-lock.json
 /pos-desk/package-lock.json
 .next
 /node_modules
 node_modules
+# npm's internal marker inside node_modules — not a real lockfile.
 .package-lock.json
-package-lock.json
+# NOTE: package-lock.json files are deliberately NOT ignored.  The deploy
+# script builds from a fresh `git clone`, so a lockfile that never reaches
+# the server forces npm to re-resolve every semver range against whatever
+# node_modules happens to be lying around — which is how the 5.51 bump
+# produced both ETARGET (stale offline cache had no @easypost/api 8.9.0)
+# and ERESOLVE (stale styled-components/react-native peer graph).
 .env
 .env.*
 !.env.example
