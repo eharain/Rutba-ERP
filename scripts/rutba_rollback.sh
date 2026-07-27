@@ -277,6 +277,22 @@ fi
 start_services
 show_service_status
 
+# 5. Re-seed against the rolled-back build.
+#    The seed registry ships with the build, so this applies exactly the
+#    seed set that build's code expects — which matters most right after a
+#    DB restore. Waits for Strapi first; never fails the rollback.
+SEED_STATUS="skipped"
+if [ -f "${SELECTED_BUILD}/scripts/rutba_seed.sh" ]; then
+    if RUTBA_SEED_BUILD_DIR="$SELECTED_BUILD" bash "${SELECTED_BUILD}/scripts/rutba_seed.sh"; then
+        SEED_STATUS="ok"
+    else
+        SEED_STATUS="failed"
+        log_warn "Seeding did not complete — rollback continues. Re-run: sudo bash ${SELECTED_BUILD}/scripts/rutba_seed.sh"
+    fi
+else
+    log_warn "rutba_seed.sh not present in the rolled-back build — skipping seeding."
+fi
+
 ###########################################
 # DONE
 ###########################################
@@ -290,6 +306,11 @@ echo "  Build date:  $(format_build_date "$SELECTED_BUILD")"
 if [ "$RESTORE_DB" = true ]; then
     echo "  DB restored: $(basename "$SELECTED_DUMP")  ($(format_dump_date "$SELECTED_DUMP"))"
 fi
+case "$SEED_STATUS" in
+    ok)      echo -e "  Seeding:     ${GREEN}completed${NC}" ;;
+    failed)  echo -e "  Seeding:     ${RED}FAILED${NC} — sudo bash ${SELECTED_BUILD}/scripts/rutba_seed.sh" ;;
+    *)       echo -e "  Seeding:     ${YELLOW}skipped${NC}" ;;
+esac
 echo "============================================"
 echo ""
 echo "  View logs:"

@@ -20,6 +20,7 @@ set -euo pipefail
 #   logs    <service> [lines]    Show recent journal logs
 #   tail    [service]            Live-follow logs (Ctrl+C to stop)
 #   diagnose                     Detect common problems
+#   seed    [seed args]          Wait for Strapi, then run the seed engine
 #   help                         Show this usage information
 #
 ###########################################
@@ -31,72 +32,17 @@ source "${_RUTBA_SVC_DIR}/rutba_deployed_environment.sh"
 ###########################################
 # SERVICE DEFINITIONS
 ###########################################
+# The registry lives in rutba_apps.sh - the single source of truth
+# shared with setup-systemd-services.sh and rutba_log_rotate.sh.
+# To add an app, edit ONLY that file.
 
-SERVICES=(
-    rutba_pos_strapi
-    rutba_pos_auth
-    rutba_pos_stock
-    rutba_pos_sale
-    rutba_web
-    rutba_web_user
-    rutba_order_management
-    rutba_rider
-    rutba_crm
-    rutba_hr
-    rutba_ess
-    rutba_accounts
-    rutba_payroll
-    rutba_cms
-    rutba_social
-    rutba_manufacturing
-    rutba_inventory
-    rutba_marketplace
-    rutba_marketplace_worker
-)
+source "${_RUTBA_SVC_DIR}/rutba_apps.sh"
 
-declare -A SVC_CMD=(
-    [rutba_pos_strapi]="--prefix pos-strapi run start"
-    [rutba_pos_auth]="run start --workspace=pos-auth"
-    [rutba_pos_stock]="run start --workspace=pos-stock"
-    [rutba_pos_sale]="run start --workspace=pos-sale"
-    [rutba_web]="run start --workspace=rutba-web"
-    [rutba_web_user]="run start --workspace=rutba-web-user"
-    [rutba_order_management]="run start --workspace=rutba-order-management"
-    [rutba_rider]="run start --workspace=rutba-rider"
-    [rutba_crm]="run start --workspace=rutba-crm"
-    [rutba_hr]="run start --workspace=rutba-hr"
-    [rutba_ess]="run start --workspace=rutba-ess"
-    [rutba_accounts]="run start --workspace=rutba-accounts"
-    [rutba_payroll]="run start --workspace=rutba-payroll"
-    [rutba_cms]="run start --workspace=rutba-cms"
-    [rutba_social]="run start --workspace=rutba-social"
-    [rutba_manufacturing]="run start --workspace=rutba-manufacturing"
-    [rutba_inventory]="run start --workspace=rutba-inventory"
-    [rutba_marketplace]="run start --workspace=rutba-marketplace"
-    [rutba_marketplace_worker]="run worker --workspace=rutba-marketplace"
-)
-
-declare -A SVC_DESC=(
-    [rutba_pos_strapi]="Rutba ERP - Strapi API"
-    [rutba_pos_auth]="Rutba ERP - Auth Portal (pos-auth)"
-    [rutba_pos_stock]="Rutba ERP - Stock Management (pos-stock)"
-    [rutba_pos_sale]="Rutba ERP - Point of Sale (pos-sale)"
-    [rutba_web]="Rutba ERP - Public Website (rutba-web)"
-    [rutba_web_user]="Rutba ERP - My Orders (rutba-web-user)"
-    [rutba_order_management]="Rutba ERP - Order Management (rutba-order-management)"
-    [rutba_rider]="Rutba ERP - Rider App (rutba-rider)"
-    [rutba_crm]="Rutba ERP - CRM (rutba-crm)"
-    [rutba_hr]="Rutba ERP - Human Resources (rutba-hr)"
-    [rutba_ess]="Rutba ERP - Employee Self-Service (rutba-ess)"
-    [rutba_accounts]="Rutba ERP - Accounting (rutba-accounts)"
-    [rutba_payroll]="Rutba ERP - Payroll (rutba-payroll)"
-    [rutba_cms]="Rutba ERP - Content Management (rutba-cms)"
-    [rutba_social]="Rutba ERP - Social Media (rutba-social)"
-    [rutba_manufacturing]="Rutba ERP - Manufacturing (rutba-manufacturing)"
-    [rutba_inventory]="Rutba ERP - Inventory Management (rutba-inventory)"
-    [rutba_marketplace]="Rutba ERP - Marketplace (rutba-marketplace)"
-    [rutba_marketplace_worker]="Rutba ERP - Marketplace Worker (rutba-marketplace)"
-)
+SERVICES=("${RUTBA_SERVICES[@]}")
+declare -A SVC_CMD;  for _k in "${!RUTBA_SVC_CMD[@]}";  do SVC_CMD[$_k]="${RUTBA_SVC_CMD[$_k]}";   done
+declare -A SVC_DESC; for _k in "${!RUTBA_SVC_DESC[@]}"; do SVC_DESC[$_k]="${RUTBA_SVC_DESC[$_k]}"; done
+declare -A SVC_PORT; for _k in "${!RUTBA_SVC_PORT[@]}"; do SVC_PORT[$_k]="${RUTBA_SVC_PORT[$_k]}"; done
+unset _k
 
 ###########################################
 # HELPERS
@@ -164,8 +110,27 @@ UNIT_EOF
         systemctl enable "${svc}.service" 2>/dev/null || true
     done
 
+    # Retire units for services that were removed from the registry.
+    # Without this a renamed/dropped app keeps a stale enabled unit that
+    # restarts forever against a workspace that no longer exists.
+    local unit_path unit_name known
+    for unit_path in "${SYSTEMD_DIR}"/rutba_*.service; do
+        [ -f "$unit_path" ] || continue
+        unit_name=$(basename "$unit_path" .service)
+        known=0
+        for svc in "${SERVICES[@]}"; do
+            [ "$unit_name" = "$svc" ] && { known=1; break; }
+        done
+        if [ "$known" -eq 0 ]; then
+            log_warn "Retiring stale unit (not in registry): ${unit_name}"
+            systemctl stop    "${unit_name}.service" 2>/dev/null || true
+            systemctl disable "${unit_name}.service" 2>/dev/null || true
+            rm -f "$unit_path"
+        fi
+    done
+
     systemctl daemon-reload
-    log_ok "Systemd units written -> ${UNIT_DIR} (active link)"
+    log_ok "Systemd units written -> ${UNIT_DIR} (active link) [${#SERVICES[@]} services]"
 }
 
 ###########################################
@@ -230,6 +195,8 @@ show_service_status() {
 
     for svc in "${SERVICES[@]}"; do
         local status; status=$(systemctl is-active "${svc}.service" 2>/dev/null || echo "inactive")
+        local port="${SVC_PORT[$svc]:--}"
+        local label; label=$(printf '%-26s %5s' "$svc" "$port")
         local mem=""
         if [ "$status" = "active" ]; then
             local pid; pid=$(systemctl show "${svc}.service" --property=MainPID --value 2>/dev/null || echo "")
@@ -239,11 +206,11 @@ show_service_status() {
             fi
         fi
         if [ "$status" = "active" ]; then
-            echo -e "  ${GREEN}* ${svc}: active${NC}${mem}"
+            echo -e "  ${GREEN}* ${label}  active${NC}${mem}"
         elif [ "$status" = "activating" ]; then
-            echo -e "  ${YELLOW}~ ${svc}: activating${NC}"
+            echo -e "  ${YELLOW}~ ${label}  activating${NC}"
         else
-            echo -e "  ${RED}x ${svc}: ${status}${NC}"
+            echo -e "  ${RED}x ${label}  ${status}${NC}"
         fi
     done
     echo "============================================"
@@ -468,6 +435,9 @@ show_usage() {
     echo "    tail    [service]           Live-follow logs (Ctrl+C to stop)"
     echo "                                (omit service to follow all)"
     echo "    diagnose                    Detect common problems"
+    echo "    seed    [seed args]         Wait for Strapi to answer /_health,"
+    echo "                                then run the seed engine (see"
+    echo "                                scripts/rutba_seed.sh for tuning vars)"
     echo "    help                        Show this usage information"
     echo ""
     echo "  Environment variables (set in /etc/environment or export):"
@@ -478,8 +448,10 @@ show_usage() {
     echo "    RUTBA_SYSTEMD_DIR   Unit file directory   (default: ${SYSTEMD_DIR})"
     echo "    RUTBA_LOG_FILE      Deploy log path       (default: ${LOG_FILE})"
     echo ""
-    echo "  Services:"
-    for svc in "${SERVICES[@]}"; do echo "    ${svc}"; done
+    echo "  Services (${#SERVICES[@]}):"
+    for svc in "${SERVICES[@]}"; do
+        printf '    %-28s port %s\n' "$svc" "${SVC_PORT[$svc]:--}"
+    done
     echo ""
     echo "  Examples:"
     echo "    sudo bash $0 status"
@@ -540,6 +512,10 @@ case "$COMMAND" in
         ;;
     diagnose|diag)
         diagnose_services
+        ;;
+    seed)
+        shift
+        bash "${_RUTBA_SVC_DIR}/rutba_seed.sh" "$@"
         ;;
     help|--help|-h)
         show_usage

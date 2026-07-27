@@ -45,71 +45,16 @@ NPM_BIN=$(which npm)
 
 SYSTEMD_DIR="/etc/systemd/system"
 
-SERVICES=(
-    rutba_pos_strapi
-    rutba_pos_auth
-    rutba_pos_stock
-    rutba_pos_sale
-    rutba_web
-    rutba_web_user
-    rutba_order_management
-    rutba_rider
-    rutba_crm
-    rutba_hr
-    rutba_ess
-    rutba_accounts
-    rutba_payroll
-    rutba_cms
-    rutba_social
-    rutba_manufacturing
-    rutba_inventory
-    rutba_marketplace
-    rutba_marketplace_worker
-)
+# Service registry — single source of truth shared with rutba_services.sh
+# and rutba_log_rotate.sh. To add an app, edit ONLY scripts/rutba_apps.sh.
+_SETUP_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${_SETUP_SCRIPT_DIR}/rutba_apps.sh"
 
-declare -A SVC_CMD=(
-    [rutba_pos_strapi]="--prefix pos-strapi run start"
-    [rutba_pos_auth]="run start --workspace=pos-auth"
-    [rutba_pos_stock]="run start --workspace=pos-stock"
-    [rutba_pos_sale]="run start --workspace=pos-sale"
-    [rutba_web]="run start --workspace=rutba-web"
-    [rutba_web_user]="run start --workspace=rutba-web-user"
-    [rutba_order_management]="run start --workspace=rutba-order-management"
-    [rutba_rider]="run start --workspace=rutba-rider"
-    [rutba_crm]="run start --workspace=rutba-crm"
-    [rutba_hr]="run start --workspace=rutba-hr"
-    [rutba_ess]="run start --workspace=rutba-ess"
-    [rutba_accounts]="run start --workspace=rutba-accounts"
-    [rutba_payroll]="run start --workspace=rutba-payroll"
-    [rutba_cms]="run start --workspace=rutba-cms"
-    [rutba_social]="run start --workspace=rutba-social"
-    [rutba_manufacturing]="run start --workspace=rutba-manufacturing"
-    [rutba_inventory]="run start --workspace=rutba-inventory"
-    [rutba_marketplace]="run start --workspace=rutba-marketplace"
-    [rutba_marketplace_worker]="run worker --workspace=rutba-marketplace"
-)
-
-declare -A SVC_DESC=(
-    [rutba_pos_strapi]="Rutba ERP — Strapi API"
-    [rutba_pos_auth]="Rutba ERP — Auth Portal (pos-auth)"
-    [rutba_pos_stock]="Rutba ERP — Stock Management (pos-stock)"
-    [rutba_pos_sale]="Rutba ERP — Point of Sale (pos-sale)"
-    [rutba_web]="Rutba ERP — Public Website (rutba-web)"
-    [rutba_web_user]="Rutba ERP — My Orders (rutba-web-user)"
-    [rutba_order_management]="Rutba ERP — Order Management (rutba-order-management)"
-    [rutba_rider]="Rutba ERP — Rider App (rutba-rider)"
-    [rutba_crm]="Rutba ERP — CRM (rutba-crm)"
-    [rutba_hr]="Rutba ERP — Human Resources (rutba-hr)"
-    [rutba_ess]="Rutba ERP — Employee Self-Service (rutba-ess)"
-    [rutba_accounts]="Rutba ERP — Accounting (rutba-accounts)"
-    [rutba_payroll]="Rutba ERP — Payroll (rutba-payroll)"
-    [rutba_cms]="Rutba ERP — Content Management (rutba-cms)"
-    [rutba_social]="Rutba ERP — Social Media (rutba-social)"
-    [rutba_manufacturing]="Rutba ERP — Manufacturing (rutba-manufacturing)"
-    [rutba_inventory]="Rutba ERP — Inventory Management (rutba-inventory)"
-    [rutba_marketplace]="Rutba ERP — Marketplace (rutba-marketplace)"
-    [rutba_marketplace_worker]="Rutba ERP — Marketplace Worker (rutba-marketplace)"
-)
+SERVICES=("${RUTBA_SERVICES[@]}")
+declare -A SVC_CMD;  for _k in "${!RUTBA_SVC_CMD[@]}";  do SVC_CMD[$_k]="${RUTBA_SVC_CMD[$_k]}";   done
+declare -A SVC_DESC; for _k in "${!RUTBA_SVC_DESC[@]}"; do SVC_DESC[$_k]="${RUTBA_SVC_DESC[$_k]}"; done
+declare -A SVC_PORT; for _k in "${!RUTBA_SVC_PORT[@]}"; do SVC_PORT[$_k]="${RUTBA_SVC_PORT[$_k]}"; done
+unset _k
 
 ###########################################
 # HELPERS
@@ -266,9 +211,9 @@ echo "============================================"
 echo ""
 echo "  Build dir: ${APP_DIR}"
 echo ""
-echo "  Services:"
+echo "  Services (${#SERVICES[@]}):"
 for svc in "${SERVICES[@]}"; do
-    echo "    • ${svc}.service"
+    printf '    • %-28s port %s\n' "${svc}.service" "${SVC_PORT[$svc]:--}"
 done
 echo ""
 echo "  Manage with:"
@@ -276,13 +221,11 @@ echo "    sudo bash scripts/rutba_services.sh start|stop|restart|status"
 echo "    sudo bash scripts/rutba_services.sh tail [service]"
 echo "    sudo bash scripts/rutba_services.sh diagnose"
 echo ""
-echo "  Start everything:"
-echo "    sudo systemctl start rutba_pos_strapi"
-echo "    sudo systemctl start rutba_pos_auth rutba_pos_stock rutba_pos_sale"
-echo "    sudo systemctl start rutba_web rutba_web_user"
-echo "    sudo systemctl start rutba_order_management"
-echo "    sudo systemctl start rutba_rider"
-echo "    sudo systemctl start rutba_crm rutba_hr rutba_ess rutba_accounts rutba_payroll"
+echo "  Start everything (Strapi first, then the rest):"
+echo "    sudo bash scripts/rutba_services.sh start"
+echo ""
+echo "  Seed the database (waits for Strapi, then runs the seed engine):"
+echo "    sudo bash scripts/rutba_seed.sh"
 echo ""
 echo "  Deploy / Rollback:"
 echo "    sudo bash scripts/rutba_deploy.sh"

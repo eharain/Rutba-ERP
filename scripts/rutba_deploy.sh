@@ -430,6 +430,27 @@ start_services
 show_service_status
 
 ###########################################
+# SEED THE DATABASE
+###########################################
+# Runs after the services are up. rutba_seed.sh holds for a grace delay
+# and then polls Strapi's /_health before invoking the seed engine, so it
+# never races Strapi's own boot (schema sync + api-pro descriptor seeder).
+# Seeding failures are reported but never fail the deploy — the apps are
+# already live at this point.
+
+SEED_STATUS="skipped"
+if [ -f "${SCRIPT_DIR_DEPLOY}/rutba_seed.sh" ]; then
+    if bash "${SCRIPT_DIR_DEPLOY}/rutba_seed.sh"; then
+        SEED_STATUS="ok"
+    else
+        SEED_STATUS="failed"
+        log_warn "Seeding did not complete — deployment continues. Re-run: sudo bash ${SCRIPT_DIR_DEPLOY}/rutba_seed.sh"
+    fi
+else
+    log_warn "rutba_seed.sh not found — skipping post-deploy seeding."
+fi
+
+###########################################
 # PRUNE OLD BUILDS
 ###########################################
 
@@ -469,6 +490,11 @@ echo "  Commit:  ${COMMIT_HASH}"
 echo "  Build:   $(basename "$BUILD_DIR")"
 echo "  Active:  ${ACTIVE_LINK} → ${BUILD_DIR}"
 echo "  Env:     ${BUILDS_DIR}/.env*"
+case "$SEED_STATUS" in
+    ok)      echo -e "  Seeding: ${GREEN}completed${NC}" ;;
+    failed)  echo -e "  Seeding: ${RED}FAILED${NC} — sudo bash ${BUILD_DIR}/scripts/rutba_seed.sh" ;;
+    *)       echo -e "  Seeding: ${YELLOW}skipped${NC}" ;;
+esac
 echo "============================================"
 echo ""
 echo "  Available builds:"

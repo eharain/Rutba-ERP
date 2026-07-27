@@ -116,6 +116,11 @@ echo   Inventory    : http://localhost:4017
 echo   Seed Control : http://localhost:4018
 echo   Marketplace Wkr: background worker (no port)
 echo.
+echo   Seed the database once Strapi is up:
+echo     npm run seed              (partial, all entries)
+echo     npm run seed:essential    (essential entries only)
+echo   Or drive it from the Seed Control app on :4018
+echo.
 echo   Close this window
 echo   (The service windows will keep running.)
 echo ============================================

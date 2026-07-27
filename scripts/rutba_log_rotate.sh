@@ -44,21 +44,11 @@ LOG_MAX_BYTES=$((10 * 1024 * 1024))  # rotate deploy log when > 10 MB
 
 ROTATION_LOG="/var/log/rutba_log_rotate.log"
 
-# All Rutba systemd services (must match rutba_deploy.sh)
-SERVICES=(
-    rutba_pos_strapi
-    rutba_pos_auth
-    rutba_pos_stock
-    rutba_pos_sale
-    rutba_web
-    rutba_web_user
-    rutba_crm
-    rutba_hr
-    rutba_ess
-    rutba_accounts
-    rutba_payroll
-    rutba_cms
-)
+# All Rutba systemd services — sourced from the shared registry so this
+# list can never drift from the one the deploy/service scripts use.
+_ROTATE_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${_ROTATE_SCRIPT_DIR}/rutba_apps.sh"
+SERVICES=("${RUTBA_SERVICES[@]}")
 
 ###########################################
 # HELPERS
