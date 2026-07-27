@@ -1,0 +1,24 @@
+{
+  "name": "rutba-core",
+  "version": "0.1.0",
+  "private": true,
+  "description": "In-house backend core replacing pos-strapi: serves the descriptor API from the same database. See docs/todo/core-server-multitenancy-program/.",
+  "main": "src/index.js",
+  "scripts": {
+    "validate-schema": "node scripts/validate-schema.js",
+    "smoke": "node scripts/smoke-documents.js"
+  },
+  "dependencies": {
+    "@koa/router": "^15.7.0",
+    "jsonwebtoken": "^9.0.3",
+    "knex": "^3.1.0",
+    "koa": "^3.2.1",
+    "koa-bodyparser": "^4.4.1",
+    "mysql2": "^3.11.0",
+    "pg": "^8.13.0",
+    "qs": "^6.15.3"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

@@ -1,0 +1,181 @@
+{
+  "database": "pos_db",
+  "missingTables": [],
+  "columnDiffs": [],
+  "missingJoinTables": [],
+  "missingCmpsTables": [],
+  "unaccountedLiveTables": [
+    {
+      "table": "_tmp_wh2br_orphan_stock_items",
+      "columns": [
+        "stock_item_id"
+      ]
+    },
+    {
+      "table": "sync_logs",
+      "columns": [
+        "id",
+        "document_id",
+        "action",
+        "content_type",
+        "record_id",
+        "sync_id",
+        "direction",
+        "status",
+        "message",
+        "details",
+        "created_at",
+        "updated_at",
+        "published_at",
+        "created_by_id",
+        "updated_by_id",
+        "locale"
+      ]
+    },
+    {
+      "table": "sync_run_reports",
+      "columns": [
+        "id",
+        "document_id",
+        "run_type",
+        "trigger",
+        "status",
+        "started_at",
+        "completed_at",
+        "content_types",
+        "before_stats",
+        "after_stats",
+        "summary",
+        "error",
+        "created_at",
+        "updated_at",
+        "published_at",
+        "created_by_id",
+        "updated_by_id",
+        "locale"
+      ]
+    },
+    {
+      "table": "workflow_notifications",
+      "columns": [
+        "id",
+        "document_id",
+        "source_app",
+        "workflow",
+        "event",
+        "title",
+        "message",
+        "status",
+        "recipient",
+        "order_id",
+        "purchase_id",
+        "metadata",
+        "created_at",
+        "updated_at",
+        "published_at",
+        "created_by_id",
+        "updated_by_id",
+        "locale"
+      ]
+    }
+  ],
+  "linkTableSamples": {
+    "acc_accounts_parent_lnk [manyToOne]": [
+      "id",
+      "acc_account_id",
+      "inv_acc_account_id",
+      "acc_account_ord"
+    ],
+    "acc_accounts_currency_lnk [manyToOne]": [
+      "id",
+      "acc_account_id",
+      "currency_id"
+    ],
+    "acc_accounts_branch_lnk [manyToOne]": [
+      "id",
+      "acc_account_id",
+      "branch_id"
+    ],
+    "acc_account_mappings_account_lnk [manyToOne]": [
+      "id",
+      "acc_account_mapping_id",
+      "acc_account_id"
+    ],
+    "acc_account_mappings_branch_lnk [manyToOne]": [
+      "id",
+      "acc_account_mapping_id",
+      "branch_id"
+    ],
+    "acc_bank_accounts_ledger_account_lnk [oneToOne]": [
+      "id",
+      "acc_bank_account_id",
+      "acc_account_id"
+    ],
+    "acc_bank_accounts_currency_lnk [manyToOne]": [
+      "id",
+      "acc_bank_account_id",
+      "currency_id"
+    ],
+    "acc_bank_accounts_branch_lnk [manyToOne]": [
+      "id",
+      "acc_bank_account_id",
+      "branch_id"
+    ],
+    "acc_bank_accounts_owners_lnk [manyToMany]": [
+      "id",
+      "acc_bank_account_id",
+      "user_id",
+      "user_ord"
+    ],
+    "acc_bills_supplier_lnk [manyToOne]": [
+      "id",
+      "acc_bill_id",
+      "supplier_id"
+    ],
+    "acc_bills_purchase_lnk [oneToOne]": [
+      "id",
+      "acc_bill_id",
+      "purchase_id"
+    ],
+    "acc_bills_journal_entry_lnk [oneToOne]": [
+      "id",
+      "acc_bill_id",
+      "acc_journal_entry_id"
+    ]
+  },
+  "cmpsTableSamples": {
+    "branches_cmps": [
+      "id",
+      "entity_id",
+      "cmp_id",
+      "component_type",
+      "field",
+      "order"
+    ],
+    "mfg_boms_cmps": [
+      "id",
+      "entity_id",
+      "cmp_id",
+      "component_type",
+      "field",
+      "order"
+    ],
+    "mfg_production_templates_cmps": [
+      "id",
+      "entity_id",
+      "cmp_id",
+      "component_type",
+      "field",
+      "order"
+    ],
+    "mfg_qc_inspections_cmps": [
+      "id",
+      "entity_id",
+      "cmp_id",
+      "component_type",
+      "field",
+      "order"
+    ]
+  },
+  "warnings": []
+}
