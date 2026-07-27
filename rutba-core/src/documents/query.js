@@ -117,12 +117,28 @@ function scalarColumn(model, attr) {
 }
 
 function applyAttributeFilter(db, registry, qb, model, attr, value, alias) {
+  // Strapi built-in admin-relation filters ({createdBy: {id: X}}) hit the
+  // *_by_id columns directly.
+  if (attr === 'createdBy' || attr === 'updatedBy') {
+    const col = `${alias}.${attr === 'createdBy' ? 'created_by_id' : 'updated_by_id'}`;
+    const idFilter = value && typeof value === 'object' ? value.id : value;
+    if (idFilter !== undefined) {
+      if (idFilter !== null && typeof idFilter === 'object') {
+        for (const [op, opValue] of Object.entries(idFilter)) applyOperator(qb, col, op, opValue);
+      } else {
+        applyOperator(qb, col, '$eq', idFilter);
+      }
+    }
+    return;
+  }
   const column = scalarColumn(model, attr);
   if (column) {
     const qualified = `${alias}.${column}`;
     if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
       for (const [op, opValue] of Object.entries(value)) {
-        if (!OPERATORS.has(op)) throw new Error(`Unknown operator "${op}" on ${model.uid}.${attr}`);
+        // Strapi silently strips invalid filter fragments — match that
+        // (fail-soft) rather than erroring the whole request.
+        if (!OPERATORS.has(op)) continue;
         applyOperator(qb, qualified, op, opValue);
       }
     } else {
@@ -146,7 +162,7 @@ function applyAttributeFilter(db, registry, qb, model, attr, value, alias) {
     return;
   }
 
-  throw new Error(`${model.uid}: cannot filter on unknown attribute "${attr}"`);
+  // Unknown attribute in a filter: Strapi strips it silently — match that.
 }
 
 /** Normalize sort input ('name:asc' | ['a:desc', ...] | {name: 'asc'}) to [[column, dir]]. */

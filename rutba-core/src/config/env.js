@@ -71,6 +71,9 @@ function dbConfig() {
       database: get('DATABASE_NAME', 'pos_db'),
       user: get('DATABASE_USERNAME', 'root'),
       password: get('DATABASE_PASSWORD', ''),
+      // Contract parity with Strapi's serialization (see contract-diff.js):
+      // decimals as numbers, DATE columns as yyyy-mm-dd strings.
+      ...(client === 'mysql' ? { decimalNumbers: true, dateStrings: ['DATE'] } : {}),
     },
     pool: { min: 0, max: 10 },
   };

@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { SaleOrdersEndpoints } from "@rutba/api-provider/endpoints/index.js";
 import ItemsTable from "./ItemsTable";
-import { lineFromItem, EMPTY_LINE, serverMessage } from "./util";
+import { lineFromItem, itemFromLine, EMPTY_LINE, serverMessage } from "./util";
+import { useOfferOptions, bestOffer, priceForChoice } from "./hooks/useOfferOptions";
 
 // Mid-flight order adjustment for staff on already-confirmed orders. Lives
 // in VerificationStage (PAYMENT_CONFIRMED) and PreparationStage (PREPARING).
@@ -42,17 +43,60 @@ export default function AdjustOrderCard({
   const newTotal = newSubtotal + currentDeliveryCost;
   const totalChanged = Math.abs(newTotal - currentTotal) > 0.001;
 
+  const { ensure: ensureOffers, get: getOffers } = useOfferOptions();
+
+  // Populate the discount picker for lines already on the order, so an
+  // adjustment shows (and can keep) whatever offer priced them originally.
+  useEffect(() => {
+    if (!open) return;
+    for (const it of items) {
+      if (it.productDocumentId) ensureOffers(it.productDocumentId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, items.map((i) => i.productDocumentId).join("|"), ensureOffers]);
+
   const updateItemField = (index, field, value) =>
     setItems((prev) => prev.map((it, i) => (i === index ? { ...it, [field]: value } : it)));
 
-  const selectProduct = (index, docId) => {
+  const selectProduct = async (index, docId) => {
     const found = productsCatalog?.find((p) => p.documentId === docId);
+    const catalogPrice = Number(found?.selling_price);
     setItems((prev) =>
       prev.map((it, i) =>
         i === index
-          ? { ...it, productDocumentId: docId, productName: found?.name || it.productName }
+          ? {
+              ...it,
+              productDocumentId: docId,
+              productName: found?.name || it.productName,
+              price: catalogPrice > 0 ? String(catalogPrice) : it.price,
+              originalPrice: catalogPrice > 0 ? String(catalogPrice) : "",
+              discountSource: "none",
+              saleOfferDocumentId: "",
+              offerName: "",
+              discountReason: "",
+            }
           : it
       )
+    );
+    if (!docId) return;
+
+    const entry = (await ensureOffers(docId)) || getOffers(docId);
+    if (!entry) return;
+    const best = bestOffer(entry);
+    const patch = priceForChoice(entry, best ? best.documentId : "none");
+    setItems((prev) =>
+      prev.map((it, i) =>
+        i === index && it.productDocumentId === docId ? { ...it, ...patch } : it
+      )
+    );
+  };
+
+  const selectDiscount = (index, choice) => {
+    setItems((prev) =>
+      prev.map((it, i) => {
+        if (i !== index) return it;
+        return { ...it, ...priceForChoice(getOffers(it.productDocumentId), choice) };
+      })
     );
   };
 
@@ -70,33 +114,18 @@ export default function AdjustOrderCard({
       toast?.("Add a reason — the customer will see it in the approval email.", "warning");
       return;
     }
+    if (items.some((it) => it.discountSource === "manual" && !String(it.discountReason || "").trim())) {
+      toast?.("A manual discount needs a reason.", "warning");
+      return;
+    }
 
     setProcessing(true);
     try {
-      const formatted = items.map((it) => {
-        const q = Number(it.quantity || 0);
-        const p = Number(it.price || 0);
-        const out = {
-          product: it.productDocumentId,
-          product_name: it.productName?.trim() || "",
-          quantity: q,
-          price: p,
-          total: q * p,
-        };
-        if (it.variant) out.variant = it.variant;
-        if (it.variantName) out.variant_name = it.variantName;
-        if (it.variantTerms) out.variant_terms = it.variantTerms;
-        if (it.imageId) out.image = it.imageId;
-        if (it.stockItemDocumentId) out.stock_item = { documentId: it.stockItemDocumentId };
-        return out;
-      });
-
-      await SaleOrdersEndpoints.update(order.documentId, {
-        data: {
-          products: { items: formatted },
-          subtotal: newSubtotal,
-          total: newTotal,
-        },
+      // /update-items re-prices server-side and re-verifies each line's offer
+      // link, then recomputes subtotal/total itself — so the totals shown here
+      // are a preview, and the server's answer is what lands on the order.
+      await SaleOrdersEndpoints.updateItems(order.documentId, {
+        items: items.map(itemFromLine),
       });
 
       if (totalChanged) {
@@ -175,6 +204,8 @@ export default function AdjustOrderCard({
           productsCatalog={productsCatalog}
           onUpdateField={updateItemField}
           onSelectProduct={selectProduct}
+          onSelectDiscount={selectDiscount}
+          offerOptionsFor={getOffers}
           onAddRow={() => setItems((prev) => [...prev, { ...EMPTY_LINE }])}
           onRemoveRow={(index) =>
             setItems((prev) => (prev.length <= 1 ? prev : prev.filter((_, i) => i !== index)))

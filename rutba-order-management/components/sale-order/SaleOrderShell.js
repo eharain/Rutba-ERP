@@ -143,6 +143,7 @@ export default function SaleOrderShell() {
   const { order, activeReturn, loading, riders, productsCatalog, refresh, workflow } = useSaleOrder({
     documentId,
     isNew,
+    ready: router.isReady,
     jwt,
     toast,
   });

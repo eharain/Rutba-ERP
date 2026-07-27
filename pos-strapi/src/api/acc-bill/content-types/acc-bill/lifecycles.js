@@ -41,9 +41,11 @@ module.exports = {
         if (total <= 0) return;
 
         const apAccountId = await resolver.resolve('ACCOUNTS_PAYABLE', branchId);
-        // Default: bill represents an operating expense
-        // (Inventory bills would use INVENTORY key — can be extended)
-        const expenseAccountId = await resolver.resolve('OPERATING_EXPENSES', branchId);
+        // Default: bill represents an operating expense. A bill whose cost is
+        // capitalized elsewhere (e.g. job-work charges baked into stock-item
+        // cost_price) sets expense_key to the matching asset key ('INVENTORY')
+        // so the debit lands there instead.
+        const expenseAccountId = await resolver.resolve(result.expense_key || 'OPERATING_EXPENSES', branchId);
 
         const lines = [
           {

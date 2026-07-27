@@ -2,6 +2,11 @@ import { authApi } from '../../../lib/api.js';
 import { withQuery, wrapData, strictEndpointGuard } from './___core__.js';
 import { SaleOffersEndpoints as SaleOffersEndpointsApi } from '../../../api/sale-offers.js';
 
+async function listOffersForProduct(productDocumentId) {
+    const ep = SaleOffersEndpointsApi.listOffersForProduct(productDocumentId);
+    return authApi.fetch(ep.path, ep.params);
+}
+
 async function listDraft(arg1 = {}) {
     const ep = SaleOffersEndpointsApi.listDraft(arg1);
     return authApi.fetch(ep.path, ep.params);
@@ -50,6 +55,7 @@ async function del(documentId) {
 const endpoints = strictEndpointGuard(
     'SaleOffersEndpoints',
     {
+        listOffersForProduct,
         listDraft,
         listPublished,
         byIdDraft,
@@ -61,7 +67,7 @@ const endpoints = strictEndpointGuard(
         del,
         meta: SaleOffersEndpointsApi.meta,
     },
-    ["listDraft","listPublished","byIdDraft","byIdPublished","create","updateDraft","publish","unpublish","del","meta"],
+    ["listOffersForProduct","listDraft","listPublished","byIdDraft","byIdPublished","create","updateDraft","publish","unpublish","del","meta"],
 );
 
 export default endpoints;

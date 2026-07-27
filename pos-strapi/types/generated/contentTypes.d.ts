@@ -630,6 +630,7 @@ export interface ApiAccBillAccBill extends Struct.CollectionTypeSchema {
     currency: Schema.Attribute.Relation<'manyToOne', 'api::currency.currency'>;
     date: Schema.Attribute.Date & Schema.Attribute.Required;
     due_date: Schema.Attribute.Date & Schema.Attribute.Required;
+    expense_key: Schema.Attribute.String;
     journal_entry: Schema.Attribute.Relation<
       'oneToOne',
       'api::acc-journal-entry.acc-journal-entry'
@@ -2774,6 +2775,132 @@ export interface ApiMfgDefectTypeMfgDefectType
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+  };
+}
+
+export interface ApiMfgJobWorkItemMfgJobWorkItem
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'mfg_job_work_items';
+  info: {
+    description: 'One sent stock unit on a job-work order. Created server-side at dispatch with a snapshot of the outgoing product/cost; resolved at receive as Returned (transformed in place: new product, cost = sent cost + service charge +/- adjustment), Lost or Damaged.';
+    displayName: 'Job Work Item';
+    pluralName: 'mfg-job-work-items';
+    singularName: 'mfg-job-work-item';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    barcode: Schema.Attribute.String;
+    cost_adjustment: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    job_work: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::mfg-job-work.mfg-job-work'
+    >;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::mfg-job-work-item.mfg-job-work-item'
+    > &
+      Schema.Attribute.Private;
+    notes: Schema.Attribute.Text;
+    publishedAt: Schema.Attribute.DateTime;
+    returned_at: Schema.Attribute.DateTime;
+    returned_cost: Schema.Attribute.Decimal;
+    returned_product: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::product.product'
+    >;
+    returned_selling_price: Schema.Attribute.Decimal;
+    sent_cost: Schema.Attribute.Decimal;
+    sent_product: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::product.product'
+    >;
+    sent_selling_price: Schema.Attribute.Decimal;
+    service_charge: Schema.Attribute.Decimal;
+    status: Schema.Attribute.Enumeration<
+      ['Dispatched', 'Returned', 'Lost', 'Damaged', 'Cancelled']
+    > &
+      Schema.Attribute.DefaultTo<'Dispatched'>;
+    stock_item: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::stock-item.stock-item'
+    >;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiMfgJobWorkMfgJobWork extends Struct.CollectionTypeSchema {
+  collectionName: 'mfg_job_works';
+  info: {
+    description: 'Outsourced processing (e.g. stitching) of serialized stock by a third-party vendor: Draft -> dispatch (units go AtJobWork) -> receive (units return transformed: new product/cost/price, or Lost/Damaged) -> close (vendor bill). Lines are created at dispatch as an immutable snapshot ledger.';
+    displayName: 'Job Work Order';
+    pluralName: 'mfg-job-works';
+    singularName: 'mfg-job-work';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    agreed_rate: Schema.Attribute.Decimal;
+    bill: Schema.Attribute.Relation<'oneToOne', 'api::acc-bill.acc-bill'>;
+    branch: Schema.Attribute.Relation<'manyToOne', 'api::branch.branch'>;
+    closed_at: Schema.Attribute.DateTime;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    deduction_amount: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    dispatched_at: Schema.Attribute.DateTime;
+    expected_return_date: Schema.Attribute.Date;
+    items: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::mfg-job-work-item.mfg-job-work-item'
+    >;
+    jw_number: Schema.Attribute.String;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::mfg-job-work.mfg-job-work'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String;
+    notes: Schema.Attribute.Text;
+    owners: Schema.Attribute.Relation<
+      'manyToMany',
+      'plugin::users-permissions.user'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    service_description: Schema.Attribute.String;
+    status: Schema.Attribute.Enumeration<
+      [
+        'Draft',
+        'Dispatched',
+        'PartiallyReturned',
+        'Returned',
+        'Closed',
+        'Cancelled',
+      ]
+    > &
+      Schema.Attribute.DefaultTo<'Draft'>;
+    stock_items: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::stock-item.stock-item'
+    >;
+    total_charge: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    vendor: Schema.Attribute.Relation<'manyToOne', 'api::supplier.supplier'>;
+    work_order: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::mfg-work-order.mfg-work-order'
+    >;
   };
 }
 
@@ -6100,6 +6227,7 @@ export interface ApiStockItemStockItem extends Struct.CollectionTypeSchema {
         'Lost',
         'Expired',
         'Transferred',
+        'AtJobWork',
         'Reduced',
       ]
     > &
@@ -7716,6 +7844,8 @@ declare module '@strapi/strapi' {
       'api::mfg-bom.mfg-bom': ApiMfgBomMfgBom;
       'api::mfg-bundle.mfg-bundle': ApiMfgBundleMfgBundle;
       'api::mfg-defect-type.mfg-defect-type': ApiMfgDefectTypeMfgDefectType;
+      'api::mfg-job-work-item.mfg-job-work-item': ApiMfgJobWorkItemMfgJobWorkItem;
+      'api::mfg-job-work.mfg-job-work': ApiMfgJobWorkMfgJobWork;
       'api::mfg-material-issue.mfg-material-issue': ApiMfgMaterialIssueMfgMaterialIssue;
       'api::mfg-material-lot.mfg-material-lot': ApiMfgMaterialLotMfgMaterialLot;
       'api::mfg-operation.mfg-operation': ApiMfgOperationMfgOperation;

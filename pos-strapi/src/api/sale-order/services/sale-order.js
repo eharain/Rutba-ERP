@@ -48,14 +48,38 @@ module.exports = createCoreService('api::sale-order.sale-order', ({ strapi }) =>
    * sale-offer resolver whether the supplied `source_group_id` still grants
    * a discount.
    *
+   * Staff entering an order by hand (rutba-order-management) have no group
+   * click-context, so a line may instead nominate its discount explicitly:
+   *
+   *   discount_source: 'offer'                → sale_offer: <offer documentId>.
+   *                                             Re-verified here: the offer
+   *                                             must be live AND actually
+   *                                             reach the product, else the
+   *                                             line is rejected.
+   *   discount_source: 'product_offer_price'  → the product's own offer_price.
+   *   discount_source: 'manual'               → price is taken as typed, but
+   *                                             ONLY when opts.allowManualPricing
+   *                                             (an app-role holder, never a
+   *                                             storefront customer) and a
+   *                                             discount_reason is supplied.
+   *
+   * @param {Array}  items
+   * @param {Object} opts
+   * @param {boolean} opts.allowManualPricing  caller may set a price below
+   *        what an offer justifies. Gated on app-role membership by the
+   *        controller — POST /sale-orders is auth:false for guest checkout,
+   *        so this MUST NOT default true.
+   *
    * Returns:
    *   {
-   *     items:           items with server-validated `price` and `total`,
+   *     items:           items with server-validated `price` and `total`, plus
+   *                      the stamped audit fields (original_price,
+   *                      discount_source, sale_offer, offer_name,
+   *                      discount_reason),
    *     subtotal:        sum of item totals (server-computed),
    *     originalSubtotal: sum of selling-price totals (pre-offer),
    *     savings:         originalSubtotal - subtotal (≥ 0),
-   *     freeShipping:    true iff any line's source group had a live
-   *                      free_shipping offer at order time,
+   *     freeShipping:    true iff any line's offer granted free shipping,
    *     expired:         array of { documentId, reason } for lines whose
    *                      client price was strictly cheaper than what's now
    *                      allowed (i.e. the offer they relied on lapsed),
@@ -64,7 +88,8 @@ module.exports = createCoreService('api::sale-order.sale-order', ({ strapi }) =>
    * The caller decides whether to reject (when `expired.length > 0`) or to
    * write the corrected prices through.
    */
-  async validateOrderPricing(items = []) {
+  async validateOrderPricing(items = [], opts = {}) {
+    const { allowManualPricing = false } = opts;
     const offerService = strapi.service('api::sale-offer.sale-offer');
     const out = [];
     const expired = [];
@@ -110,45 +135,124 @@ module.exports = createCoreService('api::sale-order.sale-order', ({ strapi }) =>
       const productOffer = Number(product.offer_price) || 0;
       const productOfferPrice = variantOffer > 0 ? variantOffer : productOffer;
 
-      // Resolve current offer for this (product, group). Returns null when
-      // there's no group context or no live offer applies.
-      let resolved = null;
-      if (item.source_group_id) {
-        resolved = await offerService.resolveOfferForProductInGroup(product.id, item.source_group_id);
-        if (resolved?.freeShipping) freeShipping = true;
-      }
-
-      // Server's view of what the customer is allowed to pay right now. The
-      // resolver was built around the parent product's selling_price; for
-      // variants we replay the same math against the variant's prices so the
-      // per-variant offer (percent/fixed) carries through.
-      let allowedPrice = sellingPrice;
-      if (resolved?.offer) {
-        const mode = resolved.offer.discount_mode;
-        const value = Number(resolved.offer.discount_value) || 0;
+      // Applies the offer's discount_mode to this line's base price. The
+      // sale-offer resolver computes against the PARENT product's
+      // selling_price; replaying the math here carries a per-variant price
+      // through correctly.
+      const applyMode = (mode, value) => {
+        const v = Number(value) || 0;
         if (mode === 'percent_off') {
-          allowedPrice = Math.max(0, sellingPrice * (1 - Math.max(0, Math.min(100, value)) / 100));
-        } else if (mode === 'fixed_off') {
-          allowedPrice = Math.max(0, sellingPrice - Math.max(0, value));
-        } else if (mode === 'use_product_offer_price') {
-          allowedPrice = productOfferPrice > 0 && productOfferPrice < sellingPrice
+          return Math.max(0, sellingPrice * (1 - Math.max(0, Math.min(100, v)) / 100));
+        }
+        if (mode === 'fixed_off') return Math.max(0, sellingPrice - Math.max(0, v));
+        if (mode === 'use_product_offer_price') {
+          return productOfferPrice > 0 && productOfferPrice < sellingPrice
             ? productOfferPrice
             : sellingPrice;
         }
+        return sellingPrice;
+      };
+
+      // ── What is this line allowed to cost? ──────────────────────────────
+      // Three ways in, in precedence order. `allowedPrice` is the floor the
+      // client may not undercut; `stamp` is the audit trail written onto the
+      // line so the order records WHY it was discounted.
+      let allowedPrice = sellingPrice;
+      let stamp = { discount_source: 'none', sale_offer: null, offer_name: null, discount_reason: null };
+
+      const requestedSource = String(item.discount_source || '').trim();
+      const requestedOfferId = item.sale_offer?.documentId || item.sale_offer || null;
+
+      if (item.source_group_id) {
+        // Storefront: the customer arrived through a group, so only that
+        // group's live offers apply. Unchanged behaviour.
+        const resolved = await offerService.resolveOfferForProductInGroup(
+          product.id,
+          item.source_group_id,
+        );
+        if (resolved?.freeShipping) freeShipping = true;
+        if (resolved?.offer) {
+          allowedPrice = applyMode(resolved.offer.discount_mode, resolved.offer.discount_value);
+          stamp = {
+            discount_source: 'offer',
+            // resolveOfferForProductInGroup populates a fields-projection that
+            // omits documentId, so the link is best-effort here; the name
+            // snapshot still records which offer applied.
+            sale_offer: resolved.offer.documentId || null,
+            offer_name: resolved.offer.name || null,
+            discount_reason: null,
+          };
+        }
+      } else if (requestedSource === 'offer' && requestedOfferId) {
+        // Staff nominated a specific offer. Re-verify rather than trust: the
+        // offer must be live AND actually reach this product.
+        const hit = await offerService.priceForProductWithOffer(productDocId, requestedOfferId);
+        if (!hit) {
+          expired.push({
+            documentId: productDocId,
+            reason: 'selected offer is not live or does not apply to this product',
+            saleOffer: requestedOfferId,
+          });
+        } else {
+          if (hit.offer.free_shipping) freeShipping = true;
+          allowedPrice = applyMode(hit.offer.discount_mode, hit.offer.discount_value);
+          stamp = {
+            discount_source: 'offer',
+            sale_offer: hit.offer.documentId,
+            offer_name: hit.offer.name || null,
+            discount_reason: null,
+          };
+        }
+      } else if (requestedSource === 'product_offer_price') {
+        if (productOfferPrice > 0 && productOfferPrice < sellingPrice) {
+          allowedPrice = productOfferPrice;
+          stamp = {
+            discount_source: 'product_offer_price',
+            sale_offer: null,
+            offer_name: null,
+            discount_reason: null,
+          };
+        }
+        // No usable offer_price → silently falls back to the list price
+        // rather than erroring; the line is simply undiscounted.
       }
 
-      // Customer paying STRICTLY less than the current allowed price means
-      // they relied on an offer that's no longer live. Flag for the caller.
-      if (clientPrice + PRICE_EPSILON < allowedPrice) {
+      // ── May the client go below that floor? ─────────────────────────────
+      // Only an app-role holder asking for it explicitly, with a reason.
+      // A storefront customer submitting a stale price still gets the 409.
+      let finalPrice = allowedPrice;
+      const wantsManual = requestedSource === 'manual';
+      const undercuts = clientPrice + PRICE_EPSILON < allowedPrice;
+
+      if (undercuts && wantsManual && allowManualPricing) {
+        const reason = String(item.discount_reason || '').trim();
+        if (!reason) {
+          expired.push({
+            documentId: productDocId,
+            reason: 'manual discount requires a reason',
+            submittedPrice: clientPrice,
+            allowedPrice,
+          });
+        } else {
+          finalPrice = Math.max(0, clientPrice);
+          stamp = {
+            discount_source: 'manual',
+            sale_offer: null,
+            offer_name: null,
+            discount_reason: reason,
+          };
+        }
+      } else if (undercuts) {
         expired.push({
           documentId: productDocId,
-          reason: 'offer no longer valid; submitted price below currently allowed price',
+          reason: wantsManual && !allowManualPricing
+            ? 'manual pricing is not permitted for this caller'
+            : 'offer no longer valid; submitted price below currently allowed price',
           submittedPrice: clientPrice,
           allowedPrice,
         });
       }
 
-      const finalPrice = allowedPrice;
       const lineTotal = finalPrice * qty;
       const originalLine = sellingPrice * qty;
 
@@ -156,6 +260,8 @@ module.exports = createCoreService('api::sale-order.sale-order', ({ strapi }) =>
         ...item,
         price: finalPrice,
         total: lineTotal,
+        original_price: sellingPrice,
+        ...stamp,
       });
       subtotal += lineTotal;
       originalSubtotal += originalLine;

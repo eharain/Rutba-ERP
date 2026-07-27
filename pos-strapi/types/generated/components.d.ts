@@ -219,11 +219,22 @@ export interface OrderOrderProductItem extends Struct.ComponentSchema {
   };
   attributes: {
     allocations: Schema.Attribute.JSON;
+    discount_reason: Schema.Attribute.String;
+    discount_source: Schema.Attribute.Enumeration<
+      ['none', 'offer', 'product_offer_price', 'manual']
+    > &
+      Schema.Attribute.DefaultTo<'none'>;
     image: Schema.Attribute.Media<'images'>;
+    offer_name: Schema.Attribute.String;
+    original_price: Schema.Attribute.Decimal;
     price: Schema.Attribute.Decimal & Schema.Attribute.Required;
     product: Schema.Attribute.Relation<'oneToOne', 'api::product.product'>;
     product_name: Schema.Attribute.String;
     quantity: Schema.Attribute.Integer & Schema.Attribute.Required;
+    sale_offer: Schema.Attribute.Relation<
+      'oneToOne',
+      'api::sale-offer.sale-offer'
+    >;
     sellable_qty: Schema.Attribute.Decimal;
     stock_item: Schema.Attribute.Relation<
       'oneToOne',
@@ -400,6 +411,7 @@ export interface PosStockStatusHistory extends Struct.ComponentSchema {
         'Lost',
         'Expired',
         'Transferred',
+        'AtJobWork',
         'Reduced',
       ]
     > &

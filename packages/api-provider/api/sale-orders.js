@@ -58,6 +58,21 @@ export const SaleOrdersEndpoints = {
         scope: ROLE_SCOPES,
         data,
     }),
+    // Replace an order's line items, re-priced server-side. Body shape:
+    //   { items: [ { product, quantity, price, discount_source?,
+    //                sale_offer?, discount_reason?, ... } ], delivery_cost? }
+    // Prefer this over update() for anything touching items — it runs
+    // validateOrderPricing, so the nominated offer is re-verified against live
+    // offer state, list price is stamped, and manual discounts carry a reason.
+    updateItems: (documentId, data) => ({
+        path: `/sale-orders/${documentId}/update-items`,
+        action: 'updateItems',
+        method: 'post',
+        apps: ['order-management', 'sale', 'delivery'],
+        approle: ['admin', 'manager', 'staff'],
+        scope: ROLE_SCOPES,
+        data,
+    }),
     updateStatus: (documentId, data) => ({
         path: `/sale-orders/${documentId}/update-status`,
         action: 'updateStatus',

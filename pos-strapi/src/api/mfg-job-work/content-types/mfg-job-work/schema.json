@@ -1,0 +1,96 @@
+{
+  "kind": "collectionType",
+  "collectionName": "mfg_job_works",
+  "info": {
+    "singularName": "mfg-job-work",
+    "pluralName": "mfg-job-works",
+    "displayName": "Job Work Order",
+    "description": "Outsourced processing (e.g. stitching) of serialized stock by a third-party vendor: Draft -> dispatch (units go AtJobWork) -> receive (units return transformed: new product/cost/price, or Lost/Damaged) -> close (vendor bill). Lines are created at dispatch as an immutable snapshot ledger."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "jw_number": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "Draft",
+        "Dispatched",
+        "PartiallyReturned",
+        "Returned",
+        "Closed",
+        "Cancelled"
+      ],
+      "default": "Draft"
+    },
+    "service_description": {
+      "type": "string"
+    },
+    "agreed_rate": {
+      "type": "decimal"
+    },
+    "total_charge": {
+      "type": "decimal",
+      "default": 0
+    },
+    "deduction_amount": {
+      "type": "decimal",
+      "default": 0
+    },
+    "notes": {
+      "type": "text"
+    },
+    "expected_return_date": {
+      "type": "date"
+    },
+    "dispatched_at": {
+      "type": "datetime"
+    },
+    "closed_at": {
+      "type": "datetime"
+    },
+    "vendor": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::supplier.supplier"
+    },
+    "branch": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::branch.branch"
+    },
+    "work_order": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::mfg-work-order.mfg-work-order"
+    },
+    "bill": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::acc-bill.acc-bill"
+    },
+    "stock_items": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::stock-item.stock-item"
+    },
+    "items": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::mfg-job-work-item.mfg-job-work-item",
+      "mappedBy": "job_work"
+    },
+    "owners": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

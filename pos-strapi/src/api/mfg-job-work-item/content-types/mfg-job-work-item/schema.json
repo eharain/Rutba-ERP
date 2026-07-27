@@ -1,0 +1,76 @@
+{
+  "kind": "collectionType",
+  "collectionName": "mfg_job_work_items",
+  "info": {
+    "singularName": "mfg-job-work-item",
+    "pluralName": "mfg-job-work-items",
+    "displayName": "Job Work Item",
+    "description": "One sent stock unit on a job-work order. Created server-side at dispatch with a snapshot of the outgoing product/cost; resolved at receive as Returned (transformed in place: new product, cost = sent cost + service charge +/- adjustment), Lost or Damaged."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "barcode": {
+      "type": "string"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "Dispatched",
+        "Returned",
+        "Lost",
+        "Damaged",
+        "Cancelled"
+      ],
+      "default": "Dispatched"
+    },
+    "sent_cost": {
+      "type": "decimal"
+    },
+    "sent_selling_price": {
+      "type": "decimal"
+    },
+    "service_charge": {
+      "type": "decimal"
+    },
+    "cost_adjustment": {
+      "type": "decimal",
+      "default": 0
+    },
+    "returned_cost": {
+      "type": "decimal"
+    },
+    "returned_selling_price": {
+      "type": "decimal"
+    },
+    "returned_at": {
+      "type": "datetime"
+    },
+    "notes": {
+      "type": "text"
+    },
+    "job_work": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::mfg-job-work.mfg-job-work",
+      "inversedBy": "items"
+    },
+    "stock_item": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::stock-item.stock-item"
+    },
+    "sent_product": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::product.product"
+    },
+    "returned_product": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::product.product"
+    }
+  }
+}

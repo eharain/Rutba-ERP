@@ -237,7 +237,12 @@ export const ProductsEndpoints = {
             ...(noSocialPosts ? { noSocialPosts: 1 } : {}),
         };
 
-        return { path: '/products', params };
+        return {
+            path: '/products',
+            // Explicit apps: the mfg app's ProductSelect uses this method too.
+            apps: ['inventory', 'stock', 'product', 'manufacturing'],
+            params,
+        };
     },
 
     /**
@@ -265,6 +270,8 @@ export const ProductsEndpoints = {
      */
     search: (searchText, page = 1, pageSize = 20) => ({
         path: '/products',
+        // Explicit apps: the mfg app's ProductSelect searches via this method.
+        apps: ['inventory', 'stock', 'product', 'manufacturing'],
         params: {
             filters: {
                 $or: [

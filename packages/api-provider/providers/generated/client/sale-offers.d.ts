@@ -1,5 +1,6 @@
 // AUTO-GENERATED — do not edit. Source: scaffold-endpoint-providers.mjs
 export interface SaleOffersEndpointsType {
+    listOffersForProduct(productDocumentId: any): Promise<any>;
     listDraft({ page, pageSize, sort, populate, filters, fields }?: any): Promise<any>;
     listPublished({ page, pageSize, sort, populate, filters, fields }?: any): Promise<any>;
     byIdDraft(documentId: any, { populate, fields }?: any): Promise<any>;

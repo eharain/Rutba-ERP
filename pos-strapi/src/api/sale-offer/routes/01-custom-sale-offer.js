@@ -7,6 +7,15 @@
 // interceptor enforces the actual role check.
 module.exports = {
   routes: [
+    // Literal `for-product` segment must be declared before any `/:id` route —
+    // Strapi's router is first-match, so `/sale-offers/:id` would otherwise
+    // swallow it. This file loads before the core router (01- prefix).
+    {
+      method: 'GET',
+      path: '/sale-offers/for-product/:documentId',
+      handler: 'sale-offer.listOffersForProduct',
+      config: { auth: false },
+    },
     {
       method: 'POST',
       path: '/sale-offers/:id/publish',

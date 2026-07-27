@@ -92,6 +92,8 @@ export const StockItemsEndpoints = {
      */
     listByBarcode: (barcode, { productDocId } = {}) => ({
         path: '/stock-items',
+        // Explicit apps: the mfg app's job-work scan-to-add flow uses this too.
+        apps: ['sale', 'stock', 'inventory', 'manufacturing'],
         params: {
             filters: {
                 barcode: { $eq: barcode },

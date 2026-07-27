@@ -41,6 +41,7 @@ export * from './media-utils';
 export * from './mfg-boms';
 export * from './mfg-bundles';
 export * from './mfg-defect-types';
+export * from './mfg-job-works';
 export * from './mfg-material-issues';
 export * from './mfg-material-lots';
 export * from './mfg-operations';

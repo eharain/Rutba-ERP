@@ -34,23 +34,31 @@ function parseMaybeJson(value) {
 }
 
 /** Map a DB row to the Document Service result shape (attribute names, camelCase meta). */
+function mapScalar(s, value) {
+  if (s.type === 'json') return parseMaybeJson(value);
+  // MySQL TINYINT(1) → real boolean, matching Strapi's serialization.
+  if (s.type === 'boolean') return value === null || value === undefined ? value : Boolean(value);
+  return value;
+}
+
 function mapRow(model, row) {
   if (!row) return null;
   const out = { documentId: row.document_id, id: row.id };
   for (const s of model.scalars) {
-    out[s.attr] = s.type === 'json' ? parseMaybeJson(row[s.column]) : row[s.column];
+    out[s.attr] = mapScalar(s, row[s.column]);
   }
   out.createdAt = row.created_at;
   out.updatedAt = row.updated_at;
   out.publishedAt = row.published_at;
-  out.locale = row.locale;
+  // Strapi omits locale entirely when i18n is off — only emit when set.
+  if (row.locale !== null && row.locale !== undefined) out.locale = row.locale;
   return out;
 }
 
 function mapComponentRow(model, row) {
   const out = { id: row.id };
   for (const s of model.scalars) {
-    out[s.attr] = s.type === 'json' ? parseMaybeJson(row[s.column]) : row[s.column];
+    out[s.attr] = mapScalar(s, row[s.column]);
   }
   return out;
 }
@@ -94,7 +102,14 @@ function normalizePopulate(model, populate) {
     ...model.components.map((c) => c.attr),
   ];
   if (all) {
-    for (const attr of attrs) out.set(attr, {});
+    // populate=* parity: Strapi's sanitize strips relations targeting UP users
+    // (owners etc.) from wildcard population — they appear only when explicit.
+    const upUserAttrs = new Set(
+      model.relations
+        .filter((r) => r.target === 'plugin::users-permissions.user')
+        .map((r) => r.attr)
+    );
+    for (const attr of attrs) if (!upUserAttrs.has(attr)) out.set(attr, {});
     return out;
   }
   if (Array.isArray(populate)) {
@@ -207,7 +222,8 @@ async function populateMedia(db, model, rows, ids, media, opts) {
   }
   for (const row of rows) {
     const list = grouped.get(row.id) || [];
-    attach(row, media.attr, media.multiple ? list : (list[0] || null));
+    // Strapi returns null (not []) for empty media, single or multiple.
+    attach(row, media.attr, media.multiple ? (list.length ? list : null) : (list[0] || null));
   }
 }
 

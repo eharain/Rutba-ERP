@@ -58,7 +58,7 @@ export const BranchesEndpoints = {
         path: '/branches',
         action: 'find',
         method: 'get',
-        apps: ['accounts', 'accounts-ap', 'accounts-ar', 'accounts-viewer', 'hr', 'sale', 'social', 'stock', 'inventory'],
+        apps: ['accounts', 'accounts-ap', 'accounts-ar', 'accounts-viewer', 'hr', 'sale', 'social', 'stock', 'inventory', 'manufacturing'],
         approle: ['admin', 'manager', 'staff'],
         params: listParams(
             { page, pageSize, sort, populate, filters, fields },

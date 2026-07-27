@@ -4,6 +4,7 @@ export interface SaleOrdersEndpointsType {
     byId(documentId: any, { populate, fields }?: any): Promise<any>;
     create(data: any): Promise<any>;
     update(documentId: any, data: any): Promise<any>;
+    updateItems(documentId: any, data: any): Promise<any>;
     updateStatus(documentId: any, data: any): Promise<any>;
     assignRider(documentId: any, data: any): Promise<any>;
     attachStockItem(documentId: any, data: any): Promise<any>;

@@ -40,6 +40,16 @@ const ENDPOINTS = [
   ['POST', '/api/stock-batches/recompute-product-bulk', 401],
   ['POST', '/api/mfg-production-templates/x/instantiate', 401],
   ['POST', '/api/social-posts/1/duplicate', 401],
+  ['POST', '/api/mfg-job-works/1/dispatch', 401],
+  ['POST', '/api/mfg-job-works/1/receive', 401],
+  ['POST', '/api/mfg-job-works/1/cancel', 401],
+  ['POST', '/api/mfg-job-works/1/close', 401],
+  // Order line-item editing + the staff-only offer picker it feeds. Both are
+  // auth:false and must reject a storefront-customer JWT (the PLAIN column):
+  // update-items rewrites any order's lines, and for-product exposes offers
+  // deliberately withheld from the storefront (applies_to_web:false).
+  ['POST', '/api/sale-orders/x/update-items', 401],
+  ['GET', '/api/sale-offers/for-product/x', 401],
   ['POST', '/api/seed/run', 403, true],
   ['GET', '/api/seed/status', 403, true],
   ['GET', '/api/seed/runs', 403, true],

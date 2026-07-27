@@ -34,7 +34,12 @@ export default function DeliveryMethodDetailPage() {
   const [maxRidersToOffer, setMaxRidersToOffer] = useState("10");
 
   useEffect(() => {
-    if (!jwt || !documentId) return;
+    // Gate on router readiness, not on documentId: /new/delivery-method is a
+    // static route where documentId is always undefined, so a `!documentId`
+    // guard left the page stuck on "Loading..." and the create form never
+    // rendered. Waiting for isReady also avoids flashing the empty create
+    // form on /[documentId] before the param resolves.
+    if (!jwt || !router.isReady) return;
     if (isNew) {
       setLoading(false);
       return;
@@ -62,7 +67,7 @@ export default function DeliveryMethodDetailPage() {
         toast("Failed to load delivery method.", "danger");
       })
       .finally(() => setLoading(false));
-  }, [jwt, documentId, isNew, toast]);
+  }, [jwt, router.isReady, documentId, isNew, toast]);
 
   const buildPayload = () => ({
     data: {

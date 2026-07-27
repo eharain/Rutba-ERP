@@ -21,6 +21,7 @@
         "Lost",
         "Expired",
         "Transferred",
+        "AtJobWork",
         "Reduced"
       ]
     },

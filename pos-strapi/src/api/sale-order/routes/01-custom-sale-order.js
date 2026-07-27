@@ -161,6 +161,20 @@ const config = {
       handler: 'api::sale-order.sale-order.updateOrderStatus',
       config: { auth: false },
     },
+    // Re-price + replace an order's line items. auth:false with the handler's
+    // own ensureUser + requireStaffUser gate, matching update-status above.
+    {
+      method: 'POST',
+      path: '/orders/:documentId/update-items',
+      handler: 'api::sale-order.sale-order.updateOrderItems',
+      config: { auth: false },
+    },
+    {
+      method: 'POST',
+      path: '/sale-orders/:documentId/update-items',
+      handler: 'api::sale-order.sale-order.updateOrderItems',
+      config: { auth: false },
+    },
     {
       method: 'POST',
       path: '/orders/:documentId/assign-rider',

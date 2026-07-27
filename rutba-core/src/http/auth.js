@@ -50,13 +50,28 @@ function createAuthMiddleware({ isBypassed } = {}) {
       return unauthorized(ctx, 'Missing or invalid credentials');
     }
 
-    // 1. users-permissions JWT
+    // 1. users-permissions JWT — two shapes:
+    //    legacy {id} and session-based {userId, sessionId, type:'access'}
+    //    (Strapi 5.51 jwtManagement:'refresh', what the frontends actually send).
     if (jwtSecret) {
       try {
         const payload = jwt.verify(token, jwtSecret);
-        if (payload && payload.id) {
+        let userId = null;
+        if (payload && payload.type === 'access' && payload.userId && payload.sessionId) {
+          const db = getDb();
+          const session = await db('strapi_sessions')
+            .where({ session_id: payload.sessionId, status: 'active', origin: 'users-permissions' })
+            .first('user_id', 'expires_at');
+          if (session && String(session.user_id) === String(payload.userId)
+              && (!session.expires_at || new Date(session.expires_at) > new Date())) {
+            userId = payload.userId;
+          }
+        } else if (payload && payload.id) {
+          userId = payload.id;
+        }
+        if (userId !== null) {
           const user = await documents('plugin::users-permissions.user').findFirst({
-            filters: { id: { $eq: payload.id } },
+            filters: { id: { $eq: userId } },
           });
           if (!user || user.blocked || user.confirmed === false) {
             return unauthorized(ctx, 'User blocked or unconfirmed');

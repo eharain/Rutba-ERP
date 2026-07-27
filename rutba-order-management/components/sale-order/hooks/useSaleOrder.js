@@ -94,13 +94,18 @@ const ORDER_POPULATE = {
           stock_item: {
             fields: ["documentId", "sku", "barcode", "name", "status"],
           },
+          // The offer that justified this line's price. offer_name is a
+          // scalar snapshot so the audit badge survives the offer being
+          // renamed or deleted; the relation is what re-selects the right
+          // entry in the discount picker when a line is reopened.
+          sale_offer: { fields: ["documentId", "name"] },
         },
       },
     },
   },
 };
 
-export function useSaleOrder({ documentId, isNew, jwt, toast }) {
+export function useSaleOrder({ documentId, isNew, ready = true, jwt, toast }) {
   const [order, setOrder] = useState(null);
   const [activeReturn, setActiveReturn] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -154,8 +159,14 @@ export function useSaleOrder({ documentId, isNew, jwt, toast }) {
     return o;
   }, [documentId, isNew]);
 
+  // Gate on router readiness, NOT on documentId: the /new/sale-order route is
+  // static, so `documentId` is undefined there and a `!documentId` guard would
+  // leave `loading` stuck at true forever — the New Sale Order screen would
+  // never render past "Loading...". Waiting for `ready` also stops the effect
+  // firing once with an undefined documentId on the /[documentId] route (which
+  // would flash the DRAFT stage over an existing order).
   useEffect(() => {
-    if (!jwt || !documentId) return;
+    if (!jwt || !ready) return;
     let cancelled = false;
     (async () => {
       setLoading(true);
@@ -166,9 +177,13 @@ export function useSaleOrder({ documentId, isNew, jwt, toast }) {
             fields: ["documentId", "full_name", "status"],
             pagination: { pageSize: 200 },
           }),
+          // selling_price comes along so the Draft items grid can pre-fill the
+          // unit price on product select. The server re-derives every line
+          // price from selling_price and rejects anything lower (409), so a
+          // catalog without prices makes the order un-creatable.
           ProductsEndpoints.list(1, 500, {
             sort: ["name:asc"],
-            fields: ["documentId", "name"],
+            fields: ["documentId", "name", "selling_price"],
           }),
         ]);
         if (cancelled) return;
@@ -186,7 +201,7 @@ export function useSaleOrder({ documentId, isNew, jwt, toast }) {
     return () => {
       cancelled = true;
     };
-  }, [jwt, documentId, isNew, refresh, toast]);
+  }, [jwt, ready, documentId, isNew, refresh, toast]);
 
   return {
     order,

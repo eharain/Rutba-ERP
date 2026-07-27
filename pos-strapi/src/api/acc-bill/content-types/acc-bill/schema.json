@@ -79,6 +79,9 @@
     "notes": {
       "type": "text"
     },
+    "expense_key": {
+      "type": "string"
+    },
     "branch": {
       "type": "relation",
       "relation": "manyToOne",

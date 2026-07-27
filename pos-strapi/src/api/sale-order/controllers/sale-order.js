@@ -7,6 +7,7 @@ const { factories } = require("@strapi/strapi");
 const { ensureUser } = require("../../../utils/ensure-user");
 const { isServiceToken } = require("../../../utils/is-service-token");
 const { roleLevelsFor } = require("../../../utils/app-roles");
+const { hasAppRole, requireAppRole } = require("../../../utils/require-admin");
 const { localDateISO } = require("../../../utils/local-date");
 const deliveryCostCalculator = require('../services/delivery-cost-calculator');
 const stateMachine           = require('../services/sale-order-state-machine');
@@ -432,9 +433,25 @@ module.exports = factories.createCoreController(
             // reject the request so the customer reviews the new total
             // before committing. Free shipping is OR'd across all live
             // offers and wipes the delivery cost when granted.
+            //
+            // Staff entering an order in rutba-order-management may nominate a
+            // specific live offer per line, or a manual price with a reason.
+            // That's gated on ACTUAL app-role membership read from the DB, not
+            // on merely being logged in — this route is auth:false so the token
+            // above could belong to any storefront customer.
+            //
+            // `domains` here matches app-role KEY PREFIXES, not the keys in
+            // domains.json. The order-management domain's roles are order_admin
+            // /order_manager/order_staff, so the prefix is 'order' — passing
+            // 'order-management' matches nothing and silently denies every
+            // order-management user.
+            const allowManualPricing = await hasAppRole(strapi, ctx.state.user?.id, {
+                domains: ['order', 'sale', 'delivery'],
+            });
+
             const pricing = await strapi
                 .service('api::sale-order.sale-order')
-                .validateOrderPricing(products?.items || []);
+                .validateOrderPricing(products?.items || [], { allowManualPricing });
 
             if (pricing.expired.length > 0) {
                 return ctx.conflict('One or more offers in your cart are no longer valid. Please review the updated prices.', {
@@ -899,6 +916,96 @@ module.exports = factories.createCoreController(
                 strapi.log.warn(`[attachDivisible] ${documentId} line ${item_index} × ${qty} failed: ${err.message}`);
                 return ctx.throw(err.status || 500, err.message);
             }
+        },
+
+        // ── POST /sale-orders/:documentId/update-items ──────────────────────
+        // Replace an order's line items, priced through the same engine the
+        // checkout create uses.
+        //
+        // Staff edit items from two places (the Draft stage and the
+        // post-confirmation Adjust Order card). Both used to PUT the component
+        // straight through the core update route, which writes whatever price
+        // the client sends and never records why a line was below list. That
+        // made "link the discount to an offer" unenforceable — a line could
+        // claim any offer. Routing both through validateOrderPricing means the
+        // nominated offer is re-verified against live offer state, the list
+        // price is server-stamped, and manual discounts carry a reason.
+        //
+        // Body: { items: [...], delivery_cost? }
+        // Line discount shape — see validateOrderPricing:
+        //   { discount_source: 'offer', sale_offer: '<documentId>' }
+        //   { discount_source: 'product_offer_price' }
+        //   { discount_source: 'manual', discount_reason: '...' }
+        async updateOrderItems(ctx) {
+            // requireAppRole, NOT requireStaffUser: this route is `auth: false`,
+            // so neither the users-permissions scope check nor the api-pro
+            // interceptor runs, and requireStaffUser passes any user whose UP
+            // role is `authenticated` — which is exactly what every rutba.pk
+            // storefront customer holds. Without this gate a customer could
+            // rewrite the line items of ANY order by documentId.
+            // 'order' is the app-role key prefix for the order-management
+            // domain (order_admin/order_manager/order_staff) — see the note on
+            // the create path above.
+            const user = await requireAppRole(ctx, strapi, {
+                domains: ['order', 'sale', 'delivery'],
+                message: 'An order-management, sale or delivery app role is required',
+            });
+            if (!user) return;
+
+            const { documentId } = ctx.params;
+            const body = readBody(ctx);
+            const items = body.items || body.products?.items;
+            if (!Array.isArray(items) || items.length === 0) {
+                return ctx.badRequest('items must be a non-empty array');
+            }
+
+            const order = await strapi.documents('api::sale-order.sale-order').findOne({
+                documentId,
+                populate: { products: true },
+            });
+            if (!order) return ctx.notFound('Order not found');
+
+            // The gate above already proved app-role membership (or super
+            // admin), so manual pricing is on. Per the agreed model all three
+            // levels — admin, manager and staff — may discount; the reason
+            // field plus the order's updatedBy is the audit trail.
+            const allowManualPricing = true;
+
+            const pricing = await strapi
+                .service('api::sale-order.sale-order')
+                .validateOrderPricing(items, { allowManualPricing });
+
+            if (pricing.expired.length > 0) {
+                return ctx.conflict('One or more lines could not be priced as submitted.', {
+                    expired: pricing.expired,
+                    revalidated: {
+                        subtotal: pricing.subtotal,
+                        savings: pricing.savings,
+                        originalSubtotal: pricing.originalSubtotal,
+                    },
+                });
+            }
+
+            // Free shipping from an offer wipes delivery cost, same as create.
+            const requestedDelivery = body.delivery_cost != null
+                ? parseFloat(body.delivery_cost)
+                : Number(order.delivery_cost) || 0;
+            const deliveryCost = pricing.freeShipping ? 0 : requestedDelivery;
+
+            const updated = await strapi.documents('api::sale-order.sale-order').update({
+                documentId,
+                data: {
+                    products: { ...(order.products || {}), items: pricing.items },
+                    subtotal: pricing.subtotal,
+                    total: pricing.subtotal + deliveryCost,
+                    delivery_cost: deliveryCost,
+                    original_subtotal: pricing.savings > 0 ? pricing.originalSubtotal : null,
+                    savings: pricing.savings > 0 ? pricing.savings : null,
+                },
+                populate: { products: { populate: { items: true } } },
+            });
+
+            return ctx.send({ data: updated });
         },
 
         // ── POST /orders/:documentId/assign-rider  (CMS) ───────────────────

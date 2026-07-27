@@ -12,16 +12,27 @@ const STATUS_OPTIONS = [
     "Damaged", "Lost", "Expired", "Reduced",
 ];
 
+// Server page size used while draining all orphan items into memory.
+const FETCH_PAGE_SIZE = 20000;
+
+/** Lowercase, strip punctuation, split a name into word tokens. */
+function tokenize(name) {
+    return String(name ?? "")
+        .toLowerCase()
+        .replace(/[^\p{L}\p{N}]+/gu, " ")
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean);
+}
+
 export default function OrphanStockItemsPage() {
-    const [items, setItems] = useState([]);
+    const [allItems, setAllItems] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [busyId, setBusyId] = useState(null);
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(25);
-    const [total, setTotal] = useState(0);
     const [search, setSearch] = useState("");
-    const debounceRef = useRef(null);
     const [selected, setSelected] = useState(new Set());
     const [bulkBusy, setBulkBusy] = useState(false);
     const [bulkProgress, setBulkProgress] = useState("");
@@ -30,45 +41,35 @@ export default function OrphanStockItemsPage() {
     const [statusFilter, setStatusFilter] = useState("");
     const [skuFilter, setSkuFilter] = useState("");
     const [duplicatesOnly, setDuplicatesOnly] = useState(false);
-    const [expandedGroups, setExpandedGroups] = useState(new Set());
+    const [expandedKeys, setExpandedKeys] = useState(new Set());
     const [groupNames, setGroupNames] = useState({});
     const [applyNameToItems, setApplyNameToItems] = useState(new Set());
-    const [groupExtras, setGroupExtras] = useState({});
-    const [groupLoading, setGroupLoading] = useState({});
     const [pickerOpen, setPickerOpen] = useState(false);
     const [pickerTitle, setPickerTitle] = useState("");
     const pickerCallbackRef = useRef(null);
 
     useEffect(() => {
         loadOrphans();
-    }, [page, pageSize, sortField, sortDir, statusFilter, skuFilter]);
+    }, []);
 
-    useEffect(() => {
-        if (debounceRef.current) clearTimeout(debounceRef.current);
-        debounceRef.current = setTimeout(() => {
-            setPage(1);
-            loadOrphans();
-        }, 300);
-        return () => clearTimeout(debounceRef.current);
-    }, [search]);
-
+    // Drain every orphan stock item into memory; grouping/filtering/sorting are
+    // all client-side from here so identical and similar names always meet.
     async function loadOrphans() {
         setLoading(true);
         setError("");
-        setGroupExtras({});
         try {
-            const res = await StockItemsEndpoints.orphanGroups({ page, pageSize, search, statusFilter, skuFilter, sortField, sortDir });
-            const groups = res.data || [];
-            const sampleItems = groups
-                .map(g => ({
-                    ...(g.sample || {}),
-                    __groupName: g.name,
-                    __groupSellingPrice: g.selling_price,
-                    __groupCount: g.count || 0,
-                }))
-                .filter(i => i.documentId);
-            setItems(sampleItems);
-            setTotal(res.meta?.pagination?.total || 0);
+            let fetched = [];
+            let serverPage = 1;
+            let total = Infinity;
+            while (fetched.length < total) {
+                const res = await StockItemsEndpoints.orphanGroupItems({ page: serverPage, pageSize: FETCH_PAGE_SIZE });
+                const batch = res.data || [];
+                fetched = fetched.concat(batch);
+                total = res.meta?.pagination?.total ?? fetched.length;
+                if (batch.length === 0) break;
+                serverPage++;
+            }
+            setAllItems(fetched);
         } catch (e) {
             console.error("Failed to load orphan stock items:", e);
             setError("Failed to load data.");
@@ -134,7 +135,7 @@ export default function OrphanStockItemsPage() {
             for (const item of groupItems) next.add(item.documentId);
             return next;
         });
-        setExpandedGroups(prev => {
+        setExpandedKeys(prev => {
             const next = new Set(prev);
             next.add(groupKey);
             return next;
@@ -158,39 +159,11 @@ export default function OrphanStockItemsPage() {
             }
             return next;
         });
-        setExpandedGroups(prev => {
+        setExpandedKeys(prev => {
             const next = new Set(prev);
             next.add(groupKey);
             return next;
         });
-    }
-
-    function makeGroupKey(name, sellingPrice) {
-        const normalizedName = String(name ?? "").toLowerCase();
-        const normalizedSellingPrice = sellingPrice == null ? "__null__" : String(sellingPrice);
-        return `${normalizedName}__${normalizedSellingPrice}`;
-    }
-
-    async function loadAllInGroup(group) {
-        const groupKey = group.key;
-        setGroupLoading(prev => ({ ...prev, [groupKey]: true }));
-        try {
-            const res = await StockItemsEndpoints.orphanGroupItems({ page: 1, pageSize: 10000, name: group.name, selling_price: group.selling_price == null ? "__null__" : String(group.selling_price), statusFilter, skuFilter, sortField, sortDir });
-            const exactGroupItems = (res.data || []).filter(item =>
-                makeGroupKey(item.name, item.selling_price) === groupKey
-            );
-            setGroupExtras(prev => ({ ...prev, [groupKey]: exactGroupItems }));
-            setExpandedGroups(prev => {
-                const next = new Set(prev);
-                next.add(groupKey);
-                return next;
-            });
-        } catch (e) {
-            console.error("Failed to load all items for group:", e);
-            setError("Failed to load all items for this group.");
-        } finally {
-            setGroupLoading(prev => ({ ...prev, [groupKey]: false }));
-        }
     }
 
     function toggleSelect(docId) {
@@ -269,13 +242,13 @@ export default function OrphanStockItemsPage() {
         }
     }
 
-    async function handleGroupCreateProduct(groupItems, groupKey) {
+    async function handleGroupCreateProduct(groupItems, groupKey, defaultName) {
         if (groupItems.length === 0) return;
         setBulkBusy(true);
         setError("");
         try {
             const first = groupItems[0];
-            const editedName = (groupNames[groupKey] ?? first.name) || first.name;
+            const editedName = (groupNames[groupKey] ?? defaultName) || first.name;
             const shouldRenameItems = applyNameToItems.has(groupKey);
 
             setBulkProgress("Creating product...");
@@ -345,71 +318,147 @@ export default function OrphanStockItemsPage() {
         return <span className="ms-1">{sortDir === "asc" ? "↑" : "↓"}</span>;
     }
 
-    function toggleGroup(key) {
-        setExpandedGroups(prev => {
+    function toggleExpanded(key) {
+        setExpandedKeys(prev => {
             const next = new Set(prev);
             if (next.has(key)) next.delete(key); else next.add(key);
             return next;
         });
     }
 
-    const groupedItems = useMemo(() => {
-        const groups = [];
-        const map = new Map();
-        for (const item of items) {
-            const groupName = item.__groupName ?? item.name;
-            const groupSellingPrice = item.__groupSellingPrice ?? item.selling_price;
-            const key = makeGroupKey(groupName, groupSellingPrice);
-            if (!map.has(key)) {
-                const group = {
-                    key,
-                    name: groupName || "",
-                    selling_price: groupSellingPrice,
-                    groupCount: item.__groupCount || 0,
-                    items: [],
-                };
-                map.set(key, group);
-                groups.push(group);
+    const filteredItems = useMemo(() => {
+        const term = search.trim().toLowerCase();
+        return allItems.filter(i => {
+            if (statusFilter && i.status !== statusFilter) return false;
+            if (skuFilter === "has" && !i.sku) return false;
+            if (skuFilter === "none" && i.sku) return false;
+            if (term) {
+                const haystack = `${i.name || ""} ${i.sku || ""} ${i.barcode || ""}`.toLowerCase();
+                if (!haystack.includes(term)) return false;
             }
-            map.get(key).items.push(item);
-            if (!map.get(key).groupCount) map.get(key).groupCount = map.get(key).items.length;
-        }
-        for (const [extraKey, extraItems] of Object.entries(groupExtras)) {
-            if (extraItems.length === 0) continue;
-            if (map.has(extraKey)) {
-                map.get(extraKey).items = extraItems;
-                map.get(extraKey).groupCount = Math.max(map.get(extraKey).groupCount || 0, extraItems.length);
-            } else {
-                const first = extraItems[0] || {};
-                const group = {
-                    key: extraKey,
-                    name: first.name || "",
-                    selling_price: first.selling_price,
-                    groupCount: extraItems.length,
-                    items: [...extraItems],
-                };
-                map.set(extraKey, group);
-                groups.push(group);
-            }
-        }
-        if (duplicatesOnly) return groups.filter(g => (g.groupCount || g.items.length) > 1);
-        return groups;
-    }, [items, duplicatesOnly, groupExtras]);
+            return true;
+        });
+    }, [allItems, search, statusFilter, skuFilter]);
 
-    const allVisibleItems = useMemo(() => groupedItems.flatMap(g => g.items), [groupedItems]);
+    const clusters = useMemo(() => {
+        // 1) Exact-name groups — case, punctuation and spacing insensitive, so
+        //    "Blue-Lace" and "blue lace" land in the same group.
+        const groupMap = new Map();
+        for (const item of filteredItems) {
+            const tokens = tokenize(item.name);
+            const key = tokens.join(" ");
+            if (!groupMap.has(key)) {
+                groupMap.set(key, { key, name: item.name || "", tokens, tokenSet: new Set(tokens), items: [] });
+            }
+            groupMap.get(key).items.push(item);
+        }
+        const groups = Array.from(groupMap.values());
+
+        // 2) Token clustering — union-find over name groups. Two groups join the
+        //    same cluster when their word sets overlap enough ("Lace Blue 5mm"
+        //    meets "Blue Lace"), regardless of word order or extra punctuation.
+        const parent = groups.map((_, i) => i);
+        const find = (i) => { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
+        const union = (a, b) => { const ra = find(a), rb = find(b); if (ra !== rb) parent[rb] = ra; };
+
+        const tokenIndex = new Map();
+        groups.forEach((g, i) => {
+            for (const t of g.tokenSet) {
+                if (!tokenIndex.has(t)) tokenIndex.set(t, []);
+                tokenIndex.get(t).push(i);
+            }
+        });
+        groups.forEach((g, i) => {
+            if (g.tokenSet.size === 0) return;
+            const candidates = new Set();
+            for (const t of g.tokenSet) {
+                for (const j of tokenIndex.get(t)) if (j > i) candidates.add(j);
+            }
+            for (const j of candidates) {
+                const other = groups[j];
+                let inter = 0;
+                for (const t of g.tokenSet) if (other.tokenSet.has(t)) inter++;
+                const minSize = Math.min(g.tokenSet.size, other.tokenSet.size);
+                const isSubset = inter === minSize && minSize >= 2;
+                const jaccard = inter / (g.tokenSet.size + other.tokenSet.size - inter);
+                if (isSubset || jaccard >= 0.6) union(i, j);
+            }
+        });
+
+        const clusterMap = new Map();
+        groups.forEach((g, i) => {
+            const root = find(i);
+            if (!clusterMap.has(root)) clusterMap.set(root, []);
+            clusterMap.get(root).push(g);
+        });
+
+        // 3) Sorting — items within groups, then clusters by their lead item.
+        const dir = sortDir === "desc" ? -1 : 1;
+        const sortVal = (item) => {
+            const v = item?.[sortField];
+            if (sortField === "selling_price" || sortField === "cost_price") {
+                return v == null ? null : Number(v);
+            }
+            return v == null ? null : String(v).toLowerCase();
+        };
+        const cmpItems = (a, b) => {
+            const va = sortVal(a), vb = sortVal(b);
+            if (va == null && vb == null) return 0;
+            if (va == null) return 1;
+            if (vb == null) return -1;
+            if (va < vb) return -1 * dir;
+            if (va > vb) return 1 * dir;
+            return 0;
+        };
+
+        let clusterList = Array.from(clusterMap.values()).map(gs => {
+            gs.sort((a, b) => b.items.length - a.items.length || a.name.localeCompare(b.name));
+            for (const g of gs) g.items.sort(cmpItems);
+            const totalCount = gs.reduce((n, g) => n + g.items.length, 0);
+            let shared = null;
+            for (const g of gs) {
+                if (shared === null) shared = new Set(g.tokenSet);
+                else for (const t of [...shared]) if (!g.tokenSet.has(t)) shared.delete(t);
+            }
+            return {
+                key: "cluster:" + gs.map(g => g.key).sort().join("|"),
+                groups: gs,
+                totalCount,
+                sharedTokens: [...(shared || [])],
+                name: gs[0].name,
+            };
+        });
+
+        clusterList.sort((a, b) => cmpItems(a.groups[0].items[0], b.groups[0].items[0]));
+
+        if (duplicatesOnly) clusterList = clusterList.filter(c => c.totalCount > 1);
+        return clusterList;
+    }, [filteredItems, duplicatesOnly, sortField, sortDir]);
+
+    const totalClusters = clusters.length;
+    const totalPages = Math.ceil(totalClusters / pageSize) || 1;
+    const safePage = Math.min(page, totalPages);
+
+    const pagedClusters = useMemo(
+        () => clusters.slice((safePage - 1) * pageSize, safePage * pageSize),
+        [clusters, safePage, pageSize]
+    );
+
+    const allVisibleItems = useMemo(
+        () => pagedClusters.flatMap(c => c.groups.flatMap(g => g.items)),
+        [pagedClusters]
+    );
 
     const hasActiveFilters = statusFilter || skuFilter || duplicatesOnly;
-
-    const totalPages = Math.ceil(total / pageSize) || 1;
 
     const filters = [
         <input
             key="search"
             type="text"
             className="form-control form-control-sm"
-            placeholder="Search by name..."
+            placeholder="Search by name, SKU or barcode..."
             value={search}
-            onChange={e => setSearch(e.target.value)}
+            onChange={e => { setSearch(e.target.value); setPage(1); }}
         />,
         <select
             key="status"
@@ -438,7 +487,7 @@ export default function OrphanStockItemsPage() {
                 className="form-check-input"
                 id="dupCheck"
                 checked={duplicatesOnly}
-                onChange={e => setDuplicatesOnly(e.target.checked)}
+                onChange={e => { setDuplicatesOnly(e.target.checked); setPage(1); }}
             />
             <label className="form-check-label" htmlFor="dupCheck">Duplicates only</label>
         </div>,
@@ -451,6 +500,14 @@ export default function OrphanStockItemsPage() {
                 Clear filters
             </button>
         ),
+        <button
+            key="reload"
+            className="btn btn-sm btn-outline-secondary"
+            onClick={loadOrphans}
+            disabled={loading || bulkBusy}
+        >
+            ⟳ Reload
+        </button>,
     ].filter(Boolean);
 
     const bulkActions = (
@@ -479,21 +536,165 @@ export default function OrphanStockItemsPage() {
         </>
     );
 
+    // Header row for a set of items sharing an editable target-product name.
+    // Used for both exact-name groups and multi-name token clusters.
+    function renderGroupHeader({ key, items, count, label, badges, defaultName, rowClass }) {
+        const isExpanded = expandedKeys.has(key);
+        const editedName = groupNames[key] ?? defaultName;
+        const nameChanged = editedName !== defaultName;
+        const allGroupSelected = items.length > 0 && items.every(i => selected.has(i.documentId));
+        return (
+            <tr key={`grp-${key}`} className={rowClass}>
+                <td
+                    colSpan={2}
+                    className="fw-bold"
+                    role="button"
+                    onClick={() => toggleExpanded(key)}
+                    style={{ cursor: "pointer" }}
+                >
+                    <div className="d-flex align-items-center flex-wrap gap-1">
+                        <span className="me-1">{isExpanded ? "▼" : "▶"}</span>
+                        <span className="badge bg-secondary">{count} items</span>
+                        {badges}
+                        {label && <span className="fw-normal small text-muted">{label}</span>}
+                        <button
+                            className="btn btn-sm btn-outline-secondary py-0 px-1"
+                            onClick={e => { e.stopPropagation(); allGroupSelected ? deselectGroupAll(items) : selectGroupAll(items, key); }}
+                            disabled={bulkBusy}
+                            title={allGroupSelected ? "Deselect all items in this group" : "Select all items in this group"}
+                        >
+                            {allGroupSelected ? "☐ Deselect" : "☑ Select all"}
+                        </button>
+                        <button
+                            className="btn btn-sm btn-outline-secondary py-0 px-1"
+                            onClick={e => { e.stopPropagation(); invertGroupSelection(items, key); }}
+                            disabled={bulkBusy}
+                            title="Invert selection in this group"
+                        >
+                            ⇄ Invert
+                        </button>
+                        {bulkProgress && <span className="text-muted fw-normal small">{bulkProgress}</span>}
+                    </div>
+                </td>
+                <td colSpan={3}>
+                    <div className="d-flex align-items-center gap-2">
+                        <input
+                            type="text"
+                            className={`form-control form-control-sm${nameChanged ? " border-primary" : ""}`}
+                            value={editedName}
+                            onChange={e => setGroupNames(prev => ({ ...prev, [key]: e.target.value }))}
+                            onClick={e => e.stopPropagation()}
+                            disabled={bulkBusy}
+                            placeholder="Product name"
+                        />
+                        {nameChanged && (
+                            <div className="form-check text-nowrap" onClick={e => e.stopPropagation()}>
+                                <input
+                                    type="checkbox"
+                                    className="form-check-input"
+                                    id={`apply-${key}`}
+                                    checked={applyNameToItems.has(key)}
+                                    onChange={e => setApplyNameToItems(prev => {
+                                        const next = new Set(prev);
+                                        if (e.target.checked) next.add(key); else next.delete(key);
+                                        return next;
+                                    })}
+                                    disabled={bulkBusy}
+                                />
+                                <label className="form-check-label small" htmlFor={`apply-${key}`}>Rename items</label>
+                            </div>
+                        )}
+                    </div>
+                </td>
+                <td colSpan={2} className="text-end">
+                    <button
+                        className="btn btn-sm btn-outline-primary me-2"
+                        onClick={() => handleGroupCreateProduct(items, key, defaultName)}
+                        disabled={bulkBusy}
+                    >
+                        {bulkBusy ? "Working..." : "Create Product & Link All"}
+                    </button>
+                    <button
+                        className="btn btn-sm btn-outline-secondary"
+                        onClick={() => openProductPicker(
+                            `Attach ${items.length} items to…`,
+                            (docId) => handleGroupAttachProduct(items, docId)
+                        )}
+                        disabled={bulkBusy}
+                    >
+                        Attach all to…
+                    </button>
+                </td>
+            </tr>
+        );
+    }
+
+    function renderItemRow(item, { grouped, indent } = {}) {
+        const isBusy = busyId === item.documentId;
+        const isSelected = selected.has(item.documentId);
+        return (
+            <tr
+                key={item.documentId}
+                className={isSelected ? "table-active" : ""}
+                style={grouped ? {
+                    backgroundColor: isSelected ? undefined : "#fdf2d0",
+                    borderLeft: "4px solid #f0ad4e",
+                } : undefined}
+            >
+                <td>
+                    <input
+                        type="checkbox"
+                        className="form-check-input"
+                        checked={isSelected}
+                        onChange={() => toggleSelect(item.documentId)}
+                        disabled={bulkBusy}
+                    />
+                </td>
+                <td style={indent ? { paddingLeft: "2rem" } : undefined}>
+                    {item.name || <span className="text-muted fst-italic">No name</span>}
+                </td>
+                <td>{item.sku || "—"}</td>
+                <td>{item.selling_price ?? "—"}</td>
+                <td>{item.cost_price ?? "—"}</td>
+                <td><span className={`badge bg-${statusColor(item.status)}`}>{item.status}</span></td>
+                <td>
+                    <button
+                        className="btn btn-sm btn-outline-primary me-2"
+                        onClick={() => handleCreateProduct(item)}
+                        disabled={isBusy}
+                    >
+                        {isBusy ? "Working..." : "Create Product"}
+                    </button>
+                    <button
+                        className="btn btn-sm btn-outline-secondary"
+                        onClick={() => openProductPicker(
+                            `Attach "${item.name}" to…`,
+                            (docId) => handleAttachProduct(item, docId)
+                        )}
+                        disabled={isBusy}
+                    >
+                        Attach to…
+                    </button>
+                </td>
+            </tr>
+        );
+    }
+
     return (
         <ProtectedRoute>
             <Layout>
                 <ListPageLayout
                     title="Orphan Stock Items"
-                    subtitle={`Stock items not linked to any product${total ? ` · ${total} total` : ''}`}
+                    subtitle={`Stock items not linked to any product${allItems.length ? ` · ${filteredItems.length} items in ${totalClusters} groups` : ''}`}
                     filters={filters}
                     bulkActions={bulkActions}
                     selectedCount={selected.size}
                     loading={loading}
                     pagination={
                         <ListPagination
-                            page={page}
+                            page={safePage}
                             pageSize={pageSize}
-                            total={total}
+                            total={totalClusters}
                             onPage={setPage}
                             onPageSize={(n) => { setPageSize(n); setPage(1); }}
                         />
@@ -503,7 +704,7 @@ export default function OrphanStockItemsPage() {
                     }
                 >
                     {error && <div className="alert alert-danger m-3 mb-0">{error}</div>}
-                    {items.length === 0 ? null : (
+                    {pagedClusters.length === 0 ? null : (
                     <div className="table-responsive">
                         <table className="table table-hover list-table">
                             <thead className="table-light">
@@ -526,165 +727,61 @@ export default function OrphanStockItemsPage() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {groupedItems.flatMap(group => {
-                                    const groupKey = group.key;
-                                    const groupCount = group.groupCount || group.items.length;
-                                    const isMulti = groupCount > 1;
-                                    const isExpanded = expandedGroups.has(groupKey);
+                                {pagedClusters.flatMap(cluster => {
                                     const rows = [];
+                                    const isMultiGroup = cluster.groups.length > 1;
 
-                                    if (isMulti) {
-                                        const editedName = groupNames[groupKey] ?? group.name;
-                                        const nameChanged = editedName !== group.name;
-                                        const allGroupSelected = group.items.every(i => selected.has(i.documentId));
-                                        const hasExtras = !!groupExtras[groupKey];
-                                        const isGroupLoading = !!groupLoading[groupKey];
-                                        const groupFullyLoaded = hasExtras || group.items.length >= groupCount;
-                                        rows.push(
-                                            <tr key={`grp-${groupKey}`} className="table-warning">
-                                                <td
-                                                    colSpan={2}
-                                                    className="fw-bold"
-                                                    role="button"
-                                                    onClick={() => toggleGroup(groupKey)}
-                                                    style={{ cursor: "pointer" }}
-                                                >
-                                                    <div className="d-flex align-items-center flex-wrap gap-1">
-                                                        <span className="me-1">{isExpanded ? "▼" : "▶"}</span>
-                                                        <span className="badge bg-secondary">{groupCount} items</span>
-                                                        {groupCount > group.items.length && !hasExtras && (
-                                                            <button
-                                                                className="btn btn-sm btn-outline-info py-0 px-1"
-                                                                onClick={e => { e.stopPropagation(); loadAllInGroup(group); }}
-                                                                disabled={bulkBusy || isGroupLoading}
-                                                            >
-                                                                {isGroupLoading ? "Loading…" : "Load all"}
-                                                            </button>
-                                                        )}
-                                                        {hasExtras && <span className="badge bg-info">All loaded</span>}
-                                                        <button
-                                                            className="btn btn-sm btn-outline-secondary py-0 px-1"
-                                                            onClick={e => { e.stopPropagation(); allGroupSelected ? deselectGroupAll(group.items) : selectGroupAll(group.items, groupKey); }}
-                                                            disabled={bulkBusy || !groupFullyLoaded}
-                                                            title={groupFullyLoaded ? (allGroupSelected ? "Deselect all items in this group" : "Select all items in this group") : "Load all items first"}
-                                                        >
-                                                            {allGroupSelected ? "☐ Deselect" : "☑ Select all"}
-                                                        </button>
-                                                        <button
-                                                            className="btn btn-sm btn-outline-secondary py-0 px-1"
-                                                            onClick={e => { e.stopPropagation(); invertGroupSelection(group.items, groupKey); }}
-                                                            disabled={bulkBusy || !groupFullyLoaded}
-                                                            title={groupFullyLoaded ? "Invert selection in this group" : "Load all items first"}
-                                                        >
-                                                            ⇄ Invert
-                                                        </button>
-                                                        {bulkProgress && <span className="text-muted fw-normal small">{bulkProgress}</span>}
-                                                    </div>
-                                                </td>
-                                                <td colSpan={3}>
-                                                    <div className="d-flex align-items-center gap-2">
-                                                        <input
-                                                            type="text"
-                                                            className={`form-control form-control-sm${nameChanged ? " border-primary" : ""}`}
-                                                            value={editedName}
-                                                            onChange={e => setGroupNames(prev => ({ ...prev, [groupKey]: e.target.value }))}
-                                                            onClick={e => e.stopPropagation()}
-                                                            disabled={bulkBusy}
-                                                            placeholder="Product name"
-                                                        />
-                                                        {nameChanged && (
-                                                            <div className="form-check text-nowrap" onClick={e => e.stopPropagation()}>
-                                                                <input
-                                                                    type="checkbox"
-                                                                    className="form-check-input"
-                                                                    id={`apply-${groupKey}`}
-                                                                    checked={applyNameToItems.has(groupKey)}
-                                                                    onChange={e => setApplyNameToItems(prev => {
-                                                                        const next = new Set(prev);
-                                                                        if (e.target.checked) next.add(groupKey); else next.delete(groupKey);
-                                                                        return next;
-                                                                    })}
-                                                                    disabled={bulkBusy}
-                                                                />
-                                                                <label className="form-check-label small" htmlFor={`apply-${groupKey}`}>Rename items</label>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </td>
-                                                <td colSpan={2} className="text-end">
-                                                    <button
-                                                        className="btn btn-sm btn-outline-primary me-2"
-                                                        onClick={() => handleGroupCreateProduct(group.items, groupKey)}
-                                                        disabled={bulkBusy || !groupFullyLoaded}
-                                                        title={groupFullyLoaded ? "" : "Load all items first"}
-                                                    >
-                                                        {bulkBusy ? "Working..." : "Create Product & Link All"}
-                                                    </button>
-                                                    <button
-                                                        className="btn btn-sm btn-outline-secondary"
-                                                        onClick={() => openProductPicker(
-                                                            `Attach ${group.items.length} items to…`,
-                                                            (docId) => handleGroupAttachProduct(group.items, docId)
-                                                        )}
-                                                        disabled={bulkBusy || !groupFullyLoaded}
-                                                        title={groupFullyLoaded ? "" : "Load all items first"}
-                                                    >
-                                                        Attach all to…
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        );
+                                    if (!isMultiGroup) {
+                                        // Single name — same behavior as before: plain row
+                                        // for singletons, one collapsible header otherwise.
+                                        const group = cluster.groups[0];
+                                        if (group.items.length === 1) {
+                                            rows.push(renderItemRow(group.items[0]));
+                                        } else {
+                                            rows.push(renderGroupHeader({
+                                                key: group.key,
+                                                items: group.items,
+                                                count: group.items.length,
+                                                defaultName: group.name,
+                                                rowClass: "table-warning",
+                                            }));
+                                            if (expandedKeys.has(group.key)) {
+                                                for (const item of group.items) rows.push(renderItemRow(item, { grouped: true }));
+                                            }
+                                        }
+                                        return rows;
                                     }
 
-                                    if (!isMulti || isExpanded) {
-                                        group.items.forEach(item => {
-                                            const isBusy = busyId === item.documentId;
-                                            const isSelected = selected.has(item.documentId);
-                                            rows.push(
-                                                <tr
-                                                    key={item.documentId}
-                                                    className={isSelected ? "table-active" : ""}
-                                                    style={isMulti ? {
-                                                        backgroundColor: isSelected ? undefined : "#fdf2d0",
-                                                        borderLeft: "4px solid #f0ad4e",
-                                                    } : undefined}
-                                                >
-                                                    <td>
-                                                        <input
-                                                            type="checkbox"
-                                                            className="form-check-input"
-                                                            checked={isSelected}
-                                                            onChange={() => toggleSelect(item.documentId)}
-                                                            disabled={bulkBusy}
-                                                        />
-                                                    </td>
-                                                    <td>{item.name || <span className="text-muted fst-italic">No name</span>}</td>
-                                                    <td>{item.sku || "—"}</td>
-                                                    <td>{item.selling_price ?? "—"}</td>
-                                                    <td>{item.cost_price ?? "—"}</td>
-                                                    <td><span className={`badge bg-${statusColor(item.status)}`}>{item.status}</span></td>
-                                                    <td>
-                                                        <button
-                                                            className="btn btn-sm btn-outline-primary me-2"
-                                                            onClick={() => handleCreateProduct(item)}
-                                                            disabled={isBusy}
-                                                        >
-                                                            {isBusy ? "Working..." : "Create Product"}
-                                                        </button>
-                                                        <button
-                                                            className="btn btn-sm btn-outline-secondary"
-                                                            onClick={() => openProductPicker(
-                                                                `Attach "${item.name}" to…`,
-                                                                (docId) => handleAttachProduct(item, docId)
-                                                            )}
-                                                            disabled={isBusy}
-                                                        >
-                                                            Attach to…
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            );
-                                        });
+                                    // Token cluster: several distinct names whose words match.
+                                    rows.push(renderGroupHeader({
+                                        key: cluster.key,
+                                        items: cluster.groups.flatMap(g => g.items),
+                                        count: cluster.totalCount,
+                                        defaultName: cluster.name,
+                                        rowClass: "table-info",
+                                        badges: <span className="badge bg-info text-dark">{cluster.groups.length} name variants</span>,
+                                        label: cluster.sharedTokens.length
+                                            ? `matched words: ${cluster.sharedTokens.join(" ")}`
+                                            : null,
+                                    }));
+
+                                    if (expandedKeys.has(cluster.key)) {
+                                        for (const group of cluster.groups) {
+                                            if (group.items.length > 1) {
+                                                rows.push(renderGroupHeader({
+                                                    key: group.key,
+                                                    items: group.items,
+                                                    count: group.items.length,
+                                                    defaultName: group.name,
+                                                    rowClass: "table-warning",
+                                                }));
+                                                if (expandedKeys.has(group.key)) {
+                                                    for (const item of group.items) rows.push(renderItemRow(item, { grouped: true, indent: true }));
+                                                }
+                                            } else {
+                                                rows.push(renderItemRow(group.items[0], { grouped: true, indent: true }));
+                                            }
+                                        }
                                     }
                                     return rows;
                                 })}
@@ -710,14 +807,12 @@ function statusColor(status) {
         case "Sold": return "secondary";
         case "Received": return "info";
         case "Reserved": return "warning";
-        case "Returned":
-        case "ReturnedDamaged":
-        case "ReturnedToSupplier": return "primary";
         case "Damaged":
         case "Lost":
         case "Expired": return "danger";
+        case "Returned":
+        case "ReturnedDamaged":
+        case "ReturnedToSupplier": return "primary";
         default: return "light";
     }
 }
-
-

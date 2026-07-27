@@ -61,7 +61,7 @@ export const SuppliersEndpoints = {
         path: '/suppliers',
         action: 'find',
         method: 'get',
-        apps: ['stock', 'purchase'],
+        apps: ['stock', 'purchase', 'manufacturing'],
         approle: ['admin', 'manager', 'staff'],
         params: {
             sort: sort ?? ['name:asc'],

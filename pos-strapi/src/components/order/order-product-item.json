@@ -50,6 +50,35 @@
       "relation": "oneToOne",
       "target": "api::stock-item.stock-item"
     },
+    "original_price": {
+      "type": "decimal",
+      "description": "List price this line was discounted from (the product/variant selling_price at order time). Server-stamped by validateOrderPricing; equals `price` when the line is undiscounted."
+    },
+    "discount_source": {
+      "type": "enumeration",
+      "enum": [
+        "none",
+        "offer",
+        "product_offer_price",
+        "manual"
+      ],
+      "default": "none",
+      "description": "Why this line is below list. 'offer' → a live sale-offer (see sale_offer); 'product_offer_price' → the product's own offer_price; 'manual' → staff-entered price, requires discount_reason."
+    },
+    "sale_offer": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::sale-offer.sale-offer",
+      "description": "The live offer that justified this line's price. Set only when discount_source = 'offer'."
+    },
+    "offer_name": {
+      "type": "string",
+      "description": "Snapshot of the offer's name at order time — offers get renamed and deleted, the order line shouldn't lose its audit trail."
+    },
+    "discount_reason": {
+      "type": "string",
+      "description": "Staff justification for a manual discount. Required when discount_source = 'manual'."
+    },
     "sellable_qty": {
       "type": "decimal",
       "description": "For a divisible product line: the number of sub-units sold on this line (e.g. yards/tablets). Whole-item lines leave this null and use quantity."

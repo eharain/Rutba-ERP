@@ -55,6 +55,38 @@ async function requireAppMember(ctx, strapi, domain) {
   });
 }
 
+// Shared matcher: does any of `keys` satisfy `domains` (+ optional `levels`)?
+function keysSatisfy(keys, domains, levels) {
+  const doms = domains.map((d) => String(d || '').trim().toLowerCase()).filter(Boolean);
+  const lvls = Array.isArray(levels) && levels.length
+    ? levels.map((l) => String(l || '').trim().toLowerCase()).filter(Boolean)
+    : null;
+
+  return keys.some((k) => doms.some((dom) => {
+    if (k !== dom && !k.startsWith(`${dom}_`)) return false;
+    if (!lvls) return true;
+    return lvls.some((lvl) => k === `${dom}_${lvl}` || k.endsWith(`_${lvl}`));
+  }));
+}
+
+/**
+ * Non-throwing membership probe — the same DB-backed check as requireAppRole
+ * but it answers a question instead of ending the request.
+ *
+ * Needed by handlers that must stay open to guests while still varying what
+ * they permit: POST /sale-orders is `auth: false` so guest checkout works, yet
+ * it may only honour a staff-entered manual discount for an actual app-role
+ * holder. Calling requireAppRole there would 403 every guest checkout.
+ *
+ * @returns {Promise<boolean>}
+ */
+async function hasAppRole(strapi, userId, { domains = [], levels = null } = {}) {
+  if (!userId) return false;
+  const { isSuperAdmin, keys } = await loadRoleKeys(strapi, userId);
+  if (isSuperAdmin) return true;
+  return keysSatisfy(keys, domains, levels);
+}
+
 /**
  * Generalised DB-backed role gate for auth:false custom routes.
  *
@@ -73,18 +105,9 @@ async function requireAppRole(ctx, strapi, { domains = [], levels = null, messag
   const { isSuperAdmin, keys } = await loadRoleKeys(strapi, user.id);
   if (isSuperAdmin) return user;
 
-  const doms = domains.map((d) => String(d || '').trim().toLowerCase()).filter(Boolean);
-  const lvls = Array.isArray(levels) && levels.length
-    ? levels.map((l) => String(l || '').trim().toLowerCase()).filter(Boolean)
-    : null;
-
-  const ok = keys.some((k) => doms.some((dom) => {
-    if (k !== dom && !k.startsWith(`${dom}_`)) return false;
-    if (!lvls) return true;
-    return lvls.some((lvl) => k === `${dom}_${lvl}` || k.endsWith(`_${lvl}`));
-  }));
-
-  if (!ok) {
+  if (!keysSatisfy(keys, domains, levels)) {
+    const doms = domains.map((d) => String(d || '').trim().toLowerCase()).filter(Boolean);
+    const lvls = Array.isArray(levels) && levels.length ? levels : null;
     const want = lvls ? `${doms.join('/')} ${lvls.join('/')}` : doms.join('/');
     ctx.forbidden(message || `A ${want} app role is required`);
     return null;
@@ -92,4 +115,4 @@ async function requireAppRole(ctx, strapi, { domains = [], levels = null, messag
   return user;
 }
 
-module.exports = { requireAppAdmin, requireAppMember, requireAppRole };
+module.exports = { requireAppAdmin, requireAppMember, requireAppRole, hasAppRole };

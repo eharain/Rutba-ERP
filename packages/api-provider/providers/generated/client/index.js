@@ -41,6 +41,7 @@ export * from './media-utils.js';
 export * from './mfg-boms.js';
 export * from './mfg-bundles.js';
 export * from './mfg-defect-types.js';
+export * from './mfg-job-works.js';
 export * from './mfg-material-issues.js';
 export * from './mfg-material-lots.js';
 export * from './mfg-operations.js';
