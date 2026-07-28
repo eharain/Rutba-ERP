@@ -48,6 +48,16 @@ unset _k
 # HELPERS
 ###########################################
 
+# True when a unit is inactive because its process ran and exited 0, rather
+# than because it crashed or never started. Distinguishes an intentionally
+# disabled worker from a broken service.
+_svc_exited_cleanly() {
+    local svc="$1"
+    local result; result=$(systemctl show "${svc}.service" --property=Result --value 2>/dev/null || echo "")
+    local code;   code=$(systemctl show "${svc}.service" --property=ExecMainStatus --value 2>/dev/null || echo "")
+    [ "$result" = "success" ] && [ "$code" = "0" ]
+}
+
 _validate_svc() {
     local svc="$1"
     for s in "${SERVICES[@]}"; do [ "$s" = "$svc" ] && return 0; done
@@ -210,6 +220,8 @@ show_service_status() {
         fi
         if [ "$status" = "active" ]; then
             echo -e "  ${GREEN}* ${label}  active${NC}${mem}"
+        elif [ "$status" != "activating" ] && _svc_exited_cleanly "$svc"; then
+            echo -e "  ${CYAN}- ${label}  stopped (clean exit)${NC}"
         elif [ "$status" = "activating" ]; then
             echo -e "  ${YELLOW}~ ${label}  activating${NC}"
         else
@@ -300,6 +312,11 @@ diagnose_services() {
             echo -e "  ${GREEN}[OK] ${svc}${NC}"
         elif [ "$status" = "activating" ]; then
             echo -e "  ${YELLOW}[..] ${svc}: activating${NC}"
+        elif _svc_exited_cleanly "$svc"; then
+            # Not every unit is meant to stay up. The marketplace worker exits 0
+            # on purpose when WORKER_ENABLED=false; flagging that as a failure
+            # trains people to ignore this whole report.
+            echo -e "  ${CYAN}[--] ${svc}: stopped (clean exit)${NC}"
         else
             echo -e "  ${RED}[FAIL] ${svc}: ${status}${NC}"
             failed_svcs+=("$svc")
@@ -387,8 +404,13 @@ diagnose_services() {
         fi
         if [ -n "${active_dir:-}" ]; then
             local wd; wd=$(grep '^WorkingDirectory=' "$unit_file" 2>/dev/null | cut -d'=' -f2)
-            if [ -n "$wd" ] && [ "$wd" != "$active_dir" ]; then
-                echo -e "  ${YELLOW}[WARN] ${svc}: unit -> ${wd} but active is ${active_dir}${NC}"
+            # write_all_units deliberately points WorkingDirectory at the
+            # ACTIVE_LINK symlink so a rollback is just a symlink flip.
+            # get_active_build_dir returns the RESOLVED path, so compare
+            # resolved-to-resolved or every healthy unit warns.
+            local wd_real; wd_real=$(readlink -f "$wd" 2>/dev/null || echo "$wd")
+            if [ -n "$wd" ] && [ "$wd_real" != "$active_dir" ]; then
+                echo -e "  ${YELLOW}[WARN] ${svc}: unit -> ${wd} (${wd_real}) but active is ${active_dir}${NC}"
             fi
         fi
         if ! grep -q 'scripts/js/load-env.js' "$unit_file" 2>/dev/null; then
