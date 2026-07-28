@@ -28,7 +28,9 @@ function sendError(ctx, status, name, message) {
 }
 
 function restStatus(model, query) {
-  if (!model.draftAndPublish) return undefined;
+  // REST default is 'published' — and it applies to POPULATE TARGETS even when
+  // the parent type itself is not draftAndPublish (applyStatus no-ops on the
+  // parent; D&P children resolve to their published versions).
   return query.status === 'draft' ? 'draft' : 'published';
 }
 
