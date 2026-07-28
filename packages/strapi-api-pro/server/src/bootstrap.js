@@ -9,7 +9,9 @@
 //   2. Expose a global `strapi.apiPro` service registry. Other plugins /
 //      extensions reach into this namespace to trigger cache invalidation
 //      when roles or policies change.
-//   3. Mount the global request interceptor as a Koa middleware.
+//   3. Install the documents-service filter enforcer (policy enforcement
+//      itself runs as a per-route middleware — see register.js and
+//      middlewares/enforce.js).
 //   4. Trigger file↔DB sync of interfaces/policies.
 //   5. Wire content-type lifecycle hooks so cache invalidates when an app-role,
 //      app-domain, or method-policy is created / updated / deleted.
@@ -133,46 +135,71 @@ function registerCacheInvalidationHooks(strapi) {
   }
 }
 
-// ── Global interceptor ──────────────────────────────────────────────────────
-// Runs on every request. Skips bypassed paths and unauthenticated requests
-// (users-permissions middleware runs before this and populates ctx.state.user).
-// For authenticated requests with a recognized route handler, delegates to
-// the request-interceptor service which resolves policies, merges templates,
-// and mutates ctx.query / ctx.request.body in place.
-function installInterceptor(strapi) {
+// ── Documents-service policy enforcer ───────────────────────────────────────
+// Companion to the per-route enforce middleware (middlewares/enforce.js, which
+// register.js injects into every content-api route). The route middleware
+// resolves the claim + policy and stashes the resolved fragment on
+// ctx.state.apiProPolicy — but for core CRUD actions it deliberately keeps the
+// filter fragment OUT of ctx.query and the body fragment OUT of
+// ctx.request.body, because Strapi's core controllers run both through
+// contentAPI.validate/sanitize, which 400s on / strips private and restricted
+// attributes (createdBy, user relations like `owners`) that scoping templates
+// reference. This documents middleware applies those fragments post-sanitize,
+// where they are server-trusted, for the content-type the route targets:
+//   • filters on the read/delete actions below;
+//   • body stamps (ownership like `{ owners: $user.id }`) merged into
+//     params.data on create/update.
+//
+// `update` is absent from the filter action set on purpose: Strapi's
+// documents.update ignores filter params (pickSelectionParams), and
+// restricting its entry lookup would trigger the update-or-recreate fallback.
+const DOC_FILTERED_ACTIONS = new Set(['findMany', 'findFirst', 'findOne', 'count', 'delete']);
+const DOC_BODY_STAMPED_ACTIONS = new Set(['create', 'update']);
+
+function installDocumentsPolicyEnforcer(strapi) {
   const config = strapi.config.get('plugin::api-pro') || {};
   if (config.interceptorEnabled === false) {
     strapi.log.info('[api-pro] interceptor disabled by config');
     return;
   }
 
-  const isBypassed = buildBypassMatcher(config.bypassPaths);
-  const interceptor = require('./services/request-interceptor');
+  if (typeof strapi.documents?.use !== 'function') {
+    strapi.log.error('[api-pro] strapi.documents.use unavailable — policy filter fragments will not be enforced on core routes');
+    return;
+  }
 
-  strapi.server.use(async (ctx, next) => {
-    if (isBypassed(ctx.path)) {
+  const { deepMerge } = require('./services/request-interceptor');
+
+  strapi.documents.use((docCtx, next) => {
+    const reqCtx = strapi.requestContext?.get?.();
+    const route = reqCtx?.state?.apiProRoute;
+    if (!route || route.contentTypeUid !== docCtx.uid) return next();
+
+    if (DOC_BODY_STAMPED_ACTIONS.has(docCtx.action)) {
+      const body = reqCtx?.state?.apiProPolicy?.body;
+      if (body && typeof body === 'object' && Object.keys(body).length > 0) {
+        const params = docCtx.params || (docCtx.params = {});
+        params.data = deepMerge(
+          params.data && typeof params.data === 'object' ? params.data : {},
+          body
+        );
+      }
       return next();
     }
 
-    try {
-      const result = await interceptor.process(ctx, strapi);
+    if (!DOC_FILTERED_ACTIONS.has(docCtx.action)) return next();
 
-      if (result.status === 'denied') {
-        ctx.status = 403;
-        ctx.body = {
-          error: {
-            code: 'API_PRO_FORBIDDEN',
-            message: result.reason || 'Request denied by api-pro policy',
-          },
-        };
-        return;
-      }
-    } catch (error) {
-      // Fail open with a loud log: a broken interceptor must not break the
-      // entire site. Production should monitor this log line.
-      strapi.log.error(`[api-pro] interceptor error on ${ctx.method} ${ctx.path}: ${error?.stack || error?.message}`);
+    const filters = reqCtx?.state?.apiProPolicy?.filters;
+    if (!filters || typeof filters !== 'object' || Object.keys(filters).length === 0) {
+      return next();
     }
 
+    const params = docCtx.params || (docCtx.params = {});
+    const existing = params.filters;
+    const hasExisting = Array.isArray(existing)
+      ? existing.length > 0
+      : existing && typeof existing === 'object' && Object.keys(existing).length > 0;
+    params.filters = hasExisting ? { $and: [existing, filters] } : filters;
     return next();
   });
 }
@@ -206,7 +233,7 @@ module.exports = async ({ strapi }) => {
   });
 
   registerCacheInvalidationHooks(strapi);
-  installInterceptor(strapi);
+  installDocumentsPolicyEnforcer(strapi);
   await registerAdminPermissions(strapi);
 
   // Bring the DB mirror in line with the canonical .api-pro/ files. Fail open

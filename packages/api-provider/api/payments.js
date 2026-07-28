@@ -6,10 +6,15 @@ import { listParams, byIdParams } from './__param_builders.js';
 
 // Per-role scope shared by every policy below. Staff sees their own payments
 // from the last 7 days; admin/manager unrestricted.
+// ownerField MUST be the `owners` UP-user relation (convention: always
+// `owners`, plural manyToMany) — `createdBy` is Strapi's ADMIN-user creator
+// and stays NULL on content-api writes, so staff would match zero rows.
+// `owners` is stamped server-side: core creates via the documents-layer
+// policy enforcer, checkout/record-payment/cancel creates in their controllers.
 const ROLE_SCOPES = {
     admin: {},
     manager: {},
-    staff: { scope: 'owner+recency', ownerField: 'createdBy', recencyField: 'createdAt' },
+    staff: { scope: 'owner+recency', ownerField: 'owners', recencyField: 'createdAt' },
 };
 
 export const PaymentsEndpoints = {

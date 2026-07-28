@@ -49,14 +49,29 @@ function readHeaderKeys(strapi) {
 // Load the user's app_roles with domains populated. Falls back to fetching
 // from DB if `ctx.state.user.app_roles` isn't already hydrated (which it
 // usually isn't â€” users-permissions returns a thin user object).
+//
+// Cached via strapi.apiPro.cache (short TTL, cleared on app-role/app-domain
+// changes and via clearUser) — the enforce middleware resolves the claim on
+// every authenticated content-api request, so this must not hit the DB each
+// time.
 async function loadUserAppRoles(strapi, userId) {
   if (!userId) return [];
+
+  const cache = strapi.apiPro?.cache;
+  const cacheKey = `u:${userId}:app_roles`;
+  if (cache) {
+    const hit = cache.get(cacheKey);
+    if (hit !== undefined) return hit;
+  }
+
   try {
     const user = await strapi.db.query('plugin::users-permissions.user').findOne({
       where: { id: userId },
       populate: { app_roles: { populate: { appDomains: true } }, role: true },
     });
-    return Array.isArray(user?.app_roles) ? user.app_roles : [];
+    const roles = Array.isArray(user?.app_roles) ? user.app_roles : [];
+    if (cache) cache.set(cacheKey, roles);
+    return roles;
   } catch (error) {
     strapi.log.warn(`[api-pro] failed to load app_roles for user ${userId}: ${error?.message}`);
     return [];

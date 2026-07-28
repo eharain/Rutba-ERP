@@ -2,10 +2,14 @@ import { listParams, byIdParams } from './__param_builders.js';
 
 // Per-role scope shared by every policy below. Staff sees only orders they
 // created in the last 7 days; admin/manager unrestricted.
+// ownerField MUST be the `owners` UP-user relation — `createdBy` is Strapi's
+// ADMIN-user creator and stays NULL on content-api writes, so staff would
+// match zero rows. Web checkout stamps owners with the customer; staff core
+// creates are stamped server-side by the documents-layer policy enforcer.
 const ROLE_SCOPES = {
     admin: {},
     manager: {},
-    staff: { scope: 'owner+recency', ownerField: 'createdBy', recencyField: 'createdAt' },
+    staff: { scope: 'owner+recency', ownerField: 'owners', recencyField: 'createdAt' },
 };
 
 export const SaleOrdersEndpoints = {

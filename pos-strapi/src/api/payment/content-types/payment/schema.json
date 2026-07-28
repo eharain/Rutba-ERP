@@ -58,6 +58,11 @@
       "relation": "manyToOne",
       "target": "api::cash-register.cash-register",
       "inversedBy": "payments"
+    },
+    "owners": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::users-permissions.user"
     }
   }
 }

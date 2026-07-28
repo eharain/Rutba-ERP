@@ -6,16 +6,21 @@ import { listParams, byIdParams } from './__param_builders.js';
 
 // Per-role server-side scope for every policy (method) below.
 // Admin/manager: unrestricted. Staff: own registers from the last 7 days
-// (single-row lookups stay ownership-only; create just stamps opened_by).
+// (single-row lookups stay ownership-only; create just stamps the opener).
 // The seeder reads this and writes the matching filtersTemplate / bodyTemplate
 // per (method × role) into api_pro_method_policies; the Policy Editor shows
 // each role's effective filter side-by-side.
+//
+// ownerField MUST be the `opened_by_user` RELATION — the seeder's owner
+// shorthand expands to `{ ownerField: { id: { $eq: $user.id } } }`, and the
+// bare `opened_by` attribute is a display-name STRING, which makes that
+// filter crash Strapi's query builder ("Undefined attribute level operator id").
 const ROLE_SCOPES = {
     admin: {},
     manager: {},
     staff: {
         scope: 'owner+recency',
-        ownerField: 'opened_by',
+        ownerField: 'opened_by_user',
         recencyField: 'opened_at',
     },
 };

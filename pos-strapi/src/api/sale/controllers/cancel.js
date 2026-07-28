@@ -149,6 +149,8 @@ module.exports = {
           transaction_no: `CANCEL-${sale.invoice_no || id}`,
           sale: { connect: [id] },
           ...(registerDocId ? { cash_register: { connect: [String(registerDocId)] } } : {}),
+          // Ownership stamp — staff owner+recency scoping filters on `owners`.
+          ...(user?.id ? { owners: [user.id] } : {}),
         },
       });
     }
@@ -163,6 +165,8 @@ module.exports = {
           transaction_date: new Date().toISOString(),
           performed_by: user.email || user.username || '',
           cash_register: { connect: [String(registerDocId)] },
+          // Ownership stamp — staff owner+recency scoping filters on `owners`.
+          ...(user?.id ? { owners: [user.id] } : {}),
         },
       });
     }

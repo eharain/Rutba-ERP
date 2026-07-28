@@ -5,10 +5,14 @@
 
 // Per-role scope shared by every policy below. Staff sees only transactions
 // they recorded in the last 7 days.
+// ownerField MUST be the `owners` UP-user relation — `createdBy` is Strapi's
+// ADMIN-user creator and stays NULL on content-api writes, so staff would
+// match zero rows. `owners` is stamped server-side on create (documents-layer
+// policy enforcer for core creates; cancel.js for its adjustment txn).
 const ROLE_SCOPES = {
     admin: {},
     manager: {},
-    staff: { scope: 'owner+recency', ownerField: 'createdBy', recencyField: 'createdAt' },
+    staff: { scope: 'owner+recency', ownerField: 'owners', recencyField: 'createdAt' },
 };
 
 export const CashRegisterTransactionEndpoints = {

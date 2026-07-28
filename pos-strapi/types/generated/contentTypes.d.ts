@@ -4277,6 +4277,10 @@ export interface ApiPaymentPayment extends Struct.CollectionTypeSchema {
       'api::payment.payment'
     > &
       Schema.Attribute.Private;
+    owners: Schema.Attribute.Relation<
+      'manyToMany',
+      'plugin::users-permissions.user'
+    >;
     payment_date: Schema.Attribute.DateTime;
     payment_method: Schema.Attribute.Enumeration<
       ['Cash', 'Card', 'Bank', 'Mobile Wallet', 'Exchange Return']

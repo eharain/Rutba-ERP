@@ -9,10 +9,14 @@ import { listParams, byIdParams } from './__param_builders.js';
 // reject, cancel, set, resolve) — otherwise the api-pro seeder skips them
 // and every request 403s.
 
+// ownerField MUST be the `owners` UP-user relation — `createdBy` is Strapi's
+// ADMIN-user creator and stays NULL on content-api writes, so staff would
+// match zero rows. createReturnRequest stamps owners with the order's owners
+// plus the creating staff user, so staff see requests they filed.
 const ROLE_SCOPES = {
     admin:   {},
     manager: {},
-    staff:   { scope: 'owner+recency', ownerField: 'createdBy', recencyField: 'createdAt' },
+    staff:   { scope: 'owner+recency', ownerField: 'owners', recencyField: 'createdAt' },
 };
 
 export const ReturnRequestsEndpoints = {

@@ -67,6 +67,8 @@ module.exports = {
           ...(registerDocId
             ? { cash_register: { connect: [String(registerDocId)] } }
             : {}),
+          // Ownership stamp — staff owner+recency scoping filters on `owners`.
+          ...(ctx.state.user?.id ? { owners: [ctx.state.user.id] } : {}),
         },
       });
     }

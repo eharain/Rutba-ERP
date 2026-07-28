@@ -5,13 +5,17 @@
 
 // Per-role scope shared by every policy below. Admin/manager: unrestricted.
 // Staff: own sales from the last 7 days (single-row lookups stay
-// ownership-only; create stamps createdBy).
+// ownership-only; create stamps `owners`).
+// ownerField MUST be the `owners` UP-user relation — `createdBy` is Strapi's
+// ADMIN-user creator and stays NULL on content-api writes, so staff would
+// match zero rows. `owners` is stamped server-side by the documents-layer
+// policy enforcer on core create.
 const ROLE_SCOPES = {
     admin: {},
     manager: {},
     staff: {
         scope: 'owner+recency',
-        ownerField: 'createdBy',
+        ownerField: 'owners',
         recencyField: 'createdAt',
     },
 };

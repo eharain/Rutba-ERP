@@ -158,7 +158,10 @@ module.exports = factories.createCoreController(RETURN_UID, ({ strapi }) => ({
                     customer_evidence,
                     refund_amount_paisa:  refundAmountPaisa,
                     refund_status:        'pending_manual',
-                    owners:               (order.owners || []).map((o) => o.id),
+                    // Order owners (the buyer) + the creating user — a staff
+                    // member filing on behalf of a customer stays an owner so
+                    // their owner+recency scope shows requests they filed.
+                    owners:               [...new Set([...(order.owners || []).map((o) => o.id), user.id])],
                 },
                 populate: { items: true, sale_order: { fields: ['documentId', 'order_id'] } },
             });
