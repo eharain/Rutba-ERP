@@ -226,6 +226,9 @@ async function updateInventory(strapi, updates) {
       if (u.quantity != null) data.stock_quantity = Number(u.quantity) || 0;
       if (u.price != null && Number(u.price) > 0) data.selling_price = Number(u.price);
       if (u.salePrice != null && Number(u.salePrice) > 0) data.offer_price = Number(u.salePrice);
+      // The source sends is_active: false when a product it already pushed has
+      // been taken off sale — mirror it so our copy stops selling too.
+      if (typeof u.is_active === 'boolean') data.is_active = u.is_active;
       await strapi.documents(PRODUCT_UID).update({ documentId: existing.documentId, data });
       await strapi.documents(PRODUCT_UID).publish({ documentId: existing.documentId });
       results.push({ sku: u.sku, ok: true, action: 'updated' });

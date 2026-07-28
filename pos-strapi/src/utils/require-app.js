@@ -14,11 +14,19 @@
  *   ... continue handling ...
  */
 function requireApp(ctx, expected) {
-  const raw = ctx?.request?.headers?.['x-rutba-app'];
-  const got = typeof raw === 'string' ? raw.trim().toLowerCase() : '';
-  if (got === String(expected).toLowerCase()) return true;
+  if (isApp(ctx, expected)) return true;
   ctx.notFound();
   return false;
 }
 
-module.exports = { requireApp };
+/**
+ * Same header test without the 404 — for shared endpoints that stay open to
+ * every app but shape their response differently for one of them.
+ */
+function isApp(ctx, expected) {
+  const raw = ctx?.request?.headers?.['x-rutba-app'];
+  const got = typeof raw === 'string' ? raw.trim().toLowerCase() : '';
+  return got === String(expected).toLowerCase();
+}
+
+module.exports = { requireApp, isApp };

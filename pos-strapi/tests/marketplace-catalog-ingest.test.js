@@ -192,6 +192,22 @@ const P = (over = {}) => ({ origin_document_id: 'o1', sku: 'SKU1', barcode: 'BAR
     assert.strictEqual(prod.stock_quantity, 0);  // 0 is a valid stock value
   });
 
+  await test('is_active mirrored: source delisting deactivates our copy', async () => {
+    const s = makeStrapi();
+    await ingestCatalog(s, { origin_account_id: 'ACC', products: [P({ sku: 'SK', selling_price: 100 })] });
+    assert.strictEqual(s._tables['api::product.product'].find((r) => r.sku === 'SK').is_active, true);
+    await updateInventory(s, [{ sku: 'SK', quantity: 0, is_active: false }]);
+    const prod = s._tables['api::product.product'].find((r) => r.sku === 'SK');
+    assert.strictEqual(prod.is_active, false);
+    assert.strictEqual(prod.stock_quantity, 0);
+  });
+  await test('is_active untouched when the update omits it', async () => {
+    const s = makeStrapi();
+    await ingestCatalog(s, { origin_account_id: 'ACC', products: [P({ sku: 'SK', selling_price: 100 })] });
+    await updateInventory(s, [{ sku: 'SK', quantity: 7 }]);
+    assert.strictEqual(s._tables['api::product.product'].find((r) => r.sku === 'SK').is_active, true);
+  });
+
   console.log('— batch isolation —');
   await test('one failing product does not abort the batch', async () => {
     const s = makeStrapi();

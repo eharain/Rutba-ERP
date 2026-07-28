@@ -450,6 +450,29 @@ async function syncCatalogForAccount(accountDocumentId) {
   }
 }
 
+// Split the fetched publish set into what gets pushed and what gets pulled down.
+// A product is pushable only while it is active and has a SKU. The rest are
+// normally just skipped — but one case can't be: a product that was live on the
+// marketplace and has since been deactivated. Ignoring it would leave it selling
+// there indefinitely, so it becomes a delisting (stock zeroed, listing marked
+// delisted). Pure so the split is unit-testable without Strapi.
+function partitionInventoryTargets({ products, listingByProduct }) {
+  const entries = [];
+  const delistings = [];
+  let skipped = 0;
+  for (const product of products || []) {
+    const listing = (listingByProduct && listingByProduct.get(product.documentId)) || null;
+    if (product.is_active === false || !product.sku) {
+      const sku = product.sku || (listing && listing.product_sku);
+      if (sku && listing && listing.status === 'listed') delistings.push({ product, listing, sku });
+      else skipped += 1;
+      continue;
+    }
+    entries.push({ product, listing });
+  }
+  return { entries, delistings, skipped };
+}
+
 // ── listings: push the publish set's adjusted price + stock ──────────────────
 
 // Stamp a listing's push state — update its row, or create one for a
@@ -519,13 +542,11 @@ async function syncInventoryForAccount(accountDocumentId) {
     for (const l of allListings) if (l.selected && l.product?.documentId) wantedIds.add(l.product.documentId);
 
     // Authoritative PUBLISHED product data — the publish gate. Drafts are absent
-    // here, so they never get pushed; is_active + sku are re-checked.
+    // here, so they never get pushed; is_active + sku are re-checked, and
+    // anything already live that has since been deactivated becomes a delisting.
     const products = await strapi.getPublishedProducts([...wantedIds]);
-    const entries = [];
-    for (const product of products) {
-      if (product.is_active === false || !product.sku) continue;
-      entries.push({ product, listing: listingByProduct.get(product.documentId) || null });
-    }
+    const { entries, delistings, skipped } = partitionInventoryTargets({ products, listingByProduct });
+    counts.skipped += skipped;
     counts.fetched = entries.length;
 
     // Marketplace SalePrice from live offers + the account's category price rules.
@@ -571,6 +592,31 @@ async function syncInventoryForAccount(accountDocumentId) {
         } else {
           counts.failed += 1;
           detail.push({ sku: r.sku, error: r.error });
+          if (meta) await stampListing(account, meta, { status: 'error', push_error: String(r.error || '').slice(0, 500) });
+        }
+      }
+    }
+
+    // Zero the stock of everything that went inactive since its last push so it
+    // stops selling. `is_active: false` rides along for targets that understand
+    // it (a peer Rutba instance deactivates its own copy); Daraz's price/quantity
+    // call reads only sku + quantity from the row and ignores the rest.
+    for (let i = 0; i < delistings.length; i += INVENTORY_BATCH) {
+      const batch = delistings.slice(i, i + INVENTORY_BATCH);
+      const byDelistSku = new Map(batch.map((d) => [String(d.sku), d]));
+      const { results } = await adapter.pushInventory({
+        account,
+        updates: batch.map((d) => ({ sku: d.sku, quantity: 0, is_active: false })),
+      });
+      for (const r of results || []) {
+        const meta = byDelistSku.get(String(r.sku));
+        if (r.ok) {
+          counts.updated += 1;
+          detail.push({ sku: r.sku, action: 'delisted', reason: 'product is not active' });
+          if (meta) await stampListing(account, meta, { status: 'delisted', push_error: null });
+        } else {
+          counts.failed += 1;
+          detail.push({ sku: r.sku, action: 'delist', error: r.error });
           if (meta) await stampListing(account, meta, { status: 'error', push_error: String(r.error || '').slice(0, 500) });
         }
       }
@@ -657,6 +703,7 @@ module.exports = {
   applyAdjustment,
   _msg: msg,
   __test: {
+    partitionInventoryTargets,
     assembleCatalogPayload,
     groupVariantsByParent,
     parentDocIdOf,

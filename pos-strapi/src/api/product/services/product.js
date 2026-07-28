@@ -1,10 +1,15 @@
 'use strict';
 
 const { createCoreService } = require('@strapi/strapi').factories;
+const { ACTIVE_PRODUCT_FILTER } = require('../../../utils/active-product');
 
 // Drafts of nested relations can slip through Strapi 5 populate trees even
 // when the parent is fetched as published.
-const PUBLISHED_FILTER = { filters: { publishedAt: { $notNull: true } } };
+const PUBLISHED = { publishedAt: { $notNull: true } };
+
+// Every read below is storefront-facing, so all of them AND this in: a
+// deactivated product (or variant) is invisible to the web, published or not.
+const ACTIVE = ACTIVE_PRODUCT_FILTER;
 
 const DETAIL_FIELDS = [
   'name', 'slug', 'sku', 'barcode', 'selling_price', 'cost_price', 'offer_price',
@@ -23,7 +28,9 @@ const PUBLIC_POPULATE = {
   categories: true,
   terms: { populate: { term_types: true } },
   variants: {
-    ...PUBLISHED_FILTER,
+    // Published AND active — a deactivated variant must not be selectable on
+    // the product page even when its parent is on sale.
+    filters: { $and: [PUBLISHED, ACTIVE] },
     fields: VARIANT_FIELDS,
     populate: {
       gallery: true,
@@ -80,18 +87,18 @@ module.exports = createCoreService('api::product.product', ({ strapi }) => ({
   // pre-slug URLs (cached links, sitemaps, recently-viewed entries) working.
   async findPublicDetail(slugOrDocumentId) {
     if (!slugOrDocumentId) return null;
+    const base = { status: 'published', fields: DETAIL_FIELDS, populate: PUBLIC_POPULATE };
     const bySlug = await strapi.documents('api::product.product').findFirst({
-      status: 'published',
-      filters: { slug: { $eq: slugOrDocumentId } },
-      fields: DETAIL_FIELDS,
-      populate: PUBLIC_POPULATE,
+      ...base,
+      filters: { $and: [{ slug: { $eq: slugOrDocumentId } }, ACTIVE] },
     });
     if (bySlug) return bySlug;
-    return strapi.documents('api::product.product').findOne({
-      documentId: slugOrDocumentId,
-      status: 'published',
-      fields: DETAIL_FIELDS,
-      populate: PUBLIC_POPULATE,
+    // documentId fallback goes through findFirst (not findOne) so the same
+    // active filter applies — findOne takes no filters, and a deactivated
+    // product must 404 on its legacy URL too.
+    return strapi.documents('api::product.product').findFirst({
+      ...base,
+      filters: { $and: [{ documentId: { $eq: slugOrDocumentId } }, ACTIVE] },
     });
   },
 
@@ -100,9 +107,12 @@ module.exports = createCoreService('api::product.product', ({ strapi }) => ({
       .map((v) => Number.parseInt(v, 10))
       .filter((n) => Number.isFinite(n) && n > 0);
     if (cleanIds.length === 0) return [];
+    // Cart/wishlist rehydration: a product deactivated after it was added drops
+    // out of the response, so it disappears from the cart instead of staying
+    // buyable.
     return strapi.documents('api::product.product').findMany({
       status: 'published',
-      filters: { id: { $in: cleanIds } },
+      filters: { $and: [{ id: { $in: cleanIds } }, ACTIVE] },
       fields: DETAIL_FIELDS,
       populate: PUBLIC_POPULATE,
       pagination: { pageSize: Math.max(cleanIds.length, 1) },
@@ -116,7 +126,7 @@ module.exports = createCoreService('api::product.product', ({ strapi }) => ({
     if (pinned.length === 0) return [];
     return strapi.documents('api::product.product').findMany({
       status: 'published',
-      filters: { $and: [{ name: { $containsi: q } }, { id: { $in: pinned } }] },
+      filters: { $and: [{ name: { $containsi: q } }, { id: { $in: pinned } }, ACTIVE] },
       fields: DETAIL_FIELDS,
       populate: PUBLIC_POPULATE,
       pagination: { pageSize },
@@ -128,7 +138,7 @@ module.exports = createCoreService('api::product.product', ({ strapi }) => ({
     if (pinned.length === 0) return null;
     const results = await strapi.documents('api::product.product').findMany({
       status: 'published',
-      filters: { id: { $in: pinned } },
+      filters: { $and: [{ id: { $in: pinned } }, ACTIVE] },
       sort: ['selling_price:DESC', 'id:ASC'],
       fields: DETAIL_FIELDS,
       populate: PUBLIC_POPULATE,
@@ -144,10 +154,9 @@ module.exports = createCoreService('api::product.product', ({ strapi }) => ({
     if (pinned.length === 0) {
       return { data: [], meta: { pagination: { page, pageSize, pageCount: 1, total: 0 } } };
     }
-    const pinnedClause = { id: { $in: pinned } };
-    const filters = baseFilters.$and
-      ? { $and: [...baseFilters.$and, pinnedClause] }
-      : { $and: [pinnedClause, ...(Object.keys(baseFilters).length ? [baseFilters] : [])] };
+    // buildListFilters returns either {} or { $and: [...] }, so flattening its
+    // clauses alongside the pinned + active gates keeps everything ANDed.
+    const filters = { $and: [{ id: { $in: pinned } }, ACTIVE, ...(baseFilters.$and ?? [])] };
 
     const [data, total] = await Promise.all([
       strapi.documents('api::product.product').findMany({

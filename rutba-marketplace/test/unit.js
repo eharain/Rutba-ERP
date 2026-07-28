@@ -264,6 +264,42 @@ async function test(name, fn) {
     assert.strictEqual(payload[0].variants[0].sku, 'V1');
   });
 
+  console.log('— inventory publish set (active gate + delisting) —');
+  await test('partition: active+sku pushed, inactive/no-sku skipped', () => {
+    const products = [
+      { documentId: 'a', sku: 'A', is_active: true },
+      { documentId: 'b', sku: 'B', is_active: false }, // inactive, never listed
+      { documentId: 'c', is_active: true },            // no sku
+      { documentId: 'd', sku: 'D' },                   // is_active absent => active
+    ];
+    const { entries, delistings, skipped } = CT.partitionInventoryTargets({ products, listingByProduct: new Map() });
+    assert.deepStrictEqual(entries.map((e) => e.product.sku), ['A', 'D']);
+    assert.strictEqual(delistings.length, 0);
+    assert.strictEqual(skipped, 2);
+  });
+  await test('partition: deactivated product that is already listed becomes a delisting', () => {
+    const products = [{ documentId: 'x', sku: 'X', is_active: false }];
+    const listingByProduct = new Map([['x', { documentId: 'L1', status: 'listed', product_sku: 'X' }]]);
+    const { entries, delistings, skipped } = CT.partitionInventoryTargets({ products, listingByProduct });
+    assert.strictEqual(entries.length, 0);
+    assert.strictEqual(skipped, 0);
+    assert.strictEqual(delistings.length, 1);
+    assert.strictEqual(delistings[0].sku, 'X');
+    assert.strictEqual(delistings[0].listing.documentId, 'L1');
+  });
+  await test('partition: inactive with a non-listed listing is skipped, not delisted', () => {
+    const products = [{ documentId: 'y', sku: 'Y', is_active: false }];
+    const listingByProduct = new Map([['y', { documentId: 'L2', status: 'draft', product_sku: 'Y' }]]);
+    const { delistings, skipped } = CT.partitionInventoryTargets({ products, listingByProduct });
+    assert.strictEqual(delistings.length, 0);
+    assert.strictEqual(skipped, 1);
+  });
+  await test('delist row builds valid zero-quantity Daraz XML (no Price element)', () => {
+    const xml = T.buildPriceQuantityXml([{ sku: 'X', quantity: 0, is_active: false }]);
+    assert.ok(xml.includes('<SellerSku>X</SellerSku><Quantity>0</Quantity>'));
+    assert.ok(!xml.includes('<Price>'));
+  });
+
   console.log('— rutba adapter: transport (mocked fetch) —');
   const ACCOUNT = { documentId: 'ACC1', api_key: 'tok_123', extra_config: { base_url: 'https://api.online.test/api' } };
   function withMockFetch(handler, fn) {
