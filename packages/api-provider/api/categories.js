@@ -38,19 +38,21 @@ export const CategoriesEndpoints = {
     }),
 
     /**
-     * Fetch all categories — returns page-1 slice; callers loop via pagination meta.
-     * @param {{ sort?, populate?, pageSize? }} opts
+     * Fetch all categories — returns one page; callers loop via pagination meta
+     * (see pos-shared/hooks/useProductLookups). `page` is a real parameter:
+     * hardcoding page 1 truncated every category dropdown at `pageSize`.
+     * @param {{ sort?, populate?, page?, pageSize? }} opts
      */
-    listAll: ({ sort, populate, pageSize = 100 } = {}) => ({
+    listAll: ({ sort, populate, page = 1, pageSize = 100 } = {}) => ({
         path: '/categories',
         action: 'find',
         method: 'get',
-        apps: ['stock', 'sale', 'cms', 'social'],
+        apps: ['stock', 'sale', 'cms', 'inventory', 'social'],
         approle: ['admin', 'manager', 'staff'],
         params: {
             sort: sort ?? ['name:asc'],
             populate: populate ?? { parent: true, childern: true, logo: true, gallery: true },
-            pagination: { page: 1, pageSize },
+            pagination: { page, pageSize },
         },
     }),
 

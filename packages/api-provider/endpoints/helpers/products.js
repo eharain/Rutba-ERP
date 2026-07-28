@@ -63,20 +63,26 @@ export async function saveProduct(id, formData) {
 
 /**
  * Fetch a filtered/paginated product list with search support.
- * @param {{ searchText?, brands?, categories?, suppliers?, purchases?, parentOnly?, status?, stockStatus? }} filters
+ *
+ * Search is passed THROUGH to list() rather than diverting to search(). The old
+ * short-circuit ("if searchText, call search()") discarded every other filter
+ * plus `status`, `populate` and `sort` — so typing in the search box dropped the
+ * brand/category/supplier/term/purchase/stock/price/date/publish selections, and
+ * in the CMS also dropped `status: 'draft'` and the SEO populate. list() now ANDs
+ * the same search predicate with the rest of the filter bar.
+ *
+ * @param {{ searchText?, brands?, categories?, suppliers?, terms?, purchases?, parentOnly?, status?, stockStatus? }} filters
  * @param {number} page
  * @param {number} rowsPerPage
  * @param {string} sort
  */
 export async function fetchProducts(filters, page, rowsPerPage, sort) {
-    const { searchText } = filters;
-    if (searchText && searchText.trim().length > 0) {
-        return proxy.search(searchText.trim(), page, rowsPerPage);
-    }
     return proxy.list(page, rowsPerPage, {
+        searchText: filters.searchText,
         brands: filters.brands,
         categories: filters.categories,
         suppliers: filters.suppliers,
+        terms: filters.terms,
         purchases: filters.purchases,
         parentOnly: filters.parentOnly,
         status: filters.status,

@@ -21,7 +21,10 @@ export const PurchasesEndpoints = {
         path: '/purchases',
         action: 'find',
         method: 'get',
-        apps: ['purchase', 'stock'],
+        // 'purchase' is not a domain key (see config/domains.json) — it granted
+        // nothing. 'cms' and 'inventory' render the "All Purchases" filter cell
+        // on their product lists; without the grant api-pro 403s the lookup.
+        apps: ['stock', 'cms', 'inventory'],
         approle: ['admin', 'manager', 'staff'],
         params: {
             sort: sort ?? ['createdAt:desc'],

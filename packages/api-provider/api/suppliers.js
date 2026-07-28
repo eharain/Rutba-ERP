@@ -37,19 +37,23 @@ export const SuppliersEndpoints = {
     }),
 
     /**
-     * Fetch all suppliers — returns page-1 slice; callers loop via pagination meta.
-     * @param {{ sort?, populate?, pageSize? }} opts
+     * Fetch all suppliers — returns one page; callers loop via pagination meta
+     * (see pos-shared/hooks/useProductLookups). `page` is a real parameter:
+     * hardcoding page 1 truncated every supplier dropdown at `pageSize`.
+     * @param {{ sort?, populate?, page?, pageSize? }} opts
      */
-    listAll: ({ sort, populate, pageSize = 100 } = {}) => ({
+    listAll: ({ sort, populate, page = 1, pageSize = 100 } = {}) => ({
         path: '/suppliers',
         action: 'find',
         method: 'get',
-        apps: ['stock', 'purchase', 'social'],
+        // 'purchase' is not a domain key (see config/domains.json) — it granted
+        // nothing. 'cms' and 'inventory' render supplier filter dropdowns.
+        apps: ['stock', 'cms', 'inventory', 'social'],
         approle: ['admin', 'manager', 'staff'],
         params: {
             sort: sort ?? ['name:asc'],
             populate: populate ?? { logo: true, gallery: true },
-            pagination: { page: 1, pageSize },
+            pagination: { page, pageSize },
         },
     }),
 

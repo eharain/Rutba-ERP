@@ -93,8 +93,13 @@ export const ProductsEndpoints = {
      */
     list: (page = 1, pageSize = 100, filters = {}) => {
         const {
-            brands, categories, suppliers, purchases, kinds, parentOnly, status, sort, fields,
+            brands, categories, suppliers, purchases, terms, kinds, parentOnly, status, sort, fields,
             populate: extraPopulate,
+            // Free-text search, ANDed with every other filter below. Previously
+            // callers had to choose between search() and list(); search() ignores
+            // brand/category/stock/date filters, status and sort, so typing in the
+            // search box silently discarded the rest of the filter bar.
+            searchText,
             // Raw Strapi filter object passed straight through by callers that
             // need a filter the named params don't cover (e.g. variant loading
             // by `parent`, published-status `documentId $in`, slug/sku lookup).
@@ -144,11 +149,35 @@ export const ProductsEndpoints = {
         if (Array.isArray(suppliers) && suppliers.length > 0) {
             filterObj.suppliers = { documentId: { $in: suppliers } };
         }
+        if (Array.isArray(terms) && terms.length > 0) {
+            filterObj.terms = { documentId: { $in: terms } };
+        }
         if (Array.isArray(purchases) && purchases.length > 0) {
             filterObj.purchase_items = { purchase: { documentId: { $in: purchases } } };
         }
         if (parentOnly) {
             filterObj.parent = { $null: true };
+        }
+
+        // Free-text search. Same field set as search() below, but expressed as a
+        // TOP-LEVEL `$or` so it ANDs with the sibling relation filters and the
+        // `$and` block instead of replacing them.
+        //
+        // Top-level placement is load-bearing twice over: the product controller's
+        // find() pushes stock-item barcode hits into `filters.$or` (nesting it
+        // inside `$and` would make it AND the barcode hit with the name search and
+        // return nothing), and Strapi ANDs sibling filter keys, which is exactly
+        // the "search WITHIN the current filter selection" semantics the UI implies.
+        const trimmedSearch = typeof searchText === 'string' ? searchText.trim() : '';
+        if (trimmedSearch) {
+            filterObj.$or = [
+                { name: { $containsi: trimmedSearch } },
+                { barcode: { $eq: trimmedSearch } },
+                { sku: { $eq: trimmedSearch } },
+                { supplierCode: { $containsi: trimmedSearch } },
+                { suppliers: { $or: [{ name: { $containsi: trimmedSearch } }, { phone: { $containsi: trimmedSearch } }] } },
+                { purchase_items: { purchase: { orderId: { $containsi: trimmedSearch } } } },
+            ];
         }
 
         // "Missing content" — flagged when EITHER summary OR description is blank
@@ -235,12 +264,18 @@ export const ProductsEndpoints = {
             ...(publishStateParam ? { publishState: publishStateParam } : {}),
             ...(stockStatusParam ? { stockStatus: stockStatusParam } : {}),
             ...(noSocialPosts ? { noSocialPosts: 1 } : {}),
+            // Server-side stock-item barcode/SKU resolution — see search() below
+            // for why this can't be a client-side filter on the `items` relation.
+            ...(trimmedSearch ? { stockSearch: trimmedSearch } : {}),
         };
 
         return {
             path: '/products',
-            // Explicit apps: the mfg app's ProductSelect uses this method too.
-            apps: ['inventory', 'stock', 'product', 'manufacturing'],
+            // 'product' is not a domain key (see config/domains.json) — it granted
+            // nothing. Every app that renders a product list needs this method:
+            // rutba-cms and rutba-social route their searches through list() now
+            // that search() is no longer a separate (filter-discarding) path.
+            apps: ['inventory', 'stock', 'cms', 'social', 'order-management', 'manufacturing'],
             params,
         };
     },
@@ -264,14 +299,22 @@ export const ProductsEndpoints = {
      * Strapi privileges) and ORs them into the filter, so it works for every
      * role. See product controller find().
      *
+     * Prefer `list({ searchText })` for anything that also has a filter bar:
+     * this method carries ONLY the search predicate, so it cannot express
+     * brand/category/stock/date filters, status or sort. It stays for the
+     * standalone search boxes (relation pickers, merge tool, mfg ProductSelect)
+     * that genuinely have nothing else to combine with.
+     *
      * @param {string} searchText
      * @param {number} page
      * @param {number} pageSize
      */
     search: (searchText, page = 1, pageSize = 20) => ({
         path: '/products',
-        // Explicit apps: the mfg app's ProductSelect searches via this method.
-        apps: ['inventory', 'stock', 'product', 'manufacturing'],
+        // Same route+action as list(), so api-pro resolves one policy per role
+        // for both. Kept in sync deliberately: a narrower list here reads like
+        // these apps are denied when they are not.
+        apps: ['inventory', 'stock', 'cms', 'social', 'order-management', 'manufacturing'],
         params: {
             filters: {
                 $or: [

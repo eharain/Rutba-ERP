@@ -35,20 +35,29 @@ export const BrandsEndpoints = {
     }),
 
     /**
-     * Fetch all brands across all pages (paginates internally by caller via multiple calls).
-     * Returns the standard page-1 slice; callers loop using pagination meta.
-     * @param {{ sort?, populate?, pageSize? }} opts
+     * Fetch all brands across all pages. Returns one page; callers loop using
+     * pagination meta (see pos-shared/hooks/useProductLookups). `page` is a real
+     * parameter — hardcoding page 1 silently truncated every filter dropdown to
+     * the first `pageSize` brands.
+     *
+     * Note: Strapi's api.rest.maxLimit is 100, so a pageSize above that is
+     * clamped server-side. Keep the default at 100 and page instead.
+     *
+     * @param {{ sort?, populate?, page?, pageSize? }} opts
      */
-    listAll: ({ sort, populate, pageSize = 100 } = {}) => ({
+    listAll: ({ sort, populate, page = 1, pageSize = 100 } = {}) => ({
         path: '/brands',
         action: 'find',
         method: 'get',
-        apps: ['stock', 'brand', 'social'],
+        // 'cms' and 'inventory' render brand filter dropdowns too (rutba-cms
+        // product list, rutba-inventory stock-health). Without them the api-pro
+        // interceptor 403s the lookup and the dropdown comes back empty.
+        apps: ['stock', 'cms', 'inventory', 'social'],
         approle: ['admin', 'manager', 'staff'],
         params: {
             sort: sort ?? ['name:asc'],
             populate: populate ?? { logo: true, gallery: true },
-            pagination: { page: 1, pageSize },
+            pagination: { page, pageSize },
         },
     }),
 

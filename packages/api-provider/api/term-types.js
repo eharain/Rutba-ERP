@@ -28,15 +28,23 @@ export const TermTypesEndpoints = {
         ),
     }),
 
+    /**
+     * Term types with their terms — backs the "All Terms" filter dropdown on
+     * every product list. Needs an explicit pageSize: with no `pagination` key
+     * Strapi falls back to api.rest.defaultLimit (25), which silently dropped
+     * most term types from the dropdown. Callers page via pagination meta.
+     */
     listWithTerms: ({ page, pageSize, sort, populate, filters, fields } = {}) => ({
         path: '/term-types',
         action: 'find',
         method: 'get',
-        apps: ['stock', 'sale', 'social'],
+        // 'cms' and 'inventory' render the term dropdown too; without them the
+        // api-pro interceptor 403s the lookup and the dropdown comes back empty.
+        apps: ['stock', 'sale', 'cms', 'inventory', 'social'],
         approle: ['admin', 'manager', 'staff'],
         params: listParams(
             { page, pageSize, sort, populate, filters, fields },
-            { sort: ['name:asc'], populate: { terms: true } },
+            { sort: ['name:asc'], pageSize: 100, populate: { terms: true } },
         ),
     }),
 

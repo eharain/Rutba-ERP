@@ -6,7 +6,7 @@ export interface CategoriesEndpointsType {
     create(data: any): Promise<any>;
     del(documentId: any): Promise<any>;
     listPaged(page?: any, pageSize?: any, { sort, populate }?: any): Promise<any>;
-    listAll({ sort, populate, pageSize = 100 }?: any): Promise<any>;
+    listAll({ sort, populate, page = 1, pageSize = 100 }?: any): Promise<any>;
     list({ search, sort, populate, page = 1, pageSize = 100 }?: any): Promise<any>;
     listDraft({ search, sort, populate, pagination }?: any): Promise<any>;
     listPublished({ pageSize = 500 }?: any): Promise<any>;
