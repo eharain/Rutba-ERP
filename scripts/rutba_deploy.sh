@@ -323,6 +323,20 @@ for envfile in "$BUILDS_DIR"/.env "$BUILDS_DIR"/.env.*; do
 done
 
 ###########################################
+# PREFLIGHT: LOCKFILE SANITY
+###########################################
+# `npm link ../../some/local/path` bakes a machine-local link into
+# package-lock.json. `npm ci` here recreates it as a dangling symlink and the
+# app dies at startup claiming the package "is not installed" — after a full
+# build has already run. Catch it now, while it costs seconds.
+
+log "Checking lockfiles for out-of-tree links..."
+if ! node "${BUILD_DIR}/scripts/js/check-lockfile-links.js" "$BUILD_DIR"; then
+    abort "Lockfile preflight failed — fix the lockfile and push before redeploying."
+fi
+log_ok "Lockfiles clean."
+
+###########################################
 # INSTALL DEPENDENCIES
 ###########################################
 

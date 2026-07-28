@@ -194,7 +194,10 @@ show_service_status() {
     fi
 
     for svc in "${SERVICES[@]}"; do
-        local status; status=$(systemctl is-active "${svc}.service" 2>/dev/null || echo "inactive")
+        # `is-active` exits non-zero for anything but "active" while still
+        # printing the real state, so `|| echo inactive` would append a second
+        # line and turn "activating" into "activating\ninactive".
+        local status; status=$(systemctl is-active "${svc}.service" 2>/dev/null || true); status="${status:-inactive}"
         local port="${SVC_PORT[$svc]:--}"
         local label; label=$(printf '%-26s %5s' "$svc" "$port")
         local mem=""
@@ -289,7 +292,10 @@ diagnose_services() {
     echo -e "${BOLD}[2/7] Service Status${NC}"
     local failed_svcs=()
     for svc in "${SERVICES[@]}"; do
-        local status; status=$(systemctl is-active "${svc}.service" 2>/dev/null || echo "inactive")
+        # `is-active` exits non-zero for anything but "active" while still
+        # printing the real state, so `|| echo inactive` would append a second
+        # line and turn "activating" into "activating\ninactive".
+        local status; status=$(systemctl is-active "${svc}.service" 2>/dev/null || true); status="${status:-inactive}"
         if [ "$status" = "active" ]; then
             echo -e "  ${GREEN}[OK] ${svc}${NC}"
         elif [ "$status" = "activating" ]; then
