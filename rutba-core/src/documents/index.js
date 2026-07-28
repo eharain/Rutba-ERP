@@ -151,10 +151,18 @@ async function populateRelation(db, reg, model, rows, ids, rel, opts, status) {
     return;
   }
 
-  const qb = db(`${edge.table} as l`)
-    .join(`${target.tableName} as t`, 't.id', `l.${edge.otherColumn}`)
-    .whereIn(`l.${edge.thisColumn}`, ids)
-    .select('t.*', `l.${edge.thisColumn} as __parent_id`);
+  // Link rows may reference either version's row of a D&P target document
+  // (Strapi resolves versions per-document at read time — verified against
+  // live data: a published branch links draft AND published product rows).
+  // Hop through the linked row to the version matching the requested status.
+  const qb = db(`${edge.table} as l`).whereIn(`l.${edge.thisColumn}`, ids);
+  if (!target.builtin && target.draftAndPublish) {
+    qb.join(`${target.tableName} as tl`, 'tl.id', `l.${edge.otherColumn}`)
+      .join(`${target.tableName} as t`, 't.document_id', 'tl.document_id');
+  } else {
+    qb.join(`${target.tableName} as t`, 't.id', `l.${edge.otherColumn}`);
+  }
+  qb.select('t.*', `l.${edge.thisColumn} as __parent_id`);
   if (!target.builtin) applyStatus(qb, target, opts.status || status, 't');
   if (opts.filters) applyFilters(db, reg, qb, target, opts.filters, 't');
   if (edge.orderColumn) qb.orderBy(`l.${edge.orderColumn}`, 'asc');
@@ -163,9 +171,13 @@ async function populateRelation(db, reg, model, rows, ids, rel, opts, status) {
   const children = await qb;
   const single = rel.relation === 'oneToOne' || rel.relation === 'manyToOne';
   const grouped = new Map();
+  const seenPerParent = new Map(); // dedupe when both versions of a doc are linked
   for (const child of children) {
     const parentId = child.__parent_id;
     delete child.__parent_id;
+    const seenKey = `${parentId}:${child.id}`;
+    if (seenPerParent.has(seenKey)) continue;
+    seenPerParent.set(seenKey, true);
     const mapped = target.builtin
       ? mapUpUserRow(child)
       : mapRow(target, child);

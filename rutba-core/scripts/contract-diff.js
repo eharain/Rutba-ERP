@@ -76,6 +76,7 @@ async function main() {
     .whereIn('l.user_id', (await db('strapi_sessions')
       .where({ status: 'active', origin: 'users-permissions' })
       .distinct('user_id')).map((r) => Number(r.user_id)).filter(Number.isFinite))
+    .whereNotNull('d.key') // realistic claims only — clients always send a domain
     .select('l.user_id as userId', 'r.key as roleKey', 'd.key as domainKey')
     .groupBy('l.user_id', 'r.key', 'd.key').limit(12);
   const grant = grants[0];
