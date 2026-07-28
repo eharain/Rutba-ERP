@@ -289,6 +289,30 @@ function buildBaseQuery(db, reg, model, params) {
   return qb;
 }
 
+// ── Document-service middlewares ────────────────────────────────────────────
+// Equivalent of Strapi's documents-service middleware seam (the pattern the
+// codebase already prefers over lifecycles — e.g. mfg kind-typing). Each
+// middleware runs around every documents() operation:
+//   use(async (ctx, next) => { ... return next(); })
+// ctx = { uid, action, params, model } — mutate ctx.params to alter the
+// operation; the resolved value of next() is the operation result.
+const documentMiddlewares = [];
+
+function useDocumentMiddleware(fn) {
+  documentMiddlewares.push(fn);
+}
+
+async function runWithMiddlewares(ctx, operation) {
+  let index = -1;
+  const dispatch = (i) => {
+    if (i <= index) return Promise.reject(new Error('next() called multiple times'));
+    index = i;
+    if (i === documentMiddlewares.length) return operation();
+    return documentMiddlewares[i](ctx, () => dispatch(i + 1));
+  };
+  return dispatch(0);
+}
+
 function documents(uid) {
   const reg = getRegistry();
   const model = reg.models.get(uid);
@@ -318,7 +342,7 @@ function documents(uid) {
     return rows.map((raw) => Object.assign(mapRow(model, raw), raw.__populated || {}));
   }
 
-  const api = {
+  const rawApi = {
     async findMany(params = {}) {
       return runFind(params, false);
     },
@@ -342,8 +366,18 @@ function documents(uid) {
     },
   };
 
-  Object.assign(api, createWriteApi({ db, reg, model, findOne: api.findOne }));
+  Object.assign(rawApi, createWriteApi({ db, reg, model, findOne: rawApi.findOne }));
+
+  // Wrap every operation in the document-middleware chain.
+  const api = {};
+  for (const [action, fn] of Object.entries(rawApi)) {
+    api[action] = (params = {}) => {
+      if (documentMiddlewares.length === 0) return fn(params);
+      const ctx = { uid, action, params, model };
+      return runWithMiddlewares(ctx, () => fn(ctx.params));
+    };
+  }
   return api;
 }
 
-module.exports = { documents, getRegistry };
+module.exports = { documents, getRegistry, useDocumentMiddleware };

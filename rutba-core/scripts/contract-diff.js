@@ -125,14 +125,6 @@ async function main() {
         .join('api_pro_interfaces as i', 'i.id', 'ml.api_interface_id')
         .where('p.role_key', g.roleKey).where('m.action', 'find')
         .whereNot('m.path', 'like', '%undefined%')
-        // KNOWN LIVE-ENFORCEMENT GAP (skip + log, do not mask): policies whose
-        // filter templates row-scope by createdBy/opened_by are enforced by
-        // core but silently NOT by live Strapi 5.51 (injection lost on core
-        // routes) — see spawned task "Fix api-pro policy filter injection".
-        .whereNot(function () {
-          this.where('p.filters_template', 'like', '%createdBy%')
-            .orWhere('p.filters_template', 'like', '%opened_by%');
-        })
         .select('i.uid', 'm.path').groupBy('i.uid', 'm.path').orderBy('i.uid');
       const finds = routesForRole.filter((c) => {
         const model = reg.models.get(c.uid);
@@ -186,10 +178,6 @@ async function main() {
   // (me-permissions src maps appRoles with id; the deployed dist build doesn't.)
   const ALLOWED = [
     /appRoles\[\d+\]\.id: MISSING in strapi/,
-    // Live Strapi omits branch.locations even with explicit populate although
-    // the schema pair is valid and the CT is registered — core exposing it is
-    // additive. Under investigation (spawned task); remove when fixed.
-    /\.locations: MISSING in strapi/,
   ];
 
   let identical = 0;
