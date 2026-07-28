@@ -368,7 +368,10 @@ without a live database.
 ## 8. Roadmap
 
 - **P3 — CMS sync** via `content-sync-pro` (pages/menus/page-groups, publish-gated).
-- **P4 — Fulfillment status push-back** (order status → storefront).
+- **P4 — Fulfillment status push-back** (order status → storefront) **and**
+  order conversation sync — spec'd in
+  [rutba-instance-fulfillment-and-conversation-sync.md](../todo/rutba-instance-fulfillment-and-conversation-sync.md),
+  not yet built.
 - UI wiring of the sync-catalog / order-pull buttons into the relevant apps.
 - Delisting/reconciliation when a product leaves the publish set.
 
