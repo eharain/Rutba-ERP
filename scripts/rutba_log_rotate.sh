@@ -187,6 +187,44 @@ if [ -n "$ACTIVE_BUILD" ] && [ -d "$ACTIVE_BUILD" ]; then
 fi
 
 ###########################################
+# 3b. CAP RSYSLOG /var/log/syslog
+###########################################
+# rsyslog writes a second, uncompressed copy of everything the journal already
+# holds. A crash-looping unit therefore costs disk twice, and only the journal
+# side was ever vacuumed here — /var/log/syslog reached 1.1 GB (plus 190 MB of
+# rotated copies) while three services restarted on EADDRINUSE. Ubuntu's
+# logrotate runs daily and keeps 4 generations, which is no defence when a
+# single day produces a gigabyte.
+#
+# Truncate rather than delete: rsyslog holds the fd open, so an unlinked file
+# would keep consuming space until the daemon restarts.
+
+SYSLOG_MAX_BYTES=$((200 * 1024 * 1024))
+SYSLOG_ROTATED_RETAIN_DAYS=3
+
+for sl in /var/log/syslog /var/log/kern.log /var/log/auth.log /var/log/daemon.log; do
+    [ -f "$sl" ] || continue
+    sl_size=$(stat -c%s "$sl" 2>/dev/null || echo 0)
+    if [ "$sl_size" -gt "$SYSLOG_MAX_BYTES" ]; then
+        log "Truncating $(basename "$sl") ($(numfmt --to=iec "$sl_size"))..."
+        truncate -s 0 "$sl"
+    fi
+done
+
+syslog_pruned=0
+while IFS= read -r old_sl; do
+    rm -f "$old_sl"
+    syslog_pruned=$((syslog_pruned + 1))
+done < <(find /var/log -maxdepth 1 -type f \
+             \( -name 'syslog.*' -o -name 'kern.log.*' -o -name 'auth.log.*' -o -name 'daemon.log.*' \) \
+             -mtime "+${SYSLOG_ROTATED_RETAIN_DAYS}" 2>/dev/null)
+
+if [ "$syslog_pruned" -gt 0 ]; then
+    log "Removed ${syslog_pruned} rotated syslog file(s) older than ${SYSLOG_ROTATED_RETAIN_DAYS} days."
+fi
+log_ok "System log files capped."
+
+###########################################
 # 4. ROTATE DEPLOY LOG FILE
 ###########################################
 
