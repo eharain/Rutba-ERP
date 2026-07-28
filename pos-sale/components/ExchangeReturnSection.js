@@ -21,15 +21,21 @@ export default function ExchangeReturnSection({ saleModel, onUpdate, disabled = 
     const scanInputRef = useRef(null);
 
     const [scanValue, setScanValue] = useState('');
+    // Only UNPERSISTED returns belong in the picker — a saved return (it has a
+    // returnNo) is rendered read-only by savedSummary below, and its hydrated
+    // `sale` carries no line items, so feeding it here would draw an empty
+    // "select items to return" block for an invoice that's already done.
     const [originalSales, setOriginalSales] = useState(() => {
-        return saleModel.exchangeReturns
-            ?.filter(er => er.sale)
-            .map(er => er.sale) || [];
+        return (saleModel.exchangeReturns || [])
+            .filter(er => er.sale && !er.returnNo)
+            .map(er => er.sale);
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [returnItems, setReturnItems] = useState(() => {
-        return saleModel.exchangeReturns?.flatMap(er => er.returnItems || []) || [];
+        return (saleModel.exchangeReturns || [])
+            .filter(er => !er.returnNo)
+            .flatMap(er => er.returnItems || []);
     });
     const initialized = useRef(false);
     const prevModelRef = useRef(saleModel);
@@ -38,7 +44,7 @@ export default function ExchangeReturnSection({ saleModel, onUpdate, disabled = 
     useEffect(() => {
         if (prevModelRef.current === saleModel) return;
         prevModelRef.current = saleModel;
-        const ers = saleModel.exchangeReturns || [];
+        const ers = (saleModel.exchangeReturns || []).filter(er => !er.returnNo);
         setOriginalSales(ers.filter(er => er.sale).map(er => er.sale));
         setReturnItems(ers.flatMap(er => er.returnItems || []));
         initialized.current = true; // already in sync, skip next sync effect

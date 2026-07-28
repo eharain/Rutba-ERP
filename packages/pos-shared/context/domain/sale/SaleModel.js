@@ -86,26 +86,33 @@ export default class SaleModel {
             model.cashRegister = sale.cash_register;
         }
 
-        // Hydrate exchange returns from API data if present
-        if (sale._exchangeReturns?.length > 0) {
-            for (const excReturn of sale._exchangeReturns) {
-                const originalSale = excReturn.sale;
-                const returnItems = (excReturn.items || []).map(ri => ({
-                    productName: resolveReturnItemProductName(ri),
-                    price: Number(ri.price || 0),
-                    quantity: ri.quantity || 1,
-                    total: Number(ri.total || ri.price || 0),
-                }));
-                if (originalSale && returnItems.length > 0) {
-                    model.exchangeReturns.push({
-                        documentId: excReturn.documentId,
-                        id: excReturn.id,
-                        sale: originalSale,
-                        returnItems,
-                        returnNo: excReturn.return_no,
-                        totalRefund: Number(excReturn.total_refund || 0),
-                    });
-                }
+        // Hydrate exchange returns from API data if present.
+        // `exchange_returns` is the actual relation on the sale (sale-returns whose
+        // exchange_sale points at it); `_exchangeReturns` is a legacy alias older
+        // callers pre-mapped. Reading only the alias meant the credit silently
+        // vanished on every reload — the sale then showed its full total as due
+        // while an Exchange Return payment sat against it.
+        const apiExchangeReturns = sale._exchangeReturns ?? sale.exchange_returns;
+        const exchangeReturnList = Array.isArray(apiExchangeReturns)
+            ? apiExchangeReturns
+            : (apiExchangeReturns ? [apiExchangeReturns] : []);
+        for (const excReturn of exchangeReturnList) {
+            const originalSale = excReturn.sale;
+            const returnItems = (excReturn.items || []).map(ri => ({
+                productName: resolveReturnItemProductName(ri),
+                price: Number(ri.price || 0),
+                quantity: ri.quantity || 1,
+                total: Number(ri.total || ri.price || 0),
+            }));
+            if (originalSale && returnItems.length > 0) {
+                model.exchangeReturns.push({
+                    documentId: excReturn.documentId,
+                    id: excReturn.id,
+                    sale: originalSale,
+                    returnItems,
+                    returnNo: excReturn.return_no,
+                    totalRefund: Number(excReturn.total_refund || 0),
+                });
             }
         }
 
@@ -156,15 +163,22 @@ export default class SaleModel {
         this.updatePaymentStatus()
     }
 
+    // Optimistic in-session upgrade only — called when the teller adds a payment,
+    // right before the sale is saved as paid. It must never run off hydrated
+    // payments (see isPaid).
     updatePaymentStatus() {
         const sum = this.totalPaid;
         if (sum >= this.total && this.payments?.length > 0) {
             this.payment_status = 'Paid';
         }
     }
+    // "Paid" is the server's verdict, recorded at checkout — never inferred from
+    // the payment rows. An Exchange Return tender is written against the sale
+    // while it is still a DRAFT, so inferring paid-ness here made any sale whose
+    // exchange credit covered the total look Paid (locking out Checkout and edits)
+    // while the stored row stayed Unpaid and its stock was never sold.
     get isPaid() {
-        this.updatePaymentStatus()
-        return this.payment_status == 'Paid'
+        return this.payment_status === 'Paid';
     }
 
     get isCanceled() {
@@ -190,9 +204,10 @@ export default class SaleModel {
     }
 
 
+    // Every tender applied to the sale, credit included. Amounts come back from
+    // Strapi as decimals that can arrive as strings — coerce, or `+` concatenates.
     get totalPaid() {
-        const sum = this.payments.reduce((sum, p) => sum + p.amount, 0);
-        return sum
+        return this.payments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
     }
     removePayment(index) {
         this.payments.splice(index, 1);

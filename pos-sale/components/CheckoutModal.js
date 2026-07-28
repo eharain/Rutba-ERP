@@ -1,18 +1,57 @@
 import { useState, useEffect } from 'react';
 import { useUtil } from '@rutba/pos-shared/context/UtilContext';
 
+const round2 = (n) => Math.round(n * 100) / 100;
+
+function validOrDefult(value, def) {
+    const val = parseFloat(value);
+    if (Number.isFinite(val) && !Number.isNaN(val)) {
+        return val;
+    }
+    return def;
+}
+
+/**
+ * Same test the sale summary uses: a return-linked tender, or the explicit method.
+ * A refund payout is stored as a NEGATIVE payment that is also return-linked — that
+ * is money leaving the drawer, not credit coming in, so it stays on the money side.
+ */
+export const isCreditTender = (p) => {
+    if (Number(p?.amount || 0) < 0) return false;
+    return !!p?.sale_return || (p?.payment_method || '').toLowerCase() === 'exchange return';
+};
+
+/**
+ * An Exchange Return row is CREDIT, not money in the drawer. It settles the sale
+ * but can never produce change, so what's still due — and what's owed back — is
+ * measured against the money tenders alone. Treating credit as cash is what
+ * blocked checkout whenever the returned goods were worth a little more than the
+ * new sale ("Overpayment is only supported when using cash").
+ */
+export function computeTenderTotals(payments = [], total = 0) {
+    const sumRows = (rows) => round2(rows.reduce((sum, p) => sum + validOrDefult(p.amount, 0), 0));
+
+    const creditTotal = sumRows(payments.filter(isCreditTender));
+    const moneyTotal = sumRows(payments.filter((p) => !isCreditTender(p)));
+    // What the customer actually has to hand over once credit is applied.
+    const amountDue = Math.max(round2(total - creditTotal), 0);
+
+    return {
+        creditTotal,
+        moneyTotal,
+        amountDue,
+        totalPaid: round2(creditTotal + moneyTotal),
+        // Credit worth more than the sale: not change — the drawer owes nothing.
+        unusedCredit: Math.max(round2(creditTotal - total), 0),
+        change: Math.max(round2(moneyTotal - amountDue), 0),
+        remaining: Math.max(round2(amountDue - moneyTotal), 0),
+    };
+}
+
 const CheckoutModal = ({ isOpen, onClose, total, exchangeReturnCredit = 0, existingPayments = [], onComplete, onSavePayments, loading }) => {
     const { currency } = useUtil();
     const [payments, setPayments] = useState([]);
     const [submitting, setSubmitting] = useState(false);
-    function validOrDefult(value, def) {
-
-        const val = parseFloat(value);
-        if (Number.isFinite(val) && !Number.isNaN(val)) {
-            return val;
-        }
-        return def;
-    }
     useEffect(() => {
         if (isOpen) {
             setSubmitting(false);
@@ -34,8 +73,10 @@ const CheckoutModal = ({ isOpen, onClose, total, exchangeReturnCredit = 0, exist
                 });
             }
 
+            // One definition of "credit" for the whole modal — the rows copied above
+            // lose the sale_return relation, so classify from the source records.
             const alreadyExchangeReturn = (existingPayments || [])
-                .filter(p => (p.payment_method || '').toLowerCase() === 'exchange return')
+                .filter(isCreditTender)
                 .reduce((s, p) => s + Number(p.amount || 0), 0);
             const pendingExchangeReturn = Math.max(exchangeReturnCredit - alreadyExchangeReturn, 0);
             if (pendingExchangeReturn > 0) {
@@ -47,12 +88,14 @@ const CheckoutModal = ({ isOpen, onClose, total, exchangeReturnCredit = 0, exist
                     _locked: true
                 });
             }
-            const remaining = Math.max(total - alreadyPaid - pendingExchangeReturn, 0);
-            if (remaining > 0 || initial.length === 0) {
+            // Seed a blank Cash row only when money is still owed after every
+            // existing tender and the pending credit are applied.
+            const stillOwed = Math.max(total - alreadyPaid - pendingExchangeReturn, 0);
+            if (stillOwed > 0 || initial.length === 0) {
                 initial.push({
                     id: Date.now(),
                     payment_method: 'Cash',
-                    amount: remaining > 0 ? '' : '0',
+                    amount: stillOwed > 0 ? '' : '0',
                     transaction_no: ''
                 });
             }
@@ -60,9 +103,8 @@ const CheckoutModal = ({ isOpen, onClose, total, exchangeReturnCredit = 0, exist
         }
     }, [isOpen]);
 
-    const totalPaid = Math.round(payments.reduce((sum, payment) => sum + validOrDefult(payment.amount, 0), 0) * 100) / 100;
-    const change = Math.max(totalPaid - total, 0);
-    const remaining = Math.max(total - totalPaid, 0);
+    const { creditTotal, moneyTotal, totalPaid, amountDue, unusedCredit, change, remaining } =
+        computeTenderTotals(payments, total);
     const hasCashPayment = payments.some((payment) => payment.payment_method === 'Cash');
 
     const updatePayment = (index, updates) => {
@@ -83,7 +125,7 @@ const CheckoutModal = ({ isOpen, onClose, total, exchangeReturnCredit = 0, exist
 
     const handleExactAmount = (index) => {
         const currentAmount = validOrDefult(payments[index]?.amount, 0);
-        const nextAmount = Math.max(total - (totalPaid - currentAmount), 0);
+        const nextAmount = Math.max(round2(amountDue - (moneyTotal - currentAmount)), 0);
         updatePayment(index, { amount: (Math.ceil(nextAmount * 100) / 100).toFixed(2) });
     };
 
@@ -109,7 +151,7 @@ const CheckoutModal = ({ isOpen, onClose, total, exchangeReturnCredit = 0, exist
                 amount,
                 transaction_no: payment.transaction_no || undefined,
                 payment_date: new Date(),
-                due: total
+                due: amountDue
             };
 
             if (payment.payment_method === 'Cash') {
@@ -123,11 +165,11 @@ const CheckoutModal = ({ isOpen, onClose, total, exchangeReturnCredit = 0, exist
 
     const handlePay = () => {
         if (submitting) return;
-        if (totalPaid < total) {
-            alert(`Insufficient payment. Total is ${currency}${total.toFixed(2)}, but only ${currency}${totalPaid.toFixed(2)} received.`);
+        if (remaining > 0) {
+            alert(`Insufficient payment. ${currency}${amountDue.toFixed(2)} is due, but only ${currency}${moneyTotal.toFixed(2)} received.`);
             return;
         }
-        if (totalPaid > total && !hasCashPayment) {
+        if (change > 0 && !hasCashPayment) {
             alert('Overpayment is only supported when using cash.');
             return;
         }
@@ -174,7 +216,12 @@ const CheckoutModal = ({ isOpen, onClose, total, exchangeReturnCredit = 0, exist
                         {/* Total banner */}
                         <div className="bg-light rounded p-3 mb-3 text-center">
                             <div className="text-muted small">Amount Due</div>
-                            <div className="fw-bold fs-3">{currency}{total.toFixed(2)}</div>
+                            <div className="fw-bold fs-3">{currency}{amountDue.toFixed(2)}</div>
+                            {creditTotal > 0 && (
+                                <div className="small text-muted mt-1">
+                                    Sale {currency}{total.toFixed(2)} · exchange credit −{currency}{Math.min(creditTotal, total).toFixed(2)}
+                                </div>
+                            )}
                         </div>
 
                         {/* Payment rows */}
@@ -263,13 +310,19 @@ const CheckoutModal = ({ isOpen, onClose, total, exchangeReturnCredit = 0, exist
                                     <span className="fw-bold">{currency}{remaining.toFixed(2)}</span>
                                 </div>
                             )}
+                            {unusedCredit > 0 && (
+                                <div className="d-flex justify-content-between mb-1 text-muted">
+                                    <span>Unused credit</span>
+                                    <span>{currency}{unusedCredit.toFixed(2)}</span>
+                                </div>
+                            )}
                             {change > 0 && (
                                 <div className="d-flex justify-content-between align-items-center bg-success bg-opacity-10 rounded p-2">
                                     <span className="text-success"><i className="fas fa-coins me-1"></i>Change</span>
                                     <span className="fw-bold text-success fs-5">{currency}{change.toFixed(2)}</span>
                                 </div>
                             )}
-                            {totalPaid < total && totalPaid > 0 && (
+                            {remaining > 0 && moneyTotal > 0 && (
                                 <div className="text-danger text-center small mt-1">Insufficient payment</div>
                             )}
                         </div>
@@ -279,7 +332,7 @@ const CheckoutModal = ({ isOpen, onClose, total, exchangeReturnCredit = 0, exist
                         <button type="button" className="btn btn-outline-primary px-3" onClick={handleSaveDraft} disabled={submitting || loading || payments.filter(p => !p._locked).length === 0 || totalPaid <= 0}>
                             {loading ? (<><span className="spinner-border spinner-border-sm me-1"></span>Saving...</>) : (<><i className="fas fa-save me-1"></i>Save Payments</>)}
                         </button>
-                        <button type="button" className="btn btn-success px-4" onClick={handlePay} disabled={submitting || loading || payments.length === 0 || totalPaid < total}>
+                        <button type="button" className="btn btn-success px-4" onClick={handlePay} disabled={submitting || loading || payments.length === 0 || remaining > 0}>
                             {loading ? (<><span className="spinner-border spinner-border-sm me-1"></span>Processing...</>) : (<><i className="fas fa-check me-1"></i>Confirm Payment</>)}
                         </button>
                     </div>

@@ -168,6 +168,17 @@ export default function SalePage() {
        Checkout
     =============================== */
 
+    // Describes what actually settled the sale. A sale covered entirely by
+    // exchange credit takes no new payment rows, and a bare "0 payment(s)" in the
+    // audit trail reads like a checkout bypass rather than a legitimate exchange.
+    const checkoutSummary = (count) => {
+        const credit = Number(saleModel.exchangeReturnTotal || 0);
+        const base = `Total ${currency}${Number(saleModel.total || 0).toFixed(2)} · ${count} payment(s)`;
+        return count === 0 && credit > 0
+            ? `${base} · settled by exchange credit ${currency}${credit.toFixed(2)}`
+            : base;
+    };
+
     const handleCheckoutComplete = async (payments) => {
         if (savingRef.current) return;
         const paymentsList = Array.isArray(payments) ? payments : [payments];
@@ -190,7 +201,7 @@ export default function SalePage() {
                 recordSaleAudit(
                     saleModel.documentId,
                     'CheckedOut',
-                    `Total ${currency}${Number(saleModel.total || 0).toFixed(2)} · ${paymentsList.length} payment(s) · pay-later`,
+                    `${checkoutSummary(paymentsList.length)} · pay-later`,
                 );
                 await loadSale();
             } catch (err) {
@@ -217,7 +228,7 @@ export default function SalePage() {
             recordSaleAudit(
                 saleModel.documentId,
                 'CheckedOut',
-                `Total ${currency}${Number(saleModel.total || 0).toFixed(2)} · ${paymentsList.length} payment(s)`,
+                checkoutSummary(paymentsList.length),
             );
         } catch {
             // doSave already shows an alert
@@ -691,7 +702,10 @@ export default function SalePage() {
                                 .filter(p => !isExchangeTender(p))
                                 .reduce((s, p) => s + Number(p.amount || 0), 0);
                             const change = Math.max(0, totalPaid - amountDue);
-                            const registerDocId = saleModel.cash_register?.documentId;
+                            // SaleModel keeps the register as `cashRegister` (see fromApi);
+                            // the snake_case read here always came back undefined, so the
+                            // Register link never rendered.
+                            const registerDocId = saleModel.cashRegister?.documentId;
                             return (
                                 <div className="mt-3">
                                     {/* Exchange Returns — collapsed-by-default toggle. Most
